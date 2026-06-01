@@ -115,6 +115,49 @@ export async function registerTaskEngineRoutes(
     }
   });
 
+  // Fields that only staff may set on a task. Non-staff (assignees) are
+  // restricted to the BORROWER_ALLOWED_FIELDS allowlist below.
+  const STAFF_ONLY_TASK_FIELDS = new Set([
+    "applicationId",
+    "assignedToUserId",
+    "createdByUserId",
+    "title",
+    "description",
+    "taskType",
+    "taskTypeCode",
+    "triggerSource",
+    "ownerRole",
+    "slaClass",
+    "slaDueAt",
+    "escalationLevel",
+    "escalatedAt",
+    "documentCategory",
+    "documentYear",
+    "documentInstructions",
+    "requestingTeam",
+    "isCustomRequest",
+    "status",
+    "priority",
+    "dueDate",
+    "verificationStatus",
+    "verificationNotes",
+    "verifiedByUserId",
+    "verifiedAt",
+    "resolvedByUserId",
+    "completedAt",
+    "autoResolved",
+    "autoResolveCondition",
+    "blocksLoanProgress",
+    "aiAnalysisResult",
+    "aiAnalyzedAt",
+    "extractedData",
+    "triggerMetadata",
+  ]);
+
+  // The only fields a non-staff assignee may update through this legacy route.
+  // Status changes must go through /api/task-engine/tasks/:taskId/status instead.
+  const BORROWER_ALLOWED_TASK_FIELDS = new Set(["resolutionNotes"]);
+
   app.patch("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
       const task = await storage.getTask(req.params.id);
@@ -131,10 +174,34 @@ export async function registerTaskEngineRoutes(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      const updateData = req.body;
-      if (updateData.verificationStatus && isStaff) {
-        updateData.verifiedByUserId = userId;
-        updateData.verifiedAt = new Date();
+      let updateData: Record<string, unknown>;
+
+      if (isStaff) {
+        updateData = { ...req.body };
+        if (updateData.verificationStatus) {
+          updateData.verifiedByUserId = userId;
+          updateData.verifiedAt = new Date();
+        }
+      } else {
+        // Non-staff (assignee): reject any attempt to set staff-controlled fields.
+        const forbidden = Object.keys(req.body).filter((k) =>
+          STAFF_ONLY_TASK_FIELDS.has(k)
+        );
+        if (forbidden.length > 0) {
+          return res.status(403).json({
+            error: "Unauthorized: you may not modify restricted task fields",
+            fields: forbidden,
+          });
+        }
+        // Restrict to the borrower-safe allowlist only.
+        updateData = Object.fromEntries(
+          Object.entries(req.body as Record<string, unknown>).filter(([k]) =>
+            BORROWER_ALLOWED_TASK_FIELDS.has(k)
+          )
+        );
+        if (Object.keys(updateData).length === 0) {
+          return res.status(400).json({ error: "No updatable fields provided" });
+        }
       }
 
       const updated = await storage.updateTask(req.params.id, updateData);
