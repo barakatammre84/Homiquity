@@ -1609,7 +1609,7 @@ export function registerBorrowerRoutes(
     }
   });
 
-  // Add team member to application (staff only)
+  // Add team member to application (admin only, or staff already assigned to the application)
   app.post("/api/applications/:applicationId/team", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
@@ -1638,6 +1638,16 @@ export function registerBorrowerRoutes(
       const app = await storage.getLoanApplication(applicationId);
       if (!app) {
         return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Only admins can add team members to arbitrary applications.
+      // All other staff must already be assigned to this application to add more members.
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(applicationId);
+        const isOnTeam = teamMembers.some(m => m.userId === user.id);
+        if (!isOnTeam) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
       }
 
       const member = await storage.createDealTeamMember({
@@ -1745,6 +1755,20 @@ export function registerBorrowerRoutes(
         return res.status(400).json({ error: "Invalid input", details: result.error.format() });
       }
 
+      // Resolve the parent application so we can enforce assignment-based access.
+      const existingMember = await storage.getDealTeamMember(id);
+      if (!existingMember) {
+        return res.status(404).json({ error: "Team member not found" });
+      }
+
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(existingMember.applicationId);
+        const isOnTeam = teamMembers.some(m => m.userId === user.id);
+        if (!isOnTeam) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
+      }
+
       const updated = await storage.updateDealTeamMember(id, result.data);
       if (!updated) {
         return res.status(404).json({ error: "Team member not found" });
@@ -1770,6 +1794,15 @@ export function registerBorrowerRoutes(
       const member = await storage.getDealTeamMember(id);
       if (!member) {
         return res.status(404).json({ error: "Team member not found" });
+      }
+
+      // Only admins or staff already assigned to the application may remove team members.
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(member.applicationId);
+        const isOnTeam = teamMembers.some(m => m.userId === user.id);
+        if (!isOnTeam) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
       }
 
       await storage.removeDealTeamMember(id);

@@ -1005,6 +1005,15 @@ export function registerLendingRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
+      // Admins may update any application; all other roles must be on the deal team.
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(id);
+        const isOnTeam = teamMembers.some(m => m.userId === user.id);
+        if (!isOnTeam) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
+      }
+
       const previousStatus = application.status;
       const { status, notes } = parsed.data;
 
