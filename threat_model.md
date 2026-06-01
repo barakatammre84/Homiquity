@@ -27,8 +27,9 @@ Homiquity is a public-facing mortgage platform with a React frontend and a Node.
 
 - **Production entry points:** `server/index-prod.ts`, `server/app.ts`, `server/routes.ts`
 - **Highest-risk code areas:** `server/routes/borrower.ts`, `server/routes/lending.ts`, `server/routes/compliance.ts`, `server/routes/documents.ts`, `server/routes/task-engine.ts`, `server/routes/underwriting.ts`, `server/routes/underwriting-rules.ts`, `server/storage.ts`
+- **Newly validated hot spots:** `server/routes/agent-broker.ts`, `server/routes/staff-invites.ts`, `server/routes/intelligence.ts`, and endpoints that accept raw `applicationId`, `taskId`, `letterId`, invite codes, or verification identifiers
 - **Public vs authenticated vs admin surfaces:** public property/listing/content routes; borrower authenticated routes under `/api`; staff/admin actions commonly guarded by `requireRole(...)` or `isStaffRole(...)`
-- **Usually ignore unless proven reachable:** mockup/dev-only scaffolding and experimental sandbox code outside the production Express path
+- **Usually ignore unless proven reachable:** mockup/dev-only scaffolding and experimental sandbox code outside the production Express path; duplicate route definitions that are shadowed by an earlier production registration order
 
 ## Threat Categories
 
@@ -59,6 +60,7 @@ Required guarantees:
 - Borrower-facing reads MUST be scoped to the requesting user’s own applications unless a staff role is explicitly allowed.
 - Document, consent, credit, and URLA endpoints MUST not return data for arbitrary IDs supplied by another authenticated user.
 - API responses and logs MUST avoid exposing secrets, raw credit payloads, or unnecessary sensitive fields.
+- Secrets such as invite codes and third-party bearer tokens MUST not be placed in URLs, returned wholesale from ORM rows, or written verbatim into request/response logs.
 
 ### Denial of Service
 
@@ -77,3 +79,8 @@ Required guarantees:
 - Every route that references application-scoped or child-record-scoped data MUST verify owner-or-staff access server-side.
 - Role-restricted capabilities MUST not be reachable through adjacent authenticated endpoints that bypass the intended authorization helper.
 - Sensitive record types with indirect identifiers (tasks, rate locks, consents, child URLA rows, linked documents) MUST be resolved back to an authorized parent application before access is granted.
+- Broad staff roles such as `broker`, `lender`, `loa`, and `processor` MUST not automatically receive global control over platform-wide task queues, pricing catalogs, milestones, policy artifacts, or compensation records without assignment or narrower role checks.
+
+## Reporting Scope Notes
+
+- Do not repropose weaknesses that require a separate database compromise unless the scan also finds a production-reachable write primitive that makes the integrity failure exploitable in practice.
