@@ -17,6 +17,7 @@ Homiquity is a public-facing mortgage platform with a React frontend and a Node.
 
 - **Browser to API** -- every client request crosses from an untrusted browser into the Express API. The server must authenticate and authorize every read and write; client-side routing and UI state are not security controls.
 - **Authenticated borrower to staff/admin boundary** -- borrowers, brokers/agents, and internal mortgage staff have materially different permissions. Role separation must be enforced server-side for every route and every referenced record.
+- **General staff to underwriting/control-plane boundary** -- broad staff roles such as `loa`, `broker`, and `lender` should not automatically inherit authority to waive underwriting conditions, advance pipeline stages, or disable global underwriting rules. These actions materially affect credit decisions and platform-wide controls.
 - **Application record ownership boundary** -- even among authenticated users with the same base role, each borrower should only access their own application, child records, documents, and workflow state unless explicit sharing exists.
 - **API to PostgreSQL** -- route handlers call generic storage methods that frequently accept raw IDs. Because many storage helpers do not enforce ownership themselves, authorization must happen before those helpers are invoked.
 - **API to object storage and external services** -- the server exchanges sensitive files and decision inputs with storage, Plaid, email, AI services, and mapping/property services. These calls must not allow unauthorized data fetches or leakage.
@@ -25,7 +26,7 @@ Homiquity is a public-facing mortgage platform with a React frontend and a Node.
 ## Scan Anchors
 
 - **Production entry points:** `server/index-prod.ts`, `server/app.ts`, `server/routes.ts`
-- **Highest-risk code areas:** `server/routes/borrower.ts`, `server/routes/lending.ts`, `server/routes/compliance.ts`, `server/routes/documents.ts`, `server/routes/task-engine.ts`, `server/storage.ts`
+- **Highest-risk code areas:** `server/routes/borrower.ts`, `server/routes/lending.ts`, `server/routes/compliance.ts`, `server/routes/documents.ts`, `server/routes/task-engine.ts`, `server/routes/underwriting.ts`, `server/routes/underwriting-rules.ts`, `server/storage.ts`
 - **Public vs authenticated vs admin surfaces:** public property/listing/content routes; borrower authenticated routes under `/api`; staff/admin actions commonly guarded by `requireRole(...)` or `isStaffRole(...)`
 - **Usually ignore unless proven reachable:** mockup/dev-only scaffolding and experimental sandbox code outside the production Express path
 
@@ -39,6 +40,7 @@ Required guarantees:
 - Protected routes MUST require a valid authenticated session.
 - Staff-only and admin-only operations MUST enforce role checks server-side.
 - Server-side business actions MUST use the authenticated user identity, not client-supplied user identifiers, as the source of truth.
+- High-impact underwriting and policy actions MUST require appropriately narrow roles or explicit assignment-based authorization rather than any generic staff role.
 
 ### Tampering
 
