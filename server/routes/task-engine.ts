@@ -176,6 +176,20 @@ export async function registerTaskEngineRoutes(
 
       const { documentId } = req.body;
 
+      // Verify the document exists and belongs to the same user or application as the task
+      const doc = await storage.getDocument(documentId);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      const isStaff = isStaffRole(req.user?.role || "");
+      if (!isStaff) {
+        const ownsDocument = doc.userId === userId;
+        const sameApplication = task.applicationId && doc.applicationId === task.applicationId;
+        if (!ownsDocument && !sameApplication) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+      }
+
       const taskDocument = await storage.createTaskDocument({
         taskId,
         documentId,
@@ -201,6 +215,20 @@ export async function registerTaskEngineRoutes(
   app.get("/api/tasks/:taskId/documents", isAuthenticated, async (req, res) => {
     try {
       const { taskId } = req.params;
+      const task = await storage.getTask(taskId);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      const userId = req.user!.id;
+      const userRole = req.user?.role || "";
+      if (!isStaffRole(userRole) && task.assignedToUserId !== userId) {
+        const application = task.applicationId ? await storage.getLoanApplication(task.applicationId) : null;
+        if (!application || application.userId !== userId) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+      }
+
       const taskDocs = await storage.getTaskDocuments(taskId);
       res.json(taskDocs);
     } catch (error) {
