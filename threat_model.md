@@ -14,6 +14,7 @@ This scan iteration assumes the current deployment is unpublished/private rather
 - **Documents and derived intelligence** -- uploaded files, OCR/extraction results, and generated PDFs. These can contain income proofs, identity documents, and underwriting artifacts.
 - **Compliance and audit records** -- credit pulls, adverse-action history, retention records, and audit trails. Tampering or disclosure can create regulatory and legal exposure.
 - **Application and integration secrets** -- database credentials, email credentials, AI/API keys, Plaid credentials, Google Maps keys, and object-storage access. Leakage could lead to account compromise or third-party abuse.
+- **Operational and commercial control-plane data** -- referral leads, pricing catalogs, underwriting rules, SLA settings, pipeline metrics, and lender/product metadata. Exposure can leak confidential business logic and partner-sensitive commercial information.
 
 ## Trust Boundaries
 
@@ -29,9 +30,10 @@ This scan iteration assumes the current deployment is unpublished/private rather
 
 - **Production entry points:** `server/index-prod.ts`, `server/app.ts`, `server/routes.ts`
 - **Highest-risk code areas:** `server/routes/borrower.ts`, `server/routes/lending.ts`, `server/routes/compliance.ts`, `server/routes/documents.ts`, `server/routes/task-engine.ts`, `server/routes/underwriting.ts`, `server/routes/underwriting-rules.ts`, `server/storage.ts`
-- **Newly validated hot spots:** `server/routes/agent-broker.ts`, `server/routes/staff-invites.ts`, `server/routes/intelligence.ts`, and endpoints that accept raw `applicationId`, `taskId`, `letterId`, invite codes, or verification identifiers
+- **Newly validated hot spots:** `server/routes/agent-broker.ts`, `server/routes/staff-invites.ts`, `server/routes/intelligence.ts`, `server/routes/data-intelligence.ts`, and endpoints that accept raw `applicationId`, `taskId`, `letterId`, invite codes, verification identifiers, snapshot IDs, or user IDs
 - **Public vs authenticated vs admin surfaces:** public property/listing/content routes; borrower authenticated routes under `/api`; staff/admin actions commonly guarded by `requireRole(...)` or `isStaffRole(...)`
 - **Usually ignore unless proven reachable:** mockup/dev-only scaffolding and experimental sandbox code outside the production Express path; duplicate route definitions that are shadowed by an earlier production registration order
+- **Specifically shadowed in current production route order:** the later JSON `POST /api/documents/upload` handler in `server/routes/documents.ts` is shadowed by the earlier multipart `POST /api/documents/upload` route registered from `server/routes/lending.ts`; do not report the JSON-path file-read variant unless registration order or path shape changes
 
 ## Threat Categories
 
@@ -56,11 +58,12 @@ Required guarantees:
 
 ### Information Disclosure
 
-The platform stores mortgage PII, uploaded documents, credit-related records, and generated letters. The biggest disclosure risk is broken object-level authorization on authenticated routes that return data by application ID or record ID. Logging and error handling also need to avoid leaking raw sensitive payloads, but the primary exposure path here is unauthorized access to other borrowers’ records.
+The platform stores mortgage PII, uploaded documents, credit-related records, generated letters, and confidential internal pricing and underwriting data. The biggest disclosure risk is broken object-level authorization on authenticated routes that return data by application ID or record ID, especially where `broker` and `lender` are treated as generic staff.
 
 Required guarantees:
 - Borrower-facing reads MUST be scoped to the requesting user’s own applications unless a staff role is explicitly allowed.
-- Document, consent, credit, and URLA endpoints MUST not return data for arbitrary IDs supplied by another authenticated user.
+- Document, consent, credit, URLA, referral-lead, and predictive-analytics endpoints MUST not return data for arbitrary IDs supplied by another authenticated user.
+- Partner roles such as `broker` and `lender` MUST not receive global access to organization-wide borrower records, referral leads, pricing catalogs, workflow analytics, or underwriting telemetry unless an explicit tenant or assignment scope is enforced.
 - API responses and logs MUST avoid exposing secrets, raw credit payloads, or unnecessary sensitive fields.
 - Secrets such as invite codes and third-party bearer tokens MUST not be placed in URLs, returned wholesale from ORM rows, or written verbatim into request/response logs.
 
@@ -75,13 +78,14 @@ Required guarantees:
 
 ### Elevation of Privilege
 
-The most relevant privilege-escalation risk is broken access control between borrowers and staff, and between one borrower and another. In this codebase, helper methods often expose or mutate records by raw ID, so a route that checks only `isAuthenticated` can become an IDOR or horizontal privilege-escalation flaw. Staff-only capabilities like credit actions, underwriting artifacts, or workflow management must not be reachable through weaker alternate routes.
+The most relevant privilege-escalation risk is broken access control between borrowers and staff, between one borrower and another, and between external partners and internal control-plane capabilities. In this codebase, helper methods often expose or mutate records by raw ID, so a route that checks only `isAuthenticated` or broad `isStaffRole(...)` membership can become an IDOR or horizontal privilege-escalation flaw. Staff-only capabilities like credit actions, underwriting artifacts, or workflow management must not be reachable through weaker alternate routes.
 
 Required guarantees:
 - Every route that references application-scoped or child-record-scoped data MUST verify owner-or-staff access server-side.
 - Role-restricted capabilities MUST not be reachable through adjacent authenticated endpoints that bypass the intended authorization helper.
 - Sensitive record types with indirect identifiers (tasks, rate locks, consents, child URLA rows, linked documents) MUST be resolved back to an authorized parent application before access is granted.
-- Broad staff roles such as `broker`, `lender`, `loa`, and `processor` MUST not automatically receive global control over platform-wide task queues, pricing catalogs, milestones, policy artifacts, or compensation records without assignment or narrower role checks.
+- Broad staff roles such as `broker`, `lender`, `loa`, and `processor` MUST not automatically receive global control over platform-wide task queues, pricing catalogs, milestones, policy artifacts, credit workflows, or compensation records without assignment or narrower role checks.
+- Assignment-based safeguards are only meaningful if team-membership mutation routes are themselves tightly authorized; otherwise assignment checks can be bypassed by self-enrollment.
 
 ## Reporting Scope Notes
 
