@@ -239,18 +239,30 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  app.post("/api/broker/commissions", requireRole("admin", "lo", "broker"), async (req, res) => {
+  // Commission creation is restricted to admin only.
+  // loanAmount is derived server-side from the application record — not client-supplied —
+  // to prevent fabrication of inflated commission amounts.
+  app.post("/api/broker/commissions", requireRole("admin"), async (req, res) => {
     try {
-      const user = req.user as User;
-      
-      const { brokerId, applicationId, loanAmount, commissionRate } = req.body;
-      
-      if (!brokerId || !applicationId || !loanAmount || !commissionRate) {
-        return res.status(400).json({ error: "Missing required fields" });
+      const { applicationId, brokerId, commissionRate } = req.body;
+
+      if (!applicationId || !brokerId || !commissionRate) {
+        return res.status(400).json({ error: "applicationId, brokerId, and commissionRate are required" });
       }
-      
+
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Derive authoritative loan amount from the application record
+      const loanAmount = application.loanAmount;
+      if (!loanAmount) {
+        return res.status(422).json({ error: "Application does not have a loan amount on file" });
+      }
+
       const commissionAmount = (Number(loanAmount) * Number(commissionRate)).toFixed(2);
-      
+
       const commission = await storage.createBrokerCommission({
         brokerId,
         applicationId,
@@ -259,7 +271,7 @@ export function registerAgentBrokerRoutes(
         commissionAmount,
         status: "pending",
       });
-      
+
       res.status(201).json(commission);
     } catch (error) {
       console.error("Create broker commission error:", error);
@@ -267,32 +279,54 @@ export function registerAgentBrokerRoutes(
     }
   });
 
+  // Commission status transitions are restricted to admin only.
+  // Brokers and LOs may only update the notes field on records they own.
   app.patch("/api/broker/commissions/:id", requireRole("admin", "lo", "broker"), async (req, res) => {
     try {
       const user = req.user as User;
-      
+
       const { id } = req.params;
 
-      const updateData: Record<string, any> = {};
-      if (req.body.status !== undefined) updateData.status = req.body.status;
-      if (req.body.notes !== undefined) updateData.notes = req.body.notes;
-      if (req.body.paidAt !== undefined) updateData.paidAt = req.body.paidAt;
-      if (req.body.paidBy !== undefined) updateData.paidBy = req.body.paidBy;
-
-      if (!updateData.status && Object.keys(updateData).length === 0) {
-        return res.status(400).json({ error: "No valid fields to update" });
+      // Fetch the commission first to enforce ownership
+      const existing = await storage.getBrokerCommission(id);
+      if (!existing) {
+        return res.status(404).json({ error: "Commission not found" });
       }
-      
-      if (updateData.status === "paid" && !updateData.paidAt) {
+
+      // Status transitions (including "paid", "approved", "rejected") are admin-only.
+      // Brokers and LOs can only update the notes field.
+      if (req.body.status !== undefined && user.role !== "admin") {
+        return res.status(403).json({ error: "Only admins can change commission status" });
+      }
+
+      // Brokers may only update notes on their own commission records.
+      // LOs have notes access on all commissions they manage (no object-level restriction).
+      if (user.role === "broker" && existing.brokerId !== user.id) {
+        return res.status(403).json({ error: "You may only update your own commission records" });
+      }
+
+      const updateData: Record<string, any> = {};
+      // Only admit fields that callers are permitted to set
+      if (req.body.notes !== undefined) updateData.notes = req.body.notes;
+      if (req.body.status !== undefined && user.role === "admin") {
+        updateData.status = req.body.status;
+      }
+      // paidAt and paidBy are server-controlled only; never accepted from client body
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: "No updatable fields provided" });
+      }
+
+      if (updateData.status === "paid") {
         updateData.paidAt = new Date();
         updateData.paidBy = user.id;
       }
-      
+
       const updated = await storage.updateBrokerCommission(id, updateData);
       if (!updated) {
         return res.status(404).json({ error: "Commission not found" });
       }
-      
+
       res.json(updated);
     } catch (error) {
       console.error("Update broker commission error:", error);
@@ -624,10 +658,28 @@ export function registerAgentBrokerRoutes(
     }
   });
 
+  // Internal staff roles that are permitted to read/write milestone data.
+  // Partner roles (broker, lender) are excluded because milestone fields include
+  // sensitive disposition data (deniedAt, closedAt, fundedAt, etc.).
+  const MILESTONE_INTERNAL_STAFF = new Set(["admin", "lo", "loa", "processor", "underwriter", "closer"]);
+
   // Get application milestones
   app.get("/api/application-milestones/:applicationId", isAuthenticated, async (req, res) => {
     try {
       const { applicationId } = req.params;
+      const userId = (req.user as User).id;
+      const userRole = (req.user as User).role;
+
+      if (MILESTONE_INTERNAL_STAFF.has(userRole)) {
+        // Internal staff: unrestricted read access
+      } else {
+        // Borrowers (and any other role): must own the application
+        const application = await storage.getLoanApplication(applicationId);
+        if (!application || application.userId !== userId) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+
       const milestone = await storage.getApplicationMilestone(applicationId);
       res.json(milestone || null);
     } catch (error) {
@@ -636,11 +688,20 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  // Update application milestones
-  app.patch("/api/application-milestones/:applicationId", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  // Update application milestones — admin only.
+  // Milestone fields include sensitive loan disposition data (deniedAt, closedAt, fundedAt,
+  // withdrawalReason, etc.). Restricting to admin eliminates cross-application manipulation
+  // by any staff role without requiring a deal-team assignment table.
+  app.patch("/api/application-milestones/:applicationId", requireRole("admin"), async (req, res) => {
     try {
       const { applicationId } = req.params;
-      
+
+      // Verify the application exists before writing milestone data
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
       // Get or create milestone record
       let milestone = await storage.getApplicationMilestone(applicationId);
       if (!milestone) {

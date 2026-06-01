@@ -3,6 +3,57 @@ import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import { isStaffRole } from "@shared/schema";
 
+// Internal-only staff roles that have global task access.
+// Partner roles (broker, lender) are scoped to their referred applications only.
+const INTERNAL_STAFF_ROLES = new Set(["admin", "lo", "loa", "processor", "underwriter", "closer"]);
+function isInternalStaff(role: string): boolean {
+  return INTERNAL_STAFF_ROLES.has(role);
+}
+
+// Verify that the caller has object-level access to the application a task belongs to.
+//
+// Access rules per role:
+//   admin        → global (unrestricted)
+//   lo / loa     → must be the assigned loan officer (loanOfficerId) on the application,
+//                  OR the application has no LO yet (unassigned file)
+//   processor / underwriter / closer
+//                → pipeline-wide access; these roles work all active files in the system.
+//                  Proper per-file restriction requires a deal-team assignment table that
+//                  does not exist in the current schema; restricting them further would
+//                  require introducing new functionality.
+//   broker / lender → must be the referring broker (referringBrokerId) on the application
+//   borrower / others → must own the application (userId)
+async function verifyTaskApplicationAccess(
+  storage: IStorage,
+  applicationId: string | null | undefined,
+  userId: string,
+  userRole: string,
+): Promise<boolean> {
+  if (userRole === "admin") return true;
+  if (!applicationId) return false;
+
+  const application = await storage.getLoanApplication(applicationId);
+  if (!application) return false;
+
+  if (userRole === "broker" || userRole === "lender") {
+    return application.referringBrokerId === userId;
+  }
+
+  if (userRole === "lo" || userRole === "loa") {
+    // LO/LOA are scoped to their assigned files or unassigned files.
+    return application.loanOfficerId === userId || !application.loanOfficerId;
+  }
+
+  if (userRole === "processor" || userRole === "underwriter" || userRole === "closer") {
+    // These pipeline roles work all active files. Object-level restriction requires
+    // a deal-team table not present in the current schema.
+    return true;
+  }
+
+  // Borrowers and any unrecognised roles: must own the application.
+  return application.userId === userId;
+}
+
 export async function registerTaskEngineRoutes(
   app: Express,
   storage: IStorage,
@@ -10,9 +61,21 @@ export async function registerTaskEngineRoutes(
   // Task Routes - Admin/Staff can create and manage tasks
   app.post("/api/tasks", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
+      const userId = req.user!.id;
+      const userRole = req.user!.role || "";
+      const applicationId = req.body.applicationId;
+
+      // Broker/lender must have a referral on the target application
+      if (!isInternalStaff(userRole)) {
+        const allowed = await verifyTaskApplicationAccess(storage, applicationId, userId, userRole);
+        if (!allowed) {
+          return res.status(403).json({ error: "Access denied to this application" });
+        }
+      }
+
       const taskData = {
         ...req.body,
-        createdByUserId: req.user!.id,
+        createdByUserId: userId,
       };
 
       const task = await storage.createTask(taskData);
@@ -22,7 +85,7 @@ export async function registerTaskEngineRoutes(
         activityType: "note",
         title: "Task Created",
         description: `New task: ${task.title}`,
-        performedBy: req.user!.id,
+        performedBy: userId,
       });
 
       res.status(201).json(task);
@@ -38,9 +101,11 @@ export async function registerTaskEngineRoutes(
       const userId = req.user!.id;
 
       let tasks;
-      if (isStaffRole(userRole || "")) {
+      if (isInternalStaff(userRole)) {
+        // Only internal staff get the full global task list
         tasks = await storage.getAllTasks();
       } else {
+        // Partner roles (broker, lender) and borrowers see only their own tasks
         tasks = await storage.getTasksByUser(userId);
       }
 
@@ -57,8 +122,12 @@ export async function registerTaskEngineRoutes(
       const requestingUserId = req.user!.id;
       const userRole = req.user?.role || "";
 
-      if (userId !== requestingUserId && !isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Unauthorized" });
+      // Partner roles (broker/lender) may only retrieve their own task list,
+      // never another user's. Internal staff can retrieve any user's tasks.
+      if (userId !== requestingUserId) {
+        if (!isInternalStaff(userRole)) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
       }
 
       const tasks = await storage.getTasksByUser(userId);
@@ -75,11 +144,12 @@ export async function registerTaskEngineRoutes(
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
 
-      if (!isStaffRole(userRole)) {
-        const app = await storage.getLoanApplication(applicationId);
-        if (!app || app.userId !== userId) {
-          return res.status(403).json({ error: "Unauthorized" });
-        }
+      // Internal staff: unrestricted access
+      // Partner roles (broker/lender): must have referral on the application
+      // Borrowers: must own the application
+      const allowed = await verifyTaskApplicationAccess(storage, applicationId, userId, userRole);
+      if (!allowed) {
+        return res.status(403).json({ error: "Unauthorized" });
       }
 
       const tasks = await storage.getTasksByApplication(applicationId);
@@ -99,10 +169,17 @@ export async function registerTaskEngineRoutes(
 
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
-      if (!isStaffRole(userRole) && task.assignedToUserId !== userId) {
-        const app = task.applicationId ? await storage.getLoanApplication(task.applicationId) : null;
-        if (!app || app.userId !== userId) {
-          return res.status(403).json({ error: "Unauthorized" });
+      const isAssignedUser = task.assignedToUserId === userId;
+
+      // Internal staff: unrestricted access
+      // Partner staff (broker/lender): must have referral on the application
+      // Borrowers/others: must own the application or be the assigned user
+      if (!isInternalStaff(userRole)) {
+        if (!isAssignedUser) {
+          const allowed = await verifyTaskApplicationAccess(storage, task.applicationId, userId, userRole);
+          if (!allowed) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
         }
       }
 
@@ -174,6 +251,14 @@ export async function registerTaskEngineRoutes(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
+      // Partner roles (broker/lender) must also have a referral on the application
+      if (isStaff && !isInternalStaff(userRole)) {
+        const allowed = await verifyTaskApplicationAccess(storage, task.applicationId, userId, userRole);
+        if (!allowed) {
+          return res.status(403).json({ error: "Access denied to this application" });
+        }
+      }
+
       let updateData: Record<string, unknown>;
 
       if (isStaff) {
@@ -237,19 +322,26 @@ export async function registerTaskEngineRoutes(
       }
 
       const userId = req.user!.id;
-      if (task.assignedToUserId !== userId && !isStaffRole(req.user?.role || "")) {
-        return res.status(403).json({ error: "Unauthorized" });
+      const userRole = req.user?.role || "";
+      const isAssignedUser = task.assignedToUserId === userId;
+
+      // Internal staff: unrestricted; partner roles: must have referral; others: must be assignee
+      if (!isInternalStaff(userRole)) {
+        if (!isAssignedUser) {
+          const allowed = await verifyTaskApplicationAccess(storage, task.applicationId, userId, userRole);
+          if (!allowed) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+        }
       }
 
       const { documentId } = req.body;
 
-      // Verify the document exists and belongs to the same user or application as the task
       const doc = await storage.getDocument(documentId);
       if (!doc) {
         return res.status(404).json({ error: "Document not found" });
       }
-      const isStaff = isStaffRole(req.user?.role || "");
-      if (!isStaff) {
+      if (!isInternalStaff(userRole)) {
         const ownsDocument = doc.userId === userId;
         const sameApplication = task.applicationId && doc.applicationId === task.applicationId;
         if (!ownsDocument && !sameApplication) {
@@ -289,10 +381,14 @@ export async function registerTaskEngineRoutes(
 
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
-      if (!isStaffRole(userRole) && task.assignedToUserId !== userId) {
-        const application = task.applicationId ? await storage.getLoanApplication(task.applicationId) : null;
-        if (!application || application.userId !== userId) {
-          return res.status(403).json({ error: "Unauthorized" });
+
+      // Internal staff: unrestricted; partner roles: must have referral; others: must own or be assignee
+      if (!isInternalStaff(userRole)) {
+        if (task.assignedToUserId !== userId) {
+          const allowed = await verifyTaskApplicationAccess(storage, task.applicationId, userId, userRole);
+          if (!allowed) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
         }
       }
 
@@ -304,11 +400,12 @@ export async function registerTaskEngineRoutes(
     }
   });
 
+  // Document verification is an underwriting action — restricted to internal staff only
   app.patch("/api/tasks/:taskId/documents/:docId/verify", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
-      if (!isStaffRole(userRole || "")) {
-        return res.status(403).json({ error: "Only staff can verify documents" });
+      if (!isInternalStaff(userRole)) {
+        return res.status(403).json({ error: "Only internal staff can verify documents" });
       }
 
       const { taskId, docId } = req.params;
@@ -387,10 +484,18 @@ export async function registerTaskEngineRoutes(
   app.get("/api/task-engine/applications/:applicationId/tasks", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
+      const userId = req.user!.id;
       if (!isStaffRole(userRole)) {
         return res.status(403).json({ error: "Staff access required for full task list" });
       }
       const { applicationId } = req.params;
+      // Partner staff (broker/lender) must have a referral on this application
+      if (!isInternalStaff(userRole)) {
+        const allowed = await verifyTaskApplicationAccess(storage, applicationId, userId, userRole);
+        if (!allowed) {
+          return res.status(403).json({ error: "Access denied to this application" });
+        }
+      }
       const tasks = await taskEngine.getTasksForApplication(applicationId);
       res.json(tasks);
     } catch (error) {
@@ -405,16 +510,13 @@ export async function registerTaskEngineRoutes(
       const { applicationId } = req.params;
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
-      
-      // Staff can access any application's borrower tasks
-      if (!isStaffRole(userRole)) {
-        // Borrowers must own the application
-        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, userRole || "borrower");
-        if (!application) {
-          return res.status(403).json({ error: "Access denied to this application" });
-        }
+
+      // Internal staff: unrestricted; partner roles: must have referral; borrowers: must own
+      const allowed = await verifyTaskApplicationAccess(storage, applicationId, userId, userRole);
+      if (!allowed) {
+        return res.status(403).json({ error: "Access denied to this application" });
       }
-      
+
       const tasks = await taskEngine.getBorrowerTasks(applicationId);
       res.json(tasks);
     } catch (error) {
@@ -423,12 +525,12 @@ export async function registerTaskEngineRoutes(
     }
   });
 
-  // Get tasks by owner role (staff only)
+  // Get tasks by owner role (internal staff only — returns cross-application results)
   app.get("/api/task-engine/tasks/by-role/:role", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
-      if (!isStaffRole(userRole)) {
-        return res.status(403).json({ error: "Staff access required" });
+      if (!isInternalStaff(userRole)) {
+        return res.status(403).json({ error: "Internal staff access required" });
       }
       const { role } = req.params;
       const status = req.query.status as string | undefined;
@@ -470,14 +572,23 @@ export async function registerTaskEngineRoutes(
   app.post("/api/task-engine/tasks", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
+      const userId = req.user!.id;
       if (!isStaffRole(userRole)) {
         return res.status(403).json({ error: "Staff access required" });
       }
-      
+
       const { title, description, applicationId, taskType, taskTypeCode, ownerRole, assignedToUserId } = req.body;
-      
+
       if (!title || !applicationId || !taskType) {
         return res.status(400).json({ error: "Title, applicationId, and taskType are required" });
+      }
+
+      // Partner roles (broker/lender) must have a referral on the target application
+      if (!isInternalStaff(userRole)) {
+        const allowed = await verifyTaskApplicationAccess(storage, applicationId, userId, userRole);
+        if (!allowed) {
+          return res.status(403).json({ error: "Access denied to this application" });
+        }
       }
 
       const task = await taskEngine.createTask(
@@ -490,7 +601,7 @@ export async function registerTaskEngineRoutes(
           ownerRole,
           assignedToUserId,
         },
-        req.user!.id,
+        userId,
         "MANUAL"
       );
 
@@ -508,7 +619,7 @@ export async function registerTaskEngineRoutes(
       const { status, notes } = req.body;
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
-      
+
       if (!status) {
         return res.status(400).json({ error: "Status is required" });
       }
@@ -519,9 +630,16 @@ export async function registerTaskEngineRoutes(
         return res.status(404).json({ error: "Task not found" });
       }
 
-      // Staff can update any task
-      // Non-staff can only update tasks assigned to them
-      if (!isStaffRole(userRole)) {
+      if (isStaffRole(userRole)) {
+        // Partner roles (broker/lender) must have a referral on the application
+        if (!isInternalStaff(userRole)) {
+          const allowed = await verifyTaskApplicationAccess(storage, existingTask.applicationId, userId, userRole);
+          if (!allowed) {
+            return res.status(403).json({ error: "Access denied to this application" });
+          }
+        }
+      } else {
+        // Non-staff can only update tasks assigned to them
         if (existingTask.assignedToUserId !== userId) {
           return res.status(403).json({ error: "Access denied: You can only update tasks assigned to you" });
         }
@@ -538,12 +656,12 @@ export async function registerTaskEngineRoutes(
     }
   });
 
-  // Escalate a task (staff only)
+  // Escalate a task (internal staff only)
   app.post("/api/task-engine/tasks/:taskId/escalate", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
-      if (!isStaffRole(userRole)) {
-        return res.status(403).json({ error: "Staff access required" });
+      if (!isInternalStaff(userRole)) {
+        return res.status(403).json({ error: "Internal staff access required" });
       }
 
       const { taskId } = req.params;
@@ -560,12 +678,12 @@ export async function registerTaskEngineRoutes(
     }
   });
 
-  // Get task audit trail
+  // Get task audit trail (internal staff only)
   app.get("/api/task-engine/tasks/:taskId/audit", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
-      if (!isStaffRole(userRole)) {
-        return res.status(403).json({ error: "Staff access required" });
+      if (!isInternalStaff(userRole)) {
+        return res.status(403).json({ error: "Internal staff access required" });
       }
 
       const { taskId } = req.params;
