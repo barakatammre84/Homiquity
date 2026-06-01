@@ -1086,6 +1086,17 @@ export function registerAgentBrokerRoutes(
         return res.status(404).json({ error: "Pre-approval letter not found" });
       }
 
+      // Verify the caller has access to the underlying loan application
+      const user = req.user as any;
+      const application = await storage.getLoanApplicationWithAccess(
+        letter.applicationId,
+        user.id,
+        user.role
+      );
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       const coBrandProfile = await storage.getCoBrandProfile(agentProfileId);
 
       res.json({
