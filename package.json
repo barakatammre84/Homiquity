@@ -127,5 +127,8 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "overrides": {
+    "uuid": ">=11.1.1"
   }
 }
