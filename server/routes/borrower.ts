@@ -331,10 +331,11 @@ export function registerBorrowerRoutes(
   // URLA Data Routes
   app.get("/api/urla/:applicationId", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
-      const application = await storage.getLoanApplication(applicationId);
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
+        return res.status(403).json({ error: "Access denied" });
       }
       const urlaData = await storage.getCompleteUrlaData(applicationId);
       res.json({ application, ...urlaData });
@@ -346,7 +347,12 @@ export function registerBorrowerRoutes(
 
   app.post("/api/urla/:applicationId/personal-info", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = { ...req.body, applicationId };
       const result = await storage.upsertUrlaPersonalInfo(data);
       res.json(result);
@@ -358,7 +364,12 @@ export function registerBorrowerRoutes(
 
   app.post("/api/urla/:applicationId/employment", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = { ...req.body, applicationId };
       const result = await storage.createEmploymentHistory(data);
       res.status(201).json(result);
@@ -370,8 +381,19 @@ export function registerBorrowerRoutes(
 
   app.patch("/api/urla/employment/:id", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { id } = req.params;
-      const result = await storage.updateEmploymentHistory(id, req.body);
+      const record = await storage.getEmploymentHistoryById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      // Strip applicationId from body — it is immutable and must not be re-parented
+      const { applicationId: _appId, ...safeBody } = req.body;
+      const result = await storage.updateEmploymentHistory(id, safeBody);
       if (!result) {
         return res.status(404).json({ error: "Employment record not found" });
       }
@@ -384,7 +406,17 @@ export function registerBorrowerRoutes(
 
   app.delete("/api/urla/employment/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteEmploymentHistory(req.params.id);
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getEmploymentHistoryById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      await storage.deleteEmploymentHistory(id);
       res.status(204).send();
     } catch (error) {
       console.error("Delete employment error:", error);
@@ -394,7 +426,12 @@ export function registerBorrowerRoutes(
 
   app.post("/api/urla/:applicationId/other-income", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = { ...req.body, applicationId };
       const result = await storage.createOtherIncomeSource(data);
       res.status(201).json(result);
@@ -406,7 +443,17 @@ export function registerBorrowerRoutes(
 
   app.delete("/api/urla/other-income/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteOtherIncomeSource(req.params.id);
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getOtherIncomeSourceById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Income source not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      await storage.deleteOtherIncomeSource(id);
       res.status(204).send();
     } catch (error) {
       console.error("Delete other income error:", error);
@@ -416,7 +463,12 @@ export function registerBorrowerRoutes(
 
   app.post("/api/urla/:applicationId/assets", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = { ...req.body, applicationId };
       const result = await storage.createUrlaAsset(data);
       res.status(201).json(result);
@@ -428,8 +480,19 @@ export function registerBorrowerRoutes(
 
   app.patch("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { id } = req.params;
-      const result = await storage.updateUrlaAsset(id, req.body);
+      const record = await storage.getUrlaAssetById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      // Strip applicationId from body — it is immutable and must not be re-parented
+      const { applicationId: _appId, ...safeBody } = req.body;
+      const result = await storage.updateUrlaAsset(id, safeBody);
       if (!result) {
         return res.status(404).json({ error: "Asset not found" });
       }
@@ -442,7 +505,17 @@ export function registerBorrowerRoutes(
 
   app.delete("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteUrlaAsset(req.params.id);
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getUrlaAssetById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      await storage.deleteUrlaAsset(id);
       res.status(204).send();
     } catch (error) {
       console.error("Delete asset error:", error);
@@ -452,7 +525,12 @@ export function registerBorrowerRoutes(
 
   app.post("/api/urla/:applicationId/liabilities", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = { ...req.body, applicationId };
       const result = await storage.createUrlaLiability(data);
       res.status(201).json(result);
@@ -464,8 +542,19 @@ export function registerBorrowerRoutes(
 
   app.patch("/api/urla/liabilities/:id", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { id } = req.params;
-      const result = await storage.updateUrlaLiability(id, req.body);
+      const record = await storage.getUrlaLiabilityById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Liability not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      // Strip applicationId from body — it is immutable and must not be re-parented
+      const { applicationId: _appId, ...safeBody } = req.body;
+      const result = await storage.updateUrlaLiability(id, safeBody);
       if (!result) {
         return res.status(404).json({ error: "Liability not found" });
       }
@@ -478,7 +567,17 @@ export function registerBorrowerRoutes(
 
   app.delete("/api/urla/liabilities/:id", isAuthenticated, async (req, res) => {
     try {
-      await storage.deleteUrlaLiability(req.params.id);
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getUrlaLiabilityById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Liability not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      await storage.deleteUrlaLiability(id);
       res.status(204).send();
     } catch (error) {
       console.error("Delete liability error:", error);
@@ -488,7 +587,12 @@ export function registerBorrowerRoutes(
 
   app.post("/api/urla/:applicationId/property-info", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const data = { ...req.body, applicationId };
       const result = await storage.upsertUrlaPropertyInfo(data);
       res.json(result);
@@ -501,16 +605,14 @@ export function registerBorrowerRoutes(
   // Bulk save URLA data - only updates sections that are explicitly provided with content
   app.post("/api/urla/:applicationId/save", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
       const { personalInfo, employmentHistory, otherIncomeSources, assets, liabilities, propertyInfo } = req.body;
 
-      // Verify user owns this application
-      const application = await storage.getLoanApplication(applicationId);
+      // Verify the requesting user owns (or has staff access to) this application
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      if (application.userId !== req.user!.id && req.user!.role !== "admin") {
-        return res.status(403).json({ error: "Not authorized to modify this application" });
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const results: any = {};
@@ -533,6 +635,11 @@ export function registerBorrowerRoutes(
           if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
           
           if (emp.id) {
+            // Verify the child record belongs to the authorized application before updating
+            const existing = await storage.getEmploymentHistoryById(emp.id);
+            if (!existing || existing.applicationId !== applicationId) {
+              return res.status(403).json({ error: "Access denied" });
+            }
             const updated = await storage.updateEmploymentHistory(emp.id, emp);
             if (updated) results.employmentHistory.push(updated);
           } else {
@@ -550,6 +657,11 @@ export function registerBorrowerRoutes(
           if (!asset.accountType && !asset.financialInstitution) continue;
           
           if (asset.id) {
+            // Verify the child record belongs to the authorized application before updating
+            const existing = await storage.getUrlaAssetById(asset.id);
+            if (!existing || existing.applicationId !== applicationId) {
+              return res.status(403).json({ error: "Access denied" });
+            }
             const updated = await storage.updateUrlaAsset(asset.id, asset);
             if (updated) results.assets.push(updated);
           } else if (asset.accountType) {
@@ -567,6 +679,11 @@ export function registerBorrowerRoutes(
           if (!liability.liabilityType && !liability.creditorName) continue;
           
           if (liability.id) {
+            // Verify the child record belongs to the authorized application before updating
+            const existing = await storage.getUrlaLiabilityById(liability.id);
+            if (!existing || existing.applicationId !== applicationId) {
+              return res.status(403).json({ error: "Access denied" });
+            }
             const updated = await storage.updateUrlaLiability(liability.id, liability);
             if (updated) results.liabilities.push(updated);
           } else if (liability.liabilityType) {
@@ -1029,7 +1146,12 @@ export function registerBorrowerRoutes(
   // Get rate locks for an application
   app.get("/api/rate-locks/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const locks = await storage.getRateLocksByApplication(applicationId);
       res.json(locks);
     } catch (error) {
@@ -1202,6 +1324,14 @@ export function registerBorrowerRoutes(
         return res.status(400).json({ error: "Invalid input", details: result.error.format() });
       }
 
+      // If an applicationId is provided, verify the requesting user owns that application
+      if (result.data.applicationId) {
+        const application = await storage.getLoanApplicationWithAccess(result.data.applicationId, user.id, user.role);
+        if (!application) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+
       // Generate content hash for tamper evidence
       const contentHash = crypto
         .createHash("sha256")
@@ -1250,7 +1380,12 @@ export function registerBorrowerRoutes(
   // Get consents for an application
   app.get("/api/consents/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const consents = await storage.getBorrowerConsentsByApplication(applicationId);
       res.json(consents);
     } catch (error) {
@@ -1262,7 +1397,12 @@ export function registerBorrowerRoutes(
   // Check if specific consent exists for application
   app.get("/api/consents/check/:applicationId/:consentType", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId, consentType } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const consent = await storage.getConsentByTypeAndApplication(consentType, applicationId);
       res.json({ hasConsent: !!consent, consent });
     } catch (error) {
@@ -1381,7 +1521,12 @@ export function registerBorrowerRoutes(
   // Get partner orders for an application
   app.get("/api/partner-orders/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
       const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const orders = await storage.getPartnerOrdersByApplication(applicationId);
       res.json(orders);
     } catch (error) {

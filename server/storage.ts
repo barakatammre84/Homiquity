@@ -334,20 +334,24 @@ export interface IStorage {
   upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo>;
   
   getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]>;
+  getEmploymentHistoryById(id: string): Promise<EmploymentHistory | undefined>;
   createEmploymentHistory(data: InsertEmploymentHistory): Promise<EmploymentHistory>;
   updateEmploymentHistory(id: string, data: Partial<EmploymentHistory>): Promise<EmploymentHistory | undefined>;
   deleteEmploymentHistory(id: string): Promise<void>;
   
   getOtherIncomeSources(applicationId: string): Promise<OtherIncomeSource[]>;
+  getOtherIncomeSourceById(id: string): Promise<OtherIncomeSource | undefined>;
   createOtherIncomeSource(data: InsertOtherIncomeSource): Promise<OtherIncomeSource>;
   deleteOtherIncomeSource(id: string): Promise<void>;
   
   getUrlaAssets(applicationId: string): Promise<UrlaAsset[]>;
+  getUrlaAssetById(id: string): Promise<UrlaAsset | undefined>;
   createUrlaAsset(data: InsertUrlaAsset): Promise<UrlaAsset>;
   updateUrlaAsset(id: string, data: Partial<UrlaAsset>): Promise<UrlaAsset | undefined>;
   deleteUrlaAsset(id: string): Promise<void>;
   
   getUrlaLiabilities(applicationId: string): Promise<UrlaLiability[]>;
+  getUrlaLiabilityById(id: string): Promise<UrlaLiability | undefined>;
   createUrlaLiability(data: InsertUrlaLiability): Promise<UrlaLiability>;
   updateUrlaLiability(id: string, data: Partial<UrlaLiability>): Promise<UrlaLiability | undefined>;
   deleteUrlaLiability(id: string): Promise<void>;
@@ -1264,14 +1268,23 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(employmentHistory.createdAt));
   }
 
+  async getEmploymentHistoryById(id: string): Promise<EmploymentHistory | undefined> {
+    const [record] = await db
+      .select()
+      .from(employmentHistory)
+      .where(eq(employmentHistory.id, id))
+      .limit(1);
+    return record;
+  }
+
   async createEmploymentHistory(data: InsertEmploymentHistory): Promise<EmploymentHistory> {
     const [record] = await db.insert(employmentHistory).values(data).returning();
     return record;
   }
 
   async updateEmploymentHistory(id: string, data: Partial<EmploymentHistory>): Promise<EmploymentHistory | undefined> {
-    // Remove any timestamp/id fields that might have been serialized from frontend
-    const { createdAt, updatedAt, id: recordId, ...cleanData } = data as any;
+    // Remove id, timestamps, and applicationId (immutable — re-parenting is not allowed)
+    const { createdAt, updatedAt, id: recordId, applicationId, ...cleanData } = data as any;
     const [updated] = await db
       .update(employmentHistory)
       .set({ ...cleanData, updatedAt: new Date() })
@@ -1293,6 +1306,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(otherIncomeSources.createdAt));
   }
 
+  async getOtherIncomeSourceById(id: string): Promise<OtherIncomeSource | undefined> {
+    const [record] = await db
+      .select()
+      .from(otherIncomeSources)
+      .where(eq(otherIncomeSources.id, id))
+      .limit(1);
+    return record;
+  }
+
   async createOtherIncomeSource(data: InsertOtherIncomeSource): Promise<OtherIncomeSource> {
     const [record] = await db.insert(otherIncomeSources).values(data).returning();
     return record;
@@ -1311,14 +1333,23 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(urlaAssets.createdAt));
   }
 
+  async getUrlaAssetById(id: string): Promise<UrlaAsset | undefined> {
+    const [record] = await db
+      .select()
+      .from(urlaAssets)
+      .where(eq(urlaAssets.id, id))
+      .limit(1);
+    return record;
+  }
+
   async createUrlaAsset(data: InsertUrlaAsset): Promise<UrlaAsset> {
     const [record] = await db.insert(urlaAssets).values(data).returning();
     return record;
   }
 
   async updateUrlaAsset(id: string, data: Partial<UrlaAsset>): Promise<UrlaAsset | undefined> {
-    // Remove any timestamp/id fields that might have been serialized from frontend
-    const { createdAt, updatedAt, id: recordId, ...cleanData } = data as any;
+    // Remove id, timestamps, and applicationId (immutable — re-parenting is not allowed)
+    const { createdAt, updatedAt, id: recordId, applicationId, ...cleanData } = data as any;
     const [updated] = await db
       .update(urlaAssets)
       .set(cleanData)
@@ -1340,14 +1371,23 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(urlaLiabilities.createdAt));
   }
 
+  async getUrlaLiabilityById(id: string): Promise<UrlaLiability | undefined> {
+    const [record] = await db
+      .select()
+      .from(urlaLiabilities)
+      .where(eq(urlaLiabilities.id, id))
+      .limit(1);
+    return record;
+  }
+
   async createUrlaLiability(data: InsertUrlaLiability): Promise<UrlaLiability> {
     const [record] = await db.insert(urlaLiabilities).values(data).returning();
     return record;
   }
 
   async updateUrlaLiability(id: string, data: Partial<UrlaLiability>): Promise<UrlaLiability | undefined> {
-    // Remove any timestamp/id fields that might have been serialized from frontend
-    const { createdAt, updatedAt, id: recordId, ...cleanData } = data as any;
+    // Remove id, timestamps, and applicationId (immutable — re-parenting is not allowed)
+    const { createdAt, updatedAt, id: recordId, applicationId, ...cleanData } = data as any;
     const [updated] = await db
       .update(urlaLiabilities)
       .set(cleanData)
