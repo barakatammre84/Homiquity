@@ -110,7 +110,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.delete("/api/underwriting-rules/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.delete("/api/underwriting-rules/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
@@ -217,7 +217,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules/:id/retire", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/underwriting-rules/:id/retire", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {

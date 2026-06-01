@@ -11,6 +11,32 @@ import {
 } from "../underwriting";
 import { calculateLLPA, getAreaMedianIncome } from "../pricing";
 
+/**
+ * Checks whether a staff user is authorized to mutate a specific loan application.
+ * Admins always pass. All other staff roles must be active members of the deal team.
+ */
+async function isAssignedToApplication(
+  storage: IStorage,
+  applicationId: string,
+  userId: string,
+  userRole: string,
+): Promise<boolean> {
+  if (userRole === "admin") return true;
+  const teamMembers = await storage.getDealTeamMembers(applicationId);
+  return teamMembers.some(m => m.userId === userId);
+}
+
+/**
+ * Roles permitted to execute each stage transition.
+ * Transitions not listed here are allowed by any assigned staff member.
+ */
+const STAGE_TRANSITION_ROLES: Record<string, string[]> = {
+  denied: ["admin", "underwriter"],
+  approved: ["admin", "underwriter"],
+  clear_to_close: ["admin", "underwriter"],
+  funded: ["admin", "closer"],
+};
+
 export function registerUnderwritingRoutes(
   app: Express,
   storage: IStorage,
@@ -274,7 +300,7 @@ export function registerUnderwritingRoutes(
     }
   });
 
-  app.patch("/api/conditions/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.patch("/api/conditions/:id", requireRole("admin", "lo", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const { id } = req.params;
       const condition = await storage.getLoanCondition(id);
@@ -282,24 +308,36 @@ export function registerUnderwritingRoutes(
         return res.status(404).json({ error: "Condition not found" });
       }
 
-      const { status, clearanceNotes } = req.body;
-
-      if (status === "cleared") {
-        const updated = await storage.clearLoanCondition(id, req.user!.id, clearanceNotes);
-        
-        await storage.createDealActivity({
-          applicationId: condition.applicationId,
-          activityType: "condition_cleared",
-          title: "Condition Cleared",
-          description: `"${condition.title}" has been cleared.`,
-          performedBy: req.user!.id,
-          metadata: { conditionId: id, notes: clearanceNotes },
-        });
-
-        return res.json(updated);
+      // Verify the application exists and is accessible
+      const application = await storage.getLoanApplicationWithAccess(
+        condition.applicationId,
+        req.user!.id,
+        req.user!.role,
+      );
+      if (!application) {
+        return res.status(403).json({ error: "Access denied to this application" });
       }
 
+      // Verify the caller is on the deal team for this application (admins bypass)
+      const assigned = await isAssignedToApplication(
+        storage,
+        condition.applicationId,
+        req.user!.id,
+        req.user!.role,
+      );
+      if (!assigned) {
+        return res.status(403).json({ error: "You are not assigned to this loan file" });
+      }
+
+      const { status, clearanceNotes } = req.body;
+      const callerRole = req.user!.role;
+
+      // Waiving a condition is restricted to underwriters and admins only
       if (status === "waived") {
+        if (callerRole !== "admin" && callerRole !== "underwriter") {
+          return res.status(403).json({ error: "Only underwriters and admins can waive conditions" });
+        }
+
         const updated = await storage.updateLoanCondition(id, {
           status: "waived",
           clearanceNotes,
@@ -319,7 +357,31 @@ export function registerUnderwritingRoutes(
         return res.json(updated);
       }
 
+      // Clearing a condition is restricted to underwriters, processors, closers, and admins
+      if (status === "cleared") {
+        if (!["admin", "underwriter", "processor", "closer"].includes(callerRole)) {
+          return res.status(403).json({ error: "Only underwriters, processors, closers, and admins can clear conditions" });
+        }
+
+        const updated = await storage.clearLoanCondition(id, req.user!.id, clearanceNotes);
+        
+        await storage.createDealActivity({
+          applicationId: condition.applicationId,
+          activityType: "condition_cleared",
+          title: "Condition Cleared",
+          description: `"${condition.title}" has been cleared.`,
+          performedBy: req.user!.id,
+          metadata: { conditionId: id, notes: clearanceNotes },
+        });
+
+        return res.json(updated);
+      }
+
       if (status === "not_applicable") {
+        if (!["admin", "underwriter", "processor"].includes(callerRole)) {
+          return res.status(403).json({ error: "Only underwriters, processors, and admins can mark conditions as not applicable" });
+        }
+
         const updated = await storage.updateLoanCondition(id, {
           status: "not_applicable",
           clearanceNotes,
@@ -363,11 +425,11 @@ export function registerUnderwritingRoutes(
     }
   });
 
-  app.post("/api/loan-applications/:id/advance-stage", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/loan-applications/:id/advance-stage", requireRole("admin", "lo", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const { id } = req.params;
 
-      const application = await storage.getLoanApplication(id);
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
@@ -375,6 +437,20 @@ export function registerUnderwritingRoutes(
       const { newStage } = req.body;
       if (!newStage) {
         return res.status(400).json({ error: "New stage is required" });
+      }
+
+      // Verify the caller is on the deal team for this application (admins bypass)
+      const assigned = await isAssignedToApplication(storage, id, req.user!.id, req.user!.role);
+      if (!assigned) {
+        return res.status(403).json({ error: "You are not assigned to this loan file" });
+      }
+
+      // Enforce role-based stage transition policy for sensitive transitions
+      const allowedRolesForStage = STAGE_TRANSITION_ROLES[newStage];
+      if (allowedRolesForStage && !allowedRolesForStage.includes(req.user!.role)) {
+        return res.status(403).json({
+          error: `Only ${allowedRolesForStage.join(" or ")} can move a loan to '${newStage}'`,
+        });
       }
 
       const { updatePipelineStage, checkPipelineProgress } = await import("../pipelineEngine");
