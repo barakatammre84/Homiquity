@@ -288,7 +288,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.post("/api/admin/lender-products", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/admin/lender-products", requireRole("admin"), async (req, res) => {
     try {
       const data = insertLenderProductSchema.parse(req.body);
       const [created] = await db.insert(lenderProducts).values(data).returning();
@@ -299,7 +299,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.put("/api/admin/lender-products/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.put("/api/admin/lender-products/:id", requireRole("admin"), async (req, res) => {
     try {
       const data = insertLenderProductSchema.partial().parse(req.body);
       const [updated] = await db.update(lenderProducts)
@@ -313,7 +313,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.delete("/api/admin/lender-products/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.delete("/api/admin/lender-products/:id", requireRole("admin"), async (req, res) => {
     try {
       await db.delete(lenderProducts).where(eq(lenderProducts.id, req.params.id));
       res.json({ success: true });

@@ -246,7 +246,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules/execute", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/underwriting-rules/execute", requireRole("admin"), async (req, res) => {
     try {
       const schema = z.object({
         snapshotId: z.string(),

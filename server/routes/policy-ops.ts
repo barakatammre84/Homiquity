@@ -359,7 +359,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-thresholds", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/policy-thresholds", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const parsed = insertPolicyThresholdSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -371,7 +371,7 @@ export function registerPolicyOpsRoutes(
         return res.status(404).json({ error: "Policy profile not found" });
       }
 
-      if (profile.status === "ACTIVE" || profile.status === "RETIRED") {
+      if (profile.status === "APPROVED" || profile.status === "ACTIVE" || profile.status === "RETIRED") {
         return res.status(400).json({ error: `Cannot add thresholds to a policy in ${profile.status} status` });
       }
 
@@ -390,7 +390,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.patch("/api/policy-thresholds/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.patch("/api/policy-thresholds/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const threshold = await storage.getPolicyThreshold(req.params.id);
       if (!threshold) {
@@ -398,7 +398,7 @@ export function registerPolicyOpsRoutes(
       }
 
       const profile = await storage.getPolicyProfile(threshold.policyProfileId);
-      if (profile && (profile.status === "ACTIVE" || profile.status === "RETIRED")) {
+      if (profile && (profile.status === "APPROVED" || profile.status === "ACTIVE" || profile.status === "RETIRED")) {
         return res.status(400).json({ error: `Cannot edit thresholds on a policy in ${profile.status} status` });
       }
 
@@ -442,7 +442,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.delete("/api/policy-thresholds/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.delete("/api/policy-thresholds/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const threshold = await storage.getPolicyThreshold(req.params.id);
       if (!threshold) {
@@ -450,7 +450,7 @@ export function registerPolicyOpsRoutes(
       }
 
       const profile = await storage.getPolicyProfile(threshold.policyProfileId);
-      if (profile && (profile.status === "ACTIVE" || profile.status === "RETIRED")) {
+      if (profile && (profile.status === "APPROVED" || profile.status === "ACTIVE" || profile.status === "RETIRED")) {
         return res.status(400).json({ error: `Cannot delete thresholds from a policy in ${profile.status} status` });
       }
 
@@ -532,14 +532,14 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.patch("/api/policy-overlays/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.patch("/api/policy-overlays/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const overlay = await storage.getPolicyLenderOverlay(req.params.id);
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
       }
 
-      if (overlay.status === "ACTIVE" || overlay.status === "RETIRED") {
+      if (overlay.status === "APPROVED" || overlay.status === "ACTIVE" || overlay.status === "RETIRED") {
         return res.status(400).json({ error: `Cannot edit an overlay in ${overlay.status} status` });
       }
 
@@ -568,15 +568,15 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.delete("/api/policy-overlays/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.delete("/api/policy-overlays/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const overlay = await storage.getPolicyLenderOverlay(req.params.id);
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
       }
 
-      if (overlay.status === "ACTIVE") {
-        return res.status(400).json({ error: "Cannot delete an active overlay. Retire it first." });
+      if (overlay.status === "APPROVED" || overlay.status === "ACTIVE" || overlay.status === "RETIRED") {
+        return res.status(400).json({ error: `Cannot delete an overlay in ${overlay.status} status` });
       }
 
       await storage.deletePolicyLenderOverlay(req.params.id);
