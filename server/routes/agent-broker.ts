@@ -570,7 +570,7 @@ export function registerAgentBrokerRoutes(
   // ===== ANALYTICS DASHBOARD =====
 
   // Get pipeline metrics
-  app.get("/api/analytics/pipeline", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/analytics/pipeline", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const metrics = await storage.computePipelineMetrics();
       res.json(metrics);
@@ -581,7 +581,7 @@ export function registerAgentBrokerRoutes(
   });
 
   // Get bottleneck analysis
-  app.get("/api/analytics/bottlenecks", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/analytics/bottlenecks", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const analysis = await storage.getBottleneckAnalysis();
       res.json(analysis);
@@ -592,7 +592,7 @@ export function registerAgentBrokerRoutes(
   });
 
   // Get staff workload metrics
-  app.get("/api/analytics/workload", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/analytics/workload", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const metrics = await storage.getStaffWorkloadMetrics();
       res.json(metrics);
@@ -603,7 +603,7 @@ export function registerAgentBrokerRoutes(
   });
 
   // Get historical snapshots
-  app.get("/api/analytics/history", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/analytics/history", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const days = parseInt(req.query.days as string) || 30;
       const snapshots = await storage.getAnalyticsSnapshots(days);
@@ -615,7 +615,7 @@ export function registerAgentBrokerRoutes(
   });
 
   // Get SLA configurations
-  app.get("/api/sla-configurations", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/sla-configurations", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const configs = await storage.getAllSlaConfigurations();
       res.json(configs);

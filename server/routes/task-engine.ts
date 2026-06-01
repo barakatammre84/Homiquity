@@ -451,8 +451,8 @@ export async function registerTaskEngineRoutes(
   // Import task engine
   const { taskEngine } = await import("../services/taskEngine");
 
-  // Get SLA class configurations
-  app.get("/api/task-engine/sla-classes", isAuthenticated, async (req, res) => {
+  // Get SLA class configurations (admin/underwriter only — control-plane config)
+  app.get("/api/task-engine/sla-classes", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const configs = await taskEngine.getAllSlaClassConfigs();
       res.json(configs);
@@ -462,8 +462,8 @@ export async function registerTaskEngineRoutes(
     }
   });
 
-  // Get task type SLA mappings
-  app.get("/api/task-engine/task-type-mappings", isAuthenticated, async (req, res) => {
+  // Get task type SLA mappings (admin/underwriter only — control-plane config)
+  app.get("/api/task-engine/task-type-mappings", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const mappings = await taskEngine.getAllTaskTypeSlaMappings();
       res.json(mappings);
@@ -473,13 +473,9 @@ export async function registerTaskEngineRoutes(
     }
   });
 
-  // Get task dashboard metrics (staff only)
-  app.get("/api/task-engine/metrics", isAuthenticated, async (req, res) => {
+  // Get task dashboard metrics (admin/underwriter only — platform-wide aggregation)
+  app.get("/api/task-engine/metrics", requireRole("admin", "underwriter"), async (req, res) => {
     try {
-      const userRole = req.user?.role || "";
-      if (!isStaffRole(userRole)) {
-        return res.status(403).json({ error: "Staff access required" });
-      }
       const metrics = await taskEngine.getTaskDashboardMetrics();
       res.json(metrics);
     } catch (error) {

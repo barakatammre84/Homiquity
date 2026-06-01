@@ -10,7 +10,7 @@ export function registerUnderwritingRulesRoutes(
   app: Express,
   storage: IStorage,
 ) {
-  app.get("/api/underwriting-rules", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
+  app.get("/api/underwriting-rules", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const { category, triggerType, isActive } = req.query;
       const filters: { category?: string; triggerType?: string; isActive?: boolean } = {};
@@ -26,7 +26,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.get("/api/underwriting-rules/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
+  app.get("/api/underwriting-rules/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
@@ -284,7 +284,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.get("/api/underwriting-rules/execution-log/:snapshotId", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/underwriting-rules/execution-log/:snapshotId", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const logs = await storage.getRuleExecutionLogs(req.params.snapshotId);
       res.json(logs);

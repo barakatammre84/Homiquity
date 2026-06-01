@@ -26,7 +26,7 @@ export function registerPolicyOpsRoutes(
   // POLICY PROFILES
   // ============================================================================
 
-  app.get("/api/policy-profiles", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
+  app.get("/api/policy-profiles", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const { authority, productType, status } = req.query;
       const filters: { authority?: string; productType?: string; status?: string } = {};
@@ -42,7 +42,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.get("/api/policy-profiles/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
+  app.get("/api/policy-profiles/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
@@ -344,7 +344,7 @@ export function registerPolicyOpsRoutes(
   // POLICY THRESHOLDS
   // ============================================================================
 
-  app.get("/api/policy-thresholds", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/policy-thresholds", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const { policyProfileId } = req.query;
       if (!policyProfileId || typeof policyProfileId !== "string") {
@@ -473,7 +473,7 @@ export function registerPolicyOpsRoutes(
   // POLICY LENDER OVERLAYS
   // ============================================================================
 
-  app.get("/api/policy-overlays", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/policy-overlays", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const { basePolicyProfileId } = req.query;
       if (!basePolicyProfileId || typeof basePolicyProfileId !== "string") {
@@ -488,7 +488,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.get("/api/policy-overlays/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/policy-overlays/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const overlay = await storage.getPolicyLenderOverlay(req.params.id);
       if (!overlay) {
@@ -501,7 +501,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-overlays", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/policy-overlays", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const parsed = insertPolicyLenderOverlaySchema.safeParse(req.body);
       if (!parsed.success) {
@@ -597,7 +597,7 @@ export function registerPolicyOpsRoutes(
   // POLICY APPROVAL HISTORY
   // ============================================================================
 
-  app.get("/api/policy-approvals/:policyProfileId", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/policy-approvals/:policyProfileId", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const approvals = await storage.getPolicyApprovals(req.params.policyProfileId);
       res.json(approvals);
