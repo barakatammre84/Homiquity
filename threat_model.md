@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-Homiquity is a public-facing mortgage platform with a React frontend and a Node.js/Express backend backed by PostgreSQL via Drizzle ORM. It serves borrowers, agents, and internal staff, and processes highly sensitive mortgage, identity, income, property, credit, document, and compliance data. Production traffic reaches the Express API through `server/index-prod.ts`, `server/app.ts`, and `server/routes.ts`.
+Homiquity is a mortgage platform with a React frontend and a Node.js/Express backend backed by PostgreSQL via Drizzle ORM. It serves borrowers, agents, and internal staff, and processes highly sensitive mortgage, identity, income, property, credit, document, and compliance data. Production traffic reaches the Express API through `server/index-prod.ts`, `server/app.ts`, and `server/routes.ts`.
+
+This scan iteration assumes the current deployment is unpublished/private rather than publicly reachable from the internet. That means anonymous internet-only exposure paths are deprioritized, but authenticated borrower, partner, and staff authorization flaws remain fully in scope.
 
 ## Assets
 
@@ -83,4 +85,5 @@ Required guarantees:
 
 ## Reporting Scope Notes
 
+- When the deployment is unpublished/private, do not report findings that depend only on anonymous public internet reachability. Continue to report vulnerabilities reachable by authenticated users, invited partners, staff, or other trusted-network actors.
 - Do not repropose weaknesses that require a separate database compromise unless the scan also finds a production-reachable write primitive that makes the integrity failure exploitable in practice.
