@@ -697,6 +697,16 @@ export function registerLendingRoutes(
 
   app.post("/api/loan-options/:id/lock", isAuthenticated, async (req, res) => {
     try {
+      const existing = await storage.getLoanOption(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Loan option not found" });
+      }
+
+      const application = await storage.getLoanApplicationWithAccess(existing.applicationId, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       const option = await storage.lockLoanOption(req.params.id);
       if (!option) {
         return res.status(404).json({ error: "Loan option not found" });

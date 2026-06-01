@@ -273,6 +273,7 @@ export interface IStorage {
 
   // Loan Options
   createLoanOption(data: InsertLoanOption): Promise<LoanOption>;
+  getLoanOption(id: string): Promise<LoanOption | undefined>;
   getLoanOptionsByApplication(applicationId: string): Promise<LoanOption[]>;
   updateLoanOption(id: string, data: Partial<LoanOption>): Promise<LoanOption | undefined>;
   lockLoanOption(id: string): Promise<LoanOption | undefined>;
@@ -430,9 +431,9 @@ export interface IStorage {
   createApplicationProperty(data: InsertApplicationProperty): Promise<ApplicationProperty>;
   getApplicationProperties(applicationId: string): Promise<ApplicationProperty[]>;
   getCurrentProperty(applicationId: string): Promise<ApplicationProperty | undefined>;
-  updateApplicationProperty(id: string, data: Partial<ApplicationProperty>): Promise<ApplicationProperty | undefined>;
+  updateApplicationProperty(applicationId: string, propertyId: string, data: Partial<ApplicationProperty>): Promise<ApplicationProperty | undefined>;
   switchToProperty(applicationId: string, propertyId: string): Promise<ApplicationProperty | undefined>;
-  markDealFellThrough(propertyId: string, reason: string): Promise<ApplicationProperty | undefined>;
+  markDealFellThrough(applicationId: string, propertyId: string, reason: string): Promise<ApplicationProperty | undefined>;
 
   // Deal Team Members
   createDealTeamMember(data: InsertDealTeamMember): Promise<DealTeamMember>;
@@ -977,6 +978,15 @@ export class DatabaseStorage implements IStorage {
   // Loan Options
   async createLoanOption(data: InsertLoanOption): Promise<LoanOption> {
     const [option] = await db.insert(loanOptions).values(data).returning();
+    return option;
+  }
+
+  async getLoanOption(id: string): Promise<LoanOption | undefined> {
+    const [option] = await db
+      .select()
+      .from(loanOptions)
+      .where(eq(loanOptions.id, id))
+      .limit(1);
     return option;
   }
 
@@ -2018,12 +2028,12 @@ export class DatabaseStorage implements IStorage {
     return property;
   }
 
-  async updateApplicationProperty(id: string, data: Partial<ApplicationProperty>): Promise<ApplicationProperty | undefined> {
+  async updateApplicationProperty(applicationId: string, propertyId: string, data: Partial<ApplicationProperty>): Promise<ApplicationProperty | undefined> {
     const { id: propId, createdAt, ...cleanData } = data as any;
     const [updated] = await db
       .update(applicationProperties)
       .set({ ...cleanData, updatedAt: new Date() })
-      .where(eq(applicationProperties.id, id))
+      .where(and(eq(applicationProperties.id, propertyId), eq(applicationProperties.applicationId, applicationId)))
       .returning();
     return updated;
   }
@@ -2035,16 +2045,16 @@ export class DatabaseStorage implements IStorage {
       .set({ isCurrentProperty: false, updatedAt: new Date() })
       .where(eq(applicationProperties.applicationId, applicationId));
     
-    // Then set the new property as current
+    // Then set the new property as current, only if it belongs to the same application
     const [updated] = await db
       .update(applicationProperties)
       .set({ isCurrentProperty: true, status: "active", updatedAt: new Date() })
-      .where(eq(applicationProperties.id, propertyId))
+      .where(and(eq(applicationProperties.id, propertyId), eq(applicationProperties.applicationId, applicationId)))
       .returning();
     return updated;
   }
 
-  async markDealFellThrough(propertyId: string, reason: string): Promise<ApplicationProperty | undefined> {
+  async markDealFellThrough(applicationId: string, propertyId: string, reason: string): Promise<ApplicationProperty | undefined> {
     const [updated] = await db
       .update(applicationProperties)
       .set({ 
@@ -2053,7 +2063,7 @@ export class DatabaseStorage implements IStorage {
         notes: reason,
         updatedAt: new Date() 
       })
-      .where(eq(applicationProperties.id, propertyId))
+      .where(and(eq(applicationProperties.id, propertyId), eq(applicationProperties.applicationId, applicationId)))
       .returning();
     return updated;
   }

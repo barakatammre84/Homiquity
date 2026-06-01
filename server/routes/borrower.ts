@@ -262,7 +262,7 @@ export function registerBorrowerRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
-      const property = await storage.markDealFellThrough(propertyId, reason || "Deal did not proceed");
+      const property = await storage.markDealFellThrough(id, propertyId, reason || "Deal did not proceed");
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
       }
@@ -303,7 +303,7 @@ export function registerBorrowerRoutes(
       if (req.body.offerStatus !== undefined) updateData.offerStatus = req.body.offerStatus;
       if (req.body.status !== undefined) updateData.status = req.body.status;
 
-      const property = await storage.updateApplicationProperty(propertyId, updateData);
+      const property = await storage.updateApplicationProperty(id, propertyId, updateData);
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
       }
