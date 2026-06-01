@@ -370,7 +370,16 @@ export function registerComplianceRoutes(
     try {
       const user = req.user as User;
       const { reason } = req.body;
-      
+
+      const consent = await creditService.getConsentById(req.params.consentId);
+      if (!consent) {
+        return res.status(404).json({ error: "Consent not found" });
+      }
+
+      if (consent.userId !== user.id && !isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       await creditService.revokeConsent(
         req.params.consentId,
         reason || "Borrower requested revocation",

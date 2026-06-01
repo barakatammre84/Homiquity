@@ -486,6 +486,14 @@ export async function getActiveConsent(applicationId: string): Promise<CreditCon
   return consent || null;
 }
 
+export async function getConsentById(consentId: string): Promise<CreditConsent | null> {
+  const [consent] = await db
+    .select()
+    .from(creditConsents)
+    .where(eq(creditConsents.id, consentId));
+  return consent || null;
+}
+
 export async function revokeConsent(
   consentId: string,
   reason: string,
