@@ -68,7 +68,29 @@ export const loanApplications = pgTable("loan_applications", {
   
   // Broker reference
   referringBrokerId: varchar("referring_broker_id").references(() => users.id),
-  
+
+  // Amortization / ARM terms (Section 4 / ULDD)
+  amortizationType: varchar("amortization_type", { length: 30 }), // fixed | adjustable
+  armIndexType: varchar("arm_index_type", { length: 50 }),
+  armMargin: decimal("arm_margin", { precision: 6, scale: 3 }),
+  armInitialRate: decimal("arm_initial_rate", { precision: 6, scale: 3 }),
+  armInitialCap: decimal("arm_initial_cap", { precision: 6, scale: 3 }),
+  armPeriodicCap: decimal("arm_periodic_cap", { precision: 6, scale: 3 }),
+  armLifetimeCap: decimal("arm_lifetime_cap", { precision: 6, scale: 3 }),
+  armAdjustmentFrequencyMonths: integer("arm_adjustment_frequency_months"),
+
+  // ATR/QM points and fees (Reg Z 1026.43)
+  totalPointsAndFees: decimal("total_points_and_fees", { precision: 12, scale: 2 }),
+
+  // HMDA LAR action taken / denial reasons (Reg C)
+  hmdaActionTaken: varchar("hmda_action_taken", { length: 30 }),
+  hmdaDenialReasons: text("hmda_denial_reasons").array(),
+
+  // TRID disclosure tracking (Reg Z)
+  closingDate: varchar("closing_date", { length: 10 }),
+  leIssuedDate: varchar("le_issued_date", { length: 10 }),
+  cdIssuedDate: varchar("cd_issued_date", { length: 10 }),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -295,7 +317,11 @@ export type DealActivity = typeof dealActivities.$inferSelect;
 export const urlaPersonalInfo = pgTable("urla_personal_info", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
-  
+
+  // Co-applicant discriminator: 1 = primary borrower, 2+ = co-applicants
+  borrowerSequenceNumber: integer("borrower_sequence_number").default(1),
+  isPrimaryBorrower: boolean("is_primary_borrower").default(true),
+
   firstName: varchar("first_name", { length: 100 }),
   middleName: varchar("middle_name", { length: 100 }),
   lastName: varchar("last_name", { length: 100 }),
@@ -368,7 +394,10 @@ export type UrlaPersonalInfo = typeof urlaPersonalInfo.$inferSelect;
 export const employmentHistory = pgTable("employment_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
-  
+
+  // Co-applicant discriminator: 1 = primary borrower, 2+ = co-applicants
+  borrowerSequenceNumber: integer("borrower_sequence_number").default(1),
+
   employmentType: varchar("employment_type", { length: 50 }).notNull(),
   
   employerName: varchar("employer_name", { length: 255 }),
@@ -438,7 +467,10 @@ export type OtherIncomeSource = typeof otherIncomeSources.$inferSelect;
 export const urlaAssets = pgTable("urla_assets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
-  
+
+  // Co-applicant discriminator: 1 = primary borrower, 2+ = co-applicants
+  borrowerSequenceNumber: integer("borrower_sequence_number").default(1),
+
   accountType: varchar("account_type", { length: 100 }).notNull(),
   financialInstitution: varchar("financial_institution", { length: 255 }),
   accountNumber: varchar("account_number", { length: 100 }),
@@ -459,7 +491,10 @@ export type UrlaAsset = typeof urlaAssets.$inferSelect;
 export const urlaLiabilities = pgTable("urla_liabilities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
-  
+
+  // Co-applicant discriminator: 1 = primary borrower, 2+ = co-applicants
+  borrowerSequenceNumber: integer("borrower_sequence_number").default(1),
+
   liabilityType: varchar("liability_type", { length: 100 }).notNull(),
   creditorName: varchar("creditor_name", { length: 255 }),
   accountNumber: varchar("account_number", { length: 100 }),
@@ -519,7 +554,10 @@ export type UrlaPropertyInfo = typeof urlaPropertyInfo.$inferSelect;
 export const borrowerDeclarations = pgTable("borrower_declarations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
-  
+
+  // Co-applicant discriminator: 1 = primary borrower, 2+ = co-applicants
+  borrowerSequenceNumber: integer("borrower_sequence_number").default(1),
+
   willOccupyAsPrimaryResidence: boolean("will_occupy_as_primary_residence"),
   hasOwnershipInterestInPast3Years: boolean("has_ownership_interest_in_past_3_years"),
   priorPropertyType: varchar("prior_property_type", { length: 50 }),

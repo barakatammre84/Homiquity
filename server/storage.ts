@@ -252,6 +252,12 @@ import {
   agentReferralRequests,
   type AgentReferralRequest,
   type InsertAgentReferralRequest,
+  realEstateOwned,
+  type RealEstateOwned,
+  borrowerProfiles,
+  type BorrowerProfile,
+  hmdaDemographics,
+  type HmdaDemographics,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -372,7 +378,13 @@ export interface IStorage {
     liabilities: UrlaLiability[];
     propertyInfo: UrlaPropertyInfo | undefined;
     declarations: BorrowerDeclarations | undefined;
+    realEstateOwned: RealEstateOwned[];
+    hmdaDemographics: HmdaDemographics[];
   }>;
+
+  getRealEstateOwnedByApplication(applicationId: string): Promise<RealEstateOwned[]>;
+  getHmdaDemographicsByApplication(applicationId: string): Promise<HmdaDemographics[]>;
+  getBorrowerProfileByUserId(userId: string): Promise<BorrowerProfile | undefined>;
 
   // MISMO Export Data
   getMISMOLoanData(applicationId: string): Promise<{
@@ -1469,7 +1481,7 @@ export class DatabaseStorage implements IStorage {
 
   // Get Complete URLA Data
   async getCompleteUrlaData(applicationId: string) {
-    const [personalInfo, employment, income, assets, liabilities, propertyInfo, declarations] = await Promise.all([
+    const [personalInfo, employment, income, assets, liabilities, propertyInfo, declarations, reo, hmda] = await Promise.all([
       this.getUrlaPersonalInfo(applicationId),
       this.getEmploymentHistory(applicationId),
       this.getOtherIncomeSources(applicationId),
@@ -1477,6 +1489,8 @@ export class DatabaseStorage implements IStorage {
       this.getUrlaLiabilities(applicationId),
       this.getUrlaPropertyInfo(applicationId),
       this.getBorrowerDeclarations(applicationId),
+      this.getRealEstateOwnedByApplication(applicationId),
+      this.getHmdaDemographicsByApplication(applicationId),
     ]);
 
     return {
@@ -1487,7 +1501,33 @@ export class DatabaseStorage implements IStorage {
       liabilities,
       propertyInfo,
       declarations,
+      realEstateOwned: reo,
+      hmdaDemographics: hmda,
     };
+  }
+
+  async getRealEstateOwnedByApplication(applicationId: string): Promise<RealEstateOwned[]> {
+    return await db
+      .select()
+      .from(realEstateOwned)
+      .where(eq(realEstateOwned.applicationId, applicationId))
+      .orderBy(desc(realEstateOwned.createdAt));
+  }
+
+  async getHmdaDemographicsByApplication(applicationId: string): Promise<HmdaDemographics[]> {
+    return await db
+      .select()
+      .from(hmdaDemographics)
+      .where(eq(hmdaDemographics.applicationId, applicationId));
+  }
+
+  async getBorrowerProfileByUserId(userId: string): Promise<BorrowerProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(borrowerProfiles)
+      .where(eq(borrowerProfiles.userId, userId))
+      .limit(1);
+    return profile;
   }
 
   // MISMO Export Data - aggregates all data needed for MISMO 3.4 XML generation

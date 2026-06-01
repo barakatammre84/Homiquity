@@ -118,10 +118,13 @@ interface ComplianceData {
     loanAmount: number | null;
     score: number;
     gseReady: boolean;
+    gseGatingFailed?: boolean;
     ulddCompliant: boolean;
+    qmStatus?: "QM" | "Non-QM" | "Unknown";
     criticalCount: number;
     warningCount: number;
     missingDocsCount: number;
+    coApplicantCount?: number;
   }[];
 }
 
