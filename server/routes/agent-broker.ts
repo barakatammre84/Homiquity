@@ -108,7 +108,7 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  app.get("/api/agent-referral-requests", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/agent-referral-requests", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const requests = await storage.getAgentReferralRequests();
       res.json(requests);

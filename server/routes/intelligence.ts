@@ -278,7 +278,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.get("/api/admin/lender-products", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/admin/lender-products", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const products = await db.select().from(lenderProducts);
       res.json(products);
