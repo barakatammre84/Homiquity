@@ -908,11 +908,23 @@ export function registerBorrowerRoutes(
   // Update credit action
   app.patch("/api/credit-actions/:id", isAuthenticated, async (req, res) => {
     try {
-      // Validate update data using partial insert schema
+      const user = req.user as User;
+      // Verify the credit action belongs to the current user's homeownership goal
+      const goal = await storage.getHomeownershipGoal(user.id);
+      if (!goal) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const existing = await storage.getCreditActionById(req.params.id);
+      if (!existing || existing.goalId !== goal.id) {
+        return res.status(404).json({ error: "Credit action not found" });
+      }
+
+      // Validate update data using partial insert schema; strip goalId to prevent reassignment
       const updateSchema = insertCreditActionSchema.partial();
-      const validated = updateSchema.parse(req.body);
+      const { goalId: _strip, ...bodyWithoutOwner } = req.body;
+      const validated = updateSchema.parse(bodyWithoutOwner);
       
-      const action = await storage.updateCreditAction(req.params.id, validated);
+      const action = await storage.updateCreditAction(req.params.id, validated, goal.id);
       
       if (!action) {
         return res.status(404).json({ error: "Credit action not found" });
@@ -2886,6 +2898,11 @@ export function registerBorrowerRoutes(
 
   app.get("/api/accelerator/milestones/:enrollmentId", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
+      const enrollment = await storage.getAcceleratorEnrollment(user.id);
+      if (!enrollment || enrollment.id !== req.params.enrollmentId) {
+        return res.status(404).json({ error: "Enrollment not found" });
+      }
       const milestones = await storage.getAcceleratorMilestones(req.params.enrollmentId);
       res.json(milestones);
     } catch (error) {
@@ -2896,7 +2913,18 @@ export function registerBorrowerRoutes(
 
   app.put("/api/accelerator/milestones/:id", isAuthenticated, async (req, res) => {
     try {
-      const milestone = await storage.updateAcceleratorMilestone(req.params.id, req.body);
+      const user = req.user as User;
+      const enrollment = await storage.getAcceleratorEnrollment(user.id);
+      if (!enrollment) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const existing = await storage.getAcceleratorMilestoneById(req.params.id);
+      if (!existing || existing.enrollmentId !== enrollment.id) {
+        return res.status(404).json({ error: "Milestone not found" });
+      }
+      // Strip enrollmentId from body to prevent ownership-link reassignment
+      const { enrollmentId: _stripM, ...milestoneBody } = req.body;
+      const milestone = await storage.updateAcceleratorMilestone(req.params.id, milestoneBody, enrollment.id);
       if (!milestone) {
         return res.status(404).json({ error: "Milestone not found" });
       }
@@ -2909,6 +2937,11 @@ export function registerBorrowerRoutes(
 
   app.get("/api/accelerator/coaching/:enrollmentId", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
+      const enrollment = await storage.getAcceleratorEnrollment(user.id);
+      if (!enrollment || enrollment.id !== req.params.enrollmentId) {
+        return res.status(404).json({ error: "Enrollment not found" });
+      }
       const sessions = await storage.getCoachingSessions(req.params.enrollmentId);
       res.json(sessions);
     } catch (error) {
@@ -2919,6 +2952,11 @@ export function registerBorrowerRoutes(
 
   app.post("/api/accelerator/coaching", isAuthenticated, async (req, res) => {
     try {
+      const user = req.user as User;
+      const enrollment = await storage.getAcceleratorEnrollment(user.id);
+      if (!enrollment || enrollment.id !== req.body.enrollmentId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const session = await storage.createCoachingSession(req.body);
       res.status(201).json(session);
     } catch (error) {
@@ -2929,7 +2967,18 @@ export function registerBorrowerRoutes(
 
   app.put("/api/accelerator/coaching/:id", isAuthenticated, async (req, res) => {
     try {
-      const session = await storage.updateCoachingSession(req.params.id, req.body);
+      const user = req.user as User;
+      const enrollment = await storage.getAcceleratorEnrollment(user.id);
+      if (!enrollment) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const existing = await storage.getCoachingSessionById(req.params.id);
+      if (!existing || existing.enrollmentId !== enrollment.id) {
+        return res.status(404).json({ error: "Coaching session not found" });
+      }
+      // Strip enrollmentId from body to prevent ownership-link reassignment
+      const { enrollmentId: _stripC, ...sessionBody } = req.body;
+      const session = await storage.updateCoachingSession(req.params.id, sessionBody, enrollment.id);
       if (!session) {
         return res.status(404).json({ error: "Coaching session not found" });
       }
@@ -3043,6 +3092,10 @@ export function registerBorrowerRoutes(
 
   app.get("/api/homeowner/refi-alerts/:profileId", isAuthenticated, async (req, res) => {
     try {
+      const profile = await storage.getHomeownerProfile(req.user!.id);
+      if (!profile || profile.id !== req.params.profileId) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
       const alerts = await storage.getRefiAlerts(req.params.profileId);
       res.json(alerts);
     } catch (error) {
@@ -3053,6 +3106,10 @@ export function registerBorrowerRoutes(
 
   app.post("/api/homeowner/refi-alerts", isAuthenticated, async (req, res) => {
     try {
+      const profile = await storage.getHomeownerProfile(req.user!.id);
+      if (!profile || profile.id !== req.body.homeownerProfileId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const alert = await storage.createRefiAlert(req.body);
       res.status(201).json(alert);
     } catch (error) {
@@ -3067,8 +3124,15 @@ export function registerBorrowerRoutes(
       if (!profile) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const updated = await storage.updateRefiAlert(req.params.id, req.body);
-      if (!updated || updated.homeownerProfileId !== profile.id) {
+      // Fetch the alert BEFORE writing to verify ownership
+      const existing = await storage.getRefiAlertById(req.params.id);
+      if (!existing || existing.homeownerProfileId !== profile.id) {
+        return res.status(404).json({ error: "Refi alert not found" });
+      }
+      // Strip homeownerProfileId from body to prevent ownership-link reassignment
+      const { homeownerProfileId: _stripR, ...alertBody } = req.body;
+      const updated = await storage.updateRefiAlert(req.params.id, alertBody, profile.id);
+      if (!updated) {
         return res.status(404).json({ error: "Refi alert not found" });
       }
       res.json(updated);

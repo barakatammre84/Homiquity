@@ -538,8 +538,9 @@ export interface IStorage {
   
   // Credit Actions
   getCreditActions(goalId: string): Promise<CreditAction[]>;
+  getCreditActionById(id: string): Promise<CreditAction | undefined>;
   createCreditAction(data: InsertCreditAction): Promise<CreditAction>;
-  updateCreditAction(id: string, data: Partial<CreditAction>): Promise<CreditAction | undefined>;
+  updateCreditAction(id: string, data: Partial<CreditAction>, ownerGoalId?: string): Promise<CreditAction | undefined>;
   
   // Savings Transactions
   getSavingsTransactions(goalId: string): Promise<SavingsTransaction[]>;
@@ -617,13 +618,15 @@ export interface IStorage {
 
   // Accelerator Milestones
   getAcceleratorMilestones(enrollmentId: string): Promise<AcceleratorMilestone[]>;
+  getAcceleratorMilestoneById(id: string): Promise<AcceleratorMilestone | undefined>;
   createAcceleratorMilestone(data: InsertAcceleratorMilestone): Promise<AcceleratorMilestone>;
-  updateAcceleratorMilestone(id: string, data: Partial<AcceleratorMilestone>): Promise<AcceleratorMilestone | undefined>;
+  updateAcceleratorMilestone(id: string, data: Partial<AcceleratorMilestone>, ownerEnrollmentId?: string): Promise<AcceleratorMilestone | undefined>;
 
   // Coaching Sessions
   getCoachingSessions(enrollmentId: string): Promise<CoachingSession[]>;
+  getCoachingSessionById(id: string): Promise<CoachingSession | undefined>;
   createCoachingSession(data: InsertCoachingSession): Promise<CoachingSession>;
-  updateCoachingSession(id: string, data: Partial<CoachingSession>): Promise<CoachingSession | undefined>;
+  updateCoachingSession(id: string, data: Partial<CoachingSession>, ownerEnrollmentId?: string): Promise<CoachingSession | undefined>;
 
   // Closing Guarantees
   getAllClosingGuarantees(): Promise<ClosingGuarantee[]>;
@@ -638,8 +641,9 @@ export interface IStorage {
 
   // Refi Alerts
   getRefiAlerts(homeownerProfileId: string): Promise<RefiAlert[]>;
+  getRefiAlertById(id: string): Promise<RefiAlert | undefined>;
   createRefiAlert(data: InsertRefiAlert): Promise<RefiAlert>;
-  updateRefiAlert(id: string, data: Partial<RefiAlert>): Promise<RefiAlert | undefined>;
+  updateRefiAlert(id: string, data: Partial<RefiAlert>, ownerProfileId?: string): Promise<RefiAlert | undefined>;
 
   // Equity Snapshots
   getEquitySnapshots(homeownerProfileId: string): Promise<EquitySnapshot[]>;
@@ -2821,6 +2825,11 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(creditActions.priority), asc(creditActions.createdAt));
   }
 
+  async getCreditActionById(id: string): Promise<CreditAction | undefined> {
+    const [action] = await db.select().from(creditActions).where(eq(creditActions.id, id));
+    return action;
+  }
+
   async createCreditAction(data: InsertCreditAction): Promise<CreditAction> {
     const [action] = await db
       .insert(creditActions)
@@ -2829,12 +2838,15 @@ export class DatabaseStorage implements IStorage {
     return action;
   }
 
-  async updateCreditAction(id: string, data: Partial<CreditAction>): Promise<CreditAction | undefined> {
-    const { id: actionId, createdAt, ...cleanData } = data as any;
+  async updateCreditAction(id: string, data: Partial<CreditAction>, ownerGoalId?: string): Promise<CreditAction | undefined> {
+    const { id: actionId, createdAt, goalId, ...cleanData } = data as any;
+    const whereClause = ownerGoalId
+      ? and(eq(creditActions.id, id), eq(creditActions.goalId, ownerGoalId))
+      : eq(creditActions.id, id);
     const [updated] = await db
       .update(creditActions)
       .set({ ...cleanData, updatedAt: new Date() })
-      .where(eq(creditActions.id, id))
+      .where(whereClause)
       .returning();
     return updated;
   }
@@ -3874,15 +3886,24 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(acceleratorMilestones.createdAt));
   }
 
+  async getAcceleratorMilestoneById(id: string): Promise<AcceleratorMilestone | undefined> {
+    const [milestone] = await db.select().from(acceleratorMilestones).where(eq(acceleratorMilestones.id, id));
+    return milestone;
+  }
+
   async createAcceleratorMilestone(data: InsertAcceleratorMilestone): Promise<AcceleratorMilestone> {
     const [milestone] = await db.insert(acceleratorMilestones).values(data).returning();
     return milestone;
   }
 
-  async updateAcceleratorMilestone(id: string, data: Partial<AcceleratorMilestone>): Promise<AcceleratorMilestone | undefined> {
+  async updateAcceleratorMilestone(id: string, data: Partial<AcceleratorMilestone>, ownerEnrollmentId?: string): Promise<AcceleratorMilestone | undefined> {
+    const { enrollmentId, ...cleanData } = data as any;
+    const whereClause = ownerEnrollmentId
+      ? and(eq(acceleratorMilestones.id, id), eq(acceleratorMilestones.enrollmentId, ownerEnrollmentId))
+      : eq(acceleratorMilestones.id, id);
     const [updated] = await db.update(acceleratorMilestones)
-      .set(data)
-      .where(eq(acceleratorMilestones.id, id))
+      .set(cleanData)
+      .where(whereClause)
       .returning();
     return updated;
   }
@@ -3894,15 +3915,24 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(coachingSessions.createdAt));
   }
 
+  async getCoachingSessionById(id: string): Promise<CoachingSession | undefined> {
+    const [session] = await db.select().from(coachingSessions).where(eq(coachingSessions.id, id));
+    return session;
+  }
+
   async createCoachingSession(data: InsertCoachingSession): Promise<CoachingSession> {
     const [session] = await db.insert(coachingSessions).values(data).returning();
     return session;
   }
 
-  async updateCoachingSession(id: string, data: Partial<CoachingSession>): Promise<CoachingSession | undefined> {
+  async updateCoachingSession(id: string, data: Partial<CoachingSession>, ownerEnrollmentId?: string): Promise<CoachingSession | undefined> {
+    const { enrollmentId, ...cleanData } = data as any;
+    const whereClause = ownerEnrollmentId
+      ? and(eq(coachingSessions.id, id), eq(coachingSessions.enrollmentId, ownerEnrollmentId))
+      : eq(coachingSessions.id, id);
     const [updated] = await db.update(coachingSessions)
-      .set(data)
-      .where(eq(coachingSessions.id, id))
+      .set(cleanData)
+      .where(whereClause)
       .returning();
     return updated;
   }
@@ -3960,15 +3990,24 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(refiAlerts.createdAt));
   }
 
+  async getRefiAlertById(id: string): Promise<RefiAlert | undefined> {
+    const [alert] = await db.select().from(refiAlerts).where(eq(refiAlerts.id, id));
+    return alert;
+  }
+
   async createRefiAlert(data: InsertRefiAlert): Promise<RefiAlert> {
     const [alert] = await db.insert(refiAlerts).values(data).returning();
     return alert;
   }
 
-  async updateRefiAlert(id: string, data: Partial<RefiAlert>): Promise<RefiAlert | undefined> {
+  async updateRefiAlert(id: string, data: Partial<RefiAlert>, ownerProfileId?: string): Promise<RefiAlert | undefined> {
+    const { homeownerProfileId, ...cleanData } = data as any;
+    const whereClause = ownerProfileId
+      ? and(eq(refiAlerts.id, id), eq(refiAlerts.homeownerProfileId, ownerProfileId))
+      : eq(refiAlerts.id, id);
     const [updated] = await db.update(refiAlerts)
-      .set(data)
-      .where(eq(refiAlerts.id, id))
+      .set(cleanData)
+      .where(whereClause)
       .returning();
     return updated;
   }
