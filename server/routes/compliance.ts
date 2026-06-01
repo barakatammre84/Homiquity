@@ -191,7 +191,11 @@ export function registerComplianceRoutes(
       }
 
       const verifications = await storage.getVerificationsByApplication(applicationId);
-      res.json(verifications);
+      // Strip server-only secrets before sending to the client. plaidAccessToken is a
+      // bearer credential for the linked Plaid item and must never reach the browser.
+      // rawResponse may contain raw identity/financial payloads.
+      const safeVerifications = verifications.map(({ plaidAccessToken, rawResponse, ...safe }) => safe);
+      res.json(safeVerifications);
     } catch (error) {
       console.error("Get verifications error:", error);
       res.status(500).json({ error: "Failed to get verifications" });

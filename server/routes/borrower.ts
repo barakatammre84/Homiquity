@@ -1324,10 +1324,12 @@ export function registerBorrowerRoutes(
         return res.status(400).json({ error: "Invalid input", details: result.error.format() });
       }
 
-      // If an applicationId is provided, verify the requesting user owns that application
+      // If an applicationId is provided, verify the requesting user is the actual borrower
+      // who owns that application. Staff must not be allowed to forge consent records on
+      // behalf of a borrower — consent is a borrower-only action.
       if (result.data.applicationId) {
-        const application = await storage.getLoanApplicationWithAccess(result.data.applicationId, user.id, user.role);
-        if (!application) {
+        const application = await storage.getLoanApplication(result.data.applicationId);
+        if (!application || application.userId !== user.id) {
           return res.status(403).json({ error: "Access denied" });
         }
       }
