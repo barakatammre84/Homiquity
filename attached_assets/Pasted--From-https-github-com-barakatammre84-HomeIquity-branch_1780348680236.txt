@@ -1,0 +1,54 @@
+
+From https://github.com/barakatammre84/HomeIquity
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+~/workspace$ git push origin main
+Enumerating objects: 110, done.
+Counting objects: 100% (110/110), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (81/81), done.
+Writing objects: 100% (81/81), 25.09 KiB | 6.27 MiB/s, done.
+Total 81 (delta 71), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (71/71), completed with 29 local objects.
+remote: error: GH013: Repository rule violations found for refs/heads/main.
+remote: 
+remote: - GITHUB PUSH PROTECTION
+remote:   —————————————————————————————————————————
+remote:     Resolve the following violations before pushing again
+remote: 
+remote:     - Push cannot contain secrets
+remote: 
+remote:     
+remote:      (?) Learn how to resolve a blocked push
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push
+remote:     
+remote:      (?) This repository does not have Secret Scanning enabled, but is eligible. Enable Secret Scanning to view and manage detected secrets.
+remote:      Visit the repository settings page, https://github.com/barakatammre84/HomeIquity/settings/security_analysis
+remote:     
+remote:     
+remote:       —— Google OAuth Client ID ————————————————————————————
+remote:        locations:
+remote:          - commit: c064f53b963e17b912c4ba2ca16528653c21743e
+remote:            path: .replit:54
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/barakatammre84/HomeIquity/security/secret-scanning/unblock-secret/3EYDw0H843t4T8Ei3J9rGomasRZ
+remote:     
+remote:     
+remote:       —— Google OAuth Client Secret ————————————————————————
+remote:        locations:
+remote:          - commit: 36252b5b8461c07dd8238ba7e54c909478170215
+remote:            path: .replit:55
+remote:          - commit: c064f53b963e17b912c4ba2ca16528653c21743e
+remote:            path: .replit:55
+remote:          - commit: f5dd7f3287c4a592e4638fa1db089ed73d7fa528
+remote:            path: .replit:55
+remote:     
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.
+remote:        https://github.com/barakatammre84/HomeIquity/security/secret-scanning/unblock-secret/3EYDvxxwDV7yF0N4fzSqrrS6Sw9
+remote:     
+remote: 
+remote: 
+To https://github.com/barakatammre84/HomeIquity
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/barakatammre84/HomeIquity'

@@ -1,0 +1,1130 @@
+import { db } from "../db";
+import { storage } from "../storage";
+import {
+  users,
+  loanApplications,
+  documents,
+  employmentHistory,
+  coachConversations,
+  coachMessages,
+  userActivities,
+  homeownershipGoals,
+  creditActions,
+  savingsTransactions,
+  journeyMilestones,
+  tasks,
+  borrowerProfiles,
+  realEstateOwned,
+  borrowerStateHistory,
+  readinessChecklist,
+  intentEvents,
+} from "@shared/schema";
+import type { User, LoanApplication, BorrowerProfile, RealEstateOwned } from "@shared/schema";
+import { eq, desc, sql, and, gte, count, isNotNull } from "drizzle-orm";
+
+export interface IncomeSource {
+  source: "document" | "application" | "coach" | "goal";
+  trust: "tier1" | "tier2" | "tier3";
+  type: string;
+  amount: number;
+  period: "annual" | "monthly";
+  employerName?: string | null;
+  documentYear?: string | null;
+  confidence?: string | null;
+}
+
+export interface AssetRecord {
+  source: "document" | "application" | "goal";
+  trust: "tier1" | "tier2" | "tier3";
+  type: string;
+  balance: number;
+  accountType?: string | null;
+}
+
+export interface LiabilityRecord {
+  source: "application" | "coach" | "goal";
+  trust: "tier2" | "tier3";
+  monthlyAmount: number;
+  description: string;
+}
+
+export interface DocumentStatus {
+  documentType: string;
+  fileName: string;
+  status: string;
+  hasExtractedData: boolean;
+  uploadedAt: string | null;
+}
+
+export interface BehaviorSignals {
+  totalPageViews: number;
+  propertySearches: number;
+  propertyViews: number;
+  calculatorUses: number;
+  coachSessions: number;
+  coachMessages: number;
+  formStarts: number;
+  formAbandons: number;
+  ctaClicks: number;
+  lastActiveAt: string | null;
+  topPages: Array<{ page: string; views: number }>;
+  recentPropertyViews: Array<{ propertyId?: string; price?: number; viewedAt: string }>;
+}
+
+export interface ReadinessSnapshot {
+  completionPercentage: number;
+  tier: "ready_now" | "almost_ready" | "building" | "exploring" | "unknown";
+  source: "coach" | "calculated";
+  completedInputs: string[];
+  outstandingInputs: string[];
+  estimatedTimeline: string | null;
+  lastAssessedAt: string | null;
+}
+
+export interface EligibilitySignals {
+  estimatedDTI: number | null;
+  estimatedLTV: number | null;
+  creditTier: "760_plus" | "720_759" | "680_719" | "640_679" | "below_640" | "unknown";
+  creditScore: number | null;
+  creditScoreSource: "document" | "application" | "goal" | "coach" | null;
+  employmentStable: boolean | null;
+  employmentYears: number | null;
+  hasAdequateSavings: boolean | null;
+  estimatedMaxPurchase: number | null;
+  eligibleLoanTypes: string[];
+}
+
+export interface BorrowerProfileSnapshot {
+  citizenshipStatus: string | null;
+  maritalStatus: string | null;
+  numberOfDependents: number | null;
+  currentHousingStatus: string | null;
+  currentMonthlyHousingPayment: number | null;
+  militaryStatus: string | null;
+  hasCoBorrower: boolean;
+  hasForeclosureHistory: boolean;
+  hasBankruptcyHistory: boolean;
+  hasRealEstateOwned: boolean;
+  riskTolerance: string | null;
+  vaEligible: boolean;
+}
+
+export interface REOProperty {
+  address: string;
+  propertyType: string | null;
+  marketValue: number | null;
+  mortgageBalance: number | null;
+  mortgagePayment: number | null;
+  monthlyRentalIncome: number | null;
+  netEquity: number | null;
+  occupancyType: string | null;
+  willBeSold: boolean;
+}
+
+export interface ReadinessChecklistSummary {
+  totalFields: number;
+  collectedFields: number;
+  verifiedFields: number;
+  completionByCategory: Record<string, { total: number; collected: number; verified: number }>;
+  calculatedReadinessScore: number;
+}
+
+export interface BorrowerStateSummary {
+  currentState: string;
+  previousState: string | null;
+  stateEnteredAt: string | null;
+  daysInCurrentState: number | null;
+  totalTransitions: number;
+}
+
+export interface GoalProfile {
+  goal: string | null;
+  targetHomePrice: number | null;
+  targetDownPayment: number | null;
+  targetCreditScore: number | null;
+  targetCity: string | null;
+  targetState: string | null;
+  currentPhase: string | null;
+  savingsProgress: number | null;
+  creditScoreChange: number | null;
+  journeyDay: number | null;
+  milestonesAchieved: number;
+}
+
+export interface BorrowerGraph {
+  userId: string;
+  userName: string | null;
+  email: string | null;
+  role: string;
+  memberSince: string | null;
+
+  profile: BorrowerProfileSnapshot;
+  state: BorrowerStateSummary;
+  readinessDetail: ReadinessChecklistSummary;
+  realEstateOwned: REOProperty[];
+
+  applications: Array<{
+    id: string;
+    status: string;
+    loanPurpose: string | null;
+    preferredLoanType: string | null;
+    purchasePrice: number | null;
+    downPayment: number | null;
+    preApprovalAmount: number | null;
+    isVeteran: boolean;
+    isFirstTimeBuyer: boolean;
+    employmentType: string | null;
+    propertyType: string | null;
+    propertyState: string | null;
+    propertyValue: number | null;
+    createdAt: string | null;
+  }>;
+
+  activeApplicationId: string | null;
+
+  income: IncomeSource[];
+  bestAnnualIncome: number | null;
+  bestIncomeSource: string | null;
+
+  assets: AssetRecord[];
+  totalVerifiedAssets: number | null;
+
+  liabilities: LiabilityRecord[];
+  totalMonthlyDebts: number | null;
+
+  documents: DocumentStatus[];
+  documentsUploaded: number;
+  documentsVerified: number;
+  documentsMissing: string[];
+
+  readiness: ReadinessSnapshot;
+  eligibility: EligibilitySignals;
+  goal: GoalProfile;
+  behavior: BehaviorSignals;
+
+  actionPlan: Array<{ id: string; title: string; priority: string; category: string; completed: boolean }>;
+  documentChecklist: Array<{ docType: string; label: string; priority: string }>;
+
+  predictiveSignals: {
+    likelyToApply: boolean;
+    likelyToAbandon: boolean;
+    engagementLevel: "high" | "medium" | "low" | "dormant";
+    daysSinceLastActivity: number | null;
+    suggestedNextAction: string;
+    intentScore: number;
+  };
+}
+
+function getCreditTier(score: number | null): EligibilitySignals["creditTier"] {
+  if (!score) return "unknown";
+  if (score >= 760) return "760_plus";
+  if (score >= 720) return "720_759";
+  if (score >= 680) return "680_719";
+  if (score >= 640) return "640_679";
+  return "below_640";
+}
+
+function parseNum(val: string | number | null | undefined): number | null {
+  if (val === null || val === undefined) return null;
+  const n = typeof val === "number" ? val : parseFloat(val);
+  return isNaN(n) ? null : n;
+}
+
+export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph> {
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) throw new Error("User not found");
+
+  const [
+    apps,
+    docs,
+    coachConvs,
+    goalRows,
+    recentActivities,
+    activityCounts,
+    profileRows,
+    reoRows,
+    stateRows,
+    checklistRows,
+    intentCounts,
+  ] = await Promise.all([
+    storage.getLoanApplicationsByUser(userId),
+    db.select().from(documents).where(eq(documents.userId, userId)).orderBy(desc(documents.createdAt)),
+    db.select().from(coachConversations).where(eq(coachConversations.userId, userId)).orderBy(desc(coachConversations.updatedAt)),
+    db.select().from(homeownershipGoals).where(eq(homeownershipGoals.userId, userId)).limit(1),
+    db.select({
+      activityType: userActivities.activityType,
+      count: sql<number>`count(*)::int`,
+      lastSeen: sql<string>`max(${userActivities.createdAt})`,
+    }).from(userActivities)
+      .where(and(
+        eq(userActivities.userId, userId),
+        gte(userActivities.createdAt, sql`now() - interval '30 days'`)
+      ))
+      .groupBy(userActivities.activityType),
+    db.select({
+      page: userActivities.page,
+      views: sql<number>`count(*)::int`,
+    }).from(userActivities)
+      .where(and(
+        eq(userActivities.userId, userId),
+        eq(userActivities.activityType, "page_view"),
+        gte(userActivities.createdAt, sql`now() - interval '30 days'`)
+      ))
+      .groupBy(userActivities.page)
+      .orderBy(sql`count(*) desc`)
+      .limit(10),
+    db.select().from(borrowerProfiles).where(eq(borrowerProfiles.userId, userId)).limit(1),
+    db.select().from(realEstateOwned).where(eq(realEstateOwned.userId, userId)),
+    db.select().from(borrowerStateHistory)
+      .where(eq(borrowerStateHistory.userId, userId))
+      .orderBy(desc(borrowerStateHistory.transitionedAt)),
+    db.select().from(readinessChecklist).where(eq(readinessChecklist.userId, userId)),
+    db.select({
+      eventType: intentEvents.eventType,
+      count: sql<number>`count(*)::int`,
+    }).from(intentEvents)
+      .where(and(
+        eq(intentEvents.userId, userId),
+        gte(intentEvents.occurredAt, sql`now() - interval '30 days'`)
+      ))
+      .groupBy(intentEvents.eventType),
+  ]);
+
+  const activeApp = apps.find(a => a.status !== "draft" && a.status !== "denied" && a.status !== "declined") || apps[0] || null;
+
+  let empHistory: any[] = [];
+  if (activeApp) {
+    try {
+      empHistory = await db.select().from(employmentHistory).where(eq(employmentHistory.applicationId, activeApp.id));
+    } catch (err) {
+      console.warn("[BorrowerGraph] Failed to fetch employment history:", err);
+    }
+  }
+
+  const incomeSources: IncomeSource[] = [];
+  const assetRecords: AssetRecord[] = [];
+  const liabilityRecords: LiabilityRecord[] = [];
+  const extractedDocs: DocumentStatus[] = [];
+  const docsMissing: string[] = [];
+
+  for (const doc of docs) {
+    const docStatus: DocumentStatus = {
+      documentType: doc.documentType,
+      fileName: doc.fileName,
+      status: doc.status || "uploaded",
+      hasExtractedData: false,
+      uploadedAt: doc.createdAt?.toISOString() || null,
+    };
+
+    if (doc.notes) {
+      try {
+        const parsed = JSON.parse(doc.notes as string);
+        if (parsed.confidence && parsed.confidence !== "low") {
+          docStatus.hasExtractedData = true;
+
+          if (parsed.grossIncome) {
+            incomeSources.push({
+              source: "document",
+              trust: "tier1",
+              type: doc.documentType === "tax_return" ? "tax_return_gross" : "document_income",
+              amount: parseNum(parsed.grossIncome) || 0,
+              period: "annual",
+              employerName: parsed.employerName || null,
+              documentYear: parsed.documentYear || null,
+              confidence: parsed.confidence,
+            });
+          }
+          if (parsed.adjustedGrossIncome) {
+            incomeSources.push({
+              source: "document",
+              trust: "tier1",
+              type: "tax_return_agi",
+              amount: parseNum(parsed.adjustedGrossIncome) || 0,
+              period: "annual",
+              documentYear: parsed.documentYear || null,
+              confidence: parsed.confidence,
+            });
+          }
+          if (parsed.grossPay) {
+            incomeSources.push({
+              source: "document",
+              trust: "tier1",
+              type: "pay_stub",
+              amount: parseNum(parsed.grossPay) || 0,
+              period: "monthly",
+              employerName: parsed.employerName || null,
+              confidence: parsed.confidence,
+            });
+          }
+          if (parsed.closingBalance) {
+            assetRecords.push({
+              source: "document",
+              trust: "tier1",
+              type: "bank_account",
+              balance: parseNum(parsed.closingBalance) || 0,
+              accountType: parsed.accountType || null,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("[BorrowerGraph] Failed to parse document notes:", doc.fileName, err);
+      }
+    }
+
+    extractedDocs.push(docStatus);
+  }
+
+  if (activeApp) {
+    const hasLineItemIncome = activeApp.incomeSources && Array.isArray(activeApp.incomeSources) && (activeApp.incomeSources as any[]).length > 0;
+
+    if (hasLineItemIncome) {
+      for (const src of activeApp.incomeSources as any[]) {
+        const amt = parseNum(src.annualAmount?.toString().replace(/[,$]/g, ""));
+        if (amt && amt > 0) {
+          incomeSources.push({
+            source: "application",
+            trust: "tier2",
+            type: src.type || "additional_income",
+            amount: amt,
+            period: "annual",
+            employerName: src.employerName || null,
+          });
+        }
+      }
+    } else if (activeApp.annualIncome) {
+      incomeSources.push({
+        source: "application",
+        trust: "tier2",
+        type: "application_stated",
+        amount: parseNum(activeApp.annualIncome) || 0,
+        period: "annual",
+        employerName: activeApp.employerName || null,
+      });
+    }
+
+    if (activeApp.monthlyDebts) {
+      liabilityRecords.push({
+        source: "application",
+        trust: "tier2",
+        monthlyAmount: parseNum(activeApp.monthlyDebts) || 0,
+        description: "Total monthly debts (application)",
+      });
+    }
+
+    if (activeApp.aiAnalysis) {
+      try {
+        const ai = activeApp.aiAnalysis as any;
+        if (ai.estimatedIncome && !activeApp.annualIncome && !hasLineItemIncome) {
+          incomeSources.push({
+            source: "application",
+            trust: "tier2",
+            type: "ai_extracted",
+            amount: parseNum(ai.estimatedIncome) || 0,
+            period: "annual",
+          });
+        }
+        if (ai.estimatedAssets) {
+          assetRecords.push({
+            source: "application",
+            trust: "tier2",
+            type: "ai_extracted_assets",
+            balance: parseNum(ai.estimatedAssets) || 0,
+          });
+        }
+      } catch (err) {
+        console.warn("[BorrowerGraph] Failed to parse aiAnalysis:", err);
+      }
+    }
+  }
+
+  for (const emp of empHistory) {
+    if (emp.totalMonthlyIncome) {
+      incomeSources.push({
+        source: "application",
+        trust: "tier2",
+        type: "employment_record",
+        amount: parseNum(emp.totalMonthlyIncome) || 0,
+        period: "monthly",
+        employerName: emp.employerName || null,
+      });
+    }
+  }
+
+  const goalData = goalRows[0] || null;
+  if (goalData) {
+    if (goalData.monthlyIncome) {
+      incomeSources.push({
+        source: "goal",
+        trust: "tier3",
+        type: "goal_stated",
+        amount: parseNum(goalData.monthlyIncome) || 0,
+        period: "monthly",
+      });
+    }
+    if (goalData.currentSavingsBalance) {
+      assetRecords.push({
+        source: "goal",
+        trust: "tier3",
+        type: "savings_goal",
+        balance: parseNum(goalData.currentSavingsBalance) || 0,
+      });
+    }
+    if (goalData.currentMonthlySavings) {
+      const monthlySavings = parseNum(goalData.currentMonthlySavings) || 0;
+      if (monthlySavings > 0) {
+        assetRecords.push({
+          source: "goal",
+          trust: "tier3",
+          type: "monthly_savings_capacity",
+          balance: monthlySavings,
+        });
+      }
+    }
+    if (goalData.monthlyDebts) {
+      liabilityRecords.push({
+        source: "goal",
+        trust: "tier3",
+        monthlyAmount: parseNum(goalData.monthlyDebts) || 0,
+        description: "Monthly debts (goal tracker)",
+      });
+    }
+    if (goalData.currentRent) {
+      const rent = parseNum(goalData.currentRent) || 0;
+      if (rent > 0) {
+        liabilityRecords.push({
+          source: "goal",
+          trust: "tier3",
+          monthlyAmount: rent,
+          description: "Current rent payment (goal tracker)",
+        });
+      }
+    }
+  }
+
+  const coachConvWithProfile = coachConvs.find(c => c.financialProfile);
+  let coachIntake: any = null;
+  if (coachConvs.length > 0) {
+    try {
+      const latestConv = coachConvs[0];
+      const msgs = await db.select().from(coachMessages)
+        .where(eq(coachMessages.conversationId, latestConv.id))
+        .orderBy(desc(coachMessages.createdAt));
+      for (const msg of msgs) {
+        if (msg.role === "assistant" && msg.structuredData) {
+          const sd = msg.structuredData as any;
+          if (sd?.intake) {
+            coachIntake = sd.intake;
+            break;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[BorrowerGraph] Failed to fetch coach intake:", err);
+    }
+  }
+
+  if (coachIntake?.annualIncome) {
+    incomeSources.push({
+      source: "coach",
+      trust: "tier3",
+      type: "coach_stated",
+      amount: parseNum(coachIntake.annualIncome) || 0,
+      period: "annual",
+    });
+  }
+  if (coachIntake?.monthlyDebts) {
+    liabilityRecords.push({
+      source: "coach",
+      trust: "tier3",
+      monthlyAmount: parseNum(coachIntake.monthlyDebts) || 0,
+      description: "Monthly debts (coach conversation)",
+    });
+  }
+
+  for (const reo of reoRows) {
+    if (reo.mortgagePayment) {
+      const payment = parseNum(reo.mortgagePayment) || 0;
+      const taxes = parseNum(reo.monthlyTaxes) || 0;
+      const ins = parseNum(reo.monthlyInsurance) || 0;
+      const hoa = parseNum(reo.monthlyHoa) || 0;
+      if (payment + taxes + ins + hoa > 0) {
+        liabilityRecords.push({
+          source: "application",
+          trust: "tier2",
+          monthlyAmount: payment + taxes + ins + hoa,
+          description: `REO mortgage: ${reo.propertyAddress}`,
+        });
+      }
+    }
+    if (reo.monthlyRentalIncome) {
+      const rentalIncome = parseNum(reo.monthlyRentalIncome) || 0;
+      if (rentalIncome > 0) {
+        incomeSources.push({
+          source: "application",
+          trust: "tier2",
+          type: "rental_income",
+          amount: rentalIncome * 0.75,
+          period: "monthly",
+          employerName: null,
+        });
+      }
+    }
+    if (reo.netEquity || reo.marketValue) {
+      const equity = parseNum(reo.netEquity) || (parseNum(reo.marketValue) || 0) - (parseNum(reo.mortgageBalance) || 0);
+      if (equity > 0) {
+        assetRecords.push({
+          source: "application",
+          trust: "tier2",
+          type: "real_estate_equity",
+          balance: equity,
+        });
+      }
+    }
+  }
+
+  const tier1Income = incomeSources.filter(i => i.trust === "tier1" && i.period === "annual");
+  const tier2Income = incomeSources.filter(i => i.trust === "tier2" && i.period === "annual");
+  const tier1Monthly = incomeSources.filter(i => i.trust === "tier1" && i.period === "monthly");
+  const tier2Monthly = incomeSources.filter(i => i.trust === "tier2" && i.period === "monthly");
+
+  const sumAnnual = (items: IncomeSource[]) => items.reduce((sum, i) => sum + i.amount, 0);
+  const sumMonthlyToAnnual = (items: IncomeSource[]) => items.reduce((sum, i) => sum + i.amount * 12, 0);
+
+  let bestAnnualIncome: number | null = null;
+  let bestIncomeSource: string | null = null;
+
+  if (tier1Income.length > 0 || tier1Monthly.length > 0) {
+    bestAnnualIncome = sumAnnual(tier1Income) + sumMonthlyToAnnual(tier1Monthly);
+    bestIncomeSource = "document";
+  } else if (tier2Income.length > 0 || tier2Monthly.length > 0) {
+    bestAnnualIncome = sumAnnual(tier2Income) + sumMonthlyToAnnual(tier2Monthly);
+    bestIncomeSource = "application";
+  } else {
+    const allIncome = incomeSources.filter(i => i.amount > 0);
+    if (allIncome.length > 0) {
+      bestAnnualIncome = allIncome.reduce((sum, i) => sum + (i.period === "monthly" ? i.amount * 12 : i.amount), 0);
+      bestIncomeSource = allIncome[0].source;
+    }
+  }
+
+  const totalVerifiedAssets = assetRecords
+    .filter(a => a.trust === "tier1")
+    .reduce((sum, a) => sum + a.balance, 0) || null;
+
+  const totalMonthlyDebts = (() => {
+    if (liabilityRecords.length === 0) return null;
+    const tier2Liabilities = liabilityRecords.filter(l => l.trust === "tier2");
+    const tier3Liabilities = liabilityRecords.filter(l => l.trust === "tier3");
+    if (tier2Liabilities.length > 0) {
+      return tier2Liabilities.reduce((sum, l) => sum + l.monthlyAmount, 0);
+    }
+    return tier3Liabilities.reduce((sum, l) => sum + l.monthlyAmount, 0);
+  })();
+
+  let creditScore: number | null = null;
+  let creditScoreSource: EligibilitySignals["creditScoreSource"] = null;
+
+  if (activeApp?.creditScore) {
+    creditScore = activeApp.creditScore;
+    creditScoreSource = "application";
+  }
+  if (goalData?.currentCreditScore) {
+    if (!creditScore) {
+      creditScore = goalData.currentCreditScore;
+      creditScoreSource = "goal";
+    }
+  }
+  if (coachIntake?.creditScore) {
+    if (!creditScore) {
+      creditScore = parseNum(coachIntake.creditScore);
+      creditScoreSource = "coach";
+    }
+  }
+
+  let estimatedDTI: number | null = null;
+  if (activeApp?.dtiRatio) {
+    estimatedDTI = parseNum(activeApp.dtiRatio);
+  } else if (bestAnnualIncome && totalMonthlyDebts) {
+    const monthlyIncome = bestAnnualIncome / 12;
+    estimatedDTI = monthlyIncome > 0 ? Math.round((totalMonthlyDebts / monthlyIncome) * 10000) / 100 : null;
+  }
+
+  let estimatedLTV: number | null = null;
+  if (activeApp?.ltvRatio) {
+    estimatedLTV = parseNum(activeApp.ltvRatio);
+  } else if (activeApp?.purchasePrice && activeApp?.downPayment) {
+    const pp = parseNum(activeApp.purchasePrice) || 0;
+    const dp = parseNum(activeApp.downPayment) || 0;
+    if (pp > 0) estimatedLTV = Math.round(((pp - dp) / pp) * 10000) / 100;
+  }
+
+  const employmentYears = activeApp?.employmentYears || (empHistory.length > 0 ? empHistory[0]?.yearsOnJob : null);
+  const appEmploymentType = activeApp?.employmentType || null;
+  const employmentStable = employmentYears != null
+    ? (appEmploymentType === "self_employed" ? employmentYears >= 2 : employmentYears >= 1)
+    : null;
+
+  const hasAdequateSavings = (() => {
+    const pp = parseNum(activeApp?.purchasePrice) || parseNum(activeApp?.propertyValue) || 0;
+    if (pp <= 0) return null;
+    const neededDown = pp * 0.035;
+    const neededClosing = pp * 0.03;
+    const total = neededDown + neededClosing;
+    const available = totalVerifiedAssets || (goalData?.currentSavingsBalance ? parseNum(goalData.currentSavingsBalance) : null);
+    if (!available) return null;
+    return available >= total;
+  })();
+
+  let estimatedMaxPurchase: number | null = null;
+  if (bestAnnualIncome && totalMonthlyDebts !== null) {
+    const monthlyIncome = bestAnnualIncome / 12;
+    const maxHousingPayment = monthlyIncome * 0.43 - (totalMonthlyDebts || 0);
+    if (maxHousingPayment > 0) {
+      const rate = 0.065 / 12;
+      const term = 360;
+      const factor = (Math.pow(1 + rate, term) - 1) / (rate * Math.pow(1 + rate, term));
+      estimatedMaxPurchase = Math.round(maxHousingPayment * factor * 0.85);
+    }
+  }
+
+  const eligibleLoanTypes: string[] = [];
+  const appIsVeteran = activeApp?.isVeteran || false;
+  const appIsFirstTime = activeApp?.isFirstTimeBuyer || false;
+  const appPropertyType = activeApp?.propertyType || null;
+  const downPaymentPct = (() => {
+    if (!activeApp?.purchasePrice || !activeApp?.downPayment) return null;
+    const pp = parseNum(activeApp.purchasePrice) || 0;
+    const dp = parseNum(activeApp.downPayment) || 0;
+    return pp > 0 ? (dp / pp) * 100 : null;
+  })();
+
+  if (appIsVeteran) {
+    eligibleLoanTypes.push("va");
+  }
+  if (creditScore !== null && creditScore >= 580 && (downPaymentPct === null || downPaymentPct >= 3.5)) {
+    eligibleLoanTypes.push("fha");
+  }
+  if (creditScore !== null && creditScore >= 620 && (downPaymentPct === null || downPaymentPct >= 5)) {
+    eligibleLoanTypes.push("conventional");
+  }
+  const loanAmount = (() => {
+    if (!activeApp?.purchasePrice || !activeApp?.downPayment) return null;
+    const pp = parseNum(activeApp.purchasePrice) || 0;
+    const dp = parseNum(activeApp.downPayment) || 0;
+    return pp - dp;
+  })();
+  if (loanAmount !== null && loanAmount > 766550) {
+    eligibleLoanTypes.push("jumbo");
+  }
+  if (activeApp?.loanPurpose === "purchase" && (appPropertyType === "single_family" || appPropertyType === "condo") &&
+      activeApp?.propertyState && !["AK", "HI", "GU", "VI", "AS"].includes(activeApp.propertyState)) {
+    if (creditScore === null || creditScore >= 640) {
+      eligibleLoanTypes.push("usda");
+    }
+  }
+  if (eligibleLoanTypes.length === 0 && activeApp?.preferredLoanType) {
+    eligibleLoanTypes.push(activeApp.preferredLoanType);
+  }
+
+  const requiredDocs = ["pay_stub", "w2", "tax_return", "bank_statement", "government_id"];
+  const uploadedTypes = new Set(docs.map(d => d.documentType));
+  const documentsMissing = requiredDocs.filter(t => !uploadedTypes.has(t));
+
+  const readiness: ReadinessSnapshot = {
+    completionPercentage: 0,
+    tier: "unknown",
+    source: "calculated",
+    completedInputs: [],
+    outstandingInputs: [],
+    estimatedTimeline: null,
+    lastAssessedAt: null,
+  };
+
+  if (coachConvWithProfile) {
+    const fp = coachConvWithProfile.financialProfile as any;
+    readiness.source = "coach";
+    readiness.completionPercentage = coachConvWithProfile.completionPercentage || fp?.completionPercentage || fp?.readinessScore || 0;
+    readiness.tier = (coachConvWithProfile.readinessTier || fp?.readinessTier || "unknown") as any;
+    readiness.completedInputs = fp?.completedInputs || fp?.strengths || [];
+    readiness.outstandingInputs = fp?.outstandingInputs || fp?.gaps || [];
+    readiness.estimatedTimeline = fp?.estimatedTimeline || null;
+    readiness.lastAssessedAt = coachConvWithProfile.updatedAt?.toISOString() || null;
+  } else {
+    let calcScore = 10;
+    if (activeApp) {
+      const statusScores: Record<string, number> = {
+        draft: 20, submitted: 35, analyzing: 40, pre_approved: 60,
+        doc_collection: 55, processing: 65, underwriting: 75,
+        conditional: 85, clear_to_close: 95, closing: 98, closed: 100,
+      };
+      calcScore = statusScores[activeApp.status] || 30;
+    }
+    if (creditScore) { calcScore += 5; readiness.completedInputs.push("Credit score provided"); }
+    if (employmentYears !== null) { calcScore += 3; readiness.completedInputs.push("Employment duration provided"); }
+    if (appEmploymentType) { calcScore += 2; readiness.completedInputs.push("Employment type provided"); }
+    if (activeApp?.propertyState) { calcScore += 2; readiness.completedInputs.push("Property location provided"); }
+    if (activeApp?.propertyType) { calcScore += 2; readiness.completedInputs.push("Property type provided"); }
+    if (hasAdequateSavings) { calcScore += 5; readiness.completedInputs.push("Savings documented"); }
+    if (estimatedDTI) { calcScore += 5; readiness.completedInputs.push("DTI calculated"); }
+
+    if (documentsMissing.length > 2) readiness.outstandingInputs.push("Missing required documents");
+    if (!creditScore) readiness.outstandingInputs.push("Credit score not provided");
+    if (employmentYears === null) readiness.outstandingInputs.push("Employment duration not provided");
+    if (!activeApp?.propertyState) readiness.outstandingInputs.push("Property location not provided");
+
+    readiness.completionPercentage = Math.min(calcScore, 100);
+    readiness.tier = calcScore >= 80 ? "ready_now" : calcScore >= 60 ? "almost_ready" : calcScore >= 35 ? "building" : "exploring";
+  }
+
+  const activityMap = new Map(recentActivities.map(a => [a.activityType, { count: a.count, lastSeen: a.lastSeen }]));
+  const getCount = (type: string) => activityMap.get(type)?.count || 0;
+  const totalPageViews = getCount("page_view");
+  const propertySearches = getCount("property_search");
+  const propertyViews = getCount("property_click") + getCount("property_view");
+  const calculatorUses = getCount("calculator_use");
+  const coachSessionCount = getCount("coach_session_start");
+  const coachMessageCount = getCount("coach_message_sent");
+  const formStarts = getCount("form_start");
+  const formAbandons = getCount("form_abandon");
+  const ctaClicks = getCount("cta_click");
+
+  const allLastSeen = recentActivities.map(a => a.lastSeen).filter(Boolean);
+  const lastActiveAt = allLastSeen.length > 0
+    ? allLastSeen.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
+    : user.lastActiveAt?.toISOString() || null;
+
+  const daysSinceLastActivity = lastActiveAt
+    ? Math.floor((Date.now() - new Date(lastActiveAt).getTime()) / 86400000)
+    : null;
+
+  let recentPropertyViews: BehaviorSignals["recentPropertyViews"] = [];
+  try {
+    const propActivities = await db.select({
+      metadata: userActivities.metadata,
+      createdAt: userActivities.createdAt,
+    }).from(userActivities)
+      .where(and(
+        eq(userActivities.userId, userId),
+        eq(userActivities.activityType, "property_click"),
+        gte(userActivities.createdAt, sql`now() - interval '30 days'`)
+      ))
+      .orderBy(desc(userActivities.createdAt))
+      .limit(10);
+
+    recentPropertyViews = propActivities.map(a => ({
+      propertyId: (a.metadata as any)?.propertyId || (a.metadata as any)?.property_id,
+      price: parseNum((a.metadata as any)?.price) || undefined,
+      viewedAt: a.createdAt?.toISOString() || "",
+    }));
+  } catch (err) {
+    console.warn("[BorrowerGraph] Failed to fetch property views:", err);
+  }
+
+  const engagementLevel: "high" | "medium" | "low" | "dormant" =
+    daysSinceLastActivity !== null && daysSinceLastActivity > 14 ? "dormant" :
+    totalPageViews >= 20 || coachSessionCount >= 2 || propertySearches >= 3 ? "high" :
+    totalPageViews >= 5 || coachSessionCount >= 1 || propertySearches >= 1 ? "medium" : "low";
+
+  const likelyToApply = !activeApp && (
+    (propertySearches >= 2 && calculatorUses >= 1) ||
+    (coachSessionCount >= 1 && formStarts >= 1) ||
+    ctaClicks >= 3
+  );
+
+  const likelyToAbandon = activeApp?.status === "draft" && (
+    daysSinceLastActivity !== null && daysSinceLastActivity > 7
+  );
+
+  let suggestedNextAction = "Start your pre-approval application";
+  if (activeApp) {
+    if (activeApp.status === "draft") suggestedNextAction = "Complete your application";
+    else if (activeApp.status === "pre_approved") suggestedNextAction = "Browse properties in your budget";
+    else if (activeApp.status === "doc_collection") suggestedNextAction = "Upload required documents";
+    else if (activeApp.status === "conditional") suggestedNextAction = "Clear remaining conditions";
+    else if (activeApp.status === "clear_to_close") suggestedNextAction = "Schedule your closing";
+    else if (activeApp.status === "denied") suggestedNextAction = "Talk to the AI Coach about improving your profile";
+  } else if (engagementLevel === "dormant") {
+    suggestedNextAction = "Welcome back — check out new listings or chat with the Coach";
+  } else if (propertySearches > 0 && !activeApp) {
+    suggestedNextAction = "Get pre-approved to make offers on homes you've been viewing";
+  } else if (coachSessionCount > 0 && !activeApp) {
+    suggestedNextAction = "Ready to apply? Your Coach data will pre-fill the application";
+  }
+
+  let actionPlan: BorrowerGraph["actionPlan"] = [];
+  let documentChecklist: BorrowerGraph["documentChecklist"] = [];
+
+  if (coachConvWithProfile) {
+    const ap = coachConvWithProfile.actionPlan as any[];
+    if (ap && Array.isArray(ap)) {
+      actionPlan = ap.map(item => ({
+        id: item.id,
+        title: item.title,
+        priority: item.priority,
+        category: item.category,
+        completed: item.completed || false,
+      }));
+    }
+    const dc = coachConvWithProfile.documentChecklist as any[];
+    if (dc && Array.isArray(dc)) {
+      documentChecklist = dc.map(item => ({
+        docType: item.docType,
+        label: item.label,
+        priority: item.priority,
+      }));
+    }
+  }
+
+  let milestonesAchieved = 0;
+  if (goalData) {
+    try {
+      const milestones = await db.select({ cnt: sql<number>`count(*)::int` })
+        .from(journeyMilestones)
+        .where(eq(journeyMilestones.goalId, goalData.id));
+      milestonesAchieved = milestones[0]?.cnt || 0;
+    } catch (err) {
+      console.warn("[BorrowerGraph] Failed to fetch milestones:", err);
+    }
+  }
+
+  const bProfile = profileRows[0] || null;
+  const profileSnapshot: BorrowerProfileSnapshot = {
+    citizenshipStatus: bProfile?.citizenshipStatus || null,
+    maritalStatus: bProfile?.maritalStatus || null,
+    numberOfDependents: bProfile?.numberOfDependents || null,
+    currentHousingStatus: bProfile?.currentHousingStatus || null,
+    currentMonthlyHousingPayment: parseNum(bProfile?.currentMonthlyHousingPayment) || null,
+    militaryStatus: bProfile?.militaryStatus || null,
+    hasCoBorrower: bProfile?.hasCoBorrower || false,
+    hasForeclosureHistory: bProfile?.hasForeclosureHistory || false,
+    hasBankruptcyHistory: bProfile?.hasBankruptcyHistory || false,
+    hasRealEstateOwned: bProfile?.hasRealEstateOwned || reoRows.length > 0,
+    riskTolerance: bProfile?.riskTolerance || null,
+    vaEligible: (bProfile?.militaryStatus === "veteran" || bProfile?.militaryStatus === "active_duty" ||
+      bProfile?.militaryStatus === "reserve_national_guard" || bProfile?.militaryStatus === "surviving_spouse") ||
+      (activeApp?.isVeteran || false),
+  };
+
+  const latestState = stateRows[0] || null;
+  const stateSummary: BorrowerStateSummary = {
+    currentState: latestState?.toState || "lead",
+    previousState: latestState?.fromState || null,
+    stateEnteredAt: latestState?.transitionedAt?.toISOString() || null,
+    daysInCurrentState: latestState?.transitionedAt
+      ? Math.floor((Date.now() - new Date(latestState.transitionedAt).getTime()) / 86400000)
+      : null,
+    totalTransitions: stateRows.length,
+  };
+
+  const checklistSummary: ReadinessChecklistSummary = (() => {
+    const totalFields = checklistRows.length;
+    const collectedFields = checklistRows.filter(r => r.isCollected).length;
+    const verifiedFields = checklistRows.filter(r =>
+      r.verificationStatus === "document_extracted" ||
+      r.verificationStatus === "third_party_verified" ||
+      r.verificationStatus === "manually_verified"
+    ).length;
+
+    const categoryMap: Record<string, { total: number; collected: number; verified: number }> = {};
+    for (const row of checklistRows) {
+      const cat = row.category;
+      if (!categoryMap[cat]) categoryMap[cat] = { total: 0, collected: 0, verified: 0 };
+      categoryMap[cat].total++;
+      if (row.isCollected) categoryMap[cat].collected++;
+      if (row.verificationStatus === "document_extracted" ||
+        row.verificationStatus === "third_party_verified" ||
+        row.verificationStatus === "manually_verified") {
+        categoryMap[cat].verified++;
+      }
+    }
+
+    const calculatedReadinessScore = totalFields > 0
+      ? Math.round((collectedFields / totalFields) * 100)
+      : 0;
+
+    return { totalFields, collectedFields, verifiedFields, completionByCategory: categoryMap, calculatedReadinessScore };
+  })();
+
+  const reoMapped: REOProperty[] = reoRows.map(r => ({
+    address: r.propertyAddress,
+    propertyType: r.propertyType || null,
+    marketValue: parseNum(r.marketValue),
+    mortgageBalance: parseNum(r.mortgageBalance),
+    mortgagePayment: parseNum(r.mortgagePayment),
+    monthlyRentalIncome: parseNum(r.monthlyRentalIncome),
+    netEquity: parseNum(r.netEquity) || ((parseNum(r.marketValue) || 0) - (parseNum(r.mortgageBalance) || 0)) || null,
+    occupancyType: r.occupancyType || null,
+    willBeSold: r.willBeSold || false,
+  }));
+
+  const intentMap = new Map(intentCounts.map(e => [e.eventType, e.count]));
+  const getIntentCount = (type: string) => intentMap.get(type) || 0;
+  const intentScore = Math.min(100,
+    getIntentCount("pre_approval_start") * 20 +
+    getIntentCount("pre_approval_complete") * 30 +
+    getIntentCount("document_upload_complete") * 10 +
+    getIntentCount("property_affordability_check") * 8 +
+    getIntentCount("calculator_use") * 5 +
+    getIntentCount("coach_session_complete") * 8 +
+    getIntentCount("lender_comparison_view") * 6 +
+    getIntentCount("property_save") * 4 +
+    getIntentCount("cta_click") * 3 +
+    getIntentCount("return_visit") * 2
+  );
+
+  return {
+    userId,
+    userName: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email?.split("@")[0] || null,
+    email: user.email || null,
+    role: user.role,
+    memberSince: user.createdAt?.toISOString() || null,
+
+    profile: profileSnapshot,
+    state: stateSummary,
+    readinessDetail: checklistSummary,
+    realEstateOwned: reoMapped,
+
+    applications: apps.map(a => ({
+      id: a.id,
+      status: a.status,
+      loanPurpose: a.loanPurpose || null,
+      preferredLoanType: a.preferredLoanType || null,
+      purchasePrice: parseNum(a.purchasePrice),
+      downPayment: parseNum(a.downPayment),
+      preApprovalAmount: parseNum(a.preApprovalAmount),
+      isVeteran: a.isVeteran || false,
+      isFirstTimeBuyer: a.isFirstTimeBuyer || false,
+      employmentType: a.employmentType || null,
+      propertyType: a.propertyType || null,
+      propertyState: a.propertyState || null,
+      propertyValue: parseNum(a.propertyValue),
+      createdAt: a.createdAt?.toISOString() || null,
+    })),
+
+    activeApplicationId: activeApp?.id || null,
+
+    income: incomeSources,
+    bestAnnualIncome,
+    bestIncomeSource,
+
+    assets: assetRecords,
+    totalVerifiedAssets,
+
+    liabilities: liabilityRecords,
+    totalMonthlyDebts,
+
+    documents: extractedDocs,
+    documentsUploaded: docs.length,
+    documentsVerified: docs.filter(d => d.status === "verified").length,
+    documentsMissing,
+
+    readiness,
+    eligibility: {
+      estimatedDTI,
+      estimatedLTV,
+      creditTier: getCreditTier(creditScore),
+      creditScore,
+      creditScoreSource,
+      employmentStable,
+      employmentYears: employmentYears || null,
+      hasAdequateSavings,
+      estimatedMaxPurchase,
+      eligibleLoanTypes,
+    },
+
+    goal: {
+      goal: goalData?.currentPhase || null,
+      targetHomePrice: parseNum(goalData?.targetHomePrice),
+      targetDownPayment: parseNum(goalData?.targetDownPayment),
+      targetCreditScore: goalData?.targetCreditScore || null,
+      targetCity: goalData?.targetCity || null,
+      targetState: goalData?.targetState || null,
+      currentPhase: goalData?.currentPhase || null,
+      savingsProgress: parseNum(goalData?.savingsProgress),
+      creditScoreChange: goalData?.creditScoreChange || null,
+      journeyDay: goalData?.journeyDay || null,
+      milestonesAchieved,
+    },
+
+    behavior: {
+      totalPageViews,
+      propertySearches,
+      propertyViews,
+      calculatorUses,
+      coachSessions: coachSessionCount,
+      coachMessages: coachMessageCount,
+      formStarts,
+      formAbandons,
+      ctaClicks,
+      lastActiveAt,
+      topPages: activityCounts.map(a => ({ page: a.page || "", views: a.views })),
+      recentPropertyViews,
+    },
+
+    actionPlan,
+    documentChecklist,
+
+    predictiveSignals: {
+      likelyToApply,
+      likelyToAbandon,
+      engagementLevel,
+      daysSinceLastActivity,
+      suggestedNextAction,
+      intentScore,
+    },
+  };
+}
+
+export async function getPropertyAffordability(
+  userId: string,
+  propertyPrice: number,
+): Promise<{
+  meetsGuidelines: boolean;
+  estimatedDTI: number | null;
+  estimatedMonthlyPayment: number | null;
+  additionalSavingsNeeded: number | null;
+  estimatedDownPayment: number;
+  eligibleLoanTypes: string[];
+  message: string;
+}> {
+  const graph = await buildBorrowerGraph(userId);
+
+  const downPaymentPercent = 0.05;
+  const estimatedDownPayment = Math.round(propertyPrice * downPaymentPercent);
+  const loanAmount = propertyPrice - estimatedDownPayment;
+
+  const rate = 0.065 / 12;
+  const term = 360;
+  const monthlyPI = loanAmount * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1);
+  const monthlyTaxIns = propertyPrice * 0.015 / 12;
+  const estimatedMonthlyPayment = Math.round(monthlyPI + monthlyTaxIns);
+
+  const monthlyIncome = graph.bestAnnualIncome ? graph.bestAnnualIncome / 12 : null;
+  const currentDebts = graph.totalMonthlyDebts || 0;
+  const estimatedDTI = monthlyIncome ? Math.round(((estimatedMonthlyPayment + currentDebts) / monthlyIncome) * 10000) / 100 : null;
+
+  const totalNeeded = estimatedDownPayment + Math.round(propertyPrice * 0.03);
+  const available = graph.totalVerifiedAssets || (graph.assets.length > 0 ? graph.assets[0].balance : 0);
+  const additionalSavingsNeeded = available < totalNeeded ? Math.round(totalNeeded - available) : null;
+
+  const meetsGuidelines = (estimatedDTI !== null && estimatedDTI <= 50) && !additionalSavingsNeeded;
+
+  let message: string;
+  if (estimatedDTI !== null && additionalSavingsNeeded === null) {
+    message = `Based on your current information, the estimated DTI for this property would be ${estimatedDTI}%. Estimated monthly payment: $${estimatedMonthlyPayment?.toLocaleString() || "N/A"}. Final eligibility is determined during underwriting review.`;
+  } else if (additionalSavingsNeeded) {
+    message = `Based on your current information, an estimated additional $${additionalSavingsNeeded.toLocaleString()} in documented savings may be needed for the down payment and closing costs. Final requirements are determined during underwriting review.`;
+  } else {
+    message = `Additional financial information is needed to estimate affordability for this property. Complete your application or provide details through the readiness assistant.`;
+  }
+
+  return {
+    meetsGuidelines,
+    estimatedDTI,
+    estimatedMonthlyPayment,
+    additionalSavingsNeeded,
+    estimatedDownPayment,
+    eligibleLoanTypes: graph.eligibility.eligibleLoanTypes,
+    message,
+  };
+}

@@ -1,0 +1,66 @@
+Add Google Maps Platform integration to Homiquity for the address input experience. Use process.env.GOOGLE_MAPS_API_KEY for all calls. Do not rewrite existing files — add only what is described.
+
+1. BACKEND — create server/routes/geocode.js with:
+
+GET /api/geocode/autocomplete?input=
+- Call https://places.googleapis.com/v1/places:autocomplete
+- POST body: { input: req.query.input, includedTypes: ["street_address", "premise"] }
+- Headers: { 'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY, 'Content-Type': 'application/json' }
+- Return cleaned array: [{ placeId, description, mainText, secondaryText }]
+- Cache 10 minutes by input string
+- Only call if input.length >= 4
+
+GET /api/geocode/details?placeId=
+- Call https://maps.googleapis.com/maps/api/geocode/json?place_id={placeId}&key={KEY}
+- Extract from result: formattedAddress, lat, lng, streetNumber, route, city, state, zip, county
+- Return: { formattedAddress, lat, lng, zip, city, state, county, streetAddress }
+- Cache 1 hour by placeId
+
+GET /api/geocode/validate?address=
+- Call https://addressvalidation.googleapis.com/v1:validateAddress
+- POST body: { address: { addressLines: [req.query.address] } }
+- Return: { isValid: bool, correctedAddress, dpv (deliverability) }
+
+Mount all routes in server/index.js at /api/geocode
+
+2. FRONTEND — create client/src/components/AddressInput.tsx
+
+Props: { onSelect: (result: { formattedAddress, lat, lng, zip, city, state, streetAddress }) => void, placeholder?: string, className?: string }
+
+Behavior:
+- Controlled input with local state
+- Debounce 300ms before calling /api/geocode/autocomplete
+- Show dropdown of suggestions below input (max 5)
+- Each suggestion shows mainText bold + secondaryText muted
+- On suggestion click: call /api/geocode/details?placeId= then call onSelect() with full result
+- Show loading spinner inside input while fetching
+- On Escape: close dropdown
+- On click outside: close dropdown
+- Keyboard navigation: arrow up/down to highlight, Enter to select highlighted
+
+Style: use existing shadcn Input component as the base, add absolute-positioned suggestion dropdown with same styling as existing autocomplete in Properties.tsx
+
+3. FRONTEND — create client/src/components/PropertyMap.tsx
+
+Props: { lat: number, lng: number, address: string, zoom?: number }
+
+- Load Maps JavaScript API via script tag: https://maps.googleapis.com/maps/api/js?key={GOOGLE_MAPS_API_KEY}&loading=async
+- Render a 100% width, 220px height map centered on lat/lng
+- Single marker at the property location
+- Disable all controls except zoom
+- Use GOOGLE_MAPS_API_KEY from window.__ENV__ or a /api/config/maps-key endpoint
+
+4. FRONTEND — create client/src/components/StreetView.tsx
+
+Props: { lat: number, lng: number, width?: number, height?: number }
+
+- Renders an img tag using Street View Static API:
+  src: https://maps.googleapis.com/maps/api/streetview?size={width}x{height}&location={lat},{lng}&key={KEY}&return_error_codes=true
+- width defaults to 600, height to 300
+- On error (404 = no street view): show a gray placeholder with home icon and "Street view unavailable"
+- Lazy load the image (loading="lazy")
+
+5. Add to .env.example:
+# Google Maps Platform — enable Places API (New), Geocoding API, Address Validation API, Maps JS API, Street View Static API
+# Get key at console.cloud.google.com — restrict to homiquity.com
+GOOGLE_MAPS_API_KEY=
