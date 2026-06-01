@@ -293,6 +293,13 @@ export function registerDocumentRoutes(
       const { documentYear, applicationId } = req.body;
       const userId = req.user!.id;
 
+      if (applicationId) {
+        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, req.user!.role);
+        if (!application) {
+          return res.status(403).json({ error: "Access denied to the specified application" });
+        }
+      }
+
       const document = await storage.createDocument({
         userId,
         applicationId: applicationId || null,
@@ -349,6 +356,13 @@ export function registerDocumentRoutes(
       const { applicationId } = req.body;
       const userId = req.user!.id;
 
+      if (applicationId) {
+        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, req.user!.role);
+        if (!application) {
+          return res.status(403).json({ error: "Access denied to the specified application" });
+        }
+      }
+
       const document = await storage.createDocument({
         userId,
         applicationId: applicationId || null,
@@ -404,6 +418,13 @@ export function registerDocumentRoutes(
 
       const { applicationId } = req.body;
       const userId = req.user!.id;
+
+      if (applicationId) {
+        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, req.user!.role);
+        if (!application) {
+          return res.status(403).json({ error: "Access denied to the specified application" });
+        }
+      }
 
       const document = await storage.createDocument({
         userId,
