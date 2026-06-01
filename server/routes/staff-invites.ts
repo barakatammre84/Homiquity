@@ -106,7 +106,7 @@ export function registerStaffInviteRoutes(app: Express, storage: IStorage) {
       }
       
       await storage.updateUserRole(user.id, invite.role);
-      logAudit(req, "invite.redeemed", "staff_invite", code, { role: invite.role, userId: user.id });
+      logAudit(req, "invite.redeemed", "staff_invite", "[REDACTED]", { role: invite.role, userId: user.id });
       
       res.json({ 
         success: true, 

@@ -156,6 +156,27 @@ app.use((req, res, next) => {
   return res.status(403).json({ error: 'CSRF validation failed' });
 });
 
+const SENSITIVE_PATH_PATTERNS: Array<[RegExp, string]> = [
+  [/^(\/api\/staff-invites\/validate\/)([^/]+)/, "$1[REDACTED]"],
+];
+
+const SUPPRESS_RESPONSE_BODY_PATTERNS: RegExp[] = [
+  /^\/api\/staff-invites(\/|$)/,
+];
+
+function sanitizePathForLog(path: string): string {
+  for (const [pattern, replacement] of SENSITIVE_PATH_PATTERNS) {
+    if (pattern.test(path)) {
+      return path.replace(pattern, replacement);
+    }
+  }
+  return path;
+}
+
+function shouldSuppressResponseBody(path: string): boolean {
+  return SUPPRESS_RESPONSE_BODY_PATTERNS.some((p) => p.test(path));
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -170,8 +191,9 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      const safePath = sanitizePathForLog(path);
+      let logLine = `${req.method} ${safePath} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse && !shouldSuppressResponseBody(path)) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
