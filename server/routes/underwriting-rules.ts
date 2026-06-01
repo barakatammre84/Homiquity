@@ -10,7 +10,7 @@ export function registerUnderwritingRulesRoutes(
   app: Express,
   storage: IStorage,
 ) {
-  app.get("/api/underwriting-rules", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/underwriting-rules", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const { category, triggerType, isActive } = req.query;
       const filters: { category?: string; triggerType?: string; isActive?: boolean } = {};
@@ -26,7 +26,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.get("/api/underwriting-rules/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/underwriting-rules/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
@@ -39,7 +39,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/underwriting-rules", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const parsed = insertUnderwritingRuleDslSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -71,7 +71,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.patch("/api/underwriting-rules/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.patch("/api/underwriting-rules/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
@@ -134,7 +134,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules/:id/version", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/underwriting-rules/:id/version", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {

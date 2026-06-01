@@ -228,18 +228,36 @@ export function registerComplianceRoutes(
   });
 
   // Staff: Update verification status (approve/reject)
-  app.patch("/api/verifications/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  // Restricted to internal staff roles only; broker/lender partner accounts must not
+  // be able to approve or reject another borrower's verification.
+  app.patch("/api/verifications/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const verification = await storage.getVerification(req.params.id);
       if (!verification) {
         return res.status(404).json({ error: "Verification not found" });
       }
 
+      // Verify the caller is assigned to the application this verification belongs to.
+      // Admins always pass; all other staff must be active deal-team members.
+      // If there is no applicationId on the record, non-admin access is denied by default.
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+      if (userRole !== "admin") {
+        if (!verification.applicationId) {
+          return res.status(403).json({ error: "Not authorized to review this verification" });
+        }
+        const teamMembers = await storage.getDealTeamMembers(verification.applicationId);
+        const isMember = teamMembers.some(m => m.userId === userId);
+        if (!isMember) {
+          return res.status(403).json({ error: "Not authorized to review this verification" });
+        }
+      }
+
       const { status, reviewNotes } = req.body;
       const updated = await storage.updateVerification(req.params.id, {
         status,
         reviewNotes,
-        reviewedByUserId: req.user!.id,
+        reviewedByUserId: userId,
         reviewedAt: new Date(),
         verifiedAt: status === "verified" ? new Date() : undefined,
       });

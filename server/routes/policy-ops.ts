@@ -26,7 +26,7 @@ export function registerPolicyOpsRoutes(
   // POLICY PROFILES
   // ============================================================================
 
-  app.get("/api/policy-profiles", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/policy-profiles", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const { authority, productType, status } = req.query;
       const filters: { authority?: string; productType?: string; status?: string } = {};
@@ -42,7 +42,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.get("/api/policy-profiles/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/policy-profiles/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
@@ -62,7 +62,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.post("/api/policy-profiles", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/policy-profiles", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const parsed = insertPolicyProfileSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -88,7 +88,7 @@ export function registerPolicyOpsRoutes(
     }
   });
 
-  app.patch("/api/policy-profiles/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.patch("/api/policy-profiles/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
@@ -128,7 +128,7 @@ export function registerPolicyOpsRoutes(
   // POLICY WORKFLOW TRANSITIONS
   // ============================================================================
 
-  app.post("/api/policy-profiles/:id/submit", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.post("/api/policy-profiles/:id/submit", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
