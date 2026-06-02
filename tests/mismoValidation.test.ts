@@ -797,8 +797,10 @@ function coLiability(overrides: Record<string, any> = {}) {
 }
 
 function coDemographic(overrides: Record<string, any> = {}) {
+  // Demographic rows are stored with the application owner's borrowerId for
+  // every borrower; the per-person discriminator is borrowerSequenceNumber.
   return {
-    borrowerId: "co-user-2",
+    borrowerId: "user-1",
     borrowerSequenceNumber: 2,
     ethnicityNotProvided: true,
     raceNotProvided: true,
@@ -905,6 +907,77 @@ describe("co-applicant scoring (borrowerSequenceNumber > 1)", () => {
     expect(result.coApplicants.map((c: any) => c.borrowerSequenceNumber)).toEqual([
       2, 3,
     ]);
+  });
+});
+
+describe("co-applicant demographics match by sequence (sparse / out-of-order)", () => {
+  // A bare demographic row with only a collection method recorded — no
+  // ethnicity / race / sex — so its section is provably incomplete.
+  function incompleteDemographic(seq: number) {
+    return {
+      borrowerId: "user-1",
+      borrowerSequenceNumber: seq,
+      collectionMethod: "visual",
+    };
+  }
+
+  it("matches a sparse co-borrower (#3 only) to its own demographic row", async () => {
+    // Only co-borrower #3 exists (no #2). Positional matching (coHmda[seq-2])
+    // would read coHmda[1] === undefined and mis-score the section as empty;
+    // sequence matching must find the seq-3 row.
+    const base = baseUrla();
+    setFixtures({
+      urla: baseUrla({
+        hmdaDemographics: [
+          ...base.hmdaDemographics, // primary, seq 1
+          coDemographic({ borrowerSequenceNumber: 3 }), // complete, seq 3
+        ],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(result.coApplicants.map((c: any) => c.borrowerSequenceNumber)).toEqual([
+      3,
+    ]);
+    const demo = result.coApplicants[0].sections.find(
+      (s: any) => s.sectionNumber === "7"
+    );
+    expect(demo.missingFields).toEqual([]);
+    expect(demo.completeness).toBe(100);
+  });
+
+  it("matches out-of-order demographic rows to the right co-borrower, not by array position", async () => {
+    // Demographic rows are listed seq 3 BEFORE seq 2, and the two people have
+    // different completeness: #3 is complete, #2 is incomplete. Positional
+    // matching would swap them (read coHmda[0] for #2 and coHmda[1] for #3);
+    // sequence matching must attribute each row to the right person.
+    const base = baseUrla();
+    setFixtures({
+      urla: baseUrla({
+        hmdaDemographics: [
+          ...base.hmdaDemographics, // primary, seq 1
+          coDemographic({ borrowerSequenceNumber: 3 }), // complete, listed first
+          incompleteDemographic(2), // incomplete, listed second
+        ],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+
+    const co2 = result.coApplicants.find((c: any) => c.borrowerSequenceNumber === 2);
+    const co3 = result.coApplicants.find((c: any) => c.borrowerSequenceNumber === 3);
+    const demo2 = co2.sections.find((s: any) => s.sectionNumber === "7");
+    const demo3 = co3.sections.find((s: any) => s.sectionNumber === "7");
+
+    // #2's row is incomplete, #3's row is complete — proving each person's
+    // demographics are read by sequence number rather than list order.
+    expect(demo2.missingFields).toEqual(
+      expect.arrayContaining([
+        "Ethnicity collected (or refusal recorded)",
+        "Race collected (or refusal recorded)",
+        "Sex collected (or refusal recorded)",
+      ])
+    );
+    expect(demo3.missingFields).toEqual([]);
   });
 });
 
