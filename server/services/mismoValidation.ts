@@ -681,9 +681,12 @@ export async function validateMISMOCompleteness(applicationId: string): Promise<
   });
 
   coApplicants.forEach(co => {
+    const coLabel = co.name
+      ? `Co-applicant #${co.borrowerSequenceNumber} (${co.name})`
+      : `Co-applicant #${co.borrowerSequenceNumber}`;
     co.sections.forEach(section => {
       section.missingFields.forEach(field => {
-        criticalErrors.push(`Co-applicant #${co.borrowerSequenceNumber} ${section.section}: ${field} is required`);
+        criticalErrors.push(`${coLabel} ${section.section}: ${field} is required`);
       });
     });
   });

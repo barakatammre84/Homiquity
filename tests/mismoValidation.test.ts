@@ -949,6 +949,59 @@ describe("co-applicant missing fields surface into criticalErrors", () => {
   });
 });
 
+describe("co-applicant name resolution", () => {
+  it("populates the co-applicant name from allPersonalInfo by sequence number", async () => {
+    const fixture = urlaWithCoApplicant();
+    fixture.allPersonalInfo = [
+      completePersonalInfo({ borrowerSequenceNumber: 1 }),
+      completePersonalInfo({
+        firstName: "Sam",
+        lastName: "Cobright",
+        borrowerSequenceNumber: 2,
+      }),
+    ];
+    setFixtures({ urla: fixture });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(result.coApplicants.length).toBe(1);
+    expect(result.coApplicants[0].name).toBe("Sam Cobright");
+  });
+
+  it("includes the co-applicant name in critical-error prefixes when known", async () => {
+    const fixture = urlaWithCoApplicant({
+      employment: [coEmployment({ employerName: null })],
+    });
+    fixture.allPersonalInfo = [
+      completePersonalInfo({ borrowerSequenceNumber: 1 }),
+      completePersonalInfo({
+        firstName: "Sam",
+        lastName: "Cobright",
+        borrowerSequenceNumber: 2,
+      }),
+    ];
+    setFixtures({ urla: fixture });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(result.criticalErrors).toContain(
+      "Co-applicant #2 (Sam Cobright) Employment & Income: Employer Name is required"
+    );
+  });
+
+  it("falls back to a bare label when no co-applicant name is stored", async () => {
+    setFixtures({
+      urla: urlaWithCoApplicant({
+        employment: [coEmployment({ employerName: null })],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(result.coApplicants[0].name).toBeNull();
+    expect(result.criticalErrors).toContain(
+      "Co-applicant #2 Employment & Income: Employer Name is required"
+    );
+  });
+});
+
 describe("coApplicantLimitation note", () => {
   it("is null when no co-borrower is declared and no co-applicant rows exist", async () => {
     setFixtures();
