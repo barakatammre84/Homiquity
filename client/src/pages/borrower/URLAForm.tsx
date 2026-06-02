@@ -12,14 +12,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { LoanApplication, UrlaPersonalInfo, EmploymentHistory, UrlaAsset, UrlaLiability, UrlaPropertyInfo, OtherIncomeSource } from "@shared/schema";
+import type { LoanApplication, UrlaPersonalInfo, EmploymentHistory, UrlaAsset, UrlaLiability, UrlaPropertyInfo, OtherIncomeSource, BorrowerDeclarations, HmdaDemographics } from "@shared/schema";
 import {
   User,
+  Users,
   Briefcase,
   DollarSign,
   Home,
   FileText,
   Percent,
+  ClipboardCheck,
+  Scale,
   Save,
   Plus,
   Trash2,
@@ -33,21 +36,131 @@ interface DashboardData {
 interface UrlaData {
   application: LoanApplication;
   personalInfo: UrlaPersonalInfo | null;
+  allPersonalInfo?: UrlaPersonalInfo[];
   employmentHistory: EmploymentHistory[];
   otherIncomeSources: OtherIncomeSource[];
   assets: UrlaAsset[];
   liabilities: UrlaLiability[];
   propertyInfo: UrlaPropertyInfo | null;
+  declarations?: BorrowerDeclarations | null;
+  allDeclarations?: BorrowerDeclarations[];
+  hmdaDemographics?: HmdaDemographics[];
 }
 
-interface UrlaSavePayload {
+interface DemographicsState {
+  ethnicityHispanicLatino: boolean;
+  ethnicityNotHispanicLatino: boolean;
+  ethnicityNotProvided: boolean;
+  raceAmericanIndian: boolean;
+  raceAsian: boolean;
+  raceBlack: boolean;
+  raceNativeHawaiian: boolean;
+  raceWhite: boolean;
+  raceNotProvided: boolean;
+  sexFemale: boolean;
+  sexMale: boolean;
+  sexNotProvided: boolean;
+  age: string;
+  ageNotProvided: boolean;
+}
+
+interface BorrowerSlice {
+  personalInfo: Partial<UrlaPersonalInfo>;
+  employmentRecords: Partial<EmploymentHistory>[];
+  assets: Partial<UrlaAsset>[];
+  liabilities: Partial<UrlaLiability>[];
+  declarations: Partial<BorrowerDeclarations>;
+  demographics: DemographicsState;
+}
+
+interface SectionsPayload {
   personalInfo: Partial<UrlaPersonalInfo>;
   employmentHistory: Partial<EmploymentHistory>[];
   assets: Partial<UrlaAsset>[];
   liabilities: Partial<UrlaLiability>[];
+  declarations: Partial<BorrowerDeclarations>;
+  demographics: Record<string, unknown>;
+}
+
+interface UrlaSavePayload extends SectionsPayload {
   otherIncomeSources: Partial<OtherIncomeSource>[];
   propertyInfo: Partial<UrlaPropertyInfo>;
+  coApplicants?: SectionsPayload[];
 }
+
+const emptyDemographics = (): DemographicsState => ({
+  ethnicityHispanicLatino: false,
+  ethnicityNotHispanicLatino: false,
+  ethnicityNotProvided: false,
+  raceAmericanIndian: false,
+  raceAsian: false,
+  raceBlack: false,
+  raceNativeHawaiian: false,
+  raceWhite: false,
+  raceNotProvided: false,
+  sexFemale: false,
+  sexMale: false,
+  sexNotProvided: false,
+  age: "",
+  ageNotProvided: false,
+});
+
+const emptySlice = (): BorrowerSlice => ({
+  personalInfo: {},
+  employmentRecords: [{}],
+  assets: [{}],
+  liabilities: [{}],
+  declarations: {},
+  demographics: emptyDemographics(),
+});
+
+const hmdaToState = (h: HmdaDemographics): DemographicsState => ({
+  ethnicityHispanicLatino: !!h.ethnicityHispanicLatino,
+  ethnicityNotHispanicLatino: !!h.ethnicityNotHispanicLatino,
+  ethnicityNotProvided: !!h.ethnicityNotProvided,
+  raceAmericanIndian: !!h.raceAmericanIndian,
+  raceAsian: !!h.raceAsian,
+  raceBlack: !!h.raceBlack,
+  raceNativeHawaiian: !!h.raceNativeHawaiian,
+  raceWhite: !!h.raceWhite,
+  raceNotProvided: !!h.raceNotProvided,
+  sexFemale: !!h.sexFemale,
+  sexMale: !!h.sexMale,
+  sexNotProvided: !!h.sexNotProvided,
+  age: h.age != null ? String(h.age) : "",
+  ageNotProvided: !!h.ageNotProvided,
+});
+
+const demographicsToPayload = (d: DemographicsState): Record<string, unknown> => ({
+  ethnicityHispanicLatino: d.ethnicityHispanicLatino,
+  ethnicityNotHispanicLatino: d.ethnicityNotHispanicLatino,
+  ethnicityNotProvided: d.ethnicityNotProvided,
+  raceAmericanIndian: d.raceAmericanIndian,
+  raceAsian: d.raceAsian,
+  raceBlack: d.raceBlack,
+  raceNativeHawaiian: d.raceNativeHawaiian,
+  raceWhite: d.raceWhite,
+  raceNotProvided: d.raceNotProvided,
+  sexFemale: d.sexFemale,
+  sexMale: d.sexMale,
+  sexNotProvided: d.sexNotProvided,
+  age: d.ageNotProvided ? null : (d.age ? parseInt(d.age) : null),
+  ageNotProvided: d.ageNotProvided,
+});
+
+const DECLARATION_QUESTIONS: { key: keyof BorrowerDeclarations; label: string }[] = [
+  { key: "willOccupyAsPrimaryResidence", label: "A. Will you occupy the property as your primary residence?" },
+  { key: "hasOwnershipInterestInPast3Years", label: "B. Have you had an ownership interest in another property in the last three years?" },
+  { key: "isBorrowingForDownPayment", label: "C. Is any part of the down payment borrowed?" },
+  { key: "hasCoMakerEndorser", label: "D. Are you a co-maker or endorser on a note?" },
+  { key: "hasOutstandingJudgments", label: "E. Are there any outstanding judgments against you?" },
+  { key: "isDelinquentOnFederalDebt", label: "F. Are you currently delinquent or in default on a federal debt?" },
+  { key: "isPartyToLawsuit", label: "G. Are you a party to a lawsuit in which you may have liability?" },
+  { key: "hasConveyedTitleInLieuOfForeclosure", label: "H. Have you conveyed title in lieu of foreclosure in the past 7 years?" },
+  { key: "hasCompletedShortSale", label: "I. Have you completed a pre-foreclosure sale or short sale in the past 7 years?" },
+  { key: "hasBeenForeclosed", label: "J. Have you had property foreclosed upon in the past 7 years?" },
+  { key: "hasDeclaredBankruptcy", label: "K. Have you declared bankruptcy in the past 7 years?" },
+];
 
 const US_STATES = [
   "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
@@ -99,22 +212,65 @@ export default function URLAForm() {
     enabled: !!activeApplication?.id,
   });
 
-  const [personalInfo, setPersonalInfo] = useState<Partial<UrlaPersonalInfo>>({});
-  const [employmentRecords, setEmploymentRecords] = useState<Partial<EmploymentHistory>[]>([{}]);
+  // Per-borrower section data, keyed by borrowerSequenceNumber (1 = primary, 2 = co-borrower)
+  const [borrowerData, setBorrowerData] = useState<Record<number, BorrowerSlice>>({ 1: emptySlice(), 2: emptySlice() });
+  const [activeSeq, setActiveSeq] = useState<number>(1);
+  const [hasCoBorrower, setHasCoBorrower] = useState<boolean>(false);
+  // Shared (primary-only) data
   const [otherIncomes, setOtherIncomes] = useState<Partial<OtherIncomeSource>[]>([]);
-  const [assets, setAssets] = useState<Partial<UrlaAsset>[]>([{}]);
-  const [liabilities, setLiabilities] = useState<Partial<UrlaLiability>[]>([{}]);
   const [propertyInfo, setPropertyInfo] = useState<Partial<UrlaPropertyInfo>>({});
 
+  const slice = borrowerData[activeSeq] ?? emptySlice();
+  const updateSlice = (patch: Partial<BorrowerSlice>) =>
+    setBorrowerData((prev) => ({ ...prev, [activeSeq]: { ...(prev[activeSeq] ?? emptySlice()), ...patch } }));
+
+  // Same-named accessors so the existing section JSX works unchanged across borrowers
+  const personalInfo = slice.personalInfo;
+  const setPersonalInfo = (v: Partial<UrlaPersonalInfo>) => updateSlice({ personalInfo: v });
+  const employmentRecords = slice.employmentRecords;
+  const setEmploymentRecords = (v: Partial<EmploymentHistory>[]) => updateSlice({ employmentRecords: v });
+  const assets = slice.assets;
+  const setAssets = (v: Partial<UrlaAsset>[]) => updateSlice({ assets: v });
+  const liabilities = slice.liabilities;
+  const setLiabilities = (v: Partial<UrlaLiability>[]) => updateSlice({ liabilities: v });
+  const declarations = slice.declarations;
+  const setDeclarations = (v: Partial<BorrowerDeclarations>) => updateSlice({ declarations: v });
+  const demographics = slice.demographics;
+  const setDemographics = (v: DemographicsState) => updateSlice({ demographics: v });
+
   useEffect(() => {
-    if (urlaData) {
-      setPersonalInfo(urlaData.personalInfo || {});
-      setEmploymentRecords(urlaData.employmentHistory?.length ? urlaData.employmentHistory : [{}]);
-      setOtherIncomes(urlaData.otherIncomeSources?.length ? urlaData.otherIncomeSources : []);
-      setAssets(urlaData.assets?.length ? urlaData.assets : [{}]);
-      setLiabilities(urlaData.liabilities?.length ? urlaData.liabilities : [{}]);
-      setPropertyInfo(urlaData.propertyInfo || {});
-    }
+    if (!urlaData) return;
+    const seqOf = (r: { borrowerSequenceNumber?: number | null }) => r.borrowerSequenceNumber ?? 1;
+
+    const buildSlice = (seq: number): BorrowerSlice => {
+      const pi = (urlaData.allPersonalInfo || []).find((p) => seqOf(p) === seq);
+      const emp = (urlaData.employmentHistory || []).filter((e) => seqOf(e) === seq);
+      const ast = (urlaData.assets || []).filter((a) => seqOf(a) === seq);
+      const lia = (urlaData.liabilities || []).filter((l) => seqOf(l) === seq);
+      const decl = (urlaData.allDeclarations || []).find((d) => seqOf(d) === seq);
+      const hmda = (urlaData.hmdaDemographics || []).find((h) => seqOf(h) === seq);
+      return {
+        personalInfo: pi || {},
+        employmentRecords: emp.length ? emp : [{}],
+        assets: ast.length ? ast : [{}],
+        liabilities: lia.length ? lia : [{}],
+        declarations: decl || {},
+        demographics: hmda ? hmdaToState(hmda) : emptyDemographics(),
+      };
+    };
+
+    setBorrowerData({ 1: buildSlice(1), 2: buildSlice(2) });
+    setOtherIncomes(urlaData.otherIncomeSources?.length ? urlaData.otherIncomeSources : []);
+    setPropertyInfo(urlaData.propertyInfo || {});
+
+    const hasCo =
+      (urlaData.allPersonalInfo || []).some((p) => seqOf(p) > 1) ||
+      (urlaData.employmentHistory || []).some((e) => seqOf(e) > 1) ||
+      (urlaData.assets || []).some((a) => seqOf(a) > 1) ||
+      (urlaData.liabilities || []).some((l) => seqOf(l) > 1) ||
+      (urlaData.allDeclarations || []).some((d) => seqOf(d) > 1) ||
+      (urlaData.hmdaDemographics || []).some((h) => seqOf(h) > 1);
+    if (hasCo) setHasCoBorrower(true);
   }, [urlaData, activeApplication?.id]);
 
   const saveMutation = useMutation({
@@ -138,23 +294,32 @@ export default function URLAForm() {
     },
   });
 
-  const handleSave = () => {
-    const cleanedEmployment = employmentRecords.filter(emp => emp.employerName || emp.positionTitle);
-    const cleanedAssets = assets.filter(asset => asset.accountType || asset.financialInstitution);
-    const cleanedLiabilities = liabilities.filter(liability => liability.liabilityType || liability.creditorName);
-    const cleanedOtherIncomes = otherIncomes.filter(income => income.incomeSource && income.monthlyAmount);
+  const buildSectionsPayload = (s: BorrowerSlice): SectionsPayload => ({
+    personalInfo: s.personalInfo,
+    employmentHistory: s.employmentRecords
+      .filter(emp => emp.employerName || emp.positionTitle)
+      .map(emp => ({ ...emp, employmentType: emp.employmentType || "current" })),
+    assets: s.assets.filter(asset => asset.accountType || asset.financialInstitution),
+    liabilities: s.liabilities.filter(liability => liability.liabilityType || liability.creditorName),
+    declarations: s.declarations,
+    demographics: demographicsToPayload(s.demographics),
+  });
 
-    saveMutation.mutate({
-      personalInfo,
-      employmentHistory: cleanedEmployment.map(emp => ({
-        ...emp,
-        employmentType: emp.employmentType || "current",
-      })),
-      assets: cleanedAssets,
-      liabilities: cleanedLiabilities,
+  const handleSave = () => {
+    const cleanedOtherIncomes = otherIncomes.filter(income => income.incomeSource && income.monthlyAmount);
+    const primary = buildSectionsPayload(borrowerData[1] ?? emptySlice());
+
+    const payload: UrlaSavePayload = {
+      ...primary,
       otherIncomeSources: cleanedOtherIncomes,
       propertyInfo,
-    });
+    };
+
+    if (hasCoBorrower) {
+      payload.coApplicants = [buildSectionsPayload(borrowerData[2] ?? emptySlice())];
+    }
+
+    saveMutation.mutate(payload);
   };
 
   if (authLoading || dashboardLoading || urlaLoading) {
@@ -204,8 +369,67 @@ export default function URLAForm() {
           </div>
 
           <div className="p-4 sm:p-6 lg:p-8">
+            <Card className="mb-6">
+              <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Editing for:</span>
+                  <Button
+                    variant={activeSeq === 1 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveSeq(1)}
+                    data-testid="button-borrower-primary"
+                  >
+                    Primary Borrower
+                  </Button>
+                  {hasCoBorrower && (
+                    <Button
+                      variant={activeSeq === 2 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActiveSeq(2)}
+                      data-testid="button-borrower-co"
+                    >
+                      Co-Borrower
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {!hasCoBorrower ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        setHasCoBorrower(true);
+                        setActiveSeq(2);
+                      }}
+                      data-testid="button-add-coborrower"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Co-Borrower
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        setBorrowerData((prev) => ({ ...prev, 2: emptySlice() }));
+                        setHasCoBorrower(false);
+                        setActiveSeq(1);
+                      }}
+                      data-testid="button-remove-coborrower"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Remove Co-Borrower
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             <Tabs defaultValue="borrower" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
                 <TabsTrigger value="borrower" className="gap-2" data-testid="tab-borrower">
                   <User className="h-4 w-4" />
                   <span className="hidden sm:inline">Borrower</span>
@@ -225,6 +449,14 @@ export default function URLAForm() {
                 <TabsTrigger value="property" className="gap-2" data-testid="tab-property">
                   <Home className="h-4 w-4" />
                   <span className="hidden sm:inline">Property</span>
+                </TabsTrigger>
+                <TabsTrigger value="declarations" className="gap-2" data-testid="tab-declarations">
+                  <ClipboardCheck className="h-4 w-4" />
+                  <span className="hidden sm:inline">Declarations</span>
+                </TabsTrigger>
+                <TabsTrigger value="demographics" className="gap-2" data-testid="tab-demographics">
+                  <Scale className="h-4 w-4" />
+                  <span className="hidden sm:inline">Demographics</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -571,7 +803,7 @@ export default function URLAForm() {
                             <Label>Employer or Business Name</Label>
                             <Input
                               placeholder="Employer Name"
-                              value={emp.employerName || (index === 0 ? app.employerName || "" : "")}
+                              value={emp.employerName || (index === 0 && activeSeq === 1 ? app.employerName || "" : "")}
                               onChange={(e) => {
                                 const updated = [...employmentRecords];
                                 updated[index] = { ...updated[index], employerName: e.target.value };
@@ -676,7 +908,7 @@ export default function URLAForm() {
                             <Input
                               type="number"
                               min="0"
-                              value={emp.yearsInLineOfWork ?? (index === 0 ? app.employmentYears || "" : "")}
+                              value={emp.yearsInLineOfWork ?? (index === 0 && activeSeq === 1 ? app.employmentYears || "" : "")}
                               onChange={(e) => {
                                 const updated = [...employmentRecords];
                                 updated[index] = { ...updated[index], yearsInLineOfWork: parseInt(e.target.value) || 0 };
@@ -688,7 +920,7 @@ export default function URLAForm() {
                           <div className="flex items-center gap-2 pt-6">
                             <Checkbox
                               id={`self-employed-${index}`}
-                              checked={emp.isSelfEmployed || app.employmentType === "self_employed"}
+                              checked={emp.isSelfEmployed || (activeSeq === 1 && app.employmentType === "self_employed")}
                               onCheckedChange={(checked) => {
                                 const updated = [...employmentRecords];
                                 updated[index] = { ...updated[index], isSelfEmployed: !!checked };
@@ -711,7 +943,7 @@ export default function URLAForm() {
                               <Input
                                 className="pl-7"
                                 placeholder="0.00"
-                                value={emp.baseIncome || (index === 0 ? (parseFloat(app.annualIncome || "0") / 12).toFixed(0) : "")}
+                                value={emp.baseIncome || (index === 0 && activeSeq === 1 ? (parseFloat(app.annualIncome || "0") / 12).toFixed(0) : "")}
                                 onChange={(e) => {
                                   const updated = [...employmentRecords];
                                   updated[index] = { ...updated[index], baseIncome: e.target.value };
@@ -1317,6 +1549,206 @@ export default function URLAForm() {
                             This is a manufactured home
                           </Label>
                         </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Section 5: Declarations */}
+              <TabsContent value="declarations" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ClipboardCheck className="h-5 w-5" />
+                      Declarations
+                    </CardTitle>
+                    <CardDescription>
+                      Answer the following questions about the property and your finances
+                      {activeSeq === 1 ? " (Primary Borrower)" : " (Co-Borrower)"}.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {DECLARATION_QUESTIONS.map((q) => {
+                      const current = declarations[q.key];
+                      const value = current === true ? "yes" : current === false ? "no" : "";
+                      return (
+                        <div
+                          key={q.key as string}
+                          className="flex flex-wrap items-center justify-between gap-4 rounded-md border p-3"
+                        >
+                          <Label className="flex-1 min-w-[200px] text-sm font-normal">{q.label}</Label>
+                          <Select
+                            value={value}
+                            onValueChange={(v) =>
+                              setDeclarations({ ...declarations, [q.key]: v === "yes" })
+                            }
+                          >
+                            <SelectTrigger className="w-28" data-testid={`select-declaration-${q.key as string}`}>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="yes">Yes</SelectItem>
+                              <SelectItem value="no">No</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Section 6: Demographic Information (HMDA) */}
+              <TabsContent value="demographics" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Scale className="h-5 w-5" />
+                      Demographic Information
+                    </CardTitle>
+                    <CardDescription>
+                      This information is requested by the federal government (HMDA) to monitor
+                      compliance with fair lending laws. You are not required to provide it
+                      {activeSeq === 1 ? " (Primary Borrower)" : " (Co-Borrower)"}.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Ethnicity</Label>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.ethnicityHispanicLatino}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, ethnicityHispanicLatino: !!c })}
+                            data-testid="checkbox-ethnicity-hispanic"
+                          />
+                          Hispanic or Latino
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.ethnicityNotHispanicLatino}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, ethnicityNotHispanicLatino: !!c })}
+                            data-testid="checkbox-ethnicity-not-hispanic"
+                          />
+                          Not Hispanic or Latino
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.ethnicityNotProvided}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, ethnicityNotProvided: !!c })}
+                            data-testid="checkbox-ethnicity-not-provided"
+                          />
+                          Prefer not to provide
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Race</Label>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.raceAmericanIndian}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, raceAmericanIndian: !!c })}
+                            data-testid="checkbox-race-american-indian"
+                          />
+                          American Indian or Alaska Native
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.raceAsian}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, raceAsian: !!c })}
+                            data-testid="checkbox-race-asian"
+                          />
+                          Asian
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.raceBlack}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, raceBlack: !!c })}
+                            data-testid="checkbox-race-black"
+                          />
+                          Black or African American
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.raceNativeHawaiian}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, raceNativeHawaiian: !!c })}
+                            data-testid="checkbox-race-native-hawaiian"
+                          />
+                          Native Hawaiian or Pacific Islander
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.raceWhite}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, raceWhite: !!c })}
+                            data-testid="checkbox-race-white"
+                          />
+                          White
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.raceNotProvided}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, raceNotProvided: !!c })}
+                            data-testid="checkbox-race-not-provided"
+                          />
+                          Prefer not to provide
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Sex</Label>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.sexFemale}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, sexFemale: !!c })}
+                            data-testid="checkbox-sex-female"
+                          />
+                          Female
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.sexMale}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, sexMale: !!c })}
+                            data-testid="checkbox-sex-male"
+                          />
+                          Male
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.sexNotProvided}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, sexNotProvided: !!c })}
+                            data-testid="checkbox-sex-not-provided"
+                          />
+                          Prefer not to provide
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Age</Label>
+                      <div className="flex flex-wrap items-center gap-4">
+                        <Input
+                          type="number"
+                          min="0"
+                          className="w-28"
+                          placeholder="Age"
+                          value={demographics.ageNotProvided ? "" : demographics.age}
+                          disabled={demographics.ageNotProvided}
+                          onChange={(e) => setDemographics({ ...demographics, age: e.target.value })}
+                          data-testid="input-demographics-age"
+                        />
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={demographics.ageNotProvided}
+                            onCheckedChange={(c) => setDemographics({ ...demographics, ageNotProvided: !!c, age: c ? "" : demographics.age })}
+                            data-testid="checkbox-age-not-provided"
+                          />
+                          Prefer not to provide
+                        </label>
                       </div>
                     </div>
                   </CardContent>

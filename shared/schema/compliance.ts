@@ -554,6 +554,7 @@ export const hmdaDemographics = pgTable("hmda_demographics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
   borrowerId: varchar("borrower_id").references(() => users.id).notNull(),
+  borrowerSequenceNumber: integer("borrower_sequence_number").default(1),
 
   ethnicityHispanicLatino: boolean("ethnicity_hispanic_latino"),
   ethnicityMexican: boolean("ethnicity_mexican").default(false),

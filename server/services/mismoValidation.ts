@@ -561,7 +561,10 @@ export async function validateMISMOCompleteness(applicationId: string): Promise<
   const borrowerProfile = await storage.getBorrowerProfileByUserId(application.userId);
 
   const hmdaRows = urlaData.hmdaDemographics || [];
-  const primaryHmda = hmdaRows.find(h => h.borrowerId === application.userId) || hmdaRows[0];
+  const primaryHmda =
+    hmdaRows.find(h => (h.borrowerSequenceNumber ?? 1) === 1)
+    || hmdaRows.find(h => h.borrowerId === application.userId)
+    || hmdaRows[0];
 
   const personalInfoScore = scorePersonalInfo(urlaData.personalInfo);
   const employmentScore = scoreEmployment(urlaData.employmentHistory.filter(e => (e.borrowerSequenceNumber ?? 1) === 1));
@@ -606,13 +609,25 @@ export async function validateMISMOCompleteness(applicationId: string): Promise<
   const coLiabilitySeqs = new Set(
     urlaData.liabilities.map(l => l.borrowerSequenceNumber ?? 1).filter(seq => seq > 1)
   );
-  const coHmda = hmdaRows.filter(h => h.borrowerId !== application.userId);
-  const coHmdaSeqs = new Set(coHmda.map((_, i) => i + 2));
+  const coHmda = hmdaRows.filter(h => (h.borrowerSequenceNumber ?? 1) > 1);
+  const coHmdaSeqs = new Set(coHmda.map(h => h.borrowerSequenceNumber ?? 1));
+  const coPersonalInfoSeqs = new Set(
+    (urlaData.allPersonalInfo || [])
+      .map(p => p.borrowerSequenceNumber ?? 1)
+      .filter(seq => seq > 1)
+  );
+  const coDeclarationSeqs = new Set(
+    (urlaData.allDeclarations || [])
+      .map(d => d.borrowerSequenceNumber ?? 1)
+      .filter(seq => seq > 1)
+  );
 
   const coSequences = new Set<number>([
+    ...Array.from(coPersonalInfoSeqs),
     ...Array.from(coEmploymentSeqs),
     ...Array.from(coAssetSeqs),
     ...Array.from(coLiabilitySeqs),
+    ...Array.from(coDeclarationSeqs),
     ...Array.from(coHmdaSeqs),
   ]);
 
@@ -620,11 +635,15 @@ export async function validateMISMOCompleteness(applicationId: string): Promise<
     const coEmployment = urlaData.employmentHistory.filter(e => (e.borrowerSequenceNumber ?? 1) === seq);
     const coAssets = urlaData.assets.filter(a => (a.borrowerSequenceNumber ?? 1) === seq);
     const coLiabilities = urlaData.liabilities.filter(l => (l.borrowerSequenceNumber ?? 1) === seq);
-    const coDemographic = coHmda[seq - 2];
+    const coDemographic = coHmda.find(h => (h.borrowerSequenceNumber ?? 1) === seq);
+    const coPersonal = (urlaData.allPersonalInfo || []).find(p => (p.borrowerSequenceNumber ?? 1) === seq);
+    const coName = coPersonal
+      ? [coPersonal.firstName, coPersonal.lastName].filter(Boolean).join(" ").trim() || null
+      : null;
 
     coApplicants.push({
       borrowerSequenceNumber: seq,
-      name: null,
+      name: coName,
       sections: [
         scoreEmployment(coEmployment),
         scoreAssets(coAssets),

@@ -607,7 +607,7 @@ export function registerBorrowerRoutes(
     try {
       const user = req.user as User;
       const { applicationId } = req.params;
-      const { personalInfo, employmentHistory, otherIncomeSources, assets, liabilities, propertyInfo } = req.body;
+      const { personalInfo, employmentHistory, otherIncomeSources, assets, liabilities, propertyInfo, declarations, demographics, coApplicants } = req.body;
 
       // Verify the requesting user owns (or has staff access to) this application
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
@@ -615,94 +615,169 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
 
-      const results: any = {};
+      const hasContent = (obj: any) =>
+        obj && typeof obj === "object" &&
+        Object.keys(obj).some(key => obj[key] !== undefined && obj[key] !== "" && obj[key] !== null);
 
-      // Only update personal info if provided with actual content
-      if (personalInfo && Object.keys(personalInfo).some(key => personalInfo[key] !== undefined && personalInfo[key] !== "")) {
-        results.personalInfo = await storage.upsertUrlaPersonalInfo({ ...personalInfo, applicationId });
+      const demographicsHasContent = (d: any) =>
+        d && typeof d === "object" && (
+          d.ethnicityHispanicLatino || d.ethnicityNotHispanicLatino || d.ethnicityNotProvided ||
+          d.raceAmericanIndian || d.raceAsian || d.raceBlack || d.raceNativeHawaiian || d.raceWhite || d.raceNotProvided ||
+          d.sexFemale || d.sexMale || d.sexNotProvided ||
+          d.ageNotProvided || (d.age !== null && d.age !== undefined && d.age !== "")
+        );
+
+      const collectionMethod = isStaffRole(user.role) ? "loan_officer" : "borrower";
+
+      // Writes one borrower's URLA sections, scoped to a borrowerSequenceNumber.
+      // Returns false if any referenced child record fails the ownership check.
+      const writeBorrowerSections = async (opts: {
+        seq: number;
+        isPrimary: boolean;
+        personalInfo?: any;
+        employmentHistory?: any[];
+        assets?: any[];
+        liabilities?: any[];
+        declarations?: any;
+        demographics?: any;
+      }): Promise<{ ok: boolean; results: any }> => {
+        const { seq, isPrimary } = opts;
+        const results: any = {};
+
+        if (hasContent(opts.personalInfo)) {
+          results.personalInfo = await storage.upsertUrlaPersonalInfo({
+            ...opts.personalInfo,
+            applicationId,
+            borrowerSequenceNumber: seq,
+            isPrimaryBorrower: isPrimary,
+          });
+        }
+
+        if (Array.isArray(opts.employmentHistory) && opts.employmentHistory.length > 0) {
+          results.employmentHistory = [];
+          for (const emp of opts.employmentHistory) {
+            if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
+            if (emp.id) {
+              const existing = await storage.getEmploymentHistoryById(emp.id);
+              if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
+              const updated = await storage.updateEmploymentHistory(emp.id, { ...emp, borrowerSequenceNumber: seq });
+              if (updated) results.employmentHistory.push(updated);
+            } else {
+              const created = await storage.createEmploymentHistory({
+                ...emp,
+                applicationId,
+                borrowerSequenceNumber: seq,
+                employmentType: emp.employmentType || "current",
+              });
+              results.employmentHistory.push(created);
+            }
+          }
+        }
+
+        if (Array.isArray(opts.assets) && opts.assets.length > 0) {
+          results.assets = [];
+          for (const asset of opts.assets) {
+            if (!asset.accountType && !asset.financialInstitution) continue;
+            if (asset.id) {
+              const existing = await storage.getUrlaAssetById(asset.id);
+              if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
+              const updated = await storage.updateUrlaAsset(asset.id, { ...asset, borrowerSequenceNumber: seq });
+              if (updated) results.assets.push(updated);
+            } else if (asset.accountType) {
+              const created = await storage.createUrlaAsset({ ...asset, applicationId, borrowerSequenceNumber: seq });
+              results.assets.push(created);
+            }
+          }
+        }
+
+        if (Array.isArray(opts.liabilities) && opts.liabilities.length > 0) {
+          results.liabilities = [];
+          for (const liability of opts.liabilities) {
+            if (!liability.liabilityType && !liability.creditorName) continue;
+            if (liability.id) {
+              const existing = await storage.getUrlaLiabilityById(liability.id);
+              if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
+              const updated = await storage.updateUrlaLiability(liability.id, { ...liability, borrowerSequenceNumber: seq });
+              if (updated) results.liabilities.push(updated);
+            } else if (liability.liabilityType) {
+              const created = await storage.createUrlaLiability({ ...liability, applicationId, borrowerSequenceNumber: seq });
+              results.liabilities.push(created);
+            }
+          }
+        }
+
+        if (hasContent(opts.declarations)) {
+          results.declarations = await storage.upsertBorrowerDeclarations({
+            ...opts.declarations,
+            applicationId,
+            borrowerSequenceNumber: seq,
+          });
+        }
+
+        if (demographicsHasContent(opts.demographics)) {
+          results.demographics = await storage.upsertHmdaDemographics({
+            ...opts.demographics,
+            applicationId,
+            borrowerId: application.userId,
+            borrowerSequenceNumber: seq,
+            collectionMethod,
+          });
+        }
+
+        return { ok: true, results };
+      };
+
+      // Primary borrower (sequence 1)
+      const primary = await writeBorrowerSections({
+        seq: 1,
+        isPrimary: true,
+        personalInfo,
+        employmentHistory,
+        assets,
+        liabilities,
+        declarations,
+        demographics,
+      });
+      if (!primary.ok) {
+        return res.status(403).json({ error: "Access denied" });
       }
+      const results: any = { ...primary.results };
 
-      // Only update property info if provided with actual content
-      if (propertyInfo && Object.keys(propertyInfo).some(key => propertyInfo[key] !== undefined && propertyInfo[key] !== "")) {
+      // Property info (shared subject property)
+      if (hasContent(propertyInfo)) {
         results.propertyInfo = await storage.upsertUrlaPropertyInfo({ ...propertyInfo, applicationId });
       }
 
-      // Handle employment records - update existing, create new
-      if (employmentHistory && Array.isArray(employmentHistory) && employmentHistory.length > 0) {
-        results.employmentHistory = [];
-        for (const emp of employmentHistory) {
-          // Skip empty records
-          if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
-          
-          if (emp.id) {
-            // Verify the child record belongs to the authorized application before updating
-            const existing = await storage.getEmploymentHistoryById(emp.id);
-            if (!existing || existing.applicationId !== applicationId) {
-              return res.status(403).json({ error: "Access denied" });
-            }
-            const updated = await storage.updateEmploymentHistory(emp.id, emp);
-            if (updated) results.employmentHistory.push(updated);
-          } else {
-            const created = await storage.createEmploymentHistory({ ...emp, applicationId, employmentType: emp.employmentType || "current" });
-            results.employmentHistory.push(created);
-          }
-        }
-      }
-
-      // Handle assets - update existing, create new
-      if (assets && Array.isArray(assets) && assets.length > 0) {
-        results.assets = [];
-        for (const asset of assets) {
-          // Skip empty records
-          if (!asset.accountType && !asset.financialInstitution) continue;
-          
-          if (asset.id) {
-            // Verify the child record belongs to the authorized application before updating
-            const existing = await storage.getUrlaAssetById(asset.id);
-            if (!existing || existing.applicationId !== applicationId) {
-              return res.status(403).json({ error: "Access denied" });
-            }
-            const updated = await storage.updateUrlaAsset(asset.id, asset);
-            if (updated) results.assets.push(updated);
-          } else if (asset.accountType) {
-            const created = await storage.createUrlaAsset({ ...asset, applicationId });
-            results.assets.push(created);
-          }
-        }
-      }
-
-      // Handle liabilities - update existing, create new
-      if (liabilities && Array.isArray(liabilities) && liabilities.length > 0) {
-        results.liabilities = [];
-        for (const liability of liabilities) {
-          // Skip empty records
-          if (!liability.liabilityType && !liability.creditorName) continue;
-          
-          if (liability.id) {
-            // Verify the child record belongs to the authorized application before updating
-            const existing = await storage.getUrlaLiabilityById(liability.id);
-            if (!existing || existing.applicationId !== applicationId) {
-              return res.status(403).json({ error: "Access denied" });
-            }
-            const updated = await storage.updateUrlaLiability(liability.id, liability);
-            if (updated) results.liabilities.push(updated);
-          } else if (liability.liabilityType) {
-            const created = await storage.createUrlaLiability({ ...liability, applicationId });
-            results.liabilities.push(created);
-          }
-        }
-      }
-
-      // Handle other income sources - only create new ones (existing ones are preserved)
+      // Other income sources (primary only) - only create new ones
       if (otherIncomeSources && Array.isArray(otherIncomeSources) && otherIncomeSources.length > 0) {
         results.otherIncomeSources = [];
         for (const income of otherIncomeSources) {
-          // Skip empty or already-saved records
           if (!income.incomeSource || !income.monthlyAmount) continue;
-          if (income.id) continue; // Skip existing records, they're already saved
-          
+          if (income.id) continue;
           const created = await storage.createOtherIncomeSource({ ...income, applicationId });
           results.otherIncomeSources.push(created);
+        }
+      }
+
+      // Co-applicants (sequence 2, 3, ...)
+      if (Array.isArray(coApplicants) && coApplicants.length > 0) {
+        results.coApplicants = [];
+        for (let i = 0; i < coApplicants.length; i++) {
+          const co = coApplicants[i] || {};
+          const coResult = await writeBorrowerSections({
+            seq: i + 2,
+            isPrimary: false,
+            personalInfo: co.personalInfo,
+            employmentHistory: co.employmentHistory,
+            assets: co.assets,
+            liabilities: co.liabilities,
+            declarations: co.declarations,
+            demographics: co.demographics,
+          });
+          if (!coResult.ok) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+          results.coApplicants.push(coResult.results);
         }
       }
 

@@ -259,6 +259,7 @@ import {
   type BorrowerProfile,
   hmdaDemographics,
   type HmdaDemographics,
+  type InsertHmdaDemographics,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -338,7 +339,8 @@ export interface IStorage {
   }>;
 
   // URLA Data
-  getUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo | undefined>;
+  getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber?: number): Promise<UrlaPersonalInfo | undefined>;
+  getAllUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo[]>;
   upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo>;
   
   getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]>;
@@ -368,23 +370,28 @@ export interface IStorage {
   upsertUrlaPropertyInfo(data: InsertUrlaPropertyInfo): Promise<UrlaPropertyInfo>;
   
   // Borrower Declarations
-  getBorrowerDeclarations(applicationId: string): Promise<BorrowerDeclarations | undefined>;
+  getBorrowerDeclarations(applicationId: string, borrowerSequenceNumber?: number): Promise<BorrowerDeclarations | undefined>;
+  getAllBorrowerDeclarations(applicationId: string): Promise<BorrowerDeclarations[]>;
   upsertBorrowerDeclarations(data: InsertBorrowerDeclarations): Promise<BorrowerDeclarations>;
   
   getCompleteUrlaData(applicationId: string): Promise<{
     personalInfo: UrlaPersonalInfo | undefined;
+    allPersonalInfo: UrlaPersonalInfo[];
     employmentHistory: EmploymentHistory[];
     otherIncomeSources: OtherIncomeSource[];
     assets: UrlaAsset[];
     liabilities: UrlaLiability[];
     propertyInfo: UrlaPropertyInfo | undefined;
     declarations: BorrowerDeclarations | undefined;
+    allDeclarations: BorrowerDeclarations[];
     realEstateOwned: RealEstateOwned[];
     hmdaDemographics: HmdaDemographics[];
   }>;
 
   getRealEstateOwnedByApplication(applicationId: string): Promise<RealEstateOwned[]>;
   getHmdaDemographicsByApplication(applicationId: string): Promise<HmdaDemographics[]>;
+  getHmdaDemographicsBySequence(applicationId: string, borrowerSequenceNumber?: number): Promise<HmdaDemographics | undefined>;
+  upsertHmdaDemographics(data: InsertHmdaDemographics): Promise<HmdaDemographics>;
   getBorrowerProfileByUserId(userId: string): Promise<BorrowerProfile | undefined>;
 
   // MISMO Export Data
@@ -1281,29 +1288,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   // URLA Personal Info
-  async getUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo | undefined> {
+  async getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber: number = 1): Promise<UrlaPersonalInfo | undefined> {
     const [info] = await db
       .select()
       .from(urlaPersonalInfo)
-      .where(eq(urlaPersonalInfo.applicationId, applicationId))
+      .where(and(
+        eq(urlaPersonalInfo.applicationId, applicationId),
+        eq(urlaPersonalInfo.borrowerSequenceNumber, borrowerSequenceNumber),
+      ))
       .limit(1);
     return info;
   }
 
+  async getAllUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo[]> {
+    return await db
+      .select()
+      .from(urlaPersonalInfo)
+      .where(eq(urlaPersonalInfo.applicationId, applicationId))
+      .orderBy(asc(urlaPersonalInfo.borrowerSequenceNumber));
+  }
+
   async upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo> {
-    const existing = await this.getUrlaPersonalInfo(data.applicationId);
+    const seq = (data as any).borrowerSequenceNumber ?? 1;
+    const existing = await this.getUrlaPersonalInfo(data.applicationId, seq);
     // Remove any timestamp fields that might have been serialized as strings from frontend
     const { createdAt, updatedAt, id, ...cleanData } = data as any;
     
     if (existing) {
       const [updated] = await db
         .update(urlaPersonalInfo)
-        .set({ ...cleanData, updatedAt: new Date() })
-        .where(eq(urlaPersonalInfo.applicationId, data.applicationId))
+        .set({ ...cleanData, borrowerSequenceNumber: seq, updatedAt: new Date() })
+        .where(and(
+          eq(urlaPersonalInfo.applicationId, data.applicationId),
+          eq(urlaPersonalInfo.borrowerSequenceNumber, seq),
+        ))
         .returning();
       return updated;
     }
-    const [created] = await db.insert(urlaPersonalInfo).values(cleanData).returning();
+    const [created] = await db.insert(urlaPersonalInfo).values({ ...cleanData, borrowerSequenceNumber: seq }).returning();
     return created;
   }
 
@@ -1476,53 +1498,72 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Borrower Declarations
-  async getBorrowerDeclarations(applicationId: string): Promise<BorrowerDeclarations | undefined> {
+  async getBorrowerDeclarations(applicationId: string, borrowerSequenceNumber: number = 1): Promise<BorrowerDeclarations | undefined> {
     const [declarations] = await db
       .select()
       .from(borrowerDeclarations)
-      .where(eq(borrowerDeclarations.applicationId, applicationId))
+      .where(and(
+        eq(borrowerDeclarations.applicationId, applicationId),
+        eq(borrowerDeclarations.borrowerSequenceNumber, borrowerSequenceNumber),
+      ))
       .limit(1);
     return declarations;
   }
 
+  async getAllBorrowerDeclarations(applicationId: string): Promise<BorrowerDeclarations[]> {
+    return await db
+      .select()
+      .from(borrowerDeclarations)
+      .where(eq(borrowerDeclarations.applicationId, applicationId))
+      .orderBy(asc(borrowerDeclarations.borrowerSequenceNumber));
+  }
+
   async upsertBorrowerDeclarations(data: InsertBorrowerDeclarations): Promise<BorrowerDeclarations> {
-    const existing = await this.getBorrowerDeclarations(data.applicationId);
+    const seq = (data as any).borrowerSequenceNumber ?? 1;
+    const existing = await this.getBorrowerDeclarations(data.applicationId, seq);
     const { createdAt, updatedAt, id, ...cleanData } = data as any;
     
     if (existing) {
       const [updated] = await db
         .update(borrowerDeclarations)
-        .set({ ...cleanData, updatedAt: new Date() })
-        .where(eq(borrowerDeclarations.applicationId, data.applicationId))
+        .set({ ...cleanData, borrowerSequenceNumber: seq, updatedAt: new Date() })
+        .where(and(
+          eq(borrowerDeclarations.applicationId, data.applicationId),
+          eq(borrowerDeclarations.borrowerSequenceNumber, seq),
+        ))
         .returning();
       return updated;
     }
-    const [created] = await db.insert(borrowerDeclarations).values(cleanData).returning();
+    const [created] = await db.insert(borrowerDeclarations).values({ ...cleanData, borrowerSequenceNumber: seq }).returning();
     return created;
   }
 
   // Get Complete URLA Data
   async getCompleteUrlaData(applicationId: string) {
-    const [personalInfo, employment, income, assets, liabilities, propertyInfo, declarations, reo, hmda] = await Promise.all([
+    const [personalInfo, allPersonalInfo, employment, income, assets, liabilities, propertyInfo, declarations, allDeclarations, reo, hmda] = await Promise.all([
       this.getUrlaPersonalInfo(applicationId),
+      this.getAllUrlaPersonalInfo(applicationId),
       this.getEmploymentHistory(applicationId),
       this.getOtherIncomeSources(applicationId),
       this.getUrlaAssets(applicationId),
       this.getUrlaLiabilities(applicationId),
       this.getUrlaPropertyInfo(applicationId),
       this.getBorrowerDeclarations(applicationId),
+      this.getAllBorrowerDeclarations(applicationId),
       this.getRealEstateOwnedByApplication(applicationId),
       this.getHmdaDemographicsByApplication(applicationId),
     ]);
 
     return {
       personalInfo,
+      allPersonalInfo,
       employmentHistory: employment,
       otherIncomeSources: income,
       assets,
       liabilities,
       propertyInfo,
       declarations,
+      allDeclarations,
       realEstateOwned: reo,
       hmdaDemographics: hmda,
     };
@@ -1541,6 +1582,38 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(hmdaDemographics)
       .where(eq(hmdaDemographics.applicationId, applicationId));
+  }
+
+  async getHmdaDemographicsBySequence(applicationId: string, borrowerSequenceNumber: number = 1): Promise<HmdaDemographics | undefined> {
+    const [record] = await db
+      .select()
+      .from(hmdaDemographics)
+      .where(and(
+        eq(hmdaDemographics.applicationId, applicationId),
+        eq(hmdaDemographics.borrowerSequenceNumber, borrowerSequenceNumber),
+      ))
+      .limit(1);
+    return record;
+  }
+
+  async upsertHmdaDemographics(data: InsertHmdaDemographics): Promise<HmdaDemographics> {
+    const seq = (data as any).borrowerSequenceNumber ?? 1;
+    const existing = await this.getHmdaDemographicsBySequence(data.applicationId, seq);
+    const { createdAt, updatedAt, id, ...cleanData } = data as any;
+
+    if (existing) {
+      const [updated] = await db
+        .update(hmdaDemographics)
+        .set({ ...cleanData, borrowerSequenceNumber: seq, updatedAt: new Date() })
+        .where(and(
+          eq(hmdaDemographics.applicationId, data.applicationId),
+          eq(hmdaDemographics.borrowerSequenceNumber, seq),
+        ))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(hmdaDemographics).values({ ...cleanData, borrowerSequenceNumber: seq }).returning();
+    return created;
   }
 
   async getBorrowerProfileByUserId(userId: string): Promise<BorrowerProfile | undefined> {
