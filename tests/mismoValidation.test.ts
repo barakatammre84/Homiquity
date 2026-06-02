@@ -755,3 +755,242 @@ describe("conditional real-estate-owned detail requirements (section 2c)", () =>
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// Co-applicant scoring (borrowerSequenceNumber > 1) and the
+// coApplicantLimitation note.
+// ---------------------------------------------------------------------------
+function coEmployment(overrides: Record<string, any> = {}) {
+  return {
+    employmentType: "current",
+    employerName: "Co Corp",
+    positionTitle: "Manager",
+    startDate: "2017-01-01", // > 2 years => no prior employer required
+    monthlyIncomeOrLoss: "7000",
+    employerPhone: "555-0200",
+    employerStreet: "2 Commerce Blvd",
+    isSelfEmployed: false,
+    borrowerSequenceNumber: 2,
+    ...overrides,
+  };
+}
+
+function coAsset(overrides: Record<string, any> = {}) {
+  return {
+    accountType: "savings",
+    financialInstitution: "Co Bank",
+    cashOrMarketValue: "30000",
+    borrowerSequenceNumber: 2,
+    ...overrides,
+  };
+}
+
+function coLiability(overrides: Record<string, any> = {}) {
+  return {
+    liabilityType: "auto_loan",
+    creditorName: "Auto Co",
+    monthlyPayment: "300",
+    unpaidBalance: "10000",
+    borrowerSequenceNumber: 2,
+    ...overrides,
+  };
+}
+
+function coDemographic(overrides: Record<string, any> = {}) {
+  return {
+    borrowerId: "co-user-2",
+    ethnicityNotProvided: true,
+    raceNotProvided: true,
+    sexNotProvided: true,
+    collectionMethod: "visual",
+    ...overrides,
+  };
+}
+
+// Builds a URLA fixture that includes a complete primary borrower plus an
+// optional set of co-applicant (seq > 1) rows, layered onto the baseline.
+function urlaWithCoApplicant(co: {
+  employment?: any[];
+  assets?: any[];
+  liabilities?: any[];
+  hmda?: any[];
+  personalInfo?: Record<string, any>;
+} = {}) {
+  const base = baseUrla();
+  return baseUrla({
+    personalInfo: completePersonalInfo(co.personalInfo ?? {}),
+    employmentHistory: [...base.employmentHistory, ...(co.employment ?? [coEmployment()])],
+    assets: [...base.assets, ...(co.assets ?? [coAsset()])],
+    liabilities: [...base.liabilities, ...(co.liabilities ?? [coLiability()])],
+    hmdaDemographics: [...base.hmdaDemographics, ...(co.hmda ?? [coDemographic()])],
+  });
+}
+
+describe("co-applicant scoring (borrowerSequenceNumber > 1)", () => {
+  it("creates a coApplicants entry with its own section scores", async () => {
+    setFixtures({ urla: urlaWithCoApplicant() });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(result.coApplicants.length).toBe(1);
+    const co = result.coApplicants[0];
+    expect(co.borrowerSequenceNumber).toBe(2);
+    // Independently scored sections: employment, assets, liabilities, demographics.
+    expect(co.sections.map((s: any) => s.sectionNumber)).toEqual([
+      "1b-1e",
+      "2a",
+      "2b",
+      "7",
+    ]);
+    // No required fields are missing in any co-applicant section.
+    co.sections.forEach((s: any) => {
+      expect(s.missingFields).toEqual([]);
+      expect(s.completeness).toBeGreaterThanOrEqual(90);
+    });
+    // Assets, liabilities, and demographics have no optional gaps => 100.
+    expect(
+      co.sections.find((s: any) => s.sectionNumber === "2a").completeness
+    ).toBe(100);
+  });
+
+  it("scores the co-applicant's sections independently of the primary borrower", async () => {
+    // Primary borrower stays complete; only the co-applicant employment is broken.
+    setFixtures({
+      urla: urlaWithCoApplicant({
+        employment: [coEmployment({ employerName: null, positionTitle: null })],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+
+    // Primary employment is untouched and complete.
+    const primaryEmp = sectionByNumber(result, "1b-1e");
+    expect(primaryEmp.missingFields).toEqual([]);
+
+    // The co-applicant's employment section reflects the missing fields.
+    const coEmp = result.coApplicants[0].sections.find(
+      (s: any) => s.sectionNumber === "1b-1e"
+    );
+    expect(coEmp.missingFields).toEqual(
+      expect.arrayContaining(["Employer Name", "Position/Title"])
+    );
+    expect(coEmp.completeness).toBeLessThan(100);
+  });
+
+  it("detects a co-applicant from any single seq>1 row type (assets only)", async () => {
+    const base = baseUrla();
+    setFixtures({
+      urla: baseUrla({
+        assets: [...base.assets, coAsset()],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(result.coApplicants.length).toBe(1);
+    expect(result.coApplicants[0].borrowerSequenceNumber).toBe(2);
+  });
+
+  it("scores multiple co-applicants, sorted by sequence number", async () => {
+    const base = baseUrla();
+    setFixtures({
+      urla: baseUrla({
+        employmentHistory: [
+          ...base.employmentHistory,
+          coEmployment({ borrowerSequenceNumber: 3 }),
+          coEmployment({ borrowerSequenceNumber: 2 }),
+        ],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(result.coApplicants.map((c: any) => c.borrowerSequenceNumber)).toEqual([
+      2, 3,
+    ]);
+  });
+});
+
+describe("co-applicant missing fields surface into criticalErrors", () => {
+  it("prefixes co-applicant errors with 'Co-applicant #N <section>'", async () => {
+    setFixtures({
+      urla: urlaWithCoApplicant({
+        employment: [coEmployment({ employerName: null })],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(result.criticalErrors).toContain(
+      "Co-applicant #2 Employment & Income: Employer Name is required"
+    );
+  });
+
+  it("does not emit co-applicant errors when the co-applicant is complete", async () => {
+    setFixtures({ urla: urlaWithCoApplicant() });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(
+      result.criticalErrors.filter((e: string) => e.startsWith("Co-applicant #"))
+    ).toEqual([]);
+  });
+
+  it("uses the co-applicant's own sequence number in the prefix", async () => {
+    const base = baseUrla();
+    setFixtures({
+      urla: baseUrla({
+        assets: [
+          ...base.assets,
+          coAsset({ borrowerSequenceNumber: 3, accountType: null }),
+        ],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+
+    expect(result.criticalErrors).toContain(
+      "Co-applicant #3 Assets & Accounts: Account Type is required"
+    );
+  });
+});
+
+describe("coApplicantLimitation note", () => {
+  it("is null when no co-borrower is declared and no co-applicant rows exist", async () => {
+    setFixtures();
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.coApplicantLimitation).toBeNull();
+  });
+
+  it("is set when profile.hasCoBorrower is true but no co-applicant rows exist", async () => {
+    setFixtures({ profile: { hasCoBorrower: true } });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.coApplicantLimitation).not.toBeNull();
+    expect(result.coApplicantLimitation).toMatch(/co-borrower is indicated/i);
+  });
+
+  it("is set when personalInfo.coBorrowerNames is present but no co-applicant rows exist", async () => {
+    setFixtures({
+      urla: baseUrla({
+        personalInfo: completePersonalInfo({ coBorrowerNames: "John Co-Borrower" }),
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.coApplicantLimitation).not.toBeNull();
+  });
+
+  it("is set when personalInfo.totalBorrowers > 1 but no co-applicant rows exist", async () => {
+    setFixtures({
+      urla: baseUrla({
+        personalInfo: completePersonalInfo({ totalBorrowers: 2 }),
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.coApplicantLimitation).not.toBeNull();
+  });
+
+  it("stays null when a co-borrower is declared AND co-applicant rows exist", async () => {
+    setFixtures({
+      profile: { hasCoBorrower: true },
+      urla: urlaWithCoApplicant({
+        personalInfo: { totalBorrowers: 2, coBorrowerNames: "John Co-Borrower" },
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.coApplicants.length).toBe(1);
+    expect(result.coApplicantLimitation).toBeNull();
+  });
+});
