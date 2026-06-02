@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
-import { isStaffRole, type User } from "@shared/schema";
+import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
 import { z } from "zod";
 import * as creditService from "../services/creditService";
 
@@ -178,16 +178,13 @@ export function registerComplianceRoutes(
     try {
       const { applicationId } = req.params;
       const userId = req.user!.id;
-      const userRole = req.user?.role;
-      const isStaff = isStaffRole(userRole || "");
+      const userRole = req.user?.role || "";
 
-      // Verify ownership or staff access
-      const application = await storage.getLoanApplication(applicationId);
+      // Use getLoanApplicationWithAccess so broker/lender are validated against
+      // deal-team membership rather than receiving blanket staff access.
+      const application = await storage.getLoanApplicationWithAccess(applicationId, userId, userRole);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      if (application.userId !== userId && !isStaff) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const verifications = await storage.getVerificationsByApplication(applicationId);
@@ -211,15 +208,33 @@ export function registerComplianceRoutes(
       }
 
       const userId = req.user!.id;
-      const userRole = req.user?.role;
-      const isStaff = isStaffRole(userRole || "");
+      const userRole = req.user?.role || "";
+      const isInternalStaff = isInternalStaffRole(userRole);
+      const isOwner = verification.userId === userId;
 
-      if (verification.userId !== userId && !isStaff) {
-        return res.status(403).json({ error: "Unauthorized" });
+      if (!isOwner && !isInternalStaff) {
+        // External partner (broker/lender) must be a deal-team member on the
+        // application linked to this verification.
+        if (userRole !== "broker" && userRole !== "lender") {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+        if (!verification.applicationId) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+        const assignedApp = await storage.getLoanApplicationWithAccess(
+          verification.applicationId, userId, userRole
+        );
+        if (!assignedApp) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
       }
 
-      // Don't expose sensitive data like access token to client
-      const { plaidAccessToken, ...safeVerification } = verification;
+      // Strip plaidAccessToken (bearer credential) always.
+      // rawResponse can contain raw Plaid identity payloads; restrict to internal staff.
+      const { plaidAccessToken, rawResponse, ...baseVerification } = verification;
+      const safeVerification = isInternalStaff
+        ? { ...baseVerification, rawResponse }
+        : baseVerification;
       res.json(safeVerification);
     } catch (error) {
       console.error("Get verification error:", error);
@@ -319,13 +334,9 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/credit/consent", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      
-      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -398,8 +409,23 @@ export function registerComplianceRoutes(
         return res.status(404).json({ error: "Consent not found" });
       }
 
-      if (consent.userId !== user.id && !isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Access denied" });
+      const isOwner = consent.userId === user.id;
+      if (!isOwner) {
+        // Internal staff may revoke consent on behalf of a borrower; external
+        // partner roles (broker/lender) must be deal-team members on the
+        // consent's linked application.
+        if (isInternalStaffRole(user.role)) {
+          // permitted
+        } else if ((user.role === "broker" || user.role === "lender") && consent.applicationId) {
+          const assignedApp = await storage.getLoanApplicationWithAccess(
+            consent.applicationId, user.id, user.role
+          );
+          if (!assignedApp) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+        } else {
+          return res.status(403).json({ error: "Access denied" });
+        }
       }
 
       await creditService.revokeConsent(
@@ -479,8 +505,8 @@ export function registerComplianceRoutes(
     }
   });
 
-  // Request credit pull (staff only)
-  app.post("/api/loan-applications/:id/credit/pull", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  // Request credit pull (internal staff only — broker/lender excluded)
+  app.post("/api/loan-applications/:id/credit/pull", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const user = req.user as User;
       
@@ -526,13 +552,9 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/credit/pulls", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      
-      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -548,13 +570,9 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/credit/latest", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      
-      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -623,12 +641,15 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/retention-status", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
+      // Use getLoanApplicationWithAccess so broker/lender are validated against
+      // deal-team membership; non-staff (borrowers) are blocked entirely since
+      // retention status is an operational metric, not a borrower-facing resource.
       if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
+        return res.status(403).json({ error: "Access denied" });
       }
       const status = await creditService.getApplicationRetentionStatus(req.params.id);
       res.json(status);
@@ -687,13 +708,13 @@ export function registerComplianceRoutes(
     creditScoreSource: z.enum(["experian", "equifax", "transunion"]).optional(),
   });
 
-  // Generate adverse action notice (staff only)
+  // Generate adverse action notice (internal staff only — broker/lender excluded)
   app.post("/api/loan-applications/:id/credit/adverse-action", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
       
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff access required" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff access required" });
       }
       
       const application = await storage.getLoanApplication(req.params.id);
@@ -740,13 +761,9 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/credit/adverse-actions", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      
-      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       
@@ -782,7 +799,7 @@ export function registerComplianceRoutes(
     }
   });
 
-  // Get credit audit log for an application (staff only)
+  // Get credit audit log for an application (internal staff only)
   app.get("/api/loan-applications/:id/credit/audit-log", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
@@ -791,9 +808,10 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Staff access required" });
       }
       
-      const application = await storage.getLoanApplication(req.params.id);
+      // Use getLoanApplicationWithAccess: broker/lender must be deal-team members.
+      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
+        return res.status(403).json({ error: "Access denied" });
       }
       
       const limit = parseInt(req.query.limit as string) || 100;
@@ -813,9 +831,9 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Staff access required" });
       }
       
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
+        return res.status(403).json({ error: "Access denied" });
       }
       
       const result = await creditService.verifyAuditLogIntegrity(req.params.id);
@@ -834,9 +852,9 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Staff access required" });
       }
       
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
+        return res.status(403).json({ error: "Access denied" });
       }
       
       const format = req.query.format as string || "json";
@@ -860,13 +878,9 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/credit/summary", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      
-      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       

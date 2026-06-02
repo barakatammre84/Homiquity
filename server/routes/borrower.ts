@@ -1925,11 +1925,8 @@ export function registerBorrowerRoutes(
       const { applicationId } = req.params;
       const user = req.user as User;
 
-      const application = await storage.getLoanApplication(applicationId);
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1952,11 +1949,8 @@ export function registerBorrowerRoutes(
         return res.status(404).json({ error: "Package not found" });
       }
 
-      const application = await storage.getLoanApplication(pkg.applicationId);
+      const application = await storage.getLoanApplicationWithAccess(pkg.applicationId, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -2118,11 +2112,10 @@ export function registerBorrowerRoutes(
       const { applicationId } = req.params;
       const user = req.user as User;
 
-      const application = await storage.getLoanApplication(applicationId);
+      // Use getLoanApplicationWithAccess so broker/lender are checked against deal-team
+      // membership rather than being granted blanket staff access.
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
 

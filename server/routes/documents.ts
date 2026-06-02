@@ -9,7 +9,7 @@ import {
 } from "../extractionService";
 import { upload } from "./utils";
 import { ObjectStorageService, ObjectNotFoundError } from "../replit_integrations/object_storage";
-import { isStaffRole, type User } from "@shared/schema";
+import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 
@@ -60,12 +60,17 @@ export function registerDocumentRoutes(
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
+      // Internal staff (admin, lo, loa, processor, underwriter, closer) have
+      // platform-wide read access to object storage.
+      // External partner roles (broker, lender) are NOT granted blanket access;
+      // they can only download objects belonging to their own uploaded documents.
+      const isInternalStaff = isInternalStaffRole(user.role);
       const documents = await storage.getDocumentsByUser(user.id);
-      const hasAccess = isStaffRole(user.role) || documents.some(d => d.storagePath === req.path);
+      const hasAccess = isInternalStaff || documents.some(d => d.storagePath === req.path);
       if (!hasAccess) {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      logAudit(req, "document.download", "document", req.path, { staffAccess: isStaffRole(user.role) });
+      logAudit(req, "document.download", "document", req.path, { staffAccess: isInternalStaff });
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
@@ -156,8 +161,21 @@ export function registerDocumentRoutes(
         return res.status(404).json({ error: "Document not found" });
       }
 
-      if (document.userId !== user.id && !isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Unauthorized" });
+      // Internal staff have platform-wide download access. External partner roles
+      // (broker, lender) must either own the document (userId match) or be an active
+      // deal-team member on the application the document belongs to.
+      const isOwner = document.userId === user.id;
+      if (!isOwner && !isInternalStaffRole(user.role)) {
+        if ((user.role === "broker" || user.role === "lender") && document.applicationId) {
+          const assignedApp = await storage.getLoanApplicationWithAccess(
+            document.applicationId, user.id, user.role
+          );
+          if (!assignedApp) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+        } else {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
       }
 
       if (document.storagePath?.startsWith("/objects/")) {

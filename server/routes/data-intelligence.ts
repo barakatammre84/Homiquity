@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { isAuthenticated, requireRole } from "../auth";
 import type { User } from "@shared/schema";
+import { storage } from "../storage";
 import {
   emitEvent,
   getEventCounts,
@@ -234,8 +235,32 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin", "lo", "loa", "processor", "underwriter"),
     async (req, res) => {
       try {
+        const caller = req.user as User;
         const { userId } = req.params;
         const applicationId = req.query.applicationId as string | undefined;
+
+        if (caller.role !== "admin") {
+          // Non-admin staff must supply an applicationId and must be an active
+          // deal-team member on that specific application. getLoanApplicationWithAccess
+          // grants internal staff global access, so we need a direct deal-team query
+          // here to enforce per-file assignment even for internal staff roles.
+          if (!applicationId) {
+            return res.status(403).json({ error: "An applicationId is required for non-admin staff predictions" });
+          }
+
+          const teamMembers = await storage.getDealTeamMembers(applicationId);
+          const isMember = teamMembers.some(m => m.userId === caller.id);
+          if (!isMember) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+
+          // Confirm the target borrower actually owns this application.
+          const application = await storage.getLoanApplication(applicationId);
+          if (!application || application.userId !== userId) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+        }
+
         const prediction = await computePrediction(userId, applicationId);
         res.json(prediction);
       } catch (error) {

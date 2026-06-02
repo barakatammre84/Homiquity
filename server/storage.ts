@@ -50,6 +50,7 @@ import {
   documentPackageItems,
   teamMessages,
   isStaffRole,
+  isInternalStaffRole,
   type User,
   type UpsertUser,
   type LoanApplication,
@@ -938,11 +939,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLoanApplicationWithAccess(id: string, userId: string, userRole: string): Promise<LoanApplication | undefined> {
-    // Staff roles get unrestricted access
-    const isStaff = isStaffRole(userRole);
-    
-    if (isStaff) {
-      // Staff can access any application
+    // Internal staff (admin, lo, loa, processor, underwriter, closer) have platform-wide access.
+    if (isInternalStaffRole(userRole)) {
       const [application] = await db
         .select()
         .from(loanApplications)
@@ -950,8 +948,32 @@ export class DatabaseStorage implements IStorage {
         .limit(1);
       return application;
     }
-    
-    // Non-staff can only access their own applications - query scoped by userId
+
+    // External partner roles (broker, lender) must be active deal-team members on the
+    // specific application. No assignment = no access.
+    if (userRole === "broker" || userRole === "lender") {
+      const [application] = await db
+        .select()
+        .from(loanApplications)
+        .where(eq(loanApplications.id, id))
+        .limit(1);
+
+      if (!application) return undefined;
+
+      const [membership] = await db
+        .select({ id: dealTeamMembers.id })
+        .from(dealTeamMembers)
+        .where(and(
+          eq(dealTeamMembers.applicationId, id),
+          eq(dealTeamMembers.userId, userId),
+          eq(dealTeamMembers.isActive, true)
+        ))
+        .limit(1);
+
+      return membership ? application : undefined;
+    }
+
+    // Borrowers can only access their own applications.
     const [application] = await db
       .select()
       .from(loanApplications)

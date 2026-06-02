@@ -65,9 +65,29 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   active_buyer: "Apply for mortgages, upload documents, track progress",
 };
 
-// Helper to check if role is staff
+// Internal staff roles: tightly controlled employees who have platform-wide access.
+// External partner roles (broker, lender) are intentionally excluded; they must be
+// explicitly assigned to a deal-team before accessing any borrower record.
+export const INTERNAL_STAFF_ROLES = [
+  "admin",
+  "lo",
+  "loa",
+  "processor",
+  "underwriter",
+  "closer",
+] as const;
+
+// Helper to check if role is staff (includes external partner roles)
 export function isStaffRole(role: string): boolean {
   return STAFF_ROLES.includes(role as typeof STAFF_ROLES[number]);
+}
+
+// Helper to check if role is an *internal* staff role.
+// Use this instead of isStaffRole() whenever object-level authorization is required,
+// because broker and lender are external partners that must be deal-team members to
+// access any specific borrower record.
+export function isInternalStaffRole(role: string): boolean {
+  return INTERNAL_STAFF_ROLES.includes(role as typeof INTERNAL_STAFF_ROLES[number]);
 }
 
 // Helper to check if role is client

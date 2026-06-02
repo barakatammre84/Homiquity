@@ -216,13 +216,12 @@ export function registerLendingRoutes(
     try {
       const { applicationId } = req.params;
       const userId = req.user!.id;
+      const userRole = (req.user as User).role;
 
-      // Verify ownership or staff access
-      const application = await storage.getLoanApplication(applicationId);
+      // Use getLoanApplicationWithAccess so broker/lender are validated against
+      // deal-team membership rather than receiving blanket staff access.
+      const application = await storage.getLoanApplicationWithAccess(applicationId, userId, userRole);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      if (application.userId !== userId && !isStaffRole((req.user as User).role)) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -310,12 +309,8 @@ export function registerLendingRoutes(
       const { applicationId } = req.params;
       const user = req.user as User;
 
-      // Verify ownership or staff access
-      const application = await storage.getLoanApplication(applicationId);
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-      if (application.userId !== user.id && !isStaffRole(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -731,6 +726,14 @@ export function registerLendingRoutes(
   app.get("/api/loan-applications/:id/mismo-export", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
       const { id } = req.params;
+
+      // Verify the caller is authorized for this specific application.
+      // broker/lender must be deal-team members; internal staff have global access.
+      const authorizedApp = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!authorizedApp) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       const mismoData = await storage.getMISMOLoanData(id);
       
       if (!mismoData) {
@@ -848,8 +851,8 @@ export function registerLendingRoutes(
       const userId = req.user!.id;
 
       if (applicationId) {
-        const application = await storage.getLoanApplication(applicationId);
-        if (!application || (application.userId !== userId && !isStaffRole((req.user as User).role))) {
+        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, (req.user as User).role);
+        if (!application) {
           return res.status(403).json({ error: "You do not have access to this application" });
         }
       }
