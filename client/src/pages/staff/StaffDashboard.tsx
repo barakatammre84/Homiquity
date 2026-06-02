@@ -51,6 +51,9 @@ import {
   ScanLine,
   Brain,
   Database,
+  Users,
+  Scale,
+  ShieldAlert,
   Archive,
 } from "lucide-react";
 import { formatCurrency, formatTimeRemaining } from "@/lib/formatters";
@@ -894,6 +897,30 @@ export default function StaffDashboard() {
                                       GSE Ready
                                     </Badge>
                                   )}
+                                  {compApp?.gseGatingFailed && (
+                                    <Badge variant="destructive" className="gap-1 text-xs" data-testid={`badge-gating-${item.applicationId}`}>
+                                      <ShieldAlert className="h-3 w-3" />
+                                      Gating Failed
+                                    </Badge>
+                                  )}
+                                  {compApp?.qmStatus === "Non-QM" && (
+                                    <Badge variant="destructive" className="gap-1 text-xs" data-testid={`badge-qm-${item.applicationId}`}>
+                                      <Scale className="h-3 w-3" />
+                                      Non-QM
+                                    </Badge>
+                                  )}
+                                  {compApp?.qmStatus === "QM" && (
+                                    <Badge variant="secondary" className="gap-1 text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" data-testid={`badge-qm-${item.applicationId}`}>
+                                      <Scale className="h-3 w-3" />
+                                      QM
+                                    </Badge>
+                                  )}
+                                  {(compApp?.coApplicantCount || 0) > 0 && (
+                                    <Badge variant="outline" className="gap-1 text-xs" data-testid={`badge-coapplicants-${item.applicationId}`}>
+                                      <Users className="h-3 w-3" />
+                                      {(compApp?.coApplicantCount || 0) + 1} borrowers
+                                    </Badge>
+                                  )}
                                   {(compApp?.criticalCount || 0) > 0 && (
                                     <Badge variant="destructive" className="text-xs" data-testid={`badge-critical-${item.applicationId}`}>
                                       {compApp?.criticalCount} critical
@@ -1256,13 +1283,36 @@ export default function StaffDashboard() {
                                 {app.status?.toUpperCase().replace(/_/g, " ")} {app.loanAmount ? `- ${formatCurrency(app.loanAmount)}` : ""}
                               </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              {app.gseReady ? (
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              {app.gseGatingFailed ? (
+                                <Badge variant="destructive" className="gap-1" data-testid={`badge-gating-${app.applicationId}`}>
+                                  <ShieldAlert className="h-3 w-3" />
+                                  Gating Failed
+                                </Badge>
+                              ) : app.gseReady ? (
                                 <Badge data-testid={`badge-gse-${app.applicationId}`}>GSE Ready</Badge>
                               ) : app.ulddCompliant ? (
                                 <Badge variant="secondary">ULDD Compliant</Badge>
                               ) : (
                                 <Badge variant="destructive">Incomplete</Badge>
+                              )}
+                              {app.qmStatus === "Non-QM" && (
+                                <Badge variant="destructive" className="gap-1" data-testid={`badge-qm-${app.applicationId}`}>
+                                  <Scale className="h-3 w-3" />
+                                  Non-QM
+                                </Badge>
+                              )}
+                              {app.qmStatus === "QM" && (
+                                <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" data-testid={`badge-qm-${app.applicationId}`}>
+                                  <Scale className="h-3 w-3" />
+                                  QM
+                                </Badge>
+                              )}
+                              {(app.coApplicantCount || 0) > 0 && (
+                                <Badge variant="outline" className="gap-1" data-testid={`badge-coapplicants-${app.applicationId}`}>
+                                  <Users className="h-3 w-3" />
+                                  {(app.coApplicantCount || 0) + 1} borrowers
+                                </Badge>
                               )}
                               <Button size="sm" variant="outline" asChild>
                                 <Link href={`/borrower-file/${app.applicationId}`}>View</Link>
