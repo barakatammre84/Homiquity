@@ -473,3 +473,285 @@ describe("HMDA LAR denial-reason rules", () => {
     expect(result.hmdaLar.denialReasonsValid).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Additional section-scorer fixtures (employment, military, demographics,
+// and the conditional asset/liability/REO detail rules).
+// ---------------------------------------------------------------------------
+function currentJob(startDate: string, overrides: Record<string, any> = {}) {
+  return {
+    employmentType: "current",
+    employerName: "Acme Corp",
+    positionTitle: "Engineer",
+    startDate,
+    monthlyIncomeOrLoss: "8000",
+    employerPhone: "555-0199",
+    employerStreet: "1 Industry Way",
+    isSelfEmployed: false,
+    borrowerSequenceNumber: 1,
+    ...overrides,
+  };
+}
+
+function priorJob(overrides: Record<string, any> = {}) {
+  return {
+    employmentType: "previous",
+    employerName: "Old Co",
+    positionTitle: "Analyst",
+    startDate: "2015-01-01",
+    endDate: "2017-12-31",
+    monthlyIncomeOrLoss: "6000",
+    borrowerSequenceNumber: 1,
+    ...overrides,
+  };
+}
+
+function militaryProfile(overrides: Record<string, any> = {}) {
+  return {
+    militaryStatus: "veteran",
+    militaryBranch: "army",
+    militaryServiceStart: "2005-01-01",
+    vaEntitlementUsed: false,
+    vaFundingFeeExempt: false,
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+describe("employment 2-year-history rule (section 1b-1e)", () => {
+  it("does not require a prior employer when the current job exceeds 2 years", async () => {
+    setFixtures({ urla: baseUrla({ employmentHistory: [currentJob("2020-01-01")] }) });
+    const result = await validateMISMOCompleteness("app-1");
+    const emp = sectionByNumber(result, "1b-1e");
+    expect(emp.missingFields).toEqual([]);
+  });
+
+  it("requires prior-employer fields when the current job is under 2 years old", async () => {
+    setFixtures({ urla: baseUrla({ employmentHistory: [currentJob("2025-06-01")] }) });
+    const result = await validateMISMOCompleteness("app-1");
+    const emp = sectionByNumber(result, "1b-1e");
+    expect(emp.missingFields).toEqual(
+      expect.arrayContaining([
+        "Prior Employer Name (2-year history required)",
+        "Prior Employer Start Date",
+        "Prior Employer End Date",
+      ])
+    );
+  });
+
+  it("is satisfied when a short current job is paired with a complete prior employer", async () => {
+    setFixtures({
+      urla: baseUrla({ employmentHistory: [currentJob("2025-06-01"), priorJob()] }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    const emp = sectionByNumber(result, "1b-1e");
+    expect(emp.missingFields).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("VA-loan military-service requirement (section 6)", () => {
+  it("does not require military fields for a non-VA loan", async () => {
+    // conventional loan + no profile => section 6 fields are optional.
+    setFixtures();
+    const result = await validateMISMOCompleteness("app-1");
+    const military = sectionByNumber(result, "6");
+    expect(military.missingFields).toEqual([]);
+  });
+
+  it("requires military fields when the loan type is VA but no profile exists", async () => {
+    setFixtures({ application: { preferredLoanType: "va" }, profile: null });
+    const result = await validateMISMOCompleteness("app-1");
+    const military = sectionByNumber(result, "6");
+    expect(military.missingFields).toEqual(
+      expect.arrayContaining([
+        "Military Service Status",
+        "Service Branch",
+        "VA Entitlement / Funding Fee Status",
+      ])
+    );
+  });
+
+  it("is satisfied for a VA loan once the military profile is complete", async () => {
+    setFixtures({ application: { preferredLoanType: "va" }, profile: militaryProfile() });
+    const result = await validateMISMOCompleteness("app-1");
+    const military = sectionByNumber(result, "6");
+    expect(military.missingFields).toEqual([]);
+  });
+
+  it("treats VA detection as case-insensitive", async () => {
+    setFixtures({ application: { preferredLoanType: "VA" }, profile: null });
+    const result = await validateMISMOCompleteness("app-1");
+    const military = sectionByNumber(result, "6");
+    expect(military.missingFields.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("demographics refusal-recorded logic (section 7 / Reg C)", () => {
+  it("counts recorded refusals (not-provided flags) as collected", async () => {
+    // baseline uses ethnicity/race/sex not-provided flags.
+    setFixtures();
+    const result = await validateMISMOCompleteness("app-1");
+    const demo = sectionByNumber(result, "7");
+    expect(demo.missingFields).toEqual([]);
+  });
+
+  it("counts affirmatively selected values as collected", async () => {
+    setFixtures({
+      urla: baseUrla({
+        hmdaDemographics: [
+          {
+            borrowerId: "user-1",
+            ethnicityHispanicLatino: true,
+            raceWhite: true,
+            sexFemale: true,
+            collectionMethod: "visual",
+          },
+        ],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    const demo = sectionByNumber(result, "7");
+    expect(demo.missingFields).toEqual([]);
+  });
+
+  it("flags ethnicity/race/sex as missing when nothing is recorded", async () => {
+    setFixtures({
+      urla: baseUrla({
+        hmdaDemographics: [{ borrowerId: "user-1", collectionMethod: "visual" }],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    const demo = sectionByNumber(result, "7");
+    expect(demo.missingFields).toEqual(
+      expect.arrayContaining([
+        "Ethnicity collected (or refusal recorded)",
+        "Race collected (or refusal recorded)",
+        "Sex collected (or refusal recorded)",
+      ])
+    );
+  });
+
+  it("flags collection method as missing when no demographic row exists", async () => {
+    setFixtures({ urla: baseUrla({ hmdaDemographics: [] }) });
+    const result = await validateMISMOCompleteness("app-1");
+    const demo = sectionByNumber(result, "7");
+    expect(demo.missingFields).toContain("Collection Method");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("conditional asset detail requirements (section 2a)", () => {
+  it("flags the no-asset state when no asset rows are present", async () => {
+    setFixtures({ urla: baseUrla({ assets: [] }) });
+    const result = await validateMISMOCompleteness("app-1");
+    const assets = sectionByNumber(result, "2a");
+    expect(assets.missingFields).toEqual(
+      expect.arrayContaining(["At least one asset account", "Total Assets > $0"])
+    );
+  });
+
+  it("requires detail fields once an asset row is present", async () => {
+    setFixtures({
+      urla: baseUrla({
+        assets: [
+          {
+            accountType: null,
+            financialInstitution: "Big Bank",
+            cashOrMarketValue: "50000",
+            borrowerSequenceNumber: 1,
+          },
+        ],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    const assets = sectionByNumber(result, "2a");
+    expect(assets.missingFields).toContain("Account Type");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("conditional liability detail requirements (section 2b)", () => {
+  it("is satisfied with no liabilities reported", async () => {
+    setFixtures({ urla: baseUrla({ liabilities: [] }) });
+    const result = await validateMISMOCompleteness("app-1");
+    const liabilities = sectionByNumber(result, "2b");
+    expect(liabilities.missingFields).toEqual([]);
+  });
+
+  it("requires type and monthly payment once a liability row is present", async () => {
+    setFixtures({
+      urla: baseUrla({
+        liabilities: [
+          {
+            liabilityType: null,
+            creditorName: "Card Co",
+            monthlyPayment: null,
+            unpaidBalance: "2000",
+            borrowerSequenceNumber: 1,
+          },
+        ],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    const liabilities = sectionByNumber(result, "2b");
+    expect(liabilities.missingFields).toEqual(
+      expect.arrayContaining(["Liability Type", "Monthly Payment"])
+    );
+  });
+
+  it("does not require the optional creditor name / unpaid balance", async () => {
+    setFixtures({
+      urla: baseUrla({
+        liabilities: [
+          {
+            liabilityType: "credit_card",
+            creditorName: null,
+            monthlyPayment: "150",
+            unpaidBalance: null,
+            borrowerSequenceNumber: 1,
+          },
+        ],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    const liabilities = sectionByNumber(result, "2b");
+    expect(liabilities.missingFields).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("conditional real-estate-owned detail requirements (section 2c)", () => {
+  it("is satisfied when no property is owned", async () => {
+    setFixtures({ urla: baseUrla({ realEstateOwned: [] }) });
+    const result = await validateMISMOCompleteness("app-1");
+    const reo = sectionByNumber(result, "2c");
+    expect(reo.missingFields).toEqual([]);
+  });
+
+  it("requires every REO detail field once a property is listed", async () => {
+    setFixtures({
+      urla: baseUrla({
+        realEstateOwned: [
+          {
+            propertyAddress: "456 Rental Rd",
+            marketValue: null,
+            mortgageBalance: null,
+            status: null,
+            occupancyType: null,
+          },
+        ],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    const reo = sectionByNumber(result, "2c");
+    expect(reo.missingFields).toEqual(
+      expect.arrayContaining([
+        "REO #1 Market Value",
+        "REO #1 Mortgage Balance",
+        "REO #1 Occupancy/Status",
+      ])
+    );
+  });
+});
