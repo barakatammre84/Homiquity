@@ -799,6 +799,7 @@ function coLiability(overrides: Record<string, any> = {}) {
 function coDemographic(overrides: Record<string, any> = {}) {
   return {
     borrowerId: "co-user-2",
+    borrowerSequenceNumber: 2,
     ethnicityNotProvided: true,
     raceNotProvided: true,
     sexNotProvided: true,
@@ -992,5 +993,291 @@ describe("coApplicantLimitation note", () => {
     const result = await validateMISMOCompleteness("app-1");
     expect(result.coApplicants.length).toBe(1);
     expect(result.coApplicantLimitation).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Top-level readiness assembly: missingDocuments, gseReady, ulddCompliant,
+// and the TRID leRequired/cdRequired status flags.
+// ---------------------------------------------------------------------------
+
+// A fully-complete VA application with a complete military profile scores 97
+// (>= 90), passes gating, has no critical errors, is QM, and has a valid
+// (not-applicable) ARM check -- i.e. the only fixture that satisfies every
+// gseReady precondition out of the box. Toggling any single input flips it.
+function gseReadyOpts(extra: Record<string, any> = {}) {
+  return {
+    application: { preferredLoanType: "va", ...(extra.application ?? {}) },
+    profile: extra.profile ?? militaryProfile(),
+    urla: extra.urla,
+    conditions: extra.conditions,
+    documents: extra.documents,
+  };
+}
+
+describe("missingDocuments derivation (outstanding conditions vs uploads)", () => {
+  it("has no missing documents when there are no conditions", async () => {
+    setFixtures();
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.missingDocuments).toEqual([]);
+  });
+
+  it("lists required doc types from an outstanding condition with nothing uploaded", async () => {
+    setFixtures({
+      conditions: [
+        { status: "outstanding", requiredDocumentTypes: ["paystub", "w2"] },
+      ],
+      documents: [],
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.missingDocuments).toEqual(
+      expect.arrayContaining(["paystub", "w2"])
+    );
+    expect(result.missingDocuments.length).toBe(2);
+  });
+
+  it("clears a required doc type once a matching document is uploaded", async () => {
+    setFixtures({
+      conditions: [
+        { status: "outstanding", requiredDocumentTypes: ["paystub", "w2"] },
+      ],
+      documents: [{ documentType: "paystub" }, { documentType: "w2" }],
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.missingDocuments).toEqual([]);
+  });
+
+  it("returns only the types that are still un-uploaded", async () => {
+    setFixtures({
+      conditions: [
+        { status: "outstanding", requiredDocumentTypes: ["paystub", "w2", "bank_statement"] },
+      ],
+      documents: [{ documentType: "paystub" }],
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.missingDocuments).toEqual(
+      expect.arrayContaining(["w2", "bank_statement"])
+    );
+    expect(result.missingDocuments).not.toContain("paystub");
+  });
+
+  it("ignores doc types required by non-outstanding (e.g. cleared) conditions", async () => {
+    setFixtures({
+      conditions: [
+        { status: "cleared", requiredDocumentTypes: ["appraisal"] },
+        { status: "waived", requiredDocumentTypes: ["gift_letter"] },
+      ],
+      documents: [],
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.missingDocuments).toEqual([]);
+  });
+
+  it("de-duplicates a doc type required by multiple outstanding conditions", async () => {
+    setFixtures({
+      conditions: [
+        { status: "outstanding", requiredDocumentTypes: ["paystub"] },
+        { status: "outstanding", requiredDocumentTypes: ["paystub", "w2"] },
+      ],
+      documents: [],
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.missingDocuments.filter(d => d === "paystub").length).toBe(1);
+    expect(result.missingDocuments).toEqual(
+      expect.arrayContaining(["paystub", "w2"])
+    );
+    expect(result.missingDocuments.length).toBe(2);
+  });
+
+  it("treats a condition with no requiredDocumentTypes as contributing nothing", async () => {
+    setFixtures({
+      conditions: [{ status: "outstanding", requiredDocumentTypes: null }],
+      documents: [],
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.missingDocuments).toEqual([]);
+  });
+});
+
+describe("gseReady (every precondition must hold)", () => {
+  it("is true when score >= 90, gating passes, no errors, no missing docs, ARM valid, and QM", async () => {
+    setFixtures(gseReadyOpts());
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.overallScore).toBeGreaterThanOrEqual(90);
+    expect(result.gseGatingFailed).toBe(false);
+    expect(result.criticalErrors).toEqual([]);
+    expect(result.missingDocuments).toEqual([]);
+    expect(result.armValidation.valid).toBe(true);
+    expect(result.pointsAndFeesCompliant).toBe(true);
+    expect(result.gseReady).toBe(true);
+  });
+
+  it("is false when the score is below 90 even if everything else passes", async () => {
+    // Baseline conventional app scores 88: no gating fail, no critical errors,
+    // no missing docs, QM, ARM not applicable -- the score gate alone blocks it.
+    setFixtures();
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.overallScore).toBeLessThan(90);
+    expect(result.gseGatingFailed).toBe(false);
+    expect(result.criticalErrors).toEqual([]);
+    expect(result.missingDocuments).toEqual([]);
+    expect(result.gseReady).toBe(false);
+  });
+
+  it("is false when an outstanding condition leaves a document missing", async () => {
+    setFixtures(
+      gseReadyOpts({
+        conditions: [{ status: "outstanding", requiredDocumentTypes: ["paystub"] }],
+        documents: [],
+      })
+    );
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.overallScore).toBeGreaterThanOrEqual(90);
+    expect(result.missingDocuments).toEqual(["paystub"]);
+    expect(result.gseReady).toBe(false);
+  });
+
+  it("is false when a critical error exists despite passing gating and score", async () => {
+    // A null account type in section 2a (non-gating) raises a critical error
+    // without failing gating; score stays >= 90 via the VA fixture.
+    setFixtures(
+      gseReadyOpts({
+        urla: baseUrla({
+          assets: [
+            {
+              accountType: null,
+              financialInstitution: "Big Bank",
+              cashOrMarketValue: "50000",
+              borrowerSequenceNumber: 1,
+            },
+          ],
+          hmdaDemographics: [
+            {
+              borrowerId: "user-1",
+              ethnicityNotProvided: true,
+              raceNotProvided: true,
+              sexNotProvided: true,
+              collectionMethod: "visual",
+            },
+          ],
+        }),
+      })
+    );
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.overallScore).toBeGreaterThanOrEqual(90);
+    expect(result.gseGatingFailed).toBe(false);
+    expect(result.criticalErrors.length).toBeGreaterThan(0);
+    expect(result.gseReady).toBe(false);
+  });
+
+  it("is false when the loan is ARM but required ARM fields are missing", async () => {
+    setFixtures(gseReadyOpts({ application: { amortizationType: "adjustable" } }));
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.armValidation.applicable).toBe(true);
+    expect(result.armValidation.valid).toBe(false);
+    expect(result.gseReady).toBe(false);
+  });
+
+  it("is false when points-and-fees push the loan to Non-QM", async () => {
+    setFixtures(gseReadyOpts({ application: { totalPointsAndFees: "99999" } }));
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.pointsAndFeesCompliant).toBe(false);
+    expect(result.gseReady).toBe(false);
+  });
+});
+
+describe("ulddCompliant thresholds", () => {
+  it("is true at the baseline (score >= 80, no gating, 1a >= 90, loan >= 90)", async () => {
+    setFixtures();
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.overallScore).toBeGreaterThanOrEqual(80);
+    expect(result.gseGatingFailed).toBe(false);
+    expect(sectionByNumber(result, "1a").completeness).toBeGreaterThanOrEqual(90);
+    expect(sectionByNumber(result, "4").completeness).toBeGreaterThanOrEqual(90);
+    expect(result.ulddCompliant).toBe(true);
+  });
+
+  it("is false when gating fails", async () => {
+    setFixtures({ urla: baseUrla({ personalInfo: completePersonalInfo({ ssn: null }) }) });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.gseGatingFailed).toBe(true);
+    expect(result.ulddCompliant).toBe(false);
+  });
+
+  it("is false when personal info (1a) drops below 90 via missing optional fields", async () => {
+    // Dropping both optional personal fields leaves 1a at 80 without failing
+    // gating (required fields are still present) -- isolates the 1a >= 90 gate.
+    setFixtures({
+      urla: baseUrla({ personalInfo: completePersonalInfo({ email: null, cellPhone: null }) }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.gseGatingFailed).toBe(false);
+    expect(sectionByNumber(result, "1a").completeness).toBeLessThan(90);
+    expect(result.overallScore).toBeGreaterThanOrEqual(80);
+    expect(result.ulddCompliant).toBe(false);
+  });
+
+  it("is false when loan details (4) drop below 90 via missing optional fields", async () => {
+    // LTV and DTI are the two optional loan fields; dropping both leaves
+    // section 4 at 80 without failing gating -- isolates the loan >= 90 gate.
+    setFixtures({ application: { ltvRatio: null, dtiRatio: null } });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.gseGatingFailed).toBe(false);
+    expect(sectionByNumber(result, "4").completeness).toBeLessThan(90);
+    expect(result.overallScore).toBeGreaterThanOrEqual(80);
+    expect(result.ulddCompliant).toBe(false);
+  });
+
+  it("is false when the overall score falls below 80", async () => {
+    // Strip several non-gating sections (employment, other income, assets,
+    // liabilities) to pull the average under 80 while keeping 1a/4/5 intact.
+    setFixtures({
+      urla: baseUrla({
+        employmentHistory: [],
+        otherIncomeSources: [],
+        assets: [],
+        liabilities: [],
+        hmdaDemographics: [],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.overallScore).toBeLessThan(80);
+    expect(result.ulddCompliant).toBe(false);
+  });
+});
+
+describe("TRID leRequired / cdRequired status flags", () => {
+  it("requires neither LE nor CD while the application is a draft", async () => {
+    setFixtures({ application: { status: "draft" } });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.tridStatus.leRequired).toBe(false);
+    expect(result.tridStatus.cdRequired).toBe(false);
+  });
+
+  it("requires the LE but not the CD once the application is submitted", async () => {
+    setFixtures({ application: { status: "submitted" } });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.tridStatus.leRequired).toBe(true);
+    expect(result.tridStatus.cdRequired).toBe(false);
+  });
+
+  it("requires both the LE and the CD at clear-to-close", async () => {
+    setFixtures({ application: { status: "clear_to_close" } });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.tridStatus.leRequired).toBe(true);
+    expect(result.tridStatus.cdRequired).toBe(true);
+  });
+
+  it("reflects leIssued / cdIssued from the application's issued dates", async () => {
+    setFixtures({
+      application: {
+        status: "clear_to_close",
+        leIssuedDate: new Date("2026-01-08T00:00:00Z"),
+        cdIssuedDate: null,
+      },
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.tridStatus.leIssued).toBe(true);
+    expect(result.tridStatus.cdIssued).toBe(false);
   });
 });
