@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { US_STATES } from "@/lib/us-states";
 import type { LoanApplication, UrlaPersonalInfo, EmploymentHistory, UrlaAsset, UrlaLiability, UrlaPropertyInfo, OtherIncomeSource, BorrowerDeclarations, HmdaDemographics } from "@shared/schema";
 import {
   User,
@@ -160,14 +161,6 @@ const DECLARATION_QUESTIONS: { key: keyof BorrowerDeclarations; label: string }[
   { key: "hasCompletedShortSale", label: "I. Have you completed a pre-foreclosure sale or short sale in the past 7 years?" },
   { key: "hasBeenForeclosed", label: "J. Have you had property foreclosed upon in the past 7 years?" },
   { key: "hasDeclaredBankruptcy", label: "K. Have you declared bankruptcy in the past 7 years?" },
-];
-
-const US_STATES = [
-  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-  "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-  "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-  "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 ];
 
 const ACCOUNT_TYPES = [
@@ -710,7 +703,7 @@ export default function URLAForm() {
                           </SelectTrigger>
                           <SelectContent>
                             {US_STATES.map((state) => (
-                              <SelectItem key={state} value={state}>{state}</SelectItem>
+                              <SelectItem key={state.value} value={state.value}>{state.value}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -869,7 +862,7 @@ export default function URLAForm() {
                               </SelectTrigger>
                               <SelectContent>
                                 {US_STATES.map((state) => (
-                                  <SelectItem key={state} value={state}>{state}</SelectItem>
+                                  <SelectItem key={state.value} value={state.value}>{state.value}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -1431,7 +1424,7 @@ export default function URLAForm() {
                           </SelectTrigger>
                           <SelectContent>
                             {US_STATES.map((state) => (
-                              <SelectItem key={state} value={state}>{state}</SelectItem>
+                              <SelectItem key={state.value} value={state.value}>{state.value}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

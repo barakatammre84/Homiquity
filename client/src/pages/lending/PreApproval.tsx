@@ -9,6 +9,10 @@ import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEnt
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressInput } from "@/components/AddressInput";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { US_STATES } from "@/lib/us-states";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,6 +20,7 @@ import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon }
 import { 
   ArrowRight, 
   ChevronLeft, 
+  ChevronsUpDown,
   DollarSign, 
   Home,
   Briefcase,
@@ -35,26 +40,6 @@ import {
   LogIn,
   HelpCircle
 } from "lucide-react";
-
-const US_STATES = [
-  { value: "AL", label: "Alabama" }, { value: "AK", label: "Alaska" }, { value: "AZ", label: "Arizona" },
-  { value: "AR", label: "Arkansas" }, { value: "CA", label: "California" }, { value: "CO", label: "Colorado" },
-  { value: "CT", label: "Connecticut" }, { value: "DE", label: "Delaware" }, { value: "FL", label: "Florida" },
-  { value: "GA", label: "Georgia" }, { value: "HI", label: "Hawaii" }, { value: "ID", label: "Idaho" },
-  { value: "IL", label: "Illinois" }, { value: "IN", label: "Indiana" }, { value: "IA", label: "Iowa" },
-  { value: "KS", label: "Kansas" }, { value: "KY", label: "Kentucky" }, { value: "LA", label: "Louisiana" },
-  { value: "ME", label: "Maine" }, { value: "MD", label: "Maryland" }, { value: "MA", label: "Massachusetts" },
-  { value: "MI", label: "Michigan" }, { value: "MN", label: "Minnesota" }, { value: "MS", label: "Mississippi" },
-  { value: "MO", label: "Missouri" }, { value: "MT", label: "Montana" }, { value: "NE", label: "Nebraska" },
-  { value: "NV", label: "Nevada" }, { value: "NH", label: "New Hampshire" }, { value: "NJ", label: "New Jersey" },
-  { value: "NM", label: "New Mexico" }, { value: "NY", label: "New York" }, { value: "NC", label: "North Carolina" },
-  { value: "ND", label: "North Dakota" }, { value: "OH", label: "Ohio" }, { value: "OK", label: "Oklahoma" },
-  { value: "OR", label: "Oregon" }, { value: "PA", label: "Pennsylvania" }, { value: "RI", label: "Rhode Island" },
-  { value: "SC", label: "South Carolina" }, { value: "SD", label: "South Dakota" }, { value: "TN", label: "Tennessee" },
-  { value: "TX", label: "Texas" }, { value: "UT", label: "Utah" }, { value: "VT", label: "Vermont" },
-  { value: "VA", label: "Virginia" }, { value: "WA", label: "Washington" }, { value: "WV", label: "West Virginia" },
-  { value: "WI", label: "Wisconsin" }, { value: "WY", label: "Wyoming" }
-];
 
 type QuestionType = "intro" | "choice" | "currency" | "number" | "state" | "boolean_pair" | "income_sources" | "final";
 
@@ -433,6 +418,7 @@ function getDynamicTitle(currentQ: Question, formValues: PreApprovalFormData): s
 export default function PreApproval() {
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [stateComboOpen, setStateComboOpen] = useState(false);
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [selectedIncomeTypes, setSelectedIncomeTypes] = useState<string[]>([]);
   const [incomeDetails, setIncomeDetails] = useState<Record<string, { annualAmount: string; employerName: string; yearsInRole: string }>>({});
@@ -1078,31 +1064,61 @@ export default function PreApproval() {
 
       case "state":
         const selectedState = form.watch("propertyState");
+        const selectedStateOption = US_STATES.find((s) => s.value === selectedState);
         return (
           <div className="w-full max-w-lg mx-auto">
-            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-              {US_STATES.map((state) => (
-                <button
-                  key={state.value}
+            <Popover open={stateComboOpen} onOpenChange={setStateComboOpen}>
+              <PopoverTrigger asChild>
+                <Button
                   type="button"
-                  data-testid={`option-state-${state.value}`}
-                  onClick={() => {
-                    form.setValue("propertyState", state.value, { shouldValidate: true });
-                    setTimeout(() => {
-                      setDirection(1);
-                      setCurrentStep((prev) => prev + 1);
-                    }, 200);
-                  }}
-                  className={`p-3 text-center font-medium border-2 rounded-lg transition-all duration-150
-                    ${selectedState === state.value 
-                      ? "border-primary bg-primary text-primary-foreground" 
-                      : "border-muted hover:border-primary/50 hover:bg-muted/50"
-                    }`}
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={stateComboOpen}
+                  size="lg"
+                  data-testid="button-state-combobox"
+                  className="w-full justify-between font-medium"
                 >
-                  {state.value}
-                </button>
-              ))}
-            </div>
+                  {selectedStateOption
+                    ? `${selectedStateOption.label} (${selectedStateOption.value})`
+                    : "Search for a state..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Type a state name or abbreviation..." data-testid="input-state-search" />
+                  <CommandList>
+                    <CommandEmpty>No state found.</CommandEmpty>
+                    <CommandGroup>
+                      {US_STATES.map((state) => (
+                        <CommandItem
+                          key={state.value}
+                          value={`${state.label} ${state.value}`}
+                          data-testid={`option-state-${state.value}`}
+                          onSelect={() => {
+                            form.setValue("propertyState", state.value, { shouldValidate: true });
+                            setStateComboOpen(false);
+                            setTimeout(() => {
+                              setDirection(1);
+                              setCurrentStep((prev) => prev + 1);
+                            }, 200);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedState === state.value ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <span>{state.label}</span>
+                          <span className="ml-auto text-muted-foreground">{state.value}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         );
 
