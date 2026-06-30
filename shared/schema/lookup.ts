@@ -41,6 +41,14 @@ export const lookupMatrices = pgTable(
     effectiveDate: timestamp("effective_date", { withTimezone: true }).notNull(),
     expirationDate: timestamp("expiration_date", { withTimezone: true }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    // Bumped on every lifecycle mutation (activate/retire/reschedule/create).
+    // The resolver derives a cross-process invalidation stamp from
+    // MAX(updated_at) per matrix_code so other server instances stop serving a
+    // stale/expired value within one short refresh window instead of waiting
+    // out the full local cache TTL.
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
     uniqueIndex("matrix_code_version_idx").on(table.matrixCode, table.version),

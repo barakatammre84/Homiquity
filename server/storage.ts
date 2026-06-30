@@ -4379,9 +4379,12 @@ export class DatabaseStorage implements IStorage {
     id: string,
     updates: Partial<InsertLookupMatrix>,
   ): Promise<LookupMatrix | undefined> {
+    // Always advance updated_at (via DB clock, not the app clock) so the
+    // resolver's cross-process invalidation stamp moves on every lifecycle
+    // mutation regardless of which instance handled it.
     const [updated] = await db
       .update(lookupMatrices)
-      .set(updates)
+      .set({ ...updates, updatedAt: sql`now()` })
       .where(eq(lookupMatrices.id, id))
       .returning();
     return updated;

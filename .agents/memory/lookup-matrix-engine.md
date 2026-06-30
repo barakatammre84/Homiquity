@@ -41,9 +41,22 @@ Other durable decisions:
   prior active), /retire (ACTIVE→RETIRED), PATCH /schedule (future dates). Enum is
   DRAFT/ACTIVE/RETIRED — "EXPIRED" in product talk == RETIRED. Audit via audit_logs.
 - `LookupResolverService.invalidate(matrixCode?)` MUST be called after any matrix
-  lifecycle mutation. **Why:** resolver caches results (1-min TTL, day-bucketed key);
-  without invalidation an activate/retire can keep quoting stale/expired pricing for up
-  to the TTL. The admin routes already call it.
+  lifecycle mutation. **Why:** resolver caches results (day-bucketed key); without it an
+  activate/retire keeps quoting stale/expired pricing. The admin routes already call it.
+  Note: static `invalidate` only clears the SHARED singleton instance (this process).
+- Cross-process coherence (autoscale = multiple instances) does NOT rely on `invalidate`.
+  Each cached value is tagged with a DB-derived stamp = `MAX(updated_at)` per matrix_code;
+  `updateLookupMatrix` always bumps `updated_at` via DB `now()`. On a cache hit the stamp
+  is re-checked on every read by default (strict: a sibling reflects activate/retire/reschedule
+  immediately). `LOOKUP_MATRIX_STAMP_WINDOW_MS` > 0 is an opt-in perf mode that coalesces stamp
+  reads, trading up to that many ms of cross-process staleness for fewer stamp queries. **How to apply:** any new matrix-row mutation path must bump
+  `updated_at`, or sibling instances will serve stale values. `lookup_matrices.updated_at`
+  is the stamp source — don't drop it.
+- Cached values are also capped to never outlive the matrix's `expirationDate`, so a matrix
+  that expires mid-cache is not served past expiry even with no mutation.
+- All decisioning code shares ONE resolver instance: import the `lookupResolver` singleton;
+  do NOT `new LookupResolverService()` in app code (a private instance has its own cache the
+  admin routes' static `invalidate` can't reach). Custom instances are for tests only.
 - Isolated/dev DBs may be MISSING `lookup_matrices` / `lookup_matrix_cells` entirely
   (schema declared but never migrated there) — every loud decisioning lookup then throws.
   Create them idempotently from shared/schema/lookup.ts rather than relying on db:push.

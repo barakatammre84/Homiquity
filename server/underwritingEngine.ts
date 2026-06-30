@@ -1,4 +1,4 @@
-import { LookupResolverService } from "./services/lookupResolver";
+import { lookupResolver } from "./services/lookupResolver";
 
 export interface AssetProfile {
   type: "CHECKING_SAVINGS" | "STOCK_INVESTMENT" | "RETIREMENT_IRA_401K";
@@ -47,7 +47,9 @@ export interface UnderwritingResult {
  * hardcoded fallbacks.
  */
 export class ConsolidatedUnderwritingEngine {
-  private resolver = new LookupResolverService();
+  // Use the process-wide shared resolver so a lifecycle mutation invalidated via
+  // LookupResolverService.invalidate() also clears the cache this engine reads.
+  private resolver = lookupResolver;
 
   public async evaluate(input: UnderwritingInput): Promise<UnderwritingResult> {
     const reasons: string[] = [];
