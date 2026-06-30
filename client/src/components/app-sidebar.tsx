@@ -74,6 +74,7 @@ interface NavItem {
   testId: string;
   showBadge?: boolean;
   showMessageBadge?: boolean;
+  roles?: string[];
 }
 
 interface NavSection {
@@ -127,7 +128,7 @@ const staffNavigation: NavSection[] = [
       { title: "Dashboard", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
       { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations" },
       { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops" },
-      { title: "Pricing Matrices", href: "/pricing-matrices", icon: Grid3x3, testId: "link-pricing-matrices" },
+      { title: "Pricing Matrices", href: "/pricing-matrices", icon: Grid3x3, testId: "link-pricing-matrices", roles: ["admin", "underwriter"] },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
@@ -228,12 +229,17 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {navigation.map((section) => (
+        {navigation.map((section) => {
+          const visibleItems = section.items.filter(
+            (item) => !item.roles || item.roles.includes(userRole),
+          );
+          if (visibleItems.length === 0) return null;
+          return (
           <SidebarGroup key={section.section}>
             <SidebarGroupLabel>{section.section}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {section.items.map((item) => (
+                {visibleItems.map((item) => (
                   <SidebarMenuItem key={`${section.section}-${item.title}`}>
                     <SidebarMenuButton asChild isActive={isActive(item.href)}>
                       <Link href={item.href} className="cursor-pointer" data-testid={item.testId}>
@@ -256,7 +262,8 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        ))}
+          );
+        })}
 
         {isAdmin && adminNavigation.map((section) => (
           <SidebarGroup key={section.section}>

@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Grid3x3,
   CheckCircle2,
@@ -27,6 +28,7 @@ import {
   Info,
   Layers,
   AlertTriangle,
+  Lock,
 } from "lucide-react";
 
 type LifecycleStatus = "DRAFT" | "ACTIVE" | "RETIRED";
@@ -120,6 +122,10 @@ const emptyCell = (): DraftCell => ({
 
 export default function PricingMatrices() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const userRole = user?.role ?? "";
+  const canRead = userRole === "admin" || userRole === "underwriter";
+  const canManage = userRole === "admin";
   const [codeFilter, setCodeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
@@ -131,6 +137,7 @@ export default function PricingMatrices() {
 
   const { data: matrices = [], isLoading } = useQuery<LookupMatrixListItem[]>({
     queryKey: ["/api/lookup-matrices"],
+    enabled: canRead,
   });
 
   const filtered = matrices.filter((m) => {
@@ -146,6 +153,23 @@ export default function PricingMatrices() {
 
   const knownCodes = Array.from(new Set(matrices.map((m) => m.matrixCode))).sort();
 
+  if (!canRead) {
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <Lock className="h-10 w-10 text-muted-foreground" />
+            <CardTitle data-testid="text-not-authorized-title">Not authorized</CardTitle>
+            <CardDescription className="max-w-md" data-testid="text-not-authorized-description">
+              Pricing matrices are managed by administrators and reviewed by underwriters. Your role
+              doesn't have access to this screen.
+            </CardDescription>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -154,13 +178,17 @@ export default function PricingMatrices() {
             Pricing Matrices
           </h1>
           <p className="text-muted-foreground">
-            Publish, schedule, activate, and retire versioned pricing & underwriting matrices
+            {canManage
+              ? "Publish, schedule, activate, and retire versioned pricing & underwriting matrices"
+              : "Review versioned pricing & underwriting matrices and their cells"}
           </p>
         </div>
-        <Button onClick={() => setPublishOpen(true)} data-testid="button-open-publish">
-          <Plus className="h-4 w-4 mr-2" />
-          Publish New Version
-        </Button>
+        {canManage && (
+          <Button onClick={() => setPublishOpen(true)} data-testid="button-open-publish">
+            <Plus className="h-4 w-4 mr-2" />
+            Publish New Version
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-4">
@@ -314,7 +342,7 @@ export default function PricingMatrices() {
                             <Eye className="h-4 w-4 mr-1" />
                             Cells
                           </Button>
-                          {m.lifecycleStatus === "DRAFT" && (
+                          {canManage && m.lifecycleStatus === "DRAFT" && (
                             <Button
                               size="sm"
                               onClick={() => setActivateMatrix(m)}
@@ -324,7 +352,7 @@ export default function PricingMatrices() {
                               Activate
                             </Button>
                           )}
-                          {m.lifecycleStatus === "ACTIVE" && (
+                          {canManage && m.lifecycleStatus === "ACTIVE" && (
                             <>
                               <Button
                                 size="sm"
