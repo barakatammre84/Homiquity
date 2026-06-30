@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import { isStaffRole, isInternalStaffRole } from "@shared/schema";
+import type { User } from "@shared/schema";
 import { 
   qualifyIncome, 
   verifyAssets, 
@@ -483,7 +484,18 @@ export function registerUnderwritingRoutes(
 
   app.get("/api/pipeline/queue", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
-      const applications = await storage.getAllLoanApplications();
+      const user = req.user as User;
+      let applications: Awaited<ReturnType<typeof storage.getAllLoanApplications>>;
+
+      if (user.role === "admin") {
+        applications = await storage.getAllLoanApplications();
+      } else {
+        const teamMemberships = await storage.getTeamMembersByUser(user.id);
+        applications = teamMemberships
+          .map(m => m.application)
+          .filter((a): a is NonNullable<typeof a> => a !== null && a !== undefined);
+      }
+
       const activeApps = applications.filter(a => 
         !["draft", "funded", "denied"].includes(a.status || "draft")
       );
@@ -581,14 +593,23 @@ export function registerUnderwritingRoutes(
 
   app.get("/api/compliance/dashboard", isAuthenticated, async (req, res) => {
     try {
-      const userRole = req.user?.role;
-      const isStaff = isStaffRole(userRole || "");
-      
-      if (!isStaff) {
-        return res.status(403).json({ error: "Only staff can view compliance dashboard" });
+      const user = req.user as User;
+
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Only internal staff can view compliance dashboard" });
       }
 
-      const applications = await storage.getAllLoanApplications();
+      let applications: Awaited<ReturnType<typeof storage.getAllLoanApplications>>;
+
+      if (user.role === "admin") {
+        applications = await storage.getAllLoanApplications();
+      } else {
+        const teamMemberships = await storage.getTeamMembersByUser(user.id);
+        applications = teamMemberships
+          .map(m => m.application)
+          .filter((a): a is NonNullable<typeof a> => a !== null && a !== undefined);
+      }
+
       const activeApps = applications.filter(a => 
         !["draft", "denied"].includes(a.status || "draft")
       );

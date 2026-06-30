@@ -998,7 +998,7 @@ export function registerLendingRoutes(
     notes: z.string().max(2000).optional(),
   });
 
-  app.patch("/api/loan-applications/:id/status", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.patch("/api/loan-applications/:id/status", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const user = req.user as User;
 
