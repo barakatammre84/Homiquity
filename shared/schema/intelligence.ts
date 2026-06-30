@@ -107,7 +107,7 @@ export const borrowerProfiles = pgTable("borrower_profiles", {
   analyticsConsentDate: timestamp("analytics_consent_date"),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_borrower_profiles_user").on(table.userId),
   index("idx_borrower_profiles_citizenship").on(table.citizenshipStatus),
@@ -159,7 +159,7 @@ export const realEstateOwned = pgTable("real_estate_owned", {
   verifiedAt: timestamp("verified_at"),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_reo_user").on(table.userId),
   index("idx_reo_application").on(table.applicationId),
@@ -232,7 +232,7 @@ export const lenderProducts = pgTable("lender_products", {
   expirationDate: timestamp("expiration_date"),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_lender_products_lender").on(table.lenderId),
   index("idx_lender_products_type").on(table.productType),
@@ -389,7 +389,7 @@ export const readinessChecklist = pgTable("readiness_checklist", {
   weight: decimal("weight", { precision: 5, scale: 2 }).default("1.00"),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_readiness_user").on(table.userId),
   index("idx_readiness_app").on(table.applicationId),
@@ -716,7 +716,7 @@ export const loanOutcomes = pgTable("loan_outcomes", {
   creditScoreBucket: varchar("credit_score_bucket", { length: 20 }),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_outcomes_app").on(table.applicationId),
   index("idx_outcomes_outcome").on(table.outcome),

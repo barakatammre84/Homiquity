@@ -92,7 +92,7 @@ export const loanApplications = pgTable("loan_applications", {
   cdIssuedDate: varchar("cd_issued_date", { length: 10 }),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_loan_applications_user").on(table.userId),
   index("idx_loan_applications_status").on(table.status),
@@ -159,7 +159,7 @@ export const dealTeamMembers = pgTable("deal_team_members", {
   notes: text("notes"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_deal_team_application").on(table.applicationId),
   index("idx_deal_team_user").on(table.userId),
@@ -199,7 +199,7 @@ export const applicationProperties = pgTable("application_properties", {
   notes: text("notes"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertApplicationPropertySchema = createInsertSchema(applicationProperties).omit({
@@ -272,7 +272,7 @@ export const documents = pgTable("documents", {
   notes: text("notes"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_documents_application").on(table.applicationId),
   index("idx_documents_user").on(table.userId),
@@ -378,7 +378,7 @@ export const urlaPersonalInfo = pgTable("urla_personal_info", {
   mailingCountry: varchar("mailing_country", { length: 100 }),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   // Prevent duplicate multi-borrower mapping: one row per (application, borrower sequence)
   uniqueIndex("urla_personal_info_app_seq_idx").on(
@@ -438,7 +438,7 @@ export const employmentHistory = pgTable("employment_history", {
   monthlyIncomeOrLoss: decimal("monthly_income_or_loss", { precision: 12, scale: 2 }),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertEmploymentHistorySchema = createInsertSchema(employmentHistory).omit({
@@ -544,7 +544,7 @@ export const urlaPropertyInfo = pgTable("urla_property_info", {
   legalDescription: text("legal_description"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertUrlaPropertyInfoSchema = createInsertSchema(urlaPropertyInfo).omit({
@@ -600,7 +600,7 @@ export const borrowerDeclarations = pgTable("borrower_declarations", {
   declarationsVerifiedBy: varchar("declarations_verified_by").references(() => users.id),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertBorrowerDeclarationsSchema = createInsertSchema(borrowerDeclarations).omit({
@@ -791,7 +791,7 @@ export const mortgageRatePrograms = pgTable("mortgage_rate_programs", {
   displayOrder: integer("display_order").default(0),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertMortgageRateProgramSchema = createInsertSchema(mortgageRatePrograms).omit({
@@ -827,7 +827,7 @@ export const mortgageRates = pgTable("mortgage_rates", {
   createdBy: varchar("created_by").references(() => users.id),
   updatedBy: varchar("updated_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_mortgage_rates_location").on(table.state, table.zipcode),
   index("idx_mortgage_rates_program").on(table.programId),
@@ -865,7 +865,7 @@ export const applicationInvites = pgTable("application_invites", {
   loanApplicationId: varchar("loan_application_id").references(() => loanApplications.id),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_application_invites_referrer").on(table.referrerId),
   index("idx_application_invites_token").on(table.token),
@@ -913,7 +913,7 @@ export const rateLocks = pgTable("rate_locks", {
   notes: text("notes"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_rate_locks_application").on(table.applicationId),
   index("idx_rate_locks_status").on(table.status),
@@ -964,7 +964,7 @@ export const applicationMilestones = pgTable("application_milestones", {
   slaBreachReason: text("sla_breach_reason"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_application_milestones_app").on(table.applicationId),
 ]);
@@ -998,7 +998,7 @@ export const slaConfigurations = pgTable("sla_configurations", {
   effectiveDate: timestamp("effective_date").notNull(),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_sla_configurations_active").on(table.isActive),
 ]);
@@ -1159,7 +1159,7 @@ export const preApprovalLetters = pgTable("pre_approval_letters", {
   supersededBy: varchar("superseded_by"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_pre_approval_letters_application").on(table.applicationId),
   index("idx_pre_approval_letters_borrower").on(table.borrowerName),
@@ -1242,7 +1242,7 @@ export const preQualificationLetters = pgTable("pre_qualification_letters", {
   pdfGeneratedAt: timestamp("pdf_generated_at"),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_pre_qual_letters_application").on(table.applicationId),
   index("idx_pre_qual_letters_status").on(table.status),
@@ -1352,7 +1352,7 @@ export const expirationPolicies = pgTable("expiration_policies", {
   effectiveTo: timestamp("effective_to"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_expiration_policies_product").on(table.productType),
   index("idx_expiration_policies_active").on(table.isActive),
@@ -1478,7 +1478,7 @@ export const lenderPreApprovalFormats = pgTable("lender_pre_approval_formats", {
   isActive: boolean("is_active").default(true),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_lender_pre_approval_formats_lender").on(table.lenderId),
   index("idx_lender_pre_approval_formats_active").on(table.isActive),
@@ -1558,7 +1558,7 @@ export const documentExpirations = pgTable("document_expirations", {
   notifiedAgent: boolean("notified_agent").default(false),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_document_expirations_application").on(table.applicationId),
   index("idx_document_expirations_document").on(table.documentId),
@@ -1686,7 +1686,7 @@ export const lenderDataPackages = pgTable("lender_data_packages", {
   }>(),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_lender_data_packages_application").on(table.applicationId),
   index("idx_lender_data_packages_snapshot").on(table.snapshotId),
@@ -1751,7 +1751,7 @@ export const wholesaleLenders = pgTable("wholesale_lenders", {
   isPreferred: boolean("is_preferred").default(false),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_wholesale_lenders_code").on(table.lenderCode),
   index("idx_wholesale_lenders_tier").on(table.integrationTier),
@@ -1790,7 +1790,7 @@ export const rateSheets = pgTable("rate_sheets", {
   rawData: jsonb("raw_data"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_rate_sheets_lender").on(table.lenderId),
   index("idx_rate_sheets_effective").on(table.effectiveDate),
@@ -1963,7 +1963,7 @@ export const lenderOffers = pgTable("lender_offers", {
   labels: text("labels").array(),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_lender_offers_application").on(table.applicationId),
   index("idx_lender_offers_snapshot").on(table.snapshotId),
@@ -2035,7 +2035,7 @@ export const lockRequests = pgTable("lock_requests", {
   confirmedLockExpiration: date("confirmed_lock_expiration"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_lock_requests_offer").on(table.offerId),
   index("idx_lock_requests_application").on(table.applicationId),
@@ -2092,7 +2092,7 @@ export const brokerOfferControls = pgTable("broker_offer_controls", {
   }[]>(),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_broker_offer_controls_application").on(table.applicationId),
 ]);
@@ -2298,7 +2298,7 @@ export const loanMilestones = pgTable("loan_milestones", {
   actualCloseDate: timestamp("actual_close_date"),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertLoanMilestoneSchema = createInsertSchema(loanMilestones).omit({
@@ -2378,7 +2378,7 @@ export const verifications = pgTable("verifications", {
   verifiedAt: timestamp("verified_at"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertVerificationSchema = createInsertSchema(verifications).omit({

@@ -58,7 +58,7 @@ export const documentPackages = pgTable("document_packages", {
   deliveryNotes: text("delivery_notes"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 // Document Package Items - links documents to packages with organization
@@ -281,7 +281,7 @@ export const logicalDocuments = pgTable("logical_documents", {
   verificationNotes: text("verification_notes"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_logical_docs_loan").on(table.loanId),
   index("idx_logical_docs_borrower").on(table.borrowerId),

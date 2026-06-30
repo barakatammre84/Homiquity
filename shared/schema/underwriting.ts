@@ -11,6 +11,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -162,7 +163,7 @@ export const tasks = pgTable("tasks", {
   triggerMetadata: jsonb("trigger_metadata"), // Details about what triggered the task
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_tasks_application").on(table.applicationId),
   index("idx_tasks_assigned_user").on(table.assignedToUserId),
@@ -292,7 +293,7 @@ export const slaClassConfigs = pgTable("sla_class_configs", {
   
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertSlaClassConfigSchema = createInsertSchema(slaClassConfigs).omit({
@@ -331,7 +332,7 @@ export const taskTypeSlaMapping = pgTable("task_type_sla_mapping", {
   
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertTaskTypeSlaMapping = createInsertSchema(taskTypeSlaMapping).omit({
@@ -444,7 +445,7 @@ export const incomeStreams = pgTable("income_streams", {
   verificationDate: timestamp("verification_date"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_income_borrower").on(table.borrowerId),
   index("idx_income_loan").on(table.loanId),
@@ -505,7 +506,7 @@ export const canonicalAssets = pgTable("canonical_assets", {
   verifiedAt: timestamp("verified_at"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_assets_borrower").on(table.borrowerId),
   index("idx_assets_loan").on(table.loanId),
@@ -556,7 +557,7 @@ export const canonicalLiabilities = pgTable("canonical_liabilities", {
   mismoPath: varchar("mismo_path", { length: 500 }).notNull(), // e.g., "MISMO.Liability.MonthlyPaymentAmount"
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_liabilities_borrower").on(table.borrowerId),
   index("idx_liabilities_loan").on(table.loanId),
@@ -615,7 +616,7 @@ export const underwritingEventRules = pgTable("underwriting_event_rules", {
   isActive: boolean("is_active").default(true).notNull(),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_uw_rules_trigger").on(table.triggerType),
   index("idx_uw_rules_active").on(table.isActive),
@@ -892,7 +893,7 @@ export const seasoningRules = pgTable("seasoning_rules", {
   expirationDate: timestamp("expiration_date"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_seasoning_income_type").on(table.incomeType),
   index("idx_seasoning_product").on(table.productType),
@@ -1060,7 +1061,7 @@ export const productRules = pgTable("product_rules", {
   guidelineSource: varchar("guideline_source", { length: 255 }), // e.g., "Fannie Mae Selling Guide 2024"
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_product_rules_type").on(table.productType),
   index("idx_product_rules_active").on(table.isActive),
@@ -1214,7 +1215,7 @@ export const underwritingDecisions = pgTable("underwriting_decisions", {
   decisionType: varchar("decision_type", { length: 30 }).notNull(), // automated, manual, override
   
   // Immutability proof
-  previousDecisionId: varchar("previous_decision_id"),
+  previousDecisionId: varchar("previous_decision_id").references((): AnyPgColumn => underwritingDecisions.id),
   decisionHash: varchar("decision_hash", { length: 64 }), // Hash of this decision
   
   decidedAt: timestamp("decided_at").defaultNow(),
@@ -1299,7 +1300,7 @@ export const underwritingRulesDsl = pgTable("underwriting_rules_dsl", {
   
   // Versioning
   version: integer("version").default(1),
-  previousVersionId: varchar("previous_version_id"),
+  previousVersionId: varchar("previous_version_id").references((): AnyPgColumn => underwritingRulesDsl.id),
   
   // Metadata
   category: varchar("category", { length: 50 }), // income, liability, dti, dscr, document, credit
@@ -1316,7 +1317,7 @@ export const underwritingRulesDsl = pgTable("underwriting_rules_dsl", {
   approvedAt: timestamp("approved_at"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_rules_dsl_code").on(table.ruleCode),
   index("idx_rules_dsl_trigger").on(table.triggerType),
@@ -1525,7 +1526,7 @@ export const loanConditions = pgTable("loan_conditions", {
   sourceRule: varchar("source_rule", { length: 100 }),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertLoanConditionSchema = createInsertSchema(loanConditions).omit({
@@ -1559,7 +1560,7 @@ export const documentRequirementRules = pgTable("document_requirement_rules", {
   isActive: boolean("is_active").default(true),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertDocumentRequirementRuleSchema = createInsertSchema(documentRequirementRules).omit({
@@ -1621,7 +1622,7 @@ export const materialityRuleSets = pgTable("materiality_rule_sets", {
   publishedBy: varchar("published_by"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_materiality_rule_sets_product").on(table.product),
   index("idx_materiality_rule_sets_active").on(table.isActive),
@@ -1677,7 +1678,7 @@ export const materialityRules = pgTable("materiality_rules", {
   isActive: boolean("is_active").default(true),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_materiality_rules_rule_set").on(table.ruleSetId),
   index("idx_materiality_rules_category").on(table.category),
@@ -1873,7 +1874,7 @@ export const policyProfiles = pgTable("policy_profiles", {
   retiredAt: timestamp("retired_at"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_policy_profiles_authority").on(table.authority),
   index("idx_policy_profiles_product").on(table.productType),
@@ -1921,7 +1922,7 @@ export const policyThresholds = pgTable("policy_thresholds", {
   displayOrder: integer("display_order").default(0),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_policy_thresholds_profile").on(table.policyProfileId),
   index("idx_policy_thresholds_category").on(table.category),
@@ -2022,7 +2023,7 @@ export const policyLenderOverlays = pgTable("policy_lender_overlays", {
   approvedAt: timestamp("approved_at"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_policy_lender_overlays_base").on(table.basePolicyProfileId),
   index("idx_policy_lender_overlays_lender").on(table.lenderId),

@@ -52,7 +52,7 @@ export const creditConsents = pgTable("credit_consents", {
   revokedReason: text("revoked_reason"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_credit_consents_application").on(table.applicationId),
   index("idx_credit_consents_user").on(table.userId),
@@ -93,7 +93,7 @@ export const draftConsentProgress = pgTable("draft_consent_progress", {
   lastSavedAt: timestamp("last_saved_at").defaultNow(),
   expiresAt: timestamp("expires_at"), // Drafts expire after 7 days
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_draft_consent_application").on(table.applicationId),
   index("idx_draft_consent_user").on(table.userId),
@@ -164,7 +164,7 @@ export const creditPulls = pgTable("credit_pulls", {
   archivedAt: timestamp("archived_at"), // For FCRA retention compliance
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_credit_pulls_application").on(table.applicationId),
   index("idx_credit_pulls_consent").on(table.consentId),
@@ -224,7 +224,7 @@ export const adverseActions = pgTable("adverse_actions", {
   reviewedAt: timestamp("reviewed_at"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_adverse_actions_application").on(table.applicationId),
   index("idx_adverse_actions_user").on(table.userId),
@@ -323,7 +323,7 @@ export const homeownershipGoals = pgTable("homeownership_goals", {
   referringAgentId: varchar("referring_agent_id").references(() => agentProfiles.id),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_homeownership_goals_user").on(table.userId),
   index("idx_homeownership_goals_phase").on(table.currentPhase),
@@ -363,7 +363,7 @@ export const creditActions = pgTable("credit_actions", {
   recommendedPayment: decimal("recommended_payment", { precision: 10, scale: 2 }),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_credit_actions_goal").on(table.goalId),
   index("idx_credit_actions_status").on(table.status),
@@ -480,7 +480,7 @@ export const consentTemplates = pgTable("consent_templates", {
   expirationDate: timestamp("expiration_date"),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_consent_templates_type").on(table.consentType),
   index("idx_consent_templates_state").on(table.state),
@@ -597,7 +597,7 @@ export const hmdaDemographics = pgTable("hmda_demographics", {
   observedBySurname: boolean("observed_by_surname").default(false),
 
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_hmda_application").on(table.applicationId),
   index("idx_hmda_borrower").on(table.borrowerId),

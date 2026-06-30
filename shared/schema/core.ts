@@ -10,6 +10,7 @@ import {
   decimal,
   jsonb,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -121,11 +122,11 @@ export const users = pgTable("users", {
   nmlsId: varchar("nmls_id", { length: 20 }), // NMLS license number for loan officers
   // Referral link system for LOs
   referralCode: varchar("referral_code", { length: 20 }).unique(), // Unique code for LO referral links (e.g., "JOHN-SMITH-LO")
-  referredByUserId: varchar("referred_by_user_id"), // Who referred this user (references users.id)
+  referredByUserId: varchar("referred_by_user_id").references((): AnyPgColumn => users.id), // Who referred this user (references users.id)
   // Presence tracking - for online/away status
   lastActiveAt: timestamp("last_active_at"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export type UpsertUser = typeof users.$inferInsert;

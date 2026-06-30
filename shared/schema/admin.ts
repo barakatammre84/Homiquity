@@ -30,7 +30,7 @@ export const contentCategories = pgTable("content_categories", {
   displayOrder: integer("display_order").default(0),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertContentCategorySchema = createInsertSchema(contentCategories).omit({
@@ -59,7 +59,7 @@ export const articles = pgTable("articles", {
   viewCount: integer("view_count").default(0),
   readTimeMinutes: integer("read_time_minutes").default(5),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_articles_category").on(table.categoryId),
   index("idx_articles_status").on(table.status),
@@ -91,7 +91,7 @@ export const faqs = pgTable("faqs", {
   notHelpfulCount: integer("not_helpful_count").default(0),
   viewCount: integer("view_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_faqs_category").on(table.categoryId),
   index("idx_faqs_status").on(table.status),
@@ -126,7 +126,7 @@ export const brokerCommissions = pgTable("broker_commissions", {
   paymentMethod: varchar("payment_method", { length: 50 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_broker_commissions_broker").on(table.brokerId),
   index("idx_broker_commissions_application").on(table.applicationId),
@@ -182,7 +182,7 @@ export const calculatorProfiles = pgTable("calculator_profiles", {
   convertedToUser: boolean("converted_to_user").default(false),
   userId: varchar("user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_calculator_profiles_email").on(table.email),
 ]);
@@ -227,7 +227,7 @@ export const partnerProviders = pgTable("partner_providers", {
   contactPhone: varchar("contact_phone", { length: 20 }),
   expectedTurnaroundHours: integer("expected_turnaround_hours"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_partner_providers_type").on(table.serviceType),
   index("idx_partner_providers_code").on(table.code),
@@ -269,7 +269,7 @@ export const partnerOrders = pgTable("partner_orders", {
   resultDocumentPath: text("result_document_path"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_partner_orders_application").on(table.applicationId),
   index("idx_partner_orders_provider").on(table.providerId),
@@ -335,7 +335,7 @@ export const kycScreenings = pgTable("kyc_screenings", {
   reviewedAt: timestamp("reviewed_at"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertKycScreeningSchema = createInsertSchema(kycScreenings).omit({
@@ -360,7 +360,7 @@ export const onboardingProfiles = pgTable("onboarding_profiles", {
   personalInfoComplete: boolean("personal_info_complete").default(false),
   progressPercent: integer("progress_percent").default(0),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertOnboardingProfileSchema = createInsertSchema(onboardingProfiles).omit({
@@ -411,7 +411,7 @@ export const coBrandProfiles = pgTable("co_brand_profiles", {
   serviceAreas: text("service_areas").array(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertCoBrandProfileSchema = createInsertSchema(coBrandProfiles).omit({
@@ -437,7 +437,7 @@ export const dealDeskThreads = pgTable("deal_desk_threads", {
   borrowerType: varchar("borrower_type", { length: 50 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
   closedAt: timestamp("closed_at"),
 });
 
@@ -541,7 +541,7 @@ export const dealRescueEscalations = pgTable("deal_rescue_escalations", {
   resolvedByUserId: varchar("resolved_by_user_id").references(() => users.id),
   slaDeadline: timestamp("sla_deadline"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_deal_rescue_status").on(table.status),
   index("idx_deal_rescue_reporter").on(table.reportedByUserId),
@@ -573,7 +573,7 @@ export const strategySessions = pgTable("strategy_sessions", {
   status: varchar("status", { length: 20 }).default("scheduled").notNull(),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_strategy_sessions_agent").on(table.agentUserId),
   index("idx_strategy_sessions_scheduled").on(table.scheduledAt),
@@ -607,7 +607,7 @@ export const acceleratorEnrollments = pgTable("accelerator_enrollments", {
   status: varchar("status", { length: 20 }).default("active").notNull(),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_accelerator_user").on(table.userId),
   index("idx_accelerator_status").on(table.status),
@@ -661,7 +661,7 @@ export const closingGuarantees = pgTable("closing_guarantees", {
   riskReason: text("risk_reason"),
   isMet: boolean("is_met"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_closing_guarantees_app").on(table.applicationId),
   index("idx_closing_guarantees_status").on(table.status),

@@ -51,7 +51,7 @@ export const coachConversations = pgTable("coach_conversations", {
   documentChecklist: jsonb("document_checklist"),
   status: varchar("status", { length: 20 }).default("active").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_coach_conversations_user").on(table.userId),
   index("idx_coach_conversations_status").on(table.status),

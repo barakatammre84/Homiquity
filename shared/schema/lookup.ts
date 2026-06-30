@@ -9,6 +9,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { z } from "zod";
@@ -37,7 +38,7 @@ export const lookupMatrices = pgTable(
     lifecycleStatus: lifecycleStatusEnum("lifecycle_status")
       .default("DRAFT")
       .notNull(),
-    previousVersionId: uuid("previous_version_id"),
+    previousVersionId: uuid("previous_version_id").references((): AnyPgColumn => lookupMatrices.id),
     effectiveDate: timestamp("effective_date", { withTimezone: true }).notNull(),
     expirationDate: timestamp("expiration_date", { withTimezone: true }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -48,7 +49,8 @@ export const lookupMatrices = pgTable(
     // out the full local cache TTL.
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   (table) => [
     uniqueIndex("matrix_code_version_idx").on(table.matrixCode, table.version),

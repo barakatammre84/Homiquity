@@ -44,7 +44,7 @@ export const agentProfiles = pgTable("agent_profiles", {
   isVerified: boolean("is_verified").default(false),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertAgentProfileSchema = createInsertSchema(agentProfiles).omit({
@@ -86,7 +86,7 @@ export const properties = pgTable("properties", {
   soldPrice: decimal("sold_price", { precision: 12, scale: 2 }),
   
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertPropertySchema = createInsertSchema(properties).omit({
@@ -122,7 +122,7 @@ export const homeownerProfiles = pgTable("homeowner_profiles", {
   nextReviewDate: timestamp("next_review_date"),
   lastReviewDate: timestamp("last_review_date"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_homeowner_profiles_user").on(table.userId),
 ]);
