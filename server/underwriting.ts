@@ -14,6 +14,7 @@ import type {
   UrlaLiability,
   UrlaPropertyInfo,
 } from "@shared/schema";
+import { lookupResolver } from "./services/lookupResolver";
 
 export interface IncomeQualificationResult {
   baseMonthlyIncome: number;
@@ -174,10 +175,10 @@ export function qualifyIncome(
 // ASSET VERIFICATION ENGINE
 // ============================================================================
 
-export function verifyAssets(
+export async function verifyAssets(
   assets: UrlaAsset[],
   downPaymentAndClosing?: number
-): AssetVerificationResult {
+): Promise<AssetVerificationResult> {
   const result: AssetVerificationResult = {
     totalAssets: 0,
     liquidAssets: 0,
@@ -186,25 +187,26 @@ export function verifyAssets(
     breakdown: [],
   };
 
-  const HAIRCUTS: Record<string, number> = {
-    checking: 1.0,
-    checking_account: 1.0,
-    savings: 1.0,
-    savings_account: 1.0,
-    money_market: 1.0,
-    money_market_account: 1.0,
-    cd: 1.0,
-    certificate_of_deposit: 1.0,
-    stocks: 0.6,
-    stock: 0.6,
-    bonds: 0.6,
-    bond: 0.6,
-    mutual_fund: 0.6,
-    retirement: 0.6,
-    "401k": 0.6,
-    ira: 0.6,
-    other: 0.5,
-  };
+  // Asset valuation haircuts are resolved from the dynamic policy matrices —
+  // there are no hardcoded haircut constants. Cash-equivalents count at full
+  // value (the definition of liquid reserves); market and retirement assets are
+  // discounted per the seeded HAIRCUT_* scalars.
+  const haircutStock = (await lookupResolver.getPolicyScalar("HAIRCUT_STOCK_INVESTMENT")) / 100;
+  const haircutRetirement = (await lookupResolver.getPolicyScalar("HAIRCUT_RETIREMENT")) / 100;
+
+  const CASH_EQUIVALENTS = new Set([
+    "checking",
+    "checking_account",
+    "savings",
+    "savings_account",
+    "money_market",
+    "money_market_account",
+    "cd",
+    "certificate_of_deposit",
+  ]);
+
+  const isRetirementType = (t: string) =>
+    t.includes("retirement") || t.includes("401k") || t.includes("ira");
 
   for (const asset of assets) {
     if (!asset.cashOrMarketValue) continue;
@@ -214,7 +216,17 @@ export function verifyAssets(
       : asset.cashOrMarketValue;
 
     const assetType = asset.accountType?.toLowerCase() || "other";
-    const haircut = HAIRCUTS[assetType] || 0.5;
+    // Map the account type onto one of the three engine valuation categories.
+    let haircut: number;
+    if (CASH_EQUIVALENTS.has(assetType)) {
+      haircut = 1.0;
+    } else if (isRetirementType(assetType)) {
+      haircut = haircutRetirement;
+    } else {
+      // Stocks, bonds, mutual funds, and any other non-cash holding take the
+      // conservative market-asset haircut.
+      haircut = haircutStock;
+    }
     const verifiedValue = balance * haircut;
 
     result.breakdown.push({
@@ -228,7 +240,7 @@ export function verifyAssets(
 
     if (haircut === 1.0) {
       result.liquidAssets += verifiedValue;
-    } else if (assetType.includes("retirement") || assetType.includes("401k") || assetType.includes("ira")) {
+    } else if (isRetirementType(assetType)) {
       result.retirementAssets += verifiedValue;
     } else {
       result.liquidAssets += verifiedValue;
@@ -313,12 +325,18 @@ export function assessLiabilities(liabilities: UrlaLiability[]): LiabilityAssess
 // DTI CALCULATION ENGINE
 // ============================================================================
 
-export function calculateDTI(
+export async function calculateDTI(
   qualifyingIncome: number,
   housingExpense: number,
   nonHousingDebts: number,
-  maxBackEndRatio: number = 43
-): DTICalculationResult {
+  maxBackEndRatio?: number
+): Promise<DTICalculationResult> {
+  // DTI thresholds are policy-driven, resolved from the dynamic matrices rather
+  // than hardcoded 43/50 constants.
+  const dtiCap = await lookupResolver.getPolicyScalar("CONVENTIONAL_DTI_CAP");
+  const stretchDti = await lookupResolver.getPolicyScalar("CONVENTIONAL_STRETCH_DTI");
+  const effectiveCap = maxBackEndRatio ?? dtiCap;
+
   const frontEndRatio = qualifyingIncome > 0 
     ? (housingExpense / qualifyingIncome) * 100 
     : 0;
@@ -328,8 +346,8 @@ export function calculateDTI(
     : 0;
 
   let status: "pass" | "fail" | "stretch" = "pass";
-  if (backEndRatio > maxBackEndRatio) {
-    status = backEndRatio <= 50 ? "stretch" : "fail";
+  if (backEndRatio > effectiveCap) {
+    status = backEndRatio <= stretchDti ? "stretch" : "fail";
   }
 
   return {
@@ -339,12 +357,12 @@ export function calculateDTI(
     frontEndRatio: Math.round(frontEndRatio * 100) / 100,
     backEndRatio: Math.round(backEndRatio * 100) / 100,
     status,
-    maxBackEndRatio,
+    maxBackEndRatio: effectiveCap,
     details: {
       frontend_definition: "Housing expense / Qualifying income",
       backend_definition: "(Housing + Non-housing debts) / Qualifying income",
-      fannie_mae_limit_manual: 43,
-      fannie_mae_limit_aus: 50,
+      fannie_mae_limit_manual: dtiCap,
+      fannie_mae_limit_aus: stretchDti,
     },
   };
 }
@@ -353,7 +371,7 @@ export function calculateDTI(
 // PROPERTY ELIGIBILITY ENGINE - "CAN I BUY THIS HOUSE?"
 // ============================================================================
 
-export function checkPropertyEligibility(
+export async function checkPropertyEligibility(
   borrowerAssets: number,
   borrowerIncome: number,
   borrowerDebts: number,
@@ -362,12 +380,18 @@ export function checkPropertyEligibility(
   propertyTaxAnnual?: number,
   hoaMonthly?: number,
   homeInsuranceEstimate: number = 150,
-  maxLtvPercent: number = 95
-): PropertyEligibilityResult {
+  maxLtvPercent?: number,
+  representativeFico?: number
+): Promise<PropertyEligibilityResult> {
   const reasons: string[] = [];
 
+  // Policy ceilings come from the dynamic matrices, not hardcoded 95/50 limits.
+  const ltvCap = await lookupResolver.getPolicyScalar("CONVENTIONAL_LTV_CAP");
+  const stretchDti = await lookupResolver.getPolicyScalar("CONVENTIONAL_STRETCH_DTI");
+  const effectiveMaxLtv = maxLtvPercent ?? ltvCap;
+
   // 1. Calculate LTV and down payment requirement
-  const maxLoanAmount = propertyPrice * (maxLtvPercent / 100);
+  const maxLoanAmount = propertyPrice * (effectiveMaxLtv / 100);
   const requiredDownPayment = propertyPrice - maxLoanAmount;
   const ltvRatio = (maxLoanAmount / propertyPrice) * 100;
 
@@ -384,7 +408,26 @@ export function checkPropertyEligibility(
 
   const taxMonthly = (propertyTaxAnnual || propertyPrice * 0.0125) / 12;
   const hoaFees = hoaMonthly || 0;
-  const pmi = maxLtvPercent > 80 ? (maxLoanAmount * 0.01 / 12) : 0;
+  // PMI applies structurally above the 80% conventional MI trigger, where the
+  // seeded CONVENTIONAL_PMI card (FICO x LTV) provides a premium. When MI is
+  // required the rate MUST resolve from the matrix and fails loudly if the
+  // FICO/LTV band is missing — no silent fallback. Below the trigger there is
+  // structurally no MI.
+  let pmi = 0;
+  if (ltvRatio > 80) {
+    if (representativeFico === undefined) {
+      throw new Error(
+        "CRITICAL DECISIONING ERROR: representative FICO is required to resolve mortgage insurance for LTV above 80%.",
+      );
+    }
+    const ltvForLookup = Math.ceil(ltvRatio * 100) / 100;
+    const pmiAnnualRate = await lookupResolver.resolveMatrixValue({
+      matrixCode: "CONVENTIONAL_PMI",
+      dim1Value: representativeFico,
+      dim2Value: ltvForLookup,
+    });
+    pmi = (maxLoanAmount * (pmiAnnualRate / 100)) / 12;
+  }
 
   const estimatedPITI = monthlyPI + taxMonthly + homeInsuranceEstimate + hoaFees + pmi;
 
@@ -392,15 +435,15 @@ export function checkPropertyEligibility(
   const newTotalHousingExpense = estimatedPITI;
   const finalDTI = (newTotalHousingExpense + borrowerDebts) / borrowerIncome * 100;
 
-  if (finalDTI > 50) {
-    reasons.push(`DTI too high with this property: ${finalDTI.toFixed(1)}% (limit 50%)`);
+  if (finalDTI > stretchDti) {
+    reasons.push(`DTI too high with this property: ${finalDTI.toFixed(1)}% (limit ${stretchDti}%)`);
   }
 
   const canBuyProperty = reasons.length === 0;
 
   return {
     maxLoanAmount: Math.round(maxLoanAmount * 100) / 100,
-    maxDownPaymentPercent: maxLtvPercent,
+    maxDownPaymentPercent: effectiveMaxLtv,
     requiredDownPayment: Math.round(requiredDownPayment * 100) / 100,
     ltvRatio: Math.round(ltvRatio * 100) / 100,
     estimatedPITI: Math.round(estimatedPITI * 100) / 100,

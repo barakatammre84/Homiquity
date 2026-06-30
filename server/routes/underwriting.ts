@@ -81,7 +81,7 @@ export function registerUnderwritingRoutes(
       const downPaymentAndClosing = req.body.downPaymentAndClosing ? 
         parseFloat(req.body.downPaymentAndClosing) : 0;
 
-      const result = verifyAssets(assets, downPaymentAndClosing);
+      const result = await verifyAssets(assets, downPaymentAndClosing);
       res.json(result);
     } catch (error) {
       console.error("Calculate assets error:", error);
@@ -126,7 +126,7 @@ export function registerUnderwritingRoutes(
         return res.status(400).json({ error: "qualifyingIncome, housingExpense, and nonHousingDebts must be valid numbers" });
       }
 
-      const result = calculateDTI(parsedIncome, parsedHousing, parsedDebts);
+      const result = await calculateDTI(parsedIncome, parsedHousing, parsedDebts);
 
       res.json(result);
     } catch (error) {
@@ -168,7 +168,8 @@ export function registerUnderwritingRoutes(
         return res.status(400).json({ error: "All numeric parameters must be valid numbers" });
       }
 
-      const result = checkPropertyEligibility(
+      const repFico = application.creditScore ?? undefined;
+      const result = await checkPropertyEligibility(
         pAssets,
         pIncome,
         pDebts,
@@ -176,7 +177,9 @@ export function registerUnderwritingRoutes(
         propertyType,
         propertyTaxAnnual ? parseFloat(propertyTaxAnnual) : undefined,
         pHoa,
-        pInsurance
+        pInsurance,
+        undefined,
+        repFico
       );
 
       res.json(result);
@@ -219,7 +222,7 @@ export function registerUnderwritingRoutes(
       const borrowerIncome = application.annualIncome ? 
         parseFloat(application.annualIncome) / 12 : 0;
 
-      const result = calculateLLPA(
+      const result = await calculateLLPA(
         parseFloat(loanAmount),
         parseInt(creditScore),
         parseFloat(ltv),

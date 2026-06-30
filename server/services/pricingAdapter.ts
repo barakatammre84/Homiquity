@@ -121,7 +121,7 @@ export async function computeOffers(
   const lenderMap = new Map<string, WholesaleLender>();
   for (const l of activeLenders) lenderMap.set(l.id, l);
 
-  const llpaResult = calculateLLPA(
+  const llpaResult = await calculateLLPA(
     profile.loanAmount,
     profile.creditScore,
     ltv,

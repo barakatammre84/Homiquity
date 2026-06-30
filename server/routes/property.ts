@@ -520,7 +520,7 @@ export function registerPropertyRoutes(
       const downPaymentPercent = req.body.downPaymentPercent || 5;
       
       // Use underwriting engine to check property eligibility
-      const eligibility = checkPropertyEligibility(
+      const eligibility = await checkPropertyEligibility(
         preApprovalAmount * 0.2, // Estimate assets as 20% of pre-approval for down payment capacity
         monthlyIncome,
         monthlyDebts,
@@ -529,7 +529,8 @@ export function registerPropertyRoutes(
         undefined, // property tax - will use default estimate
         undefined, // HOA
         Math.max(100, price * 0.003 / 12), // insurance estimate based on property value
-        100 - downPaymentPercent // max LTV
+        100 - downPaymentPercent, // max LTV
+        creditScore // representative FICO for PMI lookup
       );
 
       let status: "within_guidelines" | "exceeds_standard" | "exceeds_maximum" = "within_guidelines";

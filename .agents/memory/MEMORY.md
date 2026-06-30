@@ -1,2 +1,3 @@
 - [db:push interactive blocker](db-push-blocker.md) — drizzle-kit push can hang on a pre-existing unrelated destructive prompt; apply your own columns via idempotent ALTER instead of --force.
 - [MISMO co-applicant model](mismo-coapplicant-model.md) — URLA tables are single-row-per-application; borrowerSequenceNumber discriminates co-applicants, hmdaDemographics keyed by borrowerId.
+- [Lookup matrix engine](lookup-matrix-engine.md) — underwriting/pricing reads all policy numbers from Postgres matrices; resolveMatrixValue throws loud for decisioning, tryResolveMatrixValue→null only for display.

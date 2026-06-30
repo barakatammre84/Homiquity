@@ -5,6 +5,8 @@
  * Supports "Can I buy this house?" reverse-engineering with special assessment detection
  */
 
+import { lookupResolver } from "./services/lookupResolver";
+
 export interface PropertyAnalysisRequest {
   address: string;
   city: string;
@@ -207,16 +209,18 @@ export function estimatePropertyTax(
 // RECOMMENDED LTV BASED ON PROPERTY CHARACTERISTICS
 // ============================================================================
 
-export function recommendLTV(
+export async function recommendLTV(
   propertyType: string,
   yearBuilt?: number,
   squareFeet?: number
-): number {
-  let baseLTV = 95; // Standard conventional max
+): Promise<number> {
+  // Standard conventional max LTV resolved from the dynamic policy matrix.
+  const ltvCap = await lookupResolver.getPolicyScalar("CONVENTIONAL_LTV_CAP");
+  let baseLTV = ltvCap;
 
-  // Property type adjustments
+  // Property type adjustments relative to the conventional cap
   const typeAdjustments: Record<string, number> = {
-    single_family: 95,
+    single_family: ltvCap,
     townhouse: 90,
     condo: 85,
     multi_family: 80,
@@ -224,7 +228,7 @@ export function recommendLTV(
     other: 80,
   };
 
-  baseLTV = typeAdjustments[propertyType] || 95;
+  baseLTV = typeAdjustments[propertyType] || ltvCap;
 
   // Age adjustment (older homes = lower LTV)
   if (yearBuilt) {
@@ -245,7 +249,7 @@ export function recommendLTV(
 // COMPREHENSIVE PROPERTY ANALYSIS
 // ============================================================================
 
-export function analyzeProperty(request: PropertyAnalysisRequest): PropertyAnalysis {
+export async function analyzeProperty(request: PropertyAnalysisRequest): Promise<PropertyAnalysis> {
   const melloRoos = detectMelloRoos(
     request.publicRemarks,
     request.privateRemarks,
@@ -259,7 +263,7 @@ export function analyzeProperty(request: PropertyAnalysisRequest): PropertyAnaly
     request.propertyType
   );
 
-  const recommendedLTV = recommendLTV(
+  const recommendedLTV = await recommendLTV(
     request.propertyType,
     request.yearBuilt,
     request.squareFeet
@@ -318,66 +322,42 @@ export function analyzeProperty(request: PropertyAnalysisRequest): PropertyAnaly
 // PMI RATE LOOKUP (Integrated with property analysis)
 // ============================================================================
 
-export function getPMIRateCard(creditScore: number, ltv: number): {
+export async function getPMIRateCard(creditScore: number, ltv: number): Promise<{
   annualRate: number;
   monthlyRate: number;
   term: number;
   coverage: number; // Coverage percentage at this LTV
-} {
-  // MGIC/Enact-style rate cards by credit score and LTV bands
-  const rateCards: Record<string, Record<string, { annual: number; coverage: number }>> = {
-    "780_plus": {
-      "95": { annual: 0.35, coverage: 30 },
-      "90": { annual: 0.25, coverage: 30 },
-      "85": { annual: 0.20, coverage: 25 },
-      "80": { annual: 0, coverage: 0 },
-    },
-    "760_779": {
-      "95": { annual: 0.42, coverage: 30 },
-      "90": { annual: 0.30, coverage: 30 },
-      "85": { annual: 0.22, coverage: 25 },
-      "80": { annual: 0, coverage: 0 },
-    },
-    "740_759": {
-      "95": { annual: 0.50, coverage: 30 },
-      "90": { annual: 0.35, coverage: 30 },
-      "85": { annual: 0.25, coverage: 25 },
-      "80": { annual: 0, coverage: 0 },
-    },
-    "720_739": {
-      "95": { annual: 0.62, coverage: 30 },
-      "90": { annual: 0.45, coverage: 30 },
-      "85": { annual: 0.32, coverage: 25 },
-      "80": { annual: 0, coverage: 0 },
-    },
-    "below_720": {
-      "95": { annual: 1.35, coverage: 30 },
-      "90": { annual: 0.75, coverage: 30 },
-      "85": { annual: 0.50, coverage: 25 },
-      "80": { annual: 0, coverage: 0 },
-    },
-  };
+}> {
+  // GSE structural MI coverage requirement by LTV band (35% for >95% LTV,
+  // 30% for >90% LTV, 25% for >85% LTV, 12% for >80% LTV). Below the 80.01%
+  // conventional PMI trigger there is structurally no mortgage insurance — this
+  // is a policy fact, not a missing-data condition.
+  let coverage = 0;
+  if (ltv > 95) coverage = 35;
+  else if (ltv > 90) coverage = 30;
+  else if (ltv > 85) coverage = 25;
+  else if (ltv > 80) coverage = 12;
 
-  // Determine score tier
-  let scoreTier = "below_720";
-  if (creditScore >= 780) scoreTier = "780_plus";
-  else if (creditScore >= 760) scoreTier = "760_779";
-  else if (creditScore >= 740) scoreTier = "740_759";
-  else if (creditScore >= 720) scoreTier = "720_739";
+  // No MI required below the trigger: rate is structurally zero (no lookup).
+  if (coverage === 0) {
+    return { annualRate: 0, monthlyRate: 0, term: 360, coverage: 0 };
+  }
 
-  // Determine LTV tier
-  let ltvTier = "95";
-  if (ltv <= 80) ltvTier = "80";
-  else if (ltv <= 85) ltvTier = "85";
-  else if (ltv <= 90) ltvTier = "90";
-  else ltvTier = "95";
-
-  const rateData = rateCards[scoreTier]?.[ltvTier] || { annual: 0.60, coverage: 30 };
+  // MI is required, so the premium MUST resolve from the dynamic CONVENTIONAL_PMI
+  // matrix (FICO x LTV). A missing/out-of-range band here is a real compliance
+  // error and fails loudly — no silent fallback. LTV is rounded up so it lands
+  // in the correct seeded band.
+  const ltvForLookup = Math.ceil(ltv * 100) / 100;
+  const annualRate = await lookupResolver.resolveMatrixValue({
+    matrixCode: "CONVENTIONAL_PMI",
+    dim1Value: creditScore,
+    dim2Value: ltvForLookup,
+  });
 
   return {
-    annualRate: rateData.annual,
-    monthlyRate: rateData.annual / 12,
+    annualRate,
+    monthlyRate: annualRate / 12,
     term: 360, // 30 years standard
-    coverage: rateData.coverage,
+    coverage,
   };
 }

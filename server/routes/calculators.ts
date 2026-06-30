@@ -71,15 +71,15 @@ export function registerCalculatorRoutes(app: Express, storage: IStorage) {
     try {
       const { baseRate, source } = await resolveBaseRate(storage);
 
-      const tiers = CREDIT_TIERS.map((tier) => {
+      const tiers = await Promise.all(CREDIT_TIERS.map(async (tier) => {
         const ltvAtMinDown = round((1 - tier.minDownPaymentPct) * 100, 2);
-        const llpa = calculateLLPA(
+        const llpa = await calculateLLPA(
           REFERENCE_LOAN_AMOUNT,
           tier.representativeScore,
           ltvAtMinDown,
         );
         const interestRate = round(baseRate + llpa.totalLLPA / 100, 3);
-        const pmi = getPMIRateCard(tier.representativeScore, ltvAtMinDown);
+        const pmi = await getPMIRateCard(tier.representativeScore, ltvAtMinDown);
 
         return {
           id: tier.id,
@@ -91,7 +91,7 @@ export function registerCalculatorRoutes(app: Express, storage: IStorage) {
           interestRate,
           pmiAnnualRate: tier.minDownPaymentPct < 0.2 ? pmi.annualRate : 0,
         };
-      });
+      }));
 
       res.json({ baseRate: round(baseRate, 3), baseRateSource: source, tiers });
     } catch (err) {

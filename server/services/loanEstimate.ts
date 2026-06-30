@@ -201,7 +201,7 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   
   const propertyType = (application.propertyType || "single_family") as "single_family" | "condo" | "townhouse" | "multi_family";
   
-  const llpaResult = calculateLLPA(
+  const llpaResult = await calculateLLPA(
     loanAmount,
     creditScore,
     ltv,

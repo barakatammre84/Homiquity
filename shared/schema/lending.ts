@@ -379,7 +379,13 @@ export const urlaPersonalInfo = pgTable("urla_personal_info", {
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Prevent duplicate multi-borrower mapping: one row per (application, borrower sequence)
+  uniqueIndex("urla_personal_info_app_seq_idx").on(
+    table.applicationId,
+    table.borrowerSequenceNumber,
+  ),
+]);
 
 export const insertUrlaPersonalInfoSchema = createInsertSchema(urlaPersonalInfo).omit({
   id: true,

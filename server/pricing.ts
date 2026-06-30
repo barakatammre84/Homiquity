@@ -2,8 +2,10 @@
  * Loan Pricing Engine - LLPA Matrix & PMI Calculation
  * 
  * Implements Fannie Mae Loan Level Price Adjustments (LLPA) and PMI rate lookups
- * Based on 2025/2026 pricing matrices
+ * Resolved dynamically from versioned policy matrices (no hardcoded rate cards)
  */
+
+import { lookupResolver } from "./services/lookupResolver";
 
 export interface LLPAResult {
   baseLLPA: number;
@@ -19,159 +21,28 @@ export interface LLPAResult {
   };
 }
 
-// ============================================================================
-// FANNIE MAE LLPA MATRIX (Simplified 2025 Model)
-// ============================================================================
-
-interface LLPAMatrixEntry {
-  ltv: string; // "<=60", "60-70", "70-75", "75-80", "80-85", "85-90", "90-95", ">95"
-  score780plus: number;
-  score760_779: number;
-  score740_759: number;
-  score720_739: number;
-  score700_719: number;
-  score680_699: number;
-  score660_679: number;
-  score640_659: number;
-  scoreBelowZero: number; // Score < 640
-}
-
-const LLPA_MATRIX: LLPAMatrixEntry[] = [
-  {
-    ltv: "<=60",
-    score780plus: -0.25,
-    score760_779: -0.125,
-    score740_759: 0,
-    score720_739: 0.125,
-    score700_719: 0.375,
-    score680_699: 0.75,
-    score660_679: 1.125,
-    score640_659: 1.5,
-    scoreBelowZero: 2.0,
-  },
-  {
-    ltv: "60-70",
-    score780plus: -0.25,
-    score760_779: -0.125,
-    score740_759: 0,
-    score720_739: 0.125,
-    score700_719: 0.375,
-    score680_699: 0.75,
-    score660_679: 1.125,
-    score640_659: 1.5,
-    scoreBelowZero: 2.0,
-  },
-  {
-    ltv: "70-75",
-    score780plus: 0,
-    score760_779: 0.125,
-    score740_759: 0.375,
-    score720_739: 0.625,
-    score700_719: 0.875,
-    score680_699: 1.25,
-    score660_679: 1.75,
-    score640_659: 2.125,
-    scoreBelowZero: 2.875,
-  },
-  {
-    ltv: "75-80",
-    score780plus: 0.375,
-    score760_779: 0.625,
-    score740_759: 1.0,
-    score720_739: 1.375,
-    score700_719: 1.75,
-    score680_699: 2.25,
-    score660_679: 2.75,
-    score640_659: 3.25,
-    scoreBelowZero: 4.0,
-  },
-  {
-    ltv: "80-85",
-    score780plus: 0.875,
-    score760_779: 1.25,
-    score740_759: 1.75,
-    score720_739: 2.25,
-    score700_719: 2.875,
-    score680_699: 3.5,
-    score660_679: 4.375,
-    score640_659: 5.0,
-    scoreBelowZero: 5.875,
-  },
-  {
-    ltv: "85-90",
-    score780plus: 1.625,
-    score760_779: 2.125,
-    score740_759: 2.75,
-    score720_739: 3.375,
-    score700_719: 4.125,
-    score680_699: 4.875,
-    score660_679: 5.75,
-    score640_659: 6.75,
-    scoreBelowZero: 7.875,
-  },
-  {
-    ltv: "90-95",
-    score780plus: 2.5,
-    score760_779: 3.125,
-    score740_759: 3.875,
-    score720_739: 4.625,
-    score700_719: 5.5,
-    score680_699: 6.375,
-    score660_679: 7.375,
-    score640_659: 8.375,
-    scoreBelowZero: 9.75,
-  },
-  {
-    ltv: ">95",
-    score780plus: 3.75,
-    score760_779: 4.625,
-    score740_759: 5.5,
-    score720_739: 6.625,
-    score700_719: 7.75,
-    score680_699: 8.875,
-    score660_679: 10.25,
-    score640_659: 11.5,
-    scoreBelowZero: 13.125,
-  },
-];
 
 // ============================================================================
 // LLPA LOOKUP FUNCTION
 // ============================================================================
 
-export function lookupLLPA(creditScore: number, ltv: number): number {
-  // Find correct score band
-  let scoreKey: keyof Omit<LLPAMatrixEntry, "ltv">;
-
-  if (creditScore >= 780) scoreKey = "score780plus";
-  else if (creditScore >= 760) scoreKey = "score760_779";
-  else if (creditScore >= 740) scoreKey = "score740_759";
-  else if (creditScore >= 720) scoreKey = "score720_739";
-  else if (creditScore >= 700) scoreKey = "score700_719";
-  else if (creditScore >= 680) scoreKey = "score680_699";
-  else if (creditScore >= 660) scoreKey = "score660_679";
-  else if (creditScore >= 640) scoreKey = "score640_659";
-  else scoreKey = "scoreBelowZero";
-
-  // Find correct LTV band
-  let ltvBand: LLPAMatrixEntry | undefined;
-  if (ltv <= 60) ltvBand = LLPA_MATRIX[0];
-  else if (ltv <= 70) ltvBand = LLPA_MATRIX[1];
-  else if (ltv <= 75) ltvBand = LLPA_MATRIX[2];
-  else if (ltv <= 80) ltvBand = LLPA_MATRIX[3];
-  else if (ltv <= 85) ltvBand = LLPA_MATRIX[4];
-  else if (ltv <= 90) ltvBand = LLPA_MATRIX[5];
-  else if (ltv <= 95) ltvBand = LLPA_MATRIX[6];
-  else ltvBand = LLPA_MATRIX[7];
-
-  return ltvBand?.[scoreKey] || 0;
+export async function lookupLLPA(creditScore: number, ltv: number): Promise<number> {
+  // Base LLPA risk-adjusted fee resolved from the dynamic FANNIE_LLPA matrix
+  // (FICO interval x rounded LTV interval). LTV is rounded up so a 90.01% LTV
+  // falls into the 91-95 band, matching agency rounding conventions.
+  const ltvForLookup = Math.ceil(ltv);
+  return lookupResolver.resolveMatrixValue({
+    matrixCode: "FANNIE_LLPA",
+    dim1Value: creditScore,
+    dim2Value: ltvForLookup,
+  });
 }
 
 // ============================================================================
 // LLPA PRICING WITH PROPERTY TYPE ADJUSTMENTS
 // ============================================================================
 
-export function calculateLLPA(
+export async function calculateLLPA(
   loanAmount: number,
   creditScore: number,
   ltv: number,
@@ -180,9 +51,9 @@ export function calculateLLPA(
   isFirstTimeHomeBuyer: boolean = false,
   borrowerIncome: number = 0,
   areaMedianIncome: number = 0
-): LLPAResult {
-  // Base LLPA from matrix
-  const baseLLPA = lookupLLPA(creditScore, ltv);
+): Promise<LLPAResult> {
+  // Base LLPA from the dynamic matrix
+  const baseLLPA = await lookupLLPA(creditScore, ltv);
 
   // Property type adjustments
   let propertyTypeAdjustment = 0;
@@ -217,8 +88,12 @@ export function calculateLLPA(
   const totalLLPA = baseLLPA + propertyTypeAdjustment + condoAdjustment + fthbWaiver;
   const lLPAFeeAmount = (loanAmount * totalLLPA) / 100;
 
-  // Placeholder PMI - simplified
-  const pmiAnnualRate = ltv > 80 ? 0.6 : 0;
+  // PMI resolved from the dynamic CONVENTIONAL_PMI matrix via the shared rate
+  // card (single source of truth). MI is structurally required only above the
+  // high-LTV trigger; when required, a missing/out-of-range FICO x LTV band
+  // fails loudly (no silent fallback). Below the trigger there is structurally
+  // no MI and the card returns 0.
+  const pmiAnnualRate = await lookupPMIRate(creditScore, ltv);
   const pmiMonthlyPayment = (loanAmount * pmiAnnualRate) / 12 / 100;
 
   return {
@@ -254,9 +129,9 @@ export async function getAreaMedianIncome(zipCode: string): Promise<number> {
 // PMI RATE LOOKUP (Simplified - would integrate with MGIC/Enact APIs)
 // ============================================================================
 
-export function lookupPMIRate(creditScore: number, ltv: number): number {
-  // Use property analyzer's rate card for accurate PMI pricing
-  const { propertyAnalyzer } = require("./propertyAnalyzer");
-  const rateCard = propertyAnalyzer.getPMIRateCard(creditScore, ltv);
+export async function lookupPMIRate(creditScore: number, ltv: number): Promise<number> {
+  // Use property analyzer's rate card (dynamic CONVENTIONAL_PMI matrix) for pricing
+  const { getPMIRateCard } = await import("./propertyAnalyzer");
+  const rateCard = await getPMIRateCard(creditScore, ltv);
   return rateCard.annualRate;
 }
