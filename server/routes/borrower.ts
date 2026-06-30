@@ -2186,6 +2186,17 @@ export function registerBorrowerRoutes(
         return res.status(400).json({ error: "Invalid item data", details: parsed.error.flatten() });
       }
 
+      // Verify that the referenced document belongs to the same loan file as the package.
+      // Without this check a staff member who has access to two loan files can inject
+      // a document from file B into a package that belongs to file A.
+      const referencedDoc = await storage.getDocument(parsed.data.documentId);
+      if (!referencedDoc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      if (referencedDoc.applicationId !== pkg.applicationId) {
+        return res.status(403).json({ error: "Document does not belong to this loan file" });
+      }
+
       const item = await storage.addDocumentToPackage({
         ...parsed.data,
         packageId,
@@ -2419,17 +2430,55 @@ export function registerBorrowerRoutes(
     try {
       const { messageId } = req.params;
       const { status, documentId } = req.body;
-      
+      const user = req.user as User;
+
       if (!status || !['pending', 'submitted', 'approved', 'rejected'].includes(status)) {
         return res.status(400).json({ error: "Valid status is required" });
       }
-      
+
+      // Fetch the message so we can enforce participant and role-based transition checks
+      // before mutating anything.
+      const message = await storage.getMessageById(messageId);
+      if (!message || message.messageType !== 'document_request') {
+        return res.status(404).json({ error: "Document request not found" });
+      }
+
+      const isSender = message.senderId === user.id;
+      const isRecipient = message.recipientId === user.id;
+
+      // Caller must be a participant in the conversation.
+      if (!isSender && !isRecipient) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Verify access to the associated loan file when one is present.
+      if (message.applicationId) {
+        const application = await storage.getLoanApplicationWithAccess(message.applicationId, user.id, user.role);
+        if (!application) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+
+      // Enforce which side of the conversation may perform each transition:
+      //   submitted  → only the recipient (borrower) may mark a request as submitted
+      //   approved / rejected / pending (reset) → only the sender (staff who made the request)
+      if (status === 'submitted') {
+        if (!isRecipient) {
+          return res.status(403).json({ error: "Only the document recipient may mark a request as submitted" });
+        }
+      } else {
+        // approved, rejected, pending — only the original requesting staff member
+        if (!isSender || !isStaffRole(user.role)) {
+          return res.status(403).json({ error: "Only the requesting staff member may approve, reject, or reset a document request" });
+        }
+      }
+
       const updated = await storage.updateDocumentRequestStatus(messageId, status, documentId);
-      
+
       if (!updated) {
         return res.status(404).json({ error: "Document request not found" });
       }
-      
+
       res.json(updated);
     } catch (error) {
       console.error("Update document request error:", error);

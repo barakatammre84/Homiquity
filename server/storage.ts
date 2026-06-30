@@ -705,6 +705,7 @@ export interface IStorage {
 
   // Messaging & Presence
   sendMessage(data: InsertTeamMessage): Promise<TeamMessage>;
+  getMessageById(messageId: string): Promise<TeamMessage | null>;
   getMessages(userId: string, otherUserId: string): Promise<TeamMessage[]>;
   getConversations(userId: string): Promise<{
     partnerId: string;
@@ -3580,7 +3581,12 @@ export class DatabaseStorage implements IStorage {
     const [message] = await db.insert(teamMessages).values(data).returning();
     return message;
   }
-  
+
+  async getMessageById(messageId: string): Promise<TeamMessage | null> {
+    const [message] = await db.select().from(teamMessages).where(eq(teamMessages.id, messageId)).limit(1);
+    return message ?? null;
+  }
+
   async getMessages(userId: string, otherUserId: string): Promise<TeamMessage[]> {
     return db.select()
       .from(teamMessages)
