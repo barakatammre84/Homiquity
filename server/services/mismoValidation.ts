@@ -793,6 +793,10 @@ export async function getApplicationValidationSummary(applicationId: string) {
     warningCount: validation.warnings.length,
     missingDocsCount: validation.missingDocuments.length,
     coApplicantCount: validation.coApplicants.length,
+    coApplicants: validation.coApplicants.map(co => ({
+      borrowerSequenceNumber: co.borrowerSequenceNumber,
+      name: co.name,
+    })),
     sections: validation.sections.map(s => ({
       name: s.section,
       number: s.sectionNumber,

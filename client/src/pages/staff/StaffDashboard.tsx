@@ -128,6 +128,7 @@ interface ComplianceData {
     warningCount: number;
     missingDocsCount: number;
     coApplicantCount?: number;
+    coApplicants?: { borrowerSequenceNumber: number; name: string | null }[];
   }[];
 }
 
@@ -153,6 +154,16 @@ interface RetentionReport {
 
 function formatStageLabel(stage: string): string {
   return STAGE_DISPLAY[stage] || stage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function coApplicantNames(
+  coApplicants?: { borrowerSequenceNumber: number; name: string | null }[]
+): string[] {
+  if (!coApplicants) return [];
+  return coApplicants.map((co, i) => {
+    const trimmed = co.name?.trim();
+    return trimmed && trimmed.length > 0 ? trimmed : `Co-applicant #${i + 1}`;
+  });
 }
 
 const STAGE_ORDER = [
@@ -915,12 +926,18 @@ export default function StaffDashboard() {
                                       QM
                                     </Badge>
                                   )}
-                                  {(compApp?.coApplicantCount || 0) > 0 && (
-                                    <Badge variant="outline" className="gap-1 text-xs" data-testid={`badge-coapplicants-${item.applicationId}`}>
-                                      <Users className="h-3 w-3" />
-                                      {(compApp?.coApplicantCount || 0) + 1} borrowers
-                                    </Badge>
-                                  )}
+                                  {(compApp?.coApplicantCount || 0) > 0 &&
+                                    coApplicantNames(compApp?.coApplicants).map((name, i) => (
+                                      <Badge
+                                        key={i}
+                                        variant="outline"
+                                        className="gap-1 text-xs"
+                                        data-testid={`badge-coapplicant-${item.applicationId}-${i}`}
+                                      >
+                                        <Users className="h-3 w-3" />
+                                        {name}
+                                      </Badge>
+                                    ))}
                                   {(compApp?.criticalCount || 0) > 0 && (
                                     <Badge variant="destructive" className="text-xs" data-testid={`badge-critical-${item.applicationId}`}>
                                       {compApp?.criticalCount} critical
@@ -1308,12 +1325,18 @@ export default function StaffDashboard() {
                                   QM
                                 </Badge>
                               )}
-                              {(app.coApplicantCount || 0) > 0 && (
-                                <Badge variant="outline" className="gap-1" data-testid={`badge-coapplicants-${app.applicationId}`}>
-                                  <Users className="h-3 w-3" />
-                                  {(app.coApplicantCount || 0) + 1} borrowers
-                                </Badge>
-                              )}
+                              {(app.coApplicantCount || 0) > 0 &&
+                                coApplicantNames(app.coApplicants).map((name, i) => (
+                                  <Badge
+                                    key={i}
+                                    variant="outline"
+                                    className="gap-1"
+                                    data-testid={`badge-coapplicant-${app.applicationId}-${i}`}
+                                  >
+                                    <Users className="h-3 w-3" />
+                                    {name}
+                                  </Badge>
+                                ))}
                               <Button size="sm" variant="outline" asChild>
                                 <Link href={`/borrower-file/${app.applicationId}`}>View</Link>
                               </Button>
