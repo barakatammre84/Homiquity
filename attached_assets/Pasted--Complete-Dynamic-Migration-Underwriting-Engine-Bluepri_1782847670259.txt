@@ -1,0 +1,746 @@
+### Complete Dynamic Migration & Underwriting Engine Blueprint
+
+This technical specification details the complete database-driven migration of your underwriting and pricing rules. By shifting regulatory thresholds out of code and into the database via a dynamic lookup resolver, your application becomes fully verifiable, audit-compliant, and adaptable to future regulations without requiring a redeployment.
+
+```
+                  Legacy Hardcoded Path (Retired)
+              [ DTI: 43% | LLPA Grid | Asset Haircuts ]
+                                 │
+                                 ▼
+           ┌───────────────────────────────────────────┐
+           │   Unified Lookup & Decision Engine        │
+           └───────────────────────────────────────────┘
+                                 ▲
+                                 │ Programmatic Query
+              ┌─────────────────────────────────────┐
+              │      LookupResolverService          │
+              └─────────────────────────────────────┘
+                                 ▲
+                                 │ Database Intersect
+              ┌─────────────────────────────────────┐
+              │ Postgres (lookup_matrices + cells)  │
+              └─────────────────────────────────────┘
+
+```
+
+---
+
+### Part 1: Relational Schema & Zod Validators
+
+Create a new schema file in `shared/schema/lookup.ts` to represent your lookup matrix definitions and coordinate cells.
+
+```typescript
+import { pgTable, uuid, integer, pgEnum, numeric, varchar, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+import { z } from 'zod';
+
+export const lifecycleStatusEnum = pgEnum('policy_lifecycle_status', ['DRAFT', 'ACTIVE', 'RETIRED']);
+
+// Master metadata table for rulesets and grids
+export const lookupMatrices = pgTable('lookup_matrices', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  matrixCode: varchar('matrix_code', { length: 100 }).notNull(), // e.g., 'CONVENTIONAL_PMI', 'VA_RESIDUAL', 'FANNIE_LLPA'
+  description: text('description'),
+  version: integer('version').default(1).notNull(),
+  lifecycleStatus: lifecycleStatusEnum('lifecycle_status').default('DRAFT').notNull(),
+  previousVersionId: uuid('previous_version_id'),
+  effectiveDate: timestamp('effective_date', { withTimezone: true }).notNull(),
+  expirationDate: timestamp('expiration_date', { withTimezone: true }),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  codeVerIdx: uniqueIndex('matrix_code_version_idx').on(table.matrixCode, table.version),
+  activeTemporalIdx: index('matrix_active_temporal_idx').on(table.matrixCode, table.lifecycleStatus, table.effectiveDate)
+}));
+
+// Multi-dimensional range bounds and coordinate intersections
+export const lookupMatrixCells = pgTable('lookup_matrix_cells', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  matrixId: uuid('matrix_id').references(() => lookupMatrices.id, { onDelete: 'CASCADE' }).notNull(),
+  // Dimension 1: Numeric interval (e.g., FICO)
+  dim1Min: numeric('dim1_min', { precision: 8, scale: 2 }),
+  dim1Max: numeric('dim1_max', { precision: 8, scale: 2 }),
+  // Dimension 2: Numeric interval (e.g., LTV)
+  dim2Min: numeric('dim2_min', { precision: 8, scale: 2 }),
+  dim2Max: numeric('dim2_max', { precision: 8, scale: 2 }),
+  // Dimension 3: Categorical lookup identifier (e.g., region name or household size)
+  dim3Identifier: varchar('dim3_identifier', { length: 100 }),
+  // Uniform target output parameter
+  outputValue: numeric('output_value', { precision: 12, scale: 6 }).notNull()
+}, (table) => ({
+  matrixIdIdx: index('cell_matrix_id_idx').on(table.matrixId),
+  multiDimLookupIdx: index('cell_multi_dim_lookup_idx').on(
+    table.matrixId,
+    table.dim1Min,
+    table.dim1Max,
+    table.dim2Min,
+    table.dim2Max,
+    table.dim3Identifier
+  )
+}));
+
+// Setup Relations
+export const lookupMatricesRelations = relations(lookupMatrices, ({ many }) => ({
+  cells: many(lookupMatrixCells)
+}));
+
+export const lookupMatrixCellsRelations = relations(lookupMatrixCells, ({ one }) => ({
+  matrix: one(lookupMatrices, {
+    fields: [lookupMatrixCells.matrixId],
+    references: [lookupMatrices.id]
+  })
+}));
+
+// Zod validation schemas for API verification & seed scripts
+export const lookupAxisTypeSchema = z.enum(['NUMERIC_INTERVAL', 'EXACT_MATCH', 'ENUM_SET']);
+
+export const lookupAxisDefinitionSchema = z.object({
+  dim1Name: z.string().min(1),
+  dim1Type: lookupAxisTypeSchema,
+  dim2Name: z.string().min(1).optional(),
+  dim2Type: lookupAxisTypeSchema.optional(),
+  dim3Name: z.string().min(1).optional(),
+  dim3Type: lookupAxisTypeSchema.optional()
+});
+
+export const lookupMatrixSchema = z.object({
+  matrixCode: z.string().min(1).max(100),
+  description: z.string().optional(),
+  version: z.number().int().positive(),
+  lifecycleStatus: z.enum(['DRAFT', 'ACTIVE', 'RETIRED']),
+  previousVersionId: z.string().uuid().nullable().optional(),
+  effectiveDate: z.coerce.date(),
+  expirationDate: z.coerce.date().nullable().optional(),
+  axisDefinition: lookupAxisDefinitionSchema
+});
+
+export const lookupMatrixCellSchema = z.object({
+  dim1Min: z.number().nullable().optional(),
+  dim1Max: z.number().nullable().optional(),
+  dim2Min: z.number().nullable().optional(),
+  dim2Max: z.number().nullable().optional(),
+  dim3Identifier: z.string().nullable().optional(),
+  outputValue: z.number()
+});
+
+```
+
+---
+
+### Part 2: Versioned & Date-Aware Lookup Resolver
+
+Save this core logic in `server/services/lookupResolver.ts`. This class handles in-memory configuration caching, verifies lifecycle states, and processes multi-dimensional range intercepts.
+
+```typescript
+import { db } from '../db';
+import { lookupMatrices, lookupMatrixCells } from '../../shared/schema/lookup';
+import { and, eq, lte, gte, or, isNull, sql } from 'drizzle-orm';
+
+export interface LookupQuery {
+  matrixCode: string;
+  dim1Value?: number;
+  dim2Value?: number;
+  dim3Identifier?: string;
+  targetDate?: Date;
+}
+
+export class LookupResolverService {
+  private static cache: Map<string, { data: number; expiry: number }> = new Map();
+  private static CACHE_TTL_MS = 60 * 1000; // 1-minute TTL
+
+  /**
+   * Resolves a value from a multidimensional dynamic matrix
+   * Fails loudly with an explicit error message if no matrix matches or bounds are out of range.
+   */
+  public async resolveMatrixValue(query: LookupQuery): Promise<number> {
+    const referenceDate = query.targetDate || new Date();
+    const cacheKey = `${query.matrixCode}_d1:${query.dim1Value || 'na'}_d2:${query.dim2Value || 'na'}_d3:${query.dim3Identifier || 'na'}_t:${referenceDate.getTime()}`;
+
+    // Verify Cache
+    const cached = LookupResolverService.cache.get(cacheKey);
+    if (cached && cached.expiry > Date.now()) {
+      return cached.data;
+    }
+
+    // Step 1: Query the active and chronologically valid master matrix record
+    const [matrix] = await db
+      .select()
+      .from(lookupMatrices)
+      .where(
+        and(
+          eq(lookupMatrices.matrixCode, query.matrixCode),
+          eq(lookupMatrices.lifecycleStatus, 'ACTIVE'),
+          lte(lookupMatrices.effectiveDate, referenceDate),
+          or(
+            isNull(lookupMatrices.expirationDate),
+            gte(lookupMatrices.expirationDate, referenceDate)
+          )
+        )
+      )
+      .orderBy(sql`${lookupMatrices.version} DESC`)
+      .limit(1);
+
+    if (!matrix) {
+      throw new Error(`CRITICAL COMPLIANCE ERROR: Required matrix configuration [${query.matrixCode}] is missing, expired, or not active for date ${referenceDate.toISOString()}`);
+    }
+
+    // Step 2: Build intersection parameters checking boundary constraints
+    const conditions = [eq(lookupMatrixCells.matrixId, matrix.id)];
+
+    if (query.dim1Value !== undefined) {
+      conditions.push(
+        and(
+          or(isNull(lookupMatrixCells.dim1Min), lte(lookupMatrixCells.dim1Min, sql`${query.dim1Value}::numeric`)),
+          or(isNull(lookupMatrixCells.dim1Max), gte(lookupMatrixCells.dim1Max, sql`${query.dim1Value}::numeric`))
+        )!
+      );
+    }
+
+    if (query.dim2Value !== undefined) {
+      conditions.push(
+        and(
+          or(isNull(lookupMatrixCells.dim2Min), lte(lookupMatrixCells.dim2Min, sql`${query.dim2Value}::numeric`)),
+          or(isNull(lookupMatrixCells.dim2Max), gte(lookupMatrixCells.dim2Max, sql`${query.dim2Value}::numeric`))
+        )!
+      );
+    }
+
+    if (query.dim3Identifier !== undefined) {
+      conditions.push(eq(lookupMatrixCells.dim3Identifier, query.dim3Identifier));
+    }
+
+    // Step 3: Fetch cell match
+    const [cell] = await db
+      .select()
+      .from(lookupMatrixCells)
+      .where(and(...conditions))
+      .limit(1);
+
+    if (!cell) {
+      throw new Error(
+        `CRITICAL DECISIONING ERROR: Lookup parameters [d1: ${query.dim1Value ?? 'N/A'}, d2: ${query.dim2Value ?? 'N/A'}, d3: ${query.dim3Identifier ?? 'N/A'}] fell outside permitted compliance intervals in active matrix [${query.matrixCode}]`
+      );
+    }
+
+    const result = parseFloat(cell.outputValue);
+    LookupResolverService.cache.set(cacheKey, {
+      data: result,
+      expiry: Date.now() + LookupResolverService.CACHE_TTL_MS
+    });
+
+    return result;
+  }
+
+  /**
+   * Helper shortcut to retrieve standard policy threshold scalars
+   */
+  public async getPolicyScalar(scalarCode: string): Promise<number> {
+    return this.resolveMatrixValue({ matrixCode: scalarCode });
+  }
+}
+
+```
+
+---
+
+### Part 3: Dynamic Decisions & Math Pipeline
+
+Save this execution file in `server/underwritingEngine.ts`. This module replaces legacy hardcoded math constraints, executes LTV truncation/rounding, verifies asset liquidity values dynamically, and processes the net-new VA residual calculations.
+
+```typescript
+import { LookupResolverService } from './services/lookupResolver';
+
+export interface AssetProfile {
+  type: 'CHECKING_SAVINGS' | 'STOCK_INVESTMENT' | 'RETIREMENT_IRA_401K';
+  balance: number;
+}
+
+export interface UnderwritingInput {
+  isVeteran: boolean;
+  isActiveDuty?: boolean;
+  hasExchangeAccess?: boolean; // Commissary eligibility discount
+  baseMonthlyIncome: number;
+  bonusMonthlyIncome: number;
+  existingMonthlyDebts: number;
+  originalLoanAmount: number;
+  contractSalesPrice: number;
+  appraisalValue: number;
+  representativeFico: number;
+  proposedPiti: number;
+  assets: AssetProfile[];
+  homeSquareFootage?: number;
+  subjectPropertyState?: string;
+  householdFamilySize?: number;
+}
+
+export interface UnderwritingResult {
+  decision: 'APPROVED' | 'REJECTED' | 'MANUAL_REVIEW';
+  loanType: 'CONVENTIONAL' | 'VA';
+  calculatedLtv: number;
+  lookupLtv: number; // Rounded LTV used for pricing lookups
+  calculatedDti: number;
+  resolvedPmiMonthlyPremium: number;
+  resolvedLlpafUpfrontFee: number;
+  calculatedLiquidAssets: number;
+  actualResidualIncome?: number;
+  requiredResidualIncome?: number;
+  rejectionReasons: string[];
+}
+
+export class ConsolidatedUnderwritingEngine {
+  private resolver = new LookupResolverService();
+
+  public async evaluate(input: UnderwritingInput): Promise<UnderwritingResult> {
+    const reasons: string[] = [];
+    const targetLoanType = input.isVeteran ? 'VA' : 'CONVENTIONAL';
+
+    // Step 1: Process dynamic values from Postgres lookup tables
+    const dtiCap = await this.resolver.getPolicyScalar('CONVENTIONAL_DTI_CAP') / 100;
+    const stretchDti = await this.resolver.getPolicyScalar('CONVENTIONAL_STRETCH_DTI') / 100;
+    const ltvCap = await this.resolver.getPolicyScalar('CONVENTIONAL_LTV_CAP');
+    const haircutStock = await this.resolver.getPolicyScalar('HAIRCUT_STOCK_INVESTMENT') / 100;
+    const haircutRetirement = await this.resolver.getPolicyScalar('HAIRCUT_RETIREMENT') / 100;
+
+    // Step 2: Calculate Loan-to-Value (LTV)
+    const propertyBasisValue = Math.min(input.contractSalesPrice, input.appraisalValue);
+    if (propertyBasisValue <= 0) {
+      throw new Error("CRITICAL VALUE INPUT ERROR: Property valuation basis must be greater than zero.");
+    }
+    const rawLtvFraction = (input.originalLoanAmount / propertyBasisValue) * 100;
+    
+    // Truncate calculated LTV to 2 decimal places [cite: 1]
+    const calculatedLtv = Math.floor(rawLtvFraction * 100) / 100;
+    
+    // Round up to the nearest whole percentage point for matrix lookups [cite: 1]
+    const lookupLtv = Math.ceil(calculatedLtv);
+
+    // Step 3: Enforce maximum LTV ceiling
+    if (calculatedLtv > ltvCap) {
+      reasons.push(`Calculated LTV of ${calculatedLtv.toFixed(2)}% exceeds policy ceiling of ${ltvCap}%`);
+    }
+
+    // Step 4: Process and aggregate assets using haircuts to determine verified reserves
+    let calculatedLiquidAssets = 0;
+    for (const asset of input.assets) {
+      if (asset.type === 'CHECKING_SAVINGS') {
+        calculatedLiquidAssets += asset.balance;
+      } else if (asset.type === 'STOCK_INVESTMENT') {
+        calculatedLiquidAssets += asset.balance * haircutStock; // count at discounted value [cite: 2]
+      } else if (asset.type === 'RETIREMENT_IRA_401K') {
+        calculatedLiquidAssets += asset.balance * haircutRetirement; // apply retirement asset haircut [cite: 3]
+      }
+    }
+
+    // Step 5: Process standard Debt-to-Income (DTI)
+    const combinedGrossMonthlyIncome = input.baseMonthlyIncome + input.bonusMonthlyIncome;
+    if (combinedGrossMonthlyIncome <= 0) {
+      throw new Error("CRITICAL INCOME INPUT ERROR: Consolidated gross qualifying income must be greater than zero.");
+    }
+    const combinedMonthlyLiabilities = input.existingMonthlyDebts + input.proposedPiti;
+    const calculatedDti = (combinedMonthlyLiabilities / combinedGrossMonthlyIncome) * 100;
+
+    let resolvedPmiMonthlyPremium = 0;
+    let resolvedLlpafUpfrontFee = 0;
+
+    let actualResidualIncome: number | undefined;
+    let requiredResidualIncome: number | undefined;
+
+    // Standard Conforming Loan Path
+    if (targetLoanType === 'CONVENTIONAL') {
+      if (calculatedDti > stretchDti) {
+        reasons.push(`Debt-to-Income ratio (${calculatedDti.toFixed(2)}%) exceeds the system's hard stretch ceiling of ${(stretchDti * 100).toFixed(0)}%`);
+      }
+
+      // Query standard Monthly BPMI rate matrix if LTV > 80% [cite: 2, 4]
+      if (calculatedLtv > 80.00) {
+        const pmiRate = await this.resolver.resolveMatrixValue({
+          matrixCode: 'CONVENTIONAL_PMI',
+          dim1Value: input.representativeFico,
+          dim2Value: calculatedLtv
+        });
+        resolvedPmiMonthlyPremium = (input.originalLoanAmount * (pmiRate / 100)) / 12;
+      }
+
+      // Query dynamic Fannie Mae LLPA Matrix
+      const llpaAdjustmentRate = await this.resolver.resolveMatrixValue({
+        matrixCode: 'FANNIE_LLPA',
+        dim1Value: input.representativeFico,
+        dim2Value: lookupLtv
+      });
+      resolvedLlpafUpfrontFee = input.originalLoanAmount * (llpaAdjustmentRate / 100);
+
+    // VA Veteran Loan Path
+    } else {
+      if (!input.subjectPropertyState || !input.householdFamilySize || !input.homeSquareFootage) {
+        throw new Error("CRITICAL VA PROTOCOL ERROR: Properties state, family size, and home square footage are required for military residual evaluations.");
+      }
+
+      // Map subject property state to VA regional zone
+      const vaRegion = this.resolveVaRegion(input.subjectPropertyState);
+
+      // VA Square-Foot Utility Rule [cite: 2, 5, 6]
+      const estimatedUtilityCosts = input.homeSquareFootage * 0.14;
+
+      // Deduct estimated taxes, shelter costs, and utilities to isolate residual take-home pay [cite: 7]
+      const estimatedTaxesWithholding = combinedGrossMonthlyIncome * 0.18; // Standard 18% tax deduction model
+      
+      actualResidualIncome = 
+        combinedGrossMonthlyIncome - 
+        estimatedTaxesWithholding - 
+        input.proposedPiti - 
+        input.existingMonthlyDebts - 
+        estimatedUtilityCosts;
+
+      // Select dynamic minimum residual threshold matching regional guidelines
+      requiredResidualIncome = await this.resolver.resolveMatrixValue({
+        matrixCode: 'VA_RESIDUAL',
+        dim1Value: input.householdFamilySize,
+        dim2Value: input.originalLoanAmount,
+        dim3Identifier: vaRegion
+      });
+
+      // Implement Active-Duty Commissary Facility Discount [cite: 6, 8, 9]
+      if (input.isActiveDuty && input.hasExchangeAccess) {
+        requiredResidualIncome = requiredResidualIncome * 0.95;
+      }
+
+      // Implement the 20% Cushion Rule for High DTI profiles [cite: 5, 10, 11]
+      if (calculatedDti > 41.00) {
+        const highDtiTarget = requiredResidualIncome * 1.20;
+        if (actualResidualIncome < highDtiTarget) {
+          reasons.push(
+            `High DTI (${calculatedDti.toFixed(2)}% > 41.00%) requires residual income buffer of $${highDtiTarget.toFixed(2)}. Current residual is $${actualResidualIncome.toFixed(2)}`
+          );
+        }
+      } else {
+        if (actualResidualIncome < requiredResidualIncome) {
+          reasons.push(
+            `Actual residual income of $${actualResidualIncome.toFixed(2)} falls below the standard regional requirement of $${requiredResidualIncome.toFixed(2)}`
+          );
+        }
+      }
+    }
+
+    // Evaluate standard pre-approval metrics
+    let decision: 'APPROVED' | 'REJECTED' | 'MANUAL_REVIEW' = 'APPROVED';
+
+    if (reasons.length > 0) {
+      decision = 'REJECTED';
+    } else if (targetLoanType === 'CONVENTIONAL' && calculatedDti > dtiCap) {
+      // DTI between baseline (43%) and stretch (50%) moves to Manual Review
+      decision = 'MANUAL_REVIEW';
+    }
+
+    return {
+      decision,
+      loanType: targetLoanType,
+      calculatedLtv,
+      lookupLtv,
+      calculatedDti,
+      resolvedPmiMonthlyPremium,
+      resolvedLlpafUpfrontFee,
+      calculatedLiquidAssets,
+      actualResidualIncome,
+      requiredResidualIncome,
+      rejectionReasons: reasons
+    };
+  }
+
+  /**
+   * Evaluates state code parameters and returns official regional groups [cite: 5, 12]
+   */
+  private resolveVaRegion(state: string): 'NORTHEAST' | 'MIDWEST' | 'SOUTH' | 'WEST' {
+    const st = state.toUpperCase().trim();
+    
+    const regions = {
+      NORTHEAST: ['CT', 'MA', 'ME', 'NH', 'NJ', 'NY', 'PA', 'RI', 'VT'],
+      MIDWEST: ['IL', 'IN', 'IA', 'KS', 'MI', 'MN', 'MO', 'NE', 'ND', 'OH', 'SD', 'WI'],
+      SOUTH: ['AL', 'AR', 'DE', 'DC', 'FL', 'GA', 'KY', 'LA', 'MD', 'MS', 'NC', 'OK', 'PR', 'SC', 'TN', 'TX', 'VA', 'WV'],
+      WEST: ['AK', 'AZ', 'CA', 'CO', 'HI', 'ID', 'MT', 'NV', 'NM', 'OR', 'UT', 'WA', 'WY']
+    };
+
+    if (regions.NORTHEAST.includes(st)) return 'NORTHEAST';
+    if (regions.MIDWEST.includes(st)) return 'MIDWEST';
+    if (regions.SOUTH.includes(st)) return 'SOUTH';
+    if (regions.WEST.includes(st)) return 'WEST';
+
+    throw new Error(`CRITICAL COMPLIANCE ERROR: Received unrecognized state parameter [${state}]. Unable to resolve geographic region mapping.`);
+  }
+}
+
+```
+
+---
+
+### Part 4: Dynamic Database Seeding
+
+Save this script in `server/scripts/seedLendingGrids.ts`. When executed, this code populates your database with the dynamic scalars, Fannie Mae LLPA parameters, regional VA residual requirements, and National MI premium tables.
+
+```typescript
+import { db } from '../db';
+import { lookupMatrices, lookupMatrixCells } from '../../shared/schema/lookup';
+import { eq } from 'drizzle-orm';
+
+async function seed() {
+  console.log("INITIALIZING DECISION ENGINE SEEDING PIPELINE...");
+
+  // Wipe existing matrices to ensure clean seed runs
+  await db.delete(lookupMatrixCells);
+  await db.delete(lookupMatrices);
+
+  // Helper function to seed matrices
+  const createMatrix = async (code: string, desc: string, version = 1) => {
+    const [inserted] = await db.insert(lookupMatrices).values({
+      matrixCode: code,
+      description: desc,
+      version,
+      lifecycleStatus: 'ACTIVE',
+      effectiveDate: new Date('2026-01-01T00:00:00Z')
+    }).returning();
+    return inserted.id;
+  };
+
+  // ==========================================
+  // SEED: Policy Scalars (Hardcoded values moved to database)
+  // ==========================================
+  const scalarMap = [
+    { code: 'CONVENTIONAL_DTI_CAP', value: 43.0, desc: 'Baseline DTI ratio ceiling for standard approvals' },
+    { code: 'CONVENTIONAL_STRETCH_DTI', value: 50.0, desc: 'System hard stretch limit for manual/compensating underwriting' },
+    { code: 'CONVENTIONAL_LTV_CAP', value: 95.0, desc: 'Maximum allowable loan-to-value ceiling for conventional conforming loans' },
+    { code: 'HAIRCUT_STOCK_INVESTMENT', value: 60.0, desc: 'Liquid valuation haircut for general stock assets' },
+    { code: 'HAIRCUT_RETIREMENT', value: 70.0, desc: 'Volatile valuation haircut for retirement portfolios (counts at 70% value)' }
+  ];
+
+  for (const s of scalarMap) {
+    const mId = await createMatrix(s.code, s.desc);
+    await db.insert(lookupMatrixCells).values({
+      matrixId: mId,
+      outputValue: s.value.toString()
+    });
+  }
+
+  // ==========================================
+  // SEED: Conventional Monthly BPMI Matrix (National MI/MGIC) [cite: 13]
+  // ==========================================
+  const pmiId = await createMatrix('CONVENTIONAL_PMI', 'Annual Monthly BPMI premiums by Credit Score vs LTV Range');
+  
+  // Standard LTV Band: 95.01% - 97.00% LTV (35% Coverage)
+  const pmi97Cells = [
+    { fMin: 760, fMax: 850, rate: 0.58 },
+    { fMin: 740, fMax: 759, rate: 0.70 },
+    { fMin: 720, fMax: 739, rate: 0.87 },
+    { fMin: 700, fMax: 719, rate: 0.99 },
+    { fMin: 680, fMax: 699, rate: 1.21 },
+    { fMin: 660, fMax: 679, rate: 1.54 },
+    { fMin: 640, fMax: 659, rate: 1.65 },
+    { fMin: 620, fMax: 639, rate: 1.86 }
+  ];
+
+  for (const c of pmi97Cells) {
+    await db.insert(lookupMatrixCells).values({
+      matrixId: pmiId,
+      dim1Min: c.fMin.toString(),
+      dim1Max: c.fMax.toString(),
+      dim2Min: '95.01',
+      dim2Max: '97.00',
+      outputValue: c.rate.toString()
+    });
+  }
+
+  // Standard LTV Band: 90.01% - 95.00% LTV (30% Coverage)
+  const pmi95Cells = [
+    { fMin: 760, fMax: 850, rate: 0.38 },
+    { fMin: 740, fMax: 759, rate: 0.53 },
+    { fMin: 720, fMax: 739, rate: 0.66 },
+    { fMin: 700, fMax: 719, rate: 0.78 },
+    { fMin: 680, fMax: 699, rate: 0.96 },
+    { fMin: 660, fMax: 679, rate: 1.28 },
+    { fMin: 640, fMax: 659, rate: 1.33 },
+    { fMin: 620, fMax: 639, rate: 1.42 }
+  ];
+
+  for (const c of pmi95Cells) {
+    await db.insert(lookupMatrixCells).values({
+      matrixId: pmiId,
+      dim1Min: c.fMin.toString(),
+      dim1Max: c.fMax.toString(),
+      dim2Min: '90.01',
+      dim2Max: '95.00',
+      outputValue: c.rate.toString()
+    });
+  }
+
+  // ==========================================
+  // SEED: Fannie Mae Conforming LLPA Matrix [cite: 14]
+  // ==========================================
+  const llpaId = await createMatrix('FANNIE_LLPA', 'Standard baseline upfront risk-adjusted fees by Credit Score vs Rounded LTV');
+  
+  // Mapping LTV column brackets
+  const ltvBands = [
+    { min: 0, max: 60, rates: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] },
+    { min: 61, max: 70, rates: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.125, 0.125] },
+    { min: 71, max: 75, rates: [0.0, 0.0, 0.125, 0.250, 0.375, 0.625, 0.875, 1.125, 1.500] },
+    { min: 76, max: 80, rates: [0.375, 0.625, 0.875, 1.000, 1.125, 1.375, 1.750, 2.000, 2.250] },
+    { min: 81, max: 85, rates: [0.375, 0.625, 1.000, 1.250, 1.500, 1.625, 1.875, 2.500, 2.875] },
+    { min: 86, max: 90, rates: [0.250, 0.500, 0.750, 1.000, 1.250, 1.500, 1.750, 2.000, 2.625] },
+    { min: 91, max: 95, rates: [0.250, 0.500, 0.625, 0.875, 1.125, 1.375, 1.625, 1.875, 2.250] },
+    { min: 96, max: 97, rates: [0.125, 0.250, 0.500, 0.750, 0.875, 1.125, 1.375, 1.500, 1.750] }
+  ];
+
+  const ficoSlices = [
+    { min: 780, max: 850 },
+    { min: 760, max: 779 },
+    { min: 740, max: 759 },
+    { min: 720, max: 739 },
+    { min: 700, max: 719 },
+    { min: 680, max: 699 },
+    { min: 660, max: 679 },
+    { min: 640, max: 659 },
+    { min: 300, max: 639 }
+  ];
+
+  for (const band of ltvBands) {
+    for (let i = 0; i < ficoSlices.length; i++) {
+      const slice = ficoSlices[i];
+      const rate = band.rates[i];
+      await db.insert(lookupMatrixCells).values({
+        matrixId: llpaId,
+        dim1Min: slice.min.toString(),
+        dim1Max: slice.max.toString(),
+        dim2Min: band.min.toString(),
+        dim2Max: band.max.toString(),
+        outputValue: rate.toString()
+      });
+    }
+  }
+
+  // ==========================================
+  // SEED: VA Minimum Monthly Residual Income Requirements [cite: 5, 12]
+  // ==========================================
+  const vaId = await createMatrix('VA_RESIDUAL', 'Minimum monthly residual cash flow requirements by family size, loan amount and region');
+
+  // Multi-dimensional ruleset array mapping [Family Size, Threshold Limit, Region] -> Target Value
+  const vaDefinitions = [
+    // Standard Loan Amounts: >= $80,000 [cite: 5]
+    { size: 1, limitMin: 80000, limitMax: 9999999, region: 'NORTHEAST', value: 450 },
+    { size: 2, limitMin: 80000, limitMax: 9999999, region: 'NORTHEAST', value: 755 },
+    { size: 3, limitMin: 80000, limitMax: 9999999, region: 'NORTHEAST', value: 909 },
+    { size: 4, limitMin: 80000, limitMax: 9999999, region: 'NORTHEAST', value: 1025 },
+    { size: 5, limitMin: 80000, limitMax: 9999999, region: 'NORTHEAST', value: 1062 },
+
+    { size: 1, limitMin: 80000, limitMax: 9999999, region: 'MIDWEST', value: 441 },
+    { size: 2, limitMin: 80000, limitMax: 9999999, region: 'MIDWEST', value: 738 },
+    { size: 3, limitMin: 80000, limitMax: 9999999, region: 'MIDWEST', value: 889 },
+    { size: 4, limitMin: 80000, limitMax: 9999999, region: 'MIDWEST', value: 1003 },
+    { size: 5, limitMin: 80000, limitMax: 9999999, region: 'MIDWEST', value: 1039 },
+
+    { size: 1, limitMin: 80000, limitMax: 9999999, region: 'SOUTH', value: 441 },
+    { size: 2, limitMin: 80000, limitMax: 9999999, region: 'SOUTH', value: 738 },
+    { size: 3, limitMin: 80000, limitMax: 9999999, region: 'SOUTH', value: 889 },
+    { size: 4, limitMin: 80000, limitMax: 9999999, region: 'SOUTH', value: 1003 },
+    { size: 5, limitMin: 80000, limitMax: 9999999, region: 'SOUTH', value: 1039 },
+
+    { size: 1, limitMin: 80000, limitMax: 9999999, region: 'WEST', value: 491 },
+    { size: 2, limitMin: 80000, limitMax: 9999999, region: 'WEST', value: 823 },
+    { size: 3, limitMin: 80000, limitMax: 9999999, region: 'WEST', value: 990 },
+    { size: 4, limitMin: 80000, limitMax: 9999999, region: 'WEST', value: 1117 },
+    { size: 5, limitMin: 80000, limitMax: 9999999, region: 'WEST', value: 1158 },
+
+    // Low Loan Amounts: < $80,000 [cite: 12]
+    { size: 1, limitMin: 0, limitMax: 79999, region: 'NORTHEAST', value: 390 },
+    { size: 2, limitMin: 0, limitMax: 79999, region: 'NORTHEAST', value: 654 },
+    { size: 3, limitMin: 0, limitMax: 79999, region: 'NORTHEAST', value: 788 },
+    { size: 4, limitMin: 0, limitMax: 79999, region: 'NORTHEAST', value: 888 },
+    { size: 5, limitMin: 0, limitMax: 79999, region: 'NORTHEAST', value: 921 },
+
+    { size: 1, limitMin: 0, limitMax: 79999, region: 'MIDWEST', value: 382 },
+    { size: 2, limitMin: 0, limitMax: 79999, region: 'MIDWEST', value: 641 },
+    { size: 3, limitMin: 0, limitMax: 79999, region: 'MIDWEST', value: 772 },
+    { size: 4, limitMin: 0, limitMax: 79999, region: 'MIDWEST', value: 868 },
+    { size: 5, limitMin: 0, limitMax: 79999, region: 'MIDWEST', value: 902 },
+
+    { size: 1, limitMin: 0, limitMax: 79999, region: 'SOUTH', value: 382 },
+    { size: 2, limitMin: 0, limitMax: 79999, region: 'SOUTH', value: 641 },
+    { size: 3, limitMin: 0, limitMax: 79999, region: 'SOUTH', value: 772 },
+    { size: 4, limitMin: 0, limitMax: 79999, region: 'SOUTH', value: 868 },
+    { size: 5, limitMin: 0, limitMax: 79999, region: 'SOUTH', value: 902 },
+
+    { size: 1, limitMin: 0, limitMax: 79999, region: 'WEST', value: 425 },
+    { size: 2, limitMin: 0, limitMax: 79999, region: 'WEST', value: 713 },
+    { size: 3, limitMin: 0, limitMax: 79999, region: 'WEST', value: 859 },
+    { size: 4, limitMin: 0, limitMax: 79999, region: 'WEST', value: 967 },
+    { size: 5, limitMin: 0, limitMax: 79999, region: 'WEST', value: 1004 }
+  ];
+
+  for (const def of vaDefinitions) {
+    await db.insert(lookupMatrixCells).values({
+      matrixId: vaId,
+      dim1Min: def.size.toString(),
+      dim1Max: def.size.toString(),
+      dim2Min: def.limitMin.toString(),
+      dim2Max: def.limitMax.toString(),
+      dim3Identifier: def.region,
+      outputValue: def.value.toString()
+    });
+  }
+
+  console.log("DECISION ENGINE SEEDING PIPELINE EXECUTED SUCCESSFULLY.");
+}
+
+seed().catch(err => {
+  console.error("FATAL DATA-SEED ERROR:", err);
+  process.exit(1);
+});
+
+```
+
+---
+
+### Part 5: Replit Agent Execution Prompts
+
+Execute this migration sequentially by copy-pasting the following three development instructions into the Replit Agent chat interface.
+
+#### Prompt 1: Database Model Registration
+
+```
+Act as a Principal Database Architect and Drizzle ORM Specialist. 
+Perform a database modifications in our Replit workspace to support our dynamic lookup policy matrices.
+
+Requirements:
+1. Create a new file 'shared/schema/lookup.ts' containing the drizzle pgTable structures for `lookup_matrices` and `lookup_matrix_cells` with lifecycle Status enum ('DRAFT', 'ACTIVE', 'RETIRED') and correct range-indexed search constraints.
+2. In 'shared/schema/underwriting.ts' (or where the active borrower schema is defined), find the borrower_profiles model and confirm or add a composite unique index on (`loan_application_id`, `borrower_sequence_number`) to prevent duplicate multi-borrower application mapping errors during intake processing.
+3. Export these models from 'shared/schema/index.ts' and apply migrations to register these tables in the local Postgres instance.
+
+```
+
+#### Prompt 2: Core Seeding & Data Resolver Generation
+
+```
+Act as a Principal Fintech Developer. Build the dynamic parameter resolution service and data seed assets.
+
+Requirements:
+1. Create the database-seeding script 'server/scripts/seedLendingGrids.ts' using the provided seed data matrix definitions. It must safely populate:
+   - Dynamic parameters (CONVENTIONAL_DTI_CAP: 43.0%, CONVENTIONAL_STRETCH_DTI: 50.0%, CONVENTIONAL_LTV_CAP: 95.0%, HAIRCUT_STOCK_INVESTMENT: 60.0%, HAIRCUT_RETIREMENT: 70.0%).
+   - The conventional Monthly BPMI rate matrix mapped across credit ranges and LTV levels (Excellent 760+ down to Poor 620-639) using actual National MI card premium rates.
+   - The complete Fannie Mae Conforming LLPA matrix (LTV vs FICO).
+   - The multi-dimensional VA Regional Residual Income values for family sizes 1-5+ across both standard size levels (>= $80,000 and < $80,000).
+2. Create 'server/services/lookupResolver.ts' containing the `LookupResolverService` class to query matrices using dimension arguments, validating that matches are ACTIVE and dates are valid.
+3. Run the database seed script in Replit and confirm to the console when complete.
+
+```
+
+#### Prompt 3: Underwriting Refactoring (Bypass Stiff Constants)
+
+```
+Act as a Lead Systems Architect. Completely refactor 'server/underwriting.ts' (or the active core underwriting engine file) to integrate dynamic lookup resolver functions.
+
+Requirements:
+1. Ensure the underwriting engine is isolated from any external or AI-generated decisioning paths to maintain Fair Lending (Reg B) compliance. All decisions must be rules-based and deterministic.
+2. Replace hardcoded underwriting parameters (such as the DTI ceiling, stretch limit, stock haircuts, and standard PMI/LLPA placeholders) with queries mapped to our LookupResolverService. If a lookup fails or a required matrix is missing, throw an explicit, descriptive error (do not fallback to hardcoded code configurations).
+3. Implement calculated LTV rules: truncate calculated values to exactly two decimal places, and round up to the nearest whole percentage point for LLPA/pricing grid lookups.
+4. Add the net-new VA military underwriting engine logic:
+   - Deduct estimated withholding taxes (assume standard 18%), proposed housing PITI, existing debts, and estimated maintenance/utility costs (using the square footage * $0.14 guideline).
+   - Resolve region parameters using subjectPropertyState parameters. Query the database to retrieve corresponding VA baseline targets.
+   - Implement the 20% cushion rule: if the calculated DTI exceeds 41.00%, the borrower's actual residual income must exceed the database threshold by at least 20%.
+5. Create a standalone test suite in 'tests/runUnderwritingTestSuite.ts' to execute test cases for conventional conforming PMI calculations, dynamic LLPA points, and complex VA residual scenarios. Ensure all tests run successfully in Replit.
+
+```
