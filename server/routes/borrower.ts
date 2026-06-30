@@ -2010,10 +2010,10 @@ export function registerBorrowerRoutes(
         return res.status(400).json({ error: "Invalid package data", details: parsed.error.flatten() });
       }
 
-      // Verify application exists before creating package
-      const application = await storage.getLoanApplication(parsed.data.applicationId);
+      // Verify the caller has authorized access to this loan file
+      const application = await storage.getLoanApplicationWithAccess(parsed.data.applicationId, user.id, user.role);
       if (!application) {
-        return res.status(404).json({ error: "Application not found" });
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const packageData = {
@@ -2091,10 +2091,16 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Staff only" });
       }
 
-      // Verify package exists and staff can access
+      // Verify package exists
       const existingPkg = await storage.getDocumentPackage(id);
       if (!existingPkg) {
         return res.status(404).json({ error: "Package not found" });
+      }
+
+      // Verify the caller has authorized access to the parent loan file
+      const application = await storage.getLoanApplicationWithAccess(existingPkg.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const parsed = updatePackageValidation.safeParse(req.body);
@@ -2139,6 +2145,12 @@ export function registerBorrowerRoutes(
         return res.status(404).json({ error: "Package not found" });
       }
 
+      // Verify the caller has authorized access to the parent loan file
+      const application = await storage.getLoanApplicationWithAccess(pkg.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       await storage.deleteDocumentPackage(id);
       res.json({ success: true });
     } catch (error) {
@@ -2161,6 +2173,12 @@ export function registerBorrowerRoutes(
       const pkg = await storage.getDocumentPackage(packageId);
       if (!pkg) {
         return res.status(404).json({ error: "Package not found" });
+      }
+
+      // Verify the caller has authorized access to the parent loan file
+      const application = await storage.getLoanApplicationWithAccess(pkg.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const parsed = addPackageItemValidation.safeParse(req.body);
@@ -2190,6 +2208,20 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Staff only" });
       }
 
+      // Resolve item → package → application to enforce file-level access
+      const existingItem = await storage.getDocumentPackageItem(id);
+      if (!existingItem) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      const pkg = await storage.getDocumentPackage(existingItem.packageId);
+      if (!pkg) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(pkg.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       const parsed = updatePackageItemValidation.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid update data", details: parsed.error.flatten() });
@@ -2215,6 +2247,20 @@ export function registerBorrowerRoutes(
       
       if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff only" });
+      }
+
+      // Resolve item → package → application to enforce file-level access
+      const existingItem = await storage.getDocumentPackageItem(id);
+      if (!existingItem) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      const pkg = await storage.getDocumentPackage(existingItem.packageId);
+      if (!pkg) {
+        return res.status(404).json({ error: "Package not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(pkg.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       await storage.removeDocumentFromPackage(id);

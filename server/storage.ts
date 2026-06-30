@@ -444,6 +444,7 @@ export interface IStorage {
   
   // Document Package Items
   addDocumentToPackage(data: InsertDocumentPackageItem): Promise<DocumentPackageItem>;
+  getDocumentPackageItem(id: string): Promise<DocumentPackageItem | undefined>;
   getDocumentPackageItems(packageId: string): Promise<(DocumentPackageItem & { document: Document })[]>;
   updateDocumentPackageItem(id: string, data: Partial<DocumentPackageItem>): Promise<DocumentPackageItem | undefined>;
   removeDocumentFromPackage(id: string): Promise<void>;
@@ -1874,6 +1875,11 @@ export class DatabaseStorage implements IStorage {
   // Document Package Items
   async addDocumentToPackage(data: InsertDocumentPackageItem): Promise<DocumentPackageItem> {
     const [item] = await db.insert(documentPackageItems).values(data).returning();
+    return item;
+  }
+
+  async getDocumentPackageItem(id: string): Promise<DocumentPackageItem | undefined> {
+    const [item] = await db.select().from(documentPackageItems).where(eq(documentPackageItems.id, id));
     return item;
   }
 
