@@ -53,3 +53,6 @@ PUBLIC_BASE_URL = "https://homiquity.replit.app"
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 120000
+
+[objectStorage]
+defaultBucketID = "replit-objstore-4f8934af-6902-4a40-b8d5-2e51284e5426"
