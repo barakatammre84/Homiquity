@@ -10,11 +10,39 @@ import {
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
   isStaffRole,
+  isInternalStaffRole,
   type User,
 } from "@shared/schema";
 import crypto from "crypto";
 import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
+
+// Verify that an internal staff user is actually assigned to the given application.
+// Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
+// deal-team membership for processor/underwriter/closer.
+// External partner roles (broker, lender) are NOT permitted by this helper.
+async function verifyInternalStaffApplicationAccess(
+  storage: IStorage,
+  applicationId: string,
+  userId: string,
+  userRole: string,
+): Promise<boolean> {
+  if (userRole === "admin") return true;
+
+  const application = await storage.getLoanApplication(applicationId);
+  if (!application) return false;
+
+  if (userRole === "lo" || userRole === "loa") {
+    return application.loanOfficerId === userId;
+  }
+
+  if (userRole === "processor" || userRole === "underwriter" || userRole === "closer") {
+    const teamMembers = await storage.getDealTeamMembers(applicationId);
+    return teamMembers.some(m => m.userId === userId);
+  }
+
+  return false;
+}
 
 export function registerBorrowerRoutes(
   app: Express,
@@ -1160,8 +1188,8 @@ export function registerBorrowerRoutes(
   app.post("/api/rate-locks", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Only staff can create rate locks" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff only can create rate locks" });
       }
 
       const schema = z.object({
@@ -1177,6 +1205,12 @@ export function registerBorrowerRoutes(
       }
 
       const { applicationId, loanOptionId, lockPeriodDays, notes } = result.data;
+
+      // Verify caller is assigned to this application (assignment-scoped; not platform-wide)
+      const rateLockAllowed = await verifyInternalStaffApplicationAccess(storage, applicationId, user.id, user.role);
+      if (!rateLockAllowed) {
+        return res.status(403).json({ error: "Access denied to this application" });
+      }
 
       // Check if there's already an active lock
       const existingLock = await storage.getActiveRateLock(applicationId);
@@ -1251,8 +1285,8 @@ export function registerBorrowerRoutes(
   app.get("/api/rate-locks/expiring", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff only" });
       }
 
       const withinDays = parseInt(req.query.days as string) || 7;
@@ -1268,8 +1302,8 @@ export function registerBorrowerRoutes(
   app.post("/api/rate-locks/:id/extend", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Only staff can extend rate locks" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff only can extend rate locks" });
       }
 
       const { id } = req.params;
@@ -1278,6 +1312,12 @@ export function registerBorrowerRoutes(
       const lock = await storage.getRateLock(id);
       if (!lock) {
         return res.status(404).json({ error: "Rate lock not found" });
+      }
+
+      // Verify caller is assigned to this application (assignment-scoped)
+      const extendAllowed = await verifyInternalStaffApplicationAccess(storage, lock.applicationId, user.id, user.role);
+      if (!extendAllowed) {
+        return res.status(403).json({ error: "Access denied to this application" });
       }
 
       if (lock.status !== "active") {
@@ -1315,8 +1355,8 @@ export function registerBorrowerRoutes(
   app.post("/api/rate-locks/:id/cancel", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Only staff can cancel rate locks" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff only can cancel rate locks" });
       }
 
       const { id } = req.params;
@@ -1325,6 +1365,12 @@ export function registerBorrowerRoutes(
       const lock = await storage.getRateLock(id);
       if (!lock) {
         return res.status(404).json({ error: "Rate lock not found" });
+      }
+
+      // Verify caller is assigned to this application (assignment-scoped)
+      const cancelAllowed = await verifyInternalStaffApplicationAccess(storage, lock.applicationId, user.id, user.role);
+      if (!cancelAllowed) {
+        return res.status(403).json({ error: "Access denied to this application" });
       }
 
       const updated = await storage.updateRateLock(id, {
@@ -1561,8 +1607,8 @@ export function registerBorrowerRoutes(
   app.post("/api/partner-orders", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Only staff can create partner orders" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff only can create partner orders" });
       }
 
       const schema = z.object({
@@ -1575,6 +1621,12 @@ export function registerBorrowerRoutes(
       const result = schema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      // Verify caller is assigned to this application (assignment-scoped)
+      const partnerOrderAllowed = await verifyInternalStaffApplicationAccess(storage, result.data.applicationId, user.id, user.role);
+      if (!partnerOrderAllowed) {
+        return res.status(403).json({ error: "Access denied to this application" });
       }
 
       const provider = await storage.getPartnerProvider(result.data.providerId);
@@ -1628,8 +1680,8 @@ export function registerBorrowerRoutes(
   app.patch("/api/partner-orders/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff only" });
       }
 
       const { id } = req.params;
@@ -1648,6 +1700,16 @@ export function registerBorrowerRoutes(
       const result = schema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      // Verify the order exists and caller is assigned to its application (assignment-scoped)
+      const existingOrder = await storage.getPartnerOrder(id);
+      if (!existingOrder) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      const partnerOrderUpdateAllowed = await verifyInternalStaffApplicationAccess(storage, existingOrder.applicationId, user.id, user.role);
+      if (!partnerOrderUpdateAllowed) {
+        return res.status(403).json({ error: "Access denied to this application" });
       }
 
       const updated = await storage.updatePartnerOrder(id, result.data as any);
@@ -1684,13 +1746,12 @@ export function registerBorrowerRoutes(
     }
   });
 
-  // Add team member to application (admin only, or staff already assigned to the application)
-  app.post("/api/applications/:applicationId/team", isAuthenticated, async (req, res) => {
+  // Add team member to application (admin only).
+  // Deal-team membership is the authorization boundary for partner file access,
+  // so only admins may expand it to prevent silent self-grant escalations.
+  app.post("/api/applications/:applicationId/team", requireRole("admin"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
-      }
 
       const { applicationId } = req.params;
       const schema = z.object({
@@ -1713,16 +1774,6 @@ export function registerBorrowerRoutes(
       const app = await storage.getLoanApplication(applicationId);
       if (!app) {
         return res.status(404).json({ error: "Application not found" });
-      }
-
-      // Only admins can add team members to arbitrary applications.
-      // All other staff must already be assigned to this application to add more members.
-      if (user.role !== "admin") {
-        const teamMembers = await storage.getDealTeamMembers(applicationId);
-        const isOnTeam = teamMembers.some(m => m.userId === user.id);
-        if (!isOnTeam) {
-          return res.status(403).json({ error: "You are not assigned to this application" });
-        }
       }
 
       const member = await storage.createDealTeamMember({
@@ -1806,13 +1857,12 @@ export function registerBorrowerRoutes(
     }
   });
 
-  // Update team member
-  app.patch("/api/deal-team/:id", isAuthenticated, async (req, res) => {
+  // Update team member (admin only).
+  // Restricting to admin prevents non-admin staff from modifying team membership,
+  // which is the authorization boundary for partner file access.
+  app.patch("/api/deal-team/:id", requireRole("admin"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
-      }
 
       const { id } = req.params;
       const schema = z.object({
@@ -1830,18 +1880,9 @@ export function registerBorrowerRoutes(
         return res.status(400).json({ error: "Invalid input", details: result.error.format() });
       }
 
-      // Resolve the parent application so we can enforce assignment-based access.
       const existingMember = await storage.getDealTeamMember(id);
       if (!existingMember) {
         return res.status(404).json({ error: "Team member not found" });
-      }
-
-      if (user.role !== "admin") {
-        const teamMembers = await storage.getDealTeamMembers(existingMember.applicationId);
-        const isOnTeam = teamMembers.some(m => m.userId === user.id);
-        if (!isOnTeam) {
-          return res.status(403).json({ error: "You are not assigned to this application" });
-        }
       }
 
       const updated = await storage.updateDealTeamMember(id, result.data);
@@ -1856,28 +1897,18 @@ export function registerBorrowerRoutes(
     }
   });
 
-  // Remove team member
-  app.delete("/api/deal-team/:id", isAuthenticated, async (req, res) => {
+  // Remove team member (admin only).
+  // Restricting to admin prevents removal of legitimate team members and
+  // protects the assignment model that authorizes partner file access.
+  app.delete("/api/deal-team/:id", requireRole("admin"), async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff only" });
-      }
 
       const { id } = req.params;
       
       const member = await storage.getDealTeamMember(id);
       if (!member) {
         return res.status(404).json({ error: "Team member not found" });
-      }
-
-      // Only admins or staff already assigned to the application may remove team members.
-      if (user.role !== "admin") {
-        const teamMembers = await storage.getDealTeamMembers(member.applicationId);
-        const isOnTeam = teamMembers.some(m => m.userId === user.id);
-        if (!isOnTeam) {
-          return res.status(403).json({ error: "You are not assigned to this application" });
-        }
       }
 
       await storage.removeDealTeamMember(id);

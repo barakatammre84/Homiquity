@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole, isInternalStaffRole } from "@shared/schema";
 import { 
   qualifyIncome, 
   verifyAssets, 
@@ -481,7 +481,7 @@ export function registerUnderwritingRoutes(
     }
   });
 
-  app.get("/api/pipeline/queue", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  app.get("/api/pipeline/queue", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const applications = await storage.getAllLoanApplications();
       const activeApps = applications.filter(a => 

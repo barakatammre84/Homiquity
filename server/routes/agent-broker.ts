@@ -5,6 +5,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import {
   type User,
+  isInternalStaffRole,
   insertAgentReferralRequestSchema,
 } from "@shared/schema";
 
@@ -671,7 +672,19 @@ export function registerAgentBrokerRoutes(
       const userRole = (req.user as User).role;
 
       if (MILESTONE_INTERNAL_STAFF.has(userRole)) {
-        // Internal staff: unrestricted read access
+        // Non-admin internal staff must be assigned to the application (deal-team member or LO).
+        if (userRole !== "admin") {
+          const application = await storage.getLoanApplication(applicationId);
+          if (!application) {
+            return res.status(404).json({ error: "Application not found" });
+          }
+          const teamMembers = await storage.getDealTeamMembers(applicationId);
+          const isOnTeam = teamMembers.some(m => m.userId === userId);
+          const isLoanOfficer = application.loanOfficerId === userId;
+          if (!isOnTeam && !isLoanOfficer) {
+            return res.status(403).json({ error: "Access denied: you are not assigned to this application" });
+          }
+        }
       } else {
         // Borrowers (and any other role): must own the application
         const application = await storage.getLoanApplication(applicationId);
