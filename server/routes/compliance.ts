@@ -755,8 +755,8 @@ export function registerComplianceRoutes(
   app.get("/api/credit/archive-eligible", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff access required" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff access required" });
       }
       const eligible = await creditService.getArchiveEligibleRecords();
       res.json(eligible);
