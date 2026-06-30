@@ -3292,10 +3292,13 @@ export function registerBorrowerRoutes(
   // =============================================
   // Closing Guarantee Routes
   // =============================================
+
+  // List all guarantees: admin only — this returns every record system-wide so it
+  // cannot be meaningfully scoped without enumerating the caller's assigned files.
   app.get("/api/closing-guarantees", isAuthenticated, async (req, res) => {
     try {
-      if (!isStaffRole(req.user!.role)) {
-        return res.status(403).json({ error: "Staff access required" });
+      if (req.user!.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
       }
       const guarantees = await storage.getAllClosingGuarantees();
       res.json(guarantees);
@@ -3305,10 +3308,20 @@ export function registerBorrowerRoutes(
     }
   });
 
+  // Per-application guarantees: verify the caller is an assigned deal-team member
+  // (or admin) for that specific loan file before returning records.
   app.get("/api/closing-guarantees/:applicationId", isAuthenticated, async (req, res) => {
     try {
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(
+        req.params.applicationId,
+        req.user!.id,
+        req.user!.role
+      );
+      if (!application) {
+        return res.status(403).json({ error: "Access denied to this loan file" });
       }
       const guarantees = await storage.getClosingGuarantees(req.params.applicationId);
       res.json(guarantees);
@@ -3318,10 +3331,23 @@ export function registerBorrowerRoutes(
     }
   });
 
+  // Create guarantee: verify the caller has access to the target application.
   app.post("/api/closing-guarantees", isAuthenticated, async (req, res) => {
     try {
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
+      }
+      const { applicationId } = req.body;
+      if (!applicationId) {
+        return res.status(400).json({ error: "applicationId is required" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(
+        applicationId,
+        req.user!.id,
+        req.user!.role
+      );
+      if (!application) {
+        return res.status(403).json({ error: "Access denied to this loan file" });
       }
       const guarantee = await storage.createClosingGuarantee(req.body);
       res.status(201).json(guarantee);
@@ -3331,12 +3357,30 @@ export function registerBorrowerRoutes(
     }
   });
 
+  // Update guarantee: look up the existing record to find its applicationId, then
+  // verify the caller has deal-team access before allowing the mutation.
   app.put("/api/closing-guarantees/:id", isAuthenticated, async (req, res) => {
     try {
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
-      const guarantee = await storage.updateClosingGuarantee(req.params.id, req.body);
+      const existing = await storage.getClosingGuarantee(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Closing guarantee not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(
+        existing.applicationId,
+        req.user!.id,
+        req.user!.role
+      );
+      if (!application) {
+        return res.status(403).json({ error: "Access denied to this loan file" });
+      }
+      // Strip immutable ownership and identity fields from the update payload so
+      // callers cannot reassign the record to a different application or forge
+      // timestamps by including them in req.body.
+      const { id: _id, applicationId: _appId, createdAt: _ca, updatedAt: _ua, ...safeUpdate } = req.body;
+      const guarantee = await storage.updateClosingGuarantee(req.params.id, safeUpdate);
       if (!guarantee) {
         return res.status(404).json({ error: "Closing guarantee not found" });
       }

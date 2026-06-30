@@ -751,12 +751,16 @@ export function registerComplianceRoutes(
     }
   });
 
-  // Get archive-eligible records
+  // Get archive-eligible records — admin only.
+  // This endpoint returns platform-wide credit-pull records containing regulated
+  // financial data across all borrowers. Restricting to admin prevents low-privilege
+  // internal roles (loa, processor, closer) from harvesting cross-file credit data
+  // for loan files they are not assigned to.
   app.get("/api/credit/archive-eligible", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isInternalStaffRole(user.role)) {
-        return res.status(403).json({ error: "Internal staff access required" });
+      if (user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
       }
       const eligible = await creditService.getArchiveEligibleRecords();
       res.json(eligible);

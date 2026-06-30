@@ -653,6 +653,7 @@ export interface IStorage {
   // Closing Guarantees
   getAllClosingGuarantees(): Promise<ClosingGuarantee[]>;
   getClosingGuarantees(applicationId: string): Promise<ClosingGuarantee[]>;
+  getClosingGuarantee(id: string): Promise<ClosingGuarantee | undefined>;
   createClosingGuarantee(data: InsertClosingGuarantee): Promise<ClosingGuarantee>;
   updateClosingGuarantee(id: string, data: Partial<ClosingGuarantee>): Promise<ClosingGuarantee | undefined>;
 
@@ -4104,6 +4105,13 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(closingGuarantees)
       .where(eq(closingGuarantees.applicationId, applicationId))
       .orderBy(desc(closingGuarantees.createdAt));
+  }
+
+  async getClosingGuarantee(id: string): Promise<ClosingGuarantee | undefined> {
+    const [guarantee] = await db.select().from(closingGuarantees)
+      .where(eq(closingGuarantees.id, id))
+      .limit(1);
+    return guarantee;
   }
 
   async createClosingGuarantee(data: InsertClosingGuarantee): Promise<ClosingGuarantee> {
