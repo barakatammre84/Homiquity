@@ -269,6 +269,17 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Unauthorized" });
     }
+    try {
+      const dbUser = await authStorage.getUser(user.id);
+      if (!dbUser) {
+        req.logout(() => {});
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      (req.user as any).role = dbUser.role;
+    } catch (error) {
+      console.error("Error refreshing user role:", error);
+      return res.status(500).json({ error: "Internal error" });
+    }
     return next();
   }
 

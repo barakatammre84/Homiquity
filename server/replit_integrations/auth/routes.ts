@@ -15,7 +15,8 @@ export function registerAuthRoutes(app: Express): void {
       if (!user) {
         return res.status(401).json({ error: "User not found" });
       }
-      res.json(user);
+      const { passwordHash: _ph, ...safeUser } = user;
+      res.json(safeUser);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ error: "Failed to fetch user" });

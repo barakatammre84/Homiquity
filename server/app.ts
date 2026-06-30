@@ -162,6 +162,7 @@ const SENSITIVE_PATH_PATTERNS: Array<[RegExp, string]> = [
 
 const SUPPRESS_RESPONSE_BODY_PATTERNS: RegExp[] = [
   /^\/api\/staff-invites(\/|$)/,
+  /^\/api\/auth\/user$/,
 ];
 
 function sanitizePathForLog(path: string): string {
