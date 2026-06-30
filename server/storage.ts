@@ -260,6 +260,12 @@ import {
   hmdaDemographics,
   type HmdaDemographics,
   type InsertHmdaDemographics,
+  lookupMatrices,
+  lookupMatrixCells,
+  type LookupMatrix,
+  type InsertLookupMatrix,
+  type LookupMatrixCell,
+  type InsertLookupMatrixCell,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -812,6 +818,25 @@ export interface IStorage {
   getStaffInvites(): Promise<StaffInvite[]>;
   redeemStaffInvite(code: string, userId: string): Promise<StaffInvite | undefined>;
   createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
+
+  // Lookup Matrices (versioned date-effective policy/pricing matrices)
+  getLookupMatrices(filters?: {
+    matrixCode?: string;
+    lifecycleStatus?: string;
+  }): Promise<(LookupMatrix & { cellCount: number })[]>;
+  getLookupMatrix(
+    id: string,
+  ): Promise<(LookupMatrix & { cells: LookupMatrixCell[] }) | undefined>;
+  getMaxLookupMatrixVersion(matrixCode: string): Promise<number>;
+  getActiveLookupMatrix(matrixCode: string): Promise<LookupMatrix | undefined>;
+  createLookupMatrix(
+    data: InsertLookupMatrix,
+    cells: InsertLookupMatrixCell[],
+  ): Promise<LookupMatrix & { cells: LookupMatrixCell[] }>;
+  updateLookupMatrix(
+    id: string,
+    updates: Partial<InsertLookupMatrix>,
+  ): Promise<LookupMatrix | undefined>;
 
   // AI Coach
   createCoachConversation(data: InsertCoachConversation): Promise<CoachConversation>;
@@ -4251,6 +4276,115 @@ export class DatabaseStorage implements IStorage {
   async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {
     const [log] = await db.insert(auditLogs).values(data).returning();
     return log;
+  }
+
+  // Lookup Matrices
+  async getLookupMatrices(filters?: {
+    matrixCode?: string;
+    lifecycleStatus?: string;
+  }): Promise<(LookupMatrix & { cellCount: number })[]> {
+    const conditions = [];
+    if (filters?.matrixCode) {
+      conditions.push(eq(lookupMatrices.matrixCode, filters.matrixCode));
+    }
+    if (filters?.lifecycleStatus) {
+      conditions.push(
+        eq(lookupMatrices.lifecycleStatus, filters.lifecycleStatus as any),
+      );
+    }
+
+    const rows = await db
+      .select({
+        matrix: lookupMatrices,
+        cellCount: count(lookupMatrixCells.id),
+      })
+      .from(lookupMatrices)
+      .leftJoin(
+        lookupMatrixCells,
+        eq(lookupMatrixCells.matrixId, lookupMatrices.id),
+      )
+      .where(conditions.length ? and(...conditions) : undefined)
+      .groupBy(lookupMatrices.id)
+      .orderBy(asc(lookupMatrices.matrixCode), desc(lookupMatrices.version));
+
+    return rows.map((r) => ({ ...r.matrix, cellCount: Number(r.cellCount) }));
+  }
+
+  async getLookupMatrix(
+    id: string,
+  ): Promise<(LookupMatrix & { cells: LookupMatrixCell[] }) | undefined> {
+    const [matrix] = await db
+      .select()
+      .from(lookupMatrices)
+      .where(eq(lookupMatrices.id, id))
+      .limit(1);
+    if (!matrix) return undefined;
+
+    const cells = await db
+      .select()
+      .from(lookupMatrixCells)
+      .where(eq(lookupMatrixCells.matrixId, id));
+
+    return { ...matrix, cells };
+  }
+
+  async getMaxLookupMatrixVersion(matrixCode: string): Promise<number> {
+    const [row] = await db
+      .select({ maxVersion: sql<number>`COALESCE(MAX(${lookupMatrices.version}), 0)` })
+      .from(lookupMatrices)
+      .where(eq(lookupMatrices.matrixCode, matrixCode));
+    return Number(row?.maxVersion ?? 0);
+  }
+
+  async getActiveLookupMatrix(
+    matrixCode: string,
+  ): Promise<LookupMatrix | undefined> {
+    const [matrix] = await db
+      .select()
+      .from(lookupMatrices)
+      .where(
+        and(
+          eq(lookupMatrices.matrixCode, matrixCode),
+          eq(lookupMatrices.lifecycleStatus, "ACTIVE"),
+        ),
+      )
+      .orderBy(desc(lookupMatrices.version))
+      .limit(1);
+    return matrix;
+  }
+
+  async createLookupMatrix(
+    data: InsertLookupMatrix,
+    cells: InsertLookupMatrixCell[],
+  ): Promise<LookupMatrix & { cells: LookupMatrixCell[] }> {
+    return db.transaction(async (tx) => {
+      const [matrix] = await tx
+        .insert(lookupMatrices)
+        .values(data)
+        .returning();
+
+      let insertedCells: LookupMatrixCell[] = [];
+      if (cells.length > 0) {
+        insertedCells = await tx
+          .insert(lookupMatrixCells)
+          .values(cells.map((c) => ({ ...c, matrixId: matrix.id })))
+          .returning();
+      }
+
+      return { ...matrix, cells: insertedCells };
+    });
+  }
+
+  async updateLookupMatrix(
+    id: string,
+    updates: Partial<InsertLookupMatrix>,
+  ): Promise<LookupMatrix | undefined> {
+    const [updated] = await db
+      .update(lookupMatrices)
+      .set(updates)
+      .where(eq(lookupMatrices.id, id))
+      .returning();
+    return updated;
   }
 
   // AI Coach

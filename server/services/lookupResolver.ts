@@ -137,6 +137,28 @@ export class LookupResolverService {
   }
 
   /**
+   * Invalidates cached lookup results. Must be called whenever a matrix's
+   * lifecycle changes (publish/activate/retire/future-date) so freshly
+   * resolved values reflect the new policy immediately instead of serving a
+   * stale, possibly expired rate for up to the cache TTL.
+   *
+   * @param matrixCode When provided, only entries for that matrix are dropped;
+   *                   otherwise the entire cache is cleared.
+   */
+  public static invalidate(matrixCode?: string): void {
+    if (!matrixCode) {
+      LookupResolverService.cache.clear();
+      return;
+    }
+    const prefix = `${matrixCode}_`;
+    for (const key of Array.from(LookupResolverService.cache.keys())) {
+      if (key.startsWith(prefix)) {
+        LookupResolverService.cache.delete(key);
+      }
+    }
+  }
+
+  /**
    * Non-throwing variant for NON-DECISION display surfaces only (e.g. marketing
    * calculators) where a missing seeded band legitimately means "not
    * applicable" rather than a compliance error. The deterministic decision

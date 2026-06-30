@@ -35,4 +35,15 @@ Other durable decisions:
 - `dim1`/`dim2` are `numeric(14,2)` (NOT 8,2): the VA loan-amount upper bound
   overflows numeric(8,2). Don't narrow these.
 - `seedLendingGrids.ts` wipes and replaces ALL matrix data on each run — it is a
-  bulk reseed, not an incremental migration. There is no admin lifecycle UI yet.
+  bulk reseed, not an incremental migration.
+- Staff admin lifecycle routes live at `/api/lookup-matrices` (server/routes/lookup-matrix.ts):
+  list/get + POST (publish DRAFT, auto version++), /activate (DRAFT→ACTIVE, auto-retires
+  prior active), /retire (ACTIVE→RETIRED), PATCH /schedule (future dates). Enum is
+  DRAFT/ACTIVE/RETIRED — "EXPIRED" in product talk == RETIRED. Audit via audit_logs.
+- `LookupResolverService.invalidate(matrixCode?)` MUST be called after any matrix
+  lifecycle mutation. **Why:** resolver caches results (1-min TTL, day-bucketed key);
+  without invalidation an activate/retire can keep quoting stale/expired pricing for up
+  to the TTL. The admin routes already call it.
+- Isolated/dev DBs may be MISSING `lookup_matrices` / `lookup_matrix_cells` entirely
+  (schema declared but never migrated there) — every loud decisioning lookup then throws.
+  Create them idempotently from shared/schema/lookup.ts rather than relying on db:push.

@@ -16,6 +16,7 @@ import { registerStaffInviteRoutes } from "./routes/staff-invites";
 import { registerCoachRoutes } from "./routes/coach";
 import { registerUnderwritingRulesRoutes } from "./routes/underwriting-rules";
 import { registerPolicyOpsRoutes } from "./routes/policy-ops";
+import { registerLookupMatrixRoutes } from "./routes/lookup-matrix";
 import { registerRateSheetRoutes } from "./routes/rate-sheets";
 import { registerIntelligenceRoutes } from "./routes/intelligence";
 import { registerOptimizationRoutes } from "./routes/optimizations";
@@ -62,6 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerCoachRoutes(app);
   registerUnderwritingRulesRoutes(app, storage);
   registerPolicyOpsRoutes(app, storage);
+  registerLookupMatrixRoutes(app, storage);
   registerRateSheetRoutes(app, storage);
   registerIntelligenceRoutes(app, storage);
   registerOptimizationRoutes(app);
