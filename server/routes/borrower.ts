@@ -3395,7 +3395,11 @@ export function registerBorrowerRoutes(
 
   app.get("/api/homeowner/equity/:profileId", isAuthenticated, async (req, res) => {
     try {
-      const snapshots = await storage.getEquitySnapshots(req.params.profileId);
+      const profile = await storage.getHomeownerProfile(req.user!.id);
+      if (!profile || profile.id !== req.params.profileId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const snapshots = await storage.getEquitySnapshots(profile.id);
       res.json(snapshots);
     } catch (error) {
       console.error("Get equity snapshots error:", error);
@@ -3405,7 +3409,12 @@ export function registerBorrowerRoutes(
 
   app.post("/api/homeowner/equity", isAuthenticated, async (req, res) => {
     try {
-      const snapshot = await storage.createEquitySnapshot(req.body);
+      const profile = await storage.getHomeownerProfile(req.user!.id);
+      if (!profile) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      // Override any caller-supplied homeownerProfileId with the authenticated user's own profile
+      const snapshot = await storage.createEquitySnapshot({ ...req.body, homeownerProfileId: profile.id });
       res.status(201).json(snapshot);
     } catch (error) {
       console.error("Create equity snapshot error:", error);
