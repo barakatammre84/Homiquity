@@ -1821,9 +1821,22 @@ export function registerBorrowerRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
-      // Check ownership - borrower can only withdraw their own apps, staff can withdraw any
-      if (!isStaffRole(user.role) && application.userId !== user.id) {
-        return res.status(403).json({ error: "You can only withdraw your own applications" });
+      // Borrowers may withdraw their own application.
+      // Internal staff may withdraw a file they are assigned to.
+      // External partner roles (broker/lender) must not be able to place another
+      // borrower's application into a terminal state.
+      if (application.userId !== user.id) {
+        if (!isInternalStaffRole(user.role)) {
+          return res.status(403).json({ error: "You can only withdraw your own applications" });
+        }
+        // Non-admin internal staff must be on the deal team.
+        if (user.role !== "admin") {
+          const teamMembers = await storage.getDealTeamMembers(applicationId);
+          const isMember = teamMembers.some(m => m.userId === user.id);
+          if (!isMember) {
+            return res.status(403).json({ error: "You are not assigned to this application" });
+          }
+        }
       }
 
       // Check if already withdrawn or in a terminal state
@@ -2592,7 +2605,8 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Maximum KBA attempts exceeded. Please contact support." });
       }
 
-      const questions = generateKBAQuestions();
+      const attemptNumber = failedCount + 1;
+      const questions = generateKBAQuestions(userId, attemptNumber);
 
       const session = await storage.createKbaSession({
         userId,
@@ -2601,7 +2615,7 @@ export function registerBorrowerRoutes(
         questionsData: questions.map(q => ({ id: q.id, question: q.question, choices: q.choices, correctIndex: q.correctIndex })),
         totalQuestions: questions.length,
         passingScore: 4,
-        attemptNumber: failedCount + 1,
+        attemptNumber,
         maxAttempts: 3,
         startedAt: new Date(),
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
@@ -2671,8 +2685,13 @@ export function registerBorrowerRoutes(
           if (!completedSteps.includes("kba_verification")) {
             completedSteps.push("kba_verification");
           }
+          // NOTE: identityVerified is intentionally NOT set to true here.
+          // This KBA flow is simulated and the questions are not derived from
+          // real borrower credit-bureau records; granting identity-verified status
+          // from a simulated challenge would create false compliance evidence.
+          // identityVerified must only be set to true by a real KBA provider
+          // integration (e.g. LexisNexis, Experian KIQ) once wired in.
           await storage.updateOnboardingProfile(profile.id, {
-            identityVerified: true,
             completedSteps,
             progressPercent: Math.min(100, (profile.progressPercent || 0) + 20),
           });
@@ -2684,6 +2703,8 @@ export function registerBorrowerRoutes(
         score: correctCount,
         totalQuestions: questionsData.length,
         passed,
+        // Surface the pending-provider note so the frontend can inform the user.
+        identityVerificationPending: passed,
         remainingAttempts: passed ? 0 : Math.max(0, (session.maxAttempts || 3) - (session.attemptNumber || 1)),
       });
     } catch (error) {
@@ -2753,71 +2774,123 @@ export function registerBorrowerRoutes(
     }
   });
 
-  // Helper: Generate KBA questions (simulated - in production, these come from credit bureaus)
-  function generateKBAQuestions() {
-    return [
-      {
-        id: "q1",
-        question: "Which of the following addresses have you been associated with?",
-        choices: ["123 Oak Street, Springfield", "456 Maple Avenue, Portland", "789 Pine Road, Denver", "None of the above"],
-        correctIndex: 0,
-      },
-      {
-        id: "q2",
-        question: "In which of the following counties have you lived?",
-        choices: ["Cook County", "King County", "Maricopa County", "None of the above"],
-        correctIndex: 1,
-      },
-      {
-        id: "q3",
-        question: "Which of the following phone numbers is associated with you?",
-        choices: ["(555) 123-4567", "(555) 234-5678", "(555) 345-6789", "None of the above"],
-        correctIndex: 0,
-      },
-      {
-        id: "q4",
-        question: "Which financial institution have you had an account with?",
-        choices: ["First National Bank", "Pacific Credit Union", "Metro Savings", "None of the above"],
-        correctIndex: 2,
-      },
-      {
-        id: "q5",
-        question: "What type of vehicle have you previously registered?",
-        choices: ["Sedan", "SUV", "Truck", "None of the above"],
-        correctIndex: 1,
-      },
+  // Helper: Generate KBA questions for a specific user session.
+  //
+  // NOTE: In production this must be replaced by a real KBA provider (e.g. LexisNexis,
+  // Experian KIQ) that issues user-specific questions derived from the borrower's actual
+  // credit-bureau records. The simulation below is intentionally non-functional as a
+  // security check: it uses a crypto-derived, per-user-per-attempt seed so that
+  // (a) each user is shown a unique subset of questions from a large pool, and
+  // (b) the correct answer index is randomised per user and cannot be memorised from
+  //     one account and applied to another.
+  //
+  // The "correct" answers in the simulation do not correspond to real borrower data —
+  // identityVerified will therefore remain unset by this flow until a real provider
+  // is wired in and this helper is replaced.
+  function generateKBAQuestions(userId: string, attemptNumber: number): Array<{
+    id: string;
+    question: string;
+    choices: string[];
+    correctIndex: number;
+  }> {
+    // Large question pool — far more than will be shown in any single session.
+    const questionPool = [
+      { id: "addr1", question: "Which of the following addresses have you been associated with?", choices: ["123 Oak Street, Springfield", "456 Maple Ave, Portland", "789 Pine Rd, Denver", "None of the above"] },
+      { id: "addr2", question: "Which address below matches a previous residence?", choices: ["22 Birch Lane, Austin", "47 Elm Court, Phoenix", "91 Cedar Blvd, Miami", "None of the above"] },
+      { id: "addr3", question: "Which ZIP code have you lived in?", choices: ["60614", "97201", "85001", "None of the above"] },
+      { id: "cnty1", question: "In which of the following counties have you lived?", choices: ["Cook County", "King County", "Maricopa County", "None of the above"] },
+      { id: "cnty2", question: "Which county is associated with a past address of yours?", choices: ["Travis County", "Multnomah County", "Miami-Dade County", "None of the above"] },
+      { id: "phone1", question: "Which of the following phone numbers is associated with you?", choices: ["(555) 123-4567", "(555) 234-5678", "(555) 345-6789", "None of the above"] },
+      { id: "phone2", question: "Which area code appears on a phone number linked to you?", choices: ["312", "503", "602", "None of the above"] },
+      { id: "bank1", question: "Which financial institution have you had an account with?", choices: ["First National Bank", "Pacific Credit Union", "Metro Savings", "None of the above"] },
+      { id: "bank2", question: "Which of the following lenders have you done business with?", choices: ["Lakeside Mortgage", "Summit Lending", "Valley Home Loans", "None of the above"] },
+      { id: "auto1", question: "What type of vehicle have you previously registered?", choices: ["Sedan", "SUV", "Truck", "None of the above"] },
+      { id: "auto2", question: "Which vehicle make is associated with a past registration of yours?", choices: ["Toyota", "Ford", "Honda", "None of the above"] },
+      { id: "emp1", question: "Which employer name appears in your work history?", choices: ["Acme Corp", "Globex Industries", "Initech Solutions", "None of the above"] },
+      { id: "emp2", question: "In which industry have you been employed?", choices: ["Healthcare", "Technology", "Construction", "None of the above"] },
+      { id: "edu1", question: "Which institution have you attended?", choices: ["State University", "City Community College", "Regional Technical Institute", "None of the above"] },
+      { id: "rel1", question: "Which of the following is a relative's name associated with your records?", choices: ["James Mitchell", "Linda Torres", "Robert Chen", "None of the above"] },
     ];
+
+    // Derive a deterministic but user-unique numeric seed from userId + attemptNumber
+    // using a one-way hash so it cannot be predicted without the userId.
+    const seedInput = `${userId}:kba:${attemptNumber}`;
+    const hashHex = crypto.createHash("sha256").update(seedInput).digest("hex");
+    // Convert first 8 hex chars to a 32-bit integer seed.
+    const seed = parseInt(hashHex.slice(0, 8), 16);
+
+    // Seeded pseudo-random number generator (mulberry32).
+    let s = seed;
+    function rand(): number {
+      s |= 0; s = s + 0x6D2B79F5 | 0;
+      let t = Math.imul(s ^ s >>> 15, 1 | s);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+
+    // Seeded Fisher-Yates shuffle to pick 5 questions unique to this user/attempt.
+    const pool = [...questionPool];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const selected = pool.slice(0, 5);
+
+    // For each selected question, assign a correct index using the seeded RNG and
+    // then shuffle the choices so the index position also varies per user.
+    return selected.map((q, qi) => {
+      // Choose a correct index deterministically for this user/question slot.
+      const correctPos = Math.floor(rand() * q.choices.length);
+      const tagged = q.choices.map((text, i) => ({ text, isCorrect: i === correctPos }));
+      // Shuffle choices with the seeded RNG so position cannot be predicted externally.
+      for (let i = tagged.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [tagged[i], tagged[j]] = [tagged[j], tagged[i]];
+      }
+      const newCorrectIndex = tagged.findIndex(c => c.isCorrect);
+      return {
+        id: `${q.id}_${qi}`,
+        question: q.question,
+        choices: tagged.map(c => c.text),
+        correctIndex: newCorrectIndex,
+      };
+    });
   }
 
-  // Helper: Simulate KYC/AML screening (progressive status updates)
+  // Helper: Initiate KYC/AML screening checks.
+  // Each check transitions to "pending_review" once it has been submitted to the
+  // (simulated) screening provider. The overall screening remains in "pending_review"
+  // until a staff member reviews the results and manually marks it cleared or failed.
+  // This prevents any automated path from producing a falsely-cleared compliance record.
   async function simulateKycScreening(screeningId: string) {
     try {
       await new Promise(r => setTimeout(r, 2000));
       await storage.updateKycScreening(screeningId, {
-        ofacStatus: "cleared",
+        ofacStatus: "pending_review",
         ofacCheckedAt: new Date(),
       });
 
       await new Promise(r => setTimeout(r, 2000));
       await storage.updateKycScreening(screeningId, {
-        sanctionsStatus: "cleared",
+        sanctionsStatus: "pending_review",
         sanctionsCheckedAt: new Date(),
       });
 
       await new Promise(r => setTimeout(r, 2000));
       await storage.updateKycScreening(screeningId, {
-        pepStatus: "cleared",
+        pepStatus: "pending_review",
         pepCheckedAt: new Date(),
       });
 
       await new Promise(r => setTimeout(r, 2000));
+      // Mark all checks as submitted and awaiting staff review.
+      // overallStatus stays "pending_review" — a staff member must review and
+      // explicitly clear this record via the admin compliance workflow.
       await storage.updateKycScreening(screeningId, {
-        adverseMediaStatus: "cleared",
+        adverseMediaStatus: "pending_review",
         adverseMediaCheckedAt: new Date(),
-        overallStatus: "cleared",
-        riskLevel: "low",
-        riskScore: 12,
-        expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        overallStatus: "pending_review",
+        screeningNotes: "Screening checks submitted. Awaiting compliance staff review before clearance.",
       });
     } catch (error) {
       console.error("KYC simulation error:", error);

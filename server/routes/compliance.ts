@@ -180,11 +180,29 @@ export function registerComplianceRoutes(
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
 
-      // Use getLoanApplicationWithAccess so broker/lender are validated against
-      // deal-team membership rather than receiving blanket staff access.
-      const application = await storage.getLoanApplicationWithAccess(applicationId, userId, userRole);
-      if (!application) {
-        return res.status(403).json({ error: "Access denied" });
+      // Borrowers must own the application.
+      // Internal staff (including non-admin roles like lo/loa/processor/underwriter/closer)
+      // must be assigned to the application — getLoanApplicationWithAccess grants blanket
+      // access to all internal staff, which is too broad for sensitive verification records.
+      // External partners (broker/lender) follow the deal-team path via getLoanApplicationWithAccess.
+      if (isInternalStaffRole(userRole)) {
+        const application = await storage.getLoanApplication(applicationId);
+        if (!application) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+        if (userRole !== "admin") {
+          const teamMembers = await storage.getDealTeamMembers(applicationId);
+          const isMember = teamMembers.some(m => m.userId === userId);
+          if (!isMember) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+        }
+      } else {
+        // Borrower ownership check and broker/lender deal-team check.
+        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, userRole);
+        if (!application) {
+          return res.status(403).json({ error: "Access denied" });
+        }
       }
 
       const verifications = await storage.getVerificationsByApplication(applicationId);
@@ -212,19 +230,31 @@ export function registerComplianceRoutes(
       const isInternalStaff = isInternalStaffRole(userRole);
       const isOwner = verification.userId === userId;
 
-      if (!isOwner && !isInternalStaff) {
-        // External partner (broker/lender) must be a deal-team member on the
-        // application linked to this verification.
-        if (userRole !== "broker" && userRole !== "lender") {
-          return res.status(403).json({ error: "Unauthorized" });
-        }
+      if (!isOwner) {
+        // All non-owner callers (including internal staff) must be confirmed as
+        // deal-team members on the linked application. This prevents unrelated
+        // staff from harvesting raw Plaid payloads for files they are not assigned to.
         if (!verification.applicationId) {
           return res.status(403).json({ error: "Unauthorized" });
         }
-        const assignedApp = await storage.getLoanApplicationWithAccess(
-          verification.applicationId, userId, userRole
-        );
-        if (!assignedApp) {
+        if (isInternalStaff) {
+          // Admin always passes; all other internal staff must be on the deal team.
+          if (userRole !== "admin") {
+            const teamMembers = await storage.getDealTeamMembers(verification.applicationId);
+            const isMember = teamMembers.some(m => m.userId === userId);
+            if (!isMember) {
+              return res.status(403).json({ error: "Unauthorized" });
+            }
+          }
+        } else if (userRole === "broker" || userRole === "lender") {
+          // External partner (broker/lender) must be a deal-team member.
+          const assignedApp = await storage.getLoanApplicationWithAccess(
+            verification.applicationId, userId, userRole
+          );
+          if (!assignedApp) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+        } else {
           return res.status(403).json({ error: "Unauthorized" });
         }
       }
@@ -331,15 +361,34 @@ export function registerComplianceRoutes(
   });
 
   // Get active consent for an application
+  // Restricted to the borrower who owns the application and internal staff only.
+  // Broker/lender partner accounts must not access raw consent records because the
+  // credit_consents table stores SSN last-4, DOB, and other PII.
   app.get("/api/loan-applications/:id/credit/consent", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
-      
-      if (!application) {
+
+      if (user.role === "broker" || user.role === "lender") {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
+      if (isInternalStaffRole(user.role)) {
+        // Admin has unrestricted access; all other internal staff must be on the deal team.
+        if (user.role !== "admin") {
+          const teamMembers = await storage.getDealTeamMembers(req.params.id);
+          const isMember = teamMembers.some(m => m.userId === user.id);
+          if (!isMember) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+        }
+      } else {
+        // Borrower path: must own the application.
+        const application = await storage.getLoanApplication(req.params.id);
+        if (!application || application.userId !== user.id) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+
       const consent = await creditService.getActiveConsent(req.params.id);
       res.json({ consent });
     } catch (error) {
@@ -399,6 +448,10 @@ export function registerComplianceRoutes(
   });
 
   // Revoke consent
+  // Only the borrower who gave consent, or internal staff (admin, lo, loa, processor,
+  // underwriter, closer) may revoke it. External partner accounts (broker/lender) must
+  // not be able to revoke another party's consent — doing so could disrupt regulated
+  // credit workflows and exposes stored PII to confirmation-of-revocation flows.
   app.post("/api/credit/consent/:consentId/revoke", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
@@ -411,20 +464,18 @@ export function registerComplianceRoutes(
 
       const isOwner = consent.userId === user.id;
       if (!isOwner) {
-        // Internal staff may revoke consent on behalf of a borrower; external
-        // partner roles (broker/lender) must be deal-team members on the
-        // consent's linked application.
-        if (isInternalStaffRole(user.role)) {
-          // permitted
-        } else if ((user.role === "broker" || user.role === "lender") && consent.applicationId) {
-          const assignedApp = await storage.getLoanApplicationWithAccess(
-            consent.applicationId, user.id, user.role
-          );
-          if (!assignedApp) {
+        // Only internal staff may revoke on behalf of a borrower.
+        // External partner roles (broker/lender) are explicitly denied.
+        if (!isInternalStaffRole(user.role)) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+        // Non-admin internal staff must be assigned to the linked application.
+        if (user.role !== "admin" && consent.applicationId) {
+          const teamMembers = await storage.getDealTeamMembers(consent.applicationId);
+          const isMember = teamMembers.some(m => m.userId === user.id);
+          if (!isMember) {
             return res.status(403).json({ error: "Access denied" });
           }
-        } else {
-          return res.status(403).json({ error: "Access denied" });
         }
       }
 
@@ -513,6 +564,16 @@ export function registerComplianceRoutes(
       const application = await storage.getLoanApplication(req.params.id);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Non-admin staff must be assigned to the application before they can
+      // initiate a credit pull, which is a regulated FCRA action.
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(req.params.id);
+        const isMember = teamMembers.some(m => m.userId === user.id);
+        if (!isMember) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
       }
       
       const consent = await creditService.getActiveConsent(req.params.id);
@@ -659,13 +720,28 @@ export function registerComplianceRoutes(
     }
   });
 
-  // Archive credit pull (staff only)
+  // Archive credit pull (internal staff only — must be assigned to the application)
   app.post("/api/credit/pulls/:pullId/archive", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff access required" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff access required" });
       }
+
+      // Resolve the pull to its parent application so we can enforce assignment.
+      const pull = await creditService.getCreditPullById(req.params.pullId);
+      if (!pull) {
+        return res.status(404).json({ error: "Credit pull not found" });
+      }
+
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(pull.applicationId);
+        const isMember = teamMembers.some(m => m.userId === user.id);
+        if (!isMember) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
+      }
+
       const { reason } = req.body;
       await creditService.archiveCreditPull(req.params.pullId, reason || "Retention policy", user.id);
       res.json({ success: true });
@@ -721,6 +797,16 @@ export function registerComplianceRoutes(
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
+
+      // Non-admin internal staff must be assigned to the application to generate
+      // an adverse-action notice — this is a regulated, borrower-facing credit action.
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(req.params.id);
+        const isMember = teamMembers.some(m => m.userId === user.id);
+        if (!isMember) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
+      }
       
       // Validate request body using Zod schema
       const parseResult = adverseActionRequestSchema.safeParse(req.body);
@@ -775,13 +861,27 @@ export function registerComplianceRoutes(
     }
   });
 
-  // Mark adverse action as delivered (staff only)
+  // Mark adverse action as delivered (internal staff only — must be assigned to the application)
   app.post("/api/credit/adverse-action/:actionId/deliver", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
       
-      if (!isStaffRole(user.role)) {
-        return res.status(403).json({ error: "Staff access required" });
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff access required" });
+      }
+
+      // Resolve the adverse action to its parent application before authorizing.
+      const action = await creditService.getAdverseActionById(req.params.actionId);
+      if (!action) {
+        return res.status(404).json({ error: "Adverse action not found" });
+      }
+
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(action.applicationId);
+        const isMember = teamMembers.some(m => m.userId === user.id);
+        if (!isMember) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
       }
       
       const { deliveryMethod, deliveryConfirmation } = req.body;
@@ -875,9 +975,15 @@ export function registerComplianceRoutes(
   });
 
   // Get comprehensive credit summary for an application
+  // The full consent record contains PII (SSN last-4, DOB, etc.) and must only be
+  // returned to the borrower who submitted it or to assigned internal staff.
+  // External partners (broker/lender) may learn whether active consent exists but
+  // must not receive the raw consent payload.
   app.get("/api/loan-applications/:id/credit/summary", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
+      const isExternalPartner = user.role === "broker" || user.role === "lender";
+
       const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
       
       if (!application) {
@@ -893,7 +999,9 @@ export function registerComplianceRoutes(
       
       res.json({
         hasActiveConsent: !!consent,
-        consent,
+        // Redact raw consent object for external partner roles to protect PII
+        // (borrowerFullName, borrowerSSNLast4, borrowerDOB, ipAddress, userAgent).
+        consent: isExternalPartner ? null : consent,
         latestPull,
         pullCount: pulls.length,
         adverseActionCount: adverseActions.length,

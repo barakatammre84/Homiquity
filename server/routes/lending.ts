@@ -988,6 +988,11 @@ export function registerLendingRoutes(
     }
   });
 
+  // Statuses that represent a final credit decision. Only underwriters and admins
+  // may set these; other roles must go through the guarded advance-stage endpoint
+  // in underwriting.ts which enforces the STAGE_TRANSITION_ROLES policy.
+  const PROTECTED_CREDIT_DECISION_STATUSES = new Set(["approved", "denied", "pre_approved"]);
+
   const staffStatusSchema = z.object({
     status: z.enum(["submitted", "in_review", "underwriting", "conditional_approval", "pre_approved", "approved", "denied", "suspended", "withdrawn"]),
     notes: z.string().max(2000).optional(),
@@ -1008,6 +1013,15 @@ export function registerLendingRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
+      const { status, notes } = parsed.data;
+
+      // Enforce that only admin or underwriter can set final credit-decision statuses.
+      // All other roles (including assigned deal-team members) must use the
+      // underwriting advance-stage endpoint which enforces the full transition policy.
+      if (PROTECTED_CREDIT_DECISION_STATUSES.has(status) && user.role !== "admin" && user.role !== "underwriter") {
+        return res.status(403).json({ error: "Only underwriters or admins may set approval or denial outcomes" });
+      }
+
       // Admins may update any application; all other roles must be on the deal team.
       if (user.role !== "admin") {
         const teamMembers = await storage.getDealTeamMembers(id);
@@ -1018,7 +1032,6 @@ export function registerLendingRoutes(
       }
 
       const previousStatus = application.status;
-      const { status, notes } = parsed.data;
 
       const updated = await storage.updateLoanApplication(id, { status });
 

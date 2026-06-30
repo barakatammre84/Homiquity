@@ -668,6 +668,22 @@ export async function simulateCreditPullCompletion(
   return updated;
 }
 
+export async function getCreditPullById(creditPullId: string): Promise<CreditPull | null> {
+  const [pull] = await db
+    .select()
+    .from(creditPulls)
+    .where(eq(creditPulls.id, creditPullId));
+  return pull ?? null;
+}
+
+export async function getAdverseActionById(adverseActionId: string): Promise<AdverseAction | null> {
+  const [action] = await db
+    .select()
+    .from(adverseActions)
+    .where(eq(adverseActions.id, adverseActionId));
+  return action ?? null;
+}
+
 export async function getCreditPullsByApplication(applicationId: string): Promise<CreditPull[]> {
   return db
     .select()
