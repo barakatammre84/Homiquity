@@ -290,6 +290,7 @@ export interface IStorage {
   createDocument(data: InsertDocument): Promise<Document>;
   getDocumentsByUser(userId: string): Promise<Document[]>;
   getDocumentsByApplication(applicationId: string): Promise<Document[]>;
+  getDocumentsByStoragePath(storagePath: string): Promise<Document[]>;
   updateDocument(id: string, data: Partial<Document>): Promise<Document | undefined>;
 
   // Deal Activities
@@ -946,8 +947,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLoanApplicationWithAccess(id: string, userId: string, userRole: string): Promise<LoanApplication | undefined> {
-    // Internal staff (admin, lo, loa, processor, underwriter, closer) have platform-wide access.
-    if (isInternalStaffRole(userRole)) {
+    // Admins retain platform-wide access.
+    if (userRole === "admin") {
       const [application] = await db
         .select()
         .from(loanApplications)
@@ -956,9 +957,10 @@ export class DatabaseStorage implements IStorage {
       return application;
     }
 
-    // External partner roles (broker, lender) must be active deal-team members on the
+    // All non-admin internal staff (lo, loa, processor, underwriter, closer) and
+    // external partner roles (broker, lender) must be active deal-team members on the
     // specific application. No assignment = no access.
-    if (userRole === "broker" || userRole === "lender") {
+    if (isInternalStaffRole(userRole) || userRole === "broker" || userRole === "lender") {
       const [application] = await db
         .select()
         .from(loanApplications)
@@ -1097,6 +1099,14 @@ export class DatabaseStorage implements IStorage {
       .from(documents)
       .where(eq(documents.applicationId, applicationId))
       .orderBy(desc(documents.createdAt));
+  }
+
+  async getDocumentsByStoragePath(storagePath: string): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.storagePath, storagePath))
+      .limit(1);
   }
 
   async updateDocument(id: string, data: Partial<Document>): Promise<Document | undefined> {

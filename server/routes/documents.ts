@@ -9,7 +9,7 @@ import {
 } from "../extractionService";
 import { upload } from "./utils";
 import { ObjectStorageService, ObjectNotFoundError } from "../replit_integrations/object_storage";
-import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
+import { type User } from "@shared/schema";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 
@@ -60,17 +60,37 @@ export function registerDocumentRoutes(
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      // Internal staff (admin, lo, loa, processor, underwriter, closer) have
-      // platform-wide read access to object storage.
-      // External partner roles (broker, lender) are NOT granted blanket access;
-      // they can only download objects belonging to their own uploaded documents.
-      const isInternalStaff = isInternalStaffRole(user.role);
-      const documents = await storage.getDocumentsByUser(user.id);
-      const hasAccess = isInternalStaff || documents.some(d => d.storagePath === req.path);
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Unauthorized" });
+
+      // Resolve the document record that owns this storage path.
+      const allDocs = await storage.getDocumentsByStoragePath(req.path);
+      const matchedDoc = allDocs[0];
+
+      if (matchedDoc) {
+        const isOwner = matchedDoc.userId === user.id;
+        if (!isOwner) {
+          // Admins retain global access.
+          if (user.role !== "admin") {
+            // All other roles (including non-admin internal staff) must be active
+            // deal-team members on the application the document belongs to.
+            if (!matchedDoc.applicationId) {
+              return res.status(403).json({ error: "Unauthorized" });
+            }
+            const app = await storage.getLoanApplicationWithAccess(
+              matchedDoc.applicationId, user.id, user.role
+            );
+            if (!app) {
+              return res.status(403).json({ error: "Unauthorized" });
+            }
+          }
+        }
+      } else {
+        // No document record found for this path — only admins may access.
+        if (user.role !== "admin") {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
       }
-      logAudit(req, "document.download", "document", req.path, { staffAccess: isInternalStaff });
+
+      logAudit(req, "document.download", "document", req.path, { role: user.role });
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
@@ -161,12 +181,12 @@ export function registerDocumentRoutes(
         return res.status(404).json({ error: "Document not found" });
       }
 
-      // Internal staff have platform-wide download access. External partner roles
-      // (broker, lender) must either own the document (userId match) or be an active
-      // deal-team member on the application the document belongs to.
+      // Owners always have access. Admins retain global access. All other roles
+      // (including non-admin internal staff) must be active deal-team members on the
+      // application the document belongs to.
       const isOwner = document.userId === user.id;
-      if (!isOwner && !isInternalStaffRole(user.role)) {
-        if ((user.role === "broker" || user.role === "lender") && document.applicationId) {
+      if (!isOwner && user.role !== "admin") {
+        if (document.applicationId) {
           const assignedApp = await storage.getLoanApplicationWithAccess(
             document.applicationId, user.id, user.role
           );
