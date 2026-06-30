@@ -44,6 +44,7 @@ const HmdaDemographics = lazy(() => import("@/pages/borrower/HmdaDemographics"))
 const StaffDashboard = lazy(() => import("@/pages/staff/StaffDashboard"));
 const BorrowerFile = lazy(() => import("@/pages/staff/BorrowerFile"));
 const PolicyOps = lazy(() => import("@/pages/staff/PolicyOps"));
+const PricingMatrices = lazy(() => import("@/pages/staff/PricingMatrices"));
 const TaskOperations = lazy(() => import("@/pages/staff/TaskOperations"));
 
 const AgentCoBranding = lazy(() => import("@/pages/agent-broker/AgentCoBranding"));
@@ -344,6 +345,9 @@ function Router() {
         <Route path="/task-operations">
           <StaffPage><TaskOperations /></StaffPage>
         </Route>
+        <Route path="/pricing-matrices">
+          <StaffPage><PricingMatrices /></StaffPage>
+        </Route>
         <Route path="/accelerator">
           <BorrowerPage><AcceleratorProgram /></BorrowerPage>
         </Route>
@@ -389,6 +393,9 @@ function Router() {
         </Route>
         <Route path="/admin/policy-ops">
           <AdminPage><PolicyOps /></AdminPage>
+        </Route>
+        <Route path="/admin/pricing-matrices">
+          <AdminPage><PricingMatrices /></AdminPage>
         </Route>
 
         <Route component={NotFound} />

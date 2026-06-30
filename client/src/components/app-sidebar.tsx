@@ -35,6 +35,7 @@ import {
   Calculator,
   Link2,
   Scale,
+  Grid3x3,
   ChevronDown,
   ChevronRight,
   MessageCircle,
@@ -126,6 +127,7 @@ const staffNavigation: NavSection[] = [
       { title: "Dashboard", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
       { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations" },
       { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops" },
+      { title: "Pricing Matrices", href: "/pricing-matrices", icon: Grid3x3, testId: "link-pricing-matrices" },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
@@ -149,6 +151,7 @@ const adminNavigation: NavSection[] = [
       { title: "Manage Rates", href: "/admin/rates", icon: Percent, testId: "link-admin-rates" },
       { title: "Manage Content", href: "/admin/content", icon: PenSquare, testId: "link-admin-content" },
       { title: "Policy Operations", href: "/admin/policy-ops", icon: Scale, testId: "link-admin-policy-ops" },
+      { title: "Pricing Matrices", href: "/admin/pricing-matrices", icon: Grid3x3, testId: "link-admin-pricing-matrices" },
     ],
   },
 ];
