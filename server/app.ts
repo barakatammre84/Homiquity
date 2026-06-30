@@ -107,6 +107,14 @@ app.use((req, res, next) => {
     return next();
   }
 
+  // OAuth provider callbacks (e.g. Apple's form_post) arrive as cross-origin
+  // POSTs from the provider's domain. They are protected by the OAuth `state`
+  // parameter (validated against the session), so exempt them from the
+  // Origin/Referer CSRF check which would otherwise reject them.
+  if (/^\/api\/auth\/[^/]+\/callback$/.test(req.path)) {
+    return next();
+  }
+
   const origin = req.headers.origin;
   const referer = req.headers.referer;
   const host = req.headers.host;

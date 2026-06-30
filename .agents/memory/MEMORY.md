@@ -2,3 +2,4 @@
 - [MISMO co-applicant model](mismo-coapplicant-model.md) — URLA tables are single-row-per-application; borrowerSequenceNumber discriminates co-applicants, hmdaDemographics keyed by borrowerId.
 - [Lookup matrix engine](lookup-matrix-engine.md) — underwriting/pricing reads all policy numbers from Postgres matrices; resolveMatrixValue throws loud for decisioning, tryResolveMatrixValue→null only for display.
 - [Integration test auth](integration-test-auth.md) — session cookie is secure:true; HTTP tests must send `X-Forwarded-Proto: https` on login + every authed request to get/send connect.sid.
+- [Social OAuth gotchas](social-oauth.md) — custom flow in server/socialAuth.ts; Apple needs ES256 JWT secret + SameSite=None state cookie + CSRF exempt on /api/auth/*/callback; per-env redirect URIs.

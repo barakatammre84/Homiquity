@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { authStorage } from "./replit_integrations/auth/storage";
-import { randomBytes } from "crypto";
+import { randomBytes, createSign } from "crypto";
 
 interface OAuthProviderConfig {
   authUrl: string;
@@ -10,6 +10,45 @@ interface OAuthProviderConfig {
   clientSecretEnv: string;
   scope: string;
   parseUserInfo: (data: any) => { email: string; firstName?: string; lastName?: string; profileImageUrl?: string };
+  // Some providers (Apple) require additional secrets and a dynamically
+  // generated client secret rather than a static one.
+  extraSecretEnvs?: string[];
+  getClientSecret?: () => string;
+}
+
+// Apple Sign In requires the OAuth "client secret" to be a short-lived ES256
+// JWT signed with the private key (.p8) issued by Apple, not a static value.
+// See https://developer.apple.com/documentation/sign_in_with_apple
+function base64url(input: Buffer | string): string {
+  return Buffer.from(input).toString("base64url");
+}
+
+function generateAppleClientSecret(): string {
+  const teamId = process.env.APPLE_TEAM_ID!;
+  const keyId = process.env.APPLE_KEY_ID!;
+  const clientId = process.env.APPLE_CLIENT_ID!;
+  let privateKey = process.env.APPLE_PRIVATE_KEY!;
+  // Allow the .p8 contents to be pasted with literal "\n" sequences.
+  if (privateKey.includes("\\n")) {
+    privateKey = privateKey.replace(/\\n/g, "\n");
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "ES256", kid: keyId };
+  const payload = {
+    iss: teamId,
+    iat: now,
+    exp: now + 60 * 60, // 1 hour; regenerated per request
+    aud: "https://appleid.apple.com",
+    sub: clientId,
+  };
+
+  const signingInput = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(payload))}`;
+  const signer = createSign("SHA256");
+  signer.update(signingInput);
+  signer.end();
+  const der = signer.sign({ key: privateKey, dsaEncoding: "ieee-p1363" });
+  return `${signingInput}.${base64url(der)}`;
 }
 
 const providers: Record<string, OAuthProviderConfig> = {
@@ -51,11 +90,13 @@ const providers: Record<string, OAuthProviderConfig> = {
     clientIdEnv: "APPLE_CLIENT_ID",
     clientSecretEnv: "APPLE_CLIENT_SECRET",
     scope: "name email",
+    extraSecretEnvs: ["APPLE_TEAM_ID", "APPLE_KEY_ID", "APPLE_PRIVATE_KEY"],
+    getClientSecret: generateAppleClientSecret,
     parseUserInfo: (_data: any) => ({
       email: "",
-      firstName: null,
-      lastName: null,
-      profileImageUrl: null,
+      firstName: undefined,
+      lastName: undefined,
+      profileImageUrl: undefined,
     }),
   },
 };
@@ -66,7 +107,27 @@ function getCallbackUrl(req: any, provider: string): string {
 }
 
 function isProviderConfigured(provider: OAuthProviderConfig): boolean {
-  return !!(process.env[provider.clientIdEnv] && process.env[provider.clientSecretEnv]);
+  if (!process.env[provider.clientIdEnv]) return false;
+  // Providers that generate their client secret dynamically (Apple) rely on a
+  // set of extra secrets instead of a single static client secret.
+  if (provider.getClientSecret) {
+    return (provider.extraSecretEnvs ?? []).every((key) => !!process.env[key]);
+  }
+  return !!process.env[provider.clientSecretEnv];
+}
+
+const STATE_COOKIE = "oauth_state";
+
+function readCookie(req: any, name: string): string | undefined {
+  const header = req.headers?.cookie;
+  if (!header) return undefined;
+  for (const part of header.split(";")) {
+    const idx = part.indexOf("=");
+    if (idx === -1) continue;
+    const key = part.slice(0, idx).trim();
+    if (key === name) return decodeURIComponent(part.slice(idx + 1).trim());
+  }
+  return undefined;
 }
 
 function decodeJwtPayload(token: string): any {
@@ -99,6 +160,18 @@ export function setupSocialAuth(app: Express) {
       (req.session as any).oauthState = state;
       (req.session as any).oauthProvider = providerName;
 
+      // Apple replies via a cross-site form_post, so the SameSite=Lax session
+      // cookie is not sent on the callback. Store the state in a dedicated
+      // SameSite=None cookie so it survives the cross-site POST. We encode the
+      // provider alongside the state so it can be validated independently.
+      res.cookie(STATE_COOKIE, `${providerName}:${state}`, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 10 * 60 * 1000,
+        path: "/api/auth",
+      });
+
       const params = new URLSearchParams({
         client_id: process.env[config.clientIdEnv]!,
         redirect_uri: getCallbackUrl(req, providerName),
@@ -115,35 +188,50 @@ export function setupSocialAuth(app: Express) {
     });
 
     const callbackHandler = async (req: any, res: any) => {
+      const clearState = () => {
+        delete (req.session as any).oauthState;
+        delete (req.session as any).oauthProvider;
+        res.clearCookie(STATE_COOKIE, { path: "/api/auth" });
+      };
+
       try {
         const oauthError = req.body?.error || req.query?.error;
         if (oauthError) {
           const desc = req.body?.error_description || req.query?.error_description || oauthError;
           console.error(`[${providerName}] OAuth provider returned error: ${desc}`);
-          delete (req.session as any).oauthState;
-          delete (req.session as any).oauthProvider;
+          clearState();
           return res.redirect("/login?error=auth_failed");
         }
 
         const code = req.body?.code || req.query?.code;
         const state = req.body?.state || req.query?.state;
-        const sessionState = (req.session as any).oauthState;
-        const sessionProvider = (req.session as any).oauthProvider;
 
-        if (!state || state !== sessionState) {
+        // Prefer the dedicated state cookie (survives Apple's cross-site POST);
+        // fall back to the session for same-site GET callbacks.
+        const cookieValue = readCookie(req, STATE_COOKIE);
+        let expectedState = (req.session as any).oauthState as string | undefined;
+        let expectedProvider = (req.session as any).oauthProvider as string | undefined;
+        if (cookieValue) {
+          const sep = cookieValue.indexOf(":");
+          if (sep !== -1) {
+            expectedProvider = cookieValue.slice(0, sep);
+            expectedState = cookieValue.slice(sep + 1);
+          }
+        }
+
+        if (!state || !expectedState || state !== expectedState) {
           console.error(`[${providerName}] OAuth state mismatch`);
+          clearState();
           return res.redirect("/login?error=auth_failed");
         }
 
-        if (sessionProvider && sessionProvider !== providerName) {
-          console.error(`[${providerName}] Provider mismatch: session expected ${sessionProvider}`);
-          delete (req.session as any).oauthState;
-          delete (req.session as any).oauthProvider;
+        if (expectedProvider && expectedProvider !== providerName) {
+          console.error(`[${providerName}] Provider mismatch: expected ${expectedProvider}`);
+          clearState();
           return res.redirect("/login?error=auth_failed");
         }
 
-        delete (req.session as any).oauthState;
-        delete (req.session as any).oauthProvider;
+        clearState();
 
         if (!code) {
           return res.redirect("/login?error=auth_failed");
@@ -151,7 +239,7 @@ export function setupSocialAuth(app: Express) {
 
         const tokenParams: Record<string, string> = {
           client_id: process.env[config.clientIdEnv]!,
-          client_secret: process.env[config.clientSecretEnv]!,
+          client_secret: config.getClientSecret ? config.getClientSecret() : process.env[config.clientSecretEnv]!,
           code,
           redirect_uri: getCallbackUrl(req, providerName),
           grant_type: "authorization_code",
