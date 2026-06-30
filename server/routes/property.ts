@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated } from "../auth";
 import { checkPropertyEligibility } from "../underwriting";
+import { lookupResolver } from "../services/lookupResolver";
 
 export function registerPropertyRoutes(
   app: Express,
@@ -538,10 +539,13 @@ export function registerPropertyRoutes(
       if (price > preApprovalAmount) {
         status = "exceeds_maximum";
       }
-      
-      if (!eligibility.canBuyProperty || eligibility.finalDTI > 50) {
+
+      const standardDtiCap = await lookupResolver.getPolicyScalar("CONVENTIONAL_DTI_CAP");
+      const stretchDtiCap = await lookupResolver.getPolicyScalar("CONVENTIONAL_STRETCH_DTI");
+
+      if (!eligibility.canBuyProperty || eligibility.finalDTI > stretchDtiCap) {
         status = "exceeds_maximum";
-      } else if (eligibility.finalDTI > 43) {
+      } else if (eligibility.finalDTI > standardDtiCap) {
         if (status !== "exceeds_maximum") status = "exceeds_standard";
       }
 
