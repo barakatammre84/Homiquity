@@ -163,6 +163,16 @@ const SENSITIVE_PATH_PATTERNS: Array<[RegExp, string]> = [
 const SUPPRESS_RESPONSE_BODY_PATTERNS: RegExp[] = [
   /^\/api\/staff-invites(\/|$)/,
   /^\/api\/auth\/user$/,
+  // Document extraction routes return full OCR/AI-extracted borrower financial data
+  // (income, account balances, tax figures, employer details). Suppress to keep
+  // sensitive PII out of deployment logs.
+  /^\/api\/documents\/[^/]+\/extract$/,
+  /^\/api\/documents\/extract-tax-return$/,
+  /^\/api\/documents\/extract-paystub$/,
+  /^\/api\/documents\/extract-bank-statement$/,
+  // Loan application detail includes embedded documents and activities arrays
+  // that can carry document metadata and extraction-derived records.
+  /^\/api\/loan-applications\/[^/]+$/,
 ];
 
 function sanitizePathForLog(path: string): string {
