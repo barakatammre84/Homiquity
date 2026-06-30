@@ -28,13 +28,17 @@ export function registerPolicyOpsRoutes(
 
   app.get("/api/policy-profiles", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const { authority, productType, status } = req.query;
       const filters: { authority?: string; productType?: string; status?: string } = {};
       if (authority && typeof authority === "string") filters.authority = authority;
       if (productType && typeof productType === "string") filters.productType = productType;
       if (status && typeof status === "string") filters.status = status;
 
-      const profiles = await storage.getPolicyProfiles(filters);
+      let profiles = await storage.getPolicyProfiles(filters);
+      if (user.role !== "admin") {
+        profiles = profiles.filter((p) => p.createdBy === user.id);
+      }
       res.json(profiles);
     } catch (error) {
       console.error("Get policy profiles error:", error);
@@ -44,9 +48,14 @@ export function registerPolicyOpsRoutes(
 
   app.get("/api/policy-profiles/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
+      }
+
+      if (user.role !== "admin" && profile.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const [thresholds, approvals, overlays] = await Promise.all([
@@ -90,9 +99,14 @@ export function registerPolicyOpsRoutes(
 
   app.patch("/api/policy-profiles/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
+      }
+
+      if (user.role !== "admin" && profile.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only edit policies you created" });
       }
 
       if (profile.status === "ACTIVE" || profile.status === "RETIRED") {
@@ -130,9 +144,14 @@ export function registerPolicyOpsRoutes(
 
   app.post("/api/policy-profiles/:id/submit", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const profile = await storage.getPolicyProfile(req.params.id);
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
+      }
+
+      if (user.role !== "admin" && profile.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only submit policies you created" });
       }
 
       if (!VALID_TRANSITIONS[profile.status]?.includes("PENDING_APPROVAL")) {
@@ -346,9 +365,17 @@ export function registerPolicyOpsRoutes(
 
   app.get("/api/policy-thresholds", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const { policyProfileId } = req.query;
       if (!policyProfileId || typeof policyProfileId !== "string") {
         return res.status(400).json({ error: "policyProfileId query parameter is required" });
+      }
+
+      if (user.role !== "admin") {
+        const profile = await storage.getPolicyProfile(policyProfileId);
+        if (!profile || profile.createdBy !== user.id) {
+          return res.status(403).json({ error: "Access denied" });
+        }
       }
 
       const thresholds = await storage.getPolicyThresholds(policyProfileId);
@@ -361,6 +388,7 @@ export function registerPolicyOpsRoutes(
 
   app.post("/api/policy-thresholds", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const parsed = insertPolicyThresholdSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid threshold data", details: parsed.error.flatten() });
@@ -369,6 +397,10 @@ export function registerPolicyOpsRoutes(
       const profile = await storage.getPolicyProfile(parsed.data.policyProfileId);
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
+      }
+
+      if (user.role !== "admin" && profile.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only add thresholds to policies you created" });
       }
 
       if (profile.status === "APPROVED" || profile.status === "ACTIVE" || profile.status === "RETIRED") {
@@ -392,12 +424,17 @@ export function registerPolicyOpsRoutes(
 
   app.patch("/api/policy-thresholds/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const threshold = await storage.getPolicyThreshold(req.params.id);
       if (!threshold) {
         return res.status(404).json({ error: "Threshold not found" });
       }
 
       const profile = await storage.getPolicyProfile(threshold.policyProfileId);
+      if (user.role !== "admin" && profile && profile.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only edit thresholds on policies you created" });
+      }
+
       if (profile && (profile.status === "APPROVED" || profile.status === "ACTIVE" || profile.status === "RETIRED")) {
         return res.status(400).json({ error: `Cannot edit thresholds on a policy in ${profile.status} status` });
       }
@@ -444,12 +481,17 @@ export function registerPolicyOpsRoutes(
 
   app.delete("/api/policy-thresholds/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const threshold = await storage.getPolicyThreshold(req.params.id);
       if (!threshold) {
         return res.status(404).json({ error: "Threshold not found" });
       }
 
       const profile = await storage.getPolicyProfile(threshold.policyProfileId);
+      if (user.role !== "admin" && profile && profile.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only delete thresholds on policies you created" });
+      }
+
       if (profile && (profile.status === "APPROVED" || profile.status === "ACTIVE" || profile.status === "RETIRED")) {
         return res.status(400).json({ error: `Cannot delete thresholds from a policy in ${profile.status} status` });
       }
@@ -475,9 +517,17 @@ export function registerPolicyOpsRoutes(
 
   app.get("/api/policy-overlays", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const { basePolicyProfileId } = req.query;
       if (!basePolicyProfileId || typeof basePolicyProfileId !== "string") {
         return res.status(400).json({ error: "basePolicyProfileId query parameter is required" });
+      }
+
+      if (user.role !== "admin") {
+        const baseProfile = await storage.getPolicyProfile(basePolicyProfileId);
+        if (!baseProfile || baseProfile.createdBy !== user.id) {
+          return res.status(403).json({ error: "Access denied" });
+        }
       }
 
       const overlays = await storage.getPolicyLenderOverlays(basePolicyProfileId);
@@ -490,9 +540,13 @@ export function registerPolicyOpsRoutes(
 
   app.get("/api/policy-overlays/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const overlay = await storage.getPolicyLenderOverlay(req.params.id);
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
+      }
+      if (user.role !== "admin" && overlay.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied" });
       }
       res.json(overlay);
     } catch (error) {
@@ -503,6 +557,7 @@ export function registerPolicyOpsRoutes(
 
   app.post("/api/policy-overlays", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const parsed = insertPolicyLenderOverlaySchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid overlay data", details: parsed.error.flatten() });
@@ -511,6 +566,10 @@ export function registerPolicyOpsRoutes(
       const baseProfile = await storage.getPolicyProfile(parsed.data.basePolicyProfileId);
       if (!baseProfile) {
         return res.status(404).json({ error: "Base policy profile not found" });
+      }
+
+      if (user.role !== "admin" && baseProfile.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only add overlays to policies you created" });
       }
 
       const overlay = await storage.createPolicyLenderOverlay({
@@ -534,9 +593,14 @@ export function registerPolicyOpsRoutes(
 
   app.patch("/api/policy-overlays/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const overlay = await storage.getPolicyLenderOverlay(req.params.id);
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
+      }
+
+      if (user.role !== "admin" && overlay.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only edit overlays you created" });
       }
 
       if (overlay.status === "APPROVED" || overlay.status === "ACTIVE" || overlay.status === "RETIRED") {
@@ -570,9 +634,14 @@ export function registerPolicyOpsRoutes(
 
   app.delete("/api/policy-overlays/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const overlay = await storage.getPolicyLenderOverlay(req.params.id);
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
+      }
+
+      if (user.role !== "admin" && overlay.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only delete overlays you created" });
       }
 
       if (overlay.status === "APPROVED" || overlay.status === "ACTIVE" || overlay.status === "RETIRED") {
@@ -599,6 +668,13 @@ export function registerPolicyOpsRoutes(
 
   app.get("/api/policy-approvals/:policyProfileId", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const profile = await storage.getPolicyProfile(req.params.policyProfileId);
+        if (!profile || profile.createdBy !== user.id) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
       const approvals = await storage.getPolicyApprovals(req.params.policyProfileId);
       res.json(approvals);
     } catch (error) {

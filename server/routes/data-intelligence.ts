@@ -72,7 +72,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
   );
 
   app.get("/api/analytics/events",
-    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    requireRole("admin"),
     async (req, res) => {
       try {
         const { domain, applicationId, userId, limit, daysBack } = req.query;
@@ -162,7 +162,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
   );
 
   app.get("/api/documents/confidence/pending-reviews",
-    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    requireRole("admin"),
     async (req, res) => {
       try {
         const reviews = await getPendingReviews();
@@ -189,7 +189,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
   );
 
   app.post("/api/documents/confidence/:documentId/review",
-    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    requireRole("admin"),
     async (req, res) => {
       try {
         const user = req.user as User;

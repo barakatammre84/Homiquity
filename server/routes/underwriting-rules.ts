@@ -73,9 +73,14 @@ export function registerUnderwritingRulesRoutes(
 
   app.patch("/api/underwriting-rules/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
+      }
+
+      if (user.role !== "admin" && rule.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only edit rules you created" });
       }
 
       if (rule.approvedBy && rule.isActive) {
@@ -110,7 +115,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.delete("/api/underwriting-rules/:id", requireRole("admin", "underwriter"), async (req, res) => {
+  app.delete("/api/underwriting-rules/:id", requireRole("admin"), async (req, res) => {
     try {
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
@@ -136,9 +141,14 @@ export function registerUnderwritingRulesRoutes(
 
   app.post("/api/underwriting-rules/:id/version", requireRole("admin", "underwriter"), async (req, res) => {
     try {
+      const user = req.user as any;
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
+      }
+
+      if (user.role !== "admin" && rule.createdBy !== user.id) {
+        return res.status(403).json({ error: "Access denied: you can only version rules you created" });
       }
 
       const newVersion = await storage.createUnderwritingRule({
@@ -217,7 +227,7 @@ export function registerUnderwritingRulesRoutes(
     }
   });
 
-  app.post("/api/underwriting-rules/:id/retire", requireRole("admin", "underwriter"), async (req, res) => {
+  app.post("/api/underwriting-rules/:id/retire", requireRole("admin"), async (req, res) => {
     try {
       const rule = await storage.getUnderwritingRule(req.params.id);
       if (!rule) {
