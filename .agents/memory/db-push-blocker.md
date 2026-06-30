@@ -4,13 +4,23 @@ description: Why npm run db:push can fail non-interactively and the safe workaro
 ---
 `npm run db:push` (drizzle-kit push) runs in a non-TTY shell and aborts when it
 hits an interactive confirmation. In this repo the prompt is a PRE-EXISTING,
-unrelated destructive change (a unique constraint on `materiality_rule_sets` that
-would truncate existing rows) — not something your task introduced.
+unrelated destructive change (a unique-constraint add that would truncate an
+existing table — seen on `materiality_rule_sets` and on `calculator_profiles`;
+the exact table varies) — not something your task introduced. Because it aborts,
+NOTHING gets applied, so brand-new tables also silently never get created.
 
 **Rule:** Do NOT run `drizzle-kit push --force` to get past it — that auto-accepts
 every pending change including the unrelated truncate, destroying real rows.
 
-**How to apply:** When you only need to add your own new columns, apply them with
-idempotent SQL (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`) via the executeSql
-sandbox callback. New columns must be nullable or have defaults so the add is
-non-destructive. Verify with information_schema.columns afterward.
+**How to apply:** Apply only your own objects with idempotent SQL via the
+executeSql sandbox callback: `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` for
+columns (nullable/defaulted so the add is non-destructive), or
+`CREATE TABLE IF NOT EXISTS ...` / `CREATE TYPE` guarded by a `pg_type`/`pg_class`
+existence check for whole tables/enums. Match the Drizzle column types exactly.
+Verify with information_schema afterward.
+
+**Fresh-env gotcha:** In a fresh dev DB the `lookup_matrices` /
+`lookup_matrix_cells` tables (+ `policy_lifecycle_status` enum) may be absent for
+this same reason, which makes the pricing/underwriting and lookup-matrix
+integration tests fail with `relation "lookup_matrices" does not exist`. Create
+them with the guarded DDL above before running those tests.
