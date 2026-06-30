@@ -37,6 +37,64 @@ const createMatrixSchema = z.object({
 const numToStr = (v: number | null | undefined): string | null =>
   v === null || v === undefined ? null : v.toString();
 
+// A minimal view of a matrix version used to reason about coverage.
+type CoverageRow = {
+  id: string;
+  effectiveDate: Date;
+  expirationDate: Date | null;
+};
+
+// Mirrors the resolver's selection rule: a version provides live coverage only
+// when it is ACTIVE, already effective, and not yet expired. (Lifecycle status
+// is filtered upstream; this checks the temporal window.)
+const isCurrentlyEffective = (row: CoverageRow, now: Date): boolean =>
+  row.effectiveDate.getTime() <= now.getTime() &&
+  (row.expirationDate === null ||
+    row.expirationDate.getTime() >= now.getTime());
+
+// Returns the ACTIVE versions for a matrix code, reduced to the fields needed
+// to evaluate temporal coverage.
+async function getActiveCoverageRows(
+  storage: IStorage,
+  matrixCode: string,
+): Promise<CoverageRow[]> {
+  const rows = await storage.getLookupMatrices({
+    matrixCode,
+    lifecycleStatus: "ACTIVE",
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    effectiveDate: r.effectiveDate,
+    expirationDate: r.expirationDate,
+  }));
+}
+
+// A lifecycle action "creates a gap" when the matrix code has live coverage
+// right now but would have none after the action is applied. Pre-existing gaps
+// (no coverage before and after) are not attributed to this action.
+const createsCoverageGap = (
+  before: CoverageRow[],
+  after: CoverageRow[],
+  now: Date,
+): boolean =>
+  before.some((r) => isCurrentlyEffective(r, now)) &&
+  !after.some((r) => isCurrentlyEffective(r, now));
+
+// Standard 409 used when an action would strand a matrix code with no
+// resolvable version. Staff can re-submit with `confirmCoverageGap: true`.
+function coverageGapResponse(res: any, matrixCode: string, action: string) {
+  return res.status(409).json({
+    error: "COVERAGE_GAP",
+    matrixCode,
+    message:
+      `${action} would leave matrix code "${matrixCode}" with no ACTIVE, ` +
+      `currently-effective version. Any borrower pricing or underwriting ` +
+      `decision that relies on it will hard-fail until a replacement version ` +
+      `is both ACTIVE and effective. Re-submit the same request with ` +
+      `"confirmCoverageGap": true to proceed and accept this gap.`,
+  });
+}
+
 export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
   // List matrices (one row per version), with cell counts. Optional filters.
   app.get(
@@ -168,6 +226,27 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
           matrix.matrixCode,
         );
 
+        // Coverage-gap guard: activating retires the prior live version and the
+        // newly-activated one only counts once its effectiveDate arrives. A
+        // future-dated activation therefore strands the code with no resolvable
+        // version in the meantime. Simulate the post-action ACTIVE set and block
+        // unless staff explicitly confirm.
+        const now = new Date();
+        const before = await getActiveCoverageRows(storage, matrix.matrixCode);
+        const after: CoverageRow[] = before.filter(
+          (r) => r.id !== previousActive?.id,
+        );
+        after.push({
+          id: matrix.id,
+          effectiveDate: matrix.effectiveDate,
+          expirationDate: matrix.expirationDate,
+        });
+        const wouldGap = createsCoverageGap(before, after, now);
+        const confirmGap = req.body?.confirmCoverageGap === true;
+        if (wouldGap && !confirmGap) {
+          return coverageGapResponse(res, matrix.matrixCode, "Activating this matrix");
+        }
+
         const updated = await storage.updateLookupMatrix(req.params.id, {
           lifecycleStatus: "ACTIVE",
         });
@@ -189,6 +268,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
           effectiveDate: matrix.effectiveDate,
           futureDated: matrix.effectiveDate.getTime() > Date.now(),
           retiredPreviousId,
+          coverageGapConfirmed: wouldGap,
         });
 
         res.json(updated);
@@ -216,6 +296,18 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
           });
         }
 
+        // Coverage-gap guard: if this is the only currently-effective version for
+        // the code, retiring it leaves the resolver with nothing to quote. Block
+        // unless staff explicitly confirm.
+        const now = new Date();
+        const before = await getActiveCoverageRows(storage, matrix.matrixCode);
+        const after = before.filter((r) => r.id !== matrix.id);
+        const wouldGap = createsCoverageGap(before, after, now);
+        const confirmGap = req.body?.confirmCoverageGap === true;
+        if (wouldGap && !confirmGap) {
+          return coverageGapResponse(res, matrix.matrixCode, "Retiring this matrix");
+        }
+
         const updated = await storage.updateLookupMatrix(req.params.id, {
           lifecycleStatus: "RETIRED",
           expirationDate: new Date(),
@@ -226,6 +318,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
         await logAudit(req, "MATRIX_RETIRE", "lookup_matrix", matrix.id, {
           matrixCode: matrix.matrixCode,
           version: matrix.version,
+          coverageGapConfirmed: wouldGap,
         });
 
         res.json(updated);
@@ -289,6 +382,26 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
         if (parsed.data.expirationDate !== undefined)
           updates.expirationDate = parsed.data.expirationDate;
 
+        // Coverage-gap guard: pushing an ACTIVE version's effectiveDate into the
+        // future (or pulling its expirationDate into the past) can remove the
+        // only live coverage for the code. Simulate the change against the
+        // current ACTIVE set and block unless staff explicitly confirm. (DRAFT
+        // versions provide no coverage, so rescheduling them is never a gap.)
+        const now = new Date();
+        const before = await getActiveCoverageRows(storage, matrix.matrixCode);
+        const after = before.map((r) =>
+          r.id === matrix.id ? { ...r, effectiveDate, expirationDate } : r,
+        );
+        const wouldGap = createsCoverageGap(before, after, now);
+        const confirmGap = req.body?.confirmCoverageGap === true;
+        if (wouldGap && !confirmGap) {
+          return coverageGapResponse(
+            res,
+            matrix.matrixCode,
+            "Rescheduling this matrix",
+          );
+        }
+
         const updated = await storage.updateLookupMatrix(
           req.params.id,
           updates,
@@ -300,6 +413,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
           matrixCode: matrix.matrixCode,
           version: matrix.version,
           updatedFields: Object.keys(updates),
+          coverageGapConfirmed: wouldGap,
         });
 
         res.json(updated);
