@@ -185,7 +185,12 @@ describe("Lookup matrix lifecycle — live routes + real DB cross-process cohere
     expect(await sibling.resolveMatrixValue({ matrixCode: CODE })).toBe(30);
 
     const stampBefore = await readStamp();
-    const retire = await authPost(admin, `/api/lookup-matrices/${v3}/retire`);
+    // Retiring the only live version trips the coverage-gap guard (Task #86);
+    // this test intentionally strands the code to prove the sibling stops
+    // quoting it, so it confirms the gap explicitly.
+    const retire = await authPost(admin, `/api/lookup-matrices/${v3}/retire`, {
+      confirmCoverageGap: true,
+    });
     expect(retire.status).toBe(200);
     expect(retire.body.lifecycleStatus).toBe("RETIRED");
 
