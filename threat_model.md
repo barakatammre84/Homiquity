@@ -30,7 +30,7 @@ This scan iteration assumes the current deployment is unpublished/private rather
 
 - **Production entry points:** `server/index-prod.ts`, `server/app.ts`, `server/routes.ts`
 - **Highest-risk code areas:** `server/routes/borrower.ts`, `server/routes/lending.ts`, `server/routes/compliance.ts`, `server/routes/documents.ts`, `server/routes/task-engine.ts`, `server/routes/underwriting.ts`, `server/routes/underwriting-rules.ts`, `server/storage.ts`
-- **Newly validated hot spots:** `server/routes/agent-broker.ts`, `server/routes/staff-invites.ts`, `server/routes/intelligence.ts`, `server/routes/data-intelligence.ts`, and endpoints that accept raw `applicationId`, `taskId`, `letterId`, invite codes, verification identifiers, snapshot IDs, or user IDs
+- **Newly validated hot spots:** `server/routes/agent-broker.ts`, `server/routes/staff-invites.ts`, `server/routes/intelligence.ts`, `server/routes/data-intelligence.ts`, onboarding verification routes in `server/routes/borrower.ts`, shared pipeline views such as `/api/pipeline/queue`, deal-team mutation routes, and endpoints that accept raw `applicationId`, `taskId`, `letterId`, invite codes, verification identifiers, snapshot IDs, or user IDs
 - **Public vs authenticated vs admin surfaces:** public property/listing/content routes; borrower authenticated routes under `/api`; staff/admin actions commonly guarded by `requireRole(...)` or `isStaffRole(...)`
 - **Usually ignore unless proven reachable:** mockup/dev-only scaffolding and experimental sandbox code outside the production Express path; duplicate route definitions that are shadowed by an earlier production registration order
 - **Specifically shadowed in current production route order:** the later JSON `POST /api/documents/upload` handler in `server/routes/documents.ts` is shadowed by the earlier multipart `POST /api/documents/upload` route registered from `server/routes/lending.ts`; do not report the JSON-path file-read variant unless registration order or path shape changes
@@ -46,6 +46,7 @@ Required guarantees:
 - Staff-only and admin-only operations MUST enforce role checks server-side.
 - Server-side business actions MUST use the authenticated user identity, not client-supplied user identifiers, as the source of truth.
 - High-impact underwriting and policy actions MUST require appropriately narrow roles or explicit assignment-based authorization rather than any generic staff role.
+- Identity-proofing and KYC/AML flows MUST be backed by real verification logic in production; simulated or fixed-answer checks are not acceptable substitutes for borrower verification.
 
 ### Tampering
 
