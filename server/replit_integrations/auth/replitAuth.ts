@@ -19,7 +19,12 @@ const getOidcConfig = memoize(
 );
 
 export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  // Lending sessions handle sensitive PII/credit data, so a 7-day fixed window is
+  // too long. Use a 12-hour idle timeout (rolling: the cookie's maxAge is refreshed
+  // on each response, so an active user stays logged in but an abandoned session
+  // expires within 12h). sameSite stays "lax" because OAuth provider redirects must
+  // carry the session cookie back to the callback.
+  const sessionTtl = 12 * 60 * 60 * 1000; // 12 hours
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -32,6 +37,7 @@ export function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
       httpOnly: true,
       secure: true,

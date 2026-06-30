@@ -203,21 +203,32 @@ function setupDevTestLogin(app: Express) {
   app.post("/api/test-login", async (req, res) => {
     const { email, password } = req.body;
 
-    const testAccounts: Record<string, { password: string; role: string; firstName: string; lastName: string }> = {
-      "admin@test.com": { password: "admin123", role: "admin", firstName: "Admin", lastName: "User" },
-      "lo@test.com": { password: "lo123", role: "lo", firstName: "Loan", lastName: "Officer" },
-      "loa@test.com": { password: "loa123", role: "loa", firstName: "Loan Officer", lastName: "Assistant" },
-      "processor@test.com": { password: "processor123", role: "processor", firstName: "Loan", lastName: "Processor" },
-      "underwriter@test.com": { password: "underwriter123", role: "underwriter", firstName: "Loan", lastName: "Underwriter" },
-      "closer@test.com": { password: "closer123", role: "closer", firstName: "Loan", lastName: "Closer" },
-      "broker@test.com": { password: "broker123", role: "broker", firstName: "Mortgage", lastName: "Broker" },
-      "lender@test.com": { password: "lender123", role: "lender", firstName: "Lender", lastName: "Rep" },
-      "renter@test.com": { password: "renter123", role: "aspiring_owner", firstName: "Aspiring", lastName: "Owner" },
-      "buyer@test.com": { password: "buyer123", role: "active_buyer", firstName: "Active", lastName: "Buyer" },
+    // Test accounts share a single password sourced from the environment so no
+    // credential strings live in source / git history. This endpoint is also
+    // hard-gated to non-production (returns 404 in prod), but keeping secrets out
+    // of the repo is defense-in-depth. Set DEV_TEST_PASSWORD in your .env.
+    const devPassword = process.env.DEV_TEST_PASSWORD;
+    if (!devPassword) {
+      return res
+        .status(503)
+        .json({ error: "Dev test login is not configured (set DEV_TEST_PASSWORD)" });
+    }
+
+    const testAccounts: Record<string, { role: string; firstName: string; lastName: string }> = {
+      "admin@test.com": { role: "admin", firstName: "Admin", lastName: "User" },
+      "lo@test.com": { role: "lo", firstName: "Loan", lastName: "Officer" },
+      "loa@test.com": { role: "loa", firstName: "Loan Officer", lastName: "Assistant" },
+      "processor@test.com": { role: "processor", firstName: "Loan", lastName: "Processor" },
+      "underwriter@test.com": { role: "underwriter", firstName: "Loan", lastName: "Underwriter" },
+      "closer@test.com": { role: "closer", firstName: "Loan", lastName: "Closer" },
+      "broker@test.com": { role: "broker", firstName: "Mortgage", lastName: "Broker" },
+      "lender@test.com": { role: "lender", firstName: "Lender", lastName: "Rep" },
+      "renter@test.com": { role: "aspiring_owner", firstName: "Aspiring", lastName: "Owner" },
+      "buyer@test.com": { role: "active_buyer", firstName: "Active", lastName: "Buyer" },
     };
 
     const account = testAccounts[email];
-    if (!account || account.password !== password) {
+    if (!account || password !== devPassword) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 

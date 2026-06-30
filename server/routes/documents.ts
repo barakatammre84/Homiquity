@@ -7,7 +7,7 @@ import {
   extractBankStatementData,
   extractLeaseData,
 } from "../extractionService";
-import { upload } from "./utils";
+import { upload, allowedUploadTypes, verifyFileSignature } from "./utils";
 import { ObjectStorageService, ObjectNotFoundError } from "../replit_integrations/object_storage";
 import { type User } from "@shared/schema";
 import { logAudit } from "../auditLog";
@@ -27,15 +27,7 @@ export function registerDocumentRoutes(
         return res.status(400).json({ error: "Missing required field: name" });
       }
 
-      const allowedTypes = [
-        "application/pdf",
-        "image/jpeg",
-        "image/png",
-        "image/jpg",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      ];
-      if (contentType && !allowedTypes.includes(contentType)) {
+      if (contentType && !allowedUploadTypes.includes(contentType)) {
         return res.status(400).json({ error: "Invalid file type" });
       }
 
@@ -130,12 +122,14 @@ export function registerDocumentRoutes(
 
       if (document.storagePath?.startsWith("/objects/")) {
         const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);
-        res.set("Content-Disposition", `inline; filename="${document.fileName}"`);
+        // Force download rather than inline render so borrower-uploaded files
+        // (e.g. crafted HTML/SVG/PDF) cannot execute in the browser context.
+        res.set("Content-Disposition", `attachment; filename="${document.fileName}"`);
         await objectStorageService.downloadObject(objectFile, res);
       } else if (document.storagePath) {
         const fs = await import("fs");
         if (fs.existsSync(document.storagePath)) {
-          res.set("Content-Disposition", `inline; filename="${document.fileName}"`);
+          res.set("Content-Disposition", `attachment; filename="${document.fileName}"`);
           res.set("Content-Type", document.mimeType || "application/octet-stream");
           fs.createReadStream(document.storagePath).pipe(res);
         } else {
@@ -252,7 +246,7 @@ export function registerDocumentRoutes(
     }
   });
 
-  app.post("/api/documents/extract-tax-return", isAuthenticated, upload.single("file"), async (req, res) => {
+  app.post("/api/documents/extract-tax-return", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
@@ -315,7 +309,7 @@ export function registerDocumentRoutes(
     }
   });
 
-  app.post("/api/documents/extract-paystub", isAuthenticated, upload.single("file"), async (req, res) => {
+  app.post("/api/documents/extract-paystub", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
@@ -378,7 +372,7 @@ export function registerDocumentRoutes(
     }
   });
 
-  app.post("/api/documents/extract-bank-statement", isAuthenticated, upload.single("file"), async (req, res) => {
+  app.post("/api/documents/extract-bank-statement", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });

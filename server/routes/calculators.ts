@@ -4,7 +4,7 @@ import type { IStorage } from "../storage";
 import { calculateLLPA } from "../pricing";
 import { getPMIRateCard } from "../propertyAnalyzer";
 import { extractLeaseData } from "../extractionService";
-import { upload } from "./utils";
+import { upload, verifyFileSignature } from "./utils";
 
 // Fallback 30-year fixed base rate used only when no live/maintained rate is
 // available (e.g. database empty or unreachable). The preferred source is the
@@ -106,7 +106,7 @@ export function registerCalculatorRoutes(app: Express, storage: IStorage) {
   // the Rent-to-Own Readiness tool. Files are processed in memory and
   // deleted immediately; nothing is persisted for anonymous users.
   // ============================================================
-  app.post("/api/calculators/extract-lease", upload.single("file"), async (req, res) => {
+  app.post("/api/calculators/extract-lease", upload.single("file"), verifyFileSignature, async (req, res) => {
     const filePath = req.file?.path;
     try {
       if (!filePath) {

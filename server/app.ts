@@ -72,6 +72,17 @@ const emailCaptureLimiter = rateLimit({
   message: { error: "Too many requests, please try again later" },
 });
 
+// Strict limiter for expensive AI document-extraction endpoints. These invoke a
+// paid LLM per request, so they are a cost-DoS vector and need a tighter cap than
+// the general 500/15min limiter.
+const extractionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many document extraction requests, please try again later" },
+});
+
 app.use("/api/login", authLimiter);
 app.use("/api/callback", authLimiter);
 app.use("/api/test-login", authLimiter);
@@ -79,6 +90,10 @@ app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
 app.use("/api/uploads", uploadLimiter);
 app.use("/api/documents/upload", uploadLimiter);
+app.use("/api/documents/extract-tax-return", extractionLimiter);
+app.use("/api/documents/extract-paystub", extractionLimiter);
+app.use("/api/documents/extract-bank-statement", extractionLimiter);
+app.use("/api/calculators/extract-lease", extractionLimiter);
 app.use("/api/track", trackLimiter);
 app.use("/api/email-capture", emailCaptureLimiter);
 app.use(generalLimiter);

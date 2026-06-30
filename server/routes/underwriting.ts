@@ -438,9 +438,16 @@ export function registerUnderwritingRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
-      const { newStage } = req.body;
+      const { newStage, denialReasons } = req.body;
       if (!newStage) {
         return res.status(400).json({ error: "New stage is required" });
+      }
+
+      // HMDA LAR requires at least 2 denial reasons when an application is denied.
+      if (newStage === "denied" && (!Array.isArray(denialReasons) || denialReasons.length < 2)) {
+        return res.status(400).json({
+          error: "At least 2 denial reasons are required to deny an application (HMDA LAR)",
+        });
       }
 
       // Verify the caller is on the deal team for this application (admins bypass)
@@ -467,7 +474,7 @@ export function registerUnderwritingRoutes(
         });
       }
 
-      await updatePipelineStage(id, newStage);
+      await updatePipelineStage(id, newStage, newStage === "denied" ? { denialReasons } : undefined);
 
       await storage.createDealActivity({
         applicationId: id,

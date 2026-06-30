@@ -79,6 +79,38 @@ export function getStatusLabel(status: string): string {
   return labels[status] || status;
 }
 
+interface MortgageRateProgram {
+  termYears: number | null;
+  isAdjustable: boolean | null;
+  adjustmentPeriod: string | null;
+}
+
+interface MortgageRateWithProgramBase {
+  points: string | null;
+  loanAmount: string | null;
+  program: MortgageRateProgram;
+}
+
+export function formatRateTerm(rate: MortgageRateWithProgramBase, isHeloc = false): string {
+  if (rate.program.isAdjustable) {
+    return isHeloc
+      ? `${rate.program.adjustmentPeriod || "Variable"} Rate`
+      : `${rate.program.adjustmentPeriod || "5/1"} ARM`;
+  }
+  const years = rate.program.termYears;
+  return isHeloc ? (years ? `${years}-yr` : "Variable Rate") : `${years}-yr fixed`;
+}
+
+export function formatRatePoints(
+  rate: MortgageRateWithProgramBase,
+  defaultLoanAmount = 300000,
+): { points: string; cost: string } {
+  const points = rate.points ? parseFloat(rate.points).toFixed(2) : "0.00";
+  const loanAmount = rate.loanAmount ? parseInt(rate.loanAmount) : defaultLoanAmount;
+  const pointsCost = Math.round(parseFloat(rate.points || "0") * loanAmount / 100);
+  return { points, cost: `$${pointsCost.toLocaleString()}` };
+}
+
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     draft: "bg-muted text-muted-foreground",

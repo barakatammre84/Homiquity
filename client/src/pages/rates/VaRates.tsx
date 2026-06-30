@@ -12,36 +12,8 @@ import {
 } from "lucide-react";
 import RatePageHeader, { RateRow } from "@/components/RatePageHeader";
 import { usePageView } from "@/hooks/useActivityTracker";
-
-interface MortgageRateProgram {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  termYears: number | null;
-  isAdjustable: boolean | null;
-  adjustmentPeriod: string | null;
-  loanType: string | null;
-  displayOrder: number | null;
-  isActive: boolean | null;
-}
-
-interface MortgageRateWithProgram {
-  id: string;
-  state: string | null;
-  zipcode: string | null;
-  programId: string;
-  rate: string;
-  apr: string;
-  points: string | null;
-  pointsCost: string | null;
-  loanAmount: string | null;
-  downPaymentPercent: number | null;
-  creditScoreMin: number | null;
-  isActive: boolean | null;
-  effectiveDate: string | null;
-  program: MortgageRateProgram;
-}
+import { formatRateTerm, formatRatePoints } from "@/lib/formatters";
+import type { MortgageRateWithProgram } from "@/types/rates";
 
 function getStateFromZip(zip: string): string | undefined {
   const zipNum = parseInt(zip.substring(0, 3));
@@ -87,19 +59,8 @@ export default function VaRates() {
 
   const vaRates = rates?.filter(r => r.program.loanType === "va");
 
-  const formatTerm = (rate: MortgageRateWithProgram) => {
-    if (rate.program.isAdjustable) {
-      return `${rate.program.adjustmentPeriod || "5/1"} ARM`;
-    }
-    return `${rate.program.termYears}-yr fixed`;
-  };
-
-  const formatPoints = (rate: MortgageRateWithProgram) => {
-    const points = rate.points ? parseFloat(rate.points).toFixed(2) : "0.00";
-    const loanAmount = rate.loanAmount ? parseInt(rate.loanAmount) : 300000;
-    const pointsCost = Math.round(parseFloat(rate.points || "0") * loanAmount / 100);
-    return { points, cost: `$${pointsCost.toLocaleString()}` };
-  };
+  const formatTerm = (rate: MortgageRateWithProgram) => formatRateTerm(rate);
+  const formatPoints = (rate: MortgageRateWithProgram) => formatRatePoints(rate);
 
   return (
     <>

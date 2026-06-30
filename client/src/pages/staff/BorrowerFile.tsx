@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -145,6 +146,20 @@ interface CreditAuditEntry {
   performedBy: string | null;
 }
 
+// Standard HMDA (Reg C) denial reasons. At least 2 must be selected when an
+// application is denied so the Loan Application Register can be reported.
+const HMDA_DENIAL_REASONS = [
+  "Debt-to-income ratio",
+  "Employment history",
+  "Credit history",
+  "Collateral",
+  "Insufficient cash (downpayment, closing costs)",
+  "Unverifiable information",
+  "Credit application incomplete",
+  "Mortgage insurance denied",
+  "Other",
+];
+
 export default function BorrowerFile() {
   const params = useParams();
   const applicationId = params.id as string;
@@ -182,16 +197,16 @@ export default function BorrowerFile() {
     notes: string;
   }>({ condition: null, action: null, notes: "" });
 
-  const [statusUpdate, setStatusUpdate] = useState({ open: false, status: "", notes: "" });
+  const [statusUpdate, setStatusUpdate] = useState<{ open: boolean; status: string; notes: string; denialReasons: string[] }>({ open: false, status: "", notes: "", denialReasons: [] });
   const statusUpdateMutation = useMutation({
-    mutationFn: async ({ status, notes }: { status: string; notes?: string }) => {
-      return apiRequest("PATCH", `/api/loan-applications/${applicationId}/status`, { status, notes });
+    mutationFn: async ({ status, notes, denialReasons }: { status: string; notes?: string; denialReasons?: string[] }) => {
+      return apiRequest("PATCH", `/api/loan-applications/${applicationId}/status`, { status, notes, denialReasons });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
       queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'pipeline'] });
       toast({ title: "Status Updated", description: `Application status has been changed.` });
-      setStatusUpdate({ open: false, status: "", notes: "" });
+      setStatusUpdate({ open: false, status: "", notes: "", denialReasons: [] });
     },
     onError: (error: Error) => {
       toast({ title: "Update Failed", description: error.message, variant: "destructive" });
@@ -377,6 +392,33 @@ export default function BorrowerFile() {
                             </SelectContent>
                           </Select>
                         </div>
+                        {statusUpdate.status === "denied" && (
+                          <div className="space-y-2">
+                            <Label>Denial Reasons (HMDA — select at least 2)</Label>
+                            <div className="space-y-2 rounded-md border p-3">
+                              {HMDA_DENIAL_REASONS.map((reason) => {
+                                const checked = statusUpdate.denialReasons.includes(reason);
+                                return (
+                                  <label key={reason} className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <Checkbox
+                                      checked={checked}
+                                      onCheckedChange={(value) =>
+                                        setStatusUpdate(prev => ({
+                                          ...prev,
+                                          denialReasons: value
+                                            ? [...prev.denialReasons, reason]
+                                            : prev.denialReasons.filter(r => r !== reason),
+                                        }))
+                                      }
+                                      data-testid={`checkbox-denial-${reason}`}
+                                    />
+                                    {reason}
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <Label>Notes (optional)</Label>
                           <Textarea
@@ -388,12 +430,20 @@ export default function BorrowerFile() {
                         </div>
                       </div>
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setStatusUpdate({ open: false, status: "", notes: "" })}>
+                        <Button variant="outline" onClick={() => setStatusUpdate({ open: false, status: "", notes: "", denialReasons: [] })}>
                           Cancel
                         </Button>
                         <Button
-                          disabled={!statusUpdate.status || statusUpdateMutation.isPending}
-                          onClick={() => statusUpdateMutation.mutate({ status: statusUpdate.status, notes: statusUpdate.notes || undefined })}
+                          disabled={
+                            !statusUpdate.status ||
+                            statusUpdateMutation.isPending ||
+                            (statusUpdate.status === "denied" && statusUpdate.denialReasons.length < 2)
+                          }
+                          onClick={() => statusUpdateMutation.mutate({
+                            status: statusUpdate.status,
+                            notes: statusUpdate.notes || undefined,
+                            denialReasons: statusUpdate.status === "denied" ? statusUpdate.denialReasons : undefined,
+                          })}
                           data-testid="button-confirm-status-update"
                         >
                           {statusUpdateMutation.isPending ? "Updating..." : "Update Status"}

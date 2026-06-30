@@ -353,14 +353,15 @@ export async function initializeLoanPipeline(
 
 export async function updatePipelineStage(
   applicationId: string,
-  newStage: string
+  newStage: string,
+  options?: { denialReasons?: string[] }
 ): Promise<void> {
   const now = new Date();
-  
+
   // Get current stage before update for event
   const application = await storage.getLoanApplication(applicationId);
   const previousStage = application?.status || "unknown";
-  
+
   const milestoneUpdate: Record<string, any> = {};
   
   switch (newStage) {
@@ -398,7 +399,20 @@ export async function updatePipelineStage(
     await storage.updateLoanMilestones(applicationId, milestoneUpdate);
   }
 
-  await storage.updateLoanApplication(applicationId, { status: newStage });
+  // Populate HMDA Reg C "action taken" codes for the Loan Application Register.
+  // "funded" is the correct point to record code 1 (loan originated); "denied"
+  // records code 3 along with the denial reasons required for LAR reporting.
+  const applicationUpdate: Record<string, any> = { status: newStage };
+  if (newStage === "funded") {
+    applicationUpdate.hmdaActionTaken = "1";
+  } else if (newStage === "denied") {
+    applicationUpdate.hmdaActionTaken = "3";
+    if (options?.denialReasons && options.denialReasons.length > 0) {
+      applicationUpdate.hmdaDenialReasons = options.denialReasons;
+    }
+  }
+
+  await storage.updateLoanApplication(applicationId, applicationUpdate);
   
   // Emit workflow event for Task Engine integration
   try {

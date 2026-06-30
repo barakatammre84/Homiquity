@@ -11,7 +11,7 @@ import { analyzeLoanApplication } from "../gemini";
 import { generateMISMO34XML, type MISMOLoanDTO } from "../mismo";
 import { z } from "zod";
 import crypto from "crypto";
-import { upload } from "./utils";
+import { upload, verifyFileSignature } from "./utils";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 import { COMPANY_CONFIG } from "../config/company";
@@ -841,7 +841,7 @@ export function registerLendingRoutes(
     }
   });
 
-  app.post("/api/documents/upload", isAuthenticated, upload.single("file"), async (req, res) => {
+  app.post("/api/documents/upload", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
@@ -993,9 +993,21 @@ export function registerLendingRoutes(
   // in underwriting.ts which enforces the STAGE_TRANSITION_ROLES policy.
   const PROTECTED_CREDIT_DECISION_STATUSES = new Set(["approved", "denied", "pre_approved"]);
 
+  // HMDA Reg C "action taken" codes for the Loan Application Register (LAR). Only the
+  // unambiguous terminal dispositions are auto-populated here: "denied" (3) and
+  // "withdrawn" (4). "approved" is intentionally NOT mapped to code 1 ("loan
+  // originated"), which only applies once the loan funds at closing — populating it
+  // earlier would misreport the LAR. Origination (code 1) must be set at funding.
+  const HMDA_ACTION_TAKEN_BY_STATUS: Record<string, string> = {
+    denied: "3",
+    withdrawn: "4",
+  };
+
   const staffStatusSchema = z.object({
     status: z.enum(["submitted", "in_review", "underwriting", "conditional_approval", "pre_approved", "approved", "denied", "suspended", "withdrawn"]),
     notes: z.string().max(2000).optional(),
+    // HMDA requires at least 2 denial reasons when an application is denied.
+    denialReasons: z.array(z.string().min(1)).optional(),
   });
 
   app.patch("/api/loan-applications/:id/status", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
@@ -1013,7 +1025,14 @@ export function registerLendingRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
-      const { status, notes } = parsed.data;
+      const { status, notes, denialReasons } = parsed.data;
+
+      // HMDA LAR requires at least 2 denial reasons when an application is denied.
+      if (status === "denied" && (!denialReasons || denialReasons.length < 2)) {
+        return res.status(400).json({
+          error: "At least 2 denial reasons are required to deny an application (HMDA LAR)",
+        });
+      }
 
       // Enforce that only admin or underwriter can set final credit-decision statuses.
       // All other roles (including assigned deal-team members) must use the
@@ -1033,7 +1052,23 @@ export function registerLendingRoutes(
 
       const previousStatus = application.status;
 
-      const updated = await storage.updateLoanApplication(id, { status });
+      // Populate HMDA LAR fields on terminal dispositions so the action-taken code
+      // and denial reasons are captured for Reg C reporting at decision time.
+      const statusUpdate: {
+        status: string;
+        hmdaActionTaken?: string;
+        hmdaDenialReasons?: string[];
+      } = { status };
+
+      const hmdaActionTaken = HMDA_ACTION_TAKEN_BY_STATUS[status];
+      if (hmdaActionTaken) {
+        statusUpdate.hmdaActionTaken = hmdaActionTaken;
+      }
+      if (status === "denied" && denialReasons) {
+        statusUpdate.hmdaDenialReasons = denialReasons;
+      }
+
+      const updated = await storage.updateLoanApplication(id, statusUpdate);
 
       await storage.createDealActivity({
         applicationId: id,
@@ -1088,6 +1123,8 @@ export function registerLendingRoutes(
         previousStatus,
         newStatus: status,
         changedBy: user.id,
+        ...(statusUpdate.hmdaActionTaken && { hmdaActionTaken: statusUpdate.hmdaActionTaken }),
+        ...(statusUpdate.hmdaDenialReasons && { hmdaDenialReasons: statusUpdate.hmdaDenialReasons }),
       });
 
       res.json(updated);
