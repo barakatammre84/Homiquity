@@ -972,7 +972,7 @@ export default function GapCalculator() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 
@@ -1024,6 +1024,6 @@ function RoadmapPhase({
           ))}
         </div>
       </div>
-    </PageShell>
+    </div>
   );
 }
