@@ -1,7 +1,7 @@
 import { eq, desc } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
-import { consolidatedUnderwritingEngine, type UnderwritingInput } from "../underwritingEngine";
+import { consolidatedUnderwritingEngine, type UnderwritingInput, type AssetProfile } from "../underwritingEngine";
 import { generateLoanEstimate } from "./loanEstimate";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { decisionSnapshots, type LoanApplication } from "@shared/schema";
@@ -45,7 +45,18 @@ export interface InstantDecision {
     borrowerCount: number;
     /** "urla_line_items" (fact-based, per-borrower) or "application_summary" (fallback). */
     incomeBasis: "urla_line_items" | "application_summary";
+    /** Verified liquid reserves (post-haircut) and how many PITI payments they cover. */
+    liquidAssets: number;
+    monthsOfReserves: number;
   } | null;
+}
+
+// Map free-text URLA account types to the engine's asset buckets.
+function classifyAsset(accountType: string): AssetProfile["type"] {
+  const t = (accountType || "").toLowerCase();
+  if (/retire|ira|401|403b|pension|annuity/.test(t)) return "RETIREMENT_IRA_401K";
+  if (/stock|bond|mutual|brokerage|investment|securit|equity/.test(t)) return "STOCK_INVESTMENT";
+  return "CHECKING_SAVINGS"; // checking, savings, money market, CD, cash
 }
 
 function toNumber(v: unknown): number {
@@ -65,6 +76,7 @@ interface AggregatedFinancials {
   monthlyDebts: number;
   borrowerCount: number;
   incomeBasis: "urla_line_items" | "application_summary";
+  assets: AssetProfile[];
 }
 
 /**
@@ -75,11 +87,17 @@ interface AggregatedFinancials {
  * figures when line items haven't been captured yet.
  */
 async function aggregateBorrowerFinancials(app: LoanApplication): Promise<AggregatedFinancials> {
-  const [employment, otherIncome, liabilities] = await Promise.all([
+  const [employment, otherIncome, liabilities, urlaAssets] = await Promise.all([
     storage.getEmploymentHistory(app.id),
     storage.getOtherIncomeSources(app.id),
     storage.getUrlaLiabilities(app.id),
+    storage.getUrlaAssets(app.id),
   ]);
+
+  // Assets across all borrowers, bucketed for the engine's reserve haircuts.
+  const assets: AssetProfile[] = urlaAssets
+    .map((a) => ({ type: classifyAsset(a.accountType), balance: safe(a.cashOrMarketValue) }))
+    .filter((a) => a.balance > 0);
 
   const borrowerSeqs = new Set<number>();
 
@@ -130,6 +148,7 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     monthlyDebts,
     borrowerCount: Math.max(borrowerSeqs.size, 1),
     incomeBasis: hasUrlaIncome ? "urla_line_items" : "application_summary",
+    assets,
   };
 }
 
@@ -180,7 +199,7 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     appraisalValue: toNumber(app.propertyValue) || purchasePrice,
     representativeFico: app.creditScore,
     proposedPiti: monthlyPiti,
-    assets: [],
+    assets: fin.assets,
     subjectPropertyState: app.propertyState ?? undefined,
   };
 
@@ -209,6 +228,10 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
       monthlyDebts: fin.monthlyDebts,
       borrowerCount: fin.borrowerCount,
       incomeBasis: fin.incomeBasis,
+      liquidAssets: result.calculatedLiquidAssets,
+      monthsOfReserves: monthlyPiti > 0
+        ? Math.round((result.calculatedLiquidAssets / monthlyPiti) * 10) / 10
+        : 0,
     },
     ...base,
   };
