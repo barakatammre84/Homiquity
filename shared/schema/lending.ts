@@ -79,6 +79,10 @@ export const loanApplications = pgTable("loan_applications", {
   // Broker reference
   referringBrokerId: varchar("referring_broker_id").references(() => users.id),
 
+  // Assigned loan officer. Drives LO/LOA object-level access to the file
+  // (see access checks in borrower.ts / task-engine.ts / agent-broker.ts).
+  loanOfficerId: varchar("loan_officer_id").references(() => users.id),
+
   // Amortization / ARM terms (Section 4 / ULDD)
   amortizationType: varchar("amortization_type", { length: 30 }), // fixed | adjustable
   armIndexType: varchar("arm_index_type", { length: 50 }),
@@ -108,6 +112,7 @@ export const loanApplications = pgTable("loan_applications", {
   index("idx_loan_applications_status").on(table.status),
   index("idx_loan_applications_created").on(table.createdAt),
   index("idx_loan_applications_broker").on(table.referringBrokerId),
+  index("idx_loan_applications_lo").on(table.loanOfficerId),
   index("idx_loan_applications_user_status").on(table.userId, table.status),
 ]);
 
