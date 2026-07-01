@@ -1175,10 +1175,14 @@ export function registerLendingRoutes(
           }
         }
 
+        // "Verify all" override — sets every dimension and promotes provenance.
         const updated = await storage.updateLoanApplication(id, {
           financialDataProvenance: "verified",
           financialDataVerifiedAt: new Date(),
           financialDataVerifiedBy: user.id,
+          incomeVerified: true,
+          assetsVerified: true,
+          creditVerified: true,
         });
 
         logAudit(req, "loan_application.financials_verified", "loan_application", id, {
@@ -1194,6 +1198,48 @@ export function registerLendingRoutes(
       } catch (error) {
         console.error("Verify financials error:", error);
         res.status(500).json({ error: "Failed to verify financials" });
+      }
+    },
+  );
+
+  // Verify a single dimension (income | assets | credit). Rolls up to a fully
+  // VERIFIED application once all three are done. Granular verification means
+  // staff confirm each source as it's reviewed instead of one all-or-nothing toggle.
+  app.post(
+    "/api/loan-applications/:id/verify/:dimension",
+    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    async (req, res) => {
+      try {
+        const user = req.user as User;
+        const { id, dimension } = req.params;
+        if (!["income", "assets", "credit"].includes(dimension)) {
+          return res.status(400).json({ error: "dimension must be income, assets, or credit" });
+        }
+
+        const application = await storage.getLoanApplication(id);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        if (user.role !== "admin") {
+          const teamMembers = await storage.getDealTeamMembers(id);
+          if (!teamMembers.some((m) => m.userId === user.id)) {
+            return res.status(403).json({ error: "You are not assigned to this application" });
+          }
+        }
+
+        const { markDimensionVerified } = await import("../services/verification");
+        await markDimensionVerified(id, dimension as "income" | "assets" | "credit", user.id);
+
+        logAudit(req, "loan_application.dimension_verified", "loan_application", id, {
+          dimension,
+          verifiedBy: user.id,
+        });
+
+        const updated = await storage.getLoanApplication(id);
+        res.json(updated);
+      } catch (error) {
+        console.error("Verify dimension error:", error);
+        res.status(500).json({ error: "Failed to verify dimension" });
       }
     },
   );

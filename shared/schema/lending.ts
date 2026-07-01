@@ -40,6 +40,12 @@ export const loanApplications = pgTable("loan_applications", {
   financialDataVerifiedAt: timestamp("financial_data_verified_at"),
   financialDataVerifiedBy: varchar("financial_data_verified_by").references(() => users.id),
 
+  // Per-dimension verification. financialDataProvenance auto-promotes to
+  // "verified" only when all three are true (see server/services/verification.ts).
+  incomeVerified: boolean("income_verified").default(false).notNull(),
+  assetsVerified: boolean("assets_verified").default(false).notNull(),
+  creditVerified: boolean("credit_verified").default(false).notNull(),
+
   // Borrower Information
   annualIncome: decimal("annual_income", { precision: 12, scale: 2 }),
   monthlyDebts: decimal("monthly_debts", { precision: 10, scale: 2 }),

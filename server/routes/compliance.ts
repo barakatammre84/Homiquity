@@ -627,9 +627,10 @@ export function registerComplianceRoutes(
         requestedBy: user.id,
       });
 
-      // Real-time recalc: new credit data ripples through the decision.
-      import("../services/decisionEngine")
-        .then((m) => m.recalculateDecision(req.params.id, "credit_pull"))
+      // Credit is now verified by the pull: mark the dimension (auto-promotes the
+      // application to VERIFIED once income + assets are also verified) and recalc.
+      import("../services/verification")
+        .then((m) => m.markDimensionVerified(req.params.id, "credit", user.id))
         .catch(() => {});
 
       res.status(201).json({ pull: completedPull });
