@@ -10,6 +10,7 @@ import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import type { Document } from "@shared/schema";
+import { PageShell } from "@/components/PageShell";
 import {
   FileText,
   Download,
@@ -262,43 +263,22 @@ export default function Documents() {
         onChange={handleFileSelected}
         data-testid="input-file-upload"
       />
-      {/* Premium Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-
-        <div className="relative px-6 py-8">
-          <div className="flex items-center gap-2 text-primary-foreground/80 mb-2">
-            <FileText className="h-4 w-4" />
-            <span className="text-sm font-medium">Document Center</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            Document Checklist
-          </h1>
-          <p className="mt-1 text-primary-foreground/80">
-            Submit required documents as requested — we may ask for more as your application progresses
-          </p>
-
-          {/* Status Summary */}
-          <div className="mt-6">
-            <div className={`inline-flex items-center gap-4 rounded-xl px-5 py-3 ${statusInfo.bgColor} border ${statusInfo.borderColor}`} data-testid="status-summary">
-              <StatusIcon className={`h-8 w-8 ${statusInfo.iconColor}`} />
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-semibold text-white" data-testid="status-title">{statusInfo.title}</span>
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusInfo.badgeColor}`}>
-                    {statusInfo.badgeText}
-                  </span>
-                </div>
-                <p className="text-sm text-primary-foreground/80">{statusInfo.subtitle}</p>
-              </div>
+      <PageShell fullHeight width="wide" title="Document Checklist" subtitle="Submit required documents as requested — we may ask for more as your application progresses">
+        {/* Status Summary */}
+        <div className={`mb-6 inline-flex items-center gap-4 rounded-xl px-5 py-3 ${statusInfo.bgColor} border ${statusInfo.borderColor}`} data-testid="status-summary">
+          <StatusIcon className={`h-8 w-8 ${statusInfo.iconColor}`} />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold text-foreground" data-testid="status-title">{statusInfo.title}</span>
+              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusInfo.badgeColor}`}>
+                {statusInfo.badgeText}
+              </span>
             </div>
+            <p className="text-sm text-muted-foreground">{statusInfo.subtitle}</p>
           </div>
         </div>
-      </div>
 
-      {/* Document Categories */}
-      <div className="p-4 sm:p-6 lg:p-8 -mt-6 space-y-4">
+        <div className="space-y-4">
         {DOCUMENT_CATEGORIES.map((category) => {
           const CategoryIcon = category.icon;
           const isExpanded = expandedCategories.includes(category.id);
@@ -553,6 +533,7 @@ export default function Documents() {
           </Card>
         )}
       </div>
+      </PageShell>
     </>
   );
 }
