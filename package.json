@@ -11,6 +11,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
     "@google-cloud/storage": "^7.19.0",
     "@google/genai": "^1.30.0",
     "@hookform/resolvers": "^3.10.0",
