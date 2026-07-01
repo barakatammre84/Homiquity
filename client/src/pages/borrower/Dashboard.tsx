@@ -189,7 +189,7 @@ function getDominantAction(
   unreadMessages: number,
   expirationInfo: { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null,
   activitySummary?: { totalPageViews: number; propertySearches: number; calculatorUses: number; coachChats: number; propertyViews: number } | null,
-): { icon: React.ElementType; title: string; description: string; href: string; buttonLabel: string; whyNeeded?: string } {
+): { icon: React.ElementType; title: string; description: string; href: string; buttonLabel: string; whyNeeded?: string; timeEstimate?: string } {
   if (!application) {
     if (activitySummary && activitySummary.propertySearches > 0) {
       return {
@@ -264,6 +264,7 @@ function getDominantAction(
       description: "Pick up right where you left off. It only takes a few minutes.",
       href: "/apply",
       buttonLabel: "Continue",
+      timeEstimate: "about 3 minutes",
     };
   }
 
@@ -285,6 +286,7 @@ function getDominantAction(
       href: "/tasks",
       buttonLabel: "View Tasks",
       whyNeeded: "Completing tasks on time prevents delays in your approval.",
+      timeEstimate: "a few minutes",
     };
   }
 
@@ -296,6 +298,7 @@ function getDominantAction(
       href: "/documents",
       buttonLabel: "Upload",
       whyNeeded: "Documents verify the information in your application, as required by federal regulations.",
+      timeEstimate: "about 5 minutes",
     };
   }
 
@@ -910,10 +913,19 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Section 3: One dominant action */}
-        <Card className="shadow-md hover-elevate" data-testid="card-dominant-action">
+        {/* Section 3: One dominant action — the "next step" hero */}
+        <Card className="shadow-md hover-elevate border-2 border-accent/40" data-testid="card-dominant-action">
           <CardContent className="p-5 sm:p-6">
             <div className="flex flex-col items-center text-center space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold tracking-wide text-accent uppercase">Your next step</span>
+                {dominant.timeEstimate && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" data-testid="text-dominant-time">
+                    <Clock className="h-3 w-3" />
+                    {dominant.timeEstimate}
+                  </span>
+                )}
+              </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                 <DominantIcon className="h-6 w-6 text-primary" />
               </div>
