@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
+import { PageShell } from "@/components/PageShell";
 import {
   Form,
   FormControl,
@@ -505,7 +506,7 @@ export default function GapCalculator() {
   const analysis = gapAnalysis?.analysis;
 
   return (
-    <div className="container max-w-6xl mx-auto py-8 px-4 space-y-6">
+    <PageShell width="wide" className="space-y-6">
       <PresalesDisclaimer />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -1023,6 +1024,6 @@ function RoadmapPhase({
           ))}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
