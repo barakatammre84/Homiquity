@@ -112,7 +112,7 @@ export default function HelocRates() {
                   <h3 className="text-lg font-semibold mb-1">Access your home equity</h3>
                   <p className="text-muted-foreground">Flexible credit line with competitive rates</p>
                 </div>
-                <Button asChild className="bg-[#017848] hover:bg-[#015a37] text-white">
+                <Button asChild className="bg-accent hover:bg-accent/90 text-white">
                   <Link href="/apply?type=heloc" data-testid="link-apply-heloc">
                     Apply for HELOC
                   </Link>
@@ -128,7 +128,7 @@ export default function HelocRates() {
               <p className="text-muted-foreground mb-6">
                 Enter your ZIP code above to see current HELOC rates for your area.
               </p>
-              <Button asChild className="bg-[#017848] hover:bg-[#015a37] text-white">
+              <Button asChild className="bg-accent hover:bg-accent/90 text-white">
                 <Link href="/apply?type=heloc" data-testid="link-apply-heloc-empty">
                   Apply for HELOC
                 </Link>

@@ -127,7 +127,7 @@ export default function VaRates() {
                   <h3 className="text-lg font-semibold mb-1">Ready to use your VA benefit?</h3>
                   <p className="text-muted-foreground">Get pre-approved with $0 down payment</p>
                 </div>
-                <Button asChild className="bg-[#017848] hover:bg-[#015a37] text-white">
+                <Button asChild className="bg-accent hover:bg-accent/90 text-white">
                   <Link href="/apply?type=va" data-testid="link-apply-va">
                     Start VA Loan Application
                   </Link>
@@ -143,7 +143,7 @@ export default function VaRates() {
               <p className="text-muted-foreground mb-6">
                 Enter your ZIP code above to see current VA loan rates for your area.
               </p>
-              <Button asChild className="bg-[#017848] hover:bg-[#015a37] text-white">
+              <Button asChild className="bg-accent hover:bg-accent/90 text-white">
                 <Link href="/apply?type=va" data-testid="link-apply-va-empty">
                   Apply for VA Loan
                 </Link>

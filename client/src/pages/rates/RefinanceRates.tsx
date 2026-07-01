@@ -116,7 +116,7 @@ export default function RefinanceRates() {
                   <h3 className="text-lg font-semibold mb-1">Ready to refinance?</h3>
                   <p className="text-muted-foreground">See how much you could save with a lower rate</p>
                 </div>
-                <Button asChild className="bg-[#017848] hover:bg-[#015a37] text-white">
+                <Button asChild className="bg-accent hover:bg-accent/90 text-white">
                   <Link href="/apply?type=refinance" data-testid="link-apply-refinance">
                     Start Refinance Application
                   </Link>
@@ -132,7 +132,7 @@ export default function RefinanceRates() {
               <p className="text-muted-foreground mb-6">
                 Enter your ZIP code above to see current refinance rates for your area.
               </p>
-              <Button asChild className="bg-[#017848] hover:bg-[#015a37] text-white">
+              <Button asChild className="bg-accent hover:bg-accent/90 text-white">
                 <Link href="/apply?type=refinance" data-testid="link-apply-refinance-empty">
                   Apply for Refinance
                 </Link>

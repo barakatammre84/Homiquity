@@ -193,7 +193,7 @@ export default function RatePageHeader({
   };
 
   return (
-    <div className="bg-[#f0f7f1] dark:bg-primary/5 pb-8">
+    <div className="bg-accent/5 dark:bg-primary/5 pb-8">
       <div className="max-w-6xl mx-auto px-4 pt-8 sm:pt-12">
         <h1 
           className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4"
@@ -218,7 +218,7 @@ export default function RatePageHeader({
 
         <Button 
           asChild 
-          className="bg-[#017848] hover:bg-[#015a37] text-white mb-8"
+          className="bg-accent hover:bg-accent/90 text-white mb-8"
           data-testid="button-see-personalized-rates"
         >
           <Link href="/apply">See personalized rates</Link>
@@ -393,7 +393,7 @@ export function RateRow({
       </div>
       <div className="min-w-[100px]">
         <span className="text-xs text-muted-foreground block mb-1">Rate</span>
-        <span className="text-2xl font-semibold text-[#017848]">{rate}</span>
+        <span className="text-2xl font-semibold text-accent">{rate}</span>
       </div>
       <div className="min-w-[100px]">
         <span className="text-xs text-muted-foreground block mb-1">APR</span>
