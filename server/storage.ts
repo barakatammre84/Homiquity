@@ -337,7 +337,7 @@ export interface IStorage {
     approvalRate: number;
     applicationsByStatus: { status: string; count: number }[];
     loansByType: { type: string; count: number; volume: string }[];
-    recentApplications: (LoanApplication & { user: User })[];
+    recentApplications: (LoanApplication & { user: User | null })[];
   }>;
   getDashboardStats(userId: string): Promise<{
     totalApplications: number;
