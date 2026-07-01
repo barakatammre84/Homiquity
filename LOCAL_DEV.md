@@ -23,14 +23,19 @@ npm install
 The app already uses Neon's driver, so this Just Works. The app still runs on
 your machine — only the database is hosted (and free).
 
-### Option B (fully offline): local Postgres
-The default driver (`@neondatabase/serverless`) talks over WebSockets and does NOT
-connect to a plain local Postgres. To go fully local you must switch the driver:
-1. Install Postgres (Postgres.app on Mac, or `docker run -e POSTGRES_PASSWORD=pass -p 5432:5432 postgres`).
-2. Ask me to add the local-Postgres driver branch to `server/db.ts` (a small,
-   env-gated change that uses `pg` for `localhost` URLs and Neon otherwise). It
-   needs `npm run check` to confirm types — that's why it's opt-in, not default.
-3. `DATABASE_URL=postgresql://postgres:pass@localhost:5432/homiquity`
+### Option B (fully offline): local Postgres — supported out of the box
+`server/db.ts` auto-detects a local database: a `localhost` / `127.0.0.1`
+connection string (or `USE_LOCAL_PG=true`) uses the standard `pg` driver; any
+other URL uses Neon. No code change needed.
+1. Install Postgres — Postgres.app on Mac, or Docker:
+   ```bash
+   docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16
+   ```
+2. In `.env`:
+   ```
+   DATABASE_URL=postgresql://postgres:pass@localhost:5432/homiquity
+   ```
+3. `npm run db:push` then `npm run dev`. That's it — fully offline, $0.
 
 ## 4. Create your `.env`
 ```bash
