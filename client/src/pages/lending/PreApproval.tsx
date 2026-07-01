@@ -282,6 +282,13 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
       case "annualIncome":
         return "We use gross income to calculate your debt-to-income ratio. We'll verify with W-2s or tax returns later.";
       case "employmentType":
+        if (formValues.employmentType === "self_employed") {
+          return (
+            <span className="text-green-600 dark:text-green-400">
+              Self-employed income confuses most automated lenders — not us. We handle 1099 and business income all the time, and we'll build you a custom document checklist so nothing stalls your approval.
+            </span>
+          );
+        }
         return "Employment type helps us determine which documents we'll need to verify your income.";
       case "employmentYears":
         return "Most lenders prefer 2+ years of stable employment history.";
