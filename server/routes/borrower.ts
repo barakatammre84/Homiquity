@@ -1942,6 +1942,57 @@ export function registerBorrowerRoutes(
     }
   });
 
+  // Assign (or clear) the loan officer on an application (admin only).
+  // The loanOfficerId is what grants LO/LOA object-level access to the file
+  // (see access checks in borrower.ts / task-engine.ts / agent-broker.ts), so
+  // restricting mutation to admin keeps that authorization boundary tight.
+  app.patch("/api/loan-applications/:applicationId/loan-officer", requireRole("admin"), async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+
+      const schema = z.object({
+        loanOfficerId: z.string().min(1).nullable(),
+      });
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid input", details: result.error.format() });
+      }
+
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      // When assigning (non-null), the target must be an internal loan-officer user.
+      if (result.data.loanOfficerId) {
+        const target = await storage.getUser(result.data.loanOfficerId);
+        if (!target || (target.role !== "lo" && target.role !== "loa")) {
+          return res.status(400).json({ error: "Assigned user must be a loan officer (lo or loa)" });
+        }
+      }
+
+      const updated = await storage.updateLoanApplication(applicationId, {
+        loanOfficerId: result.data.loanOfficerId,
+      });
+
+      await storage.createDealActivity({
+        applicationId,
+        activityType: "team_updated",
+        title: result.data.loanOfficerId ? "Loan officer assigned" : "Loan officer unassigned",
+        description: result.data.loanOfficerId
+          ? "A loan officer was assigned to this file."
+          : "The loan officer was removed from this file.",
+        performedBy: user.id,
+      });
+
+      res.json({ success: true, application: updated });
+    } catch (error) {
+      console.error("Assign loan officer error:", error);
+      res.status(500).json({ error: "Failed to assign loan officer" });
+    }
+  });
+
   // Get all applications where user is a team member (for staff)
   app.get("/api/my-team-assignments", isAuthenticated, async (req, res) => {
     try {

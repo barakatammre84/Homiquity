@@ -251,14 +251,29 @@ export function registerAgentBrokerRoutes(
         return res.status(400).json({ error: "applicationId, brokerId, and commissionRate are required" });
       }
 
+      // commissionRate is a decimal fraction (e.g. 0.025 = 2.5%). Reject non-numeric
+      // or out-of-range values to prevent malformed or fabricated commission records.
+      const rate = Number(commissionRate);
+      if (!Number.isFinite(rate) || rate <= 0 || rate > 0.1) {
+        return res.status(400).json({ error: "commissionRate must be a number between 0 and 0.1 (0%–10%)" });
+      }
+
       const application = await storage.getLoanApplication(applicationId);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
 
-      // Derive authoritative loan amount from the application record
-      const loanAmount = application.loanAmount;
-      if (!loanAmount) {
+      // Derive the authoritative loan amount from the application record.
+      // Purchases: purchase price minus down payment (consistent with pipelineEngine
+      // and gemini). Fall back to the pre-approval amount (e.g. refinances) when a
+      // purchase price is not on file.
+      const purchasePrice = Number(application.purchasePrice ?? 0);
+      const downPayment = Number(application.downPayment ?? 0);
+      const loanAmount =
+        purchasePrice > 0
+          ? purchasePrice - downPayment
+          : Number(application.preApprovalAmount ?? 0);
+      if (!loanAmount || loanAmount <= 0) {
         return res.status(422).json({ error: "Application does not have a loan amount on file" });
       }
 
