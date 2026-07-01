@@ -30,6 +30,16 @@ export const loanApplications = pgTable("loan_applications", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   status: varchar("status", { length: 50 }).default("draft").notNull(),
   
+  // Provenance of the financial figures below (income, debts, credit, value).
+  // "self_reported" (default) = borrower-entered / pre-sales estimates; must NOT
+  // drive a credit decision or required disclosure. Flipped to "verified" once
+  // the figures are backed by documents / a credit pull. See shared/dataProvenance.ts.
+  financialDataProvenance: varchar("financial_data_provenance", { length: 30 })
+    .default("self_reported")
+    .notNull(),
+  financialDataVerifiedAt: timestamp("financial_data_verified_at"),
+  financialDataVerifiedBy: varchar("financial_data_verified_by").references(() => users.id),
+
   // Borrower Information
   annualIncome: decimal("annual_income", { precision: 12, scale: 2 }),
   monthlyDebts: decimal("monthly_debts", { precision: 10, scale: 2 }),

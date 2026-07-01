@@ -15,6 +15,7 @@ import { upload, verifyFileSignature } from "./utils";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 import { COMPANY_CONFIG } from "../config/company";
+import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -1050,6 +1051,22 @@ export function registerLendingRoutes(
         }
       }
 
+      // Approval outcomes may not be set on self-reported/estimated data — a
+      // favorable credit determination requires verified figures. (Denial is not
+      // gated: an application can be denied for unverifiable or incomplete info.)
+      if (status === "approved" || status === "pre_approved") {
+        try {
+          assertVerifiedForDecisioning(
+            application.financialDataProvenance as DataProvenance,
+            `setting status to '${status}'`,
+          );
+        } catch (guardErr) {
+          return res.status(422).json({
+            error: guardErr instanceof Error ? guardErr.message : "Financial data must be verified",
+          });
+        }
+      }
+
       const previousStatus = application.status;
 
       // Populate HMDA LAR fields on terminal dispositions so the action-taken code
@@ -1134,6 +1151,48 @@ export function registerLendingRoutes(
     }
   });
 
+  // Mark the borrower's financial figures as verified against documentation /
+  // credit. This is the gate that lets an application proceed to approval and
+  // pre-approval-letter generation. Restricted to staff who review documents.
+  app.post(
+    "/api/loan-applications/:id/verify-financials",
+    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    async (req, res) => {
+      try {
+        const user = req.user as User;
+        const { id } = req.params;
+
+        const application = await storage.getLoanApplication(id);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        // Non-admin staff must be on the deal team.
+        if (user.role !== "admin") {
+          const teamMembers = await storage.getDealTeamMembers(id);
+          if (!teamMembers.some((m) => m.userId === user.id)) {
+            return res.status(403).json({ error: "You are not assigned to this application" });
+          }
+        }
+
+        const updated = await storage.updateLoanApplication(id, {
+          financialDataProvenance: "verified",
+          financialDataVerifiedAt: new Date(),
+          financialDataVerifiedBy: user.id,
+        });
+
+        logAudit(req, "loan_application.financials_verified", "loan_application", id, {
+          verifiedBy: user.id,
+        });
+
+        res.json(updated);
+      } catch (error) {
+        console.error("Verify financials error:", error);
+        res.status(500).json({ error: "Failed to verify financials" });
+      }
+    },
+  );
+
   app.get("/api/loan-applications/draft/latest", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
@@ -1163,6 +1222,19 @@ export function registerLendingRoutes(
 
       if (application.status !== "pre_approved") {
         return res.status(400).json({ error: "Only pre-approved applications can generate letters" });
+      }
+
+      // A pre-approval letter represents a creditworthiness determination — it may
+      // not be issued from self-reported/estimated figures. Require verified data.
+      try {
+        assertVerifiedForDecisioning(
+          application.financialDataProvenance as DataProvenance,
+          "generating a pre-approval letter",
+        );
+      } catch (guardErr) {
+        return res.status(422).json({
+          error: guardErr instanceof Error ? guardErr.message : "Financial data must be verified",
+        });
       }
 
       const { generatePreApprovalPDF } = await import("../services/pdfLetterGenerator");

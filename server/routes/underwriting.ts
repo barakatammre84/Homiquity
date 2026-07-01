@@ -11,6 +11,7 @@ import {
   checkPropertyEligibility 
 } from "../underwriting";
 import { calculateLLPA, getAreaMedianIncome } from "../pricing";
+import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 
 /**
  * Checks whether a staff user is authorized to mutate a specific loan application.
@@ -448,6 +449,22 @@ export function registerUnderwritingRoutes(
         return res.status(400).json({
           error: "At least 2 denial reasons are required to deny an application (HMDA LAR)",
         });
+      }
+
+      // Approval-grade stages may not be reached on self-reported/estimated data.
+      // (Denial is not gated — see the status endpoint for the rationale.)
+      const APPROVAL_GRADE_STAGES = new Set(["pre_approved", "conditional", "clear_to_close", "funded"]);
+      if (APPROVAL_GRADE_STAGES.has(newStage)) {
+        try {
+          assertVerifiedForDecisioning(
+            application.financialDataProvenance as DataProvenance,
+            `advancing to '${newStage}'`,
+          );
+        } catch (guardErr) {
+          return res.status(422).json({
+            error: guardErr instanceof Error ? guardErr.message : "Financial data must be verified",
+          });
+        }
       }
 
       // Verify the caller is on the deal team for this application (admins bypass)
