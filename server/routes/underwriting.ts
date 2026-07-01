@@ -241,6 +241,31 @@ export function registerUnderwritingRoutes(
     }
   });
 
+  // Instant deterministic decision (Tinman-style). Read-only preview: composes
+  // completeness + pricing + the matrix-driven underwriting engine into a single
+  // APPROVED / REJECTED / MANUAL_REVIEW / NEEDS_MORE_INFO result. Staff-only and
+  // non-binding — it changes nothing; a binding outcome still goes through the
+  // verified-data gate and human review.
+  app.get(
+    "/api/loan-applications/:id/instant-decision",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        const { runInstantDecision } = await import("../services/decisionEngine");
+        const decision = await runInstantDecision(id);
+        res.json(decision);
+      } catch (error) {
+        console.error("Instant decision error:", error);
+        res.status(500).json({ error: "Failed to compute instant decision" });
+      }
+    },
+  );
+
   // ============================================================================
   // LOAN PIPELINE API ENDPOINTS
   // ============================================================================
