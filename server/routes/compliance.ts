@@ -439,7 +439,15 @@ export function registerComplianceRoutes(
         ipAddress: req.ip,
         userAgent: req.get("User-Agent"),
       });
-      
+
+      // FCRA audit trail: record credit-pull consent capture.
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "credit_consent.created", "loan_application", req.params.id, {
+        consentId: consent.id,
+        consentType: consentType || "hard_pull",
+        consentGiven,
+      });
+
       res.status(201).json({ consent });
     } catch (error) {
       console.error("Create consent error:", error);
@@ -485,7 +493,15 @@ export function registerComplianceRoutes(
         user.id,
         req.ip
       );
-      
+
+      // FCRA audit trail: record consent revocation.
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "credit_consent.revoked", "loan_application", consent.applicationId ?? req.params.consentId, {
+        consentId: req.params.consentId,
+        revokedBy: user.id,
+        reason: reason || "Borrower requested revocation",
+      });
+
       res.json({ success: true });
     } catch (error) {
       console.error("Revoke consent error:", error);
@@ -601,7 +617,16 @@ export function registerComplianceRoutes(
           creditScore: completedPull.representativeScore,
         });
       }
-      
+
+      // FCRA audit trail: record who pulled credit, when, and under which consent.
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "credit.pulled", "loan_application", req.params.id, {
+        pullId: completedPull.id,
+        pullType: pullType || "tri_merge",
+        consentId: consent.id,
+        requestedBy: user.id,
+      });
+
       res.status(201).json({ pull: completedPull });
     } catch (error) {
       console.error("Request credit pull error:", error);
@@ -839,7 +864,17 @@ export function registerComplianceRoutes(
         creditScoreSource,
         generatedBy: user.id,
       });
-      
+
+      // ECOA/FCRA audit trail: record adverse-action generation with reasons.
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "adverse_action.generated", "loan_application", req.params.id, {
+        adverseActionId: adverseAction.id,
+        actionType,
+        primaryReason,
+        secondaryReasons,
+        generatedBy: user.id,
+      });
+
       res.status(201).json({ adverseAction });
     } catch (error) {
       console.error("Generate adverse action error:", error);
@@ -895,7 +930,15 @@ export function registerComplianceRoutes(
         deliveryMethod || "in_app",
         deliveryConfirmation
       );
-      
+
+      // ECOA audit trail: record delivery of the adverse-action notice.
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "adverse_action.delivered", "loan_application", action.applicationId, {
+        adverseActionId: req.params.actionId,
+        deliveryMethod: deliveryMethod || "in_app",
+        deliveredBy: user.id,
+      });
+
       res.json({ success: true });
     } catch (error) {
       console.error("Mark adverse action delivered error:", error);
