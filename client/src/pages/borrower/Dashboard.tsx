@@ -860,7 +860,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-10 space-y-6">
+      <div className="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-10 space-y-8">
 
         {/* Section 1: Greeting */}
         <div className="space-y-1">

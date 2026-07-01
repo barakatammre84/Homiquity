@@ -1038,9 +1038,9 @@ export default function PreApproval() {
                     }, 200);
                   }}
                   className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 group
-                    ${isSelected 
-                      ? "border-primary bg-primary/5" 
-                      : "border-muted hover:border-primary/50 hover:bg-muted/50"
+                    ${isSelected
+                      ? "border-primary bg-primary/5"
+                      : "border-transparent bg-muted/40 hover:bg-muted"
                     }`}
                 >
                   {OptionIcon && (

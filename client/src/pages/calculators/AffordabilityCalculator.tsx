@@ -6,6 +6,7 @@ import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { TermTooltip } from "@/components/TermTooltip";
+import { PageShell } from "@/components/PageShell";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -368,7 +369,7 @@ export default function AffordabilityCalculator() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageShell width="wide">
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl" data-testid="text-page-title">
             How Much Home Can You Afford?
@@ -982,7 +983,7 @@ export default function AffordabilityCalculator() {
             </Card>
           </div>
         </div>
-      </div>
+      </PageShell>
     </div>
   );
 }
