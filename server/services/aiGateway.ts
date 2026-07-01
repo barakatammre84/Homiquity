@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { db } from "../db";
 import { aiInteractions, type InsertAiInteraction } from "@shared/schema";
+import { PRESALES_DISCLAIMER } from "@shared/dataProvenance";
 
 // =============================================================================
 // AI GATEWAY
@@ -39,6 +40,21 @@ export interface AiGatewayRequest {
   model?: string;
   /** Extra system-prompt text appended after the charter (workflow-specific rules). */
   systemPromptExtra?: string;
+  /**
+   * Structured facts the model is allowed to use. When provided, the gateway runs
+   * in GROUNDED mode: the model may use ONLY these facts and may not compute,
+   * estimate, or invent any number/date/rate/amount not present here. This is the
+   * primary lever for keeping AI limited and factual. Strongly recommended for
+   * anything borrower-facing.
+   */
+  groundedFacts?: Record<string, string | number | boolean | null>;
+  /**
+   * Marks a pre-sales / exploratory flow built on self-reported (unverified)
+   * figures. Forces a non-binding disclaimer into the output and blocks any
+   * approval/eligibility/commitment language. Low friction — shown immediately,
+   * no per-item human review.
+   */
+  presales?: boolean;
   metadata?: Record<string, unknown>;
 }
 
@@ -72,6 +88,29 @@ ALWAYS:
 - Follow TILA, RESPA, ECOA, HMDA, SAFE Act, FCRA, and GLBA as summarized in firm policy.
 - Flag uncertainty with the exact line: "This requires human compliance review before sending."
 - Output in clear Markdown.`;
+
+// Appended when groundedFacts are supplied. This is the core "keep AI limited"
+// constraint: the model becomes a formatter of provided facts, not a source of them.
+function groundedRules(facts: Record<string, string | number | boolean | null>): string {
+  const lines = Object.entries(facts).map(
+    ([k, v]) => `- ${k}: ${v === null || v === undefined ? "Information not provided" : v}`,
+  );
+  return `GROUNDED MODE — you may use ONLY the facts listed below.
+- Do NOT compute, estimate, round, convert, or infer any number, date, rate, or dollar amount that is not explicitly listed.
+- Do NOT introduce facts from prior knowledge or assumptions.
+- If a fact needed to answer is not listed, write "Information not provided" — never guess.
+- Quote figures exactly as given.
+
+FACTS:
+${lines.join("\n")}`;
+}
+
+// Appended for pre-sales / self-reported flows.
+const PRESALES_RULES = `PRE-SALES CONTEXT — the figures here are self-reported by the user and UNVERIFIED.
+- Do NOT state or imply approval, eligibility, qualification, guaranteed rates, or specific loan terms.
+- Frame everything as an estimate for exploration only.
+- End your response with this exact disclaimer on its own line:
+"${PRESALES_DISCLAIMER}"`;
 
 function defaultProvider(): AiProvider {
   return process.env.AI_GATEWAY_PROVIDER === "claude" ? "claude" : "gemini";
@@ -153,13 +192,23 @@ async function callClaude(model: string, system: string, prompt: string): Promis
 export async function runAiGateway(req: AiGatewayRequest): Promise<AiGatewayResult> {
   const provider = req.provider || defaultProvider();
   const model = req.model || defaultModel(provider);
-  const classification = req.classification || "internal_only";
+
+  // Pre-sales output is exploratory and shown immediately (low friction), but it
+  // is always disclaimer-wrapped — so it's an approved template, not free text
+  // requiring per-item review. Everything else uses the caller's classification.
+  const classification: AiClassification = req.presales
+    ? "borrower_facing_approved_template"
+    : req.classification || "internal_only";
   const reviewStatus =
     classification === "borrower_facing_review_required" ? "pending_review" : "not_required";
 
-  const system = req.systemPromptExtra
-    ? `${COMPLIANCE_CHARTER}\n\n${req.systemPromptExtra}`
-    : COMPLIANCE_CHARTER;
+  // Assemble the system prompt: charter → grounded facts → pre-sales rules →
+  // workflow-specific rules. Grounded + pre-sales are the "keep AI limited" levers.
+  const sections = [COMPLIANCE_CHARTER];
+  if (req.groundedFacts) sections.push(groundedRules(req.groundedFacts));
+  if (req.presales) sections.push(PRESALES_RULES);
+  if (req.systemPromptExtra) sections.push(req.systemPromptExtra);
+  const system = sections.join("\n\n");
 
   const startedAt = Date.now();
   let providerResponse: ProviderResponse | null = null;
@@ -190,7 +239,11 @@ export async function runAiGateway(req: AiGatewayRequest): Promise<AiGatewayResu
     latencyMs: Date.now() - startedAt,
     isError: errorMessage ? "true" : "false",
     errorMessage,
-    metadata: req.metadata ?? null,
+    metadata: {
+      ...(req.metadata ?? {}),
+      grounded: !!req.groundedFacts,
+      presales: !!req.presales,
+    },
   };
 
   let interactionId = "";
