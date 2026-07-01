@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
+import { PageShell } from "@/components/PageShell";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -221,7 +222,7 @@ export default function RentVsBuyCalculator() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageShell width="wide">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
             Rent vs. Buy Calculator
@@ -562,7 +563,7 @@ export default function RentVsBuyCalculator() {
             )}
           </div>
         </div>
-      </div>
+      </PageShell>
     </div>
   );
 }

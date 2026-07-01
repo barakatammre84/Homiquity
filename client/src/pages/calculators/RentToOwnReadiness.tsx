@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { PageShell } from "@/components/PageShell";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest } from "@/lib/queryClient";
@@ -350,7 +351,7 @@ export default function RentToOwnReadiness() {
         description="See what home price your current rent could cover, the credit and down payment you'd need, and a clear plan to go from renting to owning. No login required."
         canonical="/calculators/rent-to-own"
       />
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageShell width="wide">
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl" data-testid="text-page-title">
             Turn Your Rent Into a Mortgage
@@ -852,7 +853,7 @@ export default function RentToOwnReadiness() {
             </Card>
           </div>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }
