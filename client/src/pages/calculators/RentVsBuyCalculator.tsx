@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest } from "@/lib/queryClient";
+import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -229,6 +230,8 @@ export default function RentVsBuyCalculator() {
             Compare the costs of renting versus buying to make an informed decision
           </p>
         </div>
+
+        <PresalesDisclaimer className="mb-6" />
 
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="space-y-6">
