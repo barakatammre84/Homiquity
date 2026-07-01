@@ -501,6 +501,14 @@ export function registerUnderwritingRoutes(
         performedBy: req.user!.id,
       });
 
+      // Audit trail: pipeline/underwriting stage transition (a credit decision).
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "underwriting.stage_advanced", "loan_application", id, {
+        newStage,
+        performedBy: req.user!.id,
+        ...(newStage === "denied" && denialReasons ? { denialReasons } : {}),
+      });
+
       const updatedApp = await storage.getLoanApplication(id);
       res.json(updatedApp);
     } catch (error) {
