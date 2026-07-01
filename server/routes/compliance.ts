@@ -627,6 +627,11 @@ export function registerComplianceRoutes(
         requestedBy: user.id,
       });
 
+      // Real-time recalc: new credit data ripples through the decision.
+      import("../services/decisionEngine")
+        .then((m) => m.recalculateDecision(req.params.id, "credit_pull"))
+        .catch(() => {});
+
       res.status(201).json({ pull: completedPull });
     } catch (error) {
       console.error("Request credit pull error:", error);

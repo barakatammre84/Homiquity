@@ -1185,6 +1185,11 @@ export function registerLendingRoutes(
           verifiedBy: user.id,
         });
 
+        // Real-time recalc: verified data upgrades the decision (PRELIMINARY -> VERIFIED).
+        import("../services/decisionEngine")
+          .then((m) => m.recalculateDecision(id, "financials_verified"))
+          .catch(() => {});
+
         res.json(updated);
       } catch (error) {
         console.error("Verify financials error:", error);

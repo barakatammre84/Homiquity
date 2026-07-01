@@ -266,6 +266,27 @@ export function registerUnderwritingRoutes(
     },
   );
 
+  // Decision history — the context-graph trail of how the decision evolved as
+  // facts arrived. Staff-only, read-only.
+  app.get(
+    "/api/loan-applications/:id/decision-history",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        const { getDecisionHistory } = await import("../services/decisionEngine");
+        res.json(await getDecisionHistory(id));
+      } catch (error) {
+        console.error("Decision history error:", error);
+        res.status(500).json({ error: "Failed to load decision history" });
+      }
+    },
+  );
+
   // ============================================================================
   // LOAN PIPELINE API ENDPOINTS
   // ============================================================================

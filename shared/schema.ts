@@ -9,3 +9,4 @@ export * from "./schema/admin";
 export * from "./schema/intelligence";
 export * from "./schema/lookup";
 export * from "./schema/ai";
+export * from "./schema/decisions";

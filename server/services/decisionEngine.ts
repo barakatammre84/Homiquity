@@ -1,8 +1,10 @@
+import { eq, desc } from "drizzle-orm";
 import { storage } from "../storage";
+import { db } from "../db";
 import { consolidatedUnderwritingEngine, type UnderwritingInput } from "../underwritingEngine";
 import { generateLoanEstimate } from "./loanEstimate";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
-import type { LoanApplication } from "@shared/schema";
+import { decisionSnapshots, type LoanApplication } from "@shared/schema";
 
 // =============================================================================
 // INSTANT DECISION ORCHESTRATOR (Tinman-style)
@@ -210,4 +212,50 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     },
     ...base,
   };
+}
+
+/**
+ * Real-time recalc ("context graph"): re-run the decision and persist an
+ * immutable snapshot with the trigger that caused it. Call this fire-and-forget
+ * whenever a fact changes (credit pull, income/liability update, verification).
+ * Best-effort — it never throws into the calling request.
+ */
+export async function recalculateDecision(
+  applicationId: string,
+  trigger: string,
+): Promise<InstantDecision | null> {
+  try {
+    const d = await runInstantDecision(applicationId);
+    await db.insert(decisionSnapshots).values({
+      applicationId,
+      trigger,
+      status: d.status,
+      decision: d.decision,
+      qualifier: d.qualifier,
+      dti: d.metrics ? String(d.metrics.dti) : null,
+      ltv: d.metrics ? String(d.metrics.ltv) : null,
+      monthlyIncome: d.metrics ? String(d.metrics.monthlyIncome) : null,
+      monthlyDebts: d.metrics ? String(d.metrics.monthlyDebts) : null,
+      monthlyPiti: d.metrics ? String(d.metrics.monthlyPiti) : null,
+      loanAmount: d.metrics ? String(d.metrics.loanAmount) : null,
+      borrowerCount: d.metrics ? d.metrics.borrowerCount : null,
+      incomeBasis: d.metrics ? d.metrics.incomeBasis : null,
+      reasons: d.reasons,
+      missingItems: d.missingItems,
+    });
+    return d;
+  } catch (err) {
+    console.error(`[decisionEngine] recalc failed for ${applicationId} (${trigger}):`, err);
+    return null;
+  }
+}
+
+/** Time-ordered decision snapshots for an application (newest first). */
+export async function getDecisionHistory(applicationId: string, limit = 20) {
+  return db
+    .select()
+    .from(decisionSnapshots)
+    .where(eq(decisionSnapshots.applicationId, applicationId))
+    .orderBy(desc(decisionSnapshots.createdAt))
+    .limit(limit);
 }
