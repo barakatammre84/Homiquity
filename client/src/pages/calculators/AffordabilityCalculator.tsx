@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
+import { TermTooltip } from "@/components/TermTooltip";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -889,7 +890,9 @@ export default function AffordabilityCalculator() {
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Monthly Payment Breakdown</CardTitle>
+                <CardTitle className="text-base">
+                  Monthly Payment (<TermTooltip term="piti" showIcon={false}>PITI</TermTooltip>)
+                </CardTitle>
                 <CardDescription>{formatCurrency(results.monthlyPITI)}/mo</CardDescription>
               </CardHeader>
               <CardContent>
@@ -950,7 +953,9 @@ export default function AffordabilityCalculator() {
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Debt-to-Income</CardTitle>
+                <CardTitle className="text-base">
+                  <TermTooltip term="dti">Debt-to-Income</TermTooltip>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
