@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import {
   Form,
   FormControl,
@@ -505,6 +506,7 @@ export default function GapCalculator() {
 
   return (
     <div className="container max-w-6xl mx-auto py-8 px-4 space-y-6">
+      <PresalesDisclaimer />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Gap to Homeownership</h1>

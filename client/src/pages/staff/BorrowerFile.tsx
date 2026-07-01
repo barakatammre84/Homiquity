@@ -213,6 +213,22 @@ export default function BorrowerFile() {
     },
   });
 
+  const verifyFinancialsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/loan-applications/${applicationId}/verify-financials`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
+      toast({
+        title: "Financials Verified",
+        description: "This application can now proceed to approval.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Verification Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const updateConditionMutation = useMutation({
     mutationFn: async ({ id, status, clearanceNotes }: { id: string; status: string; clearanceNotes?: string }) => {
       return apiRequest("PATCH", `/api/conditions/${id}`, { status, clearanceNotes });
@@ -359,6 +375,32 @@ export default function BorrowerFile() {
                   <Badge variant="outline">
                     {application.preferredLoanType?.toUpperCase() || "CONVENTIONAL"}
                   </Badge>
+                  {application.financialDataProvenance === "verified" ? (
+                    <Badge
+                      className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      data-testid="badge-financials-verified"
+                    >
+                      <CheckCircle2 className="mr-1 h-3 w-3" /> Financials Verified
+                    </Badge>
+                  ) : (
+                    <>
+                      <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300">
+                        Financials Unverified
+                      </Badge>
+                      {isStaff2 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={verifyFinancialsMutation.isPending}
+                          onClick={() => verifyFinancialsMutation.mutate()}
+                          data-testid="button-verify-financials"
+                        >
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
+                          {verifyFinancialsMutation.isPending ? "Verifying..." : "Mark Financials Verified"}
+                        </Button>
+                      )}
+                    </>
+                  )}
                   <Dialog open={statusUpdate.open} onOpenChange={(o) => setStatusUpdate(prev => ({ ...prev, open: o }))}>
                     <DialogTrigger asChild>
                       <Button size="sm" variant="outline" data-testid="button-update-status">
@@ -429,6 +471,14 @@ export default function BorrowerFile() {
                           />
                         </div>
                       </div>
+                      {(statusUpdate.status === "approved" || statusUpdate.status === "pre_approved") &&
+                        application.financialDataProvenance !== "verified" && (
+                          <div className="rounded-md border border-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-200">
+                            Financials must be verified before an approval outcome can be set. Use
+                            "Mark Financials Verified" above once the borrower's income, assets, and
+                            credit are backed by documentation.
+                          </div>
+                        )}
                       <DialogFooter>
                         <Button variant="outline" onClick={() => setStatusUpdate({ open: false, status: "", notes: "", denialReasons: [] })}>
                           Cancel
@@ -437,7 +487,9 @@ export default function BorrowerFile() {
                           disabled={
                             !statusUpdate.status ||
                             statusUpdateMutation.isPending ||
-                            (statusUpdate.status === "denied" && statusUpdate.denialReasons.length < 2)
+                            (statusUpdate.status === "denied" && statusUpdate.denialReasons.length < 2) ||
+                            ((statusUpdate.status === "approved" || statusUpdate.status === "pre_approved") &&
+                              application.financialDataProvenance !== "verified")
                           }
                           onClick={() => statusUpdateMutation.mutate({
                             status: statusUpdate.status,
