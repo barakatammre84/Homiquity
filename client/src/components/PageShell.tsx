@@ -1,10 +1,19 @@
 import { cn } from "@/lib/utils";
 
-// Standard page container. Gives every page identical centering, horizontal
-// padding, and vertical rhythm so the app feels uniform, while still allowing the
-// legitimate width variety pages need (forms are narrow, dashboards are wide).
+// Standard page scaffold. Owns the page background, centering, horizontal padding,
+// vertical rhythm, and (optionally) the page header — so pages are a single clean
+// wrapper instead of ad-hoc nested `min-h-screen` divs + bespoke header markup.
 //
-// Replaces ad-hoc `mx-auto max-w-Nxl px-4 py-8` strings scattered across pages.
+// Because the whole app routes its look through this one component, changing the
+// app-wide page treatment later means editing this file, not every page.
+//
+// Clean page:
+//   <PageShell fullHeight width="wide" title="Documents" subtitle="Upload and track">
+//     ...content
+//   </PageShell>
+//
+// Container only (no header/background):
+//   <PageShell width="content">...</PageShell>
 
 type PageWidth = "narrow" | "content" | "wide" | "full";
 
@@ -19,15 +28,36 @@ interface PageShellProps {
   children: React.ReactNode;
   /** Semantic max-width. Default "content". */
   width?: PageWidth;
+  /** Wrap in a full-height page background (replaces per-page `min-h-screen bg-background`). */
+  fullHeight?: boolean;
+  /** Render a standard PageHeader above the content. */
+  title?: string;
+  subtitle?: string;
+  /** Optional right-aligned header action (button, link). */
+  headerAction?: React.ReactNode;
   className?: string;
 }
 
-export function PageShell({ children, width = "content", className = "" }: PageShellProps) {
-  return (
+export function PageShell({
+  children,
+  width = "content",
+  fullHeight = false,
+  title,
+  subtitle,
+  headerAction,
+  className = "",
+}: PageShellProps) {
+  const inner = (
     <div className={cn("mx-auto w-full px-4 py-8 sm:py-10", WIDTHS[width], className)}>
+      {title && <PageHeader title={title} subtitle={subtitle} action={headerAction} />}
       {children}
     </div>
   );
+
+  if (fullHeight) {
+    return <div className="min-h-screen bg-background">{inner}</div>;
+  }
+  return inner;
 }
 
 interface PageHeaderProps {

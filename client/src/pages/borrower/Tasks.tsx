@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
+import { PageShell } from "@/components/PageShell";
 
 interface DashboardData {
   applications: LoanApplication[];
@@ -192,14 +193,7 @@ export default function Tasks() {
 
   return (
     <>
-      <div className="border-b p-4 sm:p-6 lg:p-8">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" data-testid="text-tasks-title">My Tasks</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Complete these tasks to move forward with your loan application
-            </p>
-          </div>
-
-          <div className="p-4 sm:p-6 lg:p-8">
+      <PageShell fullHeight width="wide" title="My Tasks" subtitle="Complete these tasks to move forward with your loan application">
             {myTasks.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
@@ -402,7 +396,7 @@ export default function Tasks() {
                 )}
               </>
             )}
-          </div>
+      </PageShell>
 
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
         <DialogContent>
