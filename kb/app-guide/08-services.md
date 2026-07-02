@@ -1,0 +1,70 @@
+# 08 — Service Catalog
+
+Business logic lives in [`server/services/`](../../server/services/) plus a few
+root-level `server/*.ts` modules. One line each — read the file when you need
+depth.
+
+## Core loan-processing
+
+| Service | Does |
+|---------|------|
+| `borrowerGraph.ts` | **The** read layer: aggregates all borrower data into one profile with 3-tier trust (self-reported → documented → verified) |
+| `borrowerStateMachine.ts` | Tracks/advances a borrower's journey stage; writes state history |
+| `decisionEngine.ts` | Orchestrates underwriting decision records |
+| `ruleEngine.ts` | Evaluates the deterministic underwriting rules DSL |
+| `../underwritingEngine.ts` | Fannie/Freddie-aligned underwriting evaluation |
+| `../underwriting.ts` | Underwriting orchestration/entry |
+| `../pricing.ts` | LLPA (loan-level price adjustment) math |
+| `pricingAdapter.ts` | Composes offers: base rate + LLPA + lock term + lender adjustments across rate sheets |
+| `rateService.ts` | Fetches/refreshes market mortgage rates (RapidAPI) |
+| `loanEstimate.ts` | Loan estimate calculations |
+| `lenderMatchingEngine.ts` | Matches borrowers to lender products |
+| `../pipelineEngine.ts` | Loan pipeline stage logic for staff views |
+
+## Documents & AI
+
+| Service | Does |
+|---------|------|
+| `documentEngine.ts` | Document lifecycle: classification, status |
+| `../extractionService.ts` | Runs AI extraction on uploaded docs (paystub/W-2/bank statement/tax return) |
+| `../gemini.ts` | Gemini client wrapper |
+| `documentConfidence.ts` | Scores extraction trustworthiness |
+| `aiGateway.ts` | Provider-pluggable AI gateway (Gemini default; Claude via `AI_GATEWAY_PROVIDER` + `ANTHROPIC_API_KEY`) |
+| `coachingService.ts` | AI Homebuyer Coach (OpenAI) |
+
+## Compliance & security
+
+| Service | Does |
+|---------|------|
+| `creditService.ts` | FCRA chain: consent capture, credit pulls (soft/hard), adverse action, hash-chained audit log |
+| `encryptionService.ts` | Field encryption, PII hashing, audit hash-chaining |
+| `mismoValidation.ts` + `../mismo.ts` | MISMO 3.4 XML export + GSE/ULDD validation |
+| `../auditLog.ts` | General audit logging |
+| `verification.ts` | Plaid-driven income/employment/asset verification |
+| `../plaid.ts` | Plaid API client |
+
+## Ops & intelligence
+
+| Service | Does |
+|---------|------|
+| `taskEngine.ts` + `taskEventEmitter.ts` | Rules-driven staff task creation, assignment, SLA events |
+| `emailService.ts` | Outbound email (SMTP/SendGrid; console fallback) |
+| `pdfLetterGenerator.ts` | PDFKit pre-approval / pre-qualification letters |
+| `analyticsEventPipeline.ts` | Product analytics event ingestion |
+| `outcomeTracker.ts` | Closed-loop outcome tracking (did the loan close?) |
+| `predictiveEngine.ts` | Predictions/benchmarks from tracked outcomes |
+| `optimizationEngine.ts` | Recommendations engine |
+| `intentTracker.ts` | Borrower intent signal capture |
+| `lookupResolver.ts` | Lookup-matrix grid resolution (unit-tested) |
+| `../propertyAnalyzer.ts` | Property affordability analysis |
+| `../storage.ts` | The `IStorage` data-access layer (~4,700 lines) used by most routes |
+
+## Reading tips
+
+- Start with `borrowerGraph.ts` and `ruleEngine.ts` — they encode the two big
+  ideas (unified trust-tiered profile; deterministic decisions).
+- `storage.ts` is huge but mechanical — search it for the entity you care
+  about rather than reading linearly.
+- `server/replit_integrations/` contains platform adapters: `auth/` (sessions +
+  Replit OIDC) and `object_storage/` (GCS) are real; `image/`, `chat/`,
+  `batch/` are **unused dead code** pending deletion.
