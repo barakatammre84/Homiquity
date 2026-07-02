@@ -1,11 +1,29 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import type { Request, Response, NextFunction } from "express";
 
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Multer staging dir. Serverless filesystems (Vercel: /var/task) are read-only
+// except the OS temp dir, so an eager mkdir at import time crashes the whole
+// app at boot there. Create lazily on first upload instead, preferring ./uploads
+// on persistent hosts and falling back to the temp dir when cwd isn't writable.
+let resolvedUploadDir: string | null = null;
+function ensureUploadDir(): string {
+  if (resolvedUploadDir) return resolvedUploadDir;
+  const candidates = process.env.VERCEL
+    ? [path.join(os.tmpdir(), "uploads")]
+    : [path.join(process.cwd(), "uploads"), path.join(os.tmpdir(), "uploads")];
+  for (const dir of candidates) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      resolvedUploadDir = dir;
+      return dir;
+    } catch {
+      // read-only location — try the next candidate
+    }
+  }
+  throw new Error("No writable upload directory available");
 }
 
 export const allowedUploadTypes = [
@@ -20,7 +38,11 @@ export const allowedUploadTypes = [
 export const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, uploadDir);
+      try {
+        cb(null, ensureUploadDir());
+      } catch (err) {
+        cb(err as Error, "");
+      }
     },
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
