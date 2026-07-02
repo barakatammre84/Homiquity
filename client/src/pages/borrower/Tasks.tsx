@@ -45,13 +45,13 @@ function getTaskStatusBadge(status: string) {
 
 function getPriorityBadge(priority: string) {
   const config: Record<string, { className: string; label: string }> = {
-    low: { className: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300", label: "Low" },
-    normal: { className: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300", label: "Normal" },
-    high: { className: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300", label: "High" },
-    urgent: { className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300", label: "Urgent" },
+    low: { className: "bg-muted text-muted-foreground", label: "Low" },
+    normal: { className: "bg-primary/10 text-primary", label: "Normal" },
+    high: { className: "bg-status-warning/10 text-status-warning", label: "High" },
+    urgent: { className: "bg-status-danger/10 text-status-danger", label: "Urgent" },
   };
   const p = config[priority || "normal"] || config.normal;
-  return <Badge className={p.className}>{p.label}</Badge>;
+  return <Badge className={`no-default-hover-elevate no-default-active-elevate ${p.className}`}>{p.label}</Badge>;
 }
 
 function getDocumentCategoryLabel(category: string) {
@@ -59,11 +59,26 @@ function getDocumentCategoryLabel(category: string) {
     tax_return: "Tax Return",
     pay_stub: "Pay Stub",
     bank_statement: "Bank Statement",
+    bank_statement_business: "Business Bank Statement",
     w2: "W-2 Form",
     id: "Government ID",
+    government_id: "Government ID",
+    homeowners_insurance: "Homeowners Insurance",
+    purchase_contract: "Purchase Contract",
+    gift_letter: "Gift Letter",
+    profit_loss: "Profit & Loss Statement",
+    business_license: "Business License",
+    reserves_proof: "Proof of Reserves",
+    social_security_award: "Social Security Award Letter",
+    pension_statement: "Pension Statement",
+    letter_of_explanation: "Letter of Explanation",
     other: "Other Document",
   };
-  return labels[category] || category;
+  // Fallback: humanize unknown snake_case types instead of showing raw keys.
+  return (
+    labels[category] ||
+    category.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
 }
 
 export default function Tasks() {
@@ -176,11 +191,20 @@ export default function Tasks() {
     (app) => !["closed", "denied"].includes(app.status)
   );
 
-  const myTasks = tasks || [];
+  // Scope to the ACTIVE application — tasks from old/denied applications are
+  // noise, not next steps (the "56 pending tasks" defect).
+  const myTasks = (tasks || []).filter(
+    (t) => !activeApplication || t.applicationId === activeApplication.id,
+  );
   const pendingTasks = myTasks.filter((t) => ["pending", "in_progress"].includes(t.status));
   const submittedTasks = myTasks.filter((t) => t.status === "submitted");
   const completedTasks = myTasks.filter((t) => ["verified", "completed"].includes(t.status));
   const rejectedTasks = myTasks.filter((t) => t.status === "rejected");
+
+  // Milestone grouping: document requests collapse into ONE checklist card
+  // instead of a wall of near-identical task rows.
+  const pendingDocTasks = pendingTasks.filter((t) => t.taskType === "document_request");
+  const pendingOtherTasks = pendingTasks.filter((t) => t.taskType !== "document_request");
 
   const totalTasks = myTasks.length;
   const completedCount = completedTasks.length;
@@ -197,7 +221,7 @@ export default function Tasks() {
             {myTasks.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <CheckCircle2 className="mb-4 h-12 w-12 text-green-500" />
+                  <CheckCircle2 className="mb-4 h-12 w-12 text-status-success" />
                   <h3 className="mb-2 text-lg font-semibold">No Tasks Yet</h3>
                   <p className="text-center text-muted-foreground">
                     {activeApplication
@@ -274,14 +298,70 @@ export default function Tasks() {
                   </div>
                 )}
 
-                {pendingTasks.length > 0 && (
+                {pendingDocTasks.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                      Document Checklist ({pendingDocTasks.length})
+                    </h2>
+                    <Card data-testid="card-document-milestone">
+                      <CardContent className="p-4 sm:p-5">
+                        <p className="mb-4 text-sm text-muted-foreground">
+                          One milestone, {pendingDocTasks.length} item{pendingDocTasks.length === 1 ? "" : "s"} —
+                          upload what you have and each one checks itself off.
+                        </p>
+                        <div className="divide-y">
+                          {pendingDocTasks.map((task) => (
+                            <div
+                              key={task.id}
+                              className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                              data-testid={`checklist-item-${task.id}`}
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                                  <FileText className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-medium">
+                                    {task.documentCategory
+                                      ? getDocumentCategoryLabel(task.documentCategory)
+                                      : task.title}
+                                    {task.documentYear && (
+                                      <span className="text-muted-foreground"> · {task.documentYear}</span>
+                                    )}
+                                  </p>
+                                  {task.documentInstructions && (
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {task.documentInstructions}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openUploadDialog(task)}
+                                data-testid={`button-upload-${task.id}`}
+                              >
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {pendingOtherTasks.length > 0 && (
                   <div className="mb-8">
                     <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
                       <Clock className="h-5 w-5 text-muted-foreground" />
-                      To Do ({pendingTasks.length})
+                      To Do ({pendingOtherTasks.length})
                     </h2>
                     <div className="space-y-4">
-                      {pendingTasks.map((task) => (
+                      {pendingOtherTasks.map((task) => (
                         <Card key={task.id} className="hover-elevate" data-testid={`card-task-${task.id}`}>
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-4">
@@ -334,12 +414,12 @@ export default function Tasks() {
                 {submittedTasks.length > 0 && (
                   <div className="mb-8">
                     <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-                      <File className="h-5 w-5 text-blue-500" />
+                      <File className="h-5 w-5 text-primary" />
                       Under Review ({submittedTasks.length})
                     </h2>
                     <div className="space-y-4">
                       {submittedTasks.map((task) => (
-                        <Card key={task.id} className="border-blue-200 dark:border-blue-800">
+                        <Card key={task.id}>
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
@@ -369,7 +449,7 @@ export default function Tasks() {
                 {completedTasks.length > 0 && (
                   <div>
                     <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      <CheckCircle2 className="h-5 w-5 text-status-success" />
                       Completed ({completedTasks.length})
                     </h2>
                     <div className="space-y-4">
@@ -377,7 +457,7 @@ export default function Tasks() {
                         <Card key={task.id} className="opacity-75">
                           <CardContent className="p-4">
                             <div className="flex items-center gap-4">
-                              <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+                              <CheckCircle2 className="h-5 w-5 text-status-success flex-shrink-0" />
                               <div className="flex-1">
                                 <h4 className="font-medium">{task.title}</h4>
                                 {task.documentCategory && (
