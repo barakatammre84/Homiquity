@@ -197,7 +197,7 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     originalLoanAmount: purchasePrice - downPayment,
     contractSalesPrice: purchasePrice,
     appraisalValue: toNumber(app.propertyValue) || purchasePrice,
-    representativeFico: app.creditScore,
+    representativeFico: app.creditScore!, // guaranteed non-null by the completeness check above
     proposedPiti: monthlyPiti,
     assets: fin.assets,
     subjectPropertyState: app.propertyState ?? undefined,

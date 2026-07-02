@@ -157,6 +157,7 @@ async function callClaude(model: string, system: string, prompt: string): Promis
   // ANTHROPIC_API_KEY.
   let Anthropic: any;
   try {
+    // @ts-ignore optional dependency — only installed if the firm enables Claude
     ({ default: Anthropic } = await import("@anthropic-ai/sdk"));
   } catch {
     throw new Error(
