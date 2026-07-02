@@ -18,6 +18,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "mcp": "tsx server/mcp/index.ts",
+    "checkup": "bash scripts/checkup.sh",
     "db:push": "drizzle-kit push",
     "db:start": "docker start homiquity-db 2>/dev/null || docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16",
     "sync": "git pull --no-edit origin main && git push origin main",
