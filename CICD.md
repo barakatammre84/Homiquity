@@ -35,10 +35,19 @@ Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
 ## How the Vercel deploy works
 
 - `vercel.json` — install is `pnpm install --frozen-lockfile --prod=false`,
-  build is `npm run vercel-build` (= `vite build`) → static client from
-  `dist/public`; rewrites send `/api/*` to the Express app running as a
-  serverless function (`api/index.ts`, built via `createApp()` in
-  `server/app.ts`), everything else falls back to the SPA `index.html`.
+  build is `npm run vercel-build` (= `vite build` **plus** an esbuild bundle of
+  the server into `api/_app.mjs`) → static client from `dist/public`; rewrites
+  send `/api/*` to the serverless function `api/index.ts`, everything else
+  falls back to the SPA `index.html`.
+- **The function imports the pre-bundled `api/_app.mjs`, never the raw TS
+  server graph.** Server code uses the `@shared/*` tsconfig alias, which
+  Vercel's file tracer/Node runtime can't resolve (this produced opaque
+  `FUNCTION_INVOCATION_FAILED` crashes); esbuild resolves the alias at build
+  time. The handler imports the bundle *dynamically* so any bootstrap failure
+  returns a readable `bootError` JSON instead of an opaque crash. Two more
+  serverless rules learned the hard way: never construct SDK clients at module
+  load (the OpenAI client throws without a key — build them lazily), and never
+  write to the filesystem at module load (only the OS temp dir is writable).
 - **Why pnpm on Vercel (do not switch back to npm casually):** npm crashed
   mid-install on Vercel's build image with "Exit handler never called" on
   Node 20, 22 AND 24 (reproduced four deploys in a row), while the identical
