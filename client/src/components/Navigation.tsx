@@ -291,7 +291,7 @@ export function Navigation() {
                 <Link href="/apply">
                   <Button
                     size="sm"
-                    className="bg-emerald-500 font-semibold text-white shadow-md shadow-emerald-500/20"
+                    className="font-semibold"
                     data-testid="button-get-started"
                   >
                     Get Pre-Approved
@@ -369,7 +369,7 @@ export function Navigation() {
                     </Button>
                   </Link>
                   <Link href="/apply">
-                    <Button size="lg" className="w-full bg-emerald-500 font-semibold" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-apply">
+                    <Button size="lg" className="w-full font-semibold" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-apply">
                       Get Pre-Approved
                     </Button>
                   </Link>

@@ -6,7 +6,13 @@ function Skeleton({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted", className)}
+      // Precision loading state: field-level Frost→Paper pulse (see
+      // design_guidelines.md) instead of a generic gray shimmer. Dark mode
+      // falls back to a muted pulse on the ramp's deep end.
+      className={cn(
+        "rounded-md bg-precision-100 animate-skeleton-precision dark:bg-muted dark:animate-pulse",
+        className
+      )}
       {...props}
     />
   )

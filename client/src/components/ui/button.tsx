@@ -4,8 +4,15 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Obsidian Indigo atoms — hierarchy through value, not hue:
+ *  default   = Layer 2: Obsidian fill (hover deepens via the elevate system)
+ *  secondary = frosted chip on the ramp
+ *  outline   = Layer 1: white + hairline (elevate supplies the hover tint)
+ *  destructive = semantic pop (danger red, outside the ramp)
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transition-all duration-150 ease-in-out" +
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 transition-all duration-150 ease-in-out" +
   " hover-elevate active-elevate-2",
   {
     variants: {
@@ -13,11 +20,11 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground",
         destructive:
-          "text-destructive",
+          "bg-destructive text-destructive-foreground",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-input bg-card text-foreground",
         secondary: "bg-secondary text-secondary-foreground",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        ghost: "text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
