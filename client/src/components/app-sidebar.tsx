@@ -61,8 +61,8 @@ interface TeamMember {
 
 function getStatusColor(status: string) {
   switch (status) {
-    case "online": return "text-emerald-500";
-    case "away": return "text-amber-500";
+    case "online": return "text-status-online";
+    case "away": return "text-status-away";
     default: return "text-muted-foreground";
   }
 }
