@@ -4,7 +4,7 @@
 
 - **PostgreSQL**, accessed through **Drizzle ORM**.
 - Schema is defined in TypeScript under [`shared/schema/`](../../shared/schema/)
-  (12 domain files, **158 tables**), re-exported through
+  (13 domain files, **160 tables**), re-exported through
   [`shared/schema.ts`](../../shared/schema.ts). Because it lives in `shared/`,
   the client gets the same types and Zod validators (via `drizzle-zod`).
 - **Driver selection** ([`server/db.ts`](../../server/db.ts)): a
@@ -31,12 +31,13 @@
 | `underwriting.ts` | 36 | Deterministic underwriting: rules DSL, decision records, lookup grids, rate sheets, pricing adjustments, wholesale lenders |
 | `admin.ts` | 28 | Staff/admin: roles & invites, task engine, notifications, audit logs, policy ops, automation config |
 | `intelligence.ts` | 12 | Borrower graph & intelligence layer: borrower profiles, state history, readiness checklist, intent events, lender match results, analytics events, outcomes, predictions |
-| `compliance.ts` | 12 | Consents (credit/communications), credit pulls, adverse actions, hash-chained credit audit log, disclosure versions, data-retention |
+| `compliance.ts` | 13 | Consents (credit/communications), credit pulls (FICO + VantageScore 4.0), adverse actions, hash-chained credit audit log, disclosure versions, data-retention, third-party verification reports (Plaid/Truv GSE report IDs) |
 | `documents.ts` | 9 | Document management: uploads, classification, extraction results, confidence scores |
 | `property.ts` | 6 | Properties, saved searches, affordability analyses |
 | `coach.ts` | 3 | AI coach conversations/messages |
 | `lookup.ts` | 2 | Lookup matrix infrastructure |
 | `core.ts` | 2 | `users`, `sessions` (the Postgres session store table) |
+| `leads.ts` | 1 | Inbound lead capture: source attribution (Zillow/LendingTree/organic), TrustedForm + TCPA consent evidence, opt-outs, conversion linkage |
 | `decisions.ts` | 1 | Decision engine records |
 | `ai.ts` | 1 | AI usage/audit |
 

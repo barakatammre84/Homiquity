@@ -130,6 +130,9 @@ export const creditPulls = pgTable("credit_pulls", {
   equifaxScore: integer("equifax_score"),
   transunionScore: integer("transunion_score"),
   representativeScore: integer("representative_score"), // Middle score used for underwriting
+  // FHFA is phasing VantageScore 4.0 into conforming underwriting alongside
+  // Classic FICO; capture both when the bureau returns them.
+  vantageScore4: integer("vantage_score_4"),
   
   // Report Summary
   totalTradelines: integer("total_tradelines"),
@@ -610,3 +613,55 @@ export const insertHmdaDemographicsSchema = createInsertSchema(hmdaDemographics)
 });
 export type InsertHmdaDemographics = z.infer<typeof insertHmdaDemographicsSchema>;
 export type HmdaDemographics = typeof hmdaDemographics.$inferSelect;
+
+/**
+ * Third-party asset/income/employment verification reports (Plaid, Truv,
+ * Argyle). The GSE report identifiers (voaReportId / voieReportId / audit
+ * copy token) are what Fannie DU "Day 1 Certainty" and Freddie AIM consume —
+ * store them verbatim so casefile submissions can reference validated data.
+ */
+export const verificationReports = pgTable("verification_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+
+  provider: varchar("provider", { length: 30 }).notNull(), // plaid, truv, argyle
+  reportType: varchar("report_type", { length: 30 }).notNull(), // voa, voi, voe, voie, transactions
+
+  // GSE-compliant identifiers for AUS submission (Day 1 Certainty / AIM)
+  voaReportId: varchar("voa_report_id", { length: 255 }),
+  voieReportId: varchar("voie_report_id", { length: 255 }),
+  auditCopyToken: varchar("audit_copy_token", { length: 255 }),
+  providerRequestId: varchar("provider_request_id", { length: 255 }), // e.g. Plaid asset_report_id
+
+  status: varchar("status", { length: 30 }).default("pending").notNull(), // pending, completed, failed, expired
+  daysRequested: integer("days_requested"),
+  gseEligible: boolean("gse_eligible").default(false).notNull(),
+
+  // Summary metadata only — full report payloads live in object storage
+  institutionCount: integer("institution_count"),
+  accountCount: integer("account_count"),
+  totalBalance: decimal("total_balance", { precision: 14, scale: 2 }),
+  payloadStorageRef: varchar("payload_storage_ref", { length: 500 }),
+
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_verification_reports_application").on(table.applicationId),
+  index("idx_verification_reports_user").on(table.userId),
+  index("idx_verification_reports_status").on(table.status),
+  index("idx_verification_reports_provider_type").on(table.provider, table.reportType),
+  index("idx_verification_reports_voa").on(table.voaReportId),
+  index("idx_verification_reports_voie").on(table.voieReportId),
+]);
+
+export const insertVerificationReportSchema = createInsertSchema(verificationReports).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertVerificationReport = z.infer<typeof insertVerificationReportSchema>;
+export type VerificationReport = typeof verificationReports.$inferSelect;
