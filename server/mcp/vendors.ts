@@ -1,0 +1,148 @@
+import { createHash } from "node:crypto";
+
+/**
+ * Vendor adapters for the MCP tools.
+ *
+ * Each adapter reads its credential from the environment. When the credential
+ * is absent (no vendor contract yet), it returns a deterministic SIMULATION —
+ * clearly flagged via `simulated: true` — so the tool surface, persistence,
+ * and downstream flows can be built and exercised before vendor onboarding.
+ * When credentials land, only these functions change.
+ */
+
+const VENDOR_TIMEOUT_MS = Number(process.env.MCP_VENDOR_TIMEOUT_MS ?? 10_000);
+
+export async function withTimeout<T>(work: Promise<T>, label: string): Promise<T> {
+  let timer: NodeJS.Timeout;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${VENDOR_TIMEOUT_MS}ms`)),
+      VENDOR_TIMEOUT_MS,
+    );
+  });
+  try {
+    return await Promise.race([work, timeout]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
+
+/** Deterministic pseudo-random in [0,1) from a seed string (stable simulations). */
+function seeded(seed: string): number {
+  const h = createHash("sha256").update(seed).digest();
+  return h.readUInt32BE(0) / 0xffffffff;
+}
+
+// ---------------------------------------------------------------------------
+// Soft-pull credit bureau (iSoftpull / CRS One shaped)
+// ---------------------------------------------------------------------------
+
+export interface SoftPullTradeline {
+  creditor: string;
+  type: "revolving" | "installment" | "mortgage" | "auto";
+  balance: number;
+  monthlyPayment: number;
+}
+
+export interface SoftPullResult {
+  simulated: boolean;
+  vendorRequestId: string;
+  experianScore: number;
+  equifaxScore: number;
+  transunionScore: number;
+  representativeScore: number;
+  vantageScore4: number;
+  tradelines: SoftPullTradeline[];
+  totalDebt: number;
+  totalMonthlyPayments: number;
+}
+
+export async function softPullCredit(
+  firstName: string,
+  lastName: string,
+  address: string,
+): Promise<SoftPullResult> {
+  const apiKey = process.env.CRS_API_KEY || process.env.ISOFTPULL_API_KEY;
+  if (apiKey) {
+    // Real integration goes here when the vendor contract lands:
+    // POST to the CRS One / iSoftpull soft-inquiry endpoint with the key.
+    throw new Error(
+      "CRS_API_KEY is set but the live CRS adapter is not implemented yet — remove the key to use simulation.",
+    );
+  }
+
+  const seed = `${firstName}|${lastName}|${address}`.toLowerCase();
+  const base = 620 + Math.round(seeded(seed) * 190); // 620-810
+  const jitter = (n: number) => Math.round((seeded(seed + n) - 0.5) * 24);
+  const scores = [base + jitter(1), base + jitter(2), base + jitter(3)].sort((a, b) => a - b);
+
+  const tradelineCount = 3 + Math.round(seeded(seed + "tl") * 3);
+  const creditors = ["Chase Card", "Capital One", "Toyota Financial", "SoFi Personal", "Discover", "Wells Fargo Auto"];
+  const types: SoftPullTradeline["type"][] = ["revolving", "revolving", "auto", "installment", "revolving", "auto"];
+  const tradelines: SoftPullTradeline[] = Array.from({ length: tradelineCount }, (_, i) => {
+    const balance = Math.round(seeded(seed + "b" + i) * 24_000) + 500;
+    return {
+      creditor: creditors[i % creditors.length],
+      type: types[i % types.length],
+      balance,
+      monthlyPayment: Math.max(25, Math.round(balance * 0.03)),
+    };
+  });
+
+  return await withTimeout(
+    Promise.resolve({
+      simulated: true,
+      vendorRequestId: `sim-crs-${createHash("sha1").update(seed).digest("hex").slice(0, 12)}`,
+      experianScore: scores[1],
+      equifaxScore: scores[0],
+      transunionScore: scores[2],
+      representativeScore: scores[1], // middle score
+      vantageScore4: Math.min(850, scores[1] + 6),
+      tradelines,
+      totalDebt: tradelines.reduce((s, t) => s + t.balance, 0),
+      totalMonthlyPayments: tradelines.reduce((s, t) => s + t.monthlyPayment, 0),
+    }),
+    "soft credit pull",
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AVM (HouseCanary-style)
+// ---------------------------------------------------------------------------
+
+export interface AvmResult {
+  simulated: boolean;
+  provider: string;
+  estimatedValue: number;
+  confidence: number; // 0-1
+  valueLow: number;
+  valueHigh: number;
+  asOf: string;
+}
+
+export async function fetchAvm(address: string, zipCode?: string): Promise<AvmResult> {
+  const apiKey = process.env.HOUSECANARY_API_KEY;
+  if (apiKey) {
+    throw new Error(
+      "HOUSECANARY_API_KEY is set but the live HouseCanary adapter is not implemented yet — remove the key to use simulation.",
+    );
+  }
+
+  const seed = `${address}|${zipCode ?? ""}`.toLowerCase();
+  const estimatedValue = 180_000 + Math.round(seeded(seed) * 720_000);
+  const confidence = 0.72 + seeded(seed + "conf") * 0.23; // 0.72-0.95
+  const spread = Math.round(estimatedValue * (1 - confidence) * 0.5);
+
+  return await withTimeout(
+    Promise.resolve({
+      simulated: true,
+      provider: "housecanary-sim",
+      estimatedValue,
+      confidence: Number(confidence.toFixed(4)),
+      valueLow: estimatedValue - spread,
+      valueHigh: estimatedValue + spread,
+      asOf: new Date().toISOString(),
+    }),
+    "AVM lookup",
+  );
+}

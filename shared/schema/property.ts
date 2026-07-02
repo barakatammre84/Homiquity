@@ -84,6 +84,13 @@ export const properties = pgTable("properties", {
   listedAt: timestamp("listed_at"),
   soldAt: timestamp("sold_at"),
   soldPrice: decimal("sold_price", { precision: 12, scale: 2 }),
+
+  // Automated Valuation Model (AVM) snapshot — written by the MCP
+  // retrieve_property_valuation tool (HouseCanary-style provider)
+  avmValue: decimal("avm_value", { precision: 12, scale: 2 }),
+  avmConfidence: decimal("avm_confidence", { precision: 5, scale: 4 }), // 0-1
+  avmProvider: varchar("avm_provider", { length: 50 }),
+  avmAsOf: timestamp("avm_as_of"),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
