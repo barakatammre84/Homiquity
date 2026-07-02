@@ -65,6 +65,19 @@ export function registerJobRoutes(app: Express) {
     },
   );
 
+  // Read-only scenario catalog — a projection of the implemented rules for
+  // staff tooling, lender due-diligence, and duplicate-prevention when
+  // generating new scenarios. NOT a rules engine: underwriting behavior
+  // changes only through the registry pipeline (cited, tested code).
+  app.get(
+    "/api/scenarios/catalog",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (_req, res) => {
+      const { SCENARIO_CATALOG } = await import("../services/scenarioCatalog");
+      res.json({ scenarios: SCENARIO_CATALOG, count: SCENARIO_CATALOG.length });
+    },
+  );
+
   // Friction summary — the raw material of the continuous learning loop.
   // Aggregates server-observed friction events (blocked gates, failed
   // uploads) so the daily guardian can turn recurring walls into scenario
