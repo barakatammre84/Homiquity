@@ -50,6 +50,14 @@
 - [ ] **25. SMS STOP / opt-out webhook** — receiver that sets the opt-out flag, purges queues, records the timestamp. Same rule: blocks outbound messaging.
 - [ ] **26. Legal pages** — privacy policy, terms of service, FCRA adverse-action notice flow. Page shells + routing can be built now; final text needs legal review (your side).
 
+### Lender-readiness wiring (from kb/LENDER_READINESS_GAP_ANALYSIS.md, 2026-07-03)
+
+- [ ] **L1. Persist the funnel's soft-pull consent.** The FCRA checkbox on the pre-approval final step gates client-side only — write it to the consent ledger (IP, user agent, disclosure text, hash) at submit so there's audit evidence. Acceptance: submitting the funnel creates a consent row queryable by application.
+- [ ] **L2. requireConsent enforcement gate.** `/api/consents/check` exists but nothing calls it. Add a `requireConsent(consentType)` middleware in front of electronic disclosure delivery (Loan Estimate, commitment letter) requiring the seeded eDisclosure (ESIGN) consent. Acceptance: LE generation 403s without consent, works after acknowledging.
+- [ ] **L3. Anti-steering disclosure.** Doesn't exist anywhere. New consent template + presentation record when LoanOptions shows priced options (lowest rate / lowest cost alternatives), acknowledged through the borrower_consents ledger. Acceptance: viewing loan options records the disclosure; acknowledgment logged with evidence.
+- [ ] **L4. Auto-match uploads to conditions.** Document upload currently changes nothing — match the uploaded documentType against outstanding condition requiredDocumentTypes, mark them "submitted" for review (never auto-clear), notify assigned staff, and surface one-click stage advance when checkPipelineProgress says ready. Acceptance: uploading a W-2 flips its condition to submitted and staff sees a notification.
+- [ ] **L5. Show the borrower why their rate is their rate.** calculateLLPA already returns the full base/adjustments/total breakdown — render it on LoanOptions ("760 FICO: −0.25 · 80% LTV: +0.125"). Acceptance: each loan option shows its adjustment decomposition.
+
 ---
 
 ## Future — blocked on business, do NOT start yet
