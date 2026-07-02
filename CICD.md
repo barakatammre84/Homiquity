@@ -89,17 +89,32 @@ The app deploys to Vercel: the Vite-built client is served as static assets from
 the CDN, and the Express server runs as a single serverless function.
 
 ### How it's wired
-- **`vercel.json`** — builds `dist/public` (via the `vercel-build` script =
-  `vite build`) and routes:
-  - `/api/*` → the serverless function `api/index.ts`
-  - everything else → the static client, with SPA fallback to `/index.html`
+- **`vercel.json`** (modern schema — `installCommand`/`buildCommand`/`rewrites`,
+  not the legacy `builds` array, so the install command is actually honored):
+  - `installCommand: npm ci` — deterministic install from the lockfile.
+  - `buildCommand: npm run vercel-build` (= `vite build`) → `outputDirectory: dist/public`.
+  - `rewrites`: `/api/(.*)` → the `api/index.ts` function; everything else →
+    `/index.html`. Vercel checks the **filesystem before rewrites**, so real
+    static assets and the function are served directly and only unmatched
+    (client-side) routes fall through to `index.html`.
+  - `functions.api/index.ts.maxDuration: 30` — headroom for cold starts.
 - **`api/index.ts`** — imports `createApp()` from `server/app.ts` (added
   specifically for this: it builds the fully-wired Express app **without** calling
   `server.listen()`, which serverless can't use) and hands it to Vercel as the
   request handler. The app is built once per warm instance and reused.
+- **`engines.node: 22.x`** in `package.json` — pins the build/runtime to Node 22,
+  which is past the npm "Exit handler never called" bug (fixed in Node 22.5.1)
+  that broke the first deploy's `npm install`.
 
 Persistent hosts (Replit, Fly, a VPS) are unaffected — they still use
 `npm run build` + `npm start`, which goes through `runApp()` and listens on `PORT`.
+
+> Cold-start note: `registerRoutes()` calls `seedDatabase()`, which is idempotent
+> (each block is guarded by an existence check). On an already-seeded production DB
+> that's ~6 lightweight `SELECT`s per cold start and no external calls — fine for
+> now. Moving seeding out of the request path into a one-time step is listed under
+> future hardening. Also watch PDF generation routes (`pdfkit` needs its font
+> files bundled) if you hit them on Vercel.
 
 ### One-time setup
 1. Import the GitHub repo `barakatammre84/MortgageStream` into Vercel.
