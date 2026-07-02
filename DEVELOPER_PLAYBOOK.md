@@ -44,6 +44,9 @@ This is a single npm workspace, not a multi-package monorepo. The blueprint conc
 │       │   ├── admin/ agent-broker/ calculators/ education/
 │       │   ├── property/ public/ rates/ realtor-engine/
 │       │   └── not-found.tsx
+│       ├── funnel/             PreApproval state machine (deterministic route
+│       │                       from answers, validation gates, FunnelContext,
+│       │                       useFunnelAutosave) — see preApprovalMachine.ts
 │       ├── hooks/              useAuth, useAffordability, use-toast…
 │       └── lib/                queryClient, formatters, sla, utils
 │
