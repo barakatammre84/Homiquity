@@ -56,6 +56,11 @@ export const loanApplications = pgTable("loan_applications", {
   d1cIncomeRelief: boolean("d1c_income_relief").default(false).notNull(),
   d1cEmploymentRelief: boolean("d1c_employment_relief").default(false).notNull(),
 
+  // Pre-underwriting validator results — written by server/services/preUnderwriting.ts
+  // at intake completion and again whenever a Plaid VOA report lands.
+  // Shape: { flags: PreUwFlag[], evaluatedAt, trigger, notifiedHash }
+  preUwFlags: jsonb("pre_uw_flags"),
+
   // Borrower Information
   annualIncome: decimal("annual_income", { precision: 12, scale: 2 }),
   monthlyDebts: decimal("monthly_debts", { precision: 10, scale: 2 }),

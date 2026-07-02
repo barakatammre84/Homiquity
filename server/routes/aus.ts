@@ -92,6 +92,16 @@ export function registerAusRoutes(app: Express) {
           `$${report.totalBalance.toLocaleString()} total, trend=${report.transactionTrend}` +
           (report.simulated ? " (simulated)" : ""),
       );
+
+      // Re-run the pre-underwriting validator now that verified assets exist —
+      // this is where the asset-to-income reserves check gets real data.
+      try {
+        const { runPreUnderwriting } = await import("../services/preUnderwriting");
+        await runPreUnderwriting(application.id, "voa_received");
+      } catch (preUwErr) {
+        console.error("[aus] Pre-underwriting re-evaluation failed (non-fatal):", preUwErr);
+      }
+
       return res.status(200).json({
         received: true,
         matched: true,

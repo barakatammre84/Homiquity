@@ -649,6 +649,15 @@ export function registerLendingRoutes(
             console.error("[Analysis] Pipeline initialization failed (non-fatal):", pipelineErr);
           }
         }
+
+        // Automated pre-underwriting validation the moment intake completes
+        // (reserves vs verified assets, complex-income flags, borrower outreach).
+        try {
+          const { runPreUnderwriting } = await import("../services/preUnderwriting");
+          await runPreUnderwriting(application.id, "intake");
+        } catch (preUwErr) {
+          console.error("[Analysis] Pre-underwriting validation failed (non-fatal):", preUwErr);
+        }
       } catch (analysisError) {
         console.error("AI analysis error:", analysisError);
         await storage.updateLoanApplication(application.id, { status: "submitted" });
