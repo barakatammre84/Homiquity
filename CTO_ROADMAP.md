@@ -31,7 +31,7 @@
 
 ### Finish the redesign (Phase 4 — one route per commit, no logic changes)
 
-- [ ] **12. Landing page hero** — still old-brand dark gradient + emerald. First impression; do this one first.
+- [x] **12. Landing page hero** — still old-brand dark gradient + emerald. First impression; do this one first.
 - [ ] **13. HomeReadinessPassport** — legacy emerald/amber/sky badges, now visible on the renter home page.
 - [ ] **14. Unify the two readiness scores** — RenterHome shows a client-side % next to the Passport's server-side /100 score on the same screen. Keep the server one, extend it for renters.
 - [ ] **15. JourneyTracker** (center of the borrower dashboard).
