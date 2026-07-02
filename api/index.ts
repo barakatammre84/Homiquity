@@ -1,8 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Express } from "express";
 
-import { createApp } from "../server/app";
-
 // Vercel serverless entry point.
 //
 // This function handles ONLY /api/* requests (see the routes in vercel.json).
@@ -18,7 +16,14 @@ let appPromise: Promise<Express> | null = null;
 
 async function getApp(): Promise<Express> {
   if (!appPromise) {
-    appPromise = createApp(noopSetup).then(({ app }) => app);
+    // The app graph is imported dynamically INSIDE the handler on purpose: a
+    // static top-level import means any module-load failure kills the whole
+    // function with an uncatchable, opaque FUNCTION_INVOCATION_FAILED. With a
+    // dynamic import, the same failure lands in the catch below and its real
+    // message is returned to the caller.
+    appPromise = import("../server/app")
+      .then(({ createApp }) => createApp(noopSetup))
+      .then(({ app }) => app);
     // A failed bootstrap must not be cached, or every later request keeps
     // replaying the same stale rejection even after the cause is fixed.
     appPromise.catch(() => {
