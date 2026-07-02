@@ -72,6 +72,7 @@ These wait until licensing and contracts are in motion. Each contract unlocks a 
 - [ ] **F6. Fannie Mae DU access** → real submissions through `server/services/ausSubmission.ts`.
 - [ ] **F7. HouseCanary (or other) AVM contract** → real valuations via `retrieve_property_valuation`.
 - [ ] **F8. LO/staff assignment engine** — routes applications to humans, respecting F2. Build when there are humans to route to.
+- [ ] **F10. Regulatory subscriptions + Fannie Developer Portal** *(your accounts, ~30 min total)*: subscribe to Fannie Selling Guide notifications, Freddie Guide bulletin emails, FHA INFO, and VA lender news (the automated watcher covers Freddie/FHA/VA pages + the Federal Register API, but Fannie's page is bot-protected — email is the only Fannie channel today). Register for the Fannie Mae Developer Portal (public APIs free; business-partner APIs unlock with F6). See kb/REGULATORY_MONITORING.md.
 - [ ] **F9. Real-time messaging transport** — presence dots are decorative today (no WebSocket transport). Wire to something real or remove; low priority.
 
 ---

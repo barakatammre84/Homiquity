@@ -50,6 +50,7 @@ check "unit tests"                    npm test --silent
 check "production build"              npm run build --silent
 check "dependency vulnerabilities"    npm audit --audit-level=moderate
 check "no orphaned files"             node scripts/orphan-scan.cjs
+check "regulatory ledger fresh"       node scripts/regulatory-freshness.cjs
 check "production health ($PROD_URL)" prod_healthy
 
 if [ "$FAILED" -eq 0 ]; then

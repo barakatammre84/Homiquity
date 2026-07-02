@@ -1,0 +1,137 @@
+{
+  "$comment": "Regulatory source-of-truth ledger. Every statutory/guideline constant in the codebase has an entry: where it comes from, where it lives in code, when a human last verified it against the official source, and how often it must be re-verified. scripts/regulatory-freshness.cjs (run by npm run checkup and the daily guardian) FAILS when any entry is overdue. When you verify a value against its source, update lastVerified (YYYY-MM-DD). Never change a value without a citation — that is a Correction to the scenario registry.",
+  "entries": [
+    {
+      "id": "fnma-b3-6-05-deferred-student-loan",
+      "rule": "Deferred/$0-payment student loans qualified at 1% of outstanding balance",
+      "value": "0.01",
+      "citation": "Fannie Mae Selling Guide B3-6-05 (Monthly Debt Obligations)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-6-05/monthly-debt-obligations",
+      "codeRef": "server/services/underwritingNuance.ts DEFERRED_STUDENT_LOAN_FACTOR",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 90,
+      "notes": "NC-01 open in the scenarios registry: generated sources claim 0.5% (that is the FHA Handbook 4000.1 figure). Documented IDR payments may be usable per guide — confirm on next verification."
+    },
+    {
+      "id": "fnma-b3-3-2-income-seasoning",
+      "rule": "Self-employment/contract income seasoning: 24 months full; 12-24 conditional",
+      "value": "24 / 12 months",
+      "citation": "Fannie Mae Selling Guide B3-3.2 (Self-Employment Income)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.2/self-employment-income",
+      "codeRef": "server/services/underwritingNuance.ts SEASONING_FULL_MONTHS / SEASONING_CONDITIONAL_MONTHS",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 90,
+      "notes": ""
+    },
+    {
+      "id": "fnma-b3-4-2-02-large-deposit",
+      "rule": "Single deposits > 50% of monthly qualifying income must be sourced",
+      "value": "0.50",
+      "citation": "Fannie Mae Selling Guide B3-4.2-02 (Depository Accounts); gifts resolved per B3-4.3-04",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-4.2-02/depository-accounts",
+      "codeRef": "server/services/underwritingNuance.ts SIGNIFICANT_DEPOSIT_INCOME_FACTOR",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 90,
+      "notes": ""
+    },
+    {
+      "id": "va-26-7-ch4-residual-matrix",
+      "rule": "VA residual income baselines by region/family size; $0.14/sqft utilities; 120% cushion when DTI > 41%",
+      "value": "matrix + 0.14 + 1.20 @ 0.41",
+      "citation": "VA Pamphlet 26-7 Chapter 4 (Credit Underwriting), Table 4-2",
+      "sourceUrl": "https://www.benefits.va.gov/warms/pam26_7.asp",
+      "codeRef": "server/services/underwritingNuance.ts VA_RESIDUAL_MATRIX / VA_UTILITY_RATE_PER_SQFT / VA_CUSHION_MULTIPLIER",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 90,
+      "notes": "Residual tables are loan-amount-banded; implemented band is >= $80,000. Verify table values on each review."
+    },
+    {
+      "id": "platform-dti-ceiling-43",
+      "rule": "Standard DTI ceiling used for flags/what-if coaching",
+      "value": "0.43",
+      "citation": "PLATFORM POLICY referencing legacy QM 43% (12 CFR §1026.43 Appendix Q, repealed 2021 — replaced by price-based General QM)",
+      "sourceUrl": "https://www.consumerfinance.gov/rules-policy/regulations/1026/43/",
+      "codeRef": "server/services/underwritingNuance.ts STANDARD_DTI_CEILING",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 90,
+      "notes": "REVIEW CANDIDATE: DU approves DTIs up to 50% with compensating factors; the 43% figure is a conservative platform flag threshold, not a current federal cap. Decide whether to align flag threshold with DU 50% or keep conservative."
+    },
+    {
+      "id": "hpa-pmi-removal-80-ltv",
+      "rule": "PMI-removal opportunity alert at 80% LTV",
+      "value": "80",
+      "citation": "Homeowners Protection Act, 12 U.S.C. §4901 et seq. (borrower-requested cancellation at 80% LTV of original value; automatic termination at 78%)",
+      "sourceUrl": "https://www.consumerfinance.gov/compliance/supervision-examinations/homeowners-protection-act-pmi-cancellation-act-examination-procedures/",
+      "codeRef": "server/services/lifecycleEngine.ts PMI_REMOVAL_LTV_THRESHOLD",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 180,
+      "notes": "Alert uses current estimated value (AVM); statutory cancellation right keys off original value — the alert is an opportunity signal, the letter/request path must use HPA terms."
+    },
+    {
+      "id": "platform-reserves-2-months",
+      "rule": "Low-reserves warning threshold (months of PITI post-closing)",
+      "value": "2",
+      "citation": "PLATFORM POLICY; Fannie reserve requirements (B3-4.1-01) vary by transaction — formal mapping pending",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-4.1-01/minimum-reserve-requirements",
+      "codeRef": "server/services/preUnderwriting.ts RESERVES_MONTHS_THRESHOLD",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 90,
+      "notes": "Foundation scenario note in the registry: research proper per-transaction reserve requirements."
+    },
+    {
+      "id": "platform-doc-freshness-30",
+      "rule": "Document freshness window used for aging alerts",
+      "value": "30 days (nudge at 25)",
+      "citation": "PLATFORM POLICY (stricter than Fannie B1-1-03, which allows credit documents up to 4 months old for most transactions)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b1-1-03/allowable-age-credit-documents-and-federal-income-tax-returns",
+      "codeRef": "server/services/lifecycleEngine.ts DOC_FRESHNESS_DAYS; server/services/signalEngine.ts DOC_FRESHNESS_DAYS",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 180,
+      "notes": "Deliberately conservative; being stricter than the guideline is compliant. Review whether 30-day nagging is too aggressive once real borrowers exist."
+    },
+    {
+      "id": "regz-1026-36e-anti-steering",
+      "rule": "Anti-steering loan-options disclosure before rate lock",
+      "value": "template v1.0",
+      "citation": "Regulation Z, 12 CFR §1026.36(e)(3)",
+      "sourceUrl": "https://www.consumerfinance.gov/rules-policy/regulations/1026/36/",
+      "codeRef": "server/consentGate.ts ANTI_STEERING_TEMPLATE",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 180,
+      "notes": "Template text is a summary; legal review recommended before real borrowers sign it (roadmap #26)."
+    },
+    {
+      "id": "fcra-disclosure-version",
+      "rule": "FCRA credit-pull disclosure text/version",
+      "value": "FCRA-2025-v2",
+      "citation": "FCRA §604 (15 U.S.C. §1681b) written-instruction consent",
+      "sourceUrl": "https://www.consumerfinance.gov/rules-policy/regulations/1022/",
+      "codeRef": "server/services/creditService.ts CURRENT_DISCLOSURE_VERSION / FCRA_DISCLOSURE_TEXT",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 180,
+      "notes": ""
+    },
+    {
+      "id": "fnma-du-version",
+      "rule": "DU submission payload shape",
+      "value": "DU 12.1",
+      "citation": "Fannie Mae DU Version 12.1 release notes",
+      "sourceUrl": "https://singlefamily.fanniemae.com/originating-underwriting/desktop-underwriter-desktop-originator",
+      "codeRef": "server/services/ausSubmission.ts",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 120,
+      "notes": "Simulated until FANNIE_DU_API_KEY; verify current DU version before go-live."
+    },
+    {
+      "id": "mismo-version",
+      "rule": "MISMO export reference model",
+      "value": "3.4 (ULDD Phase 5)",
+      "citation": "MISMO v3.4 / Fannie-Freddie ULDD Phase 5 (effective 2025-07-28)",
+      "sourceUrl": "https://singlefamily.fanniemae.com/delivering/uniform-mortgage-data-program/uniform-loan-delivery-dataset",
+      "codeRef": "shared/mismo.ts, server/mismo.ts",
+      "lastVerified": "2026-07-03",
+      "reviewIntervalDays": 180,
+      "notes": ""
+    }
+  ]
+}
