@@ -38,7 +38,10 @@ Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
   static client from `dist/public`; rewrites send `/api/*` to the Express app
   running as a serverless function (`api/index.ts`, built via `createApp()` in
   `server/app.ts`), everything else falls back to the SPA `index.html`.
-- `engines.node: 22.x` in `package.json` pins a Node with a working npm.
+- `engines.node: 24.x` in `package.json` pins the Node version (matches local
+  dev and ships npm 11; Node 22.x's bundled npm 10 hit a fatal "Exit handler
+  never called" install bug). `.npmrc` disables audit/fund to keep installs
+  deterministic.
 - Env vars (Vercel → Settings → Environment Variables): `DATABASE_URL` (Neon,
   non-localhost), `SESSION_SECRET`, `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`,
   `NODE_ENV=production`, plus optional `GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY`,

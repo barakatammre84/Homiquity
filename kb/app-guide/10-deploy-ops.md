@@ -22,8 +22,10 @@ Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
   warm instance via `createApp()` (no `listen()`).
 - **Routing** (`vercel.json` rewrites): filesystem first (static assets), then
   `/api/(.*)` → the function, then everything → `index.html` (SPA fallback).
-- **Node is pinned** to 22.x (`engines` in package.json) — older images hit a
-  fatal npm bug ("Exit handler never called").
+- **Node is pinned** to 24.x (`engines` in package.json) — this matches local
+  dev and ships npm 11. Node 22.x's bundled npm 10 hit a fatal install bug
+  ("Exit handler never called"). `.npmrc` also turns off audit/fund so installs
+  don't make flaky network calls during the build.
 
 ## Environments
 
