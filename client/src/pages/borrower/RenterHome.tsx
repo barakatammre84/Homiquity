@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { HomeReadinessPassport } from "@/components/HomeReadinessPassport";
+import { formatCurrency } from "@/lib/formatters";
 import {
   ArrowRight,
   Bot,
@@ -35,10 +36,6 @@ interface HomeownershipGoalRecord {
 
 interface GoalResponse {
   goal: HomeownershipGoalRecord | null;
-}
-
-function formatCurrency(value: number): string {
-  return value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
 function renterReadinessScore(args: {

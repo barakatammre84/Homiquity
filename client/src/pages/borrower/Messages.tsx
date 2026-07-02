@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPresenceColor, getPresenceLabel } from "@/lib/formatters";
 import {
   Dialog,
   DialogContent,
@@ -99,22 +100,6 @@ function formatMessageTime(date: Date | string): string {
     return d.toLocaleDateString("en-US", { weekday: "short" });
   } else {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-}
-
-function getStatusColor(status: string) {
-  switch (status) {
-    case "online": return "text-emerald-500";
-    case "away": return "text-amber-500";
-    default: return "text-muted-foreground";
-  }
-}
-
-function getStatusText(status: string) {
-  switch (status) {
-    case "online": return "Online";
-    case "away": return "Away";
-    default: return "Offline";
   }
 }
 
@@ -464,7 +449,7 @@ export default function Messages() {
                               </AvatarFallback>
                             </Avatar>
                             <Circle 
-                              className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-current ${getStatusColor(member.presenceStatus)}`}
+                              className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-current ${getPresenceColor(member.presenceStatus)}`}
                               data-testid={`status-indicator-${member.id}`}
                             />
                           </div>
@@ -535,7 +520,7 @@ export default function Messages() {
                     </AvatarFallback>
                   </Avatar>
                   <Circle 
-                    className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current ${getStatusColor(selectedMember.presenceStatus)}`}
+                    className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current ${getPresenceColor(selectedMember.presenceStatus)}`}
                     data-testid="status-chat-member"
                   />
                 </div>
@@ -544,8 +529,8 @@ export default function Messages() {
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <span data-testid="text-chat-member-role">{ROLE_DISPLAY_NAMES[selectedMember.role] || selectedMember.role}</span>
                     <span className="text-xs">·</span>
-                    <span className={`text-xs ${getStatusColor(selectedMember.presenceStatus)}`} data-testid="text-presence-status">
-                      {getStatusText(selectedMember.presenceStatus)}
+                    <span className={`text-xs ${getPresenceColor(selectedMember.presenceStatus)}`} data-testid="text-presence-status">
+                      {getPresenceLabel(selectedMember.presenceStatus)}
                     </span>
                   </div>
                 </div>

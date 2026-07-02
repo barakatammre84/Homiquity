@@ -32,9 +32,11 @@ export function formatNumber(value: number | string): string {
   return new Intl.NumberFormat("en-US").format(num);
 }
 
-export function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "N/A";
-  return new Date(date).toLocaleDateString("en-US", {
+export function formatDate(date: Date | string | null | undefined, fallback = "N/A"): string {
+  if (!date) return fallback;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return fallback;
+  return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -111,17 +113,35 @@ export function formatRatePoints(
   return { points, cost: `$${pointsCost.toLocaleString()}` };
 }
 
+export function getPresenceColor(status: string): string {
+  switch (status) {
+    case "online": return "text-status-online";
+    case "away": return "text-status-away";
+    default: return "text-muted-foreground";
+  }
+}
+
+export function getPresenceLabel(status: string): string {
+  switch (status) {
+    case "online": return "Online";
+    case "away": return "Away";
+    default: return "Offline";
+  }
+}
+
 export function getStatusColor(status: string): string {
+  // Obsidian Indigo: in-flight states stay on the monochromatic ramp;
+  // status-* pop colors are reserved for approval/denial semantics.
   const colors: Record<string, string> = {
     draft: "bg-muted text-muted-foreground",
-    submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-    analyzing: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-    pre_approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    verified: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
-    underwriting: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-    approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    denied: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-    closed: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+    submitted: "bg-primary/10 text-primary",
+    analyzing: "bg-status-warning/15 text-status-warning",
+    pre_approved: "bg-status-success/15 text-status-success",
+    verified: "bg-status-success/15 text-status-success",
+    underwriting: "bg-primary/15 text-primary",
+    approved: "bg-status-success/15 text-status-success",
+    denied: "bg-status-danger/15 text-status-danger",
+    closed: "bg-muted text-muted-foreground",
   };
   return colors[status] || "bg-muted text-muted-foreground";
 }

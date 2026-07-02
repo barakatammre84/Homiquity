@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { getPresenceColor } from "@/lib/formatters";
 import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
 import {
   LayoutDashboard,
@@ -57,14 +58,6 @@ interface TeamMember {
   email: string | null;
   profileImageUrl: string | null;
   presenceStatus: 'online' | 'away' | 'offline';
-}
-
-function getStatusColor(status: string) {
-  switch (status) {
-    case "online": return "text-status-online";
-    case "away": return "text-status-away";
-    default: return "text-muted-foreground";
-  }
 }
 
 interface NavItem {
@@ -324,7 +317,7 @@ export function AppSidebar() {
                                     </AvatarFallback>
                                   </Avatar>
                                   <Circle
-                                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current ${getStatusColor(member.presenceStatus)}`}
+                                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 fill-current ${getPresenceColor(member.presenceStatus)}`}
                                   />
                                 </div>
                                 <div className="flex flex-col min-w-0">
