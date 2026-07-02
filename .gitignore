@@ -8,3 +8,4 @@ vite.config.ts.*
 .env.local
 !.env.example
 uploads
+api/_app.mjs

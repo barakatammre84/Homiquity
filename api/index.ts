@@ -16,14 +16,18 @@ let appPromise: Promise<Express> | null = null;
 
 async function getApp(): Promise<Express> {
   if (!appPromise) {
-    // The app graph is imported dynamically INSIDE the handler on purpose: a
-    // static top-level import means any module-load failure kills the whole
-    // function with an uncatchable, opaque FUNCTION_INVOCATION_FAILED. With a
-    // dynamic import, the same failure lands in the catch below and its real
-    // message is returned to the caller.
-    appPromise = import("../server/app")
+    // The app is imported from api/_app.mjs — a single esbuild bundle produced
+    // by `vercel-build`. Importing the raw TS graph (../server/app) fails on
+    // Vercel because server code uses the `@shared/*` tsconfig path alias,
+    // which the function's file tracer / Node runtime can't resolve; esbuild
+    // resolves the alias at build time (same as the local prod build).
+    // Imported dynamically INSIDE the handler so a module-load failure lands
+    // in the catch below with a real message instead of an uncatchable
+    // FUNCTION_INVOCATION_FAILED.
+    // @ts-ignore -- built at deploy time by vercel-build; not present for tsc
+    appPromise = import("./_app.mjs")
       .then(({ createApp }) => createApp(noopSetup))
-      .then(({ app }) => app);
+      .then(({ app }: { app: Express }) => app);
     // A failed bootstrap must not be cached, or every later request keeps
     // replaying the same stale rejection even after the cause is fixed.
     appPromise.catch(() => {
