@@ -22,7 +22,7 @@
 
 ### Fix the workflows that work wrongly
 
-- [ ] **6. Tame the task engine.** Borrowers see "Complete 56 pending tasks." Add caps, group tasks into milestones ("3 documents needed"), and filter by loan stage. Acceptance: test buyer sees ≤ 5 meaningful next steps.
+- [ ] **6. Tame the task engine.** Borrowers see "Complete 56 pending tasks." Add caps, group tasks into milestones ("3 documents needed"), and filter by loan stage. Acceptance: test buyer sees ≤ 5 meaningful next steps. *(Partially done 2026-07-03: dashboard signal now scoped to the active application and grouped — "Upload your documents — 8 needed"; remaining: caps/milestone grouping on the Tasks page itself and generation-side stage filtering.)*
 - [ ] **7. Stage-gated data validation.** Applications reach "pre-approved" with no loan amount ($0 volume on admin) and contradictory signals (pre-approved with 0 documents). Enforce required-fields-per-stage in the borrower state machine. Acceptance: admin dashboard shows real volume; no impossible state combinations.
 - [ ] **8. Build the leads intake API.** The compliant `leads` table exists but has no endpoints — no way for a landing page or aggregator to create a lead. Build `POST /api/leads` (Zod-validated, TrustedForm evidence required, rate-limited) + a staff list view. Acceptance: integration test creates and lists a lead.
 - [x] **9. Lifecycle jobs.** Three deferred jobs: daily refi-alert scan, equity-snapshot job (AVM → snapshots), and the closed-loan graduation hook that auto-surfaces the Homeowner Hub. Acceptance: close a test loan, Homeowner Hub appears with an equity snapshot.

@@ -373,6 +373,12 @@ export default function BorrowerFile() {
   const clearedConditions = conditions.filter(c => c.status === "cleared" || c.status === "waived" || c.status === "not_applicable");
   const isStaff2 = isStaffRole(user?.role || "");
 
+  // Pre-underwriting validator flags (loan_applications.pre_uw_flags) — the
+  // machine-readable signal staff should see before opening any tab.
+  const preUwFlags: Array<{ code: string; severity: string; reason: string }> =
+    ((appData?.application as { preUwFlags?: { flags?: Array<{ code: string; severity: string; reason: string }> } } | undefined)
+      ?.preUwFlags?.flags) ?? [];
+
   return (
     <>
       <div className="flex items-center justify-between border-b bg-background px-6 py-3">
@@ -385,6 +391,21 @@ export default function BorrowerFile() {
           </Button>
         </div>
         <div className="flex items-center gap-2">
+          {preUwFlags.map((flag) => (
+            <Badge
+              key={flag.code}
+              variant="secondary"
+              title={flag.reason}
+              className={`no-default-hover-elevate no-default-active-elevate text-[10px] ${
+                flag.severity === "blocking"
+                  ? "bg-status-danger/10 text-status-danger"
+                  : "bg-status-warning/10 text-status-warning"
+              }`}
+              data-testid={`badge-preuw-${flag.code}`}
+            >
+              {flag.code.replace(/_/g, " ")}
+            </Badge>
+          ))}
           <Button
             variant="outline"
             size="sm"

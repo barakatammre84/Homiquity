@@ -139,6 +139,7 @@ export function registerLendingRoutes(
           stats,
           unreadMessages,
           pendingTaskCount: 0,
+          pendingTasksByApplication: {},
           activities: [],
           loanOptionCounts: {},
           hmdaStatus: {},
@@ -164,7 +165,7 @@ export function registerLendingRoutes(
             .where(inArray(dealActivities.applicationId, topAppIds))
             .orderBy(desc(dealActivities.createdAt)),
           db
-            .select({ applicationId: tasks.applicationId, status: tasks.status })
+            .select({ applicationId: tasks.applicationId, status: tasks.status, taskType: tasks.taskType })
             .from(tasks)
             .where(inArray(tasks.applicationId, allAppIds)),
           db
@@ -203,9 +204,19 @@ export function registerLendingRoutes(
         activitiesMap[appId] = activityRows.filter((a) => a.applicationId === appId).slice(0, 10);
       }
 
-      const pendingTaskCount = taskRows.filter((t) =>
+      const pendingTaskRows = taskRows.filter((t) =>
         ["pending", "in_progress", "rejected"].includes(t.status),
-      ).length;
+      );
+      const pendingTaskCount = pendingTaskRows.length;
+      // Per-application counts so the dashboard's "next step" signal reflects
+      // the ACTIVE application, not noise summed across every application the
+      // user has ever had (the "Complete 56 pending tasks" defect).
+      const pendingTasksByApplication: Record<string, { total: number; documents: number }> = {};
+      for (const t of pendingTaskRows) {
+        const bucket = (pendingTasksByApplication[t.applicationId] ??= { total: 0, documents: 0 });
+        bucket.total += 1;
+        if (t.taskType === "document_request") bucket.documents += 1;
+      }
 
       const hmdaStatus: Record<string, boolean> = {};
       const hmdaApps = new Set(hmdaRows.map((r) => r.applicationId));
@@ -238,6 +249,7 @@ export function registerLendingRoutes(
         stats,
         unreadMessages,
         pendingTaskCount,
+        pendingTasksByApplication,
         activities: allActivities,
         loanOptionCounts,
         hmdaStatus,

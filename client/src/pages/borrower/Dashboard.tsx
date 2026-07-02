@@ -58,10 +58,24 @@ interface DashboardData {
   activities: DealActivity[];
   unreadMessages: number;
   pendingTaskCount: number;
+  pendingTasksByApplication?: Record<string, { total: number; documents: number }>;
   loanOptionCounts?: Record<string, number>;
   hmdaStatus?: Record<string, boolean>;
   recentOptions?: Array<{ id: string; applicationId: string; interestRate: string; loanType: string; programName: string }>;
   verificationStatus?: Record<string, { hasCreditConsent: boolean; hasIdVerification: boolean; hasBankConnected: boolean; hasRateLocked: boolean }>;
+}
+
+/** Shape of loan_applications.pre_uw_flags (written by the pre-underwriting validator). */
+interface PreUwFlagsPayload {
+  flags?: Array<{ code: string; severity: string; reason: string }>;
+  evaluatedAt?: string;
+}
+
+function getPreUwFlags(application: LoanApplication | null | undefined): PreUwFlagsPayload | null {
+  if (!application) return null;
+  const raw = (application as { preUwFlags?: unknown }).preUwFlags;
+  if (!raw || typeof raw !== "object") return null;
+  return raw as PreUwFlagsPayload;
 }
 
 function getExpirationInfo(application: LoanApplication): { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null {
@@ -184,7 +198,7 @@ function getPersonalizedGreeting(user: { firstName?: string | null } | null | un
 function getDominantAction(
   application: LoanApplication | null,
   goal: string | null,
-  pendingTasks: number,
+  pendingTasks: { total: number; documents: number },
   pendingDocuments: number,
   unreadMessages: number,
   expirationInfo: { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null,
@@ -278,10 +292,38 @@ function getDominantAction(
     };
   }
 
-  if (pendingTasks > 0) {
+  // Pre-underwriting flags outrank generic tasks — they name the exact
+  // documents underwriting is waiting on.
+  const preUw = getPreUwFlags(application);
+  if (preUw?.flags && preUw.flags.length > 0) {
+    return {
+      icon: AlertTriangle,
+      title: "Strengthen your file",
+      description: preUw.flags[0].reason,
+      href: "/documents",
+      buttonLabel: "Add Documents",
+      whyNeeded: "Clearing these flags keeps your approval on track — your file re-checks automatically when documents arrive.",
+      timeEstimate: "a few minutes",
+    };
+  }
+
+  // Document requests grouped into ONE milestone action, not N task rows.
+  if (pendingTasks.documents > 0) {
     return {
       icon: FileText,
-      title: `Complete ${pendingTasks} pending task${pendingTasks > 1 ? "s" : ""}`,
+      title: `Upload your documents — ${pendingTasks.documents} needed`,
+      description: "Everything on the list unlocks your next stage. Upload what you have; each document checks itself off.",
+      href: "/documents",
+      buttonLabel: "Upload Documents",
+      whyNeeded: "Underwriting can't start until your document set is complete.",
+      timeEstimate: "a few minutes",
+    };
+  }
+
+  if (pendingTasks.total > 0) {
+    return {
+      icon: FileText,
+      title: `Complete ${pendingTasks.total} pending task${pendingTasks.total > 1 ? "s" : ""}`,
       description: "These tasks are needed to move your application forward.",
       href: "/tasks",
       buttonLabel: "View Tasks",
@@ -777,7 +819,7 @@ export default function Dashboard() {
   const applications = data?.applications || [];
   const activities = data?.activities || [];
   const unreadMessages = data?.unreadMessages || 0;
-  const pendingTaskCount = data?.pendingTaskCount || 0;
+  const pendingTasksByApplication = data?.pendingTasksByApplication || {};
 
   const defaultApp = applications.find(
     (app) => !["closed", "denied"].includes(app.status)
@@ -816,10 +858,17 @@ export default function Dashboard() {
 
   const hasCoachSession = (coachConversations?.length || 0) > 0;
 
+  // Signals are scoped to the ACTIVE application — never summed across every
+  // application the user has ever had.
+  const activeTaskCounts = (activeApplication && pendingTasksByApplication[activeApplication.id]) || {
+    total: 0,
+    documents: 0,
+  };
+
   const readiness = getReadinessPercent(
     activeApplication || null,
     data?.stats?.pendingDocuments || 0,
-    pendingTaskCount,
+    activeTaskCounts.total,
     verificationStatus,
     hasCoachSession,
     browsedProperties,
@@ -847,7 +896,7 @@ export default function Dashboard() {
   const dominant = getDominantAction(
     activeApplication || null,
     homeownershipGoal?.goal || null,
-    pendingTaskCount,
+    activeTaskCounts,
     data?.stats?.pendingDocuments || 0,
     unreadMessages,
     expirationInfo,
@@ -855,6 +904,15 @@ export default function Dashboard() {
   );
 
   const DominantIcon = dominant.icon;
+
+  // File-health signal: pre-underwriting flags drive the header chip — amber
+  // "action needed" when flagged, green check once the automated review is clean.
+  const activePreUw = getPreUwFlags(activeApplication);
+  const fileHealth: "healthy" | "action" | null = activePreUw?.evaluatedAt
+    ? (activePreUw.flags?.length ?? 0) > 0
+      ? "action"
+      : "healthy"
+    : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -864,9 +922,31 @@ export default function Dashboard() {
         <div className="space-y-1">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">
-                {greetingTitle}
-              </h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">
+                  {greetingTitle}
+                </h1>
+                {fileHealth === "healthy" && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-status-success/10 px-2 py-0.5 text-[11px] font-medium text-status-success"
+                    title="Automated pre-underwriting review found no issues"
+                    data-testid="chip-file-healthy"
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    File healthy
+                  </span>
+                )}
+                {fileHealth === "action" && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-status-warning/10 px-2 py-0.5 text-[11px] font-medium text-status-warning"
+                    title={activePreUw?.flags?.map((f) => f.reason).join(" ")}
+                    data-testid="chip-file-action-needed"
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    Action needed
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground mt-1 leading-relaxed" data-testid="text-dashboard-subtitle">
                 {greetingSubtitle}
               </p>
