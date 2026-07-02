@@ -163,6 +163,8 @@ Soft inquiries do not appear on competitor trigger-lead feeds, and we never sell
 
 **Truv VOIE:** income/employment verifications land the same way with `reportType: "voie"` and **`voieReportId`**. These two identifiers are exactly what DU consumes for Day 1 Certainty relief — the submission service reads them from `verification_reports`, so if they're missing the relief flags simply come back false.
 
+**Pre-underwriting validator** (`server/services/preUnderwriting.ts`): runs automatically at intake completion and again when a VOA lands. Compares self-reported intake data against verified assets — post-closing reserves under 2 months of estimated PITI raises `LOW_RESERVES_WARNING` (and materializes an outstanding Reserve Funds Verification condition); self-employed files carry `COMPLEX_INCOME_CHECK`. Flags persist to `loan_applications.pre_uw_flags` (jsonb); the borrower gets one personalized document-request email/notification per distinct flag set (hash-deduplicated). Stage enforcement stays in the conditions system — the status mutator already refuses advancement while conditions are outstanding.
+
 ### 2.3 DU submission & the commitment letter
 
 **Endpoint:** `POST /api/underwrite/submit-gse` — staff roles only (`requireRole`), body Zod-validated (`applicationId`, options).
