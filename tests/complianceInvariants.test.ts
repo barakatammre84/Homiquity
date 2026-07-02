@@ -102,6 +102,17 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
   });
 });
 
+describe("Reg B: the approval decision stays deterministic even in the AI module", () => {
+  it("gemini.ts computes isApproved from hard rules, never from model output", () => {
+    const source = read("server/gemini.ts");
+    // The prompt must forbid the model from deciding…
+    expect(source).toMatch(/Do not make approval decisions/);
+    expect(source).toMatch(/approval is determined server-side/);
+    // …and the decision must be the deterministic DTI/score rule.
+    expect(source).toMatch(/isApproved\s*=\s*dtiRatio\s*<=\s*43\s*&&\s*creditScore\s*>=\s*620/);
+  });
+});
+
 describe("Protocol & platform safety", () => {
   it("the MCP server's first import is the stdout-protecting bootstrap", () => {
     const source = read("server/mcp/index.ts");

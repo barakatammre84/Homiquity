@@ -44,6 +44,7 @@ import {
 import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
 import { PRE_APPROVAL_DEFAULTS, type FunnelStepId } from "@/funnel/preApprovalMachine";
 import { useFunnelAutosave } from "@/funnel/useFunnelAutosave";
+import { VerificationPulse } from "@/funnel/VerificationPulse";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type QuestionType = "intro" | "choice" | "currency" | "number" | "state" | "boolean_pair" | "income_sources" | "final";
@@ -65,6 +66,9 @@ interface Question {
   options?: QuestionOption[];
   placeholder?: string;
   subtext?: string;
+  /** "Why we ask" micro-copy — shown below the input, doubles as mobile
+   *  parity for the desktop-only advisory panel. */
+  why?: string;
   icon?: typeof Home;
   booleanFields?: { field: keyof PreApprovalFormData; label: string; icon: typeof Home }[];
 }
@@ -82,6 +86,7 @@ const QUESTIONS: Question[] = [
     field: "loanPurpose",
     type: "choice",
     question: "What are you looking to do?",
+    why: "Purpose determines which loan programs and rates apply to you.",
     icon: Home,
     options: [
       { value: "purchase", label: "Buying a Home", icon: Home },
@@ -94,6 +99,7 @@ const QUESTIONS: Question[] = [
     field: "propertyType",
     type: "choice",
     question: "What kind of property are we looking at?",
+    why: "Property type affects your rate and reserve requirements.",
     icon: Building2,
     options: [
       { value: "single_family", label: "Single Family Home", icon: Home },
@@ -109,6 +115,7 @@ const QUESTIONS: Question[] = [
     id: "veteranAndFirstTime",
     type: "boolean_pair",
     question: "These help us find programs you may qualify for",
+    why: "Veterans can unlock $0-down VA loans; first-time buyers unlock assistance programs.",
     icon: Shield,
     booleanFields: [
       { field: "isVeteran", label: "I am a U.S. military veteran or active duty", icon: Shield },
@@ -138,6 +145,7 @@ const QUESTIONS: Question[] = [
     field: "propertyState",
     type: "state",
     question: "Which state are you looking to buy in?",
+    why: "Rates, taxes, and available programs vary by state.",
     icon: MapPin,
     subtext: "Select from the list below"
   },
@@ -155,6 +163,7 @@ const QUESTIONS: Question[] = [
     field: "employmentType",
     type: "choice",
     question: "How are you employed?",
+    why: "This determines which income documents we'll ask for — nothing else.",
     icon: Briefcase,
     options: [
       { value: "employed", label: "W-2 Employee", icon: Briefcase },
@@ -177,6 +186,7 @@ const QUESTIONS: Question[] = [
     field: "hasAdditionalIncome",
     type: "choice",
     question: "Do you have additional sources of income?",
+    why: "Every income source can raise your buying power once documented.",
     icon: TrendingUp,
     options: [
       { value: "yes", label: "Yes, I have other income", icon: TrendingUp },
@@ -1060,7 +1070,7 @@ function PreApprovalFunnel() {
                     // injected steps (complex income) appear/disappear here.
                     setTimeout(() => next(form.getValues()), 200);
                   }}
-                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 group
+                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.99]
                     ${isSelected
                       ? "border-primary bg-primary/5"
                       : "border-transparent bg-muted/40 hover:bg-muted"
@@ -1420,7 +1430,7 @@ function PreApprovalFunnel() {
                   onClick={() => {
                     form.setValue(field.field, !isChecked as never);
                   }}
-                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200
+                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.99]
                     ${isChecked 
                       ? "border-primary bg-primary/5" 
                       : "border-muted hover:border-primary/50"
@@ -1554,6 +1564,8 @@ function PreApprovalFunnel() {
       <SEOHead title="Get Pre-Approved in 3 Minutes" description="Start your mortgage pre-approval application. Answer a few questions about your income and finances to get a clear, confident approval decision." />
       {restoreBanner}
       
+      <VerificationPulse active={submitMutation.isPending} />
+
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
         <motion.div
@@ -1629,6 +1641,15 @@ function PreApprovalFunnel() {
             {/* Input Area */}
             <div className="mb-10">
               {renderInput()}
+              {currentQ.why && (
+                <p
+                  className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground/70"
+                  data-testid={`text-why-${currentQ.id}`}
+                >
+                  <Info className="h-3 w-3 shrink-0" />
+                  {currentQ.why}
+                </p>
+              )}
             </div>
 
             {/* Continue Button (for non-choice inputs) */}
