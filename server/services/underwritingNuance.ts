@@ -6,7 +6,8 @@
  *  - Income seasoning        Fannie Mae Selling Guide B3-3.2
  *  - Deferred student loans  Fannie Mae Selling Guide B3-6-05 (1% rule)
  *  - VA residual income      VA Pamphlet 26-7 Chapter 4 (incl. 20% cushion)
- *  - Large-deposit sourcing  Fannie Mae Selling Guide B3-4.3-04 (50% rule)
+ *  - Large-deposit sourcing  Fannie Mae Selling Guide B3-4.2-02 (Depository
+ *                            Accounts, 50% rule); B3-4.3-04 governs gift funds
  *
  * Reg B note: these are structural rules, deliberately isolated from any AI
  * service — the coach may EXPLAIN outcomes, it never computes them.
@@ -262,7 +263,7 @@ export function computeVaResidualIncome(input: {
 }
 
 // ---------------------------------------------------------------------------
-// Scenario 4 — large-deposit sourcing (B3-4.3-04)
+// Scenario 4 — large-deposit sourcing (B3-4.2-02; gifts resolved per B3-4.3-04)
 // ---------------------------------------------------------------------------
 
 export interface DepositoryTransaction {

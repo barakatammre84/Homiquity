@@ -86,7 +86,8 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
     const source = read("server/services/underwritingNuance.ts");
     expect(source).toContain("B3-3.2"); // income seasoning
     expect(source).toContain("B3-6-05"); // deferred student loans
-    expect(source).toContain("B3-4.3-04"); // large deposits
+    expect(source).toContain("B3-4.2-02"); // large-deposit sourcing (depository accounts)
+    expect(source).toContain("B3-4.3-04"); // gift funds resolution path
     expect(source).toContain("26-7"); // VA residual income
   });
 
