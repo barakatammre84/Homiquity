@@ -23,7 +23,7 @@ pipeline), **Rates**, **Calculators**, **Education**, **Realtor Engine**
 | Database | PostgreSQL — Neon serverless in prod, local Postgres in dev — via Drizzle ORM | `shared/schema/`, `server/db.ts` |
 | Shared types | Zod + drizzle-zod schemas shared by client and server | `shared/` |
 | AI | Gemini (document extraction), OpenAI (coach), pluggable gateway | `server/gemini.ts`, `server/services/aiGateway.ts` |
-| File storage | Google Cloud Storage (signed URLs) | `server/replit_integrations/object_storage/` |
+| File storage | Google Cloud Storage (signed URLs) | `server/integrations/object_storage/` |
 | Deploy | Vercel (static client + serverless Express) | `vercel.json`, `api/index.ts` |
 
 ## Run it locally (5 minutes)
@@ -57,15 +57,13 @@ npm run save               # commit-everything + pull + push (the daily driver)
 npm run db:push            # apply schema changes to the DB in DATABASE_URL
 ```
 
-## Known issues to be aware of (as of 2026-07-02)
+## Health of the codebase (as of 2026-07-02)
 
-1. **Auth off-Replit**: session/Passport middleware historically only
-   initialized on Replit; a fix is in progress. Symptom: `req.isAuthenticated
-   is not a function` unhandled rejections and hanging protected routes.
-2. **~22 pre-existing TypeScript errors** on `main` (`npm run check` is red);
-   a cleanup task is in progress. Don't mistake them for your own breakage.
-3. `server/replit_integrations/{image,chat,batch}` are **unused dead code**
-   slated for deletion.
+Clean bill: `npm run check` is **0 errors**, unit tests **89/89**, integration
+tests **50/50** (against a running dev server). All Replit coupling was removed
+on 2026-07-02 — auth (session + Passport) now initializes unconditionally, so
+login works on any host. If any of those go red, it's the change in front of
+you, not inherited debt.
 
 ## Where to go next
 

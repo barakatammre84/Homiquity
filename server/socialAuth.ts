@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { authStorage } from "./replit_integrations/auth/storage";
+import { authStorage } from "./integrations/auth/storage";
 import { randomBytes, createSign } from "crypto";
 
 interface OAuthProviderConfig {

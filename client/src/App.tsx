@@ -99,7 +99,7 @@ const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
 
 import NotFound from "@/pages/not-found";
 
-const isProduction = !!import.meta.env.VITE_REPL_DEPLOYMENT;
+const isProduction = import.meta.env.PROD;
 
 function PageLoader() {
   return (

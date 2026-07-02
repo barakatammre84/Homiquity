@@ -550,6 +550,7 @@ export const urlaPropertyInfo = pgTable("urla_property_info", {
   propertyCity: varchar("property_city", { length: 100 }),
   propertyState: varchar("property_state", { length: 50 }),
   propertyZip: varchar("property_zip", { length: 20 }),
+  propertyCounty: varchar("property_county", { length: 100 }),
   propertyCountry: varchar("property_country", { length: 100 }),
   
   numberOfUnits: integer("number_of_units"),

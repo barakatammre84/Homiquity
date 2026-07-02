@@ -96,7 +96,7 @@ export function isClientRole(role: string): boolean {
   return CLIENT_ROLES.includes(role as typeof CLIENT_ROLES[number]);
 }
 
-// Session storage table for Replit Auth
+// Session storage table for express-session (connect-pg-simple)
 export const sessions = pgTable(
   "sessions",
   {

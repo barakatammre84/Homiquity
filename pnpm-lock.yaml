@@ -282,15 +282,6 @@ importers:
         specifier: ^3.5.4
         version: 3.5.4(zod@3.25.76)
     devDependencies:
-      '@replit/vite-plugin-cartographer':
-        specifier: ^0.4.4
-        version: 0.4.4
-      '@replit/vite-plugin-dev-banner':
-        specifier: ^0.1.1
-        version: 0.1.1
-      '@replit/vite-plugin-runtime-error-modal':
-        specifier: ^0.0.3
-        version: 0.0.3
       '@tailwindcss/typography':
         specifier: ^0.5.15
         version: 0.5.15(tailwindcss@3.4.17)
@@ -1604,15 +1595,6 @@ packages:
 
   '@radix-ui/rect@1.1.1':
     resolution: {integrity: sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw==}
-
-  '@replit/vite-plugin-cartographer@0.4.4':
-    resolution: {integrity: sha512-Dn3i3gULFUlf+LvQ85S5k+ghmsrgNZwtmVTJyoUlpa04IB5tUMZrQFUWcYCzgpOW9aMKPX6ClSo173k/b9a2eg==}
-
-  '@replit/vite-plugin-dev-banner@0.1.1':
-    resolution: {integrity: sha512-LnFraZhsZBbAwM/tm6SeWKa1/hboAZzXd2vtn8EdKrIXAYSeQbRWCr3WYnlFd6tnuq5tXkKQZ5m8WMpyOu3aCQ==}
-
-  '@replit/vite-plugin-runtime-error-modal@0.0.3':
-    resolution: {integrity: sha512-4wZHGuI9W4o9p8g4Ma/qj++7SP015+FMDGYobj7iap5oEsxXMm0B02TO5Y5PW8eqBPd4wX5l3UGco/hlC0qapw==}
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -3084,9 +3066,6 @@ packages:
 
   mitt@3.0.1:
     resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
-
-  modern-screenshot@4.6.0:
-    resolution: {integrity: sha512-L7osQAWpJiWY1ST1elhLRSGD5i7og5uoICqiXs38whAjWtIayp3cBMJmyML4iyJcBhRfHOyciq1g1Ft5G0QvSg==}
 
   motion-dom@11.18.1:
     resolution: {integrity: sha512-g76KvA001z+atjfxczdRtw/RXOM3OMSdd1f4DL77qCTF/+avrRJiawSG4yDibEQ215sr9kpinSlX2pCTJ9zbhw==}
@@ -5231,22 +5210,6 @@ snapshots:
 
   '@radix-ui/rect@1.1.1': {}
 
-  '@replit/vite-plugin-cartographer@0.4.4':
-    dependencies:
-      '@babel/parser': 7.29.7
-      '@babel/traverse': 7.29.7
-      '@babel/types': 7.29.7
-      magic-string: 0.30.21
-      modern-screenshot: 4.6.0
-    transitivePeerDependencies:
-      - supports-color
-
-  '@replit/vite-plugin-dev-banner@0.1.1': {}
-
-  '@replit/vite-plugin-runtime-error-modal@0.0.3':
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.31
-
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
   '@rollup/rollup-android-arm-eabi@4.60.1':
@@ -6762,8 +6725,6 @@ snapshots:
   minipass@7.1.2: {}
 
   mitt@3.0.1: {}
-
-  modern-screenshot@4.6.0: {}
 
   motion-dom@11.18.1:
     dependencies:

@@ -8,7 +8,7 @@ import {
   extractLeaseData,
 } from "../extractionService";
 import { upload, allowedUploadTypes, verifyFileSignature } from "./utils";
-import { ObjectStorageService, ObjectNotFoundError } from "../replit_integrations/object_storage";
+import { ObjectStorageService, ObjectNotFoundError } from "../integrations/object_storage";
 import { type User } from "@shared/schema";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";

@@ -138,15 +138,6 @@ app.use((req, res, next) => {
   const allowedDomains = new Set<string>();
   const hostName = host?.split(':')[0];
   if (hostName) allowedDomains.add(hostName);
-  if (process.env.REPLIT_DOMAINS) {
-    for (const d of process.env.REPLIT_DOMAINS.split(',')) {
-      const trimmed = d.trim();
-      if (trimmed) allowedDomains.add(trimmed);
-    }
-  }
-  if (process.env.REPLIT_DEV_DOMAIN) {
-    allowedDomains.add(process.env.REPLIT_DEV_DOMAIN.trim());
-  }
   if (isDev) {
     allowedDomains.add('localhost');
     allowedDomains.add('127.0.0.1');
@@ -290,15 +281,7 @@ export default async function runApp(
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  // reusePort is Linux/Replit-only; macOS (local dev) throws ENOTSUP.
-  const listenOptions: { port: number; host: string; reusePort?: boolean } = {
-    port,
-    host: "0.0.0.0",
-  };
-  if (process.env.REPL_ID || process.env.REPLIT_DOMAINS) {
-    listenOptions.reusePort = true;
-  }
-  server.listen(listenOptions, () => {
+  server.listen({ port, host: "0.0.0.0" }, () => {
     log(`serving on port ${port}`);
   });
 }

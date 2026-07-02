@@ -56,7 +56,7 @@ Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
   `OPENAI_API_KEY`, and for document storage `GCS_SERVICE_ACCOUNT_KEY`,
   `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` (see `.env.example`).
 
-Persistent hosts (Replit, Fly, a VPS) still work unchanged: `npm run build` +
+Persistent hosts (Fly, a VPS) still work unchanged: `npm run build` +
 `npm start`.
 
 ## Optional checks (run manually, nothing enforces them)

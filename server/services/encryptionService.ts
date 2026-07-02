@@ -6,7 +6,7 @@ const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
 function isProduction(): boolean {
-  return process.env.NODE_ENV === "production" || !!process.env.REPL_DEPLOYMENT;
+  return process.env.NODE_ENV === "production";
 }
 
 function getEncryptionKey(): Buffer {

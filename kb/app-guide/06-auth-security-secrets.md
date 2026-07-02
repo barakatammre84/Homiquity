@@ -2,25 +2,25 @@
 
 ## Authentication
 
-Three login paths, all managed by Passport + express-session
+Two login paths, all managed by Passport + express-session
 ([`server/auth.ts`](../../server/auth.ts), `server/socialAuth.ts`,
-`server/replit_integrations/auth/`):
+`server/integrations/auth/`):
 
 1. **Email/password** — `POST /api/auth/register` / `POST /api/auth/login`;
-   bcrypt-style hashing (`comparePasswords`/`hashPassword`).
+   scrypt hashing (`comparePasswords`/`hashPassword`).
 2. **Social OAuth** — Google, LinkedIn, Apple (`server/socialAuth.ts`).
-3. **Replit OIDC** — only when running on Replit (`REPL_ID` set); irrelevant on
-   Vercel/local, kept for backwards compatibility.
 
+Session + Passport middleware is installed **unconditionally** in
+`setupSessionAuth()` (`server/integrations/auth/session.ts`) — this is what
+makes `req.isAuthenticated` / `req.login` / `req.user` exist on every host.
 Sessions are stored **in Postgres** (`sessions` table, `connect-pg-simple`) and
-identified by the `connect.sid` cookie. That makes them serverless-safe (no
-in-memory session state).
+identified by the `connect.sid` cookie (12h rolling idle timeout; `secure` in
+production only, so local http logins work). Serverless-safe — no in-memory
+session state.
 
-> ⚠️ **Known issue in flight (2026-07-02):** historically the session/Passport
-> middleware was only initialized inside the Replit OIDC setup, so off-Replit
-> `req.isAuthenticated` didn't exist and auth was broken. A fix (initialize
-> session+passport unconditionally) is being merged from a background task.
-> If you see `req.isAuthenticated is not a function`, this is that.
+> History note: Replit OIDC login was removed 2026-07-02 along with all other
+> Replit coupling. Before that, session/Passport only initialized on Replit,
+> which broke auth everywhere else (`req.isAuthenticated is not a function`).
 
 ### Dev logins
 `POST /api/test-login` (dev only; guarded by `NODE_ENV` and requires
@@ -93,7 +93,6 @@ app won't boot or a core feature dies without it.
 | `NODE_ENV`, `PORT` | Runtime mode; local dev uses PORT=5001 |
 | `DEV_TEST_PASSWORD` | Enables `/api/test-login` (never set in prod) |
 | `USE_LOCAL_PG` | Force the `pg` driver |
-| `REPL_ID`, `REPLIT_*`, `ISSUER_URL` | Replit-only (OIDC, domains); ignored elsewhere |
 | `LOOKUP_MATRIX_STAMP_WINDOW_MS` | Lookup-matrix tuning |
 
 ### Where secrets live

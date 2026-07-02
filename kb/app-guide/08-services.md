@@ -65,6 +65,5 @@ depth.
   ideas (unified trust-tiered profile; deterministic decisions).
 - `storage.ts` is huge but mechanical — search it for the entity you care
   about rather than reading linearly.
-- `server/replit_integrations/` contains platform adapters: `auth/` (sessions +
-  Replit OIDC) and `object_storage/` (GCS) are real; `image/`, `chat/`,
-  `batch/` are **unused dead code** pending deletion.
+- `server/integrations/` contains the platform adapters: `auth/` (Postgres
+  sessions + Passport wiring) and `object_storage/` (GCS with signed URLs).

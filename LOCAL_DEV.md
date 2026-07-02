@@ -1,7 +1,7 @@
 # Running Homiquity locally (Antigravity / any terminal)
 
 The whole app runs on your machine. Only Postgres is a managed service — the free
-tier of Neon costs nothing, so this is a $0 local setup. Replit is optional.
+tier of Neon costs nothing, so this is a $0 local setup.
 
 ## 1. Prerequisites
 - Node.js 20+ (`node -v`)
@@ -76,7 +76,7 @@ npm run db:start  # start (or first-time create) the local Postgres container
 
 `save` is the "back everything up now" button: stages all changes, commits with a
 timestamped message, pulls any remote changes (merge, no editor), and pushes.
-If you also push from Replit, `sync`/`save` handle the pull-before-push for you.
+If you also push from another machine, `sync`/`save` handle the pull-before-push for you.
 
 ## Reverting to a previous version
 
@@ -111,7 +111,7 @@ git checkout main            # come back
 ```
 
 Avoid `git reset --hard` + force-push — it rewrites shared history and will
-conflict with Replit or any other clone. `git revert` gives the same outcome
+conflict with any other clone. `git revert` gives the same outcome
 with a safe, append-only history.
 
 **Tag releases you may want to return to:**
@@ -122,7 +122,7 @@ git tag beta-1 && git push origin beta-1
 
 ---
 
-## Low-cost deployment (beta) — cheaper than Replit
+## Alternative low-cost hosts (the primary deploy is Vercel — see CICD.md)
 
 This is one Express server + Postgres, so host it as a single web service:
 
@@ -142,7 +142,5 @@ Set the same env vars in the host's dashboard (`DATABASE_URL`, `CREDIT_ENCRYPTIO
 `PII_HASH_SALT`, `SESSION_SECRET`, `GEMINI_API_KEY`, `PORT`). The host provides
 `PORT`; the server already reads it.
 
-**Recommendation for beta:** Neon (free Postgres) + Fly.io or Render. Point your
-GitHub repo at it for auto-deploy on push. Migrate off Replit entirely — nothing
-in the app depends on Replit except optional integrations under
-`server/replit_integrations/` (object storage / auth), which you can swap later.
+**The app has no Replit dependencies** — it deploys to Vercel today (see
+[CICD.md](CICD.md)) and can move to any of the hosts above without code changes.

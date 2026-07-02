@@ -3,11 +3,11 @@ import { authStorage } from "./storage";
 
 export function registerAuthRoutes(app: Express): void {
   app.get("/api/auth/user", async (req: any, res) => {
-    if (!req.isAuthenticated()) {
+    if (!req.isAuthenticated?.()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
     try {
-      const userId = req.user?.claims?.sub || req.user?.id;
+      const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ error: "Not authenticated" });
       }

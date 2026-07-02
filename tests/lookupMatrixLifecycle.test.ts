@@ -133,7 +133,7 @@ describe("Lookup matrix lifecycle — live routes + real DB cross-process cohere
   let admin: string;
 
   beforeAll(async () => {
-    admin = await login("admin@test.com", "admin123");
+    admin = await login("admin@test.com", process.env.DEV_TEST_PASSWORD!);
     await deleteTestMatrices();
     // Cold cache for the sibling instance.
     sibling.invalidateInstance(CODE);
@@ -233,7 +233,7 @@ describe("Lookup matrix lifecycle — live routes + real DB cross-process cohere
   });
 
   it("rejects lifecycle mutations from non-admin staff", async () => {
-    const underwriter = await login("underwriter@test.com", "underwriter123");
+    const underwriter = await login("underwriter@test.com", process.env.DEV_TEST_PASSWORD!);
     const denied = await authPost(underwriter, "/api/lookup-matrices", {
       matrixCode: CODE,
       effectiveDate: new Date().toISOString(),

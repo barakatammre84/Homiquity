@@ -1,10 +1,7 @@
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
-import {
-  setupAuth as setupOIDCAuth,
-  registerAuthRoutes,
-} from "./replit_integrations/auth";
-import { authStorage } from "./replit_integrations/auth/storage";
+import { setupSessionAuth, registerAuthRoutes } from "./integrations/auth";
+import { authStorage } from "./integrations/auth/storage";
 import { setupSocialAuth } from "./socialAuth";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
@@ -20,18 +17,6 @@ declare global {
       lastName?: string;
       profileImageUrl?: string;
       role: string;
-      claims?: {
-        sub: string;
-        email?: string;
-        first_name?: string;
-        last_name?: string;
-        profile_image_url?: string;
-        exp?: number;
-        [key: string]: unknown;
-      };
-      access_token?: string;
-      refresh_token?: string;
-      expires_at?: number;
     }
   }
 }
@@ -50,20 +35,16 @@ async function comparePasswords(supplied: string, stored: string): Promise<boole
 }
 
 export async function setupAuth(app: Express) {
-  // Replit OIDC only works on Replit (needs REPL_ID). Skip it locally so the
-  // app boots; email/password + dev test login still work off-Replit.
-  if (process.env.REPL_ID || process.env.REPLIT_DOMAINS) {
-    await setupOIDCAuth(app);
-  } else {
-    console.log("[auth] Replit OIDC skipped — not running on Replit");
-  }
+  // Session + Passport middleware must be installed unconditionally — this is
+  // what makes req.isAuthenticated / req.login / req.user exist on every host.
+  setupSessionAuth(app);
 
   registerAuthRoutes(app);
 
   setupEmailPasswordAuth(app);
   setupSocialAuth(app);
 
-  const isProduction = process.env.NODE_ENV === "production" || !!process.env.REPL_DEPLOYMENT;
+  const isProduction = process.env.NODE_ENV === "production";
   if (isProduction) {
     app.post("/api/test-login", (_req, res) => {
       res.status(404).json({ error: "Not found" });
@@ -280,50 +261,29 @@ function setupDevTestLogin(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (user?.id && user?.role && !user?.claims) {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    try {
-      const dbUser = await authStorage.getUser(user.id);
-      if (!dbUser) {
-        req.logout(() => {});
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      (req.user as any).role = dbUser.role;
-    } catch (error) {
-      console.error("Error refreshing user role:", error);
-      return res.status(500).json({ error: "Internal error" });
-    }
-    return next();
+  if (!req.isAuthenticated?.() || !req.user) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const oidcNext = () => {
-    const u = req.user as any;
-    if (!u?.claims?.sub) {
+  const user = req.user as Express.User;
+  if (!user.id) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  // Re-read the role from the DB so role changes (or a deleted account) take
+  // effect immediately instead of living until the session expires.
+  try {
+    const dbUser = await authStorage.getUser(user.id);
+    if (!dbUser) {
+      req.logout(() => {});
       return res.status(401).json({ error: "Unauthorized" });
     }
-    authStorage.getUser(u.claims.sub).then((dbUser) => {
-      if (!dbUser) {
-        return res.status(401).json({ error: "User not found" });
-      }
-      u.id = dbUser.id;
-      u.email = dbUser.email || undefined;
-      u.firstName = dbUser.firstName || undefined;
-      u.lastName = dbUser.lastName || undefined;
-      u.profileImageUrl = dbUser.profileImageUrl || undefined;
-      u.role = dbUser.role;
-      next();
-    }).catch((error) => {
-      console.error("Error fetching user from DB:", error);
-      res.status(500).json({ error: "Internal error" });
-    });
-  };
-
-  const { isAuthenticated: oidcIsAuthenticated } = await import("./replit_integrations/auth");
-  (oidcIsAuthenticated as any)(req, res, oidcNext);
+    user.role = dbUser.role;
+  } catch (error) {
+    console.error("Error refreshing user role:", error);
+    return res.status(500).json({ error: "Internal error" });
+  }
+  return next();
 };
 
 export const isAdmin: RequestHandler = async (req, res, next) => {

@@ -33,7 +33,7 @@ hits the server (as a serverless function).
 | Entry | File | Used when |
 |-------|------|-----------|
 | Dev server | `server/index-dev.ts` → `runApp(setupVite)` | `npm run dev` — Vite runs as Express middleware, HMR for client |
-| Prod server (persistent) | `server/index-prod.ts` → `runApp(serveStatic)` | `npm start` on a VM/Replit/Fly — serves `dist/public` statically |
+| Prod server (persistent) | `server/index-prod.ts` → `runApp(serveStatic)` | `npm start` on a VM/Fly — serves `dist/public` statically |
 | Vercel serverless | `api/index.ts` → `createApp(noop)` | Every `/api/*` request on Vercel; client is served by the CDN, not Express |
 | Client | `client/index.html` → `client/src/main.tsx` → `App.tsx` | The SPA — all browser routes |
 | DB scripts | `server/scripts/*` (e.g. `seedLendingGrids.ts`), `drizzle-kit push` | Manual/ops |
@@ -80,7 +80,7 @@ Order matters — this is the actual middleware chain from `server/app.ts`:
 | Emails | Nodemailer — SMTP or SendGrid if configured, **console log otherwise** | `server/services/emailService.ts` |
 | PDF letters | PDFKit-generated pre-approval/pre-qualification letters | `server/services/pdfLetterGenerator.ts` |
 | MISMO 3.4 XML | GSE-compliant loan export | `server/mismo.ts`, `server/services/mismoValidation.ts` |
-| File downloads/uploads | GCS signed URLs (client uploads directly to the bucket) | `server/replit_integrations/object_storage/` |
+| File downloads/uploads | GCS signed URLs (client uploads directly to the bucket) | `server/integrations/object_storage/` |
 | Outbound API calls | Plaid, Gemini, OpenAI, Google Maps, RapidAPI (see doc 09) | various services |
 | Logs | stdout (Vercel/host log drain picks them up) | `log()` in `server/app.ts` |
 

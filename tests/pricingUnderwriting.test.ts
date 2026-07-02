@@ -79,7 +79,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
   let propertyId: string | undefined;
 
   beforeAll(async () => {
-    cookie = await login("buyer@test.com", "buyer123");
+    cookie = await login("buyer@test.com", process.env.DEV_TEST_PASSWORD!);
 
     const created = await authPost(cookie, "/api/loan-applications", {
       annualIncome: "120000",

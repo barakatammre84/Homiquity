@@ -135,7 +135,7 @@ describe("Lookup matrix coverage-gap guard — live routes + real DB", () => {
   let admin: string;
 
   beforeAll(async () => {
-    admin = await login("admin@test.com", "admin123");
+    admin = await login("admin@test.com", process.env.DEV_TEST_PASSWORD!);
     await deleteTestMatrices();
   });
 

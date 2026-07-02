@@ -11,7 +11,7 @@
 import { GoogleGenAI } from "@google/genai";
 import * as fs from "fs";
 import * as path from "path";
-import { ObjectStorageService, ObjectNotFoundError } from "./replit_integrations/object_storage";
+import { ObjectStorageService, ObjectNotFoundError } from "./integrations/object_storage";
 
 const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;

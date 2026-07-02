@@ -1389,7 +1389,7 @@ export function registerLendingRoutes(
       const storageKey = `letters/${letterNumber}.pdf`;
       let pdfStored = false;
       try {
-        const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+        const { objectStorageClient } = await import("../integrations/object_storage/objectStorage");
         const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
         if (privateDir) {
           const fullPath = `${privateDir}/${storageKey}`;
@@ -1537,7 +1537,7 @@ export function registerLendingRoutes(
 
       if (letter?.pdfStorageKey) {
         try {
-          const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+          const { objectStorageClient } = await import("../integrations/object_storage/objectStorage");
           const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
           const fullPath = `${privateDir}/${letter.pdfStorageKey}`;
           const parts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");
@@ -1757,7 +1757,7 @@ export function registerLendingRoutes(
       const storageKey = `prequal-letters/${letterNumber}.pdf`;
       let pdfStorageKey: string | null = null;
       try {
-        const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+        const { objectStorageClient } = await import("../integrations/object_storage/objectStorage");
         const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
         if (privateDir) {
           const fullPath = `${privateDir}/${storageKey}`;
@@ -1831,7 +1831,7 @@ export function registerLendingRoutes(
 
       if (letter.pdfStorageKey) {
         try {
-          const { objectStorageClient } = await import("../replit_integrations/object_storage/objectStorage");
+          const { objectStorageClient } = await import("../integrations/object_storage/objectStorage");
           const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
           const fullPath = `${privateDir}/${letter.pdfStorageKey}`;
           const parts = fullPath.startsWith("/") ? fullPath.slice(1).split("/") : fullPath.split("/");

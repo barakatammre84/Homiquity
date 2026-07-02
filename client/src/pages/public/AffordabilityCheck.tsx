@@ -53,6 +53,7 @@ interface PropertyData {
   hoaMonthly: number;
   mortgage: { monthlyPayment: number; rate: number | null } | null;
   neighborhoods: { name: string; medianPrice: number | null }[];
+  coordinate?: { lat: number; lon?: number; lng?: number } | null;
 }
 
 interface FinancialInputs {
@@ -313,7 +314,7 @@ export default function AffordabilityCheck() {
                   </div>
                 ) : property.coordinate && (
                   <div className="md:w-80 h-56 md:h-auto flex-shrink-0 rounded-t-lg md:rounded-l-lg md:rounded-tr-none overflow-hidden">
-                    <StreetView lat={property.coordinate.lat} lng={property.coordinate.lon || property.coordinate.lng} height={224} />
+                    <StreetView lat={property.coordinate.lat} lng={property.coordinate.lon ?? property.coordinate.lng ?? 0} height={224} />
                   </div>
                 )}
                 <div className="flex-1 p-6">
@@ -364,7 +365,7 @@ export default function AffordabilityCheck() {
               <CardContent className="p-0 overflow-hidden rounded-lg">
                 <PropertyMap
                   lat={property.coordinate.lat}
-                  lng={property.coordinate.lon || property.coordinate.lng}
+                  lng={property.coordinate.lon ?? property.coordinate.lng ?? 0}
                   address={`${property.address}, ${property.city}, ${property.stateCode}`}
                 />
               </CardContent>
