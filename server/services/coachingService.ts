@@ -1,10 +1,21 @@
 import OpenAI from "openai";
 import { z } from "zod";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Lazily constructed: the OpenAI SDK THROWS at construction when no API key is
+// configured, and this module is imported by the route registry — an eager
+// `new OpenAI()` here crashes the whole server at boot on any host where the
+// key isn't set (it took down every API route on Vercel). With lazy init, only
+// the AI Coach endpoints fail when the key is missing; everything else works.
+let openaiClient: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  }
+  return openaiClient;
+}
 
 export interface CoachingProfile {
   readinessTier: "ready_now" | "almost_ready" | "building" | "exploring";
@@ -1240,7 +1251,7 @@ export async function generateCoachResponse(
   messages.push({ role: "user", content: userMessage });
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-5-mini",
       messages,
       max_completion_tokens: 16384,
