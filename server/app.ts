@@ -242,21 +242,13 @@ app.use((req, res, next) => {
   next();
 });
 
-export default async function runApp(
+// Builds the fully-wired Express app (routes, error handler, and the provided
+// setup step) WITHOUT binding a port. Persistent hosts call runApp() below,
+// which listens; serverless targets (e.g. Vercel) import createApp() and hand
+// the returned app to the platform's request handler instead of listening.
+export async function createApp(
   setup: (app: Express, server: Server) => Promise<void>,
-) {
-  process.on("uncaughtException", (err) => {
-    log(`Uncaught Exception: ${err.message}`, "error");
-    console.error(err.stack);
-  });
-
-  process.on("unhandledRejection", (reason) => {
-    log(`Unhandled Rejection: ${reason}`, "error");
-    if (reason instanceof Error) {
-      console.error(reason.stack);
-    }
-  });
-
+): Promise<{ app: Express; server: Server }> {
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -272,6 +264,26 @@ export default async function runApp(
   // importantly run the final setup after setting up all the other routes so
   // the catch-all route doesn't interfere with the other routes
   await setup(app, server);
+
+  return { app, server };
+}
+
+export default async function runApp(
+  setup: (app: Express, server: Server) => Promise<void>,
+) {
+  process.on("uncaughtException", (err) => {
+    log(`Uncaught Exception: ${err.message}`, "error");
+    console.error(err.stack);
+  });
+
+  process.on("unhandledRejection", (reason) => {
+    log(`Unhandled Rejection: ${reason}`, "error");
+    if (reason instanceof Error) {
+      console.error(reason.stack);
+    }
+  });
+
+  const { server } = await createApp(setup);
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
