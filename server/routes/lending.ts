@@ -972,6 +972,20 @@ export function registerLendingRoutes(
           documentType: documentType || "other",
           triggeredBy: userId,
         });
+
+        // Zero-touch: move matching outstanding conditions to "submitted"
+        // and notify the deal team (clearing stays a human decision).
+        try {
+          const { matchUploadedDocumentToConditions } = await import("../pipelineEngine");
+          await matchUploadedDocumentToConditions({
+            applicationId,
+            documentType: documentType || "other",
+            fileName: req.file.originalname,
+            uploadedBy: userId,
+          });
+        } catch (matchErr) {
+          console.error("[Documents] Condition matching failed (non-fatal):", matchErr);
+        }
       }
 
       res.status(201).json(document);

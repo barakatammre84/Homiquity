@@ -351,6 +351,65 @@ export async function initializeLoanPipeline(
   return { milestones: milestone, conditions, tasks };
 }
 
+/**
+ * Zero-touch intake: when a borrower uploads a document, match its type
+ * against the application's outstanding conditions and move matches to
+ * "submitted" (ready for underwriter review — clearing remains a human
+ * judgment, never automated). Active deal-team staff get one notification
+ * per upload event so nothing sits unnoticed.
+ */
+export async function matchUploadedDocumentToConditions(args: {
+  applicationId: string;
+  documentType: string;
+  fileName: string;
+  uploadedBy: string;
+}): Promise<{ matchedConditionIds: string[] }> {
+  const { applicationId, documentType, fileName, uploadedBy } = args;
+
+  const conditions = await storage.getLoanConditionsByApplication(applicationId);
+  const matches = conditions.filter(
+    (c) => c.status === "outstanding" && (c.requiredDocumentTypes ?? []).includes(documentType),
+  );
+  if (matches.length === 0) return { matchedConditionIds: [] };
+
+  for (const condition of matches) {
+    await storage.updateLoanCondition(condition.id, { status: "submitted" });
+    await storage.createDealActivity({
+      applicationId,
+      activityType: "note",
+      title: `Condition ready for review: ${condition.title}`,
+      description: `${fileName} (${documentType.replace(/_/g, " ")}) was uploaded — the condition moved to "submitted" and awaits underwriter review.`,
+      performedBy: uploadedBy,
+    });
+  }
+
+  try {
+    const team = await storage.getDealTeamMembers(applicationId);
+    const activeStaff = team.filter(
+      (m): m is typeof m & { userId: string } =>
+        m.isActive === true && !!m.userId && m.userId !== uploadedBy,
+    );
+    for (const member of activeStaff) {
+      await storage.createNotification({
+        userId: member.userId,
+        type: "document_review",
+        title: `${matches.length} condition${matches.length === 1 ? "" : "s"} ready for review`,
+        body: `${fileName} was uploaded and matched: ${matches.map((c) => c.title).join("; ")}.`,
+        entityType: "loan_application",
+        entityId: applicationId,
+        metadata: { documentType, conditionIds: matches.map((c) => c.id) },
+      });
+    }
+  } catch (notifyErr) {
+    console.error("[PipelineEngine] Condition-match notification failed (non-fatal):", notifyErr);
+  }
+
+  console.log(
+    `[pipeline] ${fileName} (${documentType}) matched ${matches.length} condition(s) on ${applicationId} → submitted`,
+  );
+  return { matchedConditionIds: matches.map((c) => c.id) };
+}
+
 export async function updatePipelineStage(
   applicationId: string,
   newStage: string,

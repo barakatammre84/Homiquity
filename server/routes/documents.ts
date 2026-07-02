@@ -15,6 +15,22 @@ import { sendNotificationEmail } from "../services/emailService";
 
 const objectStorageService = new ObjectStorageService();
 
+/** Zero-touch: route an uploaded document at its outstanding conditions (non-fatal). */
+async function matchConditionsForUpload(
+  applicationId: string | null | undefined,
+  documentType: string,
+  fileName: string,
+  uploadedBy: string,
+): Promise<void> {
+  if (!applicationId) return;
+  try {
+    const { matchUploadedDocumentToConditions } = await import("../pipelineEngine");
+    await matchUploadedDocumentToConditions({ applicationId, documentType, fileName, uploadedBy });
+  } catch (err) {
+    console.error("[Documents] Condition matching failed (non-fatal):", err);
+  }
+}
+
 export function registerDocumentRoutes(
   app: Express,
   storage: IStorage,
@@ -294,6 +310,7 @@ export function registerDocumentRoutes(
           performedBy: userId,
           metadata: { documentId: document.id, extractedData },
         });
+        await matchConditionsForUpload(applicationId, "tax_return", req.file.originalname, userId);
       }
 
       res.status(201).json({
@@ -357,6 +374,7 @@ export function registerDocumentRoutes(
           performedBy: userId,
           metadata: { documentId: document.id, extractedData },
         });
+        await matchConditionsForUpload(applicationId, "pay_stub", req.file.originalname, userId);
       }
 
       res.status(201).json({
@@ -420,6 +438,7 @@ export function registerDocumentRoutes(
           performedBy: userId,
           metadata: { documentId: document.id, extractedData },
         });
+        await matchConditionsForUpload(applicationId, "bank_statement", req.file.originalname, userId);
       }
 
       res.status(201).json({

@@ -111,7 +111,9 @@ export const tasks = pgTable("tasks", {
   taskTypeCode: varchar("task_type_code", { length: 50 }), // Specific task code for SLA mapping
   
   // Task Engine Fields
-  triggerSource: varchar("trigger_source", { length: 20 }).default("MANUAL"), // OCR, POLICY, LENDER, SYSTEM, MANUAL, COC
+  // 50 not 20: "DOCUMENT_INTELLIGENCE" is 21 chars and overflowed the column,
+  // 500ing every borrower document upload via the task engine's upload event.
+  triggerSource: varchar("trigger_source", { length: 50 }).default("MANUAL"), // OCR, POLICY, LENDER, SYSTEM, MANUAL, COC, DOCUMENT_INTELLIGENCE
   ownerRole: varchar("owner_role", { length: 20 }).default("PROCESSOR"), // Role responsible
   slaClass: varchar("sla_class", { length: 5 }).default("S3"), // S0-S5
   slaDueAt: timestamp("sla_due_at"), // Computed deadline based on SLA class
