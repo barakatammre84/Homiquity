@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
+import { requireConsent } from "../consentGate";
 import { isStaffRole, isInternalStaffRole } from "@shared/schema";
 import type { User } from "@shared/schema";
 import { 
@@ -654,7 +655,7 @@ export function registerUnderwritingRoutes(
     }
   });
 
-  app.get("/api/loan-applications/:id/loan-estimate", isAuthenticated, async (req, res) => {
+  app.get("/api/loan-applications/:id/loan-estimate", isAuthenticated, requireConsent("e_disclosure"), async (req, res) => {
     try {
       const { id } = req.params;
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);

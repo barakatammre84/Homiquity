@@ -23,6 +23,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { upload, verifyFileSignature } from "./utils";
 import { logAudit } from "../auditLog";
+import * as creditService from "../services/creditService";
 import { sendNotificationEmail } from "../services/emailService";
 import { COMPANY_CONFIG } from "../config/company";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
@@ -97,6 +98,10 @@ const loanApplicationInputSchema = z.object({
     .refine(v => !v || (VALID_US_STATES as readonly string[]).includes(v), { message: "Please select a valid US state" })
     .optional(),
   incomeSources: z.array(serverIncomeSourceSchema).optional(),
+  // FCRA soft-pull authorization acknowledged on the funnel's final step.
+  // When true, a credit_consents evidence row (IP, user agent, canonical
+  // disclosure text) is recorded alongside the application.
+  softPullConsentAccepted: z.boolean().optional(),
 }).refine(
   (data) => {
     const dp = parseFloat(String(data.downPayment));
@@ -478,6 +483,32 @@ export function registerLendingRoutes(
 
       const application = await storage.createLoanApplication(applicationData);
       logAudit(req, "loan_application.created", "loan_application", application.id);
+
+      // Persist the funnel's FCRA soft-pull acknowledgment as ledger evidence
+      // (canonical disclosure text + IP + user agent). Non-fatal: a consent
+      // write failure must not lose the application itself.
+      if (formData.softPullConsentAccepted === true) {
+        try {
+          const borrowerFullName =
+            [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Borrower";
+          const consent = await creditService.createCreditConsent({
+            applicationId: application.id,
+            userId,
+            consentType: "soft_pull",
+            borrowerFullName,
+            consentGiven: true,
+            ipAddress: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip,
+            userAgent: req.get("User-Agent"),
+          });
+          logAudit(req, "credit_consent.created", "loan_application", application.id, {
+            consentId: consent.id,
+            consentType: "soft_pull",
+            source: "preapproval_funnel",
+          });
+        } catch (consentErr) {
+          console.error("[Consent] Failed to persist funnel soft-pull consent (non-fatal):", consentErr);
+        }
+      }
 
       const inviteId = req.body.inviteId;
       if (inviteId && typeof inviteId === "string") {

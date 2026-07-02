@@ -583,6 +583,9 @@ function PreApprovalFunnel() {
       const formData = JSON.parse(saved) as PreApprovalFormData;
       form.reset(formData);
       localStorage.removeItem(PENDING_SUBMIT_KEY);
+      // The pending marker is only ever written after the final-step consent
+      // gate passed, so restore the acknowledgment for the deferred submit.
+      setConsent(true);
       setTimeout(() => {
         submitMutation.mutate(formData);
       }, 500);
@@ -845,6 +848,9 @@ function PreApprovalFunnel() {
         purchasePrice: data.purchasePrice.replace(/,/g, ""),
         downPayment: data.downPayment.replace(/,/g, ""),
         monthlyDebts: data.monthlyDebts.replace(/,/g, ""),
+        // FCRA soft-pull authorization from the final step — persisted
+        // server-side as a credit_consents evidence row (IP, UA, disclosure).
+        softPullConsentAccepted: funnelState.consent.softPullAcknowledged,
       };
 
       if (inviteId.current) {

@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { ConsentGateCard } from "@/components/ConsentGateCard";
 import { useParams, Link } from "wouter";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
@@ -113,10 +114,15 @@ export default function LoanEstimate() {
   const { id } = useParams<{ id: string }>();
   const { user, isLoading: authLoading } = useAuth();
 
+  const queryClient = useQueryClient();
   const { data: le, isLoading, error } = useQuery<LoanEstimateData>({
     queryKey: ['/api/loan-applications', id, 'loan-estimate'],
     enabled: !!id && !authLoading,
+    retry: (failureCount, err) =>
+      !(err instanceof Error && err.message.includes("CONSENT_REQUIRED")) && failureCount < 2,
   });
+
+  const consentRequired = error instanceof Error && error.message.includes("CONSENT_REQUIRED");
 
   if (isLoading || authLoading) {
     return (
@@ -128,6 +134,20 @@ export default function LoanEstimate() {
           </div>
           <Skeleton className="h-96 w-full" />
         </div>
+      </div>
+    );
+  }
+
+  if (consentRequired && id) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <ConsentGateCard
+          applicationId={id}
+          consentType="e_disclosure"
+          onConsented={() =>
+            queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', id, 'loan-estimate'] })
+          }
+        />
       </div>
     );
   }
