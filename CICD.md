@@ -38,10 +38,12 @@ Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
   static client from `dist/public`; rewrites send `/api/*` to the Express app
   running as a serverless function (`api/index.ts`, built via `createApp()` in
   `server/app.ts`), everything else falls back to the SPA `index.html`.
-- `engines.node: 24.x` in `package.json` pins the Node version (matches local
-  dev and ships npm 11; Node 22.x's bundled npm 10 hit a fatal "Exit handler
-  never called" install bug). `.npmrc` disables audit/fund to keep installs
-  deterministic.
+- `engines.node: 20.x` in `package.json` pins the Vercel build/runtime to
+  Node 20. **Do not raise this without testing a deploy**: on Vercel's build
+  image, the npm bundled with Node 22.x and 24.x crashes during install with
+  "Exit handler never called" (npm/cli#8974); Node 20's npm installs cleanly.
+  Local dev on Node 24 still works — npm just prints a harmless EBADENGINE
+  warning. `.npmrc` disables audit/fund to keep installs deterministic.
 - Env vars (Vercel → Settings → Environment Variables): `DATABASE_URL` (Neon,
   non-localhost), `SESSION_SECRET`, `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`,
   `NODE_ENV=production`, plus optional `GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY`,

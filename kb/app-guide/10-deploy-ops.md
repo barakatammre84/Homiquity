@@ -22,10 +22,12 @@ Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
   warm instance via `createApp()` (no `listen()`).
 - **Routing** (`vercel.json` rewrites): filesystem first (static assets), then
   `/api/(.*)` → the function, then everything → `index.html` (SPA fallback).
-- **Node is pinned** to 24.x (`engines` in package.json) — this matches local
-  dev and ships npm 11. Node 22.x's bundled npm 10 hit a fatal install bug
-  ("Exit handler never called"). `.npmrc` also turns off audit/fund so installs
-  don't make flaky network calls during the build.
+- **Node is pinned to 20.x** (`engines` in package.json) — deliberately. On
+  Vercel's build image, the npm bundled with Node 22.x **and** 24.x crashes
+  mid-install with "Exit handler never called" (npm/cli#8974); Node 20's npm
+  works. Local dev on Node 24 is fine (npm shows a harmless EBADENGINE
+  warning). If you ever bump this, watch the very next deploy's install step.
+  `.npmrc` turns off audit/fund so installs don't make extra network calls.
 
 ## Environments
 
