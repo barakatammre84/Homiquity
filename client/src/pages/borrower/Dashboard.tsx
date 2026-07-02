@@ -15,7 +15,7 @@ import { BorrowerRequests } from "@/components/BorrowerRequests";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
 import { TrustLayer } from "@/components/TrustLayer";
-import { FirstVisitWelcome } from "@/components/WhatsNext";
+import { RenterHome } from "@/pages/borrower/RenterHome";
 import { isStaffRole } from "@shared/schema";
 import PredictionInsights from "@/components/borrower/PredictionInsights";
 import type { LoanApplication, DealActivity } from "@shared/schema";
@@ -830,17 +830,11 @@ export default function Dashboard() {
 
   if (isFirstVisit) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-lg px-4 py-8 sm:px-6 sm:py-10">
-          <FirstVisitWelcome
-            userName={user?.firstName || undefined}
-            hasApplication={false}
-            hasDocuments={false}
-            hasCoachSession={hasCoachSession}
-            hasBrowsedProperties={browsedProperties}
-          />
-        </div>
-      </div>
+      <RenterHome
+        userName={user?.firstName || undefined}
+        hasCoachSession={hasCoachSession}
+        hasBrowsedProperties={browsedProperties}
+      />
     );
   }
 
