@@ -275,9 +275,11 @@ export const loanOptions = pgTable("loan_options", {
   isLocked: boolean("is_locked").default(false),
   lockedAt: timestamp("locked_at"),
   lockExpiresAt: timestamp("lock_expires_at"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_loan_options_application").on(table.applicationId),
+]);
 
 export const insertLoanOptionSchema = createInsertSchema(loanOptions).omit({
   id: true,
@@ -334,7 +336,10 @@ export const dealActivities = pgTable("deal_activities", {
   visibleToRoles: text("visible_to_roles").array(),
   
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("idx_deal_activities_application").on(table.applicationId),
+  index("idx_deal_activities_created").on(table.createdAt),
+]);
 
 export const insertDealActivitySchema = createInsertSchema(dealActivities).omit({
   id: true,
@@ -2411,7 +2416,10 @@ export const verifications = pgTable("verifications", {
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
-});
+}, (table) => [
+  index("idx_verifications_application").on(table.applicationId),
+  index("idx_verifications_app_type").on(table.applicationId, table.verificationType),
+]);
 
 export const insertVerificationSchema = createInsertSchema(verifications).omit({
   id: true,

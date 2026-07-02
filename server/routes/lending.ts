@@ -9,6 +9,16 @@ import {
 } from "@shared/schema";
 import { analyzeLoanApplication } from "../gemini";
 import { generateMISMO34XML, type MISMOLoanDTO } from "../mismo";
+import { db } from "../db";
+import {
+  creditConsents,
+  dealActivities,
+  hmdaDemographics,
+  loanOptions,
+  tasks,
+  verifications,
+} from "@shared/schema";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
 import { upload, verifyFileSignature } from "./utils";
@@ -111,83 +121,104 @@ export function registerLendingRoutes(
         storage.getUnreadMessageCount(userId),
       ]);
 
-      const recentOptions = [];
-      const loanOptionCounts: Record<string, number> = {};
-      const activitiesMap: Record<string, any[]> = {};
-      const hmdaStatus: Record<string, boolean> = {};
-
-      for (const app of applications.slice(0, 3)) {
-        const options = await storage.getLoanOptionsByApplication(app.id);
-        recentOptions.push(...options);
-        loanOptionCounts[app.id] = options.length;
+      // One batched query per table across the visible applications, all in a
+      // single parallel wave — the previous version issued 8 + ~13×N serial
+      // queries (N = application count), which is what pushes dashboard loads
+      // past a second on hosted Postgres round-trip latencies.
+      if (applications.length === 0) {
+        return res.json({
+          applications,
+          documents,
+          recentOptions: [],
+          stats,
+          unreadMessages,
+          pendingTaskCount: 0,
+          activities: [],
+          loanOptionCounts: {},
+          hmdaStatus: {},
+          verificationStatus: {},
+        });
       }
 
-      for (const app of applications.slice(0, 3)) {
-        const activities = await storage.getDealActivitiesByApplication(app.id);
-        activitiesMap[app.id] = activities.slice(0, 10);
-      }
+      const topAppIds = applications.slice(0, 3).map((a) => a.id);
+      const allAppIds = applications.map((a) => a.id);
 
-      let pendingTaskCount = 0;
-      for (const app of applications) {
-        const tasks = await storage.getTasksByApplication(app.id);
-        pendingTaskCount += tasks.filter(t => ["pending", "in_progress", "rejected"].includes(t.status)).length;
-      }
-
-      try {
-        const { hmdaDemographics } = await import("@shared/schema");
-        const { eq } = await import("drizzle-orm");
-        const { db } = await import("../db");
-        for (const app of applications.slice(0, 3)) {
-          const [record] = await db.select({ id: hmdaDemographics.id })
+      const [optionRows, activityRows, taskRows, hmdaRows, consentRows, verificationRows] =
+        await Promise.all([
+          db
+            .select()
+            .from(loanOptions)
+            .where(inArray(loanOptions.applicationId, topAppIds))
+            // Match storage.getLoanOptionsByApplication's ordering so the
+            // recentOptions slice(0,5) picks the same rows as before.
+            .orderBy(loanOptions.isRecommended, loanOptions.createdAt),
+          db
+            .select()
+            .from(dealActivities)
+            .where(inArray(dealActivities.applicationId, topAppIds))
+            .orderBy(desc(dealActivities.createdAt)),
+          db
+            .select({ applicationId: tasks.applicationId, status: tasks.status })
+            .from(tasks)
+            .where(inArray(tasks.applicationId, allAppIds)),
+          db
+            .select({ applicationId: hmdaDemographics.applicationId })
             .from(hmdaDemographics)
-            .where(eq(hmdaDemographics.applicationId, app.id))
-            .limit(1);
-          hmdaStatus[app.id] = !!record;
-        }
-      } catch (hmdaErr) {
-        console.warn("[Dashboard] HMDA status lookup failed:", hmdaErr);
+            .where(inArray(hmdaDemographics.applicationId, topAppIds)),
+          db
+            .select({ applicationId: creditConsents.applicationId })
+            .from(creditConsents)
+            .where(inArray(creditConsents.applicationId, topAppIds)),
+          db
+            .select({
+              applicationId: verifications.applicationId,
+              verificationType: verifications.verificationType,
+              identityVerified: verifications.identityVerified,
+            })
+            .from(verifications)
+            .where(
+              and(
+                inArray(verifications.applicationId, topAppIds),
+                inArray(verifications.verificationType, ["identity", "income"]),
+              ),
+            ),
+        ]);
+
+      const recentOptions: typeof optionRows = [];
+      const loanOptionCounts: Record<string, number> = {};
+      for (const appId of topAppIds) {
+        const options = optionRows.filter((o) => o.applicationId === appId);
+        recentOptions.push(...options);
+        loanOptionCounts[appId] = options.length;
       }
 
+      const activitiesMap: Record<string, any[]> = {};
+      for (const appId of topAppIds) {
+        activitiesMap[appId] = activityRows.filter((a) => a.applicationId === appId).slice(0, 10);
+      }
+
+      const pendingTaskCount = taskRows.filter((t) =>
+        ["pending", "in_progress", "rejected"].includes(t.status),
+      ).length;
+
+      const hmdaStatus: Record<string, boolean> = {};
+      const hmdaApps = new Set(hmdaRows.map((r) => r.applicationId));
+      for (const appId of topAppIds) hmdaStatus[appId] = hmdaApps.has(appId);
+
+      const consentApps = new Set(consentRows.map((r) => r.applicationId));
       const verificationStatus: Record<string, { hasCreditConsent: boolean; hasIdVerification: boolean; hasBankConnected: boolean; hasRateLocked: boolean }> = {};
-      try {
-        const { creditConsents, verifications } = await import("@shared/schema");
-        const { eq, and } = await import("drizzle-orm");
-        const { db } = await import("../db");
-        for (const app of applications.slice(0, 3)) {
-          const [consent] = await db.select({ id: creditConsents.id })
-            .from(creditConsents)
-            .where(eq(creditConsents.applicationId, app.id))
-            .limit(1);
-          let hasIdVer = false;
-          try {
-            const [ver] = await db.select({ identityVerified: verifications.identityVerified })
-              .from(verifications)
-              .where(and(eq(verifications.applicationId, app.id), eq(verifications.verificationType, "identity")))
-              .limit(1);
-            hasIdVer = !!ver?.identityVerified;
-          } catch (idErr) {
-            console.warn(`[Dashboard] ID verification check failed for app ${app.id}:`, idErr);
-          }
-          let hasBankConn = false;
-          try {
-            const [ver] = await db.select({ id: verifications.id })
-              .from(verifications)
-              .where(and(eq(verifications.applicationId, app.id), eq(verifications.verificationType, "income")))
-              .limit(1);
-            hasBankConn = !!ver;
-          } catch (bankErr) {
-            console.warn(`[Dashboard] Bank connection check failed for app ${app.id}:`, bankErr);
-          }
-          const lockedOption = recentOptions.find((o: any) => o.applicationId === app.id && o.rateLockedAt);
-          verificationStatus[app.id] = {
-            hasCreditConsent: !!consent,
-            hasIdVerification: hasIdVer,
-            hasBankConnected: hasBankConn,
-            hasRateLocked: !!lockedOption,
-          };
-        }
-      } catch (verErr) {
-        console.warn("[Dashboard] Verification status lookup failed:", verErr);
+      for (const appId of topAppIds) {
+        const appVerifications = verificationRows.filter((v) => v.applicationId === appId);
+        verificationStatus[appId] = {
+          hasCreditConsent: consentApps.has(appId),
+          hasIdVerification: appVerifications.some(
+            (v) => v.verificationType === "identity" && v.identityVerified,
+          ),
+          hasBankConnected: appVerifications.some((v) => v.verificationType === "income"),
+          hasRateLocked: recentOptions.some(
+            (o: any) => o.applicationId === appId && o.rateLockedAt,
+          ),
+        };
       }
 
       const allActivities = Object.values(activitiesMap).flat()
