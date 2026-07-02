@@ -55,7 +55,7 @@ export async function createLinkToken(options: CreateLinkTokenOptions) {
     user: {
       client_user_id: userId,
     },
-    client_name: "MortgageAI",
+    client_name: "Homiquity",
     products,
     country_codes: [CountryCode.Us],
     language: "en",

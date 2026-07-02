@@ -25,11 +25,12 @@ import {
   verifyHashChain 
 } from "./encryptionService";
 
-const CURRENT_DISCLOSURE_VERSION = "FCRA-2025-v1";
+// v2 (2026-07): rebranded disclosure text from MortgageAI to Homiquity.
+const CURRENT_DISCLOSURE_VERSION = "FCRA-2025-v2";
 
 const FCRA_DISCLOSURE_TEXT = `CONSUMER CREDIT AUTHORIZATION AND DISCLOSURE
 
-By providing your consent below, you authorize MortgageAI and its designated agents to:
+By providing your consent below, you authorize Homiquity and its designated agents to:
 
 1. OBTAIN YOUR CREDIT REPORT: We will request a consumer credit report from one or more consumer reporting agencies (Experian, Equifax, and/or TransUnion) in connection with your mortgage loan application.
 
@@ -870,8 +871,8 @@ Phone: ${data.bureau.phone}
 Website: ${data.bureau.website}
 
 For questions about this notice, please contact us at:
-MortgageAI
-support@mortgageai.com
+Homiquity
+support@homiquity.com
 
 This notice is required by the Fair Credit Reporting Act.
 `;
