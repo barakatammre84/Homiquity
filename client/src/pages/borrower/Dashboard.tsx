@@ -783,6 +783,10 @@ export default function Dashboard() {
     (app) => !["closed", "denied"].includes(app.status)
   );
 
+  // Post-close borrowers graduate to the Homeowner module (equity tracking,
+  // refi alerts). This is the only in-app path to /homeowner-dashboard.
+  const hasClosedLoan = applications.some((app) => app.status === "closed");
+
   const activeApplication = selectedAppId
     ? applications.find(app => app.id === selectedAppId) || defaultApp
     : defaultApp;
@@ -881,6 +885,22 @@ export default function Dashboard() {
               />
             )}
           </div>
+          {hasClosedLoan && (
+            <Link href="/homeowner-dashboard">
+              <div
+                className="mt-3 flex items-center justify-between rounded-lg border border-card-border bg-card px-4 py-3 hover-elevate cursor-pointer"
+                data-testid="link-homeowner-dashboard"
+              >
+                <div>
+                  <p className="text-sm font-semibold">Your Homeowner Hub</p>
+                  <p className="text-xs text-muted-foreground">
+                    Track your equity, watch for refinance opportunities, and manage your home.
+                  </p>
+                </div>
+                <span className="text-sm font-medium text-primary">Open →</span>
+              </div>
+            </Link>
+          )}
         </div>
 
         {/* Section 2: Journey Progress (prominent, above action) */}
