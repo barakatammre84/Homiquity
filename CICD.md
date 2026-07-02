@@ -134,6 +134,9 @@ Persistent hosts (Replit, Fly, a VPS) are unaffected — they still use
 | `GEMINI_API_KEY` | Optional — document AI extraction. |
 | `GOOGLE_MAPS_API_KEY` | Optional — address autocomplete / maps. |
 | `OPENAI_API_KEY` | Optional — AI coach. |
+| `GCS_SERVICE_ACCOUNT_KEY` | Document uploads/downloads. Full GCS service-account JSON (one line). See `.env.example`. |
+| `PRIVATE_OBJECT_DIR` | e.g. `/your-bucket/private` — where borrower documents live. |
+| `PUBLIC_OBJECT_SEARCH_PATHS` | e.g. `/your-bucket/public` — public asset paths. |
 
 > Serverless caveats to know: `express-rate-limit` uses an in-memory store, so
 > limits are per-instance (not global) on Vercel — fine for now, revisit with a
@@ -157,6 +160,23 @@ Once the 22 typecheck errors and the auth bug are fixed and the pipeline is gree
    when checks pass"** so a red pipeline can't ship to production.
 
 ---
+
+## Replit → Vercel migration status
+
+Everything Replit-specific is either fixed, gated behind `REPL_ID` (harmless
+off-Replit), or tracked below:
+
+| Coupling | Status |
+|----------|--------|
+| Serverless entry (`server.listen`) | ✅ Fixed — `createApp()` + `api/index.ts` |
+| Object storage (Replit sidecar for GCS creds + signing) | ✅ Fixed — uses `GCS_SERVICE_ACCOUNT_KEY` / ADC + native V4 signing off-Replit; sidecar only when `REPL_ID` is set |
+| Invite URLs (`REPLIT_DEV_DOMAIN` fallback) | ✅ Already fine — set `PUBLIC_BASE_URL`, else uses the request host |
+| CSRF allowed domains (`REPLIT_DOMAINS`) | ✅ Already fine — host-based off-Replit |
+| `reusePort` listen option | ✅ Already gated on `REPL_ID` |
+| Replit Vite plugins | ✅ Already gated on `REPL_ID` in `vite.config.ts` (dev-only anyway) |
+| **Auth (session/passport only init on Replit)** | ⛔ **Blocker** — being fixed in a separate task; required before anyone can log in on Vercel |
+| Replit OIDC login (`setupOIDCAuth`) | Stays gated on `REPL_ID`; off-Replit logins use email/password + social OAuth |
+| Unused `server/replit_integrations/{image,chat,batch}` | 🧹 Dead code — nothing imports them; delete after the typecheck-fix task lands (it touches those files) |
 
 ## Roadmap / future hardening
 - **Fix the two blockers** (typecheck, off-Replit auth), then flip gates to blocking.
