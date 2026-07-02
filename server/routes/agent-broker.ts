@@ -3,10 +3,13 @@ import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import { z } from "zod";
 import crypto from "crypto";
+import { db } from "../db";
+import { inArray } from "drizzle-orm";
 import {
   type User,
   isInternalStaffRole,
   insertAgentReferralRequestSchema,
+  loanApplications,
 } from "@shared/schema";
 
 export function registerAgentBrokerRoutes(
@@ -424,11 +427,27 @@ export function registerAgentBrokerRoutes(
     try {
       const user = req.user as User;
       const invites = await storage.getApplicationInvitesByReferrer(user.id);
-      
-      // Add computed fields
+
+      // Partner progress signal: referring agents see how far their client's
+      // application has progressed (stage only — no financials, no PII).
+      const linkedIds = invites
+        .map((i) => i.loanApplicationId)
+        .filter((id): id is string => !!id);
+      const stageById = new Map<string, string>();
+      if (linkedIds.length > 0) {
+        const rows = await db
+          .select({ id: loanApplications.id, status: loanApplications.status })
+          .from(loanApplications)
+          .where(inArray(loanApplications.id, linkedIds));
+        for (const row of rows) stageById.set(row.id, row.status);
+      }
+
       const invitesWithStatus = invites.map(invite => ({
         ...invite,
         isExpired: new Date(invite.expiresAt) < new Date(),
+        applicationStatus: invite.loanApplicationId
+          ? stageById.get(invite.loanApplicationId) ?? null
+          : null,
       }));
 
       res.json(invitesWithStatus);

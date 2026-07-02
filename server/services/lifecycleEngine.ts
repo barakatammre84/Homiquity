@@ -1,5 +1,6 @@
 import { db } from "../db";
 import {
+  documents,
   equitySnapshots,
   homeownerProfiles,
   loanApplications,
@@ -9,7 +10,7 @@ import {
   refiAlerts,
   type HomeownerProfile,
 } from "@shared/schema";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { storage } from "../storage";
 import { fetchAvm } from "../mcp/vendors";
 
@@ -116,7 +117,67 @@ interface SweepResult {
   snapshotsCreated: number;
   pmiAlerts: number;
   refiAlertsCreated: number;
+  docExpiryNudges: number;
   errors: number;
+}
+
+/** Days after which most lenders consider income/asset documents stale. */
+const DOC_FRESHNESS_DAYS = 30;
+/** Nudge borrowers a few days before the cliff. */
+const DOC_NUDGE_AT_DAYS = 25;
+
+const IN_FLIGHT_STATUSES = [
+  "submitted",
+  "analyzing",
+  "pre_approved",
+  "verified",
+  "doc_collection",
+  "processing",
+  "underwriting",
+  "conditional",
+];
+
+/**
+ * Consumer freshness signal: documents on in-flight applications crossing the
+ * 25-day mark TODAY get one nudge (the daily window makes this naturally
+ * idempotent — each document passes through the window exactly once).
+ */
+async function sweepAgingDocuments(counters: SweepResult): Promise<void> {
+  const rows = await db
+    .select({
+      userId: documents.userId,
+      fileName: documents.fileName,
+      applicationId: documents.applicationId,
+    })
+    .from(documents)
+    .innerJoin(loanApplications, eq(documents.applicationId, loanApplications.id))
+    .where(
+      and(
+        inArray(loanApplications.status, IN_FLIGHT_STATUSES),
+        sql`${documents.createdAt} <= now() - interval '${sql.raw(String(DOC_NUDGE_AT_DAYS))} days'`,
+        sql`${documents.createdAt} > now() - interval '${sql.raw(String(DOC_NUDGE_AT_DAYS + 1))} days'`,
+      ),
+    );
+
+  const byUser = new Map<string, { fileNames: string[]; applicationId: string | null }>();
+  for (const row of rows) {
+    const bucket = byUser.get(row.userId) ?? { fileNames: [], applicationId: row.applicationId };
+    bucket.fileNames.push(row.fileName);
+    byUser.set(row.userId, bucket);
+  }
+
+  for (const [userId, { fileNames, applicationId }] of byUser) {
+    await storage.createNotification({
+      userId,
+      type: "document_expiring",
+      title: "Your documents are about to expire",
+      body: `${fileNames.slice(0, 2).join(" and ")}${fileNames.length > 2 ? ` and ${fileNames.length - 2} more` : ""} will be ${DOC_FRESHNESS_DAYS} days old soon — most lenders require fresh copies at underwriting. Re-uploading now prevents a delay at closing.`,
+      entityType: applicationId ? "loan_application" : undefined,
+      entityId: applicationId ?? undefined,
+      metadata: { fileNames, nudgeAtDays: DOC_NUDGE_AT_DAYS },
+    });
+    counters.docExpiryNudges += 1;
+  }
 }
 
 async function sweepProfile(
@@ -246,6 +307,7 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
     snapshotsCreated: 0,
     pmiAlerts: 0,
     refiAlertsCreated: 0,
+    docExpiryNudges: 0,
     errors: 0,
   };
 
@@ -262,10 +324,18 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
     }
   }
 
+  try {
+    await sweepAgingDocuments(counters);
+  } catch (err) {
+    counters.errors += 1;
+    console.error("[lifecycle] Aging-document sweep failed (continuing):", err);
+  }
+
   console.log(
     `[lifecycle] Sweep complete: ${counters.profilesProcessed} profiles, ` +
       `${counters.snapshotsCreated} snapshots, ${counters.pmiAlerts} PMI alerts, ` +
-      `${counters.refiAlertsCreated} refi alerts, ${counters.errors} errors` +
+      `${counters.refiAlertsCreated} refi alerts, ${counters.docExpiryNudges} doc nudges, ` +
+      `${counters.errors} errors` +
       (marketRate === null ? " (no market rate data — refi checks skipped)" : ""),
   );
   return counters;

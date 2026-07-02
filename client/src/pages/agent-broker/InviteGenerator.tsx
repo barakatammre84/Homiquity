@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { getStatusColor, getStatusLabel } from "@/lib/formatters";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ApplicationInvite } from "@shared/schema";
 import {
@@ -49,6 +50,8 @@ type InviteFormValues = z.infer<typeof inviteFormSchema>;
 
 interface InviteWithStatus extends ApplicationInvite {
   isExpired: boolean;
+  /** Stage of the linked application (stage only — no financials). */
+  applicationStatus: string | null;
 }
 
 type FilterTab = "all" | "pending" | "clicked" | "applied" | "expired";
@@ -177,7 +180,22 @@ export default function InviteGenerator() {
     }
     switch (invite.status) {
       case "applied":
-        return <Badge variant="default" data-testid={`badge-status-applied-${invite.id}`}><CheckCircle2 className="w-3 h-3 mr-1" />Applied</Badge>;
+        // Partner progress signal: show how far the client's application has
+        // actually progressed, not just that they applied.
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            <Badge variant="default" data-testid={`badge-status-applied-${invite.id}`}><CheckCircle2 className="w-3 h-3 mr-1" />Applied</Badge>
+            {invite.applicationStatus && (
+              <Badge
+                variant="secondary"
+                className={`no-default-hover-elevate no-default-active-elevate ${getStatusColor(invite.applicationStatus)}`}
+                data-testid={`badge-app-progress-${invite.id}`}
+              >
+                {getStatusLabel(invite.applicationStatus)}
+              </Badge>
+            )}
+          </span>
+        );
       case "clicked":
         return <Badge variant="secondary" data-testid={`badge-status-clicked-${invite.id}`}><ExternalLink className="w-3 h-3 mr-1" />Clicked</Badge>;
       default:

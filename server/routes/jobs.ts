@@ -1,6 +1,7 @@
 import type { Express, Request } from "express";
 import { requireRole } from "../auth";
 import { runLifecycleSweep, graduateClosedLoan } from "../services/lifecycleEngine";
+import { buildStaffSignals } from "../services/signalEngine";
 import { logAudit } from "../auditLog";
 
 /**
@@ -44,6 +45,22 @@ export function registerJobRoutes(app: Express) {
       }
     });
   });
+
+  // The loan-officer signals feed: one prioritized "who needs attention"
+  // queue derived from the platform's machine-generated signals.
+  app.get(
+    "/api/signals/staff",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (_req, res) => {
+      try {
+        const signals = await buildStaffSignals();
+        res.json({ signals });
+      } catch (err) {
+        console.error("[signals] Staff feed failed:", err);
+        res.status(500).json({ error: "Failed to build signals feed" });
+      }
+    },
+  );
 
   // Backfill: graduate an already-funded loan into a homeowner profile
   // (the automatic hook only fires on NEW funded transitions).

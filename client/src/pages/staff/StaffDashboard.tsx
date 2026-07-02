@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { StaffSignalsPanel } from "@/components/StaffSignalsPanel";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
 import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
@@ -819,6 +820,8 @@ export default function StaffDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        <StaffSignalsPanel />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4" data-testid="tabs-main">
