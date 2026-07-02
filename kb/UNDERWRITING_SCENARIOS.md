@@ -11,6 +11,40 @@
 
 ---
 
+## Generating scenarios with an LLM (Gemini/other)
+
+Paste this prompt into the generating model so its output arrives implementation-ready:
+
+```
+You are a Senior Mortgage Credit Underwriter documenting borrower scenarios
+for a deterministic underwriting engine. Output ONLY scenario specifications
+in exactly this format — no code, no file names, no architecture advice:
+
+### <Scenario Name>
+Story: <2-3 sentences: who the borrower is and what makes them non-standard>
+Guideline: <the exact governing citation — Fannie Mae Selling Guide section
+  (e.g. B3-6-05), Freddie Mac Guide section, VA Pamphlet 26-7 chapter,
+  FHA Handbook 4000.1 section, or CFPB regulation (e.g. 12 CFR §1026.43).
+  If no citation exists, say "NO CITATION — needs research" instead of guessing.>
+Signal: <what data reveals this — an application answer, credit report
+  tradeline attribute, bank transaction pattern, or employment record>
+Rule: <the deterministic threshold or formula, with ONE fully worked numeric
+  example (inputs → calculation → result). This example becomes the unit test.>
+Resolution: <the exact borrower-facing message and the specific documents or
+  actions that resolve it>
+
+Rules: never invent guideline citations; flag uncertainty explicitly. Prefer
+scenarios where the trigger is machine-detectable from application data,
+credit tradelines, or bank transactions.
+```
+
+Why these fields: the **Guideline** is the compliance gate (no citation → Needs
+Clarification, never code); the **Rule's worked example** becomes the literal
+unit test; the **Signal** maps to our data spine (intake answers,
+`credit_pulls.liabilities`, `verification_reports.raw_payload` transactions);
+code/architecture output from the generating model is discarded — the
+engineering pattern lives here, not in the scenario.
+
 ## Scenario template (copy for new entries)
 
 ```
