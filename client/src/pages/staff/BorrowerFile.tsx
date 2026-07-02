@@ -197,6 +197,45 @@ export default function BorrowerFile() {
     notes: string;
   }>({ condition: null, action: null, notes: "" });
 
+  const [exportingMismo, setExportingMismo] = useState(false);
+  const handleExportMismo = async () => {
+    setExportingMismo(true);
+    try {
+      const res = await fetch(`/api/loan-applications/${applicationId}/mismo-export`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(
+          res.status === 403
+            ? "You must be an active deal-team member on this application to export it."
+            : body?.error || "Failed to generate the MISMO file.",
+        );
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mismo-${applicationId}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({
+        title: "MISMO 3.4 exported",
+        description: "The lender-ready XML file has been downloaded.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "Unexpected error.",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingMismo(false);
+    }
+  };
+
   const [statusUpdate, setStatusUpdate] = useState<{ open: boolean; status: string; notes: string; denialReasons: string[] }>({ open: false, status: "", notes: "", denialReasons: [] });
   const statusUpdateMutation = useMutation({
     mutationFn: async ({ status, notes, denialReasons }: { status: string; notes?: string; denialReasons?: string[] }) => {
@@ -346,9 +385,15 @@ export default function BorrowerFile() {
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" data-testid="button-export-mismo">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportMismo}
+            disabled={exportingMismo}
+            data-testid="button-export-mismo"
+          >
             <Download className="mr-2 h-4 w-4" />
-            Export MISMO
+            {exportingMismo ? "Exporting…" : "Export MISMO"}
           </Button>
           <Button size="sm" data-testid="button-generate-le">
             <FileText className="mr-2 h-4 w-4" />
