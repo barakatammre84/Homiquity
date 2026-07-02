@@ -3,11 +3,19 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index-dev.ts",
     "build": "vite build && esbuild server/index-prod.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/index.js",
+    "vercel-build": "vite build",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
+    "test": "vitest run --config vitest.config.ts",
+    "test:unit": "vitest run --config vitest.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
     "db:push": "drizzle-kit push",
     "db:start": "docker start homiquity-db 2>/dev/null || docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16",
     "sync": "git pull --no-edit origin main && git push origin main",

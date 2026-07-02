@@ -7,7 +7,10 @@ export default defineConfig({
     environment: "node",
     testTimeout: 15000,
     hookTimeout: 30000,
-    include: ["tests/**/*.test.ts"],
+    // Unit / logic tests. Pure in-process logic — no running HTTP server and no
+    // database required. Everything that makes network calls to the app lives in
+    // vitest.integration.config.ts instead.
+    include: ["tests/lookupResolver.test.ts", "tests/mismoValidation.test.ts"],
   },
   resolve: {
     alias: {

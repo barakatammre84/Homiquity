@@ -11,24 +11,47 @@ import {
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
-// The object storage client is used to interact with the object storage service.
-export const objectStorageClient = new Storage({
-  credentials: {
-    audience: "replit",
-    subject_token_type: "access_token",
-    token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
-    type: "external_account",
-    credential_source: {
-      url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
-      format: {
-        type: "json",
-        subject_token_field_name: "access_token",
+// Credential resolution, in order:
+// 1. GCS_SERVICE_ACCOUNT_KEY — the full service-account JSON in an env var.
+//    Works anywhere (Vercel, Fly, local) and enables native V4 URL signing.
+// 2. Replit sidecar — only when running on Replit (REPL_ID set).
+// 3. Application Default Credentials — GOOGLE_APPLICATION_CREDENTIALS file
+//    path, gcloud auth, or GCE/Cloud Run metadata.
+function createStorageClient(): Storage {
+  const keyJson = process.env.GCS_SERVICE_ACCOUNT_KEY;
+  if (keyJson) {
+    const credentials = JSON.parse(keyJson);
+    return new Storage({
+      credentials,
+      projectId: credentials.project_id,
+    });
+  }
+
+  if (process.env.REPL_ID) {
+    return new Storage({
+      credentials: {
+        audience: "replit",
+        subject_token_type: "access_token",
+        token_url: `${REPLIT_SIDECAR_ENDPOINT}/token`,
+        type: "external_account",
+        credential_source: {
+          url: `${REPLIT_SIDECAR_ENDPOINT}/credential`,
+          format: {
+            type: "json",
+            subject_token_field_name: "access_token",
+          },
+        },
+        universe_domain: "googleapis.com",
       },
-    },
-    universe_domain: "googleapis.com",
-  },
-  projectId: "",
-});
+      projectId: "",
+    });
+  }
+
+  return new Storage();
+}
+
+// The object storage client is used to interact with the object storage service.
+export const objectStorageClient = createStorageClient();
 
 export class ObjectNotFoundError extends Error {
   constructor() {
@@ -271,30 +294,52 @@ async function signObjectURL({
   method: "GET" | "PUT" | "DELETE" | "HEAD";
   ttlSec: number;
 }): Promise<string> {
-  const request = {
-    bucket_name: bucketName,
-    object_name: objectName,
-    method,
-    expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
-  };
-  const response = await fetch(
-    `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
+  // Replit's sidecar signs URLs for its managed buckets; its credentials can't
+  // sign natively. Everywhere else (service-account key or ADC), use the GCS
+  // SDK's V4 signing.
+  if (process.env.REPL_ID && !process.env.GCS_SERVICE_ACCOUNT_KEY) {
+    const request = {
+      bucket_name: bucketName,
+      object_name: objectName,
+      method,
+      expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
+    };
+    const response = await fetch(
+      `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(request),
+      }
     );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to sign object URL, errorcode: ${response.status}, ` +
+          `make sure you're running on Replit`
+      );
+    }
+
+    const { signed_url: signedURL } = await response.json();
+    return signedURL;
   }
 
-  const { signed_url: signedURL } = await response.json();
+  const actionForMethod = {
+    GET: "read",
+    PUT: "write",
+    DELETE: "delete",
+    HEAD: "read",
+  } as const;
+
+  const [signedURL] = await objectStorageClient
+    .bucket(bucketName)
+    .file(objectName)
+    .getSignedUrl({
+      version: "v4",
+      action: actionForMethod[method],
+      expires: Date.now() + ttlSec * 1000,
+    });
   return signedURL;
 }
 
