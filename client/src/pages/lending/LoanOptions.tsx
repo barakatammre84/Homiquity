@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 
+import { ConsentGateCard } from "@/components/ConsentGateCard";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,19 @@ export default function LoanOptions() {
     queryKey: ['/api/loan-applications', id, 'options'],
     enabled: !!id,
   });
+
+  // Reg Z anti-steering: the loan-options disclosure must be acknowledged
+  // before a rate can be locked. The server enforces this on the lock
+  // endpoint; this query drives the disclosure card and button state.
+  const { data: steeringConsent } = useQuery<{ hasConsent: boolean }>({
+    queryKey: ['/api/consents/check', id, 'anti_steering'],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/consents/check/${id}/anti_steering`);
+      return res.json();
+    },
+    enabled: !!id,
+  });
+  const steeringAcknowledged = steeringConsent?.hasConsent === true;
 
   const lockRateMutation = useMutation({
     mutationFn: async (optionId: string) => {
@@ -129,6 +143,17 @@ export default function LoanOptions() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        {!steeringAcknowledged && (
+          <div className="mb-8 flex justify-center" data-testid="section-anti-steering">
+            <ConsentGateCard
+              applicationId={id!}
+              consentType="anti_steering"
+              onConsented={() =>
+                queryClient.invalidateQueries({ queryKey: ['/api/consents/check', id, 'anti_steering'] })
+              }
+            />
+          </div>
+        )}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Your Loan Options</h2>
@@ -262,7 +287,8 @@ export default function LoanOptions() {
                       <Button
                         className="w-full"
                         onClick={() => lockRateMutation.mutate(option.id)}
-                        disabled={lockRateMutation.isPending}
+                        disabled={lockRateMutation.isPending || !steeringAcknowledged}
+                        title={!steeringAcknowledged ? "Review the loan options disclosure above first" : undefined}
                         data-testid={`button-lock-rate-${option.loanType}`}
                       >
                         <Lock className="mr-2 h-4 w-4" />

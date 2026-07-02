@@ -50,6 +50,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
   await seedDatabase();
 
+  // Idempotent: inserts compliance disclosure templates (e.g. anti-steering)
+  // that post-date the original consent_templates seed. Fire-and-forget so a
+  // transient DB hiccup can't block boot; the ensure retries on next call.
+  void (await import("./consentGate")).ensureComplianceTemplates();
+
   registerLendingRoutes(app, storage);
   registerDocumentRoutes(app, storage);
   registerPropertyRoutes(app, storage);

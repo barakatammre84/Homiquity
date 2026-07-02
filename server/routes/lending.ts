@@ -23,6 +23,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { upload, verifyFileSignature } from "./utils";
 import { logAudit } from "../auditLog";
+import { hasBorrowerConsent } from "../consentGate";
 import * as creditService from "../services/creditService";
 import { sendNotificationEmail } from "../services/emailService";
 import { COMPANY_CONFIG } from "../config/company";
@@ -772,6 +773,20 @@ export function registerLendingRoutes(
       const application = await storage.getLoanApplicationWithAccess(existing.applicationId, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Reg Z anti-steering: a borrower may not select/lock an option until
+      // they have acknowledged the loan-options disclosure. Staff locking on
+      // the borrower's behalf is unaffected (their obligation is procedural).
+      if (application.userId === req.user!.id) {
+        const acknowledged = await hasBorrowerConsent("anti_steering", application.id);
+        if (!acknowledged) {
+          return res.status(403).json({
+            error: "Please review the loan options disclosure before locking a rate.",
+            code: "CONSENT_REQUIRED",
+            consentType: "anti_steering",
+          });
+        }
       }
 
       const option = await storage.lockLoanOption(req.params.id);
