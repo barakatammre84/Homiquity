@@ -66,11 +66,59 @@ Open http://localhost:5000. Edits hot-reload.
 npm run check
 ```
 
-## GitHub as backup
+## GitHub sync — one-command workflows
+
 ```bash
-git add -A && git commit -m "..." && git push origin main
+npm run save   # commit everything with a timestamp + pull + push (daily driver)
+npm run sync   # just pull + push (when you've already committed)
+npm run db:start  # start (or first-time create) the local Postgres container
 ```
-If you also push from Replit, always `git pull` before pushing to avoid diverging.
+
+`save` is the "back everything up now" button: stages all changes, commits with a
+timestamped message, pulls any remote changes (merge, no editor), and pushes.
+If you also push from Replit, `sync`/`save` handle the pull-before-push for you.
+
+## Reverting to a previous version
+
+List history (every checkpoint is a commit):
+```bash
+git log --oneline -20
+```
+
+**Undo one bad commit (safest — keeps history):**
+```bash
+git revert <commit-sha>     # creates a new commit that undoes that one
+npm run sync
+```
+
+**Restore a single file from an older commit:**
+```bash
+git checkout <commit-sha> -- path/to/file.tsx
+npm run save
+```
+
+**Roll the whole project back to an older state (history-preserving):**
+```bash
+git revert --no-commit <bad-sha-1> <bad-sha-2> ...   # or a range: <old-sha>..HEAD
+git commit -m "revert to known-good state"
+npm run sync
+```
+
+**Just look around an old version (no changes):**
+```bash
+git checkout <commit-sha>    # detached HEAD, read-only exploration
+git checkout main            # come back
+```
+
+Avoid `git reset --hard` + force-push — it rewrites shared history and will
+conflict with Replit or any other clone. `git revert` gives the same outcome
+with a safe, append-only history.
+
+**Tag releases you may want to return to:**
+```bash
+git tag beta-1 && git push origin beta-1
+# later: git revert --no-commit beta-1..HEAD && git commit -m "roll back to beta-1"
+```
 
 ---
 
