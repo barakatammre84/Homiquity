@@ -1,19 +1,32 @@
 # Design Guidelines: AI-Powered Mortgage Lending Platform
 
 ## Design Approach
-**Reference-Based: Better.com Benchmark**
+**"Obsidian Indigo" — Monochromatic Precision (Stripe / Linear / Notion register)**
 
-Drawing from Better.com's digital-first mortgage experience: clean minimalism, data transparency, speed-focused interactions, and trust-building through clarity. The platform prioritizes efficiency and professionalism while making complex financial decisions accessible.
+A single desaturated navy-indigo hue (~216°) expanded across a strict value ramp,
+projecting institutional trust: 950 `#050B14` Obsidian (primary type & actions) ·
+900 `#0C1625` Deep Ink (nav/sidebars) · 700 `#1D2D44` Steel Blue · 500 `#3E5370`
+Muted Slate (secondary text) · 300 `#889DBE` Dusty Ice · 100 `#D0DDF0` Frost Tint
+(hairlines) · 50 `#F2F6FC` Paper Ice (canvas). Implemented as CSS variables in
+`client/src/index.css` plus the `precision.*` scale in `tailwind.config.ts`.
+
+**Hierarchy by value progression** — Layer 0: `bg-background` (Paper Ice); Layer 1:
+white cards + 1px Frost hairline, no default shadow; Layer 2: Obsidian primary
+actions. **Semantic pop** — success `#10B981`, warning `#F59E0B`, danger `#EF4444`
+live *outside* the ramp so approvals/alerts leap out of dense pipeline views.
+**Loading** — field-level `animate-skeleton-precision` pulses (Frost→Paper), never
+generic spinners.
 
 ## Core Design Principles
 1. **Radical Transparency**: Every loan detail, rate, and cost visible upfront
 2. **Speed Indicators**: Show progress, time estimates prominently (e.g., "3-minute pre-approval")
 3. **Trust Through Clarity**: Clean layouts, professional typography, no visual clutter
 4. **Data-Driven Design**: Financial comparisons as visual centerpieces
+5. **Hierarchy Through Value, Not Hue**: depth comes from the monochromatic ramp; non-ramp color is reserved for semantic status only
 
 ## Typography System
 
-**Font Stack**: Inter or Work Sans via Google Fonts CDN
+**Font Stack**: Geist (primary) with Inter fallback, via Google Fonts CDN
 - **Headings**: Font weight 600-700, tight letter spacing (-0.02em)
 - **Body**: Font weight 400, line height 1.6
 - **Financial Data**: Font weight 500-600, tabular numbers

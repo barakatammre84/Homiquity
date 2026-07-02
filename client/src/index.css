@@ -2,82 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - Premium & Distinctive */
+/* LIGHT MODE - "Obsidian Indigo": monochromatic navy-indigo precision system.
+   Value ramp (single hue ~216): 950 #050B14 · 900 #0C1625 · 700 #1D2D44 ·
+   500 #3E5370 · 300 #889DBE · 100 #D0DDF0 · 50 #F2F6FC.
+   Semantic status colors stay fully separate so they "pop" against the ramp. */
 :root {
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
-  /* Background: Clean white with warmth */
-  --background: 220 20% 98%;
-  /* Primary Text: Rich charcoal */
-  --foreground: 220 25% 10%;
-  /* Subtle Border */
-  --border: 220 15% 90%;
+  /* Layer 0: Paper Ice #F2F6FC — soft canvas, not stark white */
+  --background: 216 63% 97%;
+  /* Primary typography: Obsidian #050B14 */
+  --foreground: 216 60% 5%;
+  /* Frost Tint #D0DDF0 hairlines */
+  --border: 216 52% 88%;
+  /* Layer 1: white cards separated by Frost hairline */
   --card: 0 0% 100%;
-  --card-foreground: 220 25% 10%;
-  --card-border: 220 15% 90%;
-  /* Sidebar: Warm off-white */
-  --sidebar: 40 20% 98%;
-  --sidebar-foreground: 220 25% 10%;
-  --sidebar-border: 220 15% 90%;
-  /* Primary: Deep Navy Blue #1e3a5f - Rich and confident */
-  --sidebar-primary: 213 52% 24%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  /* Accent: Warm sand for sidebar */
-  --sidebar-accent: 35 30% 95%;
-  --sidebar-accent-foreground: 220 25% 10%;
-  --sidebar-ring: 213 52% 24%;
+  --card-foreground: 216 60% 5%;
+  --card-border: 216 52% 88%;
+  /* Sidebar: Deep Ink #0C1625 navigation container (Linear-style) */
+  --sidebar: 216 51% 10%;
+  --sidebar-foreground: 216 63% 97%;
+  --sidebar-border: 215 40% 19%;
+  /* Active nav item: Paper pill on Deep Ink */
+  --sidebar-primary: 216 63% 97%;
+  --sidebar-primary-foreground: 216 60% 5%;
+  --sidebar-accent: 215 40% 16%;
+  --sidebar-accent-foreground: 216 63% 97%;
+  --sidebar-ring: 216 52% 88%;
   --popover: 0 0% 100%;
-  --popover-foreground: 220 25% 10%;
-  --popover-border: 220 15% 88%;
-  /* Primary: Deep Navy Blue #1e3a5f */
-  --primary: 213 52% 24%;
+  --popover-foreground: 216 60% 5%;
+  --popover-border: 216 52% 86%;
+  /* Layer 2: primary action = Obsidian #050B14 (hover→Deep Ink via elevate) */
+  --primary: 216 60% 5%;
   --primary-foreground: 0 0% 100%;
-  /* Secondary: Warm neutral */
-  --secondary: 35 20% 96%;
-  --secondary-foreground: 220 25% 10%;
-  --muted: 220 15% 96%;
-  /* Secondary Text: Warm gray */
-  --muted-foreground: 220 10% 45%;
-  /* Accent: Vibrant Emerald #10b981 - Eye-catching but professional */
-  --accent: 160 84% 39%;
+  /* Secondary surfaces: frosted chip */
+  --secondary: 216 50% 94%;
+  --secondary-foreground: 216 60% 5%;
+  --muted: 216 55% 95%;
+  /* Secondary text: Muted Slate #3E5370 (placeholders/metadata) */
+  --muted-foreground: 215 29% 34%;
+  /* Accent: Deep Ink #0C1625 — quieter than primary, same hue family */
+  --accent: 216 51% 10%;
   --accent-foreground: 0 0% 100%;
-  /* Error: Refined Red */
-  --destructive: 0 72% 51%;
+  /* Semantic pop: danger #EF4444 */
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 220 15% 88%;
-  --ring: 213 52% 24%;
-  /* Charts: Vibrant but harmonious */
-  --chart-1: 160 84% 39%;
-  --chart-2: 213 52% 24%;
-  --chart-3: 35 92% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 190 80% 45%;
-  /* Success: Vibrant Emerald */
+  /* Input borders: between Dusty Ice and Frost */
+  --input: 216 30% 79%;
+  --ring: 216 60% 5%;
+  /* Charts: value ramp + semantic pop */
+  --chart-1: 216 51% 10%;
+  --chart-2: 215 29% 34%;
+  --chart-3: 217 29% 64%;
+  --chart-4: 160 84% 39%;
+  --chart-5: 38 92% 51%;
+  /* Semantic pop: success #10B981 (Day 1 Certainty / auto-approved) */
   --success: 160 84% 39%;
   --success-foreground: 0 0% 100%;
-  /* Warning: Rich Amber */
-  --warning: 38 92% 50%;
-  --warning-foreground: 220 25% 10%;
-  /* Info: Ocean Blue */
-  --info: 200 80% 50%;
+  /* Semantic pop: warning #F59E0B (pending review) */
+  --warning: 38 92% 51%;
+  --warning-foreground: 216 60% 5%;
+  /* Info: mid-value of the house hue */
+  --info: 216 51% 40%;
   --info-foreground: 0 0% 100%;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: "JetBrains Mono", monospace;
-  /* Rounded corners 12px */
+  --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", monospace;
+  /* Precision radius: 12px cards, tighter than consumer-soft */
   --radius: .75rem;
-  /* Premium shadows with color */
-  --shadow-2xs: 0 1px 2px 0 hsl(213 52% 24% / 0.03);
-  --shadow-xs: 0 1px 3px 0 hsl(213 52% 24% / 0.04), 0 1px 2px -1px hsl(213 52% 24% / 0.03);
-  --shadow-sm: 0 2px 4px -1px hsl(213 52% 24% / 0.06), 0 1px 2px -1px hsl(213 52% 24% / 0.04);
-  --shadow: 0 4px 6px -1px hsl(213 52% 24% / 0.08), 0 2px 4px -2px hsl(213 52% 24% / 0.05);
-  --shadow-md: 0 8px 24px 0 hsl(213 52% 24% / 0.10);
-  --shadow-lg: 0 12px 28px -4px hsl(213 52% 24% / 0.12), 0 4px 12px -4px hsl(213 52% 24% / 0.08);
-  --shadow-xl: 0 20px 40px -8px hsl(213 52% 24% / 0.15), 0 8px 16px -6px hsl(213 52% 24% / 0.10);
-  --shadow-2xl: 0 32px 64px -12px hsl(213 52% 24% / 0.20);
+  /* Near-flat shadows tinted with the house hue; hairlines carry the depth */
+  --shadow-2xs: 0 1px 2px 0 hsl(216 60% 10% / 0.03);
+  --shadow-xs: 0 1px 3px 0 hsl(216 60% 10% / 0.04), 0 1px 2px -1px hsl(216 60% 10% / 0.03);
+  --shadow-sm: 0 2px 6px -1px hsl(216 60% 10% / 0.05), 0 1px 2px -1px hsl(216 60% 10% / 0.03);
+  --shadow: 0 3px 8px -2px hsl(216 60% 10% / 0.06), 0 1px 3px -1px hsl(216 60% 10% / 0.04);
+  --shadow-md: 0 6px 16px -4px hsl(216 60% 10% / 0.07);
+  --shadow-lg: 0 10px 24px -6px hsl(216 60% 10% / 0.08), 0 3px 8px -3px hsl(216 60% 10% / 0.05);
+  --shadow-xl: 0 16px 32px -8px hsl(216 60% 10% / 0.10), 0 6px 12px -4px hsl(216 60% 10% / 0.06);
+  --shadow-2xl: 0 24px 48px -12px hsl(216 60% 10% / 0.14);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -110,67 +114,66 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* DARK MODE - Premium & Rich */
+/* DARK MODE - "Obsidian Night": the same 216° ramp anchored on its deep end */
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .06);
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .05);
   --elevate-2: rgba(255,255,255, .10);
-  /* Background: Rich dark blue */
-  --background: 222 47% 8%;
-  /* Primary Text: Bright white */
-  --foreground: 0 0% 98%;
-  /* Borders: Subtle blue */
-  --border: 220 30% 18%;
-  /* Surface: Elevated dark */
-  --card: 222 40% 12%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 220 30% 20%;
-  --sidebar: 222 47% 10%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-border: 220 30% 18%;
-  /* Primary: Brighter navy for dark mode */
-  --sidebar-primary: 213 70% 50%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  /* Accent: Emerald tint for sidebar */
-  --sidebar-accent: 160 50% 20%;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-ring: 213 70% 50%;
-  --popover: 222 40% 14%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 220 30% 22%;
-  /* Primary: Brighter navy for visibility */
-  --primary: 213 70% 50%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 220 30% 18%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 220 25% 16%;
-  /* Secondary Text: Light gray */
-  --muted-foreground: 220 15% 65%;
-  /* Accent: Vibrant Emerald */
-  --accent: 160 84% 45%;
-  --accent-foreground: 0 0% 100%;
-  /* Error: Bright red */
-  --destructive: 0 72% 55%;
+  /* Background: Obsidian #050B14 */
+  --background: 216 60% 5%;
+  /* Primary Text: Paper Ice */
+  --foreground: 216 63% 97%;
+  /* Borders: Steel Blue #1D2D44 */
+  --border: 215 40% 19%;
+  /* Surface: Deep Ink #0C1625 */
+  --card: 216 51% 10%;
+  --card-foreground: 216 63% 97%;
+  --card-border: 215 40% 19%;
+  --sidebar: 216 57% 4%;
+  --sidebar-foreground: 216 63% 97%;
+  --sidebar-border: 215 40% 16%;
+  /* Active nav item: Paper pill on Obsidian */
+  --sidebar-primary: 216 63% 97%;
+  --sidebar-primary-foreground: 216 60% 5%;
+  --sidebar-accent: 215 40% 14%;
+  --sidebar-accent-foreground: 216 63% 97%;
+  --sidebar-ring: 217 29% 64%;
+  --popover: 216 51% 11%;
+  --popover-foreground: 216 63% 97%;
+  --popover-border: 215 40% 21%;
+  /* Primary action inverts: Paper button on dark (Linear-style) */
+  --primary: 216 63% 97%;
+  --primary-foreground: 216 60% 5%;
+  --secondary: 215 40% 16%;
+  --secondary-foreground: 216 63% 97%;
+  --muted: 216 45% 13%;
+  /* Secondary Text: Dusty Ice #889DBE */
+  --muted-foreground: 217 29% 64%;
+  /* Accent: Steel Blue surfaces */
+  --accent: 215 40% 24%;
+  --accent-foreground: 216 63% 97%;
+  /* Semantic pop: danger */
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 220 30% 20%;
-  --ring: 213 70% 50%;
-  /* Charts: Vibrant for dark mode */
-  --chart-1: 160 84% 45%;
-  --chart-2: 213 70% 55%;
-  --chart-3: 35 92% 60%;
-  --chart-4: 280 65% 65%;
-  --chart-5: 190 80% 50%;
-  /* Success: Bright Emerald */
+  --input: 215 40% 25%;
+  --ring: 217 29% 64%;
+  /* Charts: light ramp + semantic pop */
+  --chart-1: 216 52% 88%;
+  --chart-2: 217 29% 64%;
+  --chart-3: 215 29% 44%;
+  --chart-4: 160 84% 45%;
+  --chart-5: 38 92% 55%;
+  /* Semantic pop: success */
   --success: 160 84% 45%;
-  --success-foreground: 0 0% 100%;
-  /* Warning: Bright Amber */
+  --success-foreground: 216 60% 5%;
+  /* Semantic pop: warning */
   --warning: 38 92% 55%;
-  --warning-foreground: 220 25% 10%;
-  /* Info: Bright Blue */
-  --info: 200 80% 55%;
-  --info-foreground: 0 0% 100%;
+  --warning-foreground: 216 60% 5%;
+  /* Info: Dusty Ice */
+  --info: 217 29% 64%;
+  --info-foreground: 216 60% 5%;
   --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.20);
   --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.25), 0 1px 2px -1px hsl(0 0% 0% / 0.20);
   --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.30), 0 1px 2px -1px hsl(0 0% 0% / 0.22);

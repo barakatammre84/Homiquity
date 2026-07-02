@@ -6,9 +6,9 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        lg: "var(--radius)", /* 12px — cards, modals */
+        md: "calc(var(--radius) - 4px)", /* 8px — inputs, selects, buttons */
+        sm: "calc(var(--radius) - 8px)", /* 4px — small chips, badges */
       },
       colors: {
         // Flat / base colors (regular buttons)
@@ -80,11 +80,29 @@ export default {
           away: "rgb(245 158 11)",
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
+          // Semantic pop states — deliberately outside the monochromatic ramp
+          // so approvals/alerts stand out in dense pipeline views.
+          success: "#10B981", // Day 1 Certainty / auto-approved
+          warning: "#F59E0B", // pending loan-officer review
+          danger: "#EF4444", // TCPA opt-out / credit alert
+        },
+        // "Obsidian Indigo" monochromatic value ramp (single ~216° hue).
+        // Prefer the semantic tokens (bg-background, text-foreground, …) in
+        // components; reach for precision-* only for bespoke value stacking.
+        precision: {
+          950: "#050B14", // Obsidian — primary type, primary actions
+          900: "#0C1625", // Deep Ink — nav containers, dark surfaces
+          700: "#1D2D44", // Steel Blue — secondary text, inactive borders
+          500: "#3E5370", // Muted Slate — placeholders, secondary borders
+          300: "#889DBE", // Dusty Ice — hover borders, disabled states
+          100: "#D0DDF0", // Frost Tint — card hairlines, active input bg
+          50: "#F2F6FC", // Paper Ice — global canvas
         },
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
+        display: ["var(--font-serif)"], /* hero/display headings (Source Serif 4) */
         mono: ["var(--font-mono)"],
       },
       keyframes: {
@@ -96,10 +114,17 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        // Precision skeleton: field-level loading pulse between ramp stops
+        // (frost -> paper) instead of a generic gray spinner.
+        "skeleton-precision": {
+          "0%, 100%": { backgroundColor: "#D0DDF0" },
+          "50%": { backgroundColor: "#F2F6FC" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "skeleton-precision": "skeleton-precision 1.6s ease-in-out infinite",
       },
     },
   },
