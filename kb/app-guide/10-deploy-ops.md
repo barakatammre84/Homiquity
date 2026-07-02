@@ -22,12 +22,15 @@ Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
   warm instance via `createApp()` (no `listen()`).
 - **Routing** (`vercel.json` rewrites): filesystem first (static assets), then
   `/api/(.*)` → the function, then everything → `index.html` (SPA fallback).
-- **Node is pinned to 20.x** (`engines` in package.json) — deliberately. On
-  Vercel's build image, the npm bundled with Node 22.x **and** 24.x crashes
-  mid-install with "Exit handler never called" (npm/cli#8974); Node 20's npm
-  works. Local dev on Node 24 is fine (npm shows a harmless EBADENGINE
-  warning). If you ever bump this, watch the very next deploy's install step.
-  `.npmrc` turns off audit/fund so installs don't make extra network calls.
+- **Vercel installs with pnpm, not npm — deliberately.** npm crashed
+  mid-install on Vercel's build image ("Exit handler never called") on Node 20,
+  22 and 24 alike, four deploys in a row, while the same install works locally.
+  So `vercel.json` uses `pnpm install --frozen-lockfile --prod=false`
+  (`--prod=false` matters: Vercel sets `NODE_ENV=production`, which otherwise
+  makes pnpm skip devDependencies like vite). `pnpm-lock.yaml` mirrors
+  `package-lock.json` via `pnpm import`. **After changing dependencies, run
+  `npx pnpm@10 import` and commit both lockfiles.** Local dev can keep using
+  npm. Node is pinned to 24.x; `.npmrc` silences audit/fund.
 
 ## Environments
 

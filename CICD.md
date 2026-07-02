@@ -34,16 +34,22 @@ Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
 
 ## How the Vercel deploy works
 
-- `vercel.json` — `npm ci` install, `npm run vercel-build` (= `vite build`) →
-  static client from `dist/public`; rewrites send `/api/*` to the Express app
-  running as a serverless function (`api/index.ts`, built via `createApp()` in
+- `vercel.json` — install is `pnpm install --frozen-lockfile --prod=false`,
+  build is `npm run vercel-build` (= `vite build`) → static client from
+  `dist/public`; rewrites send `/api/*` to the Express app running as a
+  serverless function (`api/index.ts`, built via `createApp()` in
   `server/app.ts`), everything else falls back to the SPA `index.html`.
-- `engines.node: 20.x` in `package.json` pins the Vercel build/runtime to
-  Node 20. **Do not raise this without testing a deploy**: on Vercel's build
-  image, the npm bundled with Node 22.x and 24.x crashes during install with
-  "Exit handler never called" (npm/cli#8974); Node 20's npm installs cleanly.
-  Local dev on Node 24 still works — npm just prints a harmless EBADENGINE
-  warning. `.npmrc` disables audit/fund to keep installs deterministic.
+- **Why pnpm on Vercel (do not switch back to npm casually):** npm crashed
+  mid-install on Vercel's build image with "Exit handler never called" on
+  Node 20, 22 AND 24 (reproduced four deploys in a row), while the identical
+  install works locally. pnpm sidesteps npm entirely. `--prod=false` is
+  required because Vercel sets `NODE_ENV=production`, which makes pnpm skip
+  devDependencies — and vite (a devDependency) is needed to build.
+- **Two lockfiles now exist.** Local dev can keep using npm
+  (`package-lock.json`); Vercel uses `pnpm-lock.yaml` (generated via
+  `pnpm import`, so versions match npm's exactly). **After any dependency
+  change, run `npx pnpm@10 import` and commit both lockfiles together.**
+- `engines.node: 24.x`; `.npmrc` disables audit/fund noise.
 - Env vars (Vercel → Settings → Environment Variables): `DATABASE_URL` (Neon,
   non-localhost), `SESSION_SECRET`, `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`,
   `NODE_ENV=production`, plus optional `GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY`,
