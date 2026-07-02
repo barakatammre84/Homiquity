@@ -111,18 +111,17 @@ Before any schema change that drops or rewrites data:
 
 1. **Stop the bleeding:** promote the last good Vercel deployment (§1). Confirm
    the site recovers.
-2. **Identify the bad change:** `git log --oneline -20`; check the failing CI run
-   and the Vercel deploy logs.
+2. **Identify the bad change:** `git log --oneline -20` and the Vercel deploy logs.
 3. **Fix forward or revert:** `git revert` the bad commit(s) and push (§2).
 4. **Database:** only if the bad change ran a destructive migration — restore
    from the snapshot taken before it (§3).
-5. **Verify:** new deploy is green in CI, site loads, a smoke test of the broken
-   flow passes.
+5. **Verify:** the new Vercel deploy is green, the site loads, and a smoke test
+   of the broken flow passes.
 6. **Write it down:** note what broke and why in the PR / an incident note so the
    next person isn't surprised.
 
 ---
 
 ## Related docs
-- [CICD.md](CICD.md) — the pipeline, gates, and how deploys happen.
+- [CICD.md](CICD.md) — how deploys happen (push → Vercel).
 - [LOCAL_DEV.md](LOCAL_DEV.md) — local setup, env vars, `npm run save`/`sync`.

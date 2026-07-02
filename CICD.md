@@ -1,194 +1,61 @@
-# CI/CD Pipeline
+# Deploy & Revert
 
-How Homiquity is validated, tested, built, and deployed. For undoing a bad
-change, see [ROLLBACK.md](ROLLBACK.md).
+Homiquity ships with a deliberately simple flow: **push to `main` → Vercel
+deploys it. If it breaks, revert.** No CI gates, no approvals.
 
 ```
-   push / PR to main
-          │
-          ▼
-┌─────────────────────────────────────────────┐
-│  GitHub Actions — .github/workflows/ci.yml    │
-│                                               │
-│   1. npm ci                                    │
-│   2. Typecheck        (npm run check)          │
-│   3. DB schema push   (npm run db:push)        │  ← throwaway Postgres service
-│   4. Unit tests       (npm run test:unit)      │
-│   5. Production build  (npm run build)          │
-│   6. Boot server + Integration tests           │
-│                        (npm run test:integration)│
-└─────────────────────────────────────────────┘
-          │
-          ▼  (merge to main)
-┌─────────────────────────────────────────────┐
-│  Vercel — vercel.json                          │
-│   • builds client (vite) → dist/public          │
-│   • runs Express API as a serverless function   │
-│     (api/index.ts)                              │
-│   • instant rollback of any prior deploy        │
-└─────────────────────────────────────────────┘
+  git push (main)  ──▶  Vercel builds & deploys automatically
+                              │
+                     broken?  ▼
+                    Vercel → Deployments → previous one → Promote  (instant)
 ```
 
----
+## Shipping
 
-## Current status: gates are NON-BLOCKING
+```bash
+npm run save        # commit everything with a timestamp + pull + push
+# or, if you've already committed:
+npm run sync        # pull + push
+```
 
-Every CI step runs with `continue-on-error: true`. **The pipeline reports
-pass/fail but does not yet block merges or deploys.** This was a deliberate
-starting point because two pre-existing issues make the pipeline red today:
+Every push to `main` triggers a production deploy on Vercel. Every PR branch
+gets its own preview deployment automatically.
 
-1. **22 TypeScript errors** on `main` (`npm run check` fails). Mostly in
-   `server/replit_integrations/` and `client/src/pages/public/AffordabilityCheck.tsx`.
-2. **Auth is broken off-Replit**, so 3 API integration tests hang/fail. Session
-   + Passport middleware only initialize when running on Replit, so `req.isAuthenticated`
-   is undefined locally and on Vercel. **This is also a production blocker for the
-   Vercel deploy**, not just a test failure.
+## Reverting
 
-Both are tracked as separate tasks. Once they're fixed, **tighten the gates** —
-see ["Flip to blocking"](#flip-to-blocking-when-the-codebase-is-clean) below.
+Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
 
----
+- **Prod is broken right now** → Vercel dashboard → Deployments → pick the last
+  good one → **Promote to Production**. Instant, no rebuild.
+- **Undo the bad code** → `git revert <sha> && git push` (never
+  `reset --hard` + force-push).
+- **Database** → `drizzle-kit push` is forward-only; snapshot/branch in Neon
+  before destructive schema changes.
 
-## The gates
+## How the Vercel deploy works
 
-| Step | Command | What it catches |
-|------|---------|-----------------|
-| Typecheck | `npm run check` | Type errors across client, server, shared, api (`tsc`) |
-| Schema push | `npm run db:push -- --force` | Broken Drizzle schema; sets up the test DB |
-| Unit tests | `npm run test:unit` | Pure logic regressions (pricing/underwriting DSL, MISMO validation, lookup resolver) — no server needed |
-| Build | `npm run build` | Vite client build + esbuild server bundle |
-| Integration tests | `npm run test:integration` | API behavior against a running server (auth, RBAC, endpoints) |
+- `vercel.json` — `npm ci` install, `npm run vercel-build` (= `vite build`) →
+  static client from `dist/public`; rewrites send `/api/*` to the Express app
+  running as a serverless function (`api/index.ts`, built via `createApp()` in
+  `server/app.ts`), everything else falls back to the SPA `index.html`.
+- `engines.node: 22.x` in `package.json` pins a Node with a working npm.
+- Env vars (Vercel → Settings → Environment Variables): `DATABASE_URL` (Neon,
+  non-localhost), `SESSION_SECRET`, `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`,
+  `NODE_ENV=production`, plus optional `GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY`,
+  `OPENAI_API_KEY`, and for document storage `GCS_SERVICE_ACCOUNT_KEY`,
+  `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` (see `.env.example`).
 
-### Test layout — unit vs integration
+Persistent hosts (Replit, Fly, a VPS) still work unchanged: `npm run build` +
+`npm start`.
 
-Tests were split because some need a live HTTP server and some don't:
+## Optional checks (run manually, nothing enforces them)
 
-- **`vitest.config.ts`** (unit) → `tests/lookupResolver.test.ts`,
-  `tests/mismoValidation.test.ts`. Pure in-process logic. Fast, no server, no DB.
-  Run: `npm run test:unit`.
-- **`vitest.integration.config.ts`** (integration) → `tests/api.test.ts`,
-  `tests/lookupMatrixCoverageGap.test.ts`, `tests/lookupMatrixLifecycle.test.ts`,
-  `tests/pricingUnderwriting.test.ts`. These make real HTTP calls to a running
-  server at `TEST_BASE_URL` (default `http://localhost:5000`).
-  Run locally against your dev server:
-  ```bash
-  TEST_BASE_URL=http://127.0.0.1:5001 npm run test:integration
-  ```
+```bash
+npm run check              # typecheck
+npm run test:unit          # pure logic tests (no server needed)
+TEST_BASE_URL=http://127.0.0.1:5001 npm run test:integration   # against a running dev server
+```
 
-In CI, the workflow builds the app (as a gate), then boots the **dev** server
-(`npm run dev`) on port 5000, waits for it to answer, and runs the integration
-suite against it. The dev server is used because the integration tests rely on
-the dev test-login and relaxed CSRF; the production build is validated separately
-by the build step.
-
----
-
-## Deployment (Vercel)
-
-The app deploys to Vercel: the Vite-built client is served as static assets from
-the CDN, and the Express server runs as a single serverless function.
-
-### How it's wired
-- **`vercel.json`** (modern schema — `installCommand`/`buildCommand`/`rewrites`,
-  not the legacy `builds` array, so the install command is actually honored):
-  - `installCommand: npm ci` — deterministic install from the lockfile.
-  - `buildCommand: npm run vercel-build` (= `vite build`) → `outputDirectory: dist/public`.
-  - `rewrites`: `/api/(.*)` → the `api/index.ts` function; everything else →
-    `/index.html`. Vercel checks the **filesystem before rewrites**, so real
-    static assets and the function are served directly and only unmatched
-    (client-side) routes fall through to `index.html`.
-  - `functions.api/index.ts.maxDuration: 30` — headroom for cold starts.
-- **`api/index.ts`** — imports `createApp()` from `server/app.ts` (added
-  specifically for this: it builds the fully-wired Express app **without** calling
-  `server.listen()`, which serverless can't use) and hands it to Vercel as the
-  request handler. The app is built once per warm instance and reused.
-- **`engines.node: 22.x`** in `package.json` — pins the build/runtime to Node 22,
-  which is past the npm "Exit handler never called" bug (fixed in Node 22.5.1)
-  that broke the first deploy's `npm install`.
-
-Persistent hosts (Replit, Fly, a VPS) are unaffected — they still use
-`npm run build` + `npm start`, which goes through `runApp()` and listens on `PORT`.
-
-> Cold-start note: `registerRoutes()` calls `seedDatabase()`, which is idempotent
-> (each block is guarded by an existence check). On an already-seeded production DB
-> that's ~6 lightweight `SELECT`s per cold start and no external calls — fine for
-> now. Moving seeding out of the request path into a one-time step is listed under
-> future hardening. Also watch PDF generation routes (`pdfkit` needs its font
-> files bundled) if you hit them on Vercel.
-
-### One-time setup
-1. Import the GitHub repo `barakatammre84/MortgageStream` into Vercel.
-2. Vercel's Git integration then **auto-deploys**: production on push to `main`,
-   preview deployments on every PR. (No deploy job in GitHub Actions is needed.)
-3. Set the environment variables below in **Vercel → Project → Settings →
-   Environment Variables** (Production + Preview).
-
-### Required environment variables (Vercel)
-| Variable | Notes |
-|----------|-------|
-| `DATABASE_URL` | **Must be a Neon (or other cloud) Postgres URL, not localhost.** A non-localhost URL makes `server/db.ts` use the Neon serverless driver, which is what works in serverless. |
-| `SESSION_SECRET` | Random 32+ byte hex. |
-| `CREDIT_ENCRYPTION_KEY` | `openssl rand -base64 32` |
-| `PII_HASH_SALT` | `openssl rand -hex 32` |
-| `NODE_ENV` | `production` |
-| `GEMINI_API_KEY` | Optional — document AI extraction. |
-| `GOOGLE_MAPS_API_KEY` | Optional — address autocomplete / maps. |
-| `OPENAI_API_KEY` | Optional — AI coach. |
-| `GCS_SERVICE_ACCOUNT_KEY` | Document uploads/downloads. Full GCS service-account JSON (one line). See `.env.example`. |
-| `PRIVATE_OBJECT_DIR` | e.g. `/your-bucket/private` — where borrower documents live. |
-| `PUBLIC_OBJECT_SEARCH_PATHS` | e.g. `/your-bucket/public` — public asset paths. |
-
-> Serverless caveats to know: `express-rate-limit` uses an in-memory store, so
-> limits are per-instance (not global) on Vercel — fine for now, revisit with a
-> shared store (Redis/Upstash) if abuse becomes a concern. Sessions use the
-> Postgres store (`connect-pg-simple`), which is correct for serverless. File
-> uploads already go to object storage, not local disk.
-
----
-
-## Flip to blocking (when the codebase is clean)
-
-Once the 22 typecheck errors and the auth bug are fixed and the pipeline is green:
-
-1. In `.github/workflows/ci.yml`, remove the `continue-on-error: true` lines (or
-   set them to `false`) on the steps you want to enforce.
-2. On GitHub → repo **Settings → Branches → Branch protection rules** for `main`:
-   - Require the **CI / Validate, test & build** status check to pass before merge.
-   - Require branches to be up to date before merging.
-   - (Optional) require a PR review.
-3. (Optional) Make Vercel wait for CI: enable **Settings → Git → "Only deploy
-   when checks pass"** so a red pipeline can't ship to production.
-
----
-
-## Replit → Vercel migration status
-
-Everything Replit-specific is either fixed, gated behind `REPL_ID` (harmless
-off-Replit), or tracked below:
-
-| Coupling | Status |
-|----------|--------|
-| Serverless entry (`server.listen`) | ✅ Fixed — `createApp()` + `api/index.ts` |
-| Object storage (Replit sidecar for GCS creds + signing) | ✅ Fixed — uses `GCS_SERVICE_ACCOUNT_KEY` / ADC + native V4 signing off-Replit; sidecar only when `REPL_ID` is set |
-| Invite URLs (`REPLIT_DEV_DOMAIN` fallback) | ✅ Already fine — set `PUBLIC_BASE_URL`, else uses the request host |
-| CSRF allowed domains (`REPLIT_DOMAINS`) | ✅ Already fine — host-based off-Replit |
-| `reusePort` listen option | ✅ Already gated on `REPL_ID` |
-| Replit Vite plugins | ✅ Already gated on `REPL_ID` in `vite.config.ts` (dev-only anyway) |
-| **Auth (session/passport only init on Replit)** | ⛔ **Blocker** — being fixed in a separate task; required before anyone can log in on Vercel |
-| Replit OIDC login (`setupOIDCAuth`) | Stays gated on `REPL_ID`; off-Replit logins use email/password + social OAuth |
-| Unused `server/replit_integrations/{image,chat,batch}` | 🧹 Dead code — nothing imports them; delete after the typecheck-fix task lands (it touches those files) |
-
-## Roadmap / future hardening
-- **Fix the two blockers** (typecheck, off-Replit auth), then flip gates to blocking.
-- **Versioned DB migrations**: move from `drizzle-kit push` to `generate` + `migrate`
-  so schema changes are reviewable and reversible (see [ROLLBACK.md](ROLLBACK.md) §3).
-- **Lint**: no ESLint is configured yet; `tsc` is the current static-analysis gate.
-  Add ESLint + a lint step when ready.
-- **Secret scanning / dependency audit**: add `npm audit` and a secrets scanner as
-  additional non-blocking gates.
-- **Smoke test after deploy**: hit a health endpoint post-deploy and auto-rollback
-  on failure.
-
-## Related docs
-- [ROLLBACK.md](ROLLBACK.md) — how to undo a deploy, code change, or migration.
-- [LOCAL_DEV.md](LOCAL_DEV.md) — local setup and the `save`/`sync` git helpers.
+If you later want gates again (block bad pushes before they deploy), add a
+GitHub Actions workflow that runs the commands above and enable branch
+protection — but that's a deliberate future choice, not the current setup.
