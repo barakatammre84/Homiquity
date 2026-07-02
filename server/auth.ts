@@ -50,7 +50,13 @@ async function comparePasswords(supplied: string, stored: string): Promise<boole
 }
 
 export async function setupAuth(app: Express) {
-  await setupOIDCAuth(app);
+  // Replit OIDC only works on Replit (needs REPL_ID). Skip it locally so the
+  // app boots; email/password + dev test login still work off-Replit.
+  if (process.env.REPL_ID || process.env.REPLIT_DOMAINS) {
+    await setupOIDCAuth(app);
+  } else {
+    console.log("[auth] Replit OIDC skipped — not running on Replit");
+  }
 
   registerAuthRoutes(app);
 

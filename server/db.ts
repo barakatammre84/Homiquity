@@ -1,9 +1,11 @@
 import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
 import { drizzle as neonDrizzle, type NeonDatabase } from 'drizzle-orm/neon-serverless';
-import { Pool as PgPool } from 'pg';
+import pg from 'pg'; // pg is CommonJS — default-import then destructure (named ESM import fails)
 import { drizzle as pgDrizzle } from 'drizzle-orm/node-postgres';
 import ws from "ws";
 import * as schema from "@shared/schema";
+
+const { Pool: PgPool } = pg;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
