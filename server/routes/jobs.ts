@@ -3,6 +3,9 @@ import { requireRole } from "../auth";
 import { runLifecycleSweep, graduateClosedLoan } from "../services/lifecycleEngine";
 import { buildStaffSignals } from "../services/signalEngine";
 import { logAudit } from "../auditLog";
+import { db } from "../db";
+import { intentEvents } from "@shared/schema";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 
 /**
  * Scheduled-job endpoints.
@@ -58,6 +61,47 @@ export function registerJobRoutes(app: Express) {
       } catch (err) {
         console.error("[signals] Staff feed failed:", err);
         res.status(500).json({ error: "Failed to build signals feed" });
+      }
+    },
+  );
+
+  // Friction summary — the raw material of the continuous learning loop.
+  // Aggregates server-observed friction events (blocked gates, failed
+  // uploads) so the daily guardian can turn recurring walls into scenario
+  // proposals or UX fixes. Proposals only — friction never changes rules.
+  app.get(
+    "/api/jobs/friction-summary",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const days = Math.min(Math.max(parseInt(String(req.query.days ?? "7"), 10) || 7, 1), 90);
+        const since = new Date(Date.now() - days * 24 * 3600 * 1000);
+        const [byPoint, recent] = await Promise.all([
+          db
+            .select({
+              point: intentEvents.targetLabel,
+              count: sql<number>`count(*)::int`,
+            })
+            .from(intentEvents)
+            .where(and(eq(intentEvents.eventType, "friction_event"), gte(intentEvents.occurredAt, since)))
+            .groupBy(intentEvents.targetLabel)
+            .orderBy(desc(sql`count(*)`)),
+          db
+            .select({
+              point: intentEvents.targetLabel,
+              applicationId: intentEvents.targetId,
+              metadata: intentEvents.metadata,
+              occurredAt: intentEvents.occurredAt,
+            })
+            .from(intentEvents)
+            .where(and(eq(intentEvents.eventType, "friction_event"), gte(intentEvents.occurredAt, since)))
+            .orderBy(desc(intentEvents.occurredAt))
+            .limit(25),
+        ]);
+        res.json({ windowDays: days, byPoint, recent });
+      } catch (err) {
+        console.error("[jobs] Friction summary failed:", err);
+        res.status(500).json({ error: "Failed to build friction summary" });
       }
     },
   );

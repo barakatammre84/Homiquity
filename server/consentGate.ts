@@ -116,6 +116,13 @@ export function requireConsent(consentType: string): RequestHandler {
       // getConsentByTypeAndApplication filters revocation but returns declined
       // rows too — an explicit decline must not satisfy the gate.
       if (!consent || consent.consentGiven !== true) {
+        const { logFriction } = await import("./services/frictionLog");
+        logFriction("consent_gate_blocked", {
+          userId,
+          applicationId,
+          detail: consentType,
+          metadata: { path: req.path },
+        });
         return res.status(403).json({
           error: "Please review and accept the disclosure agreement before viewing this document.",
           code: "CONSENT_REQUIRED",

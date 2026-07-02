@@ -446,6 +446,10 @@ export const INTENT_EVENT_TYPES = [
   "return_visit",
   "session_start",
   "session_end",
+  // Server-observed friction: a user hit a wall (blocked gate, failed upload,
+  // rate limit). Category is always "friction"; targetLabel names the wall.
+  // The daily guardian aggregates these to propose scenario/UX improvements.
+  "friction_event",
 ] as const;
 
 export type IntentEventType = typeof INTENT_EVENT_TYPES[number];

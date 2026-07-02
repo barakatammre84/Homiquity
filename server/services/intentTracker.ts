@@ -59,6 +59,7 @@ export async function trackIntent(
     return_visit: "engagement",
     session_start: "session",
     session_end: "session",
+    friction_event: "friction",
   };
 
   await db.insert(intentEvents).values({

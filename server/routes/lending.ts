@@ -846,6 +846,11 @@ export function registerLendingRoutes(
       if (application.userId === req.user!.id) {
         const acknowledged = await hasBorrowerConsent("anti_steering", application.id);
         if (!acknowledged) {
+          const { logFriction } = await import("../services/frictionLog");
+          logFriction("anti_steering_blocked", {
+            userId: req.user!.id,
+            applicationId: application.id,
+          });
           return res.status(403).json({
             error: "Please review the loan options disclosure before locking a rate.",
             code: "CONSENT_REQUIRED",
@@ -1056,6 +1061,14 @@ export function registerLendingRoutes(
       res.status(201).json(document);
     } catch (error) {
       console.error("Document upload error:", error);
+      try {
+        const { logFriction } = await import("../services/frictionLog");
+        logFriction("document_upload_failed", {
+          userId: req.user?.id,
+          applicationId: typeof req.body?.applicationId === "string" ? req.body.applicationId : undefined,
+          detail: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+        });
+      } catch {}
       res.status(500).json({ error: "Failed to upload document" });
     }
   });
