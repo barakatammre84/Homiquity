@@ -763,6 +763,59 @@ export function registerLendingRoutes(
     }
   });
 
+  // Rate transparency: deterministic decomposition of a quoted rate into its
+  // base rate + Fannie-style LLPA components, so the borrower sees exactly
+  // why their rate is their rate (points ÷ 4 ≈ rate-equivalent adjustment).
+  app.get("/api/loan-options/:id/pricing-breakdown", isAuthenticated, async (req, res) => {
+    try {
+      const option = await storage.getLoanOption(req.params.id);
+      if (!option) {
+        return res.status(404).json({ error: "Loan option not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(option.applicationId, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const { calculateLLPA } = await import("../pricing");
+      const loanAmount = parseFloat(String(option.loanAmount));
+      const creditScore = application.creditScore ?? 680;
+      const ltv = parseFloat(String(application.ltvRatio ?? "80"));
+      const llpa = await calculateLLPA(
+        loanAmount,
+        creditScore,
+        ltv,
+        (application.propertyType as "single_family" | "condo" | "townhouse" | "multi_family") || "single_family",
+        "primary_residence",
+        application.isFirstTimeBuyer ?? false,
+        parseFloat(String(application.annualIncome ?? "0")),
+        0,
+      );
+
+      const quotedRate = parseFloat(String(option.interestRate));
+      const rateEquivalent = llpa.totalLLPA / 4;
+      res.json({
+        optionId: option.id,
+        loanType: option.loanType,
+        finalRate: quotedRate,
+        baseRate: Number((quotedRate - rateEquivalent).toFixed(3)),
+        adjustments: {
+          creditScoreAndLtv: llpa.baseLLPA,
+          propertyType: llpa.propertyTypeAdjustment,
+          condo: llpa.condoAdjustment,
+          firstTimeBuyerWaiver: llpa.fthbWaiver,
+        },
+        totalLlpaPoints: llpa.totalLLPA,
+        rateEquivalent: Number(rateEquivalent.toFixed(3)),
+        llpaFeeAmount: llpa.pricing.lLPAFeeAmount,
+        inputs: { creditScore, ltv: Number(ltv.toFixed(1)), loanAmount },
+      });
+    } catch (error) {
+      console.error("Pricing breakdown error:", error);
+      res.status(500).json({ error: "Failed to compute pricing breakdown" });
+    }
+  });
+
   app.post("/api/loan-options/:id/lock", isAuthenticated, async (req, res) => {
     try {
       const existing = await storage.getLoanOption(req.params.id);
