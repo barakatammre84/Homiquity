@@ -16,6 +16,7 @@ export default defineConfig({
       "tests/preApprovalMachine.test.ts",
       "tests/preUnderwriting.test.ts",
       "tests/lifecycleEngine.test.ts",
+      "tests/underwritingNuance.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

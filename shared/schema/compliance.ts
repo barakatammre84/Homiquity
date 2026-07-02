@@ -145,7 +145,13 @@ export const creditPulls = pgTable("credit_pulls", {
   
   // Report Storage (reference to secure storage, not the report itself)
   reportStorageRef: varchar("report_storage_ref", { length: 500 }),
-  
+
+  // Machine-readable liability ledger (creditor, type, balance, monthlyPayment,
+  // deferred, openedDaysAgo) — what deterministic underwriting math reads
+  // (deferred-student-loan 1% rule, new-tradeline detection) without touching
+  // the encrypted blob. No SSN or account numbers are ever stored here.
+  liabilities: jsonb("liabilities"),
+
   // Encrypted Raw Response (AES-256-GCM encrypted)
   encryptedRawResponse: text("encrypted_raw_response"), // Base64 encoded encrypted data
   encryptionKeyId: varchar("encryption_key_id", { length: 100 }), // Reference to key used
@@ -643,6 +649,9 @@ export const verificationReports = pgTable("verification_reports", {
   accountCount: integer("account_count"),
   totalBalance: decimal("total_balance", { precision: 14, scale: 2 }),
   payloadStorageRef: varchar("payload_storage_ref", { length: 500 }),
+  // Raw provider payload snapshot (audit trace: anomalies map back to source).
+  // Depository transactions here also feed the large-deposit sourcing check.
+  rawPayload: jsonb("raw_payload"),
 
   requestedAt: timestamp("requested_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),

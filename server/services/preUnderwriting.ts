@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { db } from "../db";
-import { loanApplications, verificationReports } from "@shared/schema";
+import { creditPulls, loanApplications, verificationReports } from "@shared/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { storage } from "../storage";
 import { sendEmail } from "./emailService";
@@ -27,6 +27,19 @@ import { sendEmail } from "./emailService";
  * hash so re-evaluations never re-nag).
  */
 
+import type { IncomeSourceEntry } from "@shared/schema";
+import {
+  adjustLiabilities,
+  assessIncomeSeasoning,
+  computeDti,
+  computeWhatIfPayoff,
+  detectSignificantDeposits,
+  SEASONING_FULL_MONTHS,
+  STANDARD_DTI_CEILING,
+  type DepositoryTransaction,
+  type Tradeline,
+} from "./underwritingNuance";
+
 export const RESERVES_MONTHS_THRESHOLD = 2;
 
 // Assumption used for the reserves estimate before a rate is locked. Matches
@@ -34,7 +47,12 @@ export const RESERVES_MONTHS_THRESHOLD = 2;
 const ASSUMED_ANNUAL_RATE = 0.07;
 const TAX_INSURANCE_ANNUAL_PCT = 0.0125;
 
-export type PreUwFlagCode = "LOW_RESERVES_WARNING" | "COMPLEX_INCOME_CHECK";
+export type PreUwFlagCode =
+  | "LOW_RESERVES_WARNING"
+  | "COMPLEX_INCOME_CHECK"
+  | "INCOME_SEASONING"
+  | "VERIFIED_DEBT_DTI"
+  | "LARGE_DEPOSIT_SOURCING";
 
 export interface PreUwRequiredDoc {
   documentType: string;
@@ -56,6 +74,12 @@ export interface PreUwInput {
   employmentType: string | null;
   /** Total balance from the latest completed VOA report; null = not yet verified. */
   verifiedAssetsTotal: number | null;
+  /** Supplementary income sources from intake (seasoning check, B3-3.2). */
+  incomeSources?: IncomeSourceEntry[] | null;
+  /** Verified liability ledger from the latest soft pull (B3-6-05 math). */
+  tradelines?: Tradeline[] | null;
+  /** Depository transactions from the latest VOA (B3-4.3-04 sourcing). */
+  transactions?: DepositoryTransaction[] | null;
 }
 
 function toNumber(value: string | number | null | undefined): number {
@@ -150,6 +174,96 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     }
   }
 
+  // --- Income seasoning (Fannie B3-3.2): supplementary income needs 24 months
+  // of history; 12–24 months only with compensating factors. -----------------
+  const seasoning = assessIncomeSeasoning(input.incomeSources);
+  if (seasoning.unseasonedSources.length > 0 || seasoning.conditionalSources.length > 0) {
+    const worst = [...seasoning.unseasonedSources, ...seasoning.conditionalSources].sort(
+      (a, b) => a.months - b.months,
+    )[0];
+    const blocking = seasoning.unseasonedSources.length > 0;
+    flags.push({
+      code: "INCOME_SEASONING",
+      severity: blocking ? "blocking" : "warning",
+      reason: blocking
+        ? `Your ${worst.type.replace(/_/g, " ")} income has ${worst.months} months of history — standard guidelines require ${SEASONING_FULL_MONTHS} months before it can count toward qualifying. We can still qualify you on your other income.`
+        : `Your ${worst.type.replace(/_/g, " ")} income has ${worst.months} months of history — between 12 and ${SEASONING_FULL_MONTHS} months it can count only with strong compensating factors, which your tax returns document.`,
+      requiredDocs: [
+        {
+          documentType: "tax_return",
+          description: "Last two years of federal tax returns (1040s) covering the supplementary income",
+        },
+        { documentType: "business_license", description: "Business license or contract evidencing the income's continuity" },
+      ],
+      metrics: {
+        shortestSeasoningMonths: worst.months,
+        conditionalSources: seasoning.conditionalSources.length,
+        unseasonedSources: seasoning.unseasonedSources.length,
+      },
+    });
+  }
+
+  // --- Sleeper debt (Fannie B3-6-05): deferred student loans at 1% of balance
+  // plus newly opened tradelines, recomputed against the 43% DTI ceiling. ----
+  const income = toNumber(input.annualIncome);
+  if (input.tradelines && input.tradelines.length > 0 && !isNaN(income) && income > 0) {
+    const adjustment = adjustLiabilities(input.tradelines);
+    const grossMonthly = income / 12;
+    const piti = !isNaN(price) && !isNaN(down) ? estimateMonthlyPITI(price, down) : 0;
+    const dti = computeDti(adjustment.adjustedMonthlyDebt, piti, grossMonthly);
+    const hasHiddenDebt =
+      adjustment.deferredStudentLoanImputed > 0 || adjustment.newTradelines.length > 0;
+    if (hasHiddenDebt && dti > STANDARD_DTI_CEILING) {
+      const whatIf = computeWhatIfPayoff(
+        input.tradelines,
+        adjustment.adjustedMonthlyDebt,
+        piti,
+        grossMonthly,
+      );
+      flags.push({
+        code: "VERIFIED_DEBT_DTI",
+        severity: "warning",
+        reason:
+          `Your verified credit file includes ${adjustment.deferredStudentLoans.length > 0 ? "deferred student loans (qualified at 1% of balance)" : ""}` +
+          `${adjustment.deferredStudentLoans.length > 0 && adjustment.newTradelines.length > 0 ? " and " : ""}` +
+          `${adjustment.newTradelines.length > 0 ? "recently opened credit lines" : ""}` +
+          ` that raise your qualifying debt-to-income to ${(dti * 100).toFixed(1)}% — above the ${(STANDARD_DTI_CEILING * 100).toFixed(0)}% standard ceiling.` +
+          (whatIf
+            ? ` Paying off your ${whatIf.creditor} balance of $${Math.round(whatIf.balance).toLocaleString()} before closing would bring it back to ${(whatIf.dtiAfterPayoff * 100).toFixed(1)}%.`
+            : ""),
+        requiredDocs: whatIf
+          ? [{ documentType: "other", description: `Payoff confirmation for ${whatIf.creditor} (balance ~$${Math.round(whatIf.balance).toLocaleString()})` }]
+          : [{ documentType: "letter_of_explanation", description: "Letter of explanation for the recently opened credit lines" }],
+        metrics: {
+          adjustedDti: Number((dti * 100).toFixed(2)),
+          adjustedMonthlyDebt: Number(adjustment.adjustedMonthlyDebt.toFixed(2)),
+          deferredImputed: Number(adjustment.deferredStudentLoanImputed.toFixed(2)),
+          newTradelines: adjustment.newTradelines.length,
+          ...(whatIf ? { whatIfPayoffBalance: whatIf.balance, whatIfDti: Number((whatIf.dtiAfterPayoff * 100).toFixed(2)) } : {}),
+        },
+      });
+    }
+  }
+
+  // --- Large-deposit sourcing (Fannie B3-4.3-04): single deposits over 50% of
+  // monthly qualifying income must be documented. ----------------------------
+  if (!isNaN(income) && income > 0) {
+    const deposits = detectSignificantDeposits(input.transactions, income / 12);
+    if (deposits.length > 0) {
+      const largest = deposits.sort((a, b) => b.amount - a.amount)[0];
+      flags.push({
+        code: "LARGE_DEPOSIT_SOURCING",
+        severity: "warning",
+        reason: `We noticed a deposit of $${Math.round(largest.amount).toLocaleString()} on ${largest.date}. Deposits above 50% of monthly income ($${Math.round(largest.threshold).toLocaleString()}) must be sourced — a gift letter if it came from family, or documentation of the sale/transfer otherwise.`,
+        requiredDocs: [
+          { documentType: "gift_letter", description: "Signed gift letter + donor's transfer confirmation (if the funds were a gift)" },
+          { documentType: "other", description: "Sourcing documentation (e.g., vehicle sale settlement, transfer records) otherwise" },
+        ],
+        metrics: { depositAmount: largest.amount, threshold: largest.threshold, depositCount: deposits.length },
+      });
+    }
+  }
+
   return flags;
 }
 
@@ -165,13 +279,22 @@ export function buildFlagOutreach(
   const uniqueDocs = [...new Set(docLines)];
 
   const explanations = flags.map((f) => {
-    if (f.code === "COMPLEX_INCOME_CHECK") {
-      return "Because you're self-employed, lenders need to see your business income history. To proceed with your loan, please upload your last two years of federal tax returns (1040s) and a year-to-date profit & loss statement.";
+    switch (f.code) {
+      case "COMPLEX_INCOME_CHECK":
+        return "Because you're self-employed, lenders need to see your business income history. To proceed with your loan, please upload your last two years of federal tax returns (1040s) and a year-to-date profit & loss statement.";
+      case "INCOME_SEASONING":
+      case "VERIFIED_DEBT_DTI":
+      case "LARGE_DEPOSIT_SOURCING":
+        // These reasons are already written borrower-first with the specific
+        // numbers and the resolution path baked in.
+        return f.reason;
+      default: {
+        const months = f.metrics?.monthsOfReserves;
+        const monthsLabel =
+          months === undefined ? `less than ${RESERVES_MONTHS_THRESHOLD}` : Math.max(months, 0).toFixed(1);
+        return `Your linked accounts currently show ${monthsLabel} months of payment reserves after your down payment. This won't stop your application — linking any additional savings, retirement, or brokerage accounts (or documenting gift funds) will strengthen it.`;
+      }
     }
-    const months = f.metrics?.monthsOfReserves;
-    const monthsLabel =
-      months === undefined ? `less than ${RESERVES_MONTHS_THRESHOLD}` : Math.max(months, 0).toFixed(1);
-    return `Your linked accounts currently show ${monthsLabel} months of payment reserves after your down payment. This won't stop your application — linking any additional savings, retirement, or brokerage accounts (or documenting gift funds) will strengthen it.`;
   });
 
   const subject = "Your Homiquity application: a quick document request";
@@ -223,18 +346,26 @@ export async function runPreUnderwriting(
     .limit(1);
   if (!application) throw new Error(`Application ${applicationId} not found`);
 
-  const [voa] = await db
-    .select({ totalBalance: verificationReports.totalBalance })
-    .from(verificationReports)
-    .where(
-      and(
-        eq(verificationReports.applicationId, applicationId),
-        eq(verificationReports.reportType, "voa"),
-        eq(verificationReports.status, "completed"),
-      ),
-    )
-    .orderBy(desc(verificationReports.completedAt))
-    .limit(1);
+  const [[voa], [pull]] = await Promise.all([
+    db
+      .select({ totalBalance: verificationReports.totalBalance, rawPayload: verificationReports.rawPayload })
+      .from(verificationReports)
+      .where(
+        and(
+          eq(verificationReports.applicationId, applicationId),
+          eq(verificationReports.reportType, "voa"),
+          eq(verificationReports.status, "completed"),
+        ),
+      )
+      .orderBy(desc(verificationReports.completedAt))
+      .limit(1),
+    db
+      .select({ liabilities: creditPulls.liabilities })
+      .from(creditPulls)
+      .where(and(eq(creditPulls.applicationId, applicationId), eq(creditPulls.status, "completed")))
+      .orderBy(desc(creditPulls.completedAt))
+      .limit(1),
+  ]);
 
   const flags = derivePreUnderwritingFlags({
     annualIncome: application.annualIncome,
@@ -242,6 +373,12 @@ export async function runPreUnderwriting(
     downPayment: application.downPayment,
     employmentType: application.employmentType,
     verifiedAssetsTotal: voa?.totalBalance ? parseFloat(voa.totalBalance) : null,
+    incomeSources: (application.incomeSources as IncomeSourceEntry[] | null) ?? null,
+    tradelines: (pull?.liabilities as Tradeline[] | null) ?? null,
+    transactions:
+      ((voa?.rawPayload as { transactions?: DepositoryTransaction[] } | null)?.transactions as
+        | DepositoryTransaction[]
+        | undefined) ?? null,
   });
 
   const previous = (application.preUwFlags ?? null) as { notifiedHash?: string } | null;

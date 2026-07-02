@@ -170,6 +170,9 @@ server.registerTool(
           openTradelines: pull.tradelines.length,
           totalDebt: pull.totalDebt.toFixed(2),
           monthlyPayments: pull.totalMonthlyPayments.toFixed(2),
+          // Machine-readable ledger for deterministic underwriting math
+          // (deferred-student-loan 1% rule, new-tradeline detection).
+          liabilities: pull.tradelines,
           vendorRequestId: pull.vendorRequestId,
           completedAt: new Date(),
           expiresAt,

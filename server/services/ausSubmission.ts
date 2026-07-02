@@ -48,6 +48,8 @@ export interface ParsedAssetReport {
   avgMonthlyBalance: number;
   payroll: { employerName: string; avgMonthlyDeposit: number; monthsObserved: number };
   transactionTrend: "stable" | "growing" | "declining";
+  /** Depository transactions (negative = inflow) — feeds B3-4.3-04 large-deposit sourcing. */
+  transactions: Array<{ amount: number; date: string; description?: string }>;
 }
 
 export async function parsePlaidAssetReport(assetReportToken: string): Promise<ParsedAssetReport> {
@@ -75,6 +77,13 @@ export async function parsePlaidAssetReport(assetReportToken: string): Promise<P
       ),
       payroll: { employerName: "(see transactions)", avgMonthlyDeposit: 0, monthsObserved: report.days_requested ? Math.round(report.days_requested / 30) : 0 },
       transactionTrend: "stable",
+      transactions: accounts.flatMap((a) =>
+        (a.transactions ?? []).map((t) => ({
+          amount: t.amount,
+          date: t.date,
+          description: t.original_description ?? undefined,
+        })),
+      ),
     };
   }
 
@@ -96,6 +105,20 @@ export async function parsePlaidAssetReport(assetReportToken: string): Promise<P
       monthsObserved: 12,
     },
     transactionTrend: trends[Math.floor(seeded(s + "trend") * trends.length)],
+    // ~35% of simulated profiles carry one large unsourced deposit within the
+    // last 30 days (the "mattress money" nuance — B3-4.3-04 sourcing rule).
+    transactions:
+      seeded(s + "bigdep") < 0.35
+        ? [
+            {
+              amount: -(4_000 + Math.round(seeded(s + "depamt") * 12_000)),
+              date: new Date(Date.now() - Math.round(seeded(s + "depage") * 25 + 3) * 24 * 3600 * 1000)
+                .toISOString()
+                .slice(0, 10),
+              description: "TRANSFER CREDIT — PERSONAL",
+            },
+          ]
+        : [],
   };
 }
 

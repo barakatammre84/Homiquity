@@ -82,6 +82,8 @@ export function registerAusRoutes(app: Express) {
           institutionCount: report.institutionCount,
           accountCount: report.accountCount,
           totalBalance: report.totalBalance.toFixed(2),
+          // Audit trace + large-deposit sourcing input (B3-4.3-04).
+          rawPayload: report,
           completedAt: new Date(),
           expiresAt: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
         })

@@ -39,9 +39,13 @@ function seeded(seed: string): number {
 
 export interface SoftPullTradeline {
   creditor: string;
-  type: "revolving" | "installment" | "mortgage" | "auto";
+  type: "revolving" | "installment" | "mortgage" | "auto" | "student_loan" | "retail";
   balance: number;
   monthlyPayment: number;
+  /** Deferred obligations ($0 payment) — qualified at 1% of balance (B3-6-05). */
+  deferred?: boolean;
+  /** Days since the line was opened — recent lines are "sleeper debt". */
+  openedDaysAgo?: number;
 }
 
 export interface SoftPullResult {
@@ -88,6 +92,29 @@ export async function softPullCredit(
       monthlyPayment: Math.max(25, Math.round(balance * 0.03)),
     };
   });
+
+  // "Sleeper debt" nuances the deterministic underwriting layer must catch:
+  // ~40% of profiles carry a deferred student loan ($0 payment, qualified at
+  // 1% of balance per B3-6-05); ~30% opened a retail line in the last 90 days.
+  if (seeded(seed + "defer") < 0.4) {
+    tradelines.push({
+      creditor: "Dept of Education / Nelnet",
+      type: "student_loan",
+      balance: Math.round(seeded(seed + "slb") * 55_000) + 15_000,
+      monthlyPayment: 0,
+      deferred: true,
+    });
+  }
+  if (seeded(seed + "newline") < 0.3) {
+    const balance = Math.round(seeded(seed + "rb") * 2_500) + 500;
+    tradelines.push({
+      creditor: "Wayfair Retail Card",
+      type: "retail",
+      balance,
+      monthlyPayment: Math.max(25, Math.round(balance * 0.03)),
+      openedDaysAgo: Math.round(seeded(seed + "rd") * 80) + 5,
+    });
+  }
 
   return await withTimeout(
     Promise.resolve({

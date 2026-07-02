@@ -602,10 +602,52 @@ export async function simulateCreditPullCompletion(
   const scores = [experian, equifax, transunion].sort((a, b) => a - b);
   const representativeScore = scores[1];
 
-  const totalDebt = Math.floor(Math.random() * 50000) + 5000;
-  const monthlyPayments = Math.floor(totalDebt * 0.03);
-  const totalTradelines = Math.floor(Math.random() * 15) + 3;
-  const openTradelines = Math.floor(Math.random() * 8) + 2;
+  // Line-item liabilities so the deterministic underwriting layer (deferred
+  // student loans at 1% of balance, new-tradeline "sleeper debt") has real
+  // structure to work with — aggregates are derived from the lines.
+  const creditors = ["Chase Card", "Capital One", "Toyota Financial", "Discover", "Wells Fargo Auto"];
+  const lineTypes = ["revolving", "revolving", "auto", "installment", "revolving"];
+  const lineCount = Math.floor(Math.random() * 3) + 3;
+  const liabilityLines: Array<{
+    creditor: string;
+    type: string;
+    balance: number;
+    monthlyPayment: number;
+    deferred?: boolean;
+    openedDaysAgo?: number;
+  }> = Array.from({ length: lineCount }, (_, i) => {
+    const balance = Math.floor(Math.random() * 20000) + 1000;
+    return {
+      creditor: creditors[i % creditors.length],
+      type: lineTypes[i % lineTypes.length],
+      balance,
+      monthlyPayment: Math.max(25, Math.floor(balance * 0.03)),
+    };
+  });
+  if (Math.random() < 0.4) {
+    liabilityLines.push({
+      creditor: "Dept of Education / Nelnet",
+      type: "student_loan",
+      balance: Math.floor(Math.random() * 55000) + 15000,
+      monthlyPayment: 0,
+      deferred: true,
+    });
+  }
+  if (Math.random() < 0.3) {
+    const balance = Math.floor(Math.random() * 2500) + 500;
+    liabilityLines.push({
+      creditor: "Wayfair Retail Card",
+      type: "retail",
+      balance,
+      monthlyPayment: Math.max(25, Math.floor(balance * 0.03)),
+      openedDaysAgo: Math.floor(Math.random() * 80) + 5,
+    });
+  }
+
+  const totalDebt = liabilityLines.reduce((s, l) => s + l.balance, 0);
+  const monthlyPayments = liabilityLines.reduce((s, l) => s + l.monthlyPayment, 0);
+  const totalTradelines = liabilityLines.length;
+  const openTradelines = liabilityLines.length;
   const derogatoryCount = Math.floor(Math.random() * 3);
   const inquiryCount30Days = Math.floor(Math.random() * 3);
   const inquiryCount90Days = Math.floor(Math.random() * 5);
@@ -643,6 +685,7 @@ export async function simulateCreditPullCompletion(
       derogatoryCount,
       inquiryCount30Days,
       inquiryCount90Days,
+      liabilities: liabilityLines,
       encryptedRawResponse: encryptedResponse.encryptedContent,
       encryptionKeyId: encryptedResponse.keyId,
       encryptionIV: encryptedResponse.iv,
