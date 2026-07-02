@@ -41,6 +41,11 @@ import {
   HelpCircle
 } from "lucide-react";
 
+import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
+import { PRE_APPROVAL_DEFAULTS, type FunnelStepId } from "@/funnel/preApprovalMachine";
+import { useFunnelAutosave } from "@/funnel/useFunnelAutosave";
+import { Checkbox } from "@/components/ui/checkbox";
+
 type QuestionType = "intro" | "choice" | "currency" | "number" | "state" | "boolean_pair" | "income_sources" | "final";
 
 interface QuestionOption {
@@ -95,6 +100,19 @@ const QUESTIONS: Question[] = [
       { value: "condo", label: "Condo", icon: Building2 },
       { value: "townhouse", label: "Townhouse", icon: Building2 },
       { value: "multi_family", label: "Multi-Family (2-4 Units)", icon: Users }
+    ]
+  },
+  {
+    // Asked BEFORE price/down payment so VA eligibility can unlock the
+    // zero-down path and suppress PMI guidance (the machine reorders routing;
+    // this array is just the step registry).
+    id: "veteranAndFirstTime",
+    type: "boolean_pair",
+    question: "These help us find programs you may qualify for",
+    icon: Shield,
+    booleanFields: [
+      { field: "isVeteran", label: "I am a U.S. military veteran or active duty", icon: Shield },
+      { field: "isFirstTimeBuyer", label: "I am a first-time home buyer", icon: Home }
     ]
   },
   {
@@ -197,22 +215,21 @@ const QUESTIONS: Question[] = [
     ]
   },
   {
-    id: "veteranAndFirstTime",
-    type: "boolean_pair",
-    question: "These help us find programs you may qualify for",
-    icon: Shield,
-    booleanFields: [
-      { field: "isVeteran", label: "I am a U.S. military veteran or active duty", icon: Shield },
-      { field: "isFirstTimeBuyer", label: "I am a first-time home buyer", icon: Home }
-    ]
-  },
-  {
     id: "final",
     type: "final",
     question: "You're almost there!",
-    subtitle: "Click submit to get your personalized loan options. Soft credit check only -- won't affect your score."
+    subtitle: "Authorize the soft credit check below and submit to get your personalized loan options."
   }
 ];
+
+const QUESTIONS_BY_ID: Record<string, Question> = Object.fromEntries(
+  QUESTIONS.map((q) => [q.id, q]),
+);
+
+/** Map a persisted step marker to a valid step id (tolerates legacy numeric markers). */
+function toStepId(raw: string): FunnelStepId {
+  return QUESTIONS_BY_ID[raw] ? (raw as FunnelStepId) : "loanPurpose";
+}
 
 interface AdvisoryPanelProps {
   formValues: PreApprovalFormData;
@@ -262,6 +279,13 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
       case "purchasePrice":
         return "We use this to estimate your monthly payment and closing costs.";
       case "downPayment":
+        if (formValues.isVeteran && formValues.loanPurpose === "purchase") {
+          return (
+            <span className="text-green-600 dark:text-green-400 font-medium">
+              VA benefit detected: VA loans allow $0 down with no PMI. We'll price both VA and conventional options so you can compare.
+            </span>
+          );
+        }
         if (stats.loanAmount > 766550) {
           return (
             <span className="text-amber-600 dark:text-amber-400 font-medium">
@@ -423,8 +447,28 @@ function getDynamicTitle(currentQ: Question, formValues: PreApprovalFormData): s
 }
 
 export default function PreApproval() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [direction, setDirection] = useState(1);
+  return (
+    <FunnelProvider initialAnswers={PRE_APPROVAL_DEFAULTS}>
+      <PreApprovalFunnel />
+    </FunnelProvider>
+  );
+}
+
+function PreApprovalFunnel() {
+  const {
+    stepId,
+    flags,
+    progress,
+    next,
+    back,
+    goTo,
+    hydrate,
+    syncAnswers,
+    setConsent,
+    checkGate,
+    state: funnelState,
+  } = useFunnel();
+  const direction = funnelState.direction;
   const [stateComboOpen, setStateComboOpen] = useState(false);
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [selectedIncomeTypes, setSelectedIncomeTypes] = useState<string[]>([]);
@@ -437,7 +481,7 @@ export default function PreApproval() {
   usePageView("/apply");
   const track = useTrackActivity();
   const trackFormStart = useTrackFormStart();
-  useTrackFormAbandon("preapproval", currentStep > 0 && currentStep < QUESTIONS.length - 1);
+  useTrackFormAbandon("preapproval", progress.index > 0 && stepId !== "final");
   const prevStepRef = useRef(0);
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -510,22 +554,15 @@ export default function PreApproval() {
   const [autosaveRestored, setAutosaveRestored] = useState(false);
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const saveToLocalStorage = useCallback((values: PreApprovalFormData, step: number) => {
-    try {
-      const hasData = Object.entries(values).some(([k, v]) => {
-        if (k === "isVeteran" || k === "isFirstTimeBuyer") return false;
-        if (k === "employmentType" && v === "employed") return false;
-        if (k === "propertyType" && v === "single_family") return false;
-        if (k === "loanPurpose" && v === defaultLoanPurpose) return false;
-        return typeof v === "string" && v.length > 0;
-      });
-      if (hasData) {
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(values));
-        localStorage.setItem(AUTOSAVE_STEP_KEY, String(step));
-      }
-    } catch {}
+  const hasMeaningfulData = useCallback((values: PreApprovalFormData) => {
+    return Object.entries(values).some(([k, v]) => {
+      if (k === "isVeteran" || k === "isFirstTimeBuyer") return false;
+      if (k === "employmentType" && v === "employed") return false;
+      if (k === "propertyType" && v === "single_family") return false;
+      if (k === "loanPurpose" && v === defaultLoanPurpose) return false;
+      return typeof v === "string" && v.length > 0;
+    });
   }, [defaultLoanPurpose]);
 
   const clearAutosave = useCallback(() => {
@@ -554,22 +591,41 @@ export default function PreApproval() {
     }
   }, [isAuthenticated]);
 
-  const currentQ = QUESTIONS[currentStep];
-  
+  const currentQ = QUESTIONS_BY_ID[stepId];
+
   const watchedValues = form.watch();
   const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
 
+  // Mirror form values into the machine so routing always sees the latest
+  // answers (guarded so an unchanged snapshot doesn't dispatch every render).
+  const lastSyncedRef = useRef("");
   useEffect(() => {
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(() => {
-      if (currentStep > 0) {
-        saveToLocalStorage(watchedValues, currentStep);
-      }
-    }, 800);
-    return () => {
-      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    };
-  }, [watchedValues, currentStep, saveToLocalStorage]);
+    const snapshot = JSON.stringify(watchedValues);
+    if (snapshot !== lastSyncedRef.current) {
+      lastSyncedRef.current = snapshot;
+      syncAnswers(watchedValues);
+    }
+  }, [watchedValues, syncAnswers]);
+
+  // A blocked NEXT (validation gate) surfaces as a toast.
+  useEffect(() => {
+    if (funnelState.blockedGate) {
+      toast({
+        title: "One more thing",
+        description: funnelState.blockedGate.errors[0],
+        variant: "destructive",
+      });
+    }
+  }, [funnelState.blockedGate, toast]);
+
+  const { readSaved } = useFunnelAutosave<PreApprovalFormData>({
+    storageKey: AUTOSAVE_KEY,
+    stepStorageKey: AUTOSAVE_STEP_KEY,
+    values: watchedValues,
+    stepId,
+    enabled: stepId !== "intro",
+    shouldPersist: hasMeaningfulData,
+  });
 
   useEffect(() => {
     if (autosaveRestored) return;
@@ -585,20 +641,14 @@ export default function PreApproval() {
       }
     }
 
-    try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
-      const savedStep = localStorage.getItem(AUTOSAVE_STEP_KEY);
-      if (saved && savedStep) {
-        const step = parseInt(savedStep, 10);
-        if (step > 0 && step < QUESTIONS.length) {
-          setShowRestoreBanner(true);
-          setAutosaveRestored(true);
-          return;
-        }
-      }
-    } catch {}
+    const saved = readSaved();
+    if (saved && saved.stepId !== "intro") {
+      setShowRestoreBanner(true);
+      setAutosaveRestored(true);
+      return;
+    }
     setAutosaveRestored(true);
-  }, [autosaveRestored, isAuthenticated, serverDraft, serverDraftLoading]);
+  }, [autosaveRestored, isAuthenticated, serverDraft, serverDraftLoading, readSaved]);
 
   const handleRestoreDraft = useCallback(() => {
     if (isAuthenticated && serverDraft && (serverDraft as any).annualIncome) {
@@ -637,18 +687,17 @@ export default function PreApproval() {
         setSelectedIncomeTypes(types);
         setIncomeDetails(details);
       }
-      setCurrentStep(1);
+      goTo("loanPurpose");
       setShowRestoreBanner(false);
       toast({ title: "Draft restored from your account", description: "We loaded your saved progress." });
       return;
     }
     try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
-      const savedStep = localStorage.getItem(AUTOSAVE_STEP_KEY);
-      if (saved && savedStep) {
-        const parsed = JSON.parse(saved);
-        const step = parseInt(savedStep, 10);
-        form.reset({ ...form.getValues(), ...parsed });
+      const saved = readSaved();
+      if (saved) {
+        const merged = { ...form.getValues(), ...saved.values };
+        form.reset(merged);
+        const parsed = saved.values as PreApprovalFormData;
         if (Array.isArray(parsed.incomeSources) && parsed.incomeSources.length > 0) {
           const types: string[] = [];
           const details: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }> = {};
@@ -666,14 +715,14 @@ export default function PreApproval() {
           setSelectedIncomeTypes(types);
           setIncomeDetails(details);
         }
-        setCurrentStep(step);
+        hydrate(toStepId(saved.stepId), merged);
         setShowRestoreBanner(false);
         toast({ title: "Progress restored", description: "We picked up where you left off." });
       }
     } catch {
       setShowRestoreBanner(false);
     }
-  }, [form, toast, isAuthenticated, serverDraft]);
+  }, [form, toast, isAuthenticated, serverDraft, goTo, hydrate, readSaved]);
 
   const handleDismissRestore = useCallback(() => {
     setShowRestoreBanner(false);
@@ -681,15 +730,15 @@ export default function PreApproval() {
   }, [clearAutosave]);
 
   useEffect(() => {
-    if (currentStep !== prevStepRef.current && currentStep > 0) {
+    if (progress.index !== prevStepRef.current && progress.index > 0) {
       track("preapproval_step", "/apply", {
-        step: currentStep,
-        step_id: currentQ?.id || "",
-        total: QUESTIONS.length - 1,
+        step: progress.index,
+        step_id: stepId,
+        total: progress.total,
       });
-      prevStepRef.current = currentStep;
+      prevStepRef.current = progress.index;
     }
-  }, [currentStep, currentQ, track]);
+  }, [progress.index, progress.total, stepId, track]);
 
   // Load draft application if user is authenticated
   const { data: draftApp } = useQuery({
@@ -839,90 +888,58 @@ export default function PreApproval() {
   const handleNext = async () => {
     if (currentQ.type === "intro") {
       trackFormStart("preapproval");
-      setDirection(1);
-      setCurrentStep((prev) => prev + 1);
+      next(form.getValues());
       return;
     }
 
     if (currentQ.type === "final") {
       const isValid = await form.trigger();
-      if (isValid) {
-        if (!isAuthenticated) {
-          saveToLocalStorage(form.getValues(), currentStep);
-          localStorage.setItem(PENDING_SUBMIT_KEY, "true");
-          setShowAuthGate(true);
-          return;
-        }
-        submitMutation.mutate(form.getValues());
-      } else {
-        toast({ 
-          title: "Please complete all fields", 
-          description: "Some required information is missing.",
-          variant: "destructive" 
-        });
-      }
-      return;
-    }
-
-    if (currentQ.type === "boolean_pair") {
-      setDirection(1);
-      setCurrentStep((prev) => prev + 1);
-      return;
-    }
-
-    if (currentQ.id === "incomeSources") {
-      const sources = form.getValues("incomeSources") || [];
-      const allValid = sources.length > 0 && sources.every((s: IncomeSourceEntry) => {
-        if (s.type === "rental") {
-          const props = s.rentalProperties || [];
-          return props.length > 0 && props.every((p: RentalPropertyEntry) => p.address && p.monthlyRentalIncome && parseFloat(String(p.monthlyRentalIncome).replace(/,/g, "")) > 0);
-        }
-        return s.annualAmount && s.annualAmount.length > 0;
-      });
-      if (!allValid && sources.length > 0) {
+      const gate = checkGate("final", form.getValues());
+      if (!isValid || !gate.ok) {
         toast({
-          title: "Please complete all income details",
-          description: "Each income source needs at least an annual amount. Rental properties need an address and monthly income.",
-          variant: "destructive"
+          title: "Please complete all fields",
+          description: gate.errors[0] ?? "Some required information is missing.",
+          variant: "destructive",
         });
         return;
       }
-      setDirection(1);
-      setCurrentStep((prev) => prev + 1);
+      if (!isAuthenticated) {
+        try {
+          localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(form.getValues()));
+          localStorage.setItem(AUTOSAVE_STEP_KEY, stepId);
+          localStorage.setItem(PENDING_SUBMIT_KEY, "true");
+        } catch {}
+        setShowAuthGate(true);
+        return;
+      }
+      submitMutation.mutate(form.getValues());
+      return;
+    }
+
+    // boolean_pair and incomeSources have no single field to trigger; the
+    // machine's step gate validates them (and everything else) inside NEXT.
+    if (currentQ.type === "boolean_pair" || currentQ.id === "incomeSources") {
+      next(form.getValues());
       return;
     }
 
     if (currentQ.field) {
       const isValid = await form.trigger(currentQ.field);
       if (isValid) {
-        setDirection(1);
-        const nextStep = currentStep + 1;
-        const nextQ = QUESTIONS[nextStep];
-        if (nextQ && nextQ.id === "incomeSources" && !form.getValues("hasAdditionalIncome")) {
-          setCurrentStep(nextStep + 1);
-        } else {
-          setCurrentStep(nextStep);
-        }
+        next(form.getValues());
       } else {
-        toast({ 
-          title: "Please fill out this field", 
+        toast({
+          title: "Please fill out this field",
           description: "This information is required to continue.",
-          variant: "destructive" 
+          variant: "destructive"
         });
       }
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 0) {
-      setDirection(-1);
-      const prevStep = currentStep - 1;
-      const prevQ = QUESTIONS[prevStep];
-      if (prevQ && prevQ.id === "incomeSources" && !form.getValues("hasAdditionalIncome")) {
-        setCurrentStep(prevStep - 1);
-      } else {
-        setCurrentStep(prevStep);
-      }
+    if (progress.index > 0) {
+      back(form.getValues());
     }
   };
 
@@ -1026,23 +1043,16 @@ export default function PreApproval() {
                   data-testid={`option-${currentQ.field}-${option.value}`}
                   onClick={() => {
                     if (currentQ.id === "hasAdditionalIncome") {
-                      if (option.value === "yes") {
-                        form.setValue("hasAdditionalIncome", true as never);
-                      } else {
-                        form.setValue("hasAdditionalIncome", false as never);
+                      form.setValue("hasAdditionalIncome", (option.value === "yes") as never);
+                      if (option.value === "no") {
                         form.setValue("incomeSources", [] as never);
                       }
-                      setTimeout(() => {
-                        setDirection(1);
-                        setCurrentStep((prev) => option.value === "no" ? prev + 2 : prev + 1);
-                      }, 200);
-                      return;
+                    } else {
+                      form.setValue(currentQ.field as keyof PreApprovalFormData, option.value as never);
                     }
-                    form.setValue(currentQ.field as keyof PreApprovalFormData, option.value as never);
-                    setTimeout(() => {
-                      setDirection(1);
-                      setCurrentStep((prev) => prev + 1);
-                    }, 200);
+                    // The machine recomputes the route from the answers, so
+                    // injected steps (complex income) appear/disappear here.
+                    setTimeout(() => next(form.getValues()), 200);
                   }}
                   className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 group
                     ${isSelected
@@ -1105,10 +1115,7 @@ export default function PreApproval() {
                           onSelect={() => {
                             form.setValue("propertyState", state.value, { shouldValidate: true });
                             setStateComboOpen(false);
-                            setTimeout(() => {
-                              setDirection(1);
-                              setCurrentStep((prev) => prev + 1);
-                            }, 200);
+                            setTimeout(() => next(form.getValues()), 200);
                           }}
                         >
                           <Check
@@ -1131,7 +1138,10 @@ export default function PreApproval() {
 
       case "income_sources": {
         const employmentTypeMap: Record<string, string> = { employed: "w2", self_employed: "self_employed", retired: "pension" };
-        const primaryType = employmentTypeMap[form.getValues("employmentType") || ""] || "";
+        // Self-employed borrowers keep their primary type in the list — the
+        // complex-income block exists precisely to detail 1099/business income.
+        const rawPrimaryType = employmentTypeMap[form.getValues("employmentType") || ""] || "";
+        const primaryType = rawPrimaryType === "self_employed" ? "" : rawPrimaryType;
         const allIncomeTypes = [
           { value: "w2", label: "W-2 Employment", icon: Briefcase },
           { value: "self_employed", label: "Self-Employment / 1099", icon: Users },
@@ -1426,7 +1436,33 @@ export default function PreApproval() {
             })}
           </div>
         );
-        
+
+      case "final": {
+        const acknowledged = funnelState.consent.softPullAcknowledged;
+        return (
+          <div className="w-full max-w-md mx-auto text-left">
+            <label
+              className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors
+                ${acknowledged ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"}`}
+              data-testid="label-soft-pull-consent"
+            >
+              <Checkbox
+                checked={acknowledged}
+                onCheckedChange={(checked) => setConsent(checked === true)}
+                className="mt-0.5"
+                data-testid="checkbox-soft-pull-consent"
+              />
+              <span className="text-sm text-muted-foreground leading-relaxed">
+                I authorize Homiquity to obtain my credit report using a{" "}
+                <span className="font-medium text-foreground">soft inquiry</span>, which will not
+                affect my credit score. This authorization is required by the Fair Credit
+                Reporting Act (FCRA) and is not an application for credit.
+              </span>
+            </label>
+          </div>
+        );
+      }
+
       default:
         return null;
     }
@@ -1514,34 +1550,34 @@ export default function PreApproval() {
       
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
-        <motion.div 
+        <motion.div
           className="h-full bg-primary"
           initial={{ width: 0 }}
-          animate={{ width: `${(currentStep / (QUESTIONS.length - 1)) * 100}%` }}
+          animate={{ width: `${progress.percent}%` }}
           transition={{ duration: 0.4 }}
         />
       </div>
 
       {/* Navigation Header */}
       <div className="fixed top-0 w-full p-4 sm:p-6 flex justify-between items-center z-40 bg-background/80 backdrop-blur-sm">
-        <button 
+        <button
           onClick={handleBack}
-          disabled={currentStep === 0}
-          className={`p-2 rounded-full hover:bg-muted transition-all ${currentStep === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+          disabled={progress.index === 0}
+          className={`p-2 rounded-full hover:bg-muted transition-all ${progress.index === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
           data-testid="button-back"
         >
           <ChevronLeft className="w-6 h-6 text-muted-foreground" />
         </button>
         <div className="flex flex-col items-center" data-testid="text-step-counter">
           <span className="text-sm font-medium text-muted-foreground">
-            Step {currentStep} of {QUESTIONS.length - 1}
+            Step {progress.index} of {progress.total}
           </span>
           <span className="text-[11px] text-muted-foreground/60">
-            {currentStep <= 3 ? "~2 min left" : currentStep <= 7 ? "~1 min left" : "Almost done"}
+            {progress.index <= 4 ? "~2 min left" : progress.index <= 8 ? "~1 min left" : "Almost done"}
           </span>
         </div>
         <div className="flex items-center gap-1 w-10 justify-end">
-          {currentStep > 0 && (
+          {progress.index > 0 && (
             <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1" data-testid="text-autosave-indicator">
               <Check className="h-3 w-3" /> Saved
             </span>
@@ -1556,7 +1592,7 @@ export default function PreApproval() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 pt-20 pb-0 w-full max-w-4xl mx-auto relative lg:pr-96">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
-            key={currentStep}
+            key={stepId}
             custom={direction}
             initial={{ x: direction * 50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -1576,7 +1612,11 @@ export default function PreApproval() {
               <p className="text-lg text-muted-foreground mb-8">{currentQ.subtitle}</p>
             )}
 
-            {currentQ.subtext && (
+            {(currentQ.id === "downPayment" && flags.vaZeroDown) ? (
+               <p className="text-base text-muted-foreground/70 mb-8 max-w-lg mx-auto" data-testid="text-va-zero-down">
+                 As a veteran, you may qualify for a VA loan with <span className="font-medium text-foreground">$0 down and no PMI</span>. Enter 0 to explore that path.
+               </p>
+            ) : currentQ.subtext && (
                <p className="text-base text-muted-foreground/70 mb-8 max-w-lg mx-auto">{currentQ.subtext}</p>
             )}
 

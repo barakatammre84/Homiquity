@@ -10,7 +10,11 @@ export default defineConfig({
     // Unit / logic tests. Pure in-process logic — no running HTTP server and no
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
-    include: ["tests/lookupResolver.test.ts", "tests/mismoValidation.test.ts"],
+    include: [
+      "tests/lookupResolver.test.ts",
+      "tests/mismoValidation.test.ts",
+      "tests/preApprovalMachine.test.ts",
+    ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
     // placeholder keeps them hermetic (no .env or real database needed).
