@@ -448,6 +448,14 @@ export async function updatePipelineStage(
     case "funded":
       milestoneUpdate.fundedAt = now;
       milestoneUpdate.actualCloseDate = now;
+      // Lifecycle graduation: funding a loan lights up the Homeowner Hub
+      // automatically (profile + welcome notification). Non-fatal.
+      try {
+        const { graduateClosedLoan } = await import("./services/lifecycleEngine");
+        await graduateClosedLoan(applicationId);
+      } catch (gradErr) {
+        console.error("[PipelineEngine] Homeowner graduation failed (non-fatal):", gradErr);
+      }
       break;
     case "denied":
       milestoneUpdate.deniedAt = now;

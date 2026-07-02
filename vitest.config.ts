@@ -15,6 +15,7 @@ export default defineConfig({
       "tests/mismoValidation.test.ts",
       "tests/preApprovalMachine.test.ts",
       "tests/preUnderwriting.test.ts",
+      "tests/lifecycleEngine.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

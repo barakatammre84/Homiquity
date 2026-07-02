@@ -13,5 +13,8 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/jobs/lifecycle", "schedule": "0 13 * * *" }
   ]
 }
