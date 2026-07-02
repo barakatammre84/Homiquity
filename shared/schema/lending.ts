@@ -46,6 +46,16 @@ export const loanApplications = pgTable("loan_applications", {
   assetsVerified: boolean("assets_verified").default(false).notNull(),
   creditVerified: boolean("credit_verified").default(false).notNull(),
 
+  // AUS (Automated Underwriting System) submission — Fannie Mae DU results.
+  // Written by server/routes/aus.ts; findings JSON is the DU Messages payload.
+  ausCasefileId: varchar("aus_casefile_id", { length: 100 }),
+  ausRecommendation: varchar("aus_recommendation", { length: 50 }), // approve_eligible, approve_ineligible, refer, refer_with_caution
+  ausSubmittedAt: timestamp("aus_submitted_at"),
+  ausFindings: jsonb("aus_findings"),
+  d1cAssetsRelief: boolean("d1c_assets_relief").default(false).notNull(),
+  d1cIncomeRelief: boolean("d1c_income_relief").default(false).notNull(),
+  d1cEmploymentRelief: boolean("d1c_employment_relief").default(false).notNull(),
+
   // Borrower Information
   annualIncome: decimal("annual_income", { precision: 12, scale: 2 }),
   monthlyDebts: decimal("monthly_debts", { precision: 10, scale: 2 }),

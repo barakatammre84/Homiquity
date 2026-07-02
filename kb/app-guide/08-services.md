@@ -42,6 +42,7 @@ depth.
 | `../auditLog.ts` | General audit logging |
 | `verification.ts` | Plaid-driven income/employment/asset verification |
 | `../plaid.ts` | Plaid API client |
+| `ausSubmission.ts` | GSE leg: Plaid asset-report parsing, DU 12.1 casefile submission (simulated until Fannie onboarding), Day 1 Certainty parsing, commitment letter builder |
 
 ## Ops & intelligence
 

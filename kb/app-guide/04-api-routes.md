@@ -37,6 +37,7 @@ counts give you a sense of surface area (~470 total):
 | `optimizations.ts` | 12 | Optimization engine (recommendations) |
 | `underwriting-rules.ts` | 10 | Rules DSL CRUD/testing |
 | `coach.ts` | 8 | AI coach conversations |
+| `aus.ts` | 2 | GSE/AUS orchestration: Plaid asset webhook -> verification_reports; DU casefile submit -> Day 1 Certainty + commitment letter |
 | `documents.ts` | 7 | Upload URL issuance, document metadata, extraction triggers |
 | `lookup-matrix.ts` | 6 | Lookup grid management |
 | `geocode.ts` | 4 | Google Maps proxy: autocomplete, details, validation |

@@ -130,6 +130,13 @@ app.use((req, res, next) => {
     return next();
   }
 
+  // Vendor webhooks (Plaid, etc.) are server-to-server posts with no Origin
+  // header and no session — CSRF does not apply. Each webhook route does its
+  // own verification (shared secret / signature).
+  if (req.path.startsWith("/api/webhooks/")) {
+    return next();
+  }
+
   const origin = req.headers.origin;
   const referer = req.headers.referer;
   const host = req.headers.host;
