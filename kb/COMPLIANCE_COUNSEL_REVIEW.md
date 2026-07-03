@@ -53,16 +53,20 @@ LAR denial-reason labels; these are mapped to Reg B reason descriptions in
 
 ## 2. Adverse-action notice content
 
-Generated in `creditService.ts` (`generateAdverseActionNotice`). The notice now
-contains **both** required blocks:
+Generated in `creditService.ts` (`generateAdverseActionNotice`). The notice is
+now **conditional on whether the action was based on a consumer report**:
 
-- **FCRA §615(a)** — statement that the decision used a consumer report; the
-  reporting agency's name/address/phone/website; that the agency did not make
-  the decision; the right to a free report within 60 days; the right to dispute;
-  and the credit score used with its 300–850 range.
-- **ECOA/Reg B §1002.9(b)(1)** *(newly added)* — the equal-credit-opportunity
+- **ECOA/Reg B §1002.9(b)(1)** — **always** included: the equal-credit-opportunity
   anti-discrimination statement; the creditor's identity (`COMPANY_CONFIG`); and
   the administering federal agency.
+- **FCRA §615(a)** — included **only when a bureau score source was used**
+  (`basedOnConsumerReport`): the consumer-report basis statement, the reporting
+  agency's name/address/phone/website, the free-report and dispute rights, and
+  the score with its 300–850 range. On a denial made from self-reported data
+  (the current auto-generated path passes no bureau source), these blocks are
+  correctly omitted and the notice does **not** claim a consumer report was used.
+  *(This fixed a prior defect where the notice unconditionally asserted a
+  consumer report and defaulted the bureau to Experian.)*
 
 **For counsel — these were drafted by engineering and need ratification:**
 1. **Administering agency.** Defaulted to the CFPB
@@ -74,12 +78,21 @@ contains **both** required blocks:
    `server/config/company.ts` before production.
 3. **NMLS # is `"PENDING"`** in `COMPANY_CONFIG` — must be the real number before
    any notice is issued.
-4. **FCRA §615(a) credit-score disclosure completeness.** The notice includes the
-   score and range but **not** the date the score was created or the name of the
-   score provider, both of which §615(a) requires. Confirm and, if required,
-   engineering will add them (the data exists on the credit pull).
+4. **FCRA §615(a) score-disclosure completeness — BLOCKED on the live bureau
+   integration.** When a report *is* used, §615(a) also requires the **date the
+   score was created**, the **name of the score provider**, and the model-derived
+   **key factors**. These are **not captured** in `credit_pulls` (no score-date,
+   score-model, or key-factors columns) because the bureau vendors are currently
+   **simulated** (no live response to populate them). This cannot be completed as
+   a text change — it requires the live credit-bureau integration plus new
+   schema/ingestion. Tracked as a dependency, not a drafting item.
 5. **Phone/email in `COMPANY_CONFIG` are placeholders** (`(555) 123-4567`) — must
    be real.
+6. **Conditionality policy.** Confirm that treating denials without a bureau
+   source as "not based on a consumer report" is correct for this business — i.e.
+   that a hard credit pull is not always part of the decision. If a report is in
+   fact always pulled, the flow should pass `creditScoreSource` so the FCRA
+   content is included.
 
 ---
 
@@ -148,8 +161,9 @@ blocks forward movement of a file whose LE is overdue.
 - [ ] §2.1 — administering agency (CFPB vs. FTC) + address
 - [ ] §2.2 — creditor mailing address added to config
 - [ ] §2.3 — real NMLS #
-- [ ] §2.4 — score-disclosure completeness (provider + date)
+- [ ] §2.4 — score-disclosure completeness (provider/date/factors) — **blocked on live bureau integration**
 - [ ] §2.5 — real creditor phone/email
+- [ ] §2.6 — conditionality policy: is a hard credit pull always part of the decision?
 - [ ] §3 — delivery, 30-day timing, 25-month retention confirmed
 - [ ] §4 — representative fees match actual charges; assumption disclosures adequate
 - [ ] §5 — six-piece definition and ESIGN consent confirmed

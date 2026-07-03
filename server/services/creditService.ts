@@ -843,20 +843,26 @@ export async function generateAdverseAction(
     }
   }
 
-  const bureau = data.creditScoreSource 
-    ? BUREAU_CONTACT_INFO[data.creditScoreSource]
-    : BUREAU_CONTACT_INFO.experian;
+  // FCRA §615(a) content applies only when the action was actually based on a
+  // consumer report — signaled by a bureau score source. Do NOT default to a
+  // bureau (previously Experian) or the notice would falsely assert a report
+  // was used on denials made from self-reported data. ECOA content (below) is
+  // unconditional; the consumer-report framing is gated on this flag.
+  const basedOnConsumerReport = !!data.creditScoreSource;
+  const bureau = data.creditScoreSource ? BUREAU_CONTACT_INFO[data.creditScoreSource] : null;
 
   const primaryReasonDetail = ADVERSE_ACTION_REASONS[data.primaryReason];
   const secondaryReasonDetails = data.secondaryReasons?.map(r => ADVERSE_ACTION_REASONS[r]);
-  
-  const bureauKey = data.creditScoreSource || "experian";
-  const primaryBureauCodes = primaryReasonDetail?.bureauReasonCodes?.[bureauKey as keyof typeof primaryReasonDetail.bureauReasonCodes] || [];
-  
+
+  const primaryBureauCodes = basedOnConsumerReport
+    ? primaryReasonDetail?.bureauReasonCodes?.[data.creditScoreSource as keyof typeof primaryReasonDetail.bureauReasonCodes] || []
+    : [];
+
   const noticeText = generateAdverseActionNotice({
     actionType: data.actionType,
     primaryReason: primaryReasonDetail?.description || "Credit decision factors",
     secondaryReasons: secondaryReasonDetails?.map(r => r?.description || ""),
+    basedOnConsumerReport,
     creditScoreUsed: data.creditScoreUsed,
     bureau,
     bureauReasonCodes: primaryBureauCodes,
@@ -869,14 +875,16 @@ export async function generateAdverseAction(
     actionType: data.actionType,
     primaryReason: primaryReasonDetail?.description || "Credit decision factors",
     secondaryReasons: secondaryReasonDetails?.map(r => r?.description || ""),
-    creditScoreUsed: data.creditScoreUsed,
+    creditScoreUsed: basedOnConsumerReport ? data.creditScoreUsed : undefined,
     creditScoreSource: data.creditScoreSource,
-    scoreRangeLow: 300,
-    scoreRangeHigh: 850,
-    bureauName: bureau.name,
-    bureauAddress: bureau.address,
-    bureauPhone: bureau.phone,
-    bureauWebsite: bureau.website,
+    scoreRangeLow: basedOnConsumerReport ? 300 : undefined,
+    scoreRangeHigh: basedOnConsumerReport ? 850 : undefined,
+    // Bureau contact fields are stored only when a consumer report was used —
+    // otherwise they would misrepresent the basis of the action.
+    bureauName: bureau?.name,
+    bureauAddress: bureau?.address,
+    bureauPhone: bureau?.phone,
+    bureauWebsite: bureau?.website,
     noticeText,
     noticeDate: new Date(),
     fcraCompliant: true,
@@ -901,12 +909,14 @@ export async function generateAdverseAction(
   return result;
 }
 
-function generateAdverseActionNotice(data: {
+export function generateAdverseActionNotice(data: {
   actionType: string;
   primaryReason: string;
   secondaryReasons?: string[];
+  /** True only when the action was actually based on a consumer report/score. */
+  basedOnConsumerReport?: boolean;
   creditScoreUsed?: number;
-  bureau: typeof BUREAU_CONTACT_INFO.experian;
+  bureau: typeof BUREAU_CONTACT_INFO.experian | null;
   bureauReasonCodes?: string[];
 }): string {
   const actionTypeText = {
@@ -916,6 +926,13 @@ function generateAdverseActionNotice(data: {
     terms_change: "MODIFICATION OF CREDIT TERMS",
   }[data.actionType] || "ADVERSE ACTION NOTICE";
 
+  // Only claim a consumer report was used when one actually was — asserting it
+  // otherwise is a factual misstatement (FCRA §615(a) applies to report-based
+  // actions).
+  const basisSentence = data.basedOnConsumerReport
+    ? "The decision was based, in whole or in part, on information obtained from a consumer reporting agency."
+    : "";
+
   let notice = `
 NOTICE OF ${actionTypeText}
 
@@ -923,7 +940,7 @@ Date: ${new Date().toLocaleDateString()}
 
 Dear Applicant,
 
-This notice is to inform you that action has been taken on your mortgage loan application. The decision was based, in whole or in part, on information obtained from a consumer reporting agency.
+This notice is to inform you that action has been taken on your mortgage loan application.${basisSentence ? ` ${basisSentence}` : ""}
 
 ACTION TAKEN: ${data.actionType.replace(/_/g, " ").toUpperCase()}
 
@@ -947,16 +964,21 @@ These codes are industry-standard identifiers used by credit bureaus.
 `;
   }
 
-  if (data.creditScoreUsed) {
-    notice += `
+  // FCRA §615(a) content — score disclosure + CRA contact + report rights —
+  // is included only when the action was based on a consumer report and a
+  // bureau is present. On denials made from self-reported data these blocks
+  // are correctly omitted (and the ECOA block below still applies).
+  if (data.basedOnConsumerReport && data.bureau) {
+    if (data.creditScoreUsed) {
+      notice += `
 CREDIT SCORE INFORMATION:
 Your credit score: ${data.creditScoreUsed}
 Credit scores range from 300 to 850.
 Key factors that adversely affected your credit score are listed above.
 `;
-  }
+    }
 
-  notice += `
+    notice += `
 YOUR RIGHTS UNDER THE FAIR CREDIT REPORTING ACT:
 
 You have the right to obtain a free copy of your credit report from the consumer reporting agency named below within 60 days of receiving this notice. The consumer reporting agency did not make the decision to take this action and cannot provide specific reasons for it.
@@ -969,6 +991,7 @@ ${data.bureau.address}
 Phone: ${data.bureau.phone}
 Website: ${data.bureau.website}
 `;
+  }
 
   // ECOA / Reg B §1002.9(b)(1): every adverse action on a credit application
   // must carry the equal-credit-opportunity notice, the creditor's identity,
@@ -988,7 +1011,7 @@ ${COMPANY_CONFIG.contactEmail} | ${COMPANY_CONFIG.contactPhone}
 
 For questions about this notice, please contact ${COMPANY_CONFIG.legalName} using the information above.
 
-This notice is required by the Equal Credit Opportunity Act and the Fair Credit Reporting Act.
+This notice is required by the Equal Credit Opportunity Act${data.basedOnConsumerReport ? " and the Fair Credit Reporting Act" : ""}.
 `;
 
   return notice;
