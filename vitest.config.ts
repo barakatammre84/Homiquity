@@ -20,6 +20,7 @@ export default defineConfig({
       "tests/preUnderwriting.test.ts",
       "tests/lifecycleEngine.test.ts",
       "tests/underwritingNuance.test.ts",
+      "tests/underwritingEdgeCases.test.ts",
       "tests/complianceInvariants.test.ts",
       "tests/scenarioCatalog.test.ts",
       "tests/statusVocabulary.test.ts",

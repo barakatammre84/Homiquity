@@ -337,16 +337,21 @@ export async function calculateDTI(
   const stretchDti = await lookupResolver.getPolicyScalar("CONVENTIONAL_STRETCH_DTI");
   const effectiveCap = maxBackEndRatio ?? dtiCap;
 
-  const frontEndRatio = qualifyingIncome > 0 
-    ? (housingExpense / qualifyingIncome) * 100 
+  const frontEndRatio = qualifyingIncome > 0
+    ? (housingExpense / qualifyingIncome) * 100
     : 0;
 
-  const backEndRatio = qualifyingIncome > 0 
-    ? ((housingExpense + nonHousingDebts) / qualifyingIncome) * 100 
+  const backEndRatio = qualifyingIncome > 0
+    ? ((housingExpense + nonHousingDebts) / qualifyingIncome) * 100
     : 0;
 
+  // A borrower with zero or negative qualifying income cannot support any debt;
+  // the ratio is undefined (division by zero would otherwise read as 0% → pass).
+  // Fail explicitly rather than letting the default "pass" stand.
   let status: "pass" | "fail" | "stretch" = "pass";
-  if (backEndRatio > effectiveCap) {
+  if (qualifyingIncome <= 0) {
+    status = "fail";
+  } else if (backEndRatio > effectiveCap) {
     status = backEndRatio <= stretchDti ? "stretch" : "fail";
   }
 

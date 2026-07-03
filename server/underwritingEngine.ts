@@ -91,6 +91,12 @@ export class ConsolidatedUnderwritingEngine {
     if (propertyBasisValue <= 0) {
       throw new Error("CRITICAL VALUE INPUT ERROR: Property valuation basis must be greater than zero.");
     }
+    // A non-positive loan amount (e.g. down payment >= price) would produce a
+    // sub-zero LTV that silently clears the ceiling, skips MI, and drives a
+    // negative LLPA fee — an "approval" on nonsensical inputs. Reject it.
+    if (input.originalLoanAmount <= 0) {
+      throw new Error("CRITICAL VALUE INPUT ERROR: Loan amount must be greater than zero.");
+    }
     const rawLtvFraction = (input.originalLoanAmount / propertyBasisValue) * 100;
 
     // Truncate calculated LTV to 2 decimal places
