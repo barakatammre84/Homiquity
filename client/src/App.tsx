@@ -6,8 +6,38 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { PrivateLayout } from "@/components/layouts/PrivateLayout";
-import { EmailCaptureModal } from "@/components/EmailCaptureModal";
 import { Loader2 } from "lucide-react";
+
+// Lazy — this modal is the only eager import that pulls framer-motion, so
+// loading it eagerly shipped the whole animation library in the main chunk on
+// every page. It only appears on education/content paths, so we both lazy-load
+// it AND gate the mount on those paths (below) — otherwise React would still
+// fetch the chunk on every page just because the component sits in the tree.
+const EmailCaptureModal = lazy(() =>
+  import("@/components/EmailCaptureModal").then((m) => ({ default: m.EmailCaptureModal })),
+);
+
+// Paths where the email-capture modal can trigger (mirrors the allowlist inside
+// the modal). Kept here so the chunk is never fetched elsewhere.
+const EMAIL_CAPTURE_PATHS = [
+  "/resources",
+  "/learn",
+  "/education",
+  "/first-time-buyer",
+  "/down-payment-wizard",
+  "/article",
+  "/faq",
+];
+
+function EmailCaptureGate() {
+  const [location] = useLocation();
+  if (!EMAIL_CAPTURE_PATHS.some((p) => location.startsWith(p))) return null;
+  return (
+    <Suspense fallback={null}>
+      <EmailCaptureModal />
+    </Suspense>
+  );
+}
 
 const Landing = lazy(() => import("@/pages/public/Landing"));
 const Privacy = lazy(() => import("@/pages/public/Privacy"));
@@ -410,7 +440,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
-        <EmailCaptureModal />
+        <EmailCaptureGate />
       </TooltipProvider>
     </QueryClientProvider>
   );

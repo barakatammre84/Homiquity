@@ -8,7 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { NotificationsBell } from "@/components/NotificationsPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
 import type { DealActivity } from "@shared/schema";
 
 interface PrivateLayoutProps {

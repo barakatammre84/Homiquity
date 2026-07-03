@@ -15,6 +15,18 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Split rarely-changing vendor code into its own long-cached chunk so
+        // an app deploy doesn't invalidate the React/Query download. framer-
+        // motion is deliberately NOT pinned here — it stays in the async page
+        // chunks that use it, off the initial load path.
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "wouter"],
+          "query-vendor": ["@tanstack/react-query"],
+        },
+      },
+    },
   },
   server: {
     fs: {

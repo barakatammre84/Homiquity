@@ -43,7 +43,16 @@ export function registerAusRoutes(app: Express) {
    */
   app.post("/api/webhooks/plaid-assets", async (req, res) => {
     try {
+      // Fail CLOSED in production: an unset secret must not leave an open,
+      // unauthenticated endpoint that forges asset-verification reports
+      // (gseEligible=true with attacker-controlled balances). Same posture as
+      // CRON_SECRET in routes/jobs.ts — unset means the path is disabled, not
+      // open. Dev/test keeps the permissive behavior for simulated vendors.
       const secret = process.env.PLAID_WEBHOOK_SECRET;
+      if (process.env.NODE_ENV === "production" && !secret) {
+        console.error("[aus] plaid-assets webhook rejected: PLAID_WEBHOOK_SECRET is not configured");
+        return res.status(503).json({ error: "Webhook not configured" });
+      }
       if (secret && req.headers["x-webhook-secret"] !== secret) {
         return res.status(401).json({ error: "Invalid webhook secret" });
       }

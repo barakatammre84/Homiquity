@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useRoute } from "wouter";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
 import type { Task, Document, TaskDocument } from "@shared/schema";
 import {
   ArrowLeft,

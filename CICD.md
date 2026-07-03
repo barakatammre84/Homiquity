@@ -1,14 +1,24 @@
 # Deploy & Revert
 
 Homiquity ships with a deliberately simple flow: **push to `main` → Vercel
-deploys it. If it breaks, revert.** No CI gates, no approvals.
+deploys it. If it breaks, revert.** No approvals.
 
 ```
   git push (main)  ──▶  Vercel builds & deploys automatically
-                              │
-                     broken?  ▼
-                    Vercel → Deployments → previous one → Promote  (instant)
+        │                     │
+        ▼            broken?  ▼
+  GitHub Actions    Vercel → Deployments → previous one → Promote  (instant)
+  (ci: typecheck,
+   tests, build,
+   lockfile parity)
 ```
+
+CI (`.github/workflows/ci.yml`) runs on every PR and every push to `main`:
+typecheck, unit tests, production build, and a lockfile-parity check. Today it
+is **non-blocking on main** — a red run emails you but the deploy still goes
+out. To make it a hard gate later: GitHub → Settings → Branches → protect
+`main`, require the `ci` check (this also blocks direct pushes, so `npm run
+save` would move to a PR flow).
 
 ## Shipping
 
@@ -29,8 +39,10 @@ Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
   good one → **Promote to Production**. Instant, no rebuild.
 - **Undo the bad code** → `git revert <sha> && git push` (never
   `reset --hard` + force-push).
-- **Database** → `drizzle-kit push` is forward-only; snapshot/branch in Neon
-  before destructive schema changes.
+- **Database** → schema changes ship as versioned migration files
+  (`migrations/`, `npm run db:generate` + `npm run db:migrate` — see
+  [ROLLBACK.md](ROLLBACK.md) §3). Still snapshot/branch in Neon before
+  destructive schema changes; migrations have no automatic "down".
 
 ## How the Vercel deploy works
 

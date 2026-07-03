@@ -1,6 +1,7 @@
 import type { Express } from "express";
-import type { IStorage } from "../storage";
+import { InvalidSsnError, type IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
+import { logAudit } from "../auditLog";
 import {
   insertCalculatorResultSchema,
   insertHomeownershipGoalSchema,
@@ -9,6 +10,7 @@ import {
   insertJourneyMilestoneSchema,
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
+  insertUrlaPersonalInfoSchema,
   isStaffRole,
   isInternalStaffRole,
   type User,
@@ -16,7 +18,6 @@ import {
 import crypto from "crypto";
 import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
-import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 
 // Verify that an internal staff user is actually assigned to the given application.
@@ -383,12 +384,60 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.upsertUrlaPersonalInfo(data);
+      const parsed = insertUrlaPersonalInfoSchema.safeParse({ ...req.body, applicationId });
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid personal info",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+      const result = await storage.upsertUrlaPersonalInfo(parsed.data);
       res.json(result);
     } catch (error) {
+      if (error instanceof InvalidSsnError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Save personal info error:", error);
       res.status(500).json({ error: "Failed to save personal info" });
+    }
+  });
+
+  /**
+   * Audited full-SSN reveal. Everything else in the API returns the masked
+   * form; this endpoint exists for the narrow staff workflows that genuinely
+   * need the full value (credit pulls, GSE casefile fixes). Owner borrowers
+   * may read their own. Every call writes an audit entry.
+   */
+  app.get("/api/urla/:applicationId/ssn", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const seq = Math.max(parseInt(String(req.query.borrowerSequenceNumber ?? "1"), 10) || 1, 1);
+
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const isOwner = application.userId === user.id;
+      const allowedStaff = ["admin", "underwriter", "processor"];
+      if (!isOwner && !allowedStaff.includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const ssn = await storage.getDecryptedUrlaSsn(applicationId, seq);
+      if (!ssn) {
+        return res.status(404).json({ error: "No SSN on file" });
+      }
+
+      await logAudit(req, "urla.ssn_reveal", "loan_application", applicationId, {
+        borrowerSequenceNumber: seq,
+        role: user.role,
+      });
+      res.json({ ssn });
+    } catch (error) {
+      console.error("SSN reveal error:", error);
+      res.status(500).json({ error: "Failed to retrieve SSN" });
     }
   });
 
@@ -2360,11 +2409,18 @@ export function registerBorrowerRoutes(
   // Team Messaging API Routes
   // ============================================
 
-  // Get all staff users for team display
+  // Team members for the Messages view. A borrower sees only THEIR assigned
+  // loan team (deal-team members + assigned LOs), not the whole staff
+  // directory; staff keep the full list for internal coordination. Borrowers
+  // with no team assigned yet fall back to all staff so they can still reach
+  // someone (see storage.getTeamMembersForBorrower).
   app.get("/api/team-members", isAuthenticated, async (req, res) => {
     try {
-      const staffUsersWithPresence = await storage.getTeamMembersWithPresence();
-      
+      const user = req.user as User;
+      const staffUsersWithPresence = isStaffRole(user.role)
+        ? await storage.getTeamMembersWithPresence()
+        : await storage.getTeamMembersForBorrower(user.id);
+
       // Transform to include display info and presence
       const teamMembers = staffUsersWithPresence.map(user => ({
         id: user.id,
@@ -2485,6 +2541,17 @@ export function registerBorrowerRoutes(
       const recipientIsStaff = isStaffRole(recipient.role || "");
       if (!senderIsStaff && !recipientIsStaff) {
         return res.status(403).json({ error: "Messages can only be exchanged with your loan team" });
+      }
+
+      // A borrower may only message staff on their OWN team (deal-team + LOs).
+      // Mirrors the scoped team-members list, so they can't reach an arbitrary
+      // staff member by user id. If they have no team yet, the team list falls
+      // back to all staff, and so does this check — no dead end.
+      if (!senderIsStaff && recipientIsStaff) {
+        const onTeam = await storage.isStaffOnBorrowerTeam(user.id, recipientId);
+        if (!onTeam) {
+          return res.status(403).json({ error: "You can only message members of your assigned loan team" });
+        }
       }
 
       // Document requests are a staff→borrower workflow.
