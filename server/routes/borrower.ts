@@ -9,15 +9,48 @@ import {
   insertJourneyMilestoneSchema,
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
+  insertUrlaPersonalInfoSchema,
   isStaffRole,
   isInternalStaffRole,
   type User,
 } from "@shared/schema";
 import crypto from "crypto";
 import { z } from "zod";
+import { maskSSN } from "../services/encryptionService";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
+
+// The general URLA read masks SSNs (XXX-XX-1234). When the client round-trips
+// that form state back through a save endpoint, the masked placeholder must be
+// dropped — otherwise it would overwrite the real SSN on file. A missing key
+// leaves the stored value untouched (upsert only sets provided columns).
+const MASKED_SSN_PATTERN = /^X{3}-?X{2}-?\d{4}$/i;
+
+function dropMaskedSsn<T extends Record<string, unknown>>(personalInfo: T): T {
+  if (typeof personalInfo?.ssn === "string" && MASKED_SSN_PATTERN.test(personalInfo.ssn)) {
+    const { ssn: _masked, ...rest } = personalInfo;
+    return rest as unknown as T;
+  }
+  return personalInfo;
+}
+
+// Masks the SSN on a personal-info record for API responses. Full SSNs never
+// leave the server through the general URLA read; the MISMO export path reads
+// storage directly and is unaffected.
+function maskPersonalInfoSsn<T extends { ssn?: string | null }>(
+  personalInfo: T | null | undefined,
+): T | null | undefined {
+  if (!personalInfo || !personalInfo.ssn) return personalInfo;
+  return { ...personalInfo, ssn: maskSSN(personalInfo.ssn) };
+}
+
+// applicationId, borrowerSequenceNumber, and isPrimaryBorrower are set
+// server-side from the route/session context; .partial() because saves may
+// carry a subset of fields.
+const urlaPersonalInfoWriteSchema = insertUrlaPersonalInfoSchema
+  .omit({ applicationId: true, borrowerSequenceNumber: true, isPrimaryBorrower: true })
+  .partial();
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -368,7 +401,12 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       const urlaData = await storage.getCompleteUrlaData(applicationId);
-      res.json({ application, ...urlaData });
+      res.json({
+        application,
+        ...urlaData,
+        personalInfo: maskPersonalInfoSsn(urlaData.personalInfo),
+        allPersonalInfo: urlaData.allPersonalInfo?.map((pi) => maskPersonalInfoSsn(pi)),
+      });
     } catch (error) {
       console.error("Get URLA data error:", error);
       res.status(500).json({ error: "Failed to get URLA data" });
@@ -383,8 +421,17 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.upsertUrlaPersonalInfo(data);
+      const parsed = urlaPersonalInfoWriteSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid personal info payload",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+      const result = await storage.upsertUrlaPersonalInfo({
+        ...dropMaskedSsn(parsed.data),
+        applicationId,
+      });
       res.json(result);
     } catch (error) {
       console.error("Save personal info error:", error);
@@ -676,7 +723,7 @@ export function registerBorrowerRoutes(
 
         if (hasContent(opts.personalInfo)) {
           results.personalInfo = await storage.upsertUrlaPersonalInfo({
-            ...opts.personalInfo,
+            ...dropMaskedSsn(opts.personalInfo),
             applicationId,
             borrowerSequenceNumber: seq,
             isPrimaryBorrower: isPrimary,

@@ -194,6 +194,9 @@ const SUPPRESS_RESPONSE_BODY_PATTERNS: RegExp[] = [
   // Loan application detail includes embedded documents and activities arrays
   // that can carry document metadata and extraction-derived records.
   /^\/api\/loan-applications\/[^/]+$/,
+  // URLA reads/writes carry full personalInfo (SSN, DOB, addresses) and the
+  // echoed upsert result — never log these bodies, even truncated.
+  /^\/api\/urla(\/|$)/,
 ];
 
 function sanitizePathForLog(path: string): string {
