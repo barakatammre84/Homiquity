@@ -582,14 +582,13 @@ export function registerUnderwritingRoutes(
         !["draft", "funded", "denied"].includes(a.status || "draft")
       );
 
-      const { getPipelineSummary } = await import("../pipelineEngine");
-      
-      const summaries = await Promise.all(
-        activeApps.map(app => getPipelineSummary(app.id))
-      );
+      const { getPipelineSummaries } = await import("../pipelineEngine");
+
+      // Batched: fetches milestones, conditions, and borrowers in three
+      // inArray queries total rather than 4×N serial round trips.
+      const summaries = await getPipelineSummaries(activeApps);
 
       const queue = summaries
-        .filter((s): s is NonNullable<typeof s> => s !== null)
         .sort((a, b) => {
           const priorityOrder = { urgent: 0, high: 1, normal: 2 };
           if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
