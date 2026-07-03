@@ -13,6 +13,7 @@ import {
   parsePlaidAssetReport,
   submitToDU,
 } from "../services/ausSubmission";
+import { validateMISMOCompleteness } from "../services/mismoValidation";
 
 /**
  * AUS orchestration routes: Plaid asset webhook ingestion and GSE (Fannie DU)
@@ -168,6 +169,24 @@ export function registerAusRoutes(app: Express) {
             error: "Application is missing purchase price / down payment — cannot build a DU casefile.",
           });
         }
+
+        // Completeness gate — never submit an incomplete casefile to DU. The
+        // validator covers all GSE-gating URLA sections (1a personal info,
+        // 4 assets, 5 declarations); an incomplete package would be rejected
+        // downstream at Fannie, so we surface the missing fields to the LO now
+        // instead of burning a DU submission.
+        const validation = await validateMISMOCompleteness(applicationId);
+        if (!validation.gseReady) {
+          return res.status(422).json({
+            error: "Application is not ready for GSE submission — required fields are missing.",
+            code: "INCOMPLETE_CASEFILE",
+            overallScore: validation.overallScore,
+            gseGatingFailed: validation.gseGatingFailed,
+            criticalErrors: validation.criticalErrors,
+            missingDocuments: validation.missingDocuments,
+          });
+        }
+
         const monthlyIncome = application.annualIncome ? Number(application.annualIncome) / 12 : null;
         const dti =
           monthlyIncome && application.monthlyDebts
