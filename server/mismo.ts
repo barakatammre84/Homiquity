@@ -48,6 +48,12 @@ export interface MISMOLoanDTO {
 }
 
 export function generateLuhnCheckDigit(digits: string): number {
+  // The MERS MIN is an all-numeric identifier; any non-digit (e.g. hex from a
+  // UUID-derived loan number, or a non-numeric org id) would map through
+  // Number() to NaN and silently corrupt the check digit. Fail loudly instead.
+  if (!/^\d+$/.test(digits)) {
+    throw new Error(`generateLuhnCheckDigit requires a numeric string, received: "${digits}"`);
+  }
   const digitsArray = digits.split("").map(Number);
   let checksum = 0;
   let isDouble = true;
@@ -69,12 +75,23 @@ export function generateLuhnCheckDigit(digits: string): number {
 
 export function generateMERSMIN(orgId: string, loanNumber: string): string {
   const appId = "100";
-  const paddedOrgId = orgId.padStart(7, "0");
-  const paddedLoanNumber = loanNumber.padStart(7, "0");
-  
+  // Both segments must be numeric and fit their fixed width. Strip any
+  // formatting, then validate — we would rather throw than emit a MIN whose
+  // Luhn check digit is NaN (which a GSE/investor ingestion will reject).
+  const numericOrgId = orgId.replace(/\D/g, "");
+  const numericLoanNumber = loanNumber.replace(/\D/g, "");
+  if (numericOrgId.length === 0 || numericOrgId.length > 7) {
+    throw new Error(`MERS Org ID must be 1-7 digits, received: "${orgId}"`);
+  }
+  if (numericLoanNumber.length === 0 || numericLoanNumber.length > 7) {
+    throw new Error(`MERS loan number must be 1-7 digits, received: "${loanNumber}"`);
+  }
+  const paddedOrgId = numericOrgId.padStart(7, "0");
+  const paddedLoanNumber = numericLoanNumber.padStart(7, "0");
+
   const minPrefix = appId + paddedOrgId + paddedLoanNumber;
   const checkDigit = generateLuhnCheckDigit(minPrefix);
-  
+
   return minPrefix + checkDigit.toString();
 }
 
@@ -101,19 +118,26 @@ function escapeXml(unsafe: string | null | undefined): string {
 function formatDate(date: Date | string | null | undefined): string {
   if (!date) return "";
   const d = typeof date === "string" ? new Date(date) : date;
+  // A malformed date string produces an Invalid Date whose toISOString() throws
+  // a RangeError and would abort the entire export. Drop the value instead.
+  if (isNaN(d.getTime())) return "";
   return d.toISOString().split("T")[0];
 }
 
+// DB decimal columns arrive as plain numeric strings, but hand-entered values
+// can carry currency formatting ("$1,234.56"). parseFloat("$1,234") is NaN and
+// parseFloat("1,234") is 1 — both silently corrupt the amount — so strip the
+// formatting first and fall back to "0.00" rather than emitting a literal "NaN".
 function formatCurrency(amount: number | string | null | undefined): string {
   if (amount === null || amount === undefined) return "0.00";
-  const num = typeof amount === "string" ? parseFloat(amount) : amount;
-  return num.toFixed(2);
+  const num = typeof amount === "string" ? parseFloat(amount.replace(/[$,\s]/g, "")) : amount;
+  return Number.isFinite(num) ? num.toFixed(2) : "0.00";
 }
 
 function formatPercent(rate: number | string | null | undefined): string {
   if (rate === null || rate === undefined) return "0.000";
-  const num = typeof rate === "string" ? parseFloat(rate) : rate;
-  return num.toFixed(3);
+  const num = typeof rate === "string" ? parseFloat(rate.replace(/[%,\s]/g, "")) : rate;
+  return Number.isFinite(num) ? num.toFixed(3) : "0.000";
 }
 
 function mapMortgageType(loanType: string | null | undefined): MortgageType {
@@ -393,9 +417,14 @@ function buildBorrowerNode(dto: MISMOLoanDTO): XMLNode {
       if (emp.endDate) {
         employmentDetail.push({ tag: "EmploymentEndDate", text: emp.endDate });
       }
-      employmentDetail.push({ 
-        tag: "EmploymentStatusType", 
-        text: emp.employmentType === "current" ? "Current" : "Previous" 
+      // MISMO EmploymentStatusType is Current | Previous. The employmentType
+      // column holds free-text categories ("employed"/"self_employed"/…), never
+      // this distinction, so the old `=== "current"` check tagged nearly every
+      // active job "Previous". Key off the end date instead: an open-ended job
+      // (no end date) is the borrower's current employment.
+      employmentDetail.push({
+        tag: "EmploymentStatusType",
+        text: emp.endDate ? "Previous" : "Current",
       });
 
       if (employmentDetail.length > 0) {
@@ -573,14 +602,25 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string): XMLNode {
     text: mapMortgageType(application.preferredLoanType) 
   });
   
-  const loanAmount = loanOptions[0]?.loanAmount || 
-    (application.purchasePrice && application.downPayment 
-      ? parseFloat(String(application.purchasePrice)) - parseFloat(String(application.downPayment))
-      : application.purchasePrice);
-  if (loanAmount) {
-    loanDetail.push({ 
-      tag: "NoteAmount", 
-      text: formatCurrency(loanAmount) 
+  // Prefer an explicit loan-option amount; otherwise derive from price minus
+  // down payment. Use != null (not truthiness) so a real $0 down payment yields
+  // loan = price, while a MISSING down payment leaves the amount unknown rather
+  // than defaulting NoteAmount to the full purchase price (an overstated loan).
+  const optionAmount = loanOptions[0]?.loanAmount != null
+    ? parseFloat(String(loanOptions[0].loanAmount))
+    : NaN;
+  const price = application.purchasePrice != null ? parseFloat(String(application.purchasePrice)) : NaN;
+  const down = application.downPayment != null ? parseFloat(String(application.downPayment)) : NaN;
+  let loanAmount: number | null = null;
+  if (Number.isFinite(optionAmount)) {
+    loanAmount = optionAmount;
+  } else if (Number.isFinite(price) && Number.isFinite(down)) {
+    loanAmount = price - down;
+  }
+  if (loanAmount != null && loanAmount > 0) {
+    loanDetail.push({
+      tag: "NoteAmount",
+      text: formatCurrency(loanAmount),
     });
   }
 
@@ -595,10 +635,10 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string): XMLNode {
   loanChildren.push({ tag: "LOAN_DETAIL", children: loanDetail });
 
   const termsOfLoan: XMLNode[] = [];
-  if (loanAmount) {
-    termsOfLoan.push({ 
-      tag: "BaseLoanAmount", 
-      text: formatCurrency(loanAmount) 
+  if (loanAmount != null && loanAmount > 0) {
+    termsOfLoan.push({
+      tag: "BaseLoanAmount",
+      text: formatCurrency(loanAmount)
     });
   }
   termsOfLoan.push({ tag: "LoanAmortizationType", text: "Fixed" });
@@ -709,12 +749,17 @@ function buildCollateralNode(dto: MISMOLoanDTO): XMLNode | null {
       text: formatCurrency(application.propertyValue) 
     });
   }
-  if (application.propertyType) {
-    propertyDetail.push({ 
-      tag: "ConstructionMethodType", 
-      text: application.propertyType || "SiteBuilt" 
-    });
-  }
+  // ConstructionMethodType is a MISMO-enumerated construction method
+  // (SiteBuilt | Manufactured | Modular | …), NOT the app's propertyType
+  // (single_family/condo/townhouse/multi_family — those are attachment/project
+  // concepts and belong in AttachmentType/ProjectType). Emitting the raw
+  // propertyType here produced schema-invalid values like
+  // <ConstructionMethodType>single_family</...>. Every current propertyType is
+  // site-built unless the URLA flags it a manufactured home.
+  propertyDetail.push({
+    tag: "ConstructionMethodType",
+    text: propertyInfo?.isManufacturedHome ? "Manufactured" : "SiteBuilt",
+  });
   propertyDetail.push({ 
     tag: "PropertyUsageType", 
     text: mapPropertyUsage(propertyInfo?.occupancyType) 
@@ -844,70 +889,21 @@ function buildLiabilitiesNode(dto: MISMOLoanDTO): XMLNode | null {
 
 // ============================================================================
 // XLINK RELATIONSHIP GENERATION (Graph-based data model)
+//
+// DEFERRED — intentionally emits nothing. A MISMO 3.4 relationship graph
+// associates objects via xlink arcs: each ASSET/LIABILITY/EMPLOYMENT/PARTY
+// carries an xlink:label, and each RELATIONSHIP references them with
+// xlink:from / xlink:to under a GSE-accepted arcrole URI. The previous
+// implementation emitted xlink:href pointers to labels that were never defined
+// (dangling references) alongside non-standard RelationshipType/RelatedParty
+// children — an invalid graph that fails GSE ingestion. Until the container
+// nodes carry matching labels and the exact arcrole URIs are wired in, we omit
+// the block rather than deliver a broken graph. The objects themselves are
+// still emitted inline under DEAL; single-borrower associations are implicit.
 // ============================================================================
 
-function buildRelationshipsNode(dto: MISMOLoanDTO): XMLNode | null {
-  const { user, employment, assets, liabilities } = dto;
-  if (!user) return null;
-
-  const relationshipNodes: XMLNode[] = [];
-  const borrowerId = `Party_${user.id.substring(0, 8)}`;
-
-  // Asset-to-Borrower relationships
-  for (let i = 0; i < assets.length; i++) {
-    const asset = assets[i];
-    relationshipNodes.push({
-      tag: "RELATIONSHIP",
-      attributes: {
-        "xlink:arcrole": "urn:mismo.org:3.4:Asset_Associated_With_Party",
-        "xlink:href": `#Asset_${i}`,
-        "xlink:title": "Asset Associated With Party",
-      },
-      children: [
-        { tag: "RelationshipType", text: "Asset_Associated_With_Party" },
-        { tag: "RelatedParty", text: borrowerId },
-      ],
-    });
-  }
-
-  // Liability-to-Borrower relationships
-  for (let i = 0; i < liabilities.length; i++) {
-    const liability = liabilities[i];
-    relationshipNodes.push({
-      tag: "RELATIONSHIP",
-      attributes: {
-        "xlink:arcrole": "urn:mismo.org:3.4:Liability_Associated_With_Party",
-        "xlink:href": `#Liability_${i}`,
-        "xlink:title": "Liability Associated With Party",
-      },
-      children: [
-        { tag: "RelationshipType", text: "Liability_Associated_With_Party" },
-        { tag: "RelatedParty", text: borrowerId },
-      ],
-    });
-  }
-
-  // Employment/Income-to-Borrower relationships
-  for (let i = 0; i < employment.length; i++) {
-    const emp = employment[i];
-    relationshipNodes.push({
-      tag: "RELATIONSHIP",
-      attributes: {
-        "xlink:arcrole": "urn:mismo.org:3.4:Income_Associated_With_Party",
-        "xlink:href": `#Employment_${i}`,
-        "xlink:title": "Income Associated With Party",
-      },
-      children: [
-        { tag: "RelationshipType", text: "Income_Associated_With_Party" },
-        { tag: "IncomeSource", text: emp.employmentType || "salaried" },
-        { tag: "RelatedParty", text: borrowerId },
-      ],
-    });
-  }
-
-  if (relationshipNodes.length === 0) return null;
-
-  return { tag: "RELATIONSHIPS", children: relationshipNodes };
+function buildRelationshipsNode(_dto: MISMOLoanDTO): XMLNode | null {
+  return null;
 }
 
 export interface MISMOGenerationOptions {
@@ -927,8 +923,14 @@ export function generateMISMO34XML(
   } = options;
 
   let mersMin: string | undefined;
-  if (generateMersMin) {
-    const loanNumber = dto.application.id.replace(/-/g, "").substring(0, 7);
+  // Only mint a MIN when the org id is a real numeric MERS identifier. While it
+  // is unset ("PENDING") we deliberately omit MERS_REGISTRATION rather than emit
+  // a placeholder MIN that would fail Luhn validation downstream. The loan
+  // number is derived from the application id's digits (a UUID is hex, so we
+  // strip the letters) padded to the 7-digit MIN loan-number width.
+  const orgIdIsNumeric = /^\d{1,7}$/.test(mersOrgId);
+  if (generateMersMin && orgIdIsNumeric) {
+    const loanNumber = dto.application.id.replace(/\D/g, "").slice(0, 7).padStart(7, "0");
     mersMin = generateMERSMIN(mersOrgId, loanNumber);
   }
 
@@ -1071,10 +1073,13 @@ export function validateULDDCompliance(dto: MISMOLoanDTO): ULDDValidationResult 
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  const loanAmount = application.purchasePrice && application.downPayment 
-    ? parseFloat(String(application.purchasePrice)) - parseFloat(String(application.downPayment))
-    : null;
-  if (!loanAmount || loanAmount <= 0) {
+  // != null (not truthiness) so a valid $0-down loan (e.g. VA 100% financing)
+  // computes loanAmount = price and passes, instead of being wrongly reported as
+  // a missing NoteAmount.
+  const price = application.purchasePrice != null ? parseFloat(String(application.purchasePrice)) : NaN;
+  const down = application.downPayment != null ? parseFloat(String(application.downPayment)) : NaN;
+  const loanAmount = Number.isFinite(price) && Number.isFinite(down) ? price - down : null;
+  if (loanAmount == null || loanAmount <= 0) {
     errors.push("NoteAmount is required and must be greater than 0");
   }
 
@@ -1110,6 +1115,10 @@ export function validateULDDCompliance(dto: MISMOLoanDTO): ULDDValidationResult 
 
   if (!employment || employment.length === 0) {
     warnings.push("Employment information should be provided");
+  }
+
+  if (!/^\d{1,7}$/.test(COMPANY_CONFIG.mersOrgId)) {
+    warnings.push("MERS Org ID is not configured; a MERS MIN cannot be generated for loan delivery");
   }
 
   return {
