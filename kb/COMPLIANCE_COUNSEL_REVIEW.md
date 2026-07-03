@@ -103,15 +103,27 @@ with the denial — a denial cannot be applied unless the notice is created
 (`ensureAdverseActionForDenial`, enforced on **both** denial routes). The
 borrower-facing email is deliberately decision-neutral and points to the account.
 
-**Gaps for counsel to confirm are handled operationally:**
-1. **Delivery.** Generating the record is not delivery. `markAdverseActionDelivered`
-   exists but confirm the notice is actually **delivered** to the applicant
-   (in-app + mail/email) and that delivery is logged.
-2. **Timing.** ECOA requires notice within **30 days** (§1002.9(a)(1)). Confirm the
-   delivery step meets this; generation-at-denial supports it but does not
-   guarantee delivery.
-3. **Retention.** Reg B §1002.12(b) requires retention for **25 months**. Confirm
-   the `adverse_actions` records meet the retention policy.
+**Precise current state (so the gap is unambiguous):**
+- Delivery is **manual and staff-triggered** only — `markAdverseActionDelivered`
+  is called solely by `POST /api/credit/adverse-action/:actionId/deliver`. Nothing
+  marks a notice delivered automatically when it is generated.
+- The borrower **can** retrieve their own notice via
+  `GET /api/loan-applications/:id/credit/adverse-actions` (owner access), but there
+  is **no borrower UI** surfacing it today.
+- Borrower notification of the denial differs by path: the **status** route sends
+  a neutral notification + email; the **advance-stage** pipeline route currently
+  sends **neither**. (The adverse-action *record* is generated on both.)
+
+**Decisions required — these are legal/ops calls, not clean code fixes:**
+1. **Delivery method & auto-marking.** What constitutes valid ECOA delivery here
+   (mail vs. electronic), and whether in-app availability + ESIGN consent suffices.
+   Engineering deliberately did **not** auto-mark notices "delivered" — doing so
+   without a ratified delivery method would create a false compliance record.
+   Once the method is decided, engineering will wire automatic delivery + a
+   consistent borrower notification on **both** denial paths.
+2. **Timing.** ECOA requires notice within **30 days** (§1002.9(a)(1)).
+3. **Retention.** Reg B §1002.12(b) requires **25 months**; confirm the
+   `adverse_actions` retention policy.
 
 ---
 
