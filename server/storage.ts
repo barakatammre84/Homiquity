@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, or, ilike, asc, count, inArray } from "drizzle-orm";
+import { AMOUNT_BEARING_STATUSES } from "@shared/stageRequirements";
 import {
   users,
   loanApplications,
@@ -1248,7 +1249,9 @@ export class DatabaseStorage implements IStorage {
       db.select({
         status: loanApplications.status,
         count: sql<number>`count(*)::int`,
-        volume: sql<string>`coalesce(sum(purchase_price::numeric), 0)::text`,
+        // Coherent amount: purchase price once under contract, else the
+        // pre-approval amount — pre-approval precedes property selection (#7).
+        volume: sql<string>`coalesce(sum(coalesce(purchase_price::numeric, pre_approval_amount::numeric)), 0)::text`,
       })
         .from(loanApplications)
         .groupBy(loanApplications.status),
@@ -1276,7 +1279,13 @@ export class DatabaseStorage implements IStorage {
     const totalApplications = appStats.reduce((sum, s) => sum + s.count, 0);
     const approvedRow = appStats.find(s => s.status === "approved");
     const approvedCount = approvedRow?.count ?? 0;
-    const totalLoanVolume = approvedRow?.volume ?? "0";
+    // Pipeline volume = coherent amount across every amount-bearing status, not
+    // just fully-approved files — a pre-approved file has real pipeline value
+    // before a property is chosen, so summing only "approved" reads $0 (#7).
+    const totalLoanVolume = appStats
+      .filter(s => AMOUNT_BEARING_STATUSES.has(s.status))
+      .reduce((sum, s) => sum + (parseFloat(s.volume) || 0), 0)
+      .toString();
     const approvalRate = totalApplications > 0
       ? Math.round((approvedCount / totalApplications) * 100)
       : 0;
