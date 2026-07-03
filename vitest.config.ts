@@ -11,6 +11,8 @@ export default defineConfig({
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
     include: [
+      "tests/encryptionRotation.test.ts",
+      "tests/fairLendingAnalysis.test.ts",
       "tests/lookupResolver.test.ts",
       "tests/mismoValidation.test.ts",
       "tests/preApprovalMachine.test.ts",
@@ -19,8 +21,10 @@ export default defineConfig({
       "tests/underwritingNuance.test.ts",
       "tests/complianceInvariants.test.ts",
       "tests/scenarioCatalog.test.ts",
-      "tests/encryptionRotation.test.ts",
-      "tests/fairLendingAnalysis.test.ts",
+      "tests/stageRequirements.test.ts",
+      "tests/borrowerStateMachine.test.ts",
+      "tests/ssnVault.test.ts",
+      "tests/loginLockout.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
