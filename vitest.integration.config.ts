@@ -15,6 +15,7 @@ export default defineConfig({
     include: [
       "tests/api.test.ts",
       "tests/authRecovery.test.ts",
+      "tests/leads.test.ts",
       "tests/lookupMatrixCoverageGap.test.ts",
       "tests/lookupMatrixLifecycle.test.ts",
       "tests/pricingUnderwriting.test.ts",

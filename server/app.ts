@@ -136,6 +136,16 @@ const vendorProxyLimiter = rateLimit({
   message: { error: "Too many requests, please try again later" },
 });
 
+// Public, unauthenticated lead intake. Aggregators post server-to-server so a
+// modest per-IP ceiling still admits legitimate bursts while blunting spam.
+const leadsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many lead submissions, please try again later" },
+});
+
 app.use("/api/login", authLimiter);
 app.use("/api/callback", authLimiter);
 app.use("/api/test-login", authLimiter);
@@ -160,6 +170,9 @@ app.use("/api/properties/search-sold", vendorProxyLimiter);
 app.use("/api/listings/search", vendorProxyLimiter);
 app.use("/api/listings/nearby", vendorProxyLimiter);
 app.use("/api/track", trackLimiter);
+// Only the public POST intake is throttled; the authenticated staff GET list
+// and detail views under /api/leads are left to the general limiter.
+app.use("/api/leads", (req, res, next) => (req.method === "POST" ? leadsLimiter(req, res, next) : next()));
 app.use("/api/email-capture", emailCaptureLimiter);
 app.use(generalLimiter);
 
