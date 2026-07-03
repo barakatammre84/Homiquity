@@ -46,8 +46,8 @@
 
 ### Compliance guardrails to build ahead of need
 
-- [ ] **24. Quiet-hours service** (TCPA 8am–9pm recipient-local, timezone from ZIP). Must exist before ANY outbound SMS/dialer feature ships.
-- [ ] **25. SMS STOP / opt-out webhook** — receiver that sets the opt-out flag, purges queues, records the timestamp. Same rule: blocks outbound messaging.
+- [x] **24. Quiet-hours service** (TCPA 8am–9pm recipient-local, timezone from ZIP). Must exist before ANY outbound SMS/dialer feature ships. *(Done 2026-07-03: `server/services/quietHours.ts` — resolves an IANA timezone from a ZIP 3-digit prefix (AZ=Phoenix/no-DST etc.), computes the recipient's local hour, and gates contact to the 8 AM–9 PM window. Unknown/non-US ZIPs fail SAFE: contact allowed only when inside the window at both the far-eastern and far-western US zones. DST-correct; covered by `tests/quietHours.test.ts`.)*
+- [x] **25. SMS STOP / opt-out webhook** — receiver that sets the opt-out flag, purges queues, records the timestamp. Same rule: blocks outbound messaging. *(Done 2026-07-03: canonical `sms_opt_outs` ledger keyed by normalized phone (migration `0003`), so a number stays suppressed even before a lead exists. `POST /api/webhooks/sms` (provider-agnostic; Twilio form fields or JSON) classifies STOP/START/HELP, records the opt-out + timestamp, and purges outreach by flipping matching leads to do-not-contact (digit-normalized match). `server/services/smsCompliance.ts` adds `normalizePhone`, `classifyKeyword`, and `evaluateOutboundSms` — the single guard combining opt-out + quiet hours that a future sender must pass. DB-verified opt-out/resubscribe; unit tests in `tests/smsCompliance.test.ts`. Signature verification is stubbed with a note for when a real provider is wired.)*
 - [ ] **26. Legal pages** — privacy policy, terms of service, FCRA adverse-action notice flow. Page shells + routing can be built now; final text needs legal review (your side).
 
 ### Lender-readiness wiring (from kb/LENDER_READINESS_GAP_ANALYSIS.md, 2026-07-03)

@@ -98,5 +98,29 @@ export const authTokens = pgTable(
 export type AuthToken = typeof authTokens.$inferSelect;
 export type AuthTokenType = "password_reset" | "email_verification";
 
+// Canonical SMS opt-out ledger, keyed by normalized phone. A STOP keyword flips
+// optedOut=true; START/UNSTOP re-subscribes. This is the source of truth an
+// outbound sender/dialer must check — it persists even when no lead/user row
+// exists for the number yet, so a future contact with that phone is born
+// suppressed. Required before any outbound SMS feature ships (TCPA / CTIA).
+export const smsOptOuts = pgTable(
+  "sms_opt_outs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    // Normalized to digits-only (E.164 national form, e.g. "15551234567").
+    phone: varchar("phone", { length: 40 }).notNull().unique(),
+    optedOut: boolean("opted_out").default(true).notNull(),
+    optedOutAt: timestamp("opted_out_at"),
+    resubscribedAt: timestamp("resubscribed_at"),
+    lastKeyword: varchar("last_keyword", { length: 40 }),
+    source: varchar("source", { length: 40 }).default("sms_webhook").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+  },
+  (table) => [index("sms_opt_outs_phone_idx").on(table.phone)],
+);
+
+export type SmsOptOut = typeof smsOptOuts.$inferSelect;
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;

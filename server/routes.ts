@@ -29,6 +29,7 @@ import { registerJobRoutes } from "./routes/jobs";
 import { registerShellRoutes } from "./routes/shell";
 import { registerMarketDataRoutes } from "./routes/market-data";
 import { registerLeadRoutes } from "./routes/leads";
+import { registerWebhookRoutes } from "./routes/webhooks";
 import { seedDatabase } from "./seed";
 import { pool } from "./db";
 import { assertEncryptionConfig, initEncryption } from "./services/encryptionService";
@@ -90,6 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerShellRoutes(app, storage);
   registerMarketDataRoutes(app);
   registerLeadRoutes(app, storage);
+  registerWebhookRoutes(app, storage);
 
   app.all("/api/*", (_req, res) => {
     res.status(404).json({ error: "Not found" });

@@ -173,6 +173,14 @@ app.use("/api/track", trackLimiter);
 // Only the public POST intake is throttled; the authenticated staff GET list
 // and detail views under /api/leads are left to the general limiter.
 app.use("/api/leads", (req, res, next) => (req.method === "POST" ? leadsLimiter(req, res, next) : next()));
+// Inbound SMS provider webhook — modest ceiling; a provider retries transiently.
+app.use("/api/webhooks/sms", rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many webhook requests" },
+}));
 app.use("/api/email-capture", emailCaptureLimiter);
 app.use(generalLimiter);
 

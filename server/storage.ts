@@ -290,6 +290,8 @@ import {
   leads,
   type Lead,
   type InsertLead,
+  smsOptOuts,
+  type SmsOptOut,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -949,6 +951,11 @@ export interface IStorage {
   listLeads(filters?: { status?: string; source?: string; limit?: number; offset?: number }): Promise<Lead[]>;
   getLead(id: string): Promise<Lead | undefined>;
   deleteLead(id: string): Promise<boolean>;
+
+  // SMS opt-out ledger (TCPA/CTIA)
+  setSmsOptOut(input: { phone: string; optedOut: boolean; keyword?: string | null; source?: string }): Promise<SmsOptOut>;
+  isPhoneOptedOut(phone: string): Promise<boolean>;
+  applyLeadContactabilityByPhone(normalizedPhone: string, optedOut: boolean): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -4993,6 +5000,58 @@ export class DatabaseStorage implements IStorage {
   async deleteLead(id: string): Promise<boolean> {
     const deleted = await db.delete(leads).where(eq(leads.id, id)).returning({ id: leads.id });
     return deleted.length > 0;
+  }
+
+  // SMS opt-out ledger (TCPA/CTIA)
+  async setSmsOptOut(input: { phone: string; optedOut: boolean; keyword?: string | null; source?: string }): Promise<SmsOptOut> {
+    const now = new Date();
+    const [row] = await db
+      .insert(smsOptOuts)
+      .values({
+        phone: input.phone,
+        optedOut: input.optedOut,
+        optedOutAt: input.optedOut ? now : null,
+        resubscribedAt: input.optedOut ? null : now,
+        lastKeyword: input.keyword ?? null,
+        source: input.source ?? "sms_webhook",
+      })
+      .onConflictDoUpdate({
+        target: smsOptOuts.phone,
+        set: {
+          optedOut: input.optedOut,
+          optedOutAt: input.optedOut ? now : sql`${smsOptOuts.optedOutAt}`,
+          resubscribedAt: input.optedOut ? sql`${smsOptOuts.resubscribedAt}` : now,
+          lastKeyword: input.keyword ?? null,
+          source: input.source ?? "sms_webhook",
+          updatedAt: now,
+        },
+      })
+      .returning();
+    return row;
+  }
+
+  async isPhoneOptedOut(phone: string): Promise<boolean> {
+    const [row] = await db
+      .select({ optedOut: smsOptOuts.optedOut })
+      .from(smsOptOuts)
+      .where(eq(smsOptOuts.phone, phone))
+      .limit(1);
+    return row?.optedOut ?? false;
+  }
+
+  // Best-effort sync of the do-not-contact flag onto any lead rows whose stored
+  // phone matches (compared digits-only, since lead phones are stored verbatim).
+  // Returns the number of lead rows updated.
+  async applyLeadContactabilityByPhone(normalizedPhone: string, optedOut: boolean): Promise<number> {
+    const national = normalizedPhone.replace(/^1/, ""); // 10-digit form
+    const updated = await db
+      .update(leads)
+      .set({ doNotContact: optedOut, optOutAt: optedOut ? new Date() : null, updatedAt: new Date() })
+      .where(
+        sql`regexp_replace(${leads.phone}, '[^0-9]', '', 'g') IN (${normalizedPhone}, ${national})`,
+      )
+      .returning({ id: leads.id });
+    return updated.length;
   }
 }
 
