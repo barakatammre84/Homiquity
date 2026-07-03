@@ -107,7 +107,10 @@ describe("Reg B: the intake decision path is fully deterministic", () => {
   it("the intake route no longer imports the retired LLM analysis module", () => {
     const source = read("server/routes/lending.ts");
     expect(source).not.toMatch(/from\s+["'][^"']*\/gemini["']/);
-    expect(source).toContain("analyzeIntake");
+    // The route drives the deterministic finalizer, which wraps the engine.
+    expect(source).toContain("finalizeIntake");
+    const analysis = read("server/services/loanAnalysis.ts");
+    expect(analysis).toContain("analyzeIntake");
   });
 
   it("intake analysis derives approval from the engine, never sets denied itself", () => {

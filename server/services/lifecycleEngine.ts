@@ -127,6 +127,7 @@ interface SweepResult {
   pmiAlerts: number;
   refiAlertsCreated: number;
   docExpiryNudges: number;
+  stuckIntakeRecovered: number;
   errors: number;
 }
 
@@ -329,8 +330,20 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
     pmiAlerts: 0,
     refiAlertsCreated: 0,
     docExpiryNudges: 0,
+    stuckIntakeRecovered: 0,
     errors: 0,
   };
+
+  // Recover any application stranded mid-analysis by a downstream drop before
+  // the homeowner sweeps — a borrower waiting on a decision is the priority.
+  try {
+    const { recoverStuckIntakeApplications } = await import("./loanAnalysis");
+    const recovery = await recoverStuckIntakeApplications();
+    counters.stuckIntakeRecovered = recovery.recovered;
+  } catch (err) {
+    counters.errors += 1;
+    console.error("[lifecycle] Stuck-intake recovery failed (continuing):", err);
+  }
 
   const marketRate = await getMarketRate30YrFixed();
   const profiles = await db.select().from(homeownerProfiles);
@@ -356,7 +369,7 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
     `[lifecycle] Sweep complete: ${counters.profilesProcessed} profiles, ` +
       `${counters.snapshotsCreated} snapshots, ${counters.pmiAlerts} PMI alerts, ` +
       `${counters.refiAlertsCreated} refi alerts, ${counters.docExpiryNudges} doc nudges, ` +
-      `${counters.errors} errors` +
+      `${counters.stuckIntakeRecovered} stuck-intake recovered, ${counters.errors} errors` +
       (marketRate === null ? " (no market rate data — refi checks skipped)" : ""),
   );
   return counters;

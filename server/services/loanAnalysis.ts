@@ -317,9 +317,13 @@ export async function analyzeIntake(applicationId: string): Promise<IntakeAnalys
 
   let preApprovalAmount = "0";
   if (isApproved && monthlyIncome > 0) {
-    const dtiCapPct = await lookupResolver
-      .getPolicyScalar("CONVENTIONAL_DTI_CAP")
-      .catch(() => 43);
+    const rawCap = await lookupResolver.getPolicyScalar("CONVENTIONAL_DTI_CAP").catch(() => 43);
+    // Sanity floor: a corrupt/zero matrix scalar must not silently drive the
+    // affordability math to zero. Fall back to the 43% ATR/QM cap if wild.
+    const dtiCapPct = Number.isFinite(rawCap) && rawCap >= 30 && rawCap <= 60 ? rawCap : 43;
+    if (dtiCapPct !== rawCap) {
+      console.warn(`[loanAnalysis] CONVENTIONAL_DTI_CAP out of range (${rawCap}); using ${dtiCapPct}`);
+    }
     const maxPrice = maxQualifyingPurchase(dtiCapPct, monthlyIncome, monthlyDebts, downPayment, creditScore);
     // Never issue less than the price the engine just approved.
     preApprovalAmount = String(Math.max(maxPrice, purchasePrice));
@@ -335,4 +339,196 @@ export async function analyzeIntake(applicationId: string): Promise<IntakeAnalys
     scenarios,
     decision,
   };
+}
+
+// Pre-analysis statuses this finalizer is allowed to act on. Anything further
+// along the pipeline is left alone — finalizeIntake never rewinds a live file.
+const FINALIZABLE_STATUSES = new Set(["draft", "submitted", "analyzing"]);
+
+/**
+ * Run the full intake finalization for one application: deterministic decision,
+ * loan options, status, deal activity, borrower notification, pipeline init,
+ * and pre-underwriting. Extracted from the POST /api/loan-applications handler
+ * so the SAME path can be re-driven if a downstream drop (DB/process restart)
+ * strands an application mid-analysis.
+ *
+ * Idempotent by construction: options are cleared before re-creation, and the
+ * status guard prevents acting on an application that has moved on. On failure
+ * it resets the status to "submitted" so the recovery sweep will retry.
+ */
+export async function finalizeIntake(applicationId: string): Promise<void> {
+  const app = await storage.getLoanApplication(applicationId);
+  if (!app) return;
+  if (!FINALIZABLE_STATUSES.has(app.status)) return; // already progressed — leave it
+
+  const userId = app.userId;
+  const borrower = await storage.getUser(userId);
+  const borrowerName = borrower?.firstName || "Borrower";
+
+  try {
+    await storage.updateLoanApplication(applicationId, { status: "analyzing" });
+    try {
+      const { syncApplicationStatusToStateMachine } = await import("./optimizationEngine");
+      await syncApplicationStatusToStateMachine(userId, applicationId, "analyzing");
+    } catch (syncErr) {
+      console.warn("[OPT-5] State sync failed for analyzing (non-fatal):", syncErr);
+    }
+
+    const analysisResult = await analyzeIntake(applicationId);
+    const newStatus = analysisResult.outcome;
+
+    try {
+      const { syncApplicationStatusToStateMachine } = await import("./optimizationEngine");
+      await syncApplicationStatusToStateMachine(userId, applicationId, newStatus);
+    } catch (syncErr) {
+      console.warn(`[OPT-5] State sync failed for ${newStatus} (non-fatal):`, syncErr);
+    }
+
+    await storage.updateLoanApplication(applicationId, {
+      status: newStatus,
+      preApprovalAmount: analysisResult.preApprovalAmount,
+      dtiRatio: analysisResult.dtiRatio,
+      ltvRatio: analysisResult.ltvRatio,
+      aiAnalysis: analysisResult.analysis,
+      aiAnalyzedAt: new Date(),
+    });
+
+    // Clear then recreate options so a re-drive never duplicates scenarios.
+    try {
+      await storage.deleteLoanOptionsByApplication(applicationId);
+    } catch (delErr) {
+      console.error("[Analysis] Failed to clear prior loan options (non-fatal):", delErr);
+    }
+    for (const scenario of analysisResult.scenarios) {
+      try {
+        await storage.createLoanOption({ applicationId, ...scenario });
+      } catch (optErr) {
+        console.error("[Analysis] Failed to create loan option:", optErr);
+      }
+    }
+
+    try {
+      const firstReason = analysisResult.analysis.concerns[0];
+      await storage.createDealActivity({
+        applicationId,
+        activityType: "status_change",
+        title: analysisResult.isApproved ? "Pre-Approval Issued" : "Application Under Review",
+        description: analysisResult.isApproved
+          ? `Pre-approval issued for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}. Final terms subject to underwriting review.`
+          : firstReason
+            ? `A licensed underwriter will review your application. Flagged for review: ${firstReason}`
+            : "A licensed underwriter will review your application.",
+      });
+    } catch (actErr) {
+      console.error("[Analysis] Failed to create deal activity:", actErr);
+    }
+
+    try {
+      const { sendNotificationEmail } = await import("./emailService");
+      if (analysisResult.isApproved) {
+        await storage.createNotification({
+          userId,
+          type: "application_pre_approved",
+          title: "Pre-Approval Issued",
+          body: `Your pre-approval has been issued for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}. Final terms are subject to underwriting review.`,
+          entityType: "loan_application",
+          entityId: applicationId,
+          status: "unread",
+        });
+        if (borrower?.email) {
+          sendNotificationEmail({
+            type: "application_pre_approved",
+            recipientEmail: borrower.email,
+            data: { borrowerName, amount: (parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString(), applicationId },
+          });
+        }
+      } else {
+        await storage.createNotification({
+          userId,
+          type: "application_under_review",
+          title: "Application Under Review",
+          body: "A licensed underwriter is reviewing your application. Check your dashboard to see what was flagged and what happens next.",
+          entityType: "loan_application",
+          entityId: applicationId,
+          status: "unread",
+        });
+        if (borrower?.email) {
+          sendNotificationEmail({
+            type: "status_update",
+            recipientEmail: borrower.email,
+            data: { borrowerName, statusLabel: "Under Review", applicationId },
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error("[Analysis] Failed to send notifications:", notifErr);
+    }
+
+    if (analysisResult.isApproved) {
+      try {
+        const updatedApp = await storage.getLoanApplication(applicationId);
+        if (updatedApp) {
+          const { initializeLoanPipeline } = await import("../pipelineEngine");
+          await initializeLoanPipeline(updatedApp, userId);
+          await storage.createDealActivity({
+            applicationId,
+            activityType: "status_change",
+            title: "Document Collection Started",
+            description: "Required documents have been identified. Please upload them to continue your application.",
+            // performedBy omitted: this is a system action, and "system" is not
+            // a real user id (the performed_by FK rejects it). Leaving it null
+            // fixes a latent FK violation carried over from the original handler.
+          });
+        }
+      } catch (pipelineErr) {
+        console.error("[Analysis] Pipeline initialization failed (non-fatal):", pipelineErr);
+      }
+    }
+
+    try {
+      const { runPreUnderwriting } = await import("./preUnderwriting");
+      await runPreUnderwriting(applicationId, "intake");
+    } catch (preUwErr) {
+      console.error("[Analysis] Pre-underwriting validation failed (non-fatal):", preUwErr);
+    }
+  } catch (analysisError) {
+    console.error(`[Analysis] finalizeIntake failed for ${applicationId}:`, analysisError);
+    // Reset so the application isn't stranded in "analyzing" — the recovery
+    // sweep (or a resubmit) will re-drive from "submitted".
+    await storage.updateLoanApplication(applicationId, { status: "submitted" }).catch(() => {});
+    throw analysisError;
+  }
+}
+
+/**
+ * Recovery sweep: re-drive any application stranded in "analyzing" past the
+ * grace window (a downstream drop or process restart mid-finalize). Safe to
+ * run repeatedly — finalizeIntake is idempotent and status-guarded.
+ */
+export async function recoverStuckIntakeApplications(
+  graceMinutes = 10,
+): Promise<{ scanned: number; recovered: number }> {
+  const { db } = await import("../db");
+  const { loanApplications } = await import("@shared/schema");
+  const { and, eq, lt } = await import("drizzle-orm");
+  const cutoff = new Date(Date.now() - graceMinutes * 60 * 1000);
+
+  const stuck = await db
+    .select({ id: loanApplications.id })
+    .from(loanApplications)
+    .where(and(eq(loanApplications.status, "analyzing"), lt(loanApplications.updatedAt, cutoff)));
+
+  let recovered = 0;
+  for (const row of stuck) {
+    try {
+      await finalizeIntake(row.id);
+      recovered += 1;
+    } catch (err) {
+      console.error(`[Analysis] Recovery failed for ${row.id} (will retry next sweep):`, err);
+    }
+  }
+  if (stuck.length > 0) {
+    console.log(`[Analysis] Stuck-intake recovery: ${recovered}/${stuck.length} re-driven`);
+  }
+  return { scanned: stuck.length, recovered };
 }

@@ -237,6 +237,62 @@ export class ObjectStorageService {
       requestedPermission: requestedPermission ?? ObjectPermission.READ,
     });
   }
+
+  /** True when object storage is configured (a private bucket dir is set). */
+  isConfigured(): boolean {
+    return !!process.env.PRIVATE_OBJECT_DIR;
+  }
+
+  /**
+   * Verify a client-supplied /objects/ path before we trust it as a document:
+   *  - the object must actually exist (you can't register a file you never
+   *    uploaded), and
+   *  - it must be unclaimed OR already owned by this user — otherwise this is
+   *    an attempt to register someone else's object (IDOR). First registrant
+   *    wins and becomes the ACL owner; a later claimant is rejected.
+   *
+   * Also returns the object's true content-type and size from storage metadata
+   * so the caller can validate against the allow-list rather than trusting the
+   * client-declared MIME/size (magic-byte parity for the JSON upload path).
+   *
+   * When storage is unconfigured (e.g. local dev without GCS) it reports
+   * `configured: false` and does nothing — the caller decides whether to
+   * fail open (dev) or closed (prod).
+   */
+  async verifyAndClaimObject(
+    objectPath: string,
+    userId: string,
+  ): Promise<
+    | { configured: false }
+    | { configured: true; ok: false; reason: string }
+    | { configured: true; ok: true; contentType?: string; size?: number }
+  > {
+    if (!this.isConfigured()) return { configured: false };
+
+    let objectFile: File;
+    try {
+      objectFile = await this.getObjectEntityFile(objectPath);
+    } catch {
+      return { configured: true, ok: false, reason: "The uploaded file could not be found in storage." };
+    }
+
+    const [exists] = await objectFile.exists();
+    if (!exists) {
+      return { configured: true, ok: false, reason: "The uploaded file could not be found in storage." };
+    }
+
+    const existingPolicy = await getObjectAclPolicy(objectFile);
+    if (existingPolicy && existingPolicy.owner && existingPolicy.owner !== userId) {
+      return { configured: true, ok: false, reason: "You do not own this uploaded file." };
+    }
+    if (!existingPolicy) {
+      await setObjectAclPolicy(objectFile, { owner: userId, visibility: "private" });
+    }
+
+    const [metadata] = await objectFile.getMetadata();
+    const size = metadata?.size ? Number(metadata.size) : undefined;
+    return { configured: true, ok: true, contentType: metadata?.contentType, size };
+  }
 }
 
 function parseObjectPath(path: string): {

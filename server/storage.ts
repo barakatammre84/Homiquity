@@ -289,6 +289,7 @@ export interface IStorage {
   createLoanOption(data: InsertLoanOption): Promise<LoanOption>;
   getLoanOption(id: string): Promise<LoanOption | undefined>;
   getLoanOptionsByApplication(applicationId: string): Promise<LoanOption[]>;
+  deleteLoanOptionsByApplication(applicationId: string): Promise<void>;
   updateLoanOption(id: string, data: Partial<LoanOption>): Promise<LoanOption | undefined>;
   lockLoanOption(id: string): Promise<LoanOption | undefined>;
 
@@ -728,7 +729,9 @@ export interface IStorage {
   updateDocumentRequestStatus(
     messageId: string,
     status: 'pending' | 'submitted' | 'approved' | 'rejected',
-    documentId?: string
+    documentId?: string,
+    /** Optimistic-concurrency guard: only update if the current status is one of these. */
+    expectedFromStatuses?: string[],
   ): Promise<TeamMessage | null>;
   getPendingDocumentRequests(userId: string): Promise<TeamMessage[]>;
 
@@ -1071,6 +1074,12 @@ export class DatabaseStorage implements IStorage {
       .from(loanOptions)
       .where(eq(loanOptions.applicationId, applicationId))
       .orderBy(loanOptions.isRecommended);
+  }
+
+  // Used to keep intake finalization idempotent: clear prior options before a
+  // re-drive so a recovered application doesn't accumulate duplicate scenarios.
+  async deleteLoanOptionsByApplication(applicationId: string): Promise<void> {
+    await db.delete(loanOptions).where(eq(loanOptions.applicationId, applicationId));
   }
 
   async updateLoanOption(id: string, data: Partial<LoanOption>): Promise<LoanOption | undefined> {
@@ -3762,31 +3771,45 @@ export class DatabaseStorage implements IStorage {
   // ============================================
   
   async updateDocumentRequestStatus(
-    messageId: string, 
+    messageId: string,
     status: 'pending' | 'submitted' | 'approved' | 'rejected',
-    documentId?: string
+    documentId?: string,
+    expectedFromStatuses?: string[],
   ): Promise<TeamMessage | null> {
     const [message] = await db.select().from(teamMessages).where(eq(teamMessages.id, messageId));
-    
+
     if (!message || message.messageType !== 'document_request') {
       return null;
     }
-    
+
     const requestData = message.documentRequestData as any;
     if (!requestData) return null;
-    
+
     const updatedData = {
       ...requestData,
       status,
       documentId: documentId || requestData.documentId,
     };
-    
+
+    // Conditional update: when an expected-prior-state set is supplied, the
+    // WHERE clause also matches on the current JSON status, so a concurrent
+    // writer that already changed it yields 0 rows (caller treats as 409).
+    const whereClause = expectedFromStatuses && expectedFromStatuses.length > 0
+      ? and(
+          eq(teamMessages.id, messageId),
+          inArray(
+            sql`COALESCE(${teamMessages.documentRequestData}->>'status', 'pending')`,
+            expectedFromStatuses,
+          ),
+        )
+      : eq(teamMessages.id, messageId);
+
     const [updated] = await db.update(teamMessages)
       .set({ documentRequestData: updatedData })
-      .where(eq(teamMessages.id, messageId))
+      .where(whereClause)
       .returning();
-    
-    return updated;
+
+    return updated ?? null;
   }
   
   async getPendingDocumentRequests(userId: string): Promise<TeamMessage[]> {

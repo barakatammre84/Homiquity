@@ -7,7 +7,7 @@ import {
   VALID_US_STATES,
   type User,
 } from "@shared/schema";
-import { analyzeIntake } from "../services/loanAnalysis";
+import { finalizeIntake } from "../services/loanAnalysis";
 import { generateMISMO34XML, type MISMOLoanDTO } from "../mismo";
 import { db } from "../db";
 import {
@@ -568,141 +568,15 @@ export function registerLendingRoutes(
 
       res.status(201).json(application);
 
+      // Deterministic decision path (Reg B): matrix-driven engine + closed-form
+      // math, no AI. Runs after the response so intake stays snappy. This same
+      // finalizer is re-drivable by the recovery sweep if a downstream drop
+      // strands the application mid-analysis (never left stuck in "analyzing").
       try {
-        await storage.updateLoanApplication(application.id, { status: "analyzing" });
-
-        try {
-          const { syncApplicationStatusToStateMachine } = await import("../services/optimizationEngine");
-          await syncApplicationStatusToStateMachine(userId, application.id, "analyzing");
-        } catch (syncErr) {
-          console.warn("[OPT-5] State sync failed for analyzing (non-fatal):", syncErr);
-        }
-
-        // Deterministic decision path (Reg B): matrix-driven engine + closed-form
-        // math, no AI. Intake never auto-denies — non-approvals go to a human
-        // underwriter (ECOA adverse-action locus), with the engine's cited
-        // reasons preserved in the analysis and the decision snapshot.
-        const analysisResult = await analyzeIntake(application.id);
-
-        const newStatus = analysisResult.outcome;
-
-        try {
-          const { syncApplicationStatusToStateMachine } = await import("../services/optimizationEngine");
-          await syncApplicationStatusToStateMachine(userId, application.id, newStatus);
-        } catch (syncErr) {
-          console.warn(`[OPT-5] State sync failed for ${newStatus} (non-fatal):`, syncErr);
-        }
-        
-        await storage.updateLoanApplication(application.id, {
-          status: newStatus,
-          preApprovalAmount: analysisResult.preApprovalAmount,
-          dtiRatio: analysisResult.dtiRatio,
-          ltvRatio: analysisResult.ltvRatio,
-          aiAnalysis: analysisResult.analysis,
-          aiAnalyzedAt: new Date(),
-        });
-
-        for (const scenario of analysisResult.scenarios) {
-          try {
-            await storage.createLoanOption({
-              applicationId: application.id,
-              ...scenario,
-            });
-          } catch (optErr) {
-            console.error("[Analysis] Failed to create loan option:", optErr);
-          }
-        }
-
-        try {
-          const firstReason = analysisResult.analysis.concerns[0];
-          await storage.createDealActivity({
-            applicationId: application.id,
-            activityType: "status_change",
-            title: analysisResult.isApproved ? "Pre-Approval Issued" : "Application Under Review",
-            description: analysisResult.isApproved
-              ? `Pre-approval issued for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}. Final terms subject to underwriting review.`
-              : firstReason
-                ? `A licensed underwriter will review your application. Flagged for review: ${firstReason}`
-                : "A licensed underwriter will review your application.",
-          });
-        } catch (actErr) {
-          console.error("[Analysis] Failed to create deal activity:", actErr);
-        }
-
-        const borrowerName = user.firstName || "Borrower";
-        try {
-          if (analysisResult.isApproved) {
-            await storage.createNotification({
-              userId,
-              type: "application_pre_approved",
-              title: "Pre-Approval Issued",
-              body: `Your pre-approval has been issued for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}. Final terms are subject to underwriting review.`,
-              entityType: "loan_application",
-              entityId: application.id,
-              status: "unread",
-            });
-            if (user.email) {
-              sendNotificationEmail({
-                type: "application_pre_approved",
-                recipientEmail: user.email,
-                data: { borrowerName, amount: (parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString(), applicationId: application.id },
-              });
-            }
-          } else {
-            // Not a denial: intake routes non-approvals to a human underwriter
-            // (auto-denial would trigger ECOA adverse-action obligations).
-            await storage.createNotification({
-              userId,
-              type: "application_under_review",
-              title: "Application Under Review",
-              body: "A licensed underwriter is reviewing your application. Check your dashboard to see what was flagged and what happens next.",
-              entityType: "loan_application",
-              entityId: application.id,
-              status: "unread",
-            });
-            if (user.email) {
-              sendNotificationEmail({
-                type: "status_update",
-                recipientEmail: user.email,
-                data: { borrowerName, statusLabel: "Under Review", applicationId: application.id },
-              });
-            }
-          }
-        } catch (notifErr) {
-          console.error("[Analysis] Failed to send notifications:", notifErr);
-        }
-
-        if (analysisResult.isApproved) {
-          try {
-            const updatedApp = await storage.getLoanApplication(application.id);
-            if (updatedApp) {
-              const { initializeLoanPipeline } = await import("../pipelineEngine");
-              await initializeLoanPipeline(updatedApp, userId);
-              
-              await storage.createDealActivity({
-                applicationId: application.id,
-                activityType: "status_change",
-                title: "Document Collection Started",
-                description: "Required documents have been identified. Please upload them to continue your application.",
-                performedBy: "system",
-              });
-            }
-          } catch (pipelineErr) {
-            console.error("[Analysis] Pipeline initialization failed (non-fatal):", pipelineErr);
-          }
-        }
-
-        // Automated pre-underwriting validation the moment intake completes
-        // (reserves vs verified assets, complex-income flags, borrower outreach).
-        try {
-          const { runPreUnderwriting } = await import("../services/preUnderwriting");
-          await runPreUnderwriting(application.id, "intake");
-        } catch (preUwErr) {
-          console.error("[Analysis] Pre-underwriting validation failed (non-fatal):", preUwErr);
-        }
+        await finalizeIntake(application.id);
       } catch (analysisError) {
         console.error("Intake analysis error:", analysisError);
-        await storage.updateLoanApplication(application.id, { status: "submitted" });
+        // finalizeIntake already reset status to "submitted" for retry.
       }
     } catch (error) {
       console.error("Create application error:", error);
@@ -1145,10 +1019,42 @@ export function registerLendingRoutes(
             acceptedTypes: allowedUploadTypes,
           });
         }
+        // Object-level authorization + content verification (P0). The client
+        // supplies the storage path, so before we trust it: confirm the object
+        // exists, that this user owns it (not someone else's object — IDOR),
+        // and that its REAL content-type/size match the allow-list rather than
+        // the client-declared MIME (magic-byte parity for the JSON path).
+        const { ObjectStorageService } = await import("../integrations/object_storage/objectStorage");
+        const objectStorage = new ObjectStorageService();
+        const verification = await objectStorage.verifyAndClaimObject(parsed.data.objectPath, userId);
+        if (verification.configured && !verification.ok) {
+          return res.status(403).json({ error: verification.reason });
+        }
+        if (verification.configured && verification.ok) {
+          if (verification.contentType && !allowedUploadTypes.includes(verification.contentType)) {
+            return res.status(400).json({ error: "Unsupported file type", acceptedTypes: allowedUploadTypes });
+          }
+          if (verification.size !== undefined && verification.size > 25 * 1024 * 1024) {
+            return res.status(400).json({ error: "File exceeds the 25MB limit" });
+          }
+        } else if (process.env.NODE_ENV === "production") {
+          // Storage misconfigured in prod: fail CLOSED rather than trust the
+          // client's path blindly.
+          return res.status(503).json({ error: "Uploads are temporarily unavailable" });
+        }
+
         fileMeta = {
           fileName: parsed.data.fileName,
-          fileSize: parsed.data.fileSize,
-          mimeType: parsed.data.mimeType,
+          // Prefer storage-verified size/type when available; fall back to the
+          // client values in unconfigured dev.
+          fileSize:
+            verification.configured && verification.ok && verification.size !== undefined
+              ? verification.size
+              : parsed.data.fileSize,
+          mimeType:
+            verification.configured && verification.ok && verification.contentType
+              ? verification.contentType
+              : parsed.data.mimeType,
           storagePath: parsed.data.objectPath,
         };
         documentType = parsed.data.documentType || "other";

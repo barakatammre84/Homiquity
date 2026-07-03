@@ -2621,10 +2621,36 @@ export function registerBorrowerRoutes(
         }
       }
 
-      const updated = await storage.updateDocumentRequestStatus(messageId, status, documentId);
+      // State-machine guard (prevents lost updates when borrower + staff act
+      // concurrently, e.g. borrower re-submits while staff approves). Only the
+      // listed prior states may transition to the target; the update below is
+      // conditional on the current state, so a stale writer gets a 409.
+      const LEGAL_FROM: Record<string, string[]> = {
+        submitted: ["pending", "rejected"],       // borrower (re)uploads
+        approved: ["submitted"],                   // staff clears a submitted doc
+        rejected: ["submitted"],                   // staff bounces a submitted doc
+        pending: ["submitted", "approved", "rejected"], // staff resets
+      };
+      const currentStatus = (message.documentRequestData as { status?: string } | null)?.status ?? "pending";
+      if (currentStatus === status) {
+        return res.json(message); // idempotent no-op
+      }
+      if (!LEGAL_FROM[status]?.includes(currentStatus)) {
+        return res.status(409).json({
+          error: `Cannot move a "${currentStatus}" request to "${status}".`,
+          currentStatus,
+        });
+      }
+
+      const updated = await storage.updateDocumentRequestStatus(messageId, status, documentId, LEGAL_FROM[status]);
 
       if (!updated) {
-        return res.status(404).json({ error: "Document request not found" });
+        // 0 rows matched the expected prior state — another writer beat us.
+        const fresh = await storage.getMessageById(messageId);
+        return res.status(409).json({
+          error: "This request was just updated by someone else. Refresh to see the latest status.",
+          currentStatus: (fresh?.documentRequestData as { status?: string } | null)?.status ?? null,
+        });
       }
 
       res.json(updated);

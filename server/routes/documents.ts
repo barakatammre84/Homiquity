@@ -138,6 +138,16 @@ export function registerDocumentRoutes(
 
       if (document.storagePath?.startsWith("/objects/")) {
         const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);
+        // Defense in depth: even though the app-level checks above passed, the
+        // object's own ACL is the second gate — so a document record that was
+        // somehow pointed at another user's object still cannot be streamed.
+        if (objectStorageService.isConfigured()) {
+          const allowed = await objectStorageService.canAccessObjectEntity({ userId: user.id, objectFile });
+          const isPrivileged = user.role === "admin";
+          if (!allowed && !isPrivileged) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+        }
         // Force download rather than inline render so borrower-uploaded files
         // (e.g. crafted HTML/SVG/PDF) cannot execute in the browser context.
         res.set("Content-Disposition", `attachment; filename="${document.fileName}"`);
