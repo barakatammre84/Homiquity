@@ -569,6 +569,32 @@ export default function StaffDashboard() {
     );
   }
 
+  // External partners (broker, lender) pass the page guard but the operations
+  // dashboard is internal-staff only. Brokers are routed to /broker-dashboard;
+  // lender is a deferred persona with no product surface yet — show a neutral
+  // partner landing instead of an empty internal shell.
+  if (!isInternalStaff) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Partner workspace</h2>
+            <p className="text-muted-foreground mb-6">
+              Your partner workspace is being set up. The operations dashboard is
+              reserved for internal staff.
+            </p>
+            {userRole === "broker" && (
+              <Button onClick={() => navigate("/broker-dashboard")} data-testid="button-go-broker-dashboard">
+                Go to Broker Dashboard
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
