@@ -309,10 +309,10 @@ describe("GSE gating (hard-fail on sections 1a, 4, 5)", () => {
 // ---------------------------------------------------------------------------
 describe("TRID business-day math (weekends + federal holidays)", () => {
   it("LE due date skips a weekend and Presidents Day", async () => {
-    // Presidents Day 2026 = Mon Feb 16. Application created Thu Feb 12.
+    // Presidents Day 2026 = Mon Feb 16. Six pieces received Thu Feb 12.
     // +1 Fri 13 (1), Sat 14/Sun 15 skip, Mon 16 holiday skip,
     // Tue 17 (2), Wed 18 (3) => LE due Wed Feb 18, 2026.
-    setFixtures({ application: { createdAt: new Date("2026-02-12T00:00:00Z") } });
+    setFixtures({ application: { tridTriggeredAt: new Date("2026-02-12T00:00:00Z") } });
     const result = await validateMISMOCompleteness("app-1");
 
     expect(result.tridStatus.leDueDate).not.toBeNull();
@@ -335,9 +335,9 @@ describe("TRID business-day math (weekends + federal holidays)", () => {
   });
 
   it("LE due date over a plain mid-week window skips only the weekend", async () => {
-    // Created Mon Mar 2, 2026 (no holidays that week): +1 Tue (1),
+    // Six pieces received Mon Mar 2, 2026 (no holidays that week): +1 Tue (1),
     // Wed (2), Thu (3) => LE due Thu Mar 5, 2026.
-    setFixtures({ application: { createdAt: new Date("2026-03-02T00:00:00Z") } });
+    setFixtures({ application: { tridTriggeredAt: new Date("2026-03-02T00:00:00Z") } });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.tridStatus.leDueDate!.toISOString().slice(0, 10)).toBe(
       "2026-03-05"
@@ -1373,22 +1373,29 @@ describe("ulddCompliant thresholds", () => {
 });
 
 describe("TRID leRequired / cdRequired status flags", () => {
-  it("requires neither LE nor CD while the application is a draft", async () => {
-    setFixtures({ application: { status: "draft" } });
+  it("requires neither LE nor CD before the six-piece trigger fires", async () => {
+    // Status alone never starts the LE clock — only the §1026.2(a)(3)
+    // trigger (tridTriggeredAt, written by services/trid.ts) does.
+    setFixtures({ application: { status: "submitted", tridTriggeredAt: null } });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.tridStatus.leRequired).toBe(false);
+    expect(result.tridStatus.leDueDate).toBeNull();
     expect(result.tridStatus.cdRequired).toBe(false);
   });
 
-  it("requires the LE but not the CD once the application is submitted", async () => {
-    setFixtures({ application: { status: "submitted" } });
+  it("requires the LE once the six-piece trigger has fired", async () => {
+    setFixtures({
+      application: { status: "submitted", tridTriggeredAt: new Date("2026-03-02T00:00:00Z") },
+    });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.tridStatus.leRequired).toBe(true);
     expect(result.tridStatus.cdRequired).toBe(false);
   });
 
   it("requires both the LE and the CD at clear-to-close", async () => {
-    setFixtures({ application: { status: "clear_to_close" } });
+    setFixtures({
+      application: { status: "clear_to_close", tridTriggeredAt: new Date("2026-03-02T00:00:00Z") },
+    });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.tridStatus.leRequired).toBe(true);
     expect(result.tridStatus.cdRequired).toBe(true);

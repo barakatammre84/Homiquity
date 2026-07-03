@@ -13,6 +13,7 @@ import {
 } from "../underwriting";
 import { calculateLLPA, getAreaMedianIncome } from "../pricing";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
+import { tridHardStopError } from "../services/trid";
 
 /**
  * Checks whether a staff user is authorized to mutate a specific loan application.
@@ -498,6 +499,13 @@ export function registerUnderwritingRoutes(
         });
       }
 
+      // TRID hard stop (Reg Z §1026.19(e)(1)(iii)): a file with an overdue
+      // Loan Estimate may not advance to any non-exit stage.
+      const tridBlock = tridHardStopError(application, newStage);
+      if (tridBlock) {
+        return res.status(422).json({ error: tridBlock });
+      }
+
       // Approval-grade stages may not be reached on self-reported/estimated data.
       // (Denial is not gated — see the status endpoint for the rationale.)
       const APPROVAL_GRADE_STAGES = new Set(["pre_approved", "conditional", "clear_to_close", "funded"]);
@@ -665,6 +673,23 @@ export function registerUnderwritingRoutes(
 
       const { generateLoanEstimate, formatLoanEstimateForDisplay } = await import("../services/loanEstimate");
       const le = await generateLoanEstimate(id);
+
+      // TRID delivery record: the borrower retrieving the LE behind their
+      // e_disclosure consent constitutes electronic delivery (ESIGN). Stamp
+      // leIssuedDate on first borrower retrieval; staff previews don't count.
+      if (!application.leIssuedDate && application.userId === req.user!.id) {
+        const issuedDate = new Date().toISOString().split("T")[0];
+        await storage.updateLoanApplication(id, { leIssuedDate: issuedDate });
+        le.tridCompliance.disclosureProvided = true;
+        le.tridCompliance.dateProvided = new Date(`${issuedDate}T00:00:00Z`);
+        const { logAudit } = await import("../auditLog");
+        logAudit(req, "trid.loan_estimate_delivered", "loan_application", id, {
+          leIssuedDate: issuedDate,
+          leDueDate: le.tridCompliance.leDueDate?.toISOString() ?? null,
+          withinThreeBusinessDays: le.tridCompliance.withinThreeBusinessDays,
+        });
+      }
+
       const formatted = formatLoanEstimateForDisplay(le);
       res.json(formatted);
     } catch (error) {

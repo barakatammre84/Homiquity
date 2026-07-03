@@ -209,6 +209,53 @@ const ADVERSE_ACTION_REASONS: Record<string, AdverseActionReasonDetail> = {
     category: "credit_history",
     severity: "low",
   },
+
+  // Non-bureau denial reasons from the Reg B model notice (Form C-1). These
+  // carry no bureau reason codes — they arise from underwriting, not the
+  // credit report. They complete the mapping from the HMDA LAR denial-reason
+  // list so every denial can auto-generate a compliant adverse-action notice.
+  employment_history: {
+    description: "Employment history does not meet requirements (length, stability, or type of employment)",
+    bureauReasonCodes: {},
+    category: "income",
+    severity: "medium",
+  },
+  collateral_insufficient: {
+    description: "Value or type of collateral is not sufficient for the requested loan",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "high",
+  },
+  insufficient_funds_to_close: {
+    description: "Insufficient funds for down payment and/or closing costs",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "medium",
+  },
+  unverifiable_information: {
+    description: "Unable to verify information provided on the application (income, employment, residence, or credit references)",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "medium",
+  },
+  application_incomplete: {
+    description: "Credit application is incomplete",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "low",
+  },
+  mortgage_insurance_denied: {
+    description: "Mortgage insurance could not be obtained for the requested loan",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "high",
+  },
+  other_credit_decision_factors: {
+    description: "Other factors related to the credit decision (details available on request)",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "medium",
+  },
 };
 
 const ADVERSE_ACTION_SIMPLE: Record<string, string> = Object.fromEntries(

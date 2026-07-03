@@ -29,6 +29,7 @@ import { sendNotificationEmail } from "../services/emailService";
 import { COMPANY_CONFIG } from "../config/company";
 import { assertVerifiedForDecisioning, isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
+import { evaluateTridTrigger, tridHardStopError } from "../services/trid";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -113,6 +114,21 @@ const loanApplicationInputSchema = z.object({
   },
   { message: "Down payment cannot be more than the purchase price", path: ["downPayment"] }
 );
+
+// Payment estimates on pre-approval letters use the current advertised
+// 30-year fixed rate — a figure on a borrower-facing document must be
+// reproducible from live pricing, never a hardcoded constant. Falls back to
+// a conservative rate when no advertised rate is synced.
+async function currentAdvertised30YrRate(storage: IStorage): Promise<number> {
+  try {
+    const advertised = await storage.getMortgageRatesByProgram("prog-30yr-fixed");
+    const active = advertised.find((r) => r.isActive && parseFloat(r.rate) > 0);
+    if (active) return parseFloat(active.rate) / 100;
+  } catch (rateErr) {
+    console.error("[Letter] Could not load advertised rate, using fallback:", rateErr);
+  }
+  return 0.07;
+}
 
 export function registerLendingRoutes(
   app: Express,
@@ -497,6 +513,20 @@ export function registerLendingRoutes(
 
       const application = await storage.createLoanApplication(applicationData);
       logAudit(req, "loan_application.created", "loan_application", application.id);
+
+      // TRID §1026.2(a)(3): intake may have just supplied the 6th piece of
+      // application information — evaluate the Loan Estimate trigger.
+      // Non-fatal: a trigger-bookkeeping failure must not lose the application.
+      try {
+        const trid = await evaluateTridTrigger(application.id);
+        if (trid.justTriggered) {
+          logAudit(req, "trid.application_triggered", "loan_application", application.id, {
+            leDueDate: trid.leDueDate?.toISOString(),
+          });
+        }
+      } catch (tridErr) {
+        console.error("[TRID] Trigger evaluation failed (non-fatal):", tridErr);
+      }
 
       // Persist the funnel's FCRA soft-pull acknowledgment as ledger evidence
       // (canonical disclosure text + IP + user agent). Non-fatal: a consent
@@ -1363,6 +1393,20 @@ export function registerLendingRoutes(
       if (formData.incomeSources !== undefined) updateData.incomeSources = formData.incomeSources;
 
       const updated = await storage.updateLoanApplication(id, updateData);
+
+      // TRID §1026.2(a)(3): this PATCH can supply the property address or
+      // another of the six items — evaluate the Loan Estimate trigger.
+      try {
+        const trid = await evaluateTridTrigger(id);
+        if (trid.justTriggered) {
+          logAudit(req, "trid.application_triggered", "loan_application", id, {
+            leDueDate: trid.leDueDate?.toISOString(),
+          });
+        }
+      } catch (tridErr) {
+        console.error("[TRID] Trigger evaluation failed (non-fatal):", tridErr);
+      }
+
       res.json(updated);
     } catch (error) {
       console.error("Update application error:", error);
@@ -1391,6 +1435,21 @@ export function registerLendingRoutes(
     // HMDA requires at least 2 denial reasons when an application is denied.
     denialReasons: z.array(z.string().min(1)).optional(),
   });
+
+  // Bridges the HMDA LAR denial-reason labels (what the staff UI collects)
+  // onto the ECOA/Reg B adverse-action reason catalog in creditService, so a
+  // denial always produces a compliant notice without double data entry.
+  const HMDA_TO_ADVERSE_ACTION_REASON: Record<string, string> = {
+    "Debt-to-income ratio": "dti_high",
+    "Employment history": "employment_history",
+    "Credit history": "insufficient_credit_history",
+    "Collateral": "collateral_insufficient",
+    "Insufficient cash (downpayment, closing costs)": "insufficient_funds_to_close",
+    "Unverifiable information": "unverifiable_information",
+    "Credit application incomplete": "application_incomplete",
+    "Mortgage insurance denied": "mortgage_insurance_denied",
+    "Other": "other_credit_decision_factors",
+  };
 
   app.patch("/api/loan-applications/:id/status", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
@@ -1444,6 +1503,54 @@ export function registerLendingRoutes(
         } catch (guardErr) {
           return res.status(422).json({
             error: guardErr instanceof Error ? guardErr.message : "Financial data must be verified",
+          });
+        }
+      }
+
+      // TRID hard stop (Reg Z §1026.19(e)(1)(iii)): once the six pieces of
+      // application information are on file, the file may not move forward
+      // past the Loan Estimate due date until the LE is issued. Exit
+      // dispositions (denied/withdrawn/suspended) are never blocked.
+      const tridBlock = tridHardStopError(application, status);
+      if (tridBlock) {
+        return res.status(422).json({ error: tridBlock });
+      }
+
+      // ECOA/Reg B §1002.9 + FCRA §615: a denial must carry an adverse-action
+      // notice. Generate it BEFORE the status flips — if notice generation
+      // fails, the denial does not proceed. Skipped only when a notice
+      // already exists for this application (e.g. staff pre-generated one
+      // via the compliance endpoint).
+      if (status === "denied") {
+        try {
+          const existingNotices = await creditService.getAdverseActionsByApplication(id);
+          if (existingNotices.length === 0) {
+            const reasonKeys = (denialReasons || [])
+              .map((r) => HMDA_TO_ADVERSE_ACTION_REASON[r])
+              .filter((k): k is string => !!k);
+            if (reasonKeys.length === 0) {
+              return res.status(422).json({
+                error: "Denial reasons could not be mapped to adverse-action reasons; generate an adverse-action notice via the compliance endpoint first",
+              });
+            }
+            const adverseAction = await creditService.generateAdverseAction({
+              applicationId: id,
+              userId: application.userId,
+              actionType: "denial",
+              primaryReason: reasonKeys[0],
+              secondaryReasons: reasonKeys.slice(1),
+              creditScoreUsed: application.creditScore ?? undefined,
+              generatedBy: user.id,
+            });
+            logAudit(req, "adverse_action.generated", "loan_application", id, {
+              adverseActionId: adverseAction.id,
+              trigger: "status_denied",
+            });
+          }
+        } catch (aaErr) {
+          console.error("Adverse action generation failed — denial blocked:", aaErr);
+          return res.status(422).json({
+            error: "Could not generate the required adverse-action notice; the denial was not applied",
           });
         }
       }
@@ -1700,7 +1807,7 @@ export function registerLendingRoutes(
       const annualIncome = parseFloat(application.annualIncome || "0");
       const monthlyDebts = parseFloat(application.monthlyDebts || "0");
       const loanAmountNum = parseFloat(loanAmount) || 0;
-      const rate = 0.065;
+      const rate = await currentAdvertised30YrRate(storage);
       const months = 360;
       const monthlyRate = rate / 12;
       const monthlyPayment = loanAmountNum > 0
@@ -1948,7 +2055,7 @@ export function registerLendingRoutes(
       const annualIncome = parseFloat(application.annualIncome || "0");
       const monthlyDebts = parseFloat(application.monthlyDebts || "0");
       const loanAmountNum = parseFloat(loanAmount) || 0;
-      const rate = 0.065;
+      const rate = await currentAdvertised30YrRate(storage);
       const months = 360;
       const monthlyRate = rate / 12;
       const monthlyPayment = loanAmountNum > 0

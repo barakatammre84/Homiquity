@@ -121,6 +121,83 @@ describe("Reg B: the intake decision path is fully deterministic", () => {
   });
 });
 
+describe("TRID (Reg Z §1026.19): the LE clock is triggered, business-day based, and enforced", () => {
+  it("the six-piece trigger is evaluated on every write path that can complete an application", () => {
+    // Intake creation + borrower PATCH (income, property address, value, loan amount)…
+    const lending = read("server/routes/lending.ts");
+    expect(lending.match(/evaluateTridTrigger\(/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    // …and the URLA personal-info save (SSN).
+    const borrower = read("server/routes/borrower.ts");
+    expect(borrower).toMatch(/evaluateTridTrigger\(/);
+  });
+
+  it("only the trid service writes tridTriggeredAt", () => {
+    const trid = read("server/services/trid.ts");
+    expect(trid).toMatch(/updateLoanApplication\([^)]*tridTriggeredAt/s);
+    for (const route of ["server/routes/lending.ts", "server/routes/borrower.ts", "server/routes/underwriting.ts"]) {
+      expect(read(route)).not.toMatch(/tridTriggeredAt\s*:/);
+    }
+  });
+
+  it("LE timing math is business-day based — never calendar setDate arithmetic", () => {
+    const loanEstimate = read("server/services/loanEstimate.ts");
+    expect(loanEstimate).toMatch(/from\s+["']\.\/businessDays["']/);
+    expect(loanEstimate).not.toMatch(/setDate\([^)]*\+\s*3\)/);
+    const mismo = read("server/services/mismoValidation.ts");
+    expect(mismo).toMatch(/from\s+["']\.\/businessDays["']/);
+  });
+
+  it("status and stage advancement enforce the TRID hard stop", () => {
+    expect(read("server/routes/lending.ts")).toMatch(/tridHardStopError\(/);
+    expect(read("server/routes/underwriting.ts")).toMatch(/tridHardStopError\(/);
+  });
+
+  it("borrower LE retrieval persists the delivery date", () => {
+    const underwriting = read("server/routes/underwriting.ts");
+    expect(underwriting).toMatch(/leIssuedDate/);
+    expect(underwriting).toMatch(/trid\.loan_estimate_delivered/);
+  });
+});
+
+describe("Reg Z §1026.22: every displayed APR comes from the actuarial engine", () => {
+  it("advertised rates use the APR solver, not flat spreads", () => {
+    const rateService = read("server/services/rateService.ts");
+    expect(rateService).toMatch(/advertisedAPR\(/);
+    expect(rateService).not.toMatch(/rate\s*\+\s*0\.(2|45)\b/);
+    expect(rateService).not.toMatch(/rate\.rate\s*\+\s*0\.002/);
+  });
+
+  it("the Loan Estimate APR is solved from the payment stream and its fee schedule", () => {
+    const loanEstimate = read("server/services/loanEstimate.ts");
+    expect(loanEstimate).toMatch(/calculateMortgageAPR\(/);
+    expect(loanEstimate).toMatch(/prepaidFinanceCharges/);
+  });
+
+  it("pre-approval letters price payments from the advertised rate, not a constant", () => {
+    const lending = read("server/routes/lending.ts");
+    expect(lending).not.toMatch(/const rate = 0\.065/);
+    expect(lending).toMatch(/currentAdvertised30YrRate/);
+  });
+});
+
+describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice", () => {
+  it("the denial status transition generates or verifies an adverse-action notice before applying", () => {
+    const lending = read("server/routes/lending.ts");
+    expect(lending).toMatch(/getAdverseActionsByApplication/);
+    expect(lending).toMatch(/generateAdverseAction\(/);
+    expect(lending).toMatch(/HMDA_TO_ADVERSE_ACTION_REASON/);
+  });
+
+  it("the automated denial email stays decision-neutral", () => {
+    const email = read("server/services/emailService.ts");
+    // The compliant adverse-action notice lives in-app (creditService); the
+    // email may only point the borrower at their account.
+    expect(email).not.toMatch(/unable to issue/i);
+    expect(email).not.toMatch(/we're unable|not approved|has been denied/i);
+    expect(email).toMatch(/There's an update on your mortgage application/);
+  });
+});
+
 describe("Protocol & platform safety", () => {
   it("the MCP server's first import is the stdout-protecting bootstrap", () => {
     const source = read("server/mcp/index.ts");
