@@ -15,6 +15,7 @@ import {
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { storage } from "../storage";
 import { fetchAvm } from "../mcp/vendors";
+import { toNum } from "@shared/lib/number";
 
 /**
  * Lifecycle engine — the "evergreen client" automation (CTO_ROADMAP #9).
@@ -36,12 +37,6 @@ import { fetchAvm } from "../mcp/vendors";
 
 export const PMI_REMOVAL_LTV_THRESHOLD = 80;
 export const REFI_ALERT_RATE_DROP = 0.25; // percentage points below current rate
-
-const toNum = (v: string | number | null | undefined): number => {
-  if (v === null || v === undefined) return NaN;
-  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[,$]/g, ""));
-  return isNaN(n) ? NaN : n;
-};
 
 /** Standard amortized monthly P&I payment. */
 export function monthlyPayment(principal: number, annualRatePct: number, termMonths = 360): number {

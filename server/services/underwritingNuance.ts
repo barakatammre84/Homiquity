@@ -14,12 +14,7 @@
  */
 
 import type { IncomeSourceEntry, RentalPropertyEntry } from "@shared/schema";
-
-const toNum = (v: string | number | null | undefined): number => {
-  if (v === null || v === undefined) return NaN;
-  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[,$]/g, ""));
-  return isNaN(n) ? NaN : n;
-};
+import { toNum } from "@shared/lib/number";
 
 // ---------------------------------------------------------------------------
 // Scenario 1 — income seasoning (B3-3.2)

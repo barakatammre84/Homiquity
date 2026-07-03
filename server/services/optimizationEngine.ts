@@ -1,5 +1,6 @@
 import { db } from "../db";
 import { storage } from "../storage";
+import { getCoachIntakeSnapshots } from "./coachIntake";
 import {
   readinessChecklist,
   intentEvents,
@@ -18,7 +19,7 @@ import {
   documents,
 } from "@shared/schema";
 import type { BorrowerState, TransitionTrigger } from "@shared/schema";
-import { eq, and, sql, gte, lte, desc, lt, isNull, isNotNull, ne, count, avg } from "drizzle-orm";
+import { eq, and, sql, gte, lte, desc, lt, isNull, isNotNull, ne, count, avg, inArray } from "drizzle-orm";
 import { updateReadinessField, getReadinessScore, initializeReadinessChecklist } from "./intentTracker";
 import { transitionState, getCurrentState } from "./borrowerStateMachine";
 import { buildBorrowerGraph } from "./borrowerGraph";
@@ -168,46 +169,23 @@ export async function getCoachPreFillData(userId: string): Promise<{
   const preFillFields: Record<string, { value: any; source: string; confidence: string }> = {};
 
   try {
-    const conversations = await storage.getCoachConversationsByUser(userId);
+    // One conversations query + one batched messages query (was an N+1 loop).
+    const { snapshots } = await getCoachIntakeSnapshots(userId);
 
-    if (conversations && conversations.length > 0) {
-      const sorted = [...conversations].sort((a, b) =>
-        new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()
-      );
+    const PREFILL_FIELDS = [
+      "annualIncome", "monthlyDebts", "creditScore", "purchasePrice", "downPayment",
+      "propertyType", "employmentType", "employmentYears", "isFirstTimeBuyer",
+      "isVeteran", "loanPurpose",
+    ] as const;
 
-      for (const conv of sorted) {
-        const messages = await storage.getCoachMessages(conv.id);
-        const assistantMsgs = messages
-          .filter(m => m.role === "assistant" && m.structuredData)
-          .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-
-        for (const msg of assistantMsgs) {
-          const sd = msg.structuredData as any;
-          if (sd?.intake) {
-            const intakeFieldMap: Record<string, string> = {
-              annualIncome: "annualIncome",
-              monthlyDebts: "monthlyDebts",
-              creditScore: "creditScore",
-              purchasePrice: "purchasePrice",
-              downPayment: "downPayment",
-              propertyType: "propertyType",
-              employmentType: "employmentType",
-              employmentYears: "employmentYears",
-              isFirstTimeBuyer: "isFirstTimeBuyer",
-              isVeteran: "isVeteran",
-              loanPurpose: "loanPurpose",
-            };
-
-            for (const [intakeKey, formKey] of Object.entries(intakeFieldMap)) {
-              if (sd.intake[intakeKey] && !(formKey in preFillFields)) {
-                preFillFields[formKey] = {
-                  value: sd.intake[intakeKey],
-                  source: "coach_conversation",
-                  confidence: "tier3",
-                };
-              }
-            }
-          }
+    for (const intake of snapshots) {
+      for (const field of PREFILL_FIELDS) {
+        if ((intake as any)[field] && !(field in preFillFields)) {
+          preFillFields[field] = {
+            value: (intake as any)[field],
+            source: "coach_conversation",
+            confidence: "tier3",
+          };
         }
       }
     }
@@ -289,12 +267,16 @@ export async function detectStaleApplications(): Promise<Array<{
     nextMissingField: string | null;
   }> = [];
 
+  // Batch-load users once rather than one getUser per application in the loop.
+  const reengageUsers = await storage.getUsersByIds([...new Set(activeApps.map((a) => a.userId))]);
+  const reengageUserById = new Map(reengageUsers.map((u) => [u.id, u]));
+
   for (const app of activeApps) {
     try {
       const readiness = await getReadinessScore(app.userId);
       if (readiness.overallScore < minReadiness) continue;
 
-      const user = await storage.getUser(app.userId);
+      const user = reengageUserById.get(app.userId);
       if (!user?.email) continue;
 
       const currentState = await getCurrentState(app.userId);
@@ -513,6 +495,7 @@ export async function wirePlaidToReadiness(
 export async function checkSlaBreaches(): Promise<Array<{
   taskId: string;
   applicationId: string;
+  borrowerUserId: string | null;
   assignedToUserId: string | null;
   title: string;
   slaDueAt: Date;
@@ -523,9 +506,12 @@ export async function checkSlaBreaches(): Promise<Array<{
   const now = new Date();
   const warningWindow = new Date(Date.now() + 12 * 60 * 60 * 1000);
 
+  // Join the application so the borrower's userId travels with each breach —
+  // lets sendSlaAlerts batch-load users instead of re-fetching the app per row.
   const atRiskTasks = await db.select({
     id: tasks.id,
     applicationId: tasks.applicationId,
+    borrowerUserId: loanApplications.userId,
     assignedToUserId: tasks.assignedToUserId,
     title: tasks.title,
     slaDueAt: tasks.slaDueAt,
@@ -533,6 +519,7 @@ export async function checkSlaBreaches(): Promise<Array<{
     slaClass: tasks.slaClass,
   })
     .from(tasks)
+    .leftJoin(loanApplications, eq(tasks.applicationId, loanApplications.id))
     .where(and(
       sql`${tasks.status} IN ('OPEN', 'IN_PROGRESS')`,
       isNotNull(tasks.slaDueAt),
@@ -553,6 +540,7 @@ export async function checkSlaBreaches(): Promise<Array<{
     return {
       taskId: task.id,
       applicationId: task.applicationId,
+      borrowerUserId: task.borrowerUserId,
       assignedToUserId: task.assignedToUserId,
       title: task.title,
       slaDueAt: dueAt,
@@ -568,12 +556,19 @@ export async function sendSlaAlerts(): Promise<{ alertsSent: number; breaches: n
   let alertsSent = 0;
   let breachCount = 0;
 
+  // Batch-load every user referenced by the breaches in one query, instead of
+  // fetching the application + borrower (+ assignee) per row inside the loop.
+  const userIds = new Set<string>();
+  for (const breach of breaches) {
+    if (breach.borrowerUserId) userIds.add(breach.borrowerUserId);
+    if (breach.assignedToUserId) userIds.add(breach.assignedToUserId);
+  }
+  const users = await storage.getUsersByIds([...userIds]);
+  const userById = new Map(users.map((u) => [u.id, u]));
+
   for (const breach of breaches) {
     try {
-      const app = await storage.getLoanApplication(breach.applicationId);
-      if (!app) continue;
-
-      const borrower = await storage.getUser(app.userId);
+      const borrower = breach.borrowerUserId ? userById.get(breach.borrowerUserId) : undefined;
       if (!borrower?.email) continue;
 
       if (breach.isBreached) {
@@ -597,7 +592,7 @@ export async function sendSlaAlerts(): Promise<{ alertsSent: number; breaches: n
       alertsSent++;
 
       if (breach.assignedToUserId) {
-        const assignee = await storage.getUser(breach.assignedToUserId);
+        const assignee = userById.get(breach.assignedToUserId);
         if (assignee?.email && assignee.email !== borrower.email) {
           sendNotificationEmail({
             type: "status_update",

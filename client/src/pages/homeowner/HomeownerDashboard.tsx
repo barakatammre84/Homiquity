@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { formatCurrency } from "@/lib/formatters";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,12 +65,6 @@ interface EquitySnapshot {
   equityPercent: string | null;
 }
 
-const fmtCurrency = (value: string | number | null) => {
-  if (value === null || value === undefined) return "$0";
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return "$0";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(num);
-};
 
 function SetupForm() {
   const { toast } = useToast();
@@ -254,7 +249,7 @@ function FinancialCards({ profile }: { profile: HomeownerProfile }) {
             <Wallet className="h-4 w-4 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Current Balance</p>
           </div>
-          <p className="text-lg font-bold text-foreground" data-testid="text-balance">{fmtCurrency(balance)}</p>
+          <p className="text-lg font-bold text-foreground" data-testid="text-balance">{formatCurrency(balance)}</p>
         </CardContent>
       </Card>
       <Card data-testid="card-property-value">
@@ -263,7 +258,7 @@ function FinancialCards({ profile }: { profile: HomeownerProfile }) {
             <Building2 className="h-4 w-4 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Property Value</p>
           </div>
-          <p className="text-lg font-bold text-foreground" data-testid="text-property-value">{fmtCurrency(value)}</p>
+          <p className="text-lg font-bold text-foreground" data-testid="text-property-value">{formatCurrency(value)}</p>
         </CardContent>
       </Card>
       <Card data-testid="card-equity">
@@ -272,7 +267,7 @@ function FinancialCards({ profile }: { profile: HomeownerProfile }) {
             <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <p className="text-xs text-muted-foreground">Home Equity</p>
           </div>
-          <p className="text-lg font-bold text-foreground" data-testid="text-equity">{fmtCurrency(equity)}</p>
+          <p className="text-lg font-bold text-foreground" data-testid="text-equity">{formatCurrency(equity)}</p>
           <p className="text-xs text-emerald-600 dark:text-emerald-400" data-testid="text-equity-percent">{equityPercent}%</p>
         </CardContent>
       </Card>
@@ -282,7 +277,7 @@ function FinancialCards({ profile }: { profile: HomeownerProfile }) {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
             <p className="text-xs text-muted-foreground">Monthly Payment</p>
           </div>
-          <p className="text-lg font-bold text-foreground" data-testid="text-monthly-payment">{fmtCurrency(profile.monthlyPayment)}</p>
+          <p className="text-lg font-bold text-foreground" data-testid="text-monthly-payment">{formatCurrency(profile.monthlyPayment)}</p>
         </CardContent>
       </Card>
     </div>
@@ -364,7 +359,7 @@ function EquitySection({ profileId }: { profileId: string }) {
             <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
               {snapshots.length > 0 && (
                 <span data-testid="text-latest-equity">
-                  Latest: {fmtCurrency(snapshots[snapshots.length - 1]?.equityAmount)} ({snapshots[snapshots.length - 1]?.equityPercent}%)
+                  Latest: {formatCurrency(snapshots[snapshots.length - 1]?.equityAmount)} ({snapshots[snapshots.length - 1]?.equityPercent}%)
                 </span>
               )}
               <span>{snapshots.length} snapshot{snapshots.length !== 1 ? "s" : ""}</span>
@@ -460,7 +455,7 @@ function RefiAlertsSection({ profileId }: { profileId: string }) {
                         <div>
                           <p className="text-muted-foreground">Monthly Savings</p>
                           <p className="font-semibold text-emerald-700 dark:text-emerald-300" data-testid={`text-monthly-savings-${alert.id}`}>
-                            {fmtCurrency(alert.potentialSavingsMonthly)}/mo
+                            {formatCurrency(alert.potentialSavingsMonthly)}/mo
                           </p>
                         </div>
                       )}
@@ -468,7 +463,7 @@ function RefiAlertsSection({ profileId }: { profileId: string }) {
                         <div>
                           <p className="text-muted-foreground">Lifetime Savings</p>
                           <p className="font-semibold text-emerald-700 dark:text-emerald-300" data-testid={`text-lifetime-savings-${alert.id}`}>
-                            {fmtCurrency(alert.potentialSavingsLifetime)}
+                            {formatCurrency(alert.potentialSavingsLifetime)}
                           </p>
                         </div>
                       )}
