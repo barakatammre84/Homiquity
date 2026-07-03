@@ -12,6 +12,7 @@ export default defineConfig({
     // vitest.integration.config.ts instead.
     include: [
       "tests/apr.test.ts",
+      "tests/aprValidation.test.ts",
       "tests/trid.test.ts",
       "tests/lookupResolver.test.ts",
       "tests/mismoValidation.test.ts",
