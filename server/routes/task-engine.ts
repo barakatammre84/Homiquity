@@ -452,7 +452,7 @@ export async function registerTaskEngineRoutes(
   // ========================================================================
 
   // Import task engine
-  const { taskEngine } = await import("../services/taskEngine");
+  const { taskEngine, userRoleToOwnerRole } = await import("../services/taskEngine");
 
   // Get SLA class configurations (admin/underwriter only — control-plane config)
   app.get("/api/task-engine/sla-classes", requireRole("admin", "underwriter"), async (req, res) => {
@@ -530,19 +530,24 @@ export async function registerTaskEngineRoutes(
     }
   });
 
-  // Get tasks by owner role (admin only — returns cross-application results)
+  // Get tasks by owner role (a shared, cross-application role work queue).
+  // Admin may query any role's queue. A non-admin internal-staff member may query
+  // ONLY their own role's queue; cross-role enumeration and external/partner roles
+  // (broker, lender) and clients are denied. This mirrors the self-only rule on
+  // GET /api/tasks/user/:userId — you see your own scope, admins see everything.
   app.get("/api/task-engine/tasks/by-role/:role", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
-      // This endpoint returns platform-wide task data across all applications;
-      // restrict it to admin to prevent broad staff roles from enumerating
-      // cross-file task queues they are not assigned to.
+      // Normalize both sides to owner-role form (e.g. "underwriter" -> "UW") so the
+      // comparison is correct regardless of the casing/alias the client sends.
+      const requestedOwnerRole = userRoleToOwnerRole(req.params.role);
       if (userRole !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
+        if (!isInternalStaffRole(userRole) || userRoleToOwnerRole(userRole) !== requestedOwnerRole) {
+          return res.status(403).json({ error: "Forbidden" });
+        }
       }
-      const { role } = req.params;
       const status = req.query.status as string | undefined;
-      const tasks = await taskEngine.getTasksByOwnerRole(role.toUpperCase(), status);
+      const tasks = await taskEngine.getTasksByOwnerRole(requestedOwnerRole, status);
       res.json(tasks);
     } catch (error) {
       console.error("Get tasks by role error:", error);
