@@ -742,6 +742,8 @@ export interface IStorage {
   updateUserPresence(userId: string): Promise<void>;
   getUserPresenceStatus(userId: string): Promise<'online' | 'away' | 'offline'>;
   getTeamMembersWithPresence(): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]>;
+  getTeamMembersForBorrower(borrowerUserId: string): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]>;
+  isStaffOnBorrowerTeam(borrowerUserId: string, staffUserId: string): Promise<boolean>;
   updateDocumentRequestStatus(
     messageId: string,
     status: 'pending' | 'submitted' | 'approved' | 'rejected',
@@ -3823,23 +3825,60 @@ export class DatabaseStorage implements IStorage {
     return 'offline';
   }
   
-  async getTeamMembersWithPresence(): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]> {
-    const staffUsers = await this.getStaffUsersForTeamDisplay();
+  private attachPresence(users: User[]): (User & { presenceStatus: 'online' | 'away' | 'offline' })[] {
     const now = new Date();
-    
-    return staffUsers.map(user => {
+    return users.map(user => {
       let presenceStatus: 'online' | 'away' | 'offline' = 'offline';
-      
       if (user.lastActiveAt) {
-        const lastActive = new Date(user.lastActiveAt);
-        const diffMinutes = (now.getTime() - lastActive.getTime()) / 60000;
-        
+        const diffMinutes = (now.getTime() - new Date(user.lastActiveAt).getTime()) / 60000;
         if (diffMinutes < 2) presenceStatus = 'online';
         else if (diffMinutes < 10) presenceStatus = 'away';
       }
-      
       return { ...user, presenceStatus };
     });
+  }
+
+  async getTeamMembersWithPresence(): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]> {
+    // Staff-facing / internal view: all staff (used for internal coordination).
+    return this.attachPresence(await this.getStaffUsersForTeamDisplay());
+  }
+
+  /**
+   * A borrower's OWN loan team — the staff actually assigned to their
+   * application(s): deal-team members plus assigned loan officers. Scoping the
+   * borrower's Messages view to this set stops them from browsing (and DMing)
+   * the entire staff directory.
+   *
+   * Fallback: a borrower with no assigned team yet (common pre-assignment) gets
+   * the full staff list so they are never left with no one to contact.
+   */
+  async getTeamMembersForBorrower(
+    borrowerUserId: string,
+  ): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]> {
+    const apps = await this.getLoanApplicationsByUser(borrowerUserId);
+    const staffIds = new Set<string>();
+
+    for (const app of apps) {
+      if (app.loanOfficerId) staffIds.add(app.loanOfficerId);
+      const team = await this.getDealTeamMembers(app.id);
+      for (const m of team) {
+        if (m.userId && isStaffRole(m.user?.role ?? "")) staffIds.add(m.userId);
+      }
+    }
+
+    if (staffIds.size === 0) {
+      // No team assigned yet — don't strand the borrower.
+      return this.getTeamMembersWithPresence();
+    }
+
+    const members = await Promise.all([...staffIds].map((id) => this.getUser(id)));
+    return this.attachPresence(members.filter((u): u is User => !!u));
+  }
+
+  /** True when this staff user is on the borrower's team (or none is assigned). */
+  async isStaffOnBorrowerTeam(borrowerUserId: string, staffUserId: string): Promise<boolean> {
+    const team = await this.getTeamMembersForBorrower(borrowerUserId);
+    return team.some((m) => m.id === staffUserId);
   }
   
   // ============================================

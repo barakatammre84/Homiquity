@@ -18,7 +18,6 @@ import {
 import crypto from "crypto";
 import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
-import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 
 // Verify that an internal staff user is actually assigned to the given application.
@@ -2410,11 +2409,18 @@ export function registerBorrowerRoutes(
   // Team Messaging API Routes
   // ============================================
 
-  // Get all staff users for team display
+  // Team members for the Messages view. A borrower sees only THEIR assigned
+  // loan team (deal-team members + assigned LOs), not the whole staff
+  // directory; staff keep the full list for internal coordination. Borrowers
+  // with no team assigned yet fall back to all staff so they can still reach
+  // someone (see storage.getTeamMembersForBorrower).
   app.get("/api/team-members", isAuthenticated, async (req, res) => {
     try {
-      const staffUsersWithPresence = await storage.getTeamMembersWithPresence();
-      
+      const user = req.user as User;
+      const staffUsersWithPresence = isStaffRole(user.role)
+        ? await storage.getTeamMembersWithPresence()
+        : await storage.getTeamMembersForBorrower(user.id);
+
       // Transform to include display info and presence
       const teamMembers = staffUsersWithPresence.map(user => ({
         id: user.id,
@@ -2535,6 +2541,17 @@ export function registerBorrowerRoutes(
       const recipientIsStaff = isStaffRole(recipient.role || "");
       if (!senderIsStaff && !recipientIsStaff) {
         return res.status(403).json({ error: "Messages can only be exchanged with your loan team" });
+      }
+
+      // A borrower may only message staff on their OWN team (deal-team + LOs).
+      // Mirrors the scoped team-members list, so they can't reach an arbitrary
+      // staff member by user id. If they have no team yet, the team list falls
+      // back to all staff, and so does this check — no dead end.
+      if (!senderIsStaff && recipientIsStaff) {
+        const onTeam = await storage.isStaffOnBorrowerTeam(user.id, recipientId);
+        if (!onTeam) {
+          return res.status(403).json({ error: "You can only message members of your assigned loan team" });
+        }
       }
 
       // Document requests are a staff→borrower workflow.
