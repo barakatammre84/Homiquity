@@ -6,6 +6,8 @@ import {
   checkStageRequirements,
   assertStageRequirements,
   AMOUNT_BEARING_STATUSES,
+  COMMITTED_STATUSES,
+  isCommittedStage,
 } from "@shared/stageRequirements";
 
 describe("stageRequirements: statusRequiresLoanAmount", () => {
@@ -113,5 +115,38 @@ describe("stageRequirements: AMOUNT_BEARING_STATUSES", () => {
   it("covers both pipeline and staff-enum naming for conditional approval", () => {
     expect(AMOUNT_BEARING_STATUSES.has("conditional")).toBe(true);
     expect(AMOUNT_BEARING_STATUSES.has("conditional_approval")).toBe(true);
+  });
+});
+
+describe("stageRequirements: isCommittedStage", () => {
+  it("is true from pre-approval onward, including processing sub-stages", () => {
+    for (const status of [
+      "pre_approved",
+      "approved",
+      "doc_collection",
+      "processing",
+      "underwriting",
+      "conditional",
+      "conditional_approval",
+      "clear_to_close",
+      "closing",
+      "funded",
+    ]) {
+      expect(isCommittedStage(status)).toBe(true);
+    }
+  });
+
+  it("is false before pre-approval and for terminal/empty statuses", () => {
+    for (const status of ["lead", "draft", "submitted", "analyzing", "in_review", "denied", "withdrawn", "expired"]) {
+      expect(isCommittedStage(status)).toBe(false);
+    }
+    expect(isCommittedStage(null)).toBe(false);
+    expect(isCommittedStage(undefined)).toBe(false);
+  });
+
+  it("is a superset of every amount-bearing status", () => {
+    for (const s of AMOUNT_BEARING_STATUSES) {
+      expect(COMMITTED_STATUSES.has(s)).toBe(true);
+    }
   });
 });

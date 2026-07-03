@@ -40,6 +40,26 @@ export function statusRequiresLoanAmount(status: string | null | undefined): boo
   return !!status && AMOUNT_BEARING_STATUSES.has(status);
 }
 
+/**
+ * Statuses where the borrower has reached a pre-approval or later — i.e. has
+ * demonstrated commitment by progressing through the funnel. Beyond the
+ * amount-bearing statuses this adds the post-approval processing sub-stages.
+ *
+ * Used to suppress engagement-based "uncertainty" signals that only make sense
+ * pre-commitment: a pre-approved borrower with low recent clickstream activity
+ * is mid-process, not wavering, so flagging them "uncertain/inactive"
+ * contradicts their status.
+ */
+export const COMMITTED_STATUSES: ReadonlySet<string> = new Set([
+  ...AMOUNT_BEARING_STATUSES,
+  "doc_collection",
+  "processing",
+]);
+
+export function isCommittedStage(status: string | null | undefined): boolean {
+  return !!status && COMMITTED_STATUSES.has(status);
+}
+
 /** Parse a positive numeric amount from a decimal string / number field. */
 export function positiveAmount(value: string | number | null | undefined): number {
   const n = typeof value === "number" ? value : parseFloat(value ?? "");
