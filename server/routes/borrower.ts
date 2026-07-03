@@ -10,6 +10,7 @@ import {
   insertJourneyMilestoneSchema,
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
+  insertUrlaPersonalInfoSchema,
   isStaffRole,
   isInternalStaffRole,
   type User,
@@ -382,8 +383,14 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.upsertUrlaPersonalInfo(data);
+      const parsed = insertUrlaPersonalInfoSchema.safeParse({ ...req.body, applicationId });
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid personal info",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+      const result = await storage.upsertUrlaPersonalInfo(parsed.data);
       res.json(result);
     } catch (error) {
       if (error instanceof InvalidSsnError) {

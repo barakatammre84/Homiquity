@@ -125,6 +125,10 @@ export const users = pgTable("users", {
   referredByUserId: varchar("referred_by_user_id").references((): AnyPgColumn => users.id), // Who referred this user (references users.id)
   // Presence tracking - for online/away status
   lastActiveAt: timestamp("last_active_at"),
+  // Per-account brute-force lockout. The IP rate limiter is per-instance on
+  // serverless, so this DB-backed counter is the durable control.
+  failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
+  lockoutUntil: timestamp("lockout_until"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });

@@ -441,6 +441,13 @@ export const insertUrlaPersonalInfoSchema = createInsertSchema(urlaPersonalInfo)
   id: true,
   createdAt: true,
   updatedAt: true,
+  // Server-managed SSN-at-rest columns — never accepted from clients. The
+  // plaintext `ssn` field stays accepted as INPUT (encrypted server-side in
+  // storage.upsertUrlaPersonalInfo; masked echoes are ignored there).
+  ssnEncrypted: true,
+  ssnIv: true,
+  ssnKeyId: true,
+  ssnLast4: true,
 });
 
 export type InsertUrlaPersonalInfo = z.infer<typeof insertUrlaPersonalInfoSchema>;
