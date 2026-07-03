@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-03 (point-in-time snapshot — update or supersede, don't let it rot)
 **Audience:** Frontend, Backend/Platform, Data, DevOps, Compliance, AI, QA, Product
-**Production:** https://mortgage-stream.vercel.app (live, healthy) · **Repo:** single source of truth on `main`, every push deploys
+**Production:** https://mortgage-stream.vercel.app (homiquity.com custom domain pending) · **Repo:** single source of truth on `main`, every push deploys
 **How to use this doc:** every numbered item in §3/§4 and every row in §5 is scoped to be a single work prompt/session — name the item, point at the files, state the acceptance check.
 
 ---

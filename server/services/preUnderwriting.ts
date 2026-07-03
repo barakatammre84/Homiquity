@@ -29,6 +29,7 @@ import { sendEmail } from "./emailService";
 
 import type { IncomeSourceEntry } from "@shared/schema";
 import { toNum as toNumber } from "@shared/lib/number";
+import { COMPANY_CONFIG } from "../config/company";
 import {
   adjustLiabilities,
   assessIncomeSeasoning,
@@ -329,7 +330,7 @@ export function buildFlagOutreach(
 
   // Configurable so non-production environments never send borrowers to the
   // wrong host; defaults preserve current production behavior.
-  const documentsUrl = `${process.env.APP_BASE_URL || "https://mortgage-stream.vercel.app"}/documents`;
+  const documentsUrl = `${COMPANY_CONFIG.baseUrl}/documents`;
 
   const subject = "Your Homiquity application: a quick document request";
   const emailText = [
