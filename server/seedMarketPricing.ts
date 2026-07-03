@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, lte, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { wholesaleLenders, rateSheets, rateSheetProducts, lenderPricingAdjustments } from "@shared/schema";
 
@@ -26,13 +26,27 @@ function isoDate(daysFromNow: number): string {
 const STANDARD_LOCK_GRID = { "15": -0.125, "30": 0, "45": 0.125, "60": 0.25 };
 const CONFORMING_LIMIT = 806500; // FHFA 2026 baseline, one-unit
 
+// Demo sheets carry this version so the refresher can find them without ever
+// touching a real vendor sheet (which uses any other version string).
+const DEMO_SHEET_VERSION = "1.0-demo";
+const DEMO_WINDOW_DAYS = 90;
+// Refresh a demo sheet once it's within this many days of expiring (or expired).
+const REFRESH_WHEN_WITHIN_DAYS = 14;
+
 export async function seedMarketPricing(): Promise<void> {
   const existing = await db
     .select({ id: wholesaleLenders.id })
     .from(wholesaleLenders)
     .where(eq(wholesaleLenders.lenderCode, "SWL"))
     .limit(1);
-  if (existing.length > 0) return;
+  if (existing.length > 0) {
+    // Already seeded — but a 90-day window seeded once silently expires, and an
+    // expired sheet makes best-execution pricing return "no products". Roll the
+    // demo window forward so the storefront keeps quoting until a real vendor
+    // sheet replaces it.
+    await refreshDemoRateSheets();
+    return;
+  }
 
   console.log("Seeding market pricing sample data (wholesale lenders + rate sheets)...");
 
@@ -215,4 +229,36 @@ export async function seedMarketPricing(): Promise<void> {
   }
 
   console.log(`Seeded ${products.length} rate-sheet products across 3 sample wholesale lenders`);
+}
+
+/**
+ * Roll the clearly-marked demo rate sheets (version "1.0-demo") forward to a
+ * fresh 90-day window whenever they're at or near expiry, keeping best-execution
+ * pricing alive in production. Only demo sheets are matched by version, so a
+ * real vendor sheet uploaded via POST /api/rate-sheets is never modified.
+ */
+async function refreshDemoRateSheets(): Promise<void> {
+  const today = isoDate(0);
+  const soon = isoDate(REFRESH_WHEN_WITHIN_DAYS);
+  const freshExpiration = isoDate(DEMO_WINDOW_DAYS);
+
+  const stale = await db
+    .select({ id: rateSheets.id })
+    .from(rateSheets)
+    .where(and(eq(rateSheets.version, DEMO_SHEET_VERSION), lte(rateSheets.expirationDate, soon)));
+  if (stale.length === 0) return;
+
+  await db
+    .update(rateSheets)
+    .set({ effectiveDate: today, expirationDate: freshExpiration, status: "ACTIVE" })
+    .where(and(eq(rateSheets.version, DEMO_SHEET_VERSION), lte(rateSheets.expirationDate, soon)));
+
+  // Keep the demo overlay adjustments aligned to the same window.
+  const sheetIds = stale.map((s) => s.id);
+  await db
+    .update(lenderPricingAdjustments)
+    .set({ effectiveDate: today, expirationDate: freshExpiration })
+    .where(inArray(lenderPricingAdjustments.rateSheetId, sheetIds));
+
+  console.log(`Refreshed ${stale.length} demo rate sheet(s) to a fresh ${DEMO_WINDOW_DAYS}-day window`);
 }
