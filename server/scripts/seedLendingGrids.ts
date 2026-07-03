@@ -1,5 +1,6 @@
 import { db } from "../db";
 import { lookupMatrices, lookupMatrixCells } from "@shared/schema";
+import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 
 /**
  * Dynamic seeding pipeline for the underwriting/pricing decision engine.
@@ -39,6 +40,7 @@ export async function seed() {
     { code: "CONVENTIONAL_STRETCH_DTI", value: 50.0, desc: "System hard stretch limit for manual/compensating underwriting" },
     { code: "CONVENTIONAL_LTV_CAP", value: 95.0, desc: "Maximum allowable loan-to-value ceiling for conventional conforming loans" },
     { code: "CONVENTIONAL_FICO_FLOOR", value: 620.0, desc: "Minimum representative credit score for conventional conforming eligibility" },
+    { code: "CONFORMING_LOAN_LIMIT", value: CONFORMING_LOAN_LIMIT_2026, desc: "FHFA conforming loan limit, one-unit baseline; loans above route to jumbo" },
     { code: "HAIRCUT_STOCK_INVESTMENT", value: 60.0, desc: "Liquid valuation haircut for general stock assets" },
     { code: "HAIRCUT_RETIREMENT", value: 70.0, desc: "Volatile valuation haircut for retirement portfolios (counts at 70% value)" },
   ];

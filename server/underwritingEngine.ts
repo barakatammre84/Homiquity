@@ -152,6 +152,11 @@ export class ConsolidatedUnderwritingEngine {
     let actualResidualIncome: number | undefined;
     let requiredResidualIncome: number | undefined;
 
+    // Set when a conventional loan exceeds the conforming limit: it is not a
+    // credit decline (a jumbo product may fit), so it routes to human review
+    // rather than a rejection or an APPROVED conforming decision it isn't.
+    let exceedsConformingLimit = false;
+
     // Standard Conforming Loan Path
     if (targetLoanType === "CONVENTIONAL") {
       // Eligibility floor: a credit score below the conventional minimum is a
@@ -164,6 +169,15 @@ export class ConsolidatedUnderwritingEngine {
         reasons.push(
           `Representative credit score of ${input.representativeFico} is below the conventional minimum of ${conventionalFicoFloor}`,
         );
+      }
+
+      // Conforming loan-limit awareness: this engine prices the conforming
+      // product, so a loan above the limit cannot be decisioned as conforming.
+      // Flag it for jumbo routing (handled at the decision step) instead of
+      // silently approving it on the conforming grids.
+      const conformingLimit = await this.resolver.getPolicyScalar("CONFORMING_LOAN_LIMIT");
+      if (input.originalLoanAmount > conformingLimit) {
+        exceedsConformingLimit = true;
       }
 
       if (calculatedDti > stretchDti * 100) {
@@ -267,6 +281,9 @@ export class ConsolidatedUnderwritingEngine {
 
     if (reasons.length > 0) {
       decision = "REJECTED";
+    } else if (exceedsConformingLimit) {
+      // Above the conforming limit: route to the jumbo desk, not an auto-approve.
+      decision = "MANUAL_REVIEW";
     } else if (targetLoanType === "CONVENTIONAL" && calculatedDti > dtiCap * 100) {
       // DTI between baseline (43%) and stretch (50%) moves to Manual Review
       decision = "MANUAL_REVIEW";

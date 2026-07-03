@@ -9,6 +9,7 @@ import {
 import { LookupResolverService, type ValueResolver } from "../server/services/lookupResolver";
 import { computeMonthsOfReserves } from "../server/services/preUnderwriting";
 import { detectSignificantDeposits, vaRegionForState } from "../server/services/underwritingNuance";
+import { CONFORMING_LOAN_LIMIT_2026 } from "../shared/lendingLimits";
 
 // ---------------------------------------------------------------------------
 // Adversarial persona regression suite.
@@ -47,6 +48,7 @@ const GRIDS: Record<string, Cell[]> = {
   CONVENTIONAL_STRETCH_DTI: [{ value: 50 }],
   CONVENTIONAL_LTV_CAP: [{ value: 95 }],
   CONVENTIONAL_FICO_FLOOR: [{ value: 620 }],
+  CONFORMING_LOAN_LIMIT: [{ value: CONFORMING_LOAN_LIMIT_2026 }],
   HAIRCUT_STOCK_INVESTMENT: [{ value: 60 }],
   HAIRCUT_RETIREMENT: [{ value: 70 }],
   CONVENTIONAL_PMI: [],
@@ -403,20 +405,25 @@ describe("Persona 2 — Dana Okafor (multi-unit filed as SFR primary)", () => {
 // conforming edges (LTV cap, DTI fences, loan-limit seams).
 // ===========================================================================
 describe("Persona 3 — Boundary Surgeon (exact 2026 conforming limits)", () => {
-  it("PIN: LTV truncation creates a $1 cliff at the 95% policy cap", async () => {
+  // Basis $840k keeps these loans under the conforming limit so the LTV
+  // truncation behavior is isolated from the loan-limit rule.
+  const cliffInput = (loan: number) =>
+    baseConventionalInput({ originalLoanAmount: loan, contractSalesPrice: 840_000, appraisalValue: 840_000 });
+
+  it("PIN: LTV truncation lets a true LTV just over 95% pass the cap", async () => {
     const engine = makeEngine();
     // True LTV 95.0099% floors to 95.00 and PASSES the 95 cap...
-    const under = await engine.evaluate(baseConventionalInput({ originalLoanAmount: 950_099 }));
+    const under = await engine.evaluate(cliffInput(798_083));
     expect(under.calculatedLtv).toBe(95);
     expect(under.decision).toBe("APPROVED");
-    // ...while one more dollar (95.01%) is REJECTED.
-    const over = await engine.evaluate(baseConventionalInput({ originalLoanAmount: 950_100 }));
+    // ...while a slightly larger loan (95.01%) is REJECTED.
+    const over = await engine.evaluate(cliffInput(798_120));
     expect(over.decision).toBe("REJECTED");
     expect(over.rejectionReasons[0]).toMatch(/exceeds policy ceiling/);
   });
 
   it.fails("SPEC: a true LTV above the 95% cap must not auto-approve via floor-truncation", async () => {
-    const result = await makeEngine().evaluate(baseConventionalInput({ originalLoanAmount: 950_099 }));
+    const result = await makeEngine().evaluate(cliffInput(798_083));
     expect(result.decision).not.toBe("APPROVED");
   });
 
@@ -444,38 +451,31 @@ describe("Persona 3 — Boundary Surgeon (exact 2026 conforming limits)", () => 
     expect(result.rejectionReasons[0]).toMatch(/exceeds policy ceiling/);
   });
 
-  it("PIN: the engine has no conforming loan-limit rule — a $2.9M loan rides the conforming path", async () => {
+  it("FIXED(#3): a loan above the conforming limit routes to MANUAL_REVIEW, not an auto-approve", async () => {
     const result = await makeEngine().evaluate(baseConventionalInput({
-      originalLoanAmount: 2_900_000,
+      originalLoanAmount: 2_900_000, // 3.6x the 2026 one-unit limit
       contractSalesPrice: 4_000_000,
       appraisalValue: 4_000_000,
       proposedPiti: 19_000,
       baseMonthlyIncome: 90_000,
     }));
-    // 3.6x the 2026 one-unit limit, approved with a Fannie conforming LLPA.
-    expect(result.decision).toBe("APPROVED");
-  });
-
-  it.fails("SPEC: loans above the 2026 conforming limit ($806,500) must not be decisioned as conforming", async () => {
-    const result = await makeEngine().evaluate(baseConventionalInput({
-      originalLoanAmount: 2_900_000,
-      contractSalesPrice: 4_000_000,
-      appraisalValue: 4_000_000,
-      proposedPiti: 19_000,
-      baseMonthlyIncome: 90_000,
-    }));
+    // Not a credit decline (a jumbo product may fit) and not a conforming
+    // approval it isn't — it goes to the jumbo desk.
+    expect(result.decision).toBe("MANUAL_REVIEW");
     expect(result.decision).not.toBe("APPROVED");
   });
 
-  it.fails("SPEC: the codebase must agree on ONE conforming limit (borrowerGraph still uses the 2024 value)", () => {
+  it("FIXED(#3): the codebase agrees on ONE conforming limit (borrowerGraph no longer uses the 2024 value)", () => {
     const graphSrc = fs.readFileSync(path.resolve(__dirname, "../server/services/borrowerGraph.ts"), "utf-8");
     const seedSrc = fs.readFileSync(path.resolve(__dirname, "../server/seedMarketPricing.ts"), "utf-8");
-    const graphLimit = Number(graphSrc.match(/loanAmount > (\d+)/)?.[1]);
     const seedLimit = Number(seedSrc.match(/const CONFORMING_LIMIT = (\d+)/)?.[1]);
-    expect(graphLimit).toBeDefined();
-    // 766550 (FHFA 2024) vs 806500 (FHFA 2026): loans between them are told
-    // "jumbo" by the borrower graph and priced conforming by the rate sheets.
-    expect(graphLimit).toBe(seedLimit);
+    // Shared constant is the single source of truth, and the rate sheets agree.
+    expect(CONFORMING_LOAN_LIMIT_2026).toBe(806_500);
+    expect(seedLimit).toBe(CONFORMING_LOAN_LIMIT_2026);
+    // The stale 2024 literal (766550) is gone; the borrower graph references the
+    // shared constant instead.
+    expect(graphSrc).not.toMatch(/766550/);
+    expect(graphSrc).toMatch(/CONFORMING_LOAN_LIMIT_2026/);
   });
 
   it.fails("SPEC: no dead zone between conforming max and jumbo min (fractional amounts near $806,500)", () => {
