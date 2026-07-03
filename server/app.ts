@@ -10,6 +10,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
 import { registerRoutes } from "./routes";
+import { captureException, initErrorMonitoring } from "./services/errorMonitoring";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -181,6 +182,14 @@ app.use("/api/webhooks/sms", rateLimit({
   legacyHeaders: false,
   message: { error: "Too many webhook requests" },
 }));
+// Client error telemetry — cap so a looping browser can't flood the reporter.
+app.use("/api/client-errors", rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many error reports" },
+}));
 app.use("/api/email-capture", emailCaptureLimiter);
 app.use(generalLimiter);
 
@@ -350,9 +359,15 @@ export async function createApp(
 ): Promise<{ app: Express; server: Server }> {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+
+    // Report server errors (5xx) to monitoring; 4xx are expected client-contract
+    // responses and would be noise.
+    if (status >= 500) {
+      captureException(err, { path: sanitizePathForLog(req.path), method: req.method, status });
+    }
 
     log(`Express error: ${status} ${message}`, "error");
     if (!res.headersSent) {
@@ -379,9 +394,12 @@ export async function createApp(
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ) {
+  initErrorMonitoring();
+
   process.on("uncaughtException", (err) => {
     log(`Uncaught Exception: ${err.message}`, "error");
     console.error(err.stack);
+    captureException(err, { kind: "uncaughtException" });
   });
 
   process.on("unhandledRejection", (reason) => {
@@ -389,6 +407,7 @@ export default async function runApp(
     if (reason instanceof Error) {
       console.error(reason.stack);
     }
+    captureException(reason, { kind: "unhandledRejection" });
   });
 
   const { server } = await createApp(setup);
