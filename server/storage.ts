@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, or, ilike, asc, count, inArray } from "drizzle-orm";
+import { encryptSensitiveData, decryptSensitiveData } from "./services/encryptionService";
 import {
   users,
   loanApplications,
@@ -349,6 +350,7 @@ export interface IStorage {
   getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber?: number): Promise<UrlaPersonalInfo | undefined>;
   getAllUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo[]>;
   upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo>;
+  getDecryptedSsn(applicationId: string, borrowerSequenceNumber?: number): Promise<string | null>;
   
   getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]>;
   getEmploymentHistoryById(id: string): Promise<EmploymentHistory | undefined>;
@@ -1349,9 +1351,26 @@ export class DatabaseStorage implements IStorage {
   async upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo> {
     const seq = (data as any).borrowerSequenceNumber ?? 1;
     const existing = await this.getUrlaPersonalInfo(data.applicationId, seq);
-    // Remove any timestamp fields that might have been serialized as strings from frontend
-    const { createdAt, updatedAt, id, ...cleanData } = data as any;
-    
+    // Remove any timestamp fields that might have been serialized as strings from frontend,
+    // and the encrypted-SSN columns, which are server-owned (derived below).
+    const { createdAt, updatedAt, id, ssnEncrypted, ssnIv, ssnKeyId, ssnLast4, ...cleanData } = data as any;
+
+    // SSNs are stored encrypted at rest (AES-256-GCM). The plaintext column is
+    // never written; it survives only on legacy rows until the backfill runs.
+    if (typeof cleanData.ssn === "string" && cleanData.ssn.trim()) {
+      const plaintextSsn = cleanData.ssn.trim();
+      const encrypted = encryptSensitiveData(plaintextSsn);
+      cleanData.ssnEncrypted = encrypted.encryptedContent;
+      cleanData.ssnIv = encrypted.iv;
+      cleanData.ssnKeyId = encrypted.keyId;
+      cleanData.ssnLast4 = plaintextSsn.replace(/\D/g, "").slice(-4);
+      // Clear any legacy plaintext so the old value can't linger next to the new one.
+      cleanData.ssn = null;
+    } else {
+      // No (or empty) SSN in this save: leave the stored SSN columns untouched.
+      delete cleanData.ssn;
+    }
+
     if (existing) {
       const [updated] = await db
         .update(urlaPersonalInfo)
@@ -1365,6 +1384,19 @@ export class DatabaseStorage implements IStorage {
     }
     const [created] = await db.insert(urlaPersonalInfo).values({ ...cleanData, borrowerSequenceNumber: seq }).returning();
     return created;
+  }
+
+  // Returns the borrower's full SSN, decrypting the at-rest ciphertext. Legacy
+  // rows that predate the encryption backfill fall back to the plaintext column.
+  // Only the MISMO export path should need this — everything else works off
+  // ssnLast4 / masked values.
+  async getDecryptedSsn(applicationId: string, borrowerSequenceNumber: number = 1): Promise<string | null> {
+    const info = await this.getUrlaPersonalInfo(applicationId, borrowerSequenceNumber);
+    if (!info) return null;
+    if (info.ssnEncrypted && info.ssnIv && info.ssnKeyId) {
+      return decryptSensitiveData(info.ssnEncrypted, info.ssnIv, info.ssnKeyId);
+    }
+    return info.ssn ?? null;
   }
 
   // Employment History
@@ -1677,10 +1709,18 @@ export class DatabaseStorage implements IStorage {
       this.getDocumentsByApplication(applicationId),
     ]);
 
+    // MISMO delivery is the one consumer that needs the full SSN — swap the
+    // stored (null/legacy) plaintext column for the decrypted value.
+    let personalInfo = urlaData.personalInfo || null;
+    if (personalInfo) {
+      const fullSsn = await this.getDecryptedSsn(applicationId, personalInfo.borrowerSequenceNumber ?? 1);
+      personalInfo = { ...personalInfo, ssn: fullSsn };
+    }
+
     return {
       application,
       user: user || null,
-      personalInfo: urlaData.personalInfo || null,
+      personalInfo,
       employment: urlaData.employmentHistory,
       assets: urlaData.assets,
       liabilities: urlaData.liabilities,
@@ -1707,13 +1747,22 @@ export class DatabaseStorage implements IStorage {
       "firstName", "lastName", "ssn", "dateOfBirth", "email", "cellPhone",
       "currentStreet", "currentCity", "currentState", "currentZip"
     ];
-    const personalMissing = personalFields.filter(f => !urlaData.personalInfo?.[f as keyof typeof urlaData.personalInfo]);
+    // SSN lives in the encrypted columns; the plaintext column only carries
+    // legacy pre-backfill rows.
+    const hasSsn = !!(
+      urlaData.personalInfo?.ssnEncrypted ||
+      urlaData.personalInfo?.ssnLast4 ||
+      urlaData.personalInfo?.ssn
+    );
+    const personalMissing = personalFields.filter(f =>
+      f === "ssn" ? !hasSsn : !urlaData.personalInfo?.[f as keyof typeof urlaData.personalInfo]
+    );
     const personalScore = Math.round(((personalFields.length - personalMissing.length) / personalFields.length) * 100);
     sections.push({
       name: "Personal Information",
       score: personalScore,
       missingFields: personalMissing,
-      verificationStatus: urlaData.personalInfo?.ssn ? "verified" : "pending",
+      verificationStatus: hasSsn ? "verified" : "pending",
     });
 
     // Employment Section

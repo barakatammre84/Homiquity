@@ -238,7 +238,9 @@ function scorePersonalInfo(personalInfo: UrlaPersonalInfo | null | undefined): U
   const fields = [
     { name: "First Name", value: personalInfo?.firstName, required: true },
     { name: "Last Name", value: personalInfo?.lastName, required: true },
-    { name: "SSN", value: personalInfo?.ssn, required: true },
+    // SSN is stored encrypted at rest; ssnLast4 marks presence when the
+    // legacy plaintext column is empty.
+    { name: "SSN", value: personalInfo?.ssn ?? personalInfo?.ssnLast4, required: true },
     { name: "Date of Birth", value: personalInfo?.dateOfBirth, required: true },
     { name: "Citizenship Status", value: personalInfo?.citizenship, required: true },
     { name: "Marital Status", value: personalInfo?.maritalStatus, required: true },

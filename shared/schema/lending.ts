@@ -368,7 +368,15 @@ export const urlaPersonalInfo = pgTable("urla_personal_info", {
   lastName: varchar("last_name", { length: 100 }),
   suffix: varchar("suffix", { length: 20 }),
   
+  // Plaintext SSN is deprecated: kept only until the encryption backfill
+  // (server/scripts/backfillSsnEncryption.ts) runs in production, then the
+  // column gets dropped in a follow-up migration. New writes land in the
+  // ssn_encrypted/ssn_iv/ssn_key_id columns (AES-256-GCM, encryptionService).
   ssn: varchar("ssn", { length: 11 }),
+  ssnEncrypted: text("ssn_encrypted"),
+  ssnIv: varchar("ssn_iv", { length: 32 }),
+  ssnKeyId: varchar("ssn_key_id", { length: 8 }),
+  ssnLast4: varchar("ssn_last4", { length: 4 }),
   dateOfBirth: varchar("date_of_birth", { length: 10 }),
   citizenship: varchar("citizenship", { length: 50 }),
   
@@ -432,6 +440,12 @@ export const insertUrlaPersonalInfoSchema = createInsertSchema(urlaPersonalInfo)
   id: true,
   createdAt: true,
   updatedAt: true,
+  // Server-owned: derived from the plaintext `ssn` input inside
+  // storage.upsertUrlaPersonalInfo — never accepted from clients.
+  ssnEncrypted: true,
+  ssnIv: true,
+  ssnKeyId: true,
+  ssnLast4: true,
 });
 
 export type InsertUrlaPersonalInfo = z.infer<typeof insertUrlaPersonalInfoSchema>;

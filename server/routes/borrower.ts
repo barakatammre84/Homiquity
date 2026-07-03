@@ -35,14 +35,28 @@ function dropMaskedSsn<T extends Record<string, unknown>>(personalInfo: T): T {
   return personalInfo;
 }
 
-// Masks the SSN on a personal-info record for API responses. Full SSNs never
-// leave the server through the general URLA read; the MISMO export path reads
-// storage directly and is unaffected.
-function maskPersonalInfoSsn<T extends { ssn?: string | null }>(
-  personalInfo: T | null | undefined,
-): T | null | undefined {
-  if (!personalInfo || !personalInfo.ssn) return personalInfo;
-  return { ...personalInfo, ssn: maskSSN(personalInfo.ssn) };
+// Masks the SSN on a personal-info record for API responses and strips the
+// at-rest ciphertext columns. Full SSNs never leave the server through the
+// general URLA read; the MISMO export path decrypts via storage.getDecryptedSsn.
+// The mask is built from ssnLast4 (encrypted rows store no plaintext); the
+// plaintext column covers legacy rows that predate the encryption backfill.
+function maskPersonalInfoSsn<
+  T extends {
+    ssn?: string | null;
+    ssnEncrypted?: string | null;
+    ssnIv?: string | null;
+    ssnKeyId?: string | null;
+    ssnLast4?: string | null;
+  },
+>(personalInfo: T | null | undefined): T | null | undefined {
+  if (!personalInfo) return personalInfo;
+  const { ssnEncrypted, ssnIv, ssnKeyId, ...rest } = personalInfo;
+  const masked = personalInfo.ssn
+    ? maskSSN(personalInfo.ssn)
+    : personalInfo.ssnLast4
+      ? `XXX-XX-${personalInfo.ssnLast4}`
+      : personalInfo.ssn ?? null;
+  return { ...rest, ssn: masked } as unknown as T;
 }
 
 // applicationId, borrowerSequenceNumber, and isPrimaryBorrower are set
@@ -432,7 +446,8 @@ export function registerBorrowerRoutes(
         ...dropMaskedSsn(parsed.data),
         applicationId,
       });
-      res.json(result);
+      // The upsert echo is a full row — mask/strip SSN material like the reads do.
+      res.json(maskPersonalInfoSsn(result));
     } catch (error) {
       console.error("Save personal info error:", error);
       res.status(500).json({ error: "Failed to save personal info" });
@@ -722,12 +737,12 @@ export function registerBorrowerRoutes(
         const results: any = {};
 
         if (hasContent(opts.personalInfo)) {
-          results.personalInfo = await storage.upsertUrlaPersonalInfo({
+          results.personalInfo = maskPersonalInfoSsn(await storage.upsertUrlaPersonalInfo({
             ...dropMaskedSsn(opts.personalInfo),
             applicationId,
             borrowerSequenceNumber: seq,
             isPrimaryBorrower: isPrimary,
-          });
+          }));
         }
 
         if (Array.isArray(opts.employmentHistory) && opts.employmentHistory.length > 0) {
