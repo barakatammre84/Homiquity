@@ -3,6 +3,7 @@ import type { IStorage } from "../storage";
 import { isAuthenticated } from "../auth";
 import { checkPropertyEligibility } from "../underwriting";
 import { lookupResolver } from "../services/lookupResolver";
+import { parseValueEstimate } from "../services/valueEstimate";
 
 export function registerPropertyRoutes(
   app: Express,
@@ -801,6 +802,7 @@ export function registerPropertyRoutes(
             hoaMonthly: 0,
             mortgage: null,
             neighborhoods: [],
+            valueEstimate: parseValueEstimate(firstResult.estimates),
           },
         });
       }
@@ -852,6 +854,7 @@ export function registerPropertyRoutes(
             name: n.name,
             medianPrice: n.geo_statistics?.housing_market?.median_sold_price || null,
           })),
+          valueEstimate: parseValueEstimate(p.estimates),
         },
       });
     } catch (error) {
