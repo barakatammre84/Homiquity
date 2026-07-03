@@ -21,7 +21,12 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
-import { upload, verifyFileSignature } from "./utils";
+import {
+  ObjectStorageService,
+  ObjectNotFoundError,
+  isObjectStorageConfigured,
+  localObjectExists,
+} from "../integrations/object_storage";
 import { logAudit } from "../auditLog";
 import { hasBorrowerConsent } from "../consentGate";
 import * as creditService from "../services/creditService";
@@ -998,13 +1003,32 @@ export function registerLendingRoutes(
     }
   });
 
-  app.post("/api/documents/upload", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
+  // Document upload is a two-step presigned flow (roadmap #1): the client first
+  // PUTs the file bytes straight to object storage (via /api/uploads/request-url),
+  // then calls this endpoint with the resulting objectPath to register the
+  // document. This endpoint never touches file bytes — it records metadata only.
+  //
+  // This replaced a multipart→local-disk handler that stored req.file.path: on
+  // Vercel that path is ephemeral, so every uploaded document silently vanished
+  // on the next redeploy. Bytes now live in GCS (or the local-dev fallback).
+  const registerDocumentSchema = z.object({
+    objectPath: z.string().min(1).refine((p) => p.startsWith("/objects/"), {
+      message: "objectPath must be an /objects/ storage path",
+    }),
+    fileName: z.string().min(1).max(255),
+    fileSize: z.number().int().nonnegative().max(10 * 1024 * 1024).optional(),
+    mimeType: z.string().max(100).optional(),
+    documentType: z.string().max(50).optional(),
+    applicationId: z.string().min(1).optional(),
+  });
 
-      const { documentType, applicationId } = req.body;
+  app.post("/api/documents/upload", isAuthenticated, async (req, res) => {
+    try {
+      const parsed = registerDocumentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
+      }
+      const { objectPath, fileName, fileSize, mimeType, documentType, applicationId } = parsed.data;
       const userId = req.user!.id;
 
       if (applicationId) {
@@ -1014,14 +1038,31 @@ export function registerLendingRoutes(
         }
       }
 
+      // Confirm the bytes actually reached storage before recording the document,
+      // so a failed/skipped upload can't leave a DB row pointing at nothing.
+      let objectExists = false;
+      if (isObjectStorageConfigured()) {
+        try {
+          await new ObjectStorageService().getObjectEntityFile(objectPath);
+          objectExists = true;
+        } catch (err) {
+          if (!(err instanceof ObjectNotFoundError)) throw err;
+        }
+      } else {
+        objectExists = localObjectExists(objectPath);
+      }
+      if (!objectExists) {
+        return res.status(400).json({ error: "Uploaded file not found in storage" });
+      }
+
       const document = await storage.createDocument({
         userId,
         applicationId: applicationId || null,
         documentType: documentType || "other",
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        storagePath: req.file.path,
+        fileName,
+        fileSize: fileSize ?? null,
+        mimeType: mimeType ?? null,
+        storagePath: objectPath,
         status: "uploaded",
       });
 
@@ -1030,7 +1071,7 @@ export function registerLendingRoutes(
           applicationId,
           activityType: "document_uploaded",
           title: "Document Uploaded",
-          description: `${req.file.originalname} has been uploaded.`,
+          description: `${fileName} has been uploaded.`,
           performedBy: userId,
         });
         
@@ -1050,7 +1091,7 @@ export function registerLendingRoutes(
           await matchUploadedDocumentToConditions({
             applicationId,
             documentType: documentType || "other",
-            fileName: req.file.originalname,
+            fileName,
             uploadedBy: userId,
           });
         } catch (matchErr) {

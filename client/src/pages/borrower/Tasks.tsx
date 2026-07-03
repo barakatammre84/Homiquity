@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/hooks/use-upload";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,6 +85,7 @@ function getDocumentCategoryLabel(category: string) {
 export default function Tasks() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { uploadFile } = useUpload();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -122,21 +124,21 @@ export default function Tasks() {
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("applicationId", selectedTask.applicationId);
-      formData.append("category", selectedTask.documentCategory || "other");
-
-      const uploadResponse = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        throw new Error(errorText || "Failed to upload document");
+      // Two-step presigned upload: bytes go straight to object storage, then we
+      // register the document by its storage path (never through the API body).
+      const uploaded = await uploadFile(selectedFile);
+      if (!uploaded) {
+        throw new Error("Failed to upload document");
       }
+
+      const uploadResponse = await apiRequest("POST", "/api/documents/upload", {
+        objectPath: uploaded.objectPath,
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        mimeType: selectedFile.type,
+        documentType: selectedTask.documentCategory || "other",
+        applicationId: selectedTask.applicationId,
+      });
 
       const document = await uploadResponse.json();
 

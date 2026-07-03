@@ -19,3 +19,12 @@ export {
 
 export { registerObjectStorageRoutes } from "./routes";
 
+export {
+  isObjectStorageConfigured,
+  isValidObjectId,
+  createLocalUpload,
+  localObjectExists,
+  writeLocalObject,
+  streamLocalObject,
+} from "./localObjectStorage";
+

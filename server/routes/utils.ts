@@ -83,6 +83,15 @@ function matchesKnownSignature(buf: Buffer): boolean {
 }
 
 /**
+ * Buffer-based magic-byte check, for callers that hold the file bytes in memory
+ * (e.g. the local object-storage PUT receiver) rather than on disk. Returns
+ * true only if the buffer's header matches an allowed file signature.
+ */
+export function bufferMatchesAllowedSignature(buf: Buffer): boolean {
+  return matchesKnownSignature(buf);
+}
+
+/**
  * Express middleware that runs after multer has written the upload to disk. It
  * reads the file header and rejects anything whose real magic bytes don't match
  * an allowed type, deleting the spoofed file before it can be processed.

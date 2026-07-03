@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import {
@@ -7,8 +7,16 @@ import {
   extractBankStatementData,
   extractLeaseData,
 } from "../extractionService";
-import { upload, allowedUploadTypes, verifyFileSignature } from "./utils";
-import { ObjectStorageService, ObjectNotFoundError } from "../integrations/object_storage";
+import { upload, allowedUploadTypes, verifyFileSignature, bufferMatchesAllowedSignature } from "./utils";
+import {
+  ObjectStorageService,
+  ObjectNotFoundError,
+  isObjectStorageConfigured,
+  isValidObjectId,
+  createLocalUpload,
+  writeLocalObject,
+  streamLocalObject,
+} from "../integrations/object_storage";
 import { type User } from "@shared/schema";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
@@ -51,6 +59,14 @@ export function registerDocumentRoutes(
         return res.status(400).json({ error: "File too large (max 10MB)" });
       }
 
+      // Local dev without a GCS bucket: hand back a local upload target so the
+      // same client flow works end-to-end. Production (bucket configured) uses
+      // a real presigned Cloud Storage URL.
+      if (!isObjectStorageConfigured()) {
+        const { uploadURL, objectPath } = createLocalUpload();
+        return res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+      }
+
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
@@ -64,6 +80,41 @@ export function registerDocumentRoutes(
       res.status(500).json({ error: "Failed to generate upload URL" });
     }
   });
+
+  // Local-only upload receiver, the counterpart to createLocalUpload(). Accepts
+  // the raw file bytes a client would otherwise PUT to a presigned GCS URL and
+  // stores them on the local filesystem. 404s once real object storage is
+  // configured so it can never become a write surface in production.
+  app.put(
+    "/api/uploads/local/:objectId",
+    isAuthenticated,
+    express.raw({ type: () => true, limit: 10 * 1024 * 1024 }),
+    (req, res) => {
+      if (isObjectStorageConfigured()) {
+        return res.status(404).json({ error: "Not found" });
+      }
+      const { objectId } = req.params;
+      if (!isValidObjectId(objectId)) {
+        return res.status(400).json({ error: "Invalid object id" });
+      }
+      const buf = req.body;
+      if (!Buffer.isBuffer(buf) || buf.length === 0) {
+        return res.status(400).json({ error: "Empty upload" });
+      }
+      // Same magic-byte guard the disk path enforces, so the local flow rejects
+      // spoofed/unsupported content just like production's allowlist + GCS.
+      if (!bufferMatchesAllowedSignature(buf)) {
+        return res.status(400).json({ error: "Invalid or unsupported file content" });
+      }
+      try {
+        writeLocalObject(objectId, buf);
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error("Local object write failed:", err);
+        return res.status(500).json({ error: "Failed to store file" });
+      }
+    },
+  );
 
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
     try {
@@ -99,6 +150,9 @@ export function registerDocumentRoutes(
       }
 
       logAudit(req, "document.download", "document", req.path, { role: user.role });
+      if (!isObjectStorageConfigured()) {
+        return streamLocalObject(req.path, res);
+      }
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
@@ -137,10 +191,13 @@ export function registerDocumentRoutes(
       }
 
       if (document.storagePath?.startsWith("/objects/")) {
-        const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);
         // Force download rather than inline render so borrower-uploaded files
         // (e.g. crafted HTML/SVG/PDF) cannot execute in the browser context.
         res.set("Content-Disposition", `attachment; filename="${document.fileName}"`);
+        if (!isObjectStorageConfigured()) {
+          return streamLocalObject(document.storagePath, res);
+        }
+        const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);
         await objectStorageService.downloadObject(objectFile, res);
       } else if (document.storagePath) {
         const fs = await import("fs");

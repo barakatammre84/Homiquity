@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Document } from "@shared/schema";
 import { PageShell } from "@/components/PageShell";
 import {
@@ -148,27 +148,34 @@ export default function Documents() {
     const file = e.target.files?.[0];
     if (!file || !activeDocType) return;
 
-    const response = await uploadFile(file);
-    if (response) {
-      await fetch("/api/documents/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          objectPath: response.objectPath,
-          fileName: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
-          documentType: activeDocType,
-        }),
+    try {
+      // Two-step presigned upload: bytes go straight to object storage, then we
+      // register the document by its storage path.
+      const response = await uploadFile(file);
+      if (!response) {
+        throw new Error("Upload failed");
+      }
+      await apiRequest("POST", "/api/documents/upload", {
+        objectPath: response.objectPath,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        documentType: activeDocType,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({ title: "Document uploaded", description: "We'll review it shortly. You'll be notified when it's processed." });
+    } catch (err) {
+      toast({
+        title: "Upload failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      setActiveDocType(null);
     }
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    setActiveDocType(null);
   };
 
   const toggleCategory = (categoryId: string) => {

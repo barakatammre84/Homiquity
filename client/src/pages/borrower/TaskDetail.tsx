@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/hooks/use-upload";
 import { useLocation, useRoute } from "wouter";
 import { isStaffRole } from "@shared/schema";
 import type { Task, Document, TaskDocument } from "@shared/schema";
@@ -57,6 +58,7 @@ export default function TaskDetail() {
   const taskId = params?.id;
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { uploadFile } = useUpload();
   const [, navigate] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -69,20 +71,21 @@ export default function TaskDetail() {
 
   const uploadDocumentMutation = useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("documentType", task?.documentCategory || "other");
-      formData.append("applicationId", task?.applicationId || "");
-
-      const response = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!response.ok) {
+      // Two-step presigned upload: bytes go straight to object storage, then we
+      // register the document by its storage path (never through the API body).
+      const uploaded = await uploadFile(file);
+      if (!uploaded) {
         throw new Error("Upload failed");
       }
+
+      const response = await apiRequest("POST", "/api/documents/upload", {
+        objectPath: uploaded.objectPath,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        documentType: task?.documentCategory || "other",
+        applicationId: task?.applicationId || undefined,
+      });
 
       const document = await response.json();
 
