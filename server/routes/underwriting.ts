@@ -117,9 +117,11 @@ export function registerUnderwritingRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
+      // Presence check (not truthiness): a legitimate 0 housing expense or 0
+      // non-housing debt must be accepted, not rejected as "missing".
       const { qualifyingIncome, housingExpense, nonHousingDebts } = req.body;
-      if (!qualifyingIncome || !housingExpense || nonHousingDebts === undefined) {
-        return res.status(400).json({ error: "Missing required parameters" });
+      if (qualifyingIncome == null || housingExpense == null || nonHousingDebts == null) {
+        return res.status(400).json({ error: "qualifyingIncome, housingExpense, and nonHousingDebts are required" });
       }
 
       const parsedIncome = parseFloat(qualifyingIncome);
@@ -127,6 +129,12 @@ export function registerUnderwritingRoutes(
       const parsedDebts = parseFloat(nonHousingDebts);
       if (isNaN(parsedIncome) || isNaN(parsedHousing) || isNaN(parsedDebts)) {
         return res.status(400).json({ error: "qualifyingIncome, housingExpense, and nonHousingDebts must be valid numbers" });
+      }
+      if (parsedIncome <= 0) {
+        return res.status(400).json({ error: "qualifyingIncome must be greater than zero" });
+      }
+      if (parsedHousing < 0 || parsedDebts < 0) {
+        return res.status(400).json({ error: "housingExpense and nonHousingDebts cannot be negative" });
       }
 
       const result = await calculateDTI(parsedIncome, parsedHousing, parsedDebts);
@@ -157,8 +165,10 @@ export function registerUnderwritingRoutes(
         homeInsuranceEstimate = 150,
       } = req.body;
 
-      if (!borrowerAssets || !borrowerIncome || borrowerDebts === undefined || !propertyPrice) {
-        return res.status(400).json({ error: "Missing required parameters" });
+      // Presence check (not truthiness): $0 assets or $0 debts are legitimate
+      // inputs and must not be rejected as "missing".
+      if (borrowerAssets == null || borrowerIncome == null || borrowerDebts == null || propertyPrice == null) {
+        return res.status(400).json({ error: "borrowerAssets, borrowerIncome, borrowerDebts, and propertyPrice are required" });
       }
 
       const pAssets = parseFloat(borrowerAssets);
@@ -169,6 +179,15 @@ export function registerUnderwritingRoutes(
       const pInsurance = parseFloat(homeInsuranceEstimate);
       if ([pAssets, pIncome, pDebts, pPrice, pHoa, pInsurance].some(isNaN)) {
         return res.status(400).json({ error: "All numeric parameters must be valid numbers" });
+      }
+      if (pIncome <= 0) {
+        return res.status(400).json({ error: "borrowerIncome must be greater than zero" });
+      }
+      if (pPrice <= 0) {
+        return res.status(400).json({ error: "propertyPrice must be greater than zero" });
+      }
+      if (pAssets < 0 || pDebts < 0) {
+        return res.status(400).json({ error: "borrowerAssets and borrowerDebts cannot be negative" });
       }
 
       const repFico = application.creditScore ?? undefined;

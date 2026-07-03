@@ -385,6 +385,22 @@ export async function checkPropertyEligibility(
 ): Promise<PropertyEligibilityResult> {
   const reasons: string[] = [];
 
+  // Guard non-positive income up front: the final DTI divides by income, so a 0
+  // (or NaN) would produce an "Infinity%" DTI in the returned reason text. Fail
+  // closed with a clear message instead.
+  if (!(borrowerIncome > 0)) {
+    return {
+      maxLoanAmount: 0,
+      maxDownPaymentPercent: 0,
+      requiredDownPayment: 0,
+      ltvRatio: 0,
+      estimatedPITI: 0,
+      finalDTI: 0,
+      canBuyProperty: false,
+      reasons: ["Borrower income must be greater than zero to assess affordability."],
+    };
+  }
+
   // Policy ceilings come from the dynamic matrices, not hardcoded 95/50 limits.
   const ltvCap = await lookupResolver.getPolicyScalar("CONVENTIONAL_LTV_CAP");
   const stretchDti = await lookupResolver.getPolicyScalar("CONVENTIONAL_STRETCH_DTI");
