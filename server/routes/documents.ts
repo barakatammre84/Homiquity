@@ -200,12 +200,17 @@ export function registerDocumentRoutes(
       }
 
       await storage.updateDocument(id, {
-        status: extractedData.confidence === "high" ? "verified" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify).
+        // The model's self-reported confidence only advances a doc to "verifying" —
+        // an uploaded document must never be able to mark itself verified.
+        status: extractedData.confidence === "high" ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
           warnings: extractedData.warnings,
+          modelId: extractedData.modelId,
+          promptVersion: extractedData.promptVersion,
         }),
       });
 
@@ -262,6 +267,62 @@ export function registerDocumentRoutes(
     }
   });
 
+  // Human document verification — the ONLY path to status "verified". AI
+  // extraction can at most advance a document to "verifying"; a staff member
+  // assigned to the deal (or an admin) makes the verify/reject call.
+  app.post(
+    "/api/documents/:id/verify",
+    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    async (req, res) => {
+      try {
+        const user = req.user as User;
+        const { id } = req.params;
+        const { status, reason } = req.body as { status?: string; reason?: string };
+
+        if (status !== "verified" && status !== "rejected") {
+          return res.status(400).json({ error: 'status must be "verified" or "rejected"' });
+        }
+        if (status === "rejected" && (!reason || typeof reason !== "string")) {
+          return res.status(400).json({ error: "A reason is required when rejecting a document" });
+        }
+
+        const document = await storage.getDocument(id);
+        if (!document) {
+          return res.status(404).json({ error: "Document not found" });
+        }
+
+        // Non-admin staff must be active deal-team members on the application.
+        if (user.role !== "admin") {
+          if (!document.applicationId) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+          const app = await storage.getLoanApplicationWithAccess(
+            document.applicationId, user.id, user.role
+          );
+          if (!app) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+        }
+
+        // The rejection reason lives in the audit log (below) — the documents
+        // table has no dedicated column and `notes` holds extraction lineage.
+        const updated = await storage.updateDocument(id, { status });
+
+        logAudit(req, `document.${status}`, "document", id, {
+          documentType: document.documentType,
+          applicationId: document.applicationId,
+          reviewedBy: user.id,
+          ...(reason ? { reason } : {}),
+        });
+
+        res.json(updated);
+      } catch (error) {
+        console.error("Document verify error:", error);
+        res.status(500).json({ error: "Failed to update document status" });
+      }
+    }
+  );
+
   app.post("/api/documents/extract-tax-return", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
     try {
       if (!req.file) {
@@ -292,12 +353,17 @@ export function registerDocumentRoutes(
       const extractedData = await extractTaxReturnData(req.file.path, documentYear);
 
       await storage.updateDocument(document.id, {
-        status: extractedData.confidence === "high" ? "verified" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify).
+        // The model's self-reported confidence only advances a doc to "verifying" —
+        // an uploaded document must never be able to mark itself verified.
+        status: extractedData.confidence === "high" ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
           warnings: extractedData.warnings,
+          modelId: extractedData.modelId,
+          promptVersion: extractedData.promptVersion,
         }),
       });
 
@@ -356,12 +422,17 @@ export function registerDocumentRoutes(
       const extractedData = await extractPayStubData(req.file.path);
 
       await storage.updateDocument(document.id, {
-        status: extractedData.confidence === "high" ? "verified" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify).
+        // The model's self-reported confidence only advances a doc to "verifying" —
+        // an uploaded document must never be able to mark itself verified.
+        status: extractedData.confidence === "high" ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
           warnings: extractedData.warnings,
+          modelId: extractedData.modelId,
+          promptVersion: extractedData.promptVersion,
         }),
       });
 
@@ -420,12 +491,17 @@ export function registerDocumentRoutes(
       const extractedData = await extractBankStatementData(req.file.path);
 
       await storage.updateDocument(document.id, {
-        status: extractedData.confidence === "high" ? "verified" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify).
+        // The model's self-reported confidence only advances a doc to "verifying" —
+        // an uploaded document must never be able to mark itself verified.
+        status: extractedData.confidence === "high" ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
           warnings: extractedData.warnings,
+          modelId: extractedData.modelId,
+          promptVersion: extractedData.promptVersion,
         }),
       });
 

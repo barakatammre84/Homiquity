@@ -688,7 +688,7 @@ export default function BorrowerFile() {
                           <span className="text-muted-foreground">Phone:</span>
                           <span>{personalInfo?.cellPhone || personalInfo?.homePhone || "N/A"}</span>
                           <span className="text-muted-foreground">SSN:</span>
-                          <span>XXX-XX-{personalInfo?.ssn?.slice(-4) || "XXXX"}</span>
+                          <span>XXX-XX-{personalInfo?.ssnLast4 || "XXXX"}</span>
                         </div>
                       </CardContent>
                     </Card>

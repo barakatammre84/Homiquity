@@ -39,16 +39,32 @@ are done inline in handlers — always add them for borrower data.
 
 | Control | Detail |
 |---------|--------|
-| Helmet | Security headers (CSP currently disabled — see threat model) |
-| Rate limiting | 500/15min general on `/api`; 20/15min auth; 50/15min uploads; per-minute tracking |
+| Helmet + CSP | Security headers. Production ships a Content-Security-Policy (PCI DSS 6.4.3 script control): **Report-Only by default**, flip to enforcing with `CSP_ENFORCE=true`. Violations POST to `/api/csp-report` (logged). Authorized third-party script origins (maps.googleapis.com, cdn.plaid.com, fonts) are the CSP's script inventory — see the comment in `server/app.ts`. Dev is exempt (Vite HMR needs inline scripts). |
+| Rate limiting | 500/15min general on `/api`; 20/15min auth; 50/15min uploads; 15/15min AI extraction; per-minute tracking |
 | CSRF | Origin/Referer allow-list on state-changing `/api` requests (OAuth callbacks exempt — protected by OAuth `state`) |
-| Log hygiene | Sensitive paths' response bodies suppressed; invite tokens redacted from logged paths |
+| Log hygiene | Response-body logging is **allowlist-only** (`RESPONSE_BODY_LOG_ALLOWLIST` in `server/app.ts`): only explicitly PII-free paths log bodies; everything else logs status/duration. Invite tokens redacted from logged paths. |
 | Central error handler | No stack traces leak to clients |
 
 ## Data protection
 
 - **Field encryption**: credit-related PII is encrypted at rest with
   `CREDIT_ENCRYPTION_KEY` (`server/services/encryptionService.ts`).
+- **PII vault (direct identifiers)**: SSNs and bank account numbers are stored
+  **only** as AES-256-GCM ciphertext + a last-4 fragment
+  (`server/services/piiVault.ts`). They are **write-only** through the API:
+  clients submit plaintext (`ssn` / `accountNumber` virtual fields), the storage
+  layer encrypts them, and responses expose only `ssnLast4` /
+  `accountNumberLast4` (`stripEncryptedFields` scrubs ciphertext/IV/key columns
+  before serialization). Full-value decryption happens in exactly one place —
+  `storage.getMISMOLoanData()` for GSE loan delivery. Plaid access tokens use the
+  same vault via an `encryptToken`/`decryptToken` envelope
+  (`encv1:keyId:iv:ciphertext`) in the existing text column. Backfill/rotate
+  legacy rows with `scripts/migrate-encrypt-pii.ts` (idempotent, guarded DDL —
+  do **not** use `drizzle-kit push --force`; see `.agents/memory/db-push-blocker.md`).
+- **Input whitelisting**: URLA write endpoints route every body through
+  `pickTableFields` (`server/routes/urlaValidation.ts`) — unknown keys, server-
+  managed keys, and encrypted-column names are dropped (mass-assignment defense);
+  SSN/DOB/email get format validation.
 - **Hashing**: PII lookups/anonymization use `PII_HASH_SALT`.
 - **Tamper-evidence**: the credit audit log is hash-chained
   (`computeAuditEntryHash`, `verifyHashChain`).
@@ -94,6 +110,8 @@ app won't boot or a core feature dies without it.
 | `DEV_TEST_PASSWORD` | Enables `/api/test-login` (never set in prod) |
 | `USE_LOCAL_PG` | Force the `pg` driver |
 | `LOOKUP_MATRIX_STAMP_WINDOW_MS` | Lookup-matrix tuning |
+| `CSP_ENFORCE` | `true` switches the production CSP from Report-Only to blocking. Leave unset for a Report-Only soak first. |
+| `CREDIT_VENDOR_MODE` | Bureau vendors are simulated until contracts land. Production **refuses** to fabricate credit scores unless this is `simulation` (staging only). |
 
 ### Where secrets live
 - **Local**: `.env` (gitignored; template in `.env.example`). The production

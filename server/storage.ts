@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, or, ilike, asc, count, inArray } from "drizzle-orm";
+import { encryptPiiField, decryptPiiField } from "./services/piiVault";
 import {
   users,
   loanApplications,
@@ -348,7 +349,7 @@ export interface IStorage {
   // URLA Data
   getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber?: number): Promise<UrlaPersonalInfo | undefined>;
   getAllUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo[]>;
-  upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo>;
+  upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo & { ssn?: string | null }): Promise<UrlaPersonalInfo>;
   
   getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]>;
   getEmploymentHistoryById(id: string): Promise<EmploymentHistory | undefined>;
@@ -363,14 +364,14 @@ export interface IStorage {
   
   getUrlaAssets(applicationId: string): Promise<UrlaAsset[]>;
   getUrlaAssetById(id: string): Promise<UrlaAsset | undefined>;
-  createUrlaAsset(data: InsertUrlaAsset): Promise<UrlaAsset>;
-  updateUrlaAsset(id: string, data: Partial<UrlaAsset>): Promise<UrlaAsset | undefined>;
+  createUrlaAsset(data: InsertUrlaAsset & { accountNumber?: string | null }): Promise<UrlaAsset>;
+  updateUrlaAsset(id: string, data: Partial<UrlaAsset> & { accountNumber?: string | null }): Promise<UrlaAsset | undefined>;
   deleteUrlaAsset(id: string): Promise<void>;
   
   getUrlaLiabilities(applicationId: string): Promise<UrlaLiability[]>;
   getUrlaLiabilityById(id: string): Promise<UrlaLiability | undefined>;
-  createUrlaLiability(data: InsertUrlaLiability): Promise<UrlaLiability>;
-  updateUrlaLiability(id: string, data: Partial<UrlaLiability>): Promise<UrlaLiability | undefined>;
+  createUrlaLiability(data: InsertUrlaLiability & { accountNumber?: string | null }): Promise<UrlaLiability>;
+  updateUrlaLiability(id: string, data: Partial<UrlaLiability> & { accountNumber?: string | null }): Promise<UrlaLiability | undefined>;
   deleteUrlaLiability(id: string): Promise<void>;
   
   getUrlaPropertyInfo(applicationId: string): Promise<UrlaPropertyInfo | undefined>;
@@ -401,14 +402,16 @@ export interface IStorage {
   upsertHmdaDemographics(data: InsertHmdaDemographics): Promise<HmdaDemographics>;
   getBorrowerProfileByUserId(userId: string): Promise<BorrowerProfile | undefined>;
 
-  // MISMO Export Data
+  // MISMO Export Data. personalInfo carries the DECRYPTED SSN (virtual `ssn`
+  // field) — GSE loan delivery requires the full taxpayer identifier. This is
+  // the only read path that decrypts it; never serialize this object to a client.
   getMISMOLoanData(applicationId: string): Promise<{
     application: LoanApplication;
     user: User | null;
-    personalInfo: UrlaPersonalInfo | null;
+    personalInfo: (UrlaPersonalInfo & { ssn: string | null }) | null;
     employment: EmploymentHistory[];
-    assets: UrlaAsset[];
-    liabilities: UrlaLiability[];
+    assets: (UrlaAsset & { accountNumber: string | null })[];
+    liabilities: (UrlaLiability & { accountNumber: string | null })[];
     propertyInfo: UrlaPropertyInfo | null;
     declarations: BorrowerDeclarations | null;
     loanOptions: LoanOption[];
@@ -1346,12 +1349,23 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(urlaPersonalInfo.borrowerSequenceNumber));
   }
 
-  async upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo> {
+  async upsertUrlaPersonalInfo(
+    data: InsertUrlaPersonalInfo & { ssn?: string | null },
+  ): Promise<UrlaPersonalInfo> {
     const seq = (data as any).borrowerSequenceNumber ?? 1;
     const existing = await this.getUrlaPersonalInfo(data.applicationId, seq);
-    // Remove any timestamp fields that might have been serialized as strings from frontend
-    const { createdAt, updatedAt, id, ...cleanData } = data as any;
-    
+    // Remove any timestamp fields that might have been serialized as strings from frontend.
+    // `ssn` is a write-only virtual field: encrypt it here, never store plaintext.
+    const { createdAt, updatedAt, id, ssn, ...cleanData } = data as any;
+    if (typeof ssn === "string" && ssn.trim() !== "") {
+      const normalized = ssn.replace(/\D/g, "");
+      const enc = encryptPiiField(normalized);
+      cleanData.ssnEncrypted = enc.encrypted;
+      cleanData.ssnIv = enc.iv;
+      cleanData.ssnKeyId = enc.keyId;
+      cleanData.ssnLast4 = enc.last4;
+    }
+
     if (existing) {
       const [updated] = await db
         .update(urlaPersonalInfo)
@@ -1450,14 +1464,29 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
-  async createUrlaAsset(data: InsertUrlaAsset): Promise<UrlaAsset> {
-    const [record] = await db.insert(urlaAssets).values(data).returning();
+  // `accountNumber` is a write-only virtual field on assets/liabilities:
+  // the storage layer encrypts it (piiVault) and persists only ciphertext + last4.
+  private static encryptAccountNumberField(cleanData: any, accountNumber: unknown): void {
+    if (typeof accountNumber === "string" && accountNumber.trim() !== "") {
+      const enc = encryptPiiField(accountNumber.trim());
+      cleanData.accountNumberEncrypted = enc.encrypted;
+      cleanData.accountNumberIv = enc.iv;
+      cleanData.accountNumberKeyId = enc.keyId;
+      cleanData.accountNumberLast4 = enc.last4;
+    }
+  }
+
+  async createUrlaAsset(data: InsertUrlaAsset & { accountNumber?: string | null }): Promise<UrlaAsset> {
+    const { accountNumber, ...cleanData } = data as any;
+    DatabaseStorage.encryptAccountNumberField(cleanData, accountNumber);
+    const [record] = await db.insert(urlaAssets).values(cleanData).returning();
     return record;
   }
 
-  async updateUrlaAsset(id: string, data: Partial<UrlaAsset>): Promise<UrlaAsset | undefined> {
+  async updateUrlaAsset(id: string, data: Partial<UrlaAsset> & { accountNumber?: string | null }): Promise<UrlaAsset | undefined> {
     // Remove id, timestamps, and applicationId (immutable — re-parenting is not allowed)
-    const { createdAt, updatedAt, id: recordId, applicationId, ...cleanData } = data as any;
+    const { createdAt, updatedAt, id: recordId, applicationId, accountNumber, ...cleanData } = data as any;
+    DatabaseStorage.encryptAccountNumberField(cleanData, accountNumber);
     const [updated] = await db
       .update(urlaAssets)
       .set(cleanData)
@@ -1488,14 +1517,17 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
-  async createUrlaLiability(data: InsertUrlaLiability): Promise<UrlaLiability> {
-    const [record] = await db.insert(urlaLiabilities).values(data).returning();
+  async createUrlaLiability(data: InsertUrlaLiability & { accountNumber?: string | null }): Promise<UrlaLiability> {
+    const { accountNumber, ...cleanData } = data as any;
+    DatabaseStorage.encryptAccountNumberField(cleanData, accountNumber);
+    const [record] = await db.insert(urlaLiabilities).values(cleanData).returning();
     return record;
   }
 
-  async updateUrlaLiability(id: string, data: Partial<UrlaLiability>): Promise<UrlaLiability | undefined> {
+  async updateUrlaLiability(id: string, data: Partial<UrlaLiability> & { accountNumber?: string | null }): Promise<UrlaLiability | undefined> {
     // Remove id, timestamps, and applicationId (immutable — re-parenting is not allowed)
-    const { createdAt, updatedAt, id: recordId, applicationId, ...cleanData } = data as any;
+    const { createdAt, updatedAt, id: recordId, applicationId, accountNumber, ...cleanData } = data as any;
+    DatabaseStorage.encryptAccountNumberField(cleanData, accountNumber);
     const [updated] = await db
       .update(urlaLiabilities)
       .set(cleanData)
@@ -1677,13 +1709,39 @@ export class DatabaseStorage implements IStorage {
       this.getDocumentsByApplication(applicationId),
     ]);
 
+    // GSE delivery needs full identifiers (SSN, account numbers) — decrypt them
+    // here (and only here) as virtual fields. This object must never be
+    // serialized to a client; it feeds the MISMO XML generator exclusively.
+    const personalInfo = urlaData.personalInfo
+      ? {
+          ...urlaData.personalInfo,
+          ssn: decryptPiiField({
+            encrypted: urlaData.personalInfo.ssnEncrypted,
+            iv: urlaData.personalInfo.ssnIv,
+            keyId: urlaData.personalInfo.ssnKeyId,
+          }),
+        }
+      : null;
+    const withAccountNumber = <T extends {
+      accountNumberEncrypted: string | null;
+      accountNumberIv: string | null;
+      accountNumberKeyId: string | null;
+    }>(record: T): T & { accountNumber: string | null } => ({
+      ...record,
+      accountNumber: decryptPiiField({
+        encrypted: record.accountNumberEncrypted,
+        iv: record.accountNumberIv,
+        keyId: record.accountNumberKeyId,
+      }),
+    });
+
     return {
       application,
       user: user || null,
-      personalInfo: urlaData.personalInfo || null,
+      personalInfo,
       employment: urlaData.employmentHistory,
-      assets: urlaData.assets,
-      liabilities: urlaData.liabilities,
+      assets: urlaData.assets.map(withAccountNumber),
+      liabilities: urlaData.liabilities.map(withAccountNumber),
       propertyInfo: urlaData.propertyInfo || null,
       declarations: urlaData.declarations || null,
       loanOptions: loanOpts,
@@ -1704,7 +1762,7 @@ export class DatabaseStorage implements IStorage {
 
     // Personal Information Section
     const personalFields = [
-      "firstName", "lastName", "ssn", "dateOfBirth", "email", "cellPhone",
+      "firstName", "lastName", "ssnLast4", "dateOfBirth", "email", "cellPhone",
       "currentStreet", "currentCity", "currentState", "currentZip"
     ];
     const personalMissing = personalFields.filter(f => !urlaData.personalInfo?.[f as keyof typeof urlaData.personalInfo]);
@@ -1713,7 +1771,7 @@ export class DatabaseStorage implements IStorage {
       name: "Personal Information",
       score: personalScore,
       missingFields: personalMissing,
-      verificationStatus: urlaData.personalInfo?.ssn ? "verified" : "pending",
+      verificationStatus: urlaData.personalInfo?.ssnEncrypted ? "verified" : "pending",
     });
 
     // Employment Section

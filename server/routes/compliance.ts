@@ -4,6 +4,7 @@ import { isAuthenticated, requireRole } from "../auth";
 import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
 import { z } from "zod";
 import * as creditService from "../services/creditService";
+import { encryptToken } from "../services/piiVault";
 
 export function registerComplianceRoutes(
   app: Express,
@@ -96,7 +97,9 @@ export function registerComplianceRoutes(
         userId,
         verificationType,
         plaidItemId: itemId,
-        plaidAccessToken: accessToken,
+        // Bearer credential to the borrower's bank data — encrypted at rest.
+        // Decrypt with piiVault.decryptToken() at the point of a Plaid API call.
+        plaidAccessToken: encryptToken(accessToken),
         status: "in_progress",
         verificationMethod: "plaid_payroll",
       });
