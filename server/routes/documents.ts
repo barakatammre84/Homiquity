@@ -7,6 +7,7 @@ import {
   extractBankStatementData,
   extractLeaseData,
 } from "../extractionService";
+import { recordCoarseExtraction } from "../services/documentConfidence";
 import { upload, allowedUploadTypes, verifyFileSignature } from "./utils";
 import { ObjectStorageService, ObjectNotFoundError } from "../integrations/object_storage";
 import { type User } from "@shared/schema";
@@ -229,15 +230,26 @@ export function registerDocumentRoutes(
           });
       }
 
+      const { humanReviewRequired } = await recordCoarseExtraction({
+        documentId: id,
+        documentType: document.documentType,
+        applicationId: document.applicationId,
+        confidence: extractedData.confidence,
+        extractedFields: extractedData.extractedFields,
+        fileSize: document.fileSize ?? undefined,
+      });
       await storage.updateDocument(id, {
-        // "verified" is reserved for human review (POST /api/documents/:id/verify).
-        // The model's self-reported confidence only advances a doc to "verifying" —
-        // an uploaded document must never be able to mark itself verified.
-        status: extractedData.confidence === "high" ? "verifying" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify);
+        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
+        // able to mark itself verified). main's review-gate signal still routes:
+        // a doc that clears the type-specific confidence threshold is staged
+        // "verifying" for a human to confirm; everything else stays "uploaded".
+        status: !humanReviewRequired ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
+          humanReviewRequired,
           warnings: extractedData.warnings,
           modelId: extractedData.modelId,
           promptVersion: extractedData.promptVersion,
@@ -387,15 +399,26 @@ export function registerDocumentRoutes(
 
       const extractedData = await extractTaxReturnData(req.file.path, documentYear);
 
+      const { humanReviewRequired } = await recordCoarseExtraction({
+        documentId: document.id,
+        documentType: "tax_return",
+        applicationId: applicationId || null,
+        confidence: extractedData.confidence,
+        extractedFields: extractedData.extractedFields,
+        fileSize: req.file.size,
+      });
       await storage.updateDocument(document.id, {
-        // "verified" is reserved for human review (POST /api/documents/:id/verify).
-        // The model's self-reported confidence only advances a doc to "verifying" —
-        // an uploaded document must never be able to mark itself verified.
-        status: extractedData.confidence === "high" ? "verifying" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify);
+        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
+        // able to mark itself verified). main's review-gate signal still routes:
+        // a doc that clears the type-specific confidence threshold is staged
+        // "verifying" for a human to confirm; everything else stays "uploaded".
+        status: !humanReviewRequired ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
+          humanReviewRequired,
           warnings: extractedData.warnings,
           modelId: extractedData.modelId,
           promptVersion: extractedData.promptVersion,
@@ -461,15 +484,26 @@ export function registerDocumentRoutes(
 
       const extractedData = await extractPayStubData(req.file.path);
 
+      const { humanReviewRequired } = await recordCoarseExtraction({
+        documentId: document.id,
+        documentType: "pay_stub",
+        applicationId: applicationId || null,
+        confidence: extractedData.confidence,
+        extractedFields: extractedData.extractedFields,
+        fileSize: req.file.size,
+      });
       await storage.updateDocument(document.id, {
-        // "verified" is reserved for human review (POST /api/documents/:id/verify).
-        // The model's self-reported confidence only advances a doc to "verifying" —
-        // an uploaded document must never be able to mark itself verified.
-        status: extractedData.confidence === "high" ? "verifying" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify);
+        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
+        // able to mark itself verified). main's review-gate signal still routes:
+        // a doc that clears the type-specific confidence threshold is staged
+        // "verifying" for a human to confirm; everything else stays "uploaded".
+        status: !humanReviewRequired ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
+          humanReviewRequired,
           warnings: extractedData.warnings,
           modelId: extractedData.modelId,
           promptVersion: extractedData.promptVersion,
@@ -535,15 +569,26 @@ export function registerDocumentRoutes(
 
       const extractedData = await extractBankStatementData(req.file.path);
 
+      const { humanReviewRequired } = await recordCoarseExtraction({
+        documentId: document.id,
+        documentType: "bank_statement",
+        applicationId: applicationId || null,
+        confidence: extractedData.confidence,
+        extractedFields: extractedData.extractedFields,
+        fileSize: req.file.size,
+      });
       await storage.updateDocument(document.id, {
-        // "verified" is reserved for human review (POST /api/documents/:id/verify).
-        // The model's self-reported confidence only advances a doc to "verifying" —
-        // an uploaded document must never be able to mark itself verified.
-        status: extractedData.confidence === "high" ? "verifying" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify);
+        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
+        // able to mark itself verified). main's review-gate signal still routes:
+        // a doc that clears the type-specific confidence threshold is staged
+        // "verifying" for a human to confirm; everything else stays "uploaded".
+        status: !humanReviewRequired ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
+          humanReviewRequired,
           warnings: extractedData.warnings,
           modelId: extractedData.modelId,
           promptVersion: extractedData.promptVersion,

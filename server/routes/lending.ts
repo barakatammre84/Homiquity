@@ -1149,12 +1149,22 @@ export function registerLendingRoutes(
         (async () => {
           const svc = await import("../extractionService");
           const extracted = await svc[extractor](document.storagePath);
+          const { recordCoarseExtraction } = await import("../services/documentConfidence");
+          const { humanReviewRequired } = await recordCoarseExtraction({
+            documentId: document.id,
+            documentType,
+            applicationId: applicationId || null,
+            confidence: extracted.confidence,
+            extractedFields: extracted.extractedFields,
+            fileSize: document.fileSize ?? undefined,
+          });
           await storage.updateDocument(document.id, {
-            status: extracted.confidence === "high" ? "verified" : "uploaded",
+            status: !humanReviewRequired ? "verified" : "uploaded",
             notes: JSON.stringify({
               extractedAt: new Date().toISOString(),
               extractedFields: extracted.extractedFields,
               confidence: extracted.confidence,
+              humanReviewRequired,
               warnings: extracted.warnings,
             }),
           });

@@ -49,6 +49,22 @@ async function verifyInternalStaffApplicationAccess(
   return false;
 }
 
+// Mask a URLA personal-info record for external partners: SSN reduced to its
+// last 4 digits (e.g. "123-45-6789" -> "•••-••-6789") and DOB dropped entirely.
+// Preserves the input type so it maps cleanly over the allPersonalInfo[]
+// co-borrower array; callers guard the optional single personalInfo field.
+function maskUrlaPersonalInfo<
+  T extends { ssn?: string | null; dateOfBirth?: string | null },
+>(pi: T): T {
+  const digits = (pi.ssn ?? "").replace(/\D/g, "");
+  const last4 = digits.length >= 4 ? digits.slice(-4) : "";
+  return {
+    ...pi,
+    ssn: last4 ? `•••-••-${last4}` : null,
+    dateOfBirth: null,
+  } as T;
+}
+
 export function registerBorrowerRoutes(
   app: Express,
   storage: IStorage,
@@ -371,6 +387,17 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       const urlaData = await storage.getCompleteUrlaData(applicationId);
+      // Redact raw PII for external partners (broker/lender). They may be
+      // deal-team members but must not see full SSN/DOB — matching the
+      // redaction discipline already applied on the credit/verification routes
+      // in compliance.ts. The borrower (a client role) and internal staff are
+      // unaffected and see the full record.
+      if (isStaffRole(user.role) && !isInternalStaffRole(user.role)) {
+        if (urlaData.personalInfo) {
+          urlaData.personalInfo = maskUrlaPersonalInfo(urlaData.personalInfo);
+        }
+        urlaData.allPersonalInfo = (urlaData.allPersonalInfo ?? []).map(maskUrlaPersonalInfo);
+      }
       // Ciphertext/IV/key columns never leave the server — clients get last4 only.
       res.json({
         application,
