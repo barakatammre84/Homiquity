@@ -1169,7 +1169,8 @@ export default function StaffDashboard() {
                   {submittedTasks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
-                      <p>No tasks awaiting review</p>
+                      <p className="font-medium">Nothing awaiting review</p>
+                      <p className="text-sm mt-1">When a borrower submits a requested document, it lands here for your review.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1229,7 +1230,8 @@ export default function StaffDashboard() {
                   {applications.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <UserIcon className="mx-auto h-12 w-12 mb-4" />
-                      <p>{isAdmin ? "No applications found" : "No applications assigned to your team"}</p>
+                      <p className="font-medium">{isAdmin ? "No applications yet" : "No applications assigned to your team"}</p>
+                      <p className="text-sm mt-1">Applications assigned to your deal team will appear here as borrowers apply.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
