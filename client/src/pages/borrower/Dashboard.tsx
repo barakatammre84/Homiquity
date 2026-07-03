@@ -717,8 +717,6 @@ export default function Dashboard() {
     return (
       <RenterHome
         userName={user?.firstName || undefined}
-        hasCoachSession={hasCoachSession}
-        hasBrowsedProperties={browsedProperties}
       />
     );
   }

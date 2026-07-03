@@ -38,20 +38,6 @@ interface GoalResponse {
   goal: HomeownershipGoalRecord | null;
 }
 
-function renterReadinessScore(args: {
-  hasGoal: boolean;
-  savingsProgressRatio: number; // 0..1
-  hasCoachSession: boolean;
-  hasBrowsedProperties: boolean;
-}): number {
-  let score = 10;
-  if (args.hasGoal) score += 20;
-  score += Math.round(Math.min(args.savingsProgressRatio, 1) * 30);
-  if (args.hasCoachSession) score += 15;
-  if (args.hasBrowsedProperties) score += 10;
-  return Math.min(score, 85); // pre-approval is what takes you past 85
-}
-
 const TOOLKIT = [
   {
     href: "/calculators/rent-vs-buy",
@@ -85,16 +71,21 @@ const TOOLKIT = [
 
 export function RenterHome({
   userName,
-  hasCoachSession,
-  hasBrowsedProperties,
 }: {
   userName?: string;
-  hasCoachSession: boolean;
-  hasBrowsedProperties: boolean;
 }) {
   const { data: goalData } = useQuery<GoalResponse>({
     queryKey: ["/api/homeownership-goal"],
   });
+
+  // Single source of truth for readiness: the server-side /100 score (the same
+  // one the HomeReadinessPassport renders below). This replaces a former
+  // client-side heuristic % that could disagree with the passport on-screen.
+  const { data: graph } = useQuery<{ readiness: { score: number } }>({
+    queryKey: ["/api/borrower-graph"],
+    staleTime: 60000,
+  });
+  const readinessScore = graph?.readiness?.score ?? null;
 
   const goal = goalData?.goal ?? null;
   const target = goal?.targetDownPayment ? Number(goal.targetDownPayment) : null;
@@ -104,13 +95,6 @@ export function RenterHome({
   const progressRatio = target ? Math.min(saved / target, 1) : 0;
   const monthsToGoal =
     remaining !== null && remaining > 0 && monthly > 0 ? Math.ceil(remaining / monthly) : null;
-
-  const score = renterReadinessScore({
-    hasGoal: !!goal,
-    savingsProgressRatio: progressRatio,
-    hasCoachSession,
-    hasBrowsedProperties,
-  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -125,11 +109,13 @@ export function RenterHome({
               Let's get you home-ready — one step at a time.
             </p>
           </div>
-          <div className="text-right shrink-0" data-testid="text-renter-readiness">
-            <span className="text-3xl font-bold text-primary">{score}</span>
-            <span className="text-lg font-semibold text-muted-foreground">%</span>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">home-ready</p>
-          </div>
+          {readinessScore !== null && (
+            <div className="text-right shrink-0" data-testid="text-renter-readiness">
+              <span className="text-3xl font-bold text-primary">{readinessScore}</span>
+              <span className="text-lg font-semibold text-muted-foreground">/100</span>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">home-ready</p>
+            </div>
+          )}
         </div>
 
         {/* Down-payment goal */}

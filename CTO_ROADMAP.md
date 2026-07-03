@@ -32,15 +32,15 @@
 ### Finish the redesign (Phase 4 — one route per commit, no logic changes)
 
 - [x] **12. Landing page hero** — still old-brand dark gradient + emerald. First impression; do this one first.
-- [ ] **13. HomeReadinessPassport** — legacy emerald/amber/sky badges, now visible on the renter home page.
-- [ ] **14. Unify the two readiness scores** — RenterHome shows a client-side % next to the Passport's server-side /100 score on the same screen. Keep the server one, extend it for renters.
-- [ ] **15. JourneyTracker** (center of the borrower dashboard).
-- [ ] **16. HomeownerDashboard** (whole page off-palette).
-- [ ] **17. AdminDashboard + StaffDashboard pastel KPI tiles.**
-- [ ] **18. AICoach + FirstTimeBuyerHub.**
-- [ ] **19. Shared components:** TrustLayer, AffordabilityBadge, NotificationsPanel, BorrowerRequests, DealTeam, ui/toast.
-- [ ] **20. PropertyDetail + LivePropertyDetail.**
-- [ ] **21. Decide on dark mode** — supported or not. If not, strip the `dark:` variants during the sweep; if yes, test every swept page in dark.
+- [x] **13. HomeReadinessPassport** — legacy emerald/amber/sky badges, now visible on the renter home page. *(Done 2026-07-03: tier badges, readiness ring, DTI/verification indicators swapped to semantic tokens — emerald→status-success, amber→status-warning, sky→primary ramp; dropped the paired dark: variants since the pop tokens are mode-agnostic hex. No logic change.)*
+- [x] **14. Unify the two readiness scores** — RenterHome shows a client-side % next to the Passport's server-side /100 score on the same screen. Keep the server one, extend it for renters. *(Done 2026-07-03: deleted the client-side `renterReadinessScore` heuristic; RenterHome's header now reads the server `/api/borrower-graph` readiness score (/100) — the same number the HomeReadinessPassport renders below — so there's one consistent readiness value. Removed the now-unused hasCoachSession/hasBrowsedProperties props from RenterHome and its Dashboard call site.)*
+- [x] **15. JourneyTracker** (center of the borrower dashboard). *(Done 2026-07-03: completed-step indicators emerald→status-success; no logic change.)*
+- [x] **16. HomeownerDashboard** (whole page off-palette). *(Done 2026-07-03: equity-growth / savings emerald indicators → status-success; no logic change.)*
+- [x] **17. AdminDashboard + StaffDashboard pastel KPI tiles.** *(Done 2026-07-03: AdminDashboard KPI icon tiles unified to the primary ramp; StaffDashboard swept (~53 classes) to semantic tokens — priority badges low→muted/normal→primary/high→warning/urgent→danger, GSE-ready→success, violet AI accents→primary, SLA/compliance status texts→their status tokens. dark: legacy variants dropped (tokens are mode-agnostic). No logic change.)*
+- [x] **18. AICoach + FirstTimeBuyerHub.** *(Done 2026-07-03: AI-brand emerald → primary ramp, success checkmarks/savings → status-success, amber tips → status-warning, category chips → primary; tier dots mapped success/primary/warning/muted. No logic change.)*
+- [x] **19. Shared components:** TrustLayer, AffordabilityBadge, NotificationsPanel, BorrowerRequests, DealTeam, ui/toast. *(Done 2026-07-03: emerald→status-success, amber→status-warning, blue→primary, destructive-red→destructive token (toast). DealTeam's 9-hue role-color map was dead code (never referenced) — removed. All six now token-only; no logic change.)*
+- [x] **20. PropertyDetail + LivePropertyDetail.** *(Done 2026-07-03: PropertyDetail qualification status (within-guidelines/requires-review/exceeds) → success/warning/danger tokens incl. tinted callout borders/bg; LivePropertyDetail rating star → status-warning. No logic change.)*
+- [x] **21. Decide on dark mode** — supported or not. If not, strip the `dark:` variants during the sweep; if yes, test every swept page in dark. *(Decided 2026-07-03: **NOT supported.** `darkMode:["class"]` and a `.dark` token block exist, but there is no ThemeProvider, no next-themes, no toggle, and nothing ever adds the `.dark` class to the document — so dark mode is unreachable by users. Accordingly the Phase-4 sweep drops `dark:` legacy-palette variants as each route is touched (the swept files carry none); the remaining unreachable `dark:` classes in un-swept files are harmless dead styles. If dark mode is ever wanted, add a next-themes provider + toggle and re-audit — the semantic tokens already define `.dark` values.)*
 - [ ] **22. Empty-state pass on staff views** (bare "My Queue (0)" panels need guidance like RenterHome has).
 - [ ] **23. Accessibility pass** — focus order, aria labels, contrast check on the precision ramp mid-values.
 
