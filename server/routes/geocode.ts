@@ -22,6 +22,17 @@ function setCache(cache: Map<string, { data: any; expires: number }>, key: strin
 
 export function registerGeocodeRoutes(app: Express) {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  // Key served to the browser for the Maps JS API (PropertyMap / StreetView).
+  // Must be a SEPARATE, referrer-restricted key: the endpoint is public, so
+  // whatever it returns is effectively published. The server key has no
+  // referrer restriction (server calls send none) and must stay private.
+  const browserKey = process.env.GOOGLE_MAPS_BROWSER_KEY;
+  if (!browserKey && apiKey) {
+    console.warn(
+      "[geocode] GOOGLE_MAPS_BROWSER_KEY not set — /api/config/maps-key is falling back to " +
+        "the unrestricted server key. Create a referrer-restricted browser key before launch.",
+    );
+  }
 
   app.get("/api/geocode/autocomplete", async (req: Request, res: Response) => {
     const input = (req.query.input as string || "").trim();
@@ -192,9 +203,10 @@ export function registerGeocodeRoutes(app: Express) {
   });
 
   app.get("/api/config/maps-key", (_req: Request, res: Response) => {
-    if (!apiKey) {
+    const key = browserKey || apiKey;
+    if (!key) {
       return res.status(503).json({ error: "Google Maps API key not configured" });
     }
-    return res.json({ key: apiKey });
+    return res.json({ key });
   });
 }

@@ -83,6 +83,18 @@ const extractionLimiter = rateLimit({
   message: { error: "Too many document extraction requests, please try again later" },
 });
 
+// Geocode routes proxy paid Google APIs (Places, Geocoding, Address Validation)
+// without auth. The client debounces autocomplete at 300ms, so legitimate use is
+// a handful of calls per address — 100/15min per IP is generous headroom while
+// capping quota-burn abuse well below the general limiter.
+const geocodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many address lookups, please try again later" },
+});
+
 app.use("/api/login", authLimiter);
 app.use("/api/callback", authLimiter);
 app.use("/api/test-login", authLimiter);
@@ -94,6 +106,7 @@ app.use("/api/documents/extract-tax-return", extractionLimiter);
 app.use("/api/documents/extract-paystub", extractionLimiter);
 app.use("/api/documents/extract-bank-statement", extractionLimiter);
 app.use("/api/calculators/extract-lease", extractionLimiter);
+app.use("/api/geocode", geocodeLimiter);
 app.use("/api/track", trackLimiter);
 app.use("/api/email-capture", emailCaptureLimiter);
 app.use(generalLimiter);
@@ -254,8 +267,15 @@ export async function createApp(
     const message = err.message || "Internal Server Error";
 
     log(`Express error: ${status} ${message}`, "error");
+    // 5xx messages are internal (DB errors, stack fragments, file paths) —
+    // never echo them to the client in production. 4xx messages are
+    // intentionally client-facing (validation, auth) and pass through.
+    const clientMessage =
+      status >= 500 && process.env.NODE_ENV === "production"
+        ? "Internal Server Error"
+        : message;
     if (!res.headersSent) {
-      res.status(status).json({ message });
+      res.status(status).json({ message: clientMessage });
     }
   });
 

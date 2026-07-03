@@ -2,18 +2,34 @@
 
 Use these test accounts for development and testing purposes.
 
+Test accounts exist **only in non-production**: `/api/test-login` returns 404 in
+production, and the accounts have no password hash (they cannot log in through
+the normal `/api/auth/login` password flow).
+
 ## Quick Access
 
 Navigate to `/test-login` to access the test login page with one-click login buttons.
 
-## Test Credentials
+## Password
 
-| Role | Email | Password | Dashboard |
-|------|-------|----------|-----------|
-| Admin | admin@test.com | admin123 | /admin |
-| Broker | broker@test.com | broker123 | /broker-dashboard |
-| Lender | lender@test.com | lender123 | /broker-dashboard |
-| Borrower | borrower@test.com | borrower123 | /dashboard |
+All test accounts share a single password sourced from the environment — set
+`DEV_TEST_PASSWORD` in your `.env`. No credentials live in source or docs; if
+test login returns 503, the variable is unset.
+
+## Test Accounts
+
+| Role | Email | Dashboard |
+|------|-------|-----------|
+| Admin | admin@test.com | /admin |
+| Loan Officer | lo@test.com | /broker-dashboard |
+| LO Assistant | loa@test.com | /broker-dashboard |
+| Processor | processor@test.com | /broker-dashboard |
+| Underwriter | underwriter@test.com | /broker-dashboard |
+| Closer | closer@test.com | /broker-dashboard |
+| Broker | broker@test.com | /broker-dashboard |
+| Lender | lender@test.com | /broker-dashboard |
+| Aspiring Owner (renter) | renter@test.com | /renter-home |
+| Active Buyer | buyer@test.com | /dashboard |
 
 ## Role Permissions
 
@@ -33,7 +49,7 @@ Navigate to `/test-login` to access the test login page with one-click login but
 - Clear conditions and advance pipeline stages
 - Manage commission approvals
 
-### Borrower
+### Borrower (aspiring owner / active buyer)
 - Apply for pre-approval
 - Upload documents
 - Track loan progress
@@ -47,7 +63,7 @@ Content-Type: application/json
 
 {
   "email": "admin@test.com",
-  "password": "admin123"
+  "password": "<DEV_TEST_PASSWORD>"
 }
 ```
 
