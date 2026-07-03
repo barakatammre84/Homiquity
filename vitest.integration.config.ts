@@ -14,6 +14,7 @@ export default defineConfig({
     hookTimeout: 30000,
     include: [
       "tests/api.test.ts",
+      "tests/authRecovery.test.ts",
       "tests/lookupMatrixCoverageGap.test.ts",
       "tests/lookupMatrixLifecycle.test.ts",
       "tests/pricingUnderwriting.test.ts",

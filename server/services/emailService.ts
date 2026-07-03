@@ -355,6 +355,61 @@ export const emailTemplates = {
     };
   },
 
+  passwordReset(borrowerName: string, resetUrl: string, expiresMinutes: number): EmailOptions {
+    return {
+      to: "",
+      subject: "Reset Your Homiquity Password",
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">Reset your password</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${borrowerName},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          We received a request to reset the password for your Homiquity account. Click the button below to choose a new one.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0">
+          <tr>
+            <td align="center">
+              <a href="${resetUrl}" style="display:inline-block;background:#0f1729;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:6px;font-size:15px;font-weight:600">Reset Password</a>
+            </td>
+          </tr>
+        </table>
+        <p style="color:#94a3b8;line-height:1.6;margin:16px 0 0;font-size:13px">
+          This link expires in ${expiresMinutes} minutes and can be used once. If you didn't request a reset, you can safely ignore this email — your password won't change.
+        </p>
+        <p style="color:#94a3b8;line-height:1.6;margin:12px 0 0;font-size:12px;word-break:break-all">
+          If the button doesn't work, paste this link into your browser:<br>${resetUrl}
+        </p>
+      `, "Reset your Homiquity password"),
+    };
+  },
+
+  verifyEmail(borrowerName: string, verifyUrl: string): EmailOptions {
+    return {
+      to: "",
+      subject: "Confirm Your Email Address",
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">Confirm your email</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${borrowerName},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Welcome to Homiquity. Please confirm this is your email address so we can keep your account secure and send you important updates about your mortgage.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0">
+          <tr>
+            <td align="center">
+              <a href="${verifyUrl}" style="display:inline-block;background:#0f1729;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:6px;font-size:15px;font-weight:600">Confirm Email</a>
+            </td>
+          </tr>
+        </table>
+        <p style="color:#94a3b8;line-height:1.6;margin:16px 0 0;font-size:12px;word-break:break-all">
+          If the button doesn't work, paste this link into your browser:<br>${verifyUrl}
+        </p>
+      `, "Confirm your email address to finish setting up your account"),
+    };
+  },
+
   inviteCode(recipientEmail: string, role: string, code: string, inviterName: string): EmailOptions {
     return {
       to: recipientEmail,

@@ -48,6 +48,9 @@ const TestLogin = lazy(() => import("@/pages/public/TestLogin"));
 const RedeemInvite = lazy(() => import("@/pages/public/RedeemInvite"));
 const Login = lazy(() => import("@/pages/public/Login"));
 const Signup = lazy(() => import("@/pages/public/Signup"));
+const ForgotPassword = lazy(() => import("@/pages/public/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/public/ResetPassword"));
+const VerifyEmail = lazy(() => import("@/pages/public/VerifyEmail"));
 const AffordabilityCheck = lazy(() => import("@/pages/public/AffordabilityCheck"));
 
 const PreApproval = lazy(() => import("@/pages/lending/PreApproval"));
@@ -175,6 +178,9 @@ function Router() {
         <Route path="/" component={Landing} />
         <Route path="/login"><BareLayout><Login /></BareLayout></Route>
         <Route path="/signup"><BareLayout><Signup /></BareLayout></Route>
+        <Route path="/forgot-password"><BareLayout><ForgotPassword /></BareLayout></Route>
+        <Route path="/reset-password"><BareLayout><ResetPassword /></BareLayout></Route>
+        <Route path="/verify-email"><BareLayout><VerifyEmail /></BareLayout></Route>
         {!isProduction && <Route path="/test-login"><BareLayout><TestLogin /></BareLayout></Route>}
         <Route path="/redeem-invite"><BareLayout><RedeemInvite /></BareLayout></Route>
         <Route path="/redeem-invite/:code"><BareLayout><RedeemInvite /></BareLayout></Route>
