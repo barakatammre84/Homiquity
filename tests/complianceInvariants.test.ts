@@ -200,6 +200,15 @@ describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice"
     }
   });
 
+  it("the adverse-action notice carries the mandatory ECOA §1002.9 block, not just FCRA", () => {
+    const credit = read("server/services/creditService.ts");
+    expect(credit).toMatch(/EQUAL CREDIT OPPORTUNITY ACT/);
+    expect(credit).toMatch(/prohibits creditors from discriminating/);
+    // Creditor identity + administering agency are required alongside the notice.
+    expect(credit).toMatch(/ECOA_ADMINISTERING_AGENCY/);
+    expect(credit).toMatch(/COMPANY_CONFIG\.legalName/);
+  });
+
   it("the automated denial email stays decision-neutral", () => {
     const email = read("server/services/emailService.ts");
     // The compliant adverse-action notice lives in-app (creditService); the

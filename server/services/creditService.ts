@@ -18,15 +18,24 @@ import {
   type DraftConsentProgress,
 } from "@shared/schema";
 import { eq, and, desc, lt } from "drizzle-orm";
-import { 
-  computeAuditEntryHash, 
-  encryptSensitiveData, 
+import {
+  computeAuditEntryHash,
+  encryptSensitiveData,
   computeHash,
-  verifyHashChain 
+  verifyHashChain
 } from "./encryptionService";
+import { COMPANY_CONFIG } from "../config/company";
 
 // v2 (2026-07): rebranded disclosure text from MortgageAI to Homiquity.
 const CURRENT_DISCLOSURE_VERSION = "FCRA-2025-v2";
+
+// ECOA/Reg B §1002.9(b)(1) requires the adverse-action notice to name the
+// federal agency that administers compliance for this creditor. For a
+// non-depository mortgage creditor that default is the CFPB.
+// COUNSEL: confirm the correct administering agency (CFPB vs. FTC, and the
+// exact address per Reg B Appendix A) for this entity before production use.
+const ECOA_ADMINISTERING_AGENCY =
+  "Bureau of Consumer Financial Protection, 1700 G Street NW, Washington, DC 20552";
 
 const FCRA_DISCLOSURE_TEXT = `CONSUMER CREDIT AUTHORIZATION AND DISCLOSURE
 
@@ -959,12 +968,27 @@ ${data.bureau.name}
 ${data.bureau.address}
 Phone: ${data.bureau.phone}
 Website: ${data.bureau.website}
+`;
 
-For questions about this notice, please contact us at:
-Homiquity
-support@homiquity.com
+  // ECOA / Reg B §1002.9(b)(1): every adverse action on a credit application
+  // must carry the equal-credit-opportunity notice, the creditor's identity,
+  // and the administering federal agency — regardless of whether a consumer
+  // report was used. This block is mandatory; the FCRA block above is not a
+  // substitute for it.
+  notice += `
+YOUR RIGHTS UNDER THE EQUAL CREDIT OPPORTUNITY ACT:
 
-This notice is required by the Fair Credit Reporting Act.
+The federal Equal Credit Opportunity Act prohibits creditors from discriminating against credit applicants on the basis of race, color, religion, national origin, sex, marital status, age (provided the applicant has the capacity to enter into a binding contract); because all or part of the applicant's income derives from any public assistance program; or because the applicant has in good faith exercised any right under the Consumer Credit Protection Act. The federal agency that administers compliance with this law concerning this creditor is:
+${ECOA_ADMINISTERING_AGENCY}
+
+CREDITOR:
+${COMPANY_CONFIG.legalName}
+NMLS #${COMPANY_CONFIG.nmlsId}
+${COMPANY_CONFIG.contactEmail} | ${COMPANY_CONFIG.contactPhone}
+
+For questions about this notice, please contact ${COMPANY_CONFIG.legalName} using the information above.
+
+This notice is required by the Equal Credit Opportunity Act and the Fair Credit Reporting Act.
 `;
 
   return notice;
