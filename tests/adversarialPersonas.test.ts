@@ -254,7 +254,7 @@ describe("Persona 1 — Marcus Vale (K-1 losses + $2M asset spike)", () => {
     { accountType: "Cash Management Sweep", cashOrMarketValue: "2050000" },
   ];
 
-  it("PIN: business losses are silently dropped and the file auto-approves on +$27,700/mo", async () => {
+  it("FIXED(#2): K-1 losses net against income — the negative-net file no longer auto-approves on +$27,700/mo", async () => {
     primeOrchestrator(makeApp(), {
       employment: valeEmployment,
       urlaAssets: valeAssets,
@@ -263,22 +263,39 @@ describe("Persona 1 — Marcus Vale (K-1 losses + $2M asset spike)", () => {
     });
     const d = await runInstantDecision("app-1");
 
-    expect(d.status).toBe("DECISION_READY");
-    // Loss K-1 #3: "(21,400)" parses to NaN -> 0. Loss K-1 #4: base+bonus sums
-    // negative, so the `> 0` guard in aggregateBorrowerFinancials skips it.
-    expect(d.metrics!.monthlyIncome).toBe(27700);
-    // DTI computed against fantasy income: 11,400 / 27,700 = 41.16% -> APPROVED.
-    expect(d.decision).toBe("APPROVED");
-    // $2M spike counted at 100% — no haircut, no sourcing gate on the decision.
-    expect(d.metrics!.liquidAssets).toBe(2_050_000);
+    // Previously: the two losses vanished (NaN-parse + `> 0` guard), income read
+    // $27,700 and the file APPROVED. Now net qualifying income is -$6,500/mo, so
+    // the file cannot approve — it routes to a self-employed income review.
+    expect(d.decision).not.toBe("APPROVED");
+    expect(d.status).toBe("NEEDS_MORE_INFO");
+    expect(d.missingItems.join(" ")).toMatch(/business losses/i);
   });
 
-  it.fails("SPEC: negative K-1 income must reduce qualifying income, not vanish", async () => {
-    primeOrchestrator(makeApp(), { employment: valeEmployment, piti: 6200 });
+  it("FIXED(#2): accounting-format losses parse and net exactly, instead of being deleted", async () => {
+    // One profitable K-1 of $40,000/mo plus the same two losses. Net stays
+    // positive so a decision is produced and the exact figure is checkable.
+    const mixed = [
+      { borrowerSequenceNumber: 1, employer: "Vale Anchor LLC (K-1)", baseIncome: "40000" },
+      { borrowerSequenceNumber: 1, employer: "Vale RE Partners (K-1)", totalMonthlyIncome: "(21,400)" },
+      { borrowerSequenceNumber: 1, employer: "Vale Restaurant Grp (K-1)", baseIncome: "-14800", bonusIncome: "2000" },
+    ];
+    primeOrchestrator(makeApp(), { employment: mixed, piti: 3000 });
     const d = await runInstantDecision("app-1");
-    // 27,700 is the sum of ONLY the profitable K-1s. Any correct treatment of
-    // the two loss entities (offset, or a blocking condition) lands below it.
-    expect(d.metrics!.monthlyIncome).toBeLessThan(27700);
+
+    // base 40,000 − 21,400 − 14,800 = 3,800; variable 2,000; total 5,800.
+    expect(d.status).toBe("DECISION_READY");
+    expect(d.metrics!.monthlyIncome).toBe(5800);
+    // Strictly below the naive positive-only sum ($42,000) the old code used.
+    expect(d.metrics!.monthlyIncome).toBeLessThan(42000);
+  });
+
+  it("PIN: the $2M 'Cash Management Sweep' is still counted at 100% — no reserve haircut (open finding)", async () => {
+    primeOrchestrator(makeApp({ annualIncome: "600000" }), { urlaAssets: valeAssets, piti: 4000 });
+    const d = await runInstantDecision("app-1");
+    // classifyAsset finds no brokerage/retirement keyword -> CHECKING_SAVINGS,
+    // which the engine counts at full value (a stock/retirement haircut would
+    // reduce it). Unaffected by #2; belongs to a later asset-classification fix.
+    expect(d.metrics!.liquidAssets).toBe(2_050_000);
   });
 
   it("PIN: the large-deposit detector is blind to positive-convention inflows", () => {
@@ -307,7 +324,7 @@ describe("Persona 1 — Marcus Vale (K-1 losses + $2M asset spike)", () => {
   });
 
   it.fails("SPEC: instant-decision reserves must match pre-underwriting reserves (net of down payment)", async () => {
-    primeOrchestrator(makeApp(), { employment: valeEmployment, urlaAssets: valeAssets, piti: 6200 });
+    primeOrchestrator(makeApp({ annualIncome: "600000" }), { urlaAssets: valeAssets, piti: 6200 });
     const d = await runInstantDecision("app-1");
     // preUnderwriting subtracts the down payment before dividing by PITI; the
     // instant decision divides the gross balance. Same borrower, two numbers.

@@ -61,12 +61,30 @@ function classifyAsset(accountType: string): AssetProfile["type"] {
 
 function toNumber(v: unknown): number {
   if (v === null || v === undefined) return NaN;
-  return parseFloat(String(v).replace(/[,$]/g, ""));
+  let s = String(v).trim().replace(/[,$\s]/g, "");
+  // Accounting/tax-form negatives are parenthesized, e.g. a K-1 loss of
+  // "(21,400)". parseFloat would read this as NaN (then get zeroed by safe),
+  // silently deleting the loss from qualifying income — so normalize it to a
+  // real negative before parsing.
+  let negative = false;
+  if (/^\(.*\)$/.test(s)) {
+    negative = true;
+    s = s.slice(1, -1);
+  }
+  const n = parseFloat(s);
+  if (isNaN(n)) return NaN;
+  return negative ? -n : n;
 }
 
 function safe(v: unknown): number {
   const n = toNumber(v);
   return isNaN(n) ? 0 : n;
+}
+
+/** True when a value is present and parses to a real number (incl. negatives). */
+function isPresentNumber(v: unknown): boolean {
+  if (v === null || v === undefined || String(v).trim() === "") return false;
+  return !isNaN(toNumber(v));
 }
 
 interface AggregatedFinancials {
@@ -104,20 +122,29 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
   // Income: base vs variable (overtime/bonus/commission/other), summed across all borrowers.
   let base = 0;
   let variable = 0;
+  let sawIncomeLineItem = false;
   for (const e of employment) {
     borrowerSeqs.add(e.borrowerSequenceNumber ?? 1);
-    const b = safe(e.baseIncome);
-    const varComponents = safe(e.overtimeIncome) + safe(e.bonusIncome) + safe(e.commissionIncome) + safe(e.otherIncome);
-    if (b + varComponents > 0) {
-      base += b;
-      variable += varComponents;
-    } else {
-      // Only a rolled-up total was captured for this job.
+    const itemized = [e.baseIncome, e.overtimeIncome, e.bonusIncome, e.commissionIncome, e.otherIncome];
+    // Use itemized fields whenever ANY is present — including when they net to a
+    // loss. The prior `> 0` guard treated a net-negative K-1 as "no itemized
+    // data" and fell through to the rolled-up total (usually 0), deleting the
+    // business loss from qualifying income.
+    if (itemized.some(isPresentNumber)) {
+      base += safe(e.baseIncome);
+      variable += safe(e.overtimeIncome) + safe(e.bonusIncome) + safe(e.commissionIncome) + safe(e.otherIncome);
+      sawIncomeLineItem = true;
+    } else if (isPresentNumber(e.totalMonthlyIncome)) {
+      // Only a rolled-up total was captured for this job (which may be a loss).
       base += safe(e.totalMonthlyIncome);
+      sawIncomeLineItem = true;
     }
   }
   for (const o of otherIncome) {
-    variable += safe(o.monthlyAmount);
+    if (isPresentNumber(o.monthlyAmount)) {
+      variable += safe(o.monthlyAmount);
+      sawIncomeLineItem = true;
+    }
   }
 
   // Debts: monthly payments not being paid off, summed across all borrowers.
@@ -128,10 +155,12 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     monthlyDebts += safe(l.monthlyPayment);
   }
 
-  const hasUrlaIncome = employment.length > 0 && base + variable > 0;
+  // Fall back to the app-summary income ONLY when no usable line item was
+  // captured at all. A net loss IS usable data — falling back on a negative
+  // total would launder a loss back into the self-reported summary figure.
+  const hasUrlaIncome = sawIncomeLineItem;
   const hasUrlaLiabilities = liabilities.length > 0;
 
-  // Fall back to the application-level summary when line items are absent.
   if (!hasUrlaIncome) {
     const annual = safe(app.annualIncome);
     base = annual / 12;
@@ -168,7 +197,13 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   const purchasePrice = toNumber(app.purchasePrice);
   const downPayment = toNumber(app.downPayment);
   const missing: string[] = [];
-  if (fin.totalMonthlyIncome <= 0) missing.push("Income (no employment or income sources on file)");
+  if (fin.totalMonthlyIncome <= 0) {
+    missing.push(
+      fin.incomeBasis === "urla_line_items"
+        ? "Net qualifying income is zero or negative after business losses — a self-employed income review is required before a decision."
+        : "Income (no employment or income sources on file)",
+    );
+  }
   if (!app.creditScore) missing.push("Credit score");
   if (!purchasePrice || purchasePrice <= 0) missing.push("Purchase price");
   if (isNaN(downPayment) || downPayment < 0) missing.push("Down payment");
