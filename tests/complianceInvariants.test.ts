@@ -181,11 +181,23 @@ describe("Reg Z §1026.22: every displayed APR comes from the actuarial engine",
 });
 
 describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice", () => {
-  it("the denial status transition generates or verifies an adverse-action notice before applying", () => {
-    const lending = read("server/routes/lending.ts");
-    expect(lending).toMatch(/getAdverseActionsByApplication/);
-    expect(lending).toMatch(/generateAdverseAction\(/);
-    expect(lending).toMatch(/HMDA_TO_ADVERSE_ACTION_REASON/);
+  it("EVERY denial route runs through the shared adverse-action chokepoint", () => {
+    // Both denial paths — the status PATCH and the pipeline advance-stage
+    // POST — must call ensureAdverseActionForDenial before the disposition
+    // is applied. A denial path that skips it reopens the §1002.9 hole.
+    for (const route of ["server/routes/lending.ts", "server/routes/underwriting.ts"]) {
+      expect(read(route)).toMatch(/ensureAdverseActionForDenial\(/);
+    }
+  });
+
+  it("the chokepoint and its HMDA→Reg B mapping live only in creditService", () => {
+    const credit = read("server/services/creditService.ts");
+    expect(credit).toMatch(/export async function ensureAdverseActionForDenial/);
+    expect(credit).toMatch(/HMDA_TO_ADVERSE_ACTION_REASON/);
+    // Routes must not carry their own copy of the mapping (single source).
+    for (const route of ["server/routes/lending.ts", "server/routes/underwriting.ts"]) {
+      expect(read(route)).not.toMatch(/HMDA_TO_ADVERSE_ACTION_REASON\s*:/);
+    }
   });
 
   it("the automated denial email stays decision-neutral", () => {

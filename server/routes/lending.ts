@@ -1436,21 +1436,6 @@ export function registerLendingRoutes(
     denialReasons: z.array(z.string().min(1)).optional(),
   });
 
-  // Bridges the HMDA LAR denial-reason labels (what the staff UI collects)
-  // onto the ECOA/Reg B adverse-action reason catalog in creditService, so a
-  // denial always produces a compliant notice without double data entry.
-  const HMDA_TO_ADVERSE_ACTION_REASON: Record<string, string> = {
-    "Debt-to-income ratio": "dti_high",
-    "Employment history": "employment_history",
-    "Credit history": "insufficient_credit_history",
-    "Collateral": "collateral_insufficient",
-    "Insufficient cash (downpayment, closing costs)": "insufficient_funds_to_close",
-    "Unverifiable information": "unverifiable_information",
-    "Credit application incomplete": "application_incomplete",
-    "Mortgage insurance denied": "mortgage_insurance_denied",
-    "Other": "other_credit_decision_factors",
-  };
-
   app.patch("/api/loan-applications/:id/status", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const user = req.user as User;
@@ -1517,40 +1502,24 @@ export function registerLendingRoutes(
       }
 
       // ECOA/Reg B §1002.9 + FCRA §615: a denial must carry an adverse-action
-      // notice. Generate it BEFORE the status flips — if notice generation
-      // fails, the denial does not proceed. Skipped only when a notice
-      // already exists for this application (e.g. staff pre-generated one
-      // via the compliance endpoint).
+      // notice. The shared chokepoint generates it BEFORE the status flips —
+      // if it can't, the denial does not proceed. (Same guard runs on the
+      // underwriting advance-stage denial path.)
       if (status === "denied") {
-        try {
-          const existingNotices = await creditService.getAdverseActionsByApplication(id);
-          if (existingNotices.length === 0) {
-            const reasonKeys = (denialReasons || [])
-              .map((r) => HMDA_TO_ADVERSE_ACTION_REASON[r])
-              .filter((k): k is string => !!k);
-            if (reasonKeys.length === 0) {
-              return res.status(422).json({
-                error: "Denial reasons could not be mapped to adverse-action reasons; generate an adverse-action notice via the compliance endpoint first",
-              });
-            }
-            const adverseAction = await creditService.generateAdverseAction({
-              applicationId: id,
-              userId: application.userId,
-              actionType: "denial",
-              primaryReason: reasonKeys[0],
-              secondaryReasons: reasonKeys.slice(1),
-              creditScoreUsed: application.creditScore ?? undefined,
-              generatedBy: user.id,
-            });
-            logAudit(req, "adverse_action.generated", "loan_application", id, {
-              adverseActionId: adverseAction.id,
-              trigger: "status_denied",
-            });
-          }
-        } catch (aaErr) {
-          console.error("Adverse action generation failed — denial blocked:", aaErr);
-          return res.status(422).json({
-            error: "Could not generate the required adverse-action notice; the denial was not applied",
+        const aa = await creditService.ensureAdverseActionForDenial({
+          applicationId: id,
+          userId: application.userId,
+          denialReasons,
+          creditScoreUsed: application.creditScore,
+          generatedBy: user.id,
+        });
+        if (!aa.ok) {
+          return res.status(422).json({ error: aa.error });
+        }
+        if (aa.created) {
+          logAudit(req, "adverse_action.generated", "loan_application", id, {
+            adverseActionId: aa.adverseActionId,
+            trigger: "status_denied",
           });
         }
       }

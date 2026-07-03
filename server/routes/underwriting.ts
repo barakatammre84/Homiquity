@@ -14,6 +14,7 @@ import {
 import { calculateLLPA, getAreaMedianIncome } from "../pricing";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 import { tridHardStopError } from "../services/trid";
+import * as creditService from "../services/creditService";
 
 /**
  * Checks whether a staff user is authorized to mutate a specific loan application.
@@ -537,13 +538,36 @@ export function registerUnderwritingRoutes(
       }
 
       const { updatePipelineStage, checkPipelineProgress } = await import("../pipelineEngine");
-      
+
       const progress = await checkPipelineProgress(id);
       if (!progress.readyForNextStage && newStage !== "denied") {
-        return res.status(400).json({ 
-          error: "Cannot advance stage", 
-          blockers: progress.blockers 
+        return res.status(400).json({
+          error: "Cannot advance stage",
+          blockers: progress.blockers
         });
+      }
+
+      // ECOA/Reg B §1002.9 + FCRA §615: a denial via this pipeline path must
+      // carry an adverse-action notice, exactly as the status endpoint does.
+      // Generate it BEFORE the stage moves — if it can't, the denial is blocked.
+      if (newStage === "denied") {
+        const aa = await creditService.ensureAdverseActionForDenial({
+          applicationId: id,
+          userId: application.userId,
+          denialReasons,
+          creditScoreUsed: application.creditScore,
+          generatedBy: req.user!.id,
+        });
+        if (!aa.ok) {
+          return res.status(422).json({ error: aa.error });
+        }
+        if (aa.created) {
+          const { logAudit } = await import("../auditLog");
+          logAudit(req, "adverse_action.generated", "loan_application", id, {
+            adverseActionId: aa.adverseActionId,
+            trigger: "advance_stage_denied",
+          });
+        }
       }
 
       await updatePipelineStage(id, newStage, newStage === "denied" ? { denialReasons } : undefined);

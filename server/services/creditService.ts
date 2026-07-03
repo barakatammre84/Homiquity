@@ -978,6 +978,84 @@ export async function getAdverseActionsByApplication(applicationId: string): Pro
     .orderBy(desc(adverseActions.noticeDate));
 }
 
+// HMDA LAR denial-reason labels (what the staff UI collects) mapped onto the
+// ECOA/Reg B adverse-action reason catalog above, so any denial can produce a
+// compliant notice without double data entry. Keep in sync with
+// HMDA_DENIAL_REASONS in client/src/pages/staff/BorrowerFile.tsx.
+export const HMDA_TO_ADVERSE_ACTION_REASON: Record<string, string> = {
+  "Debt-to-income ratio": "dti_high",
+  "Employment history": "employment_history",
+  "Credit history": "insufficient_credit_history",
+  "Collateral": "collateral_insufficient",
+  "Insufficient cash (downpayment, closing costs)": "insufficient_funds_to_close",
+  "Unverifiable information": "unverifiable_information",
+  "Credit application incomplete": "application_incomplete",
+  "Mortgage insurance denied": "mortgage_insurance_denied",
+  "Other": "other_credit_decision_factors",
+};
+
+export interface EnsureAdverseActionResult {
+  ok: boolean;
+  /** Present when ok is false — a borrower-safe message the route returns as 422. */
+  error?: string;
+  adverseActionId?: string;
+  /** True when a new notice was generated; false when one already existed. */
+  created?: boolean;
+}
+
+/**
+ * ECOA/Reg B §1002.9 + FCRA §615 invariant: a denied application must carry an
+ * adverse-action notice. This is the single chokepoint every denial path calls
+ * BEFORE flipping status/stage — if it returns { ok: false }, the caller must
+ * refuse the denial (return the error as a 422). Idempotent: a no-op when a
+ * notice already exists (e.g. staff pre-generated one via the compliance
+ * endpoint). Never throws for expected conditions.
+ */
+export async function ensureAdverseActionForDenial(params: {
+  applicationId: string;
+  /** The borrower's user id. */
+  userId: string;
+  denialReasons?: string[];
+  creditScoreUsed?: number | null;
+  /** The staff user performing the denial. */
+  generatedBy: string;
+}): Promise<EnsureAdverseActionResult> {
+  const existing = await getAdverseActionsByApplication(params.applicationId);
+  if (existing.length > 0) {
+    return { ok: true, created: false, adverseActionId: existing[0].id };
+  }
+
+  const reasonKeys = (params.denialReasons || [])
+    .map((r) => HMDA_TO_ADVERSE_ACTION_REASON[r])
+    .filter((k): k is string => !!k);
+  if (reasonKeys.length === 0) {
+    return {
+      ok: false,
+      error:
+        "Denial reasons could not be mapped to adverse-action reasons; generate an adverse-action notice via the compliance endpoint first",
+    };
+  }
+
+  try {
+    const adverseAction = await generateAdverseAction({
+      applicationId: params.applicationId,
+      userId: params.userId,
+      actionType: "denial",
+      primaryReason: reasonKeys[0],
+      secondaryReasons: reasonKeys.slice(1),
+      creditScoreUsed: params.creditScoreUsed ?? undefined,
+      generatedBy: params.generatedBy,
+    });
+    return { ok: true, created: true, adverseActionId: adverseAction.id };
+  } catch (err) {
+    console.error("Adverse action generation failed — denial blocked:", err);
+    return {
+      ok: false,
+      error: "Could not generate the required adverse-action notice; the denial was not applied",
+    };
+  }
+}
+
 export async function markAdverseActionDelivered(
   adverseActionId: string,
   deliveryMethod: string,
