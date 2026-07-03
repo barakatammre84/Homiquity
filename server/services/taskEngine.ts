@@ -8,6 +8,7 @@ import {
   escalationActions,
   users,
   loanApplications,
+  isInternalStaffRole,
   type Task,
   type InsertTask,
   type TaskEvent,
@@ -45,6 +46,17 @@ export function userRoleToOwnerRole(userRole: string): string {
 // Convert task owner role to user role (lowercase)
 export function ownerRoleToUserRole(ownerRole: string): string {
   return OWNER_ROLE_TO_USER_ROLE[ownerRole.toUpperCase()] || ownerRole.toLowerCase();
+}
+
+// Authorization for the shared role work queue (GET /api/task-engine/tasks/by-role/:role).
+// Admin may query any role's queue. A non-admin internal-staff member may query ONLY their
+// own role's queue — owner-role forms are compared so aliases match (e.g. underwriter -> "UW").
+// External partners (broker, lender) and clients are always denied; this is the single source
+// of truth for that gate so the route handler and its tests can't drift apart.
+export function canAccessRoleQueue(userRole: string, requestedRole: string): boolean {
+  if (userRole === "admin") return true;
+  if (!isInternalStaffRole(userRole)) return false;
+  return userRoleToOwnerRole(userRole) === userRoleToOwnerRole(requestedRole);
 }
 
 // SLA Status computation

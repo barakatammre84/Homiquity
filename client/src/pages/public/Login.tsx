@@ -8,20 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { isStaffRole } from "@shared/schema";
+import { getRoleHomeRoute } from "@/lib/roleRoutes";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
-
-function getRoleHomeRoute(role: string): string {
-  if (role === "admin") return "/admin";
-  // Mortgage brokers get their own referral/commission dashboard rather than the
-  // internal operations dashboard.
-  if (role === "broker") return "/broker-dashboard";
-  // "lender" is a deferred persona (no product/pricing surface yet); it falls
-  // through to the staff route, which renders a neutral partner landing for
-  // non-internal-staff instead of the empty operations shell.
-  if (isStaffRole(role)) return "/staff-dashboard";
-  return "/dashboard";
-}
 
 export default function Login() {
   const [email, setEmail] = useState("");

@@ -12,6 +12,9 @@ describe("API Health & Auth", () => {
       "/api/loan-applications",
       "/api/documents",
       "/api/tasks",
+      "/api/staff/applications",
+      "/api/staff/users",
+      "/api/task-engine/tasks/by-role/lo",
     ];
 
     const results = await Promise.all(protectedRoutes.map((r) => apiGet(r)));

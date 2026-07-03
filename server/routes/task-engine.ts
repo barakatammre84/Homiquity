@@ -452,7 +452,7 @@ export async function registerTaskEngineRoutes(
   // ========================================================================
 
   // Import task engine
-  const { taskEngine, userRoleToOwnerRole } = await import("../services/taskEngine");
+  const { taskEngine, userRoleToOwnerRole, canAccessRoleQueue } = await import("../services/taskEngine");
 
   // Get SLA class configurations (admin/underwriter only — control-plane config)
   app.get("/api/task-engine/sla-classes", requireRole("admin", "underwriter"), async (req, res) => {
@@ -538,16 +538,13 @@ export async function registerTaskEngineRoutes(
   app.get("/api/task-engine/tasks/by-role/:role", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
-      // Normalize both sides to owner-role form (e.g. "underwriter" -> "UW") so the
-      // comparison is correct regardless of the casing/alias the client sends.
-      const requestedOwnerRole = userRoleToOwnerRole(req.params.role);
-      if (userRole !== "admin") {
-        if (!isInternalStaffRole(userRole) || userRoleToOwnerRole(userRole) !== requestedOwnerRole) {
-          return res.status(403).json({ error: "Forbidden" });
-        }
+      if (!canAccessRoleQueue(userRole, req.params.role)) {
+        return res.status(403).json({ error: "Forbidden" });
       }
+      // Normalize to owner-role form (e.g. "underwriter" -> "UW") so the lookup is
+      // correct regardless of the casing/alias the client sends.
       const status = req.query.status as string | undefined;
-      const tasks = await taskEngine.getTasksByOwnerRole(requestedOwnerRole, status);
+      const tasks = await taskEngine.getTasksByOwnerRole(userRoleToOwnerRole(req.params.role), status);
       res.json(tasks);
     } catch (error) {
       console.error("Get tasks by role error:", error);
