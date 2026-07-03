@@ -1,14 +1,24 @@
 # Deploy & Revert
 
 Homiquity ships with a deliberately simple flow: **push to `main` → Vercel
-deploys it. If it breaks, revert.** No CI gates, no approvals.
+deploys it. If it breaks, revert.** No approvals.
 
 ```
   git push (main)  ──▶  Vercel builds & deploys automatically
-                              │
-                     broken?  ▼
-                    Vercel → Deployments → previous one → Promote  (instant)
+        │                     │
+        ▼            broken?  ▼
+  GitHub Actions    Vercel → Deployments → previous one → Promote  (instant)
+  (ci: typecheck,
+   tests, build,
+   lockfile parity)
 ```
+
+CI (`.github/workflows/ci.yml`) runs on every PR and every push to `main`:
+typecheck, unit tests, production build, and a lockfile-parity check. Today it
+is **non-blocking on main** — a red run emails you but the deploy still goes
+out. To make it a hard gate later: GitHub → Settings → Branches → protect
+`main`, require the `ci` check (this also blocks direct pushes, so `npm run
+save` would move to a PR flow).
 
 ## Shipping
 
