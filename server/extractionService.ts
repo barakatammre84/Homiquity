@@ -13,6 +13,7 @@ import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
 import { ObjectStorageService, ObjectNotFoundError } from "./integrations/object_storage";
+import { computeHash, encryptSensitiveData } from "./services/encryptionService";
 
 // Model lineage, persisted with every extraction so a past result can be traced
 // to the exact model + prompt that produced it. Bump EXTRACTION_PROMPT_VERSION
@@ -29,6 +30,12 @@ interface ExtractionLineage {
   modelId?: string;
   /** Prompt revision that produced this extraction (audit lineage). */
   promptVersion?: string;
+  /** SHA-256 of the raw model response — ties stored fields to the exact output. */
+  rawResponseHash?: string;
+  /** The raw model response, AES-256-GCM encrypted (it can contain PII). */
+  rawResponseEncrypted?: string;
+  rawResponseIv?: string;
+  rawResponseKeyId?: string;
 }
 
 export interface ExtractedTaxReturnData extends ExtractionLineage {
@@ -336,6 +343,22 @@ const VALIDATION_FAILED_WARNING =
   "Model output failed schema validation - values discarded, manual review required";
 
 /**
+ * Lineage for a successful extraction: model/prompt ids plus a hash of the raw
+ * model response and the raw response itself, encrypted (it can carry PII).
+ * Lets an auditor later confirm the stored fields came from that exact output.
+ */
+function rawLineage(rawText: string): ExtractionLineage {
+  const enc = encryptSensitiveData(rawText);
+  return {
+    ...LINEAGE,
+    rawResponseHash: computeHash(rawText),
+    rawResponseEncrypted: enc.encryptedContent,
+    rawResponseIv: enc.iv,
+    rawResponseKeyId: enc.keyId,
+  };
+}
+
+/**
  * Extract tax return data using Gemini vision
  */
 export async function extractTaxReturnData(
@@ -408,7 +431,7 @@ If Schedule C or D are not present, omit those sections.`;
       const extracted: ExtractedTaxReturnData = {
         ...validated,
         documentYear: validated.documentYear || documentYear || new Date().getFullYear().toString(),
-        ...LINEAGE,
+        ...rawLineage(text),
       };
       checkTaxReturnConsistency(extracted);
       return extracted;
@@ -499,7 +522,7 @@ Only include fields that are clearly visible. Return null for any unclear values
     const validated = validateExtraction(payStubSchema, text, "Pay stub");
 
     if (validated) {
-      const extracted: ExtractedPayStubData = { ...validated, ...LINEAGE };
+      const extracted: ExtractedPayStubData = { ...validated, ...rawLineage(text) };
       checkPayStubConsistency(extracted);
       return extracted;
     }
@@ -589,7 +612,7 @@ Limit transactions array to first 10 most significant transactions.`;
     const validated = validateExtraction(bankStatementSchema, text, "Bank statement");
 
     if (validated) {
-      const extracted: ExtractedBankStatementData = { ...validated, ...LINEAGE };
+      const extracted: ExtractedBankStatementData = { ...validated, ...rawLineage(text) };
       checkBankStatementConsistency(extracted);
       return extracted;
     }
@@ -678,7 +701,7 @@ Important:
     const validated = validateExtraction(leaseSchema, text, "Lease");
 
     if (validated) {
-      const extracted: ExtractedLeaseData = { ...validated, ...LINEAGE };
+      const extracted: ExtractedLeaseData = { ...validated, ...rawLineage(text) };
       checkLeaseConsistency(extracted);
       return extracted;
     }

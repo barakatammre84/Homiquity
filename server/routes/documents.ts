@@ -15,6 +15,13 @@ import { sendNotificationEmail } from "../services/emailService";
 
 const objectStorageService = new ObjectStorageService();
 
+// The encrypted raw model response is stored server-side only; never return the
+// ciphertext/IV/key to the client. The hash and model/prompt lineage are safe.
+function publicExtraction<T extends Record<string, any>>(extractedData: T) {
+  const { rawResponseEncrypted, rawResponseIv, rawResponseKeyId, ...rest } = extractedData;
+  return rest;
+}
+
 /** Zero-touch: route an uploaded document at its outstanding conditions (non-fatal). */
 async function matchConditionsForUpload(
   applicationId: string | null | undefined,
@@ -211,7 +218,12 @@ export function registerDocumentRoutes(
           warnings: extractedData.warnings,
           modelId: extractedData.modelId,
           promptVersion: extractedData.promptVersion,
+          responseHash: extractedData.rawResponseHash,
         }),
+        extractionResponseHash: extractedData.rawResponseHash,
+        extractionRawEncrypted: extractedData.rawResponseEncrypted,
+        extractionRawIv: extractedData.rawResponseIv,
+        extractionRawKeyId: extractedData.rawResponseKeyId,
       });
 
       if (extractedData.confidence !== "low" && extractedData.extractedFields) {
@@ -247,7 +259,7 @@ export function registerDocumentRoutes(
       res.json({
         documentId: id,
         documentType: document.documentType,
-        ...extractedData,
+        ...publicExtraction(extractedData),
       });
     } catch (error) {
       console.error("Document extraction error:", error);
@@ -364,7 +376,12 @@ export function registerDocumentRoutes(
           warnings: extractedData.warnings,
           modelId: extractedData.modelId,
           promptVersion: extractedData.promptVersion,
+          responseHash: extractedData.rawResponseHash,
         }),
+        extractionResponseHash: extractedData.rawResponseHash,
+        extractionRawEncrypted: extractedData.rawResponseEncrypted,
+        extractionRawIv: extractedData.rawResponseIv,
+        extractionRawKeyId: extractedData.rawResponseKeyId,
       });
 
       if (applicationId) {
@@ -383,7 +400,7 @@ export function registerDocumentRoutes(
         document,
         extraction: {
           documentType: "tax_return",
-          ...extractedData,
+          ...publicExtraction(extractedData),
         },
       });
     } catch (error) {
@@ -433,7 +450,12 @@ export function registerDocumentRoutes(
           warnings: extractedData.warnings,
           modelId: extractedData.modelId,
           promptVersion: extractedData.promptVersion,
+          responseHash: extractedData.rawResponseHash,
         }),
+        extractionResponseHash: extractedData.rawResponseHash,
+        extractionRawEncrypted: extractedData.rawResponseEncrypted,
+        extractionRawIv: extractedData.rawResponseIv,
+        extractionRawKeyId: extractedData.rawResponseKeyId,
       });
 
       if (applicationId) {
@@ -452,7 +474,7 @@ export function registerDocumentRoutes(
         document,
         extraction: {
           documentType: "pay_stub",
-          ...extractedData,
+          ...publicExtraction(extractedData),
         },
       });
     } catch (error) {
@@ -502,7 +524,12 @@ export function registerDocumentRoutes(
           warnings: extractedData.warnings,
           modelId: extractedData.modelId,
           promptVersion: extractedData.promptVersion,
+          responseHash: extractedData.rawResponseHash,
         }),
+        extractionResponseHash: extractedData.rawResponseHash,
+        extractionRawEncrypted: extractedData.rawResponseEncrypted,
+        extractionRawIv: extractedData.rawResponseIv,
+        extractionRawKeyId: extractedData.rawResponseKeyId,
       });
 
       if (applicationId) {
@@ -521,7 +548,7 @@ export function registerDocumentRoutes(
         document,
         extraction: {
           documentType: "bank_statement",
-          ...extractedData,
+          ...publicExtraction(extractedData),
         },
       });
     } catch (error) {

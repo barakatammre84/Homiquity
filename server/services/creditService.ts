@@ -703,6 +703,7 @@ export async function simulateCreditPullCompletion(
       encryptionIV: encryptedResponse.iv,
       vendorResponseHash: rawResponseHash,
       vendorRequestId: `SIM-${creditPullId.substring(0, 8)}`,
+      isSimulated: true,
       completedAt: new Date(),
       updatedAt: new Date(),
     })

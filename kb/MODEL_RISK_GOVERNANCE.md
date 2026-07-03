@@ -44,11 +44,49 @@ Status legend: ✅ remediated in this hardening pass · ◑ partially addressed 
 |----|-----|------|----------------------|
 | MR-1 | LLM output was `JSON.parse(...)` cast without schema validation, bounds checks, or cross-field consistency checks | Hallucinated/absurd values enter readiness data; document-borne prompt injection can steer output | ✅ **Done.** Every extractor now validates against a strict Zod schema (`server/extractionService.ts`): numerics clamped to document ranges (out-of-range values dropped), account numbers reduced to last-4, cross-field consistency checks (netPay ≤ grossPay, balances reconcile, etc.) cap the model's self-reported confidence, and structurally invalid output degrades to `confidence: "low"` with a warning instead of flowing downstream. |
 | MR-2 | Model self-reported `confidence === "high"` auto-set document `status: "verified"` | An uploaded document containing adversarial instructions could mark itself "verified"; conflated model confidence with institutional verification | ✅ **Done.** High confidence now advances a doc only to `"verifying"`. `"verified"` is reachable **only** via the new human-review route `POST /api/documents/:id/verify` (role-gated to admin/LO/LOA/processor/underwriter + deal-team, audit-logged). |
-| MR-3 | No model/prompt lineage persisted: extraction stored field names only | Cannot reconstruct *why* a value was extracted | ◑ **Partial.** Model ID + prompt version (`EXTRACTION_MODEL_ID`, `EXTRACTION_PROMPT_VERSION`) are now stamped on every extraction result and persisted in `document.notes`. Still to do: raw-response hash + encrypted raw response, mirroring the credit-pull pattern. |
-| MR-4 | Decision snapshots omit policy/matrix versions; lookup matrices are mutable and resolved live | A past decision cannot be exactly reproduced after a matrix update | ⬜ **Open.** Record resolved threshold values (dtiCap, ltvCap, haircuts, PMI/LLPA cells) and a matrix version/hash in each `decision_snapshots` row. |
-| MR-5 | Simulated credit pull (`Math.random` scores) wrote `creditScore` via a production-reachable route | Simulation data could ground a real decision if deployed unchanged | ✅ **Done.** `simulateCreditPullCompletion` now hard-throws in production unless `CREDIT_VENDOR_MODE=simulation` is explicitly set (staging only). `simulationMode: true` remains stamped in the raw response. Remaining: surface that flag in staff UI. |
+| MR-3 | No model/prompt lineage persisted: extraction stored field names only | Cannot reconstruct *why* a value was extracted | ✅ **Done.** Model ID + prompt version stamped on every extraction; on success the SHA-256 of the raw model response and the **encrypted** raw response are persisted on the `documents` row (`extraction_response_hash`, `extraction_raw_encrypted/_iv/_key_id`) — mirroring the credit-pull vendor-response pattern. Ciphertext is never returned to clients (`publicExtraction`). |
+| MR-4 | Decision snapshots omit policy/matrix versions; lookup matrices are mutable and resolved live | A past decision cannot be exactly reproduced after a matrix update | ✅ **Done.** The engine returns a `ResolvedPolicy` (dtiCap, stretchDti, ltvCap, asset haircuts, resolved PMI/LLPA cells, VA residual) with a SHA-256 fingerprint; both are persisted per `decision_snapshots` row (`resolved_policy`, `policy_fingerprint`). A decision is now reproducible from the exact thresholds it used, even after a later matrix edit. |
+| MR-5 | Simulated credit pull (`Math.random` scores) wrote `creditScore` via a production-reachable route | Simulation data could ground a real decision if deployed unchanged | ✅ **Done.** `simulateCreditPullCompletion` hard-throws in production unless `CREDIT_VENDOR_MODE=simulation`. The pull row now carries a queryable `is_simulated` flag, surfaced as a warning badge in the staff Borrower File. |
 | MR-6 | No periodic model performance monitoring (extraction accuracy vs. human-corrected ground truth) | Silent drift in extraction quality | ⬜ **Open.** `documentConfidence.recordHumanReview` already captures corrections; still need a monthly accuracy report per document type with threshold alerts. |
 | MR-7 | No documented fair-lending testing of the deterministic engine outputs | Reg B / fair-lending exam exposure even for rules-based systems | ⬜ **Open.** Quarterly disparate-impact analysis using `hmda_demographics`, results retained 5 years. |
+
+## 4a. Risk acceptance — credit-score column encryption (audit finding #8)
+
+**Decision requested of:** CISO / Compliance Officer (sign-off required — this is a
+risk-acceptance, not an engineering task).
+
+**Finding:** credit scores (`credit_pulls.experianScore/equifaxScore/transunionScore/representativeScore`,
+`loan_applications.creditScore`) are stored in plaintext integer columns while the
+stated data-classification policy calls for individually-encrypted sensitive fields.
+
+**Assessment (why encrypting the columns is *not* recommended):**
+- The **authoritative** source — the full raw bureau response, which contains the
+  scores plus tradelines and PII — is **already encrypted at rest**
+  (`credit_pulls.encrypted_raw_response`, AES-256-GCM). The integer columns are a
+  denormalized, queryable convenience copy of already-protected data.
+- A credit score is a 3-digit number, **not a direct identifier**; it is not
+  re-identifying on its own, and the identity linkage that would make it sensitive
+  (SSN) is now encrypted (§ data protection).
+- `creditScore` is read at ~97 sites and is **functionally required in cleartext**
+  by the AI-free deterministic underwriting engine, the pricing/LLPA/PMI lookups,
+  the pipeline eligibility rules, and SQL overlay conditions. Encrypting it would
+  force decrypt-on-read everywhere, remove SQL filterability/ordering, and inject
+  real regression risk into the deterministic decisioning path — a poor trade for
+  data whose authoritative form is already encrypted.
+
+**Compensating controls (already in place):**
+- Raw bureau response encrypted at rest; scores never leave the server for
+  external-partner roles (stripped in `credit/summary`).
+- Access to credit data is role-gated and every credit action is written to the
+  tamper-evident, hash-chained `credit_audit_log`.
+- Identity data (SSN, account numbers) is encrypted; a score alone is not PII.
+
+**Recommendation:** accept the residual risk of plaintext score columns with the
+compensating controls above, OR — if policy strictly forbids it — encrypt only the
+per-bureau columns on `credit_pulls` (display-only) while keeping
+`loan_applications.creditScore` cleartext for decisioning, and denormalize a coarse
+band (e.g. `700-739`) for any filtering. Pending sign-off, the columns remain
+cleartext.
 
 ## 5. Third-party model dependency (Gemini)
 
@@ -58,5 +96,5 @@ Status legend: ✅ remediated in this hardening pass · ◑ partially addressed 
 
 ## 6. Change management
 
-- Prompt or model-version changes must increment a `promptVersion` constant (to be added per MR-3) and require a documented review comparing extraction accuracy on a golden-set of test documents (`tests/` harness to be extended).
-- Lookup-matrix (policy) changes are already runtime-mutable; per MR-4 they must become versioned so decisions reference the matrix state they used.
+- Prompt or model-version changes must increment `EXTRACTION_PROMPT_VERSION` / `EXTRACTION_MODEL_ID` (`server/extractionService.ts`); those ids are stamped on every extraction. Changes should still be accompanied by a documented accuracy review on a golden-set of test documents (`tests/` harness to be extended — see MR-6).
+- Lookup-matrix (policy) changes remain runtime-mutable, but each decision now records the resolved thresholds it used plus a fingerprint (MR-4), so a past decision is reproducible from its `decision_snapshots.resolved_policy` regardless of later matrix edits.

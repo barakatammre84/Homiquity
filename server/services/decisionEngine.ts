@@ -1,7 +1,7 @@
 import { eq, desc } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
-import { consolidatedUnderwritingEngine, type UnderwritingInput, type AssetProfile } from "../underwritingEngine";
+import { consolidatedUnderwritingEngine, type UnderwritingInput, type AssetProfile, type ResolvedPolicy } from "../underwritingEngine";
 import { generateLoanEstimate } from "./loanEstimate";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { decisionSnapshots, type LoanApplication } from "@shared/schema";
@@ -34,6 +34,8 @@ export interface InstantDecision {
   isVerified: boolean;
   reasons: string[];
   missingItems: string[];
+  /** Resolved thresholds/matrix cells + fingerprint for reproducibility (null pre-decision). */
+  resolvedPolicy: ResolvedPolicy | null;
   metrics: {
     ltv: number;
     dti: number;
@@ -175,7 +177,7 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   if (!app.propertyState) missing.push("Property state");
 
   if (missing.length > 0) {
-    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: missing, metrics: null, ...base };
+    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: missing, metrics: null, resolvedPolicy: null, ...base };
   }
 
   // Price the loan to get a proposed PITI (reuses the loan-estimate service).
@@ -185,7 +187,7 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     monthlyPiti = le.projectedPayments.years1Through5.estimatedTotal;
   } catch (err) {
     const detail = err instanceof Error ? err.message : "unable to price loan";
-    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: [detail], metrics: null, ...base };
+    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: [detail], metrics: null, resolvedPolicy: null, ...base };
   }
 
   // Run the deterministic engine on the aggregated, multi-borrower figures.
@@ -210,7 +212,7 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     // The engine throws for missing VA inputs (family size / square footage) or
     // invalid values — surface as a "need more info" gap rather than a 500.
     const detail = err instanceof Error ? err.message : "additional information required";
-    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: [detail], metrics: null, ...base };
+    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: [detail], metrics: null, resolvedPolicy: null, ...base };
   }
 
   return {
@@ -218,6 +220,7 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     decision: result.decision,
     reasons: result.rejectionReasons,
     missingItems: [],
+    resolvedPolicy: result.resolvedPolicy,
     metrics: {
       ltv: result.calculatedLtv,
       dti: result.calculatedDti,
@@ -265,6 +268,8 @@ export async function recalculateDecision(
       incomeBasis: d.metrics ? d.metrics.incomeBasis : null,
       reasons: d.reasons,
       missingItems: d.missingItems,
+      resolvedPolicy: d.resolvedPolicy ?? null,
+      policyFingerprint: d.resolvedPolicy?.fingerprint ?? null,
     });
     return d;
   } catch (err) {

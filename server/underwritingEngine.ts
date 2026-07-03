@@ -1,4 +1,26 @@
+import crypto from "crypto";
 import { lookupResolver } from "./services/lookupResolver";
+
+/**
+ * The policy thresholds and matrix cells the engine actually resolved for a
+ * given evaluation. Snapshotting these makes a decision reproducible: the
+ * lookup matrices are mutable in Postgres, so re-running later can resolve
+ * different values — but the recorded ResolvedPolicy shows exactly which
+ * numbers produced the original decision. `fingerprint` is a short hash over
+ * these values for quick equality checks / grouping across snapshots.
+ */
+export interface ResolvedPolicy {
+  loanType: "CONVENTIONAL" | "VA";
+  conventionalDtiCapPct: number;
+  conventionalStretchDtiPct: number;
+  conventionalLtvCapPct: number;
+  haircutStockInvestment: number;
+  haircutRetirement: number;
+  pmiRatePct?: number;
+  llpaRatePct?: number;
+  vaRequiredResidualIncome?: number;
+  fingerprint: string;
+}
 
 export interface AssetProfile {
   type: "CHECKING_SAVINGS" | "STOCK_INVESTMENT" | "RETIREMENT_IRA_401K";
@@ -35,6 +57,8 @@ export interface UnderwritingResult {
   actualResidualIncome?: number;
   requiredResidualIncome?: number;
   rejectionReasons: string[];
+  /** The resolved thresholds/matrix cells this decision used (reproducibility). */
+  resolvedPolicy: ResolvedPolicy;
 }
 
 /**
@@ -103,6 +127,10 @@ export class ConsolidatedUnderwritingEngine {
     let resolvedPmiMonthlyPremium = 0;
     let resolvedLlpafUpfrontFee = 0;
 
+    // Captured for the reproducibility snapshot (ResolvedPolicy).
+    let resolvedPmiRatePct: number | undefined;
+    let resolvedLlpaRatePct: number | undefined;
+
     let actualResidualIncome: number | undefined;
     let requiredResidualIncome: number | undefined;
 
@@ -121,6 +149,7 @@ export class ConsolidatedUnderwritingEngine {
           dim1Value: input.representativeFico,
           dim2Value: calculatedLtv,
         });
+        resolvedPmiRatePct = pmiRate;
         resolvedPmiMonthlyPremium = (input.originalLoanAmount * (pmiRate / 100)) / 12;
       }
 
@@ -130,6 +159,7 @@ export class ConsolidatedUnderwritingEngine {
         dim1Value: input.representativeFico,
         dim2Value: lookupLtv,
       });
+      resolvedLlpaRatePct = llpaAdjustmentRate;
       resolvedLlpafUpfrontFee = input.originalLoanAmount * (llpaAdjustmentRate / 100);
 
       // VA Veteran Loan Path
@@ -196,6 +226,18 @@ export class ConsolidatedUnderwritingEngine {
       decision = "MANUAL_REVIEW";
     }
 
+    const resolvedPolicy = buildResolvedPolicy({
+      loanType: targetLoanType,
+      conventionalDtiCapPct: dtiCap * 100,
+      conventionalStretchDtiPct: stretchDti * 100,
+      conventionalLtvCapPct: ltvCap,
+      haircutStockInvestment: haircutStock,
+      haircutRetirement: haircutRetirement,
+      pmiRatePct: resolvedPmiRatePct,
+      llpaRatePct: resolvedLlpaRatePct,
+      vaRequiredResidualIncome: requiredResidualIncome,
+    });
+
     return {
       decision,
       loanType: targetLoanType,
@@ -208,6 +250,7 @@ export class ConsolidatedUnderwritingEngine {
       actualResidualIncome,
       requiredResidualIncome,
       rejectionReasons: reasons,
+      resolvedPolicy,
     };
   }
 
@@ -233,6 +276,25 @@ export class ConsolidatedUnderwritingEngine {
       `CRITICAL COMPLIANCE ERROR: Received unrecognized state parameter [${state}]. Unable to resolve geographic region mapping.`,
     );
   }
+}
+
+/**
+ * Build a ResolvedPolicy and stamp it with a deterministic fingerprint over the
+ * threshold values (undefined fields omitted, numbers rounded to 4 dp so
+ * floating-point noise doesn't change the hash).
+ */
+function buildResolvedPolicy(p: Omit<ResolvedPolicy, "fingerprint">): ResolvedPolicy {
+  const round = (n: number) => Math.round(n * 1e4) / 1e4;
+  const canonical: Record<string, unknown> = { loanType: p.loanType };
+  for (const [k, v] of Object.entries(p)) {
+    if (k === "loanType") continue;
+    if (typeof v === "number" && Number.isFinite(v)) canonical[k] = round(v);
+  }
+  const fingerprint = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(canonical))
+    .digest("hex");
+  return { ...p, fingerprint };
 }
 
 export const consolidatedUnderwritingEngine = new ConsolidatedUnderwritingEngine();

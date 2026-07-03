@@ -308,7 +308,16 @@ export const documents = pgTable("documents", {
   
   status: varchar("status", { length: 50 }).default("uploaded"),
   notes: text("notes"),
-  
+
+  // AI-extraction lineage (mirrors the credit-pull vendor-response pattern):
+  // a SHA-256 of the raw model output, and that raw output encrypted at rest
+  // (it can carry PII). Lets an auditor confirm the stored fields came from a
+  // specific model response, and re-examine it for drift/dispute review.
+  extractionResponseHash: varchar("extraction_response_hash", { length: 64 }),
+  extractionRawEncrypted: text("extraction_raw_encrypted"),
+  extractionRawIv: varchar("extraction_raw_iv", { length: 32 }),
+  extractionRawKeyId: varchar("extraction_raw_key_id", { length: 20 }),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [

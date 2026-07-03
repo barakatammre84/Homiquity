@@ -126,6 +126,7 @@ interface CreditSummary {
     monthlyPayments: string | null;
     completedAt: string | null;
     expiresAt: string | null;
+    isSimulated?: boolean;
   } | null;
   pullCount: number;
   adverseActionCount: number;
@@ -1065,6 +1066,14 @@ export default function BorrowerFile() {
                       <CardContent>
                         {creditData?.latestPull ? (
                           <div className="space-y-4">
+                            {creditData.latestPull.isSimulated && (
+                              <div
+                                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                                data-testid="badge-simulated-pull"
+                              >
+                                Simulated credit data — no live bureau pull. Not for a binding decision.
+                              </div>
+                            )}
                             <div className="grid grid-cols-4 gap-4 text-center">
                               <div>
                                 <p className="text-xs text-muted-foreground">Representative</p>
