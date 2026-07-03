@@ -331,6 +331,16 @@ export default function Messages() {
     refetchInterval: 3000, // Refresh every 3 seconds for active chats
   });
 
+  // Opening a conversation marks its messages read server-side (see GET
+  // /api/messages/:otherUserId), so refresh the shell badge counts once per
+  // open rather than waiting for the 30s poll. Keyed on memberId so it fires
+  // on open, not on every 3s refetch.
+  useEffect(() => {
+    if (memberId) {
+      queryClient.invalidateQueries({ queryKey: ["/api/shell/badges"] });
+    }
+  }, [memberId]);
+
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { recipientId: string; message: string }) => {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { useShellBadges } from "@/hooks/useShellBadges";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -157,10 +158,9 @@ interface NotificationsBellProps {
 export function NotificationsBell({ unreadCount, activities }: NotificationsBellProps) {
   const [open, setOpen] = useState(false);
 
-  const { data: unreadData } = useQuery<{ count: number }>({
-    queryKey: ["/api/notifications/unread-count"],
-    refetchInterval: 15000,
-  });
+  // Unread notification count comes from the shared shell-badges poll (one
+  // request for the whole shell) instead of a dedicated 15s poll here.
+  const badges = useShellBadges();
 
   const { data: notifData } = useQuery<{ notifications: RealNotification[] }>({
     queryKey: ["/api/notifications"],
@@ -172,7 +172,7 @@ export function NotificationsBell({ unreadCount, activities }: NotificationsBell
     .slice(0, 10)
     .map((a, i) => activityToNotification(a, i));
 
-  const realUnread = unreadData?.count ?? 0;
+  const realUnread = badges.unreadNotifications;
   const totalUnread = Math.max(realUnread + unreadCount, 0);
 
   const allNotifications = [...realNotifications, ...activityNotifications];
@@ -182,7 +182,7 @@ export function NotificationsBell({ unreadCount, activities }: NotificationsBell
       method: "PATCH",
       credentials: "include",
     });
-    queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/shell/badges"] });
     queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
   }
 
@@ -192,7 +192,7 @@ export function NotificationsBell({ unreadCount, activities }: NotificationsBell
         method: "PATCH",
         credentials: "include",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/shell/badges"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     }
   }
