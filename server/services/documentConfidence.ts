@@ -24,37 +24,98 @@ export async function recordExtractionConfidence(options: {
   pageCount?: number;
   extractionEngine?: string;
   extractionVersion?: string;
-}): Promise<void> {
+}): Promise<{ humanReviewRequired: boolean }> {
   const reviewThreshold = getReviewThreshold(options.documentType);
   const humanReviewRequired = options.overallConfidence < reviewThreshold;
 
-  await db.insert(documentConfidenceScores).values({
+  // Persist the confidence row + analytics event. This is a quality-gate signal,
+  // not the extraction itself, so a persistence failure must never break the
+  // upload flow — compute the review flag first and return it regardless.
+  try {
+    await db.insert(documentConfidenceScores).values({
+      documentId: options.documentId,
+      documentType: options.documentType,
+      applicationId: options.applicationId || null,
+      extractionEngine: options.extractionEngine || "gemini",
+      extractionVersion: options.extractionVersion || null,
+      overallConfidence: options.overallConfidence.toFixed(4),
+      fieldConfidences: options.fieldConfidences,
+      humanReviewRequired,
+      fieldsExtracted: options.fieldConfidences.length,
+      processingTimeMs: options.processingTimeMs || null,
+      fileSize: options.fileSize || null,
+      pageCount: options.pageCount || null,
+    });
+
+    await emitEvent("document", "confidence_scored", {
+      entityType: "document",
+      entityId: options.documentId,
+      applicationId: options.applicationId,
+      numericValue: options.overallConfidence,
+      payload: {
+        documentType: options.documentType,
+        fieldsExtracted: options.fieldConfidences.length,
+        humanReviewRequired,
+        lowConfidenceFields: options.fieldConfidences.filter(f => f.confidence < 0.7).map(f => f.fieldName),
+      },
+      automationTriggered: true,
+    });
+  } catch (err) {
+    console.error("[doc-confidence] Failed to record extraction confidence (non-fatal):", err);
+  }
+
+  return { humanReviewRequired };
+}
+
+/**
+ * Maps the extractor's coarse confidence label to a representative numeric score
+ * for the type-specific review thresholds in {@link getReviewThreshold}. The
+ * document extractors (server/extractionService.ts) emit only high/medium/low,
+ * so this bridge lets the same threshold table gate every extraction path until
+ * the extractor emits a true numeric confidence. Chosen so the prior behavior
+ * ("high" ⇒ auto-verify) is preserved for the doc types those routes handle,
+ * while medium/low now correctly land on the human-review queue.
+ */
+export function coarseConfidenceToNumeric(confidence: "high" | "medium" | "low"): number {
+  switch (confidence) {
+    case "high":
+      return 0.9;
+    case "medium":
+      return 0.7;
+    case "low":
+      return 0.4;
+  }
+}
+
+/**
+ * Convenience wrapper for the extraction routes: records confidence from the
+ * coarse extractor output and returns whether the document must go to human
+ * review before it can be marked "verified". This is the single quality gate the
+ * upload/extraction paths call — it strengthens human review, it does NOT clear
+ * conditions (that remains a human decision).
+ */
+export async function recordCoarseExtraction(options: {
+  documentId: string;
+  documentType: string;
+  applicationId?: string | null;
+  confidence: "high" | "medium" | "low";
+  extractedFields: string[];
+  fileSize?: number;
+}): Promise<{ humanReviewRequired: boolean }> {
+  const overallConfidence = coarseConfidenceToNumeric(options.confidence);
+  const fieldConfidences: FieldConfidence[] = (options.extractedFields ?? []).map(fieldName => ({
+    fieldName,
+    value: null,
+    confidence: overallConfidence,
+    needsReview: false,
+  }));
+  return recordExtractionConfidence({
     documentId: options.documentId,
     documentType: options.documentType,
-    applicationId: options.applicationId || null,
-    extractionEngine: options.extractionEngine || "gemini",
-    extractionVersion: options.extractionVersion || null,
-    overallConfidence: options.overallConfidence.toFixed(4),
-    fieldConfidences: options.fieldConfidences,
-    humanReviewRequired,
-    fieldsExtracted: options.fieldConfidences.length,
-    processingTimeMs: options.processingTimeMs || null,
-    fileSize: options.fileSize || null,
-    pageCount: options.pageCount || null,
-  });
-
-  await emitEvent("document", "confidence_scored", {
-    entityType: "document",
-    entityId: options.documentId,
-    applicationId: options.applicationId,
-    numericValue: options.overallConfidence,
-    payload: {
-      documentType: options.documentType,
-      fieldsExtracted: options.fieldConfidences.length,
-      humanReviewRequired,
-      lowConfidenceFields: options.fieldConfidences.filter(f => f.confidence < 0.7).map(f => f.fieldName),
-    },
-    automationTriggered: true,
+    applicationId: options.applicationId ?? undefined,
+    overallConfidence,
+    fieldConfidences,
+    fileSize: options.fileSize,
   });
 }
 

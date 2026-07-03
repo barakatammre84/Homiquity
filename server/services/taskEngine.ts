@@ -218,6 +218,12 @@ export class TaskEngineService {
       return { task: null, event: taskEvent };
     }
 
+    // A statutory/legal deadline carried on the event payload (e.g. the ECOA
+    // 30-day adverse-action deadline) is distinct from the SLA target and is
+    // persisted to the task's dueDate column so it can be surfaced/escalated.
+    const dueDateRaw = payload.dueDate as string | undefined;
+    const dueDate = dueDateRaw ? new Date(dueDateRaw) : undefined;
+
     const task = await this.createTask(
       {
         applicationId: event.applicationId,
@@ -225,6 +231,7 @@ export class TaskEngineService {
         description,
         taskType: payload.taskType as string || "review",
         taskTypeCode,
+        ...(dueDate ? { dueDate } : {}),
       },
       undefined,
       event.eventSource,
