@@ -19,7 +19,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { getPresenceColor } from "@/lib/formatters";
-import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
+import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
 import {
   LayoutDashboard,
   FileText,

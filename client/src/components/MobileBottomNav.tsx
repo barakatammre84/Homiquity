@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
 import {
   LayoutDashboard,
   CheckSquare,
