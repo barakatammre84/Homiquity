@@ -20,6 +20,7 @@ export default defineConfig({
       "tests/complianceInvariants.test.ts",
       "tests/scenarioCatalog.test.ts",
       "tests/encryptionRotation.test.ts",
+      "tests/fairLendingAnalysis.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

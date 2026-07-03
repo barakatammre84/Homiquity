@@ -140,6 +140,73 @@ export async function getAccuracyByDocType(daysBack: number = 90): Promise<Array
   }));
 }
 
+// MR-6 — periodic extraction-accuracy report with drift alerts. Wraps the
+// per-doc-type aggregation above and compares each type's human-verified
+// accuracy against its target (the same threshold used to gate review), so a
+// silent drop in extraction quality surfaces as an alert.
+export interface DocTypeAccuracyStatus {
+  documentType: string;
+  totalExtractions: number;
+  reviewedCount: number;
+  avgConfidence: number;
+  avgAccuracy: number | null; // percent
+  targetAccuracyPct: number;
+  needsReviewCount: number;
+  status: "ok" | "below_target" | "insufficient_reviews";
+}
+
+export interface ExtractionAccuracyReport {
+  generatedAt: string;
+  windowDays: number;
+  minReviews: number;
+  docTypes: DocTypeAccuracyStatus[];
+  alerts: string[];
+}
+
+export async function getExtractionAccuracyReport(
+  daysBack: number = 30,
+  minReviews: number = 10,
+): Promise<ExtractionAccuracyReport> {
+  const rows = await getAccuracyByDocType(daysBack);
+
+  const docTypes: DocTypeAccuracyStatus[] = rows.map((r) => {
+    const targetAccuracyPct = getReviewThreshold(r.documentType) * 100;
+    let status: DocTypeAccuracyStatus["status"];
+    if (r.reviewedCount < minReviews) {
+      status = "insufficient_reviews";
+    } else if (r.avgAccuracy !== null && r.avgAccuracy < targetAccuracyPct) {
+      status = "below_target";
+    } else {
+      status = "ok";
+    }
+    return {
+      documentType: r.documentType,
+      totalExtractions: r.totalExtractions,
+      reviewedCount: r.reviewedCount,
+      avgConfidence: r.avgConfidence,
+      avgAccuracy: r.avgAccuracy,
+      targetAccuracyPct,
+      needsReviewCount: r.needsReviewCount,
+      status,
+    };
+  });
+
+  const alerts = docTypes
+    .filter((d) => d.status === "below_target")
+    .map(
+      (d) =>
+        `${d.documentType}: avg accuracy ${d.avgAccuracy}% is below the ${d.targetAccuracyPct}% target over ${d.reviewedCount} human reviews — investigate model/prompt drift.`,
+    );
+
+  return {
+    generatedAt: new Date().toISOString(),
+    windowDays: daysBack,
+    minReviews,
+    docTypes: docTypes.sort((a, b) => a.documentType.localeCompare(b.documentType)),
+    alerts,
+  };
+}
+
 export async function getPendingReviews(): Promise<Array<{
   id: string;
   documentId: string;
