@@ -31,6 +31,7 @@ export default defineConfig({
       "tests/marketDataParsers.test.ts",
       "tests/valueEstimate.test.ts",
       "tests/propertyEligibility.test.ts",
+      "tests/errorMessage.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
