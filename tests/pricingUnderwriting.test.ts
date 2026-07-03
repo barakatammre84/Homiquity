@@ -290,6 +290,17 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
   // ==========================================================================
   describe("GET /api/loan-applications/:id/loan-estimate", () => {
     it("generates a TRID-style loan estimate with a stable shape", async () => {
+      // The LE sits behind the e-disclosure consent gate (ESIGN) — accept it
+      // first via POST /api/consents (borrower_consents is the table the
+      // gate reads), exactly as the borrower UI does.
+      const consent = await authPost(cookie, `/api/consents`, {
+        applicationId,
+        consentType: "e_disclosure",
+        consentGiven: true,
+        consentMethod: "click",
+      });
+      expect([200, 201]).toContain(consent.status);
+
       const res = await authGet(cookie, `/api/loan-applications/${applicationId}/loan-estimate`);
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty("applicationId", applicationId);

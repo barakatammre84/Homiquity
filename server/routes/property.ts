@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { isApprovedGradeLoanAppStatus } from "@shared/schema";
 import type { IStorage } from "../storage";
 import { isAuthenticated } from "../auth";
 import { checkPropertyEligibility } from "../underwriting";
@@ -483,7 +484,7 @@ export function registerPropertyRoutes(
       // Get user's latest pre-approved loan application
       const applications = await storage.getLoanApplicationsByUser(userId);
       const preApproval = applications.find(
-        app => app.status === "pre_approved" || app.status === "approved"
+        app => isApprovedGradeLoanAppStatus(app.status)
       ) || applications[0];
 
       if (!preApproval) {

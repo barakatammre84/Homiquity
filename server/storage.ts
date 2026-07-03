@@ -266,6 +266,9 @@ import {
   type InsertLookupMatrix,
   type LookupMatrixCell,
   type InsertLookupMatrixCell,
+  LOAN_APP_STATUSES,
+  isApprovedGradeLoanAppStatus,
+  isTerminalLoanAppStatus,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -1265,9 +1268,14 @@ export class DatabaseStorage implements IStorage {
     ]);
 
     const totalApplications = appStats.reduce((sum, s) => sum + s.count, 0);
-    const approvedRow = appStats.find(s => s.status === "approved");
-    const approvedCount = approvedRow?.count ?? 0;
-    const totalLoanVolume = approvedRow?.volume ?? "0";
+    // Approval rate = applications at or past pre-approval. (The old check
+    // for a literal "approved" status matched nothing — the metric was
+    // permanently 0.)
+    const approvedRows = appStats.filter(s => isApprovedGradeLoanAppStatus(s.status));
+    const approvedCount = approvedRows.reduce((sum, s) => sum + s.count, 0);
+    const totalLoanVolume = approvedRows
+      .reduce((sum, s) => sum + parseFloat(s.volume || "0"), 0)
+      .toFixed(2);
     const approvalRate = totalApplications > 0
       ? Math.round((approvedCount / totalApplications) * 100)
       : 0;
@@ -2823,8 +2831,11 @@ export class DatabaseStorage implements IStorage {
       .from(loanApplications)
       .where(eq(loanApplications.referringBrokerId, brokerId));
     
-    const activeStatuses = ["draft", "submitted", "analyzing", "pre_approved", "verified", "underwriting", "approved"];
-    const closedStatuses = ["closed"];
+    // Active = any non-terminal status; closed = funded. (The old hand-lists
+    // contained phantom values — "verified", "approved", "closed" — that no
+    // backend path writes, so broker closed-loan stats were permanently 0.)
+    const activeStatuses = LOAN_APP_STATUSES.filter(s => !isTerminalLoanAppStatus(s)) as string[];
+    const closedStatuses = ["funded"];
     
     const totalReferrals = referrals.length;
     const activeReferrals = referrals.filter(r => activeStatuses.includes(r.status)).length;
@@ -3424,10 +3435,10 @@ export class DatabaseStorage implements IStorage {
 
     for (const app of apps) {
       byStatus[app.status] = (byStatus[app.status] || 0) + 1;
-      if (app.status === "closed" || app.status === "funded") {
+      if (app.status === "funded") {
         const amount = parseFloat(app.preApprovalAmount || "0");
         closedVolume += amount;
-        if (app.status === "funded") fundedVolume += amount;
+        fundedVolume += amount;
       }
     }
 

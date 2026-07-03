@@ -21,6 +21,8 @@ import {
 } from "@shared/schema";
 import type { User, LoanApplication, BorrowerProfile, RealEstateOwned } from "@shared/schema";
 import { eq, desc, sql, and, gte, count, isNotNull } from "drizzle-orm";
+import { computeNextAction } from "./nextAction";
+import { isTerminalLoanAppStatus } from "@shared/schema";
 
 export interface IncomeSource {
   source: "document" | "application" | "coach" | "goal";
@@ -290,15 +292,46 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       .groupBy(intentEvents.eventType),
   ]);
 
-  const activeApp = apps.find(a => a.status !== "draft" && a.status !== "denied" && a.status !== "declined") || apps[0] || null;
+  const activeApp = apps.find(a => a.status !== "draft" && !isTerminalLoanAppStatus(a.status)) || apps[0] || null;
+
+  // Second parallel wave — everything that depends on wave-1 results. These
+  // were previously scattered sequential awaits (employment history, coach
+  // messages, property views, milestone count), which added four extra
+  // round-trips of latency to the dashboard's hero section.
+  const wave2GoalData = goalRows[0] || null;
+  const [empHistoryResult, coachMsgsResult, propActivitiesResult, milestoneCountResult] =
+    await Promise.allSettled([
+      activeApp
+        ? db.select().from(employmentHistory).where(eq(employmentHistory.applicationId, activeApp.id))
+        : Promise.resolve([]),
+      coachConvs.length > 0
+        ? db.select().from(coachMessages)
+            .where(eq(coachMessages.conversationId, coachConvs[0].id))
+            .orderBy(desc(coachMessages.createdAt))
+        : Promise.resolve([]),
+      db.select({
+        metadata: userActivities.metadata,
+        createdAt: userActivities.createdAt,
+      }).from(userActivities)
+        .where(and(
+          eq(userActivities.userId, userId),
+          eq(userActivities.activityType, "property_click"),
+          gte(userActivities.createdAt, sql`now() - interval '30 days'`)
+        ))
+        .orderBy(desc(userActivities.createdAt))
+        .limit(10),
+      wave2GoalData
+        ? db.select({ cnt: sql<number>`count(*)::int` })
+            .from(journeyMilestones)
+            .where(eq(journeyMilestones.goalId, wave2GoalData.id))
+        : Promise.resolve([]),
+    ]);
 
   let empHistory: any[] = [];
-  if (activeApp) {
-    try {
-      empHistory = await db.select().from(employmentHistory).where(eq(employmentHistory.applicationId, activeApp.id));
-    } catch (err) {
-      console.warn("[BorrowerGraph] Failed to fetch employment history:", err);
-    }
+  if (empHistoryResult.status === "fulfilled") {
+    empHistory = empHistoryResult.value;
+  } else {
+    console.warn("[BorrowerGraph] Failed to fetch employment history:", empHistoryResult.reason);
   }
 
   const incomeSources: IncomeSource[] = [];
@@ -503,24 +536,18 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
 
   const coachConvWithProfile = coachConvs.find(c => c.financialProfile);
   let coachIntake: any = null;
-  if (coachConvs.length > 0) {
-    try {
-      const latestConv = coachConvs[0];
-      const msgs = await db.select().from(coachMessages)
-        .where(eq(coachMessages.conversationId, latestConv.id))
-        .orderBy(desc(coachMessages.createdAt));
-      for (const msg of msgs) {
-        if (msg.role === "assistant" && msg.structuredData) {
-          const sd = msg.structuredData as any;
-          if (sd?.intake) {
-            coachIntake = sd.intake;
-            break;
-          }
+  if (coachMsgsResult.status === "fulfilled") {
+    for (const msg of coachMsgsResult.value) {
+      if (msg.role === "assistant" && msg.structuredData) {
+        const sd = msg.structuredData as any;
+        if (sd?.intake) {
+          coachIntake = sd.intake;
+          break;
         }
       }
-    } catch (err) {
-      console.warn("[BorrowerGraph] Failed to fetch coach intake:", err);
     }
+  } else {
+    console.warn("[BorrowerGraph] Failed to fetch coach intake:", coachMsgsResult.reason);
   }
 
   if (coachIntake?.annualIncome) {
@@ -798,26 +825,14 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     : null;
 
   let recentPropertyViews: BehaviorSignals["recentPropertyViews"] = [];
-  try {
-    const propActivities = await db.select({
-      metadata: userActivities.metadata,
-      createdAt: userActivities.createdAt,
-    }).from(userActivities)
-      .where(and(
-        eq(userActivities.userId, userId),
-        eq(userActivities.activityType, "property_click"),
-        gte(userActivities.createdAt, sql`now() - interval '30 days'`)
-      ))
-      .orderBy(desc(userActivities.createdAt))
-      .limit(10);
-
-    recentPropertyViews = propActivities.map(a => ({
+  if (propActivitiesResult.status === "fulfilled") {
+    recentPropertyViews = propActivitiesResult.value.map(a => ({
       propertyId: (a.metadata as any)?.propertyId || (a.metadata as any)?.property_id,
       price: parseNum((a.metadata as any)?.price) || undefined,
       viewedAt: a.createdAt?.toISOString() || "",
     }));
-  } catch (err) {
-    console.warn("[BorrowerGraph] Failed to fetch property views:", err);
+  } else {
+    console.warn("[BorrowerGraph] Failed to fetch property views:", propActivitiesResult.reason);
   }
 
   const engagementLevel: "high" | "medium" | "low" | "dormant" =
@@ -837,12 +852,15 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
 
   let suggestedNextAction = "Start your pre-approval application";
   if (activeApp) {
-    if (activeApp.status === "draft") suggestedNextAction = "Complete your application";
-    else if (activeApp.status === "pre_approved") suggestedNextAction = "Browse properties in your budget";
-    else if (activeApp.status === "doc_collection") suggestedNextAction = "Upload required documents";
-    else if (activeApp.status === "conditional") suggestedNextAction = "Clear remaining conditions";
-    else if (activeApp.status === "clear_to_close") suggestedNextAction = "Schedule your closing";
-    else if (activeApp.status === "denied") suggestedNextAction = "Talk to the AI Coach about improving your profile";
+    // Same source of truth as the dashboard's dominant action — the status-
+    // driven mapping lives in ONE place (server/services/nextAction.ts).
+    suggestedNextAction = computeNextAction({
+      application: activeApp,
+      pendingTasks: { total: 0, documents: 0 },
+      pendingDocuments: 0,
+      unreadMessages: 0,
+      activitySummary: null,
+    }).title;
   } else if (engagementLevel === "dormant") {
     suggestedNextAction = "Welcome back — check out new listings or chat with the Coach";
   } else if (propertySearches > 0 && !activeApp) {
@@ -876,15 +894,10 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
   }
 
   let milestonesAchieved = 0;
-  if (goalData) {
-    try {
-      const milestones = await db.select({ cnt: sql<number>`count(*)::int` })
-        .from(journeyMilestones)
-        .where(eq(journeyMilestones.goalId, goalData.id));
-      milestonesAchieved = milestones[0]?.cnt || 0;
-    } catch (err) {
-      console.warn("[BorrowerGraph] Failed to fetch milestones:", err);
-    }
+  if (milestoneCountResult.status === "fulfilled") {
+    milestonesAchieved = milestoneCountResult.value[0]?.cnt || 0;
+  } else {
+    console.warn("[BorrowerGraph] Failed to fetch milestones:", milestoneCountResult.reason);
   }
 
   const bProfile = profileRows[0] || null;

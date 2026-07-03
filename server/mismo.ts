@@ -17,6 +17,7 @@ import type {
   Document,
   BorrowerDeclarations,
 } from "@shared/schema";
+import { isApprovedGradeLoanAppStatus } from "@shared/schema";
 import { COMPANY_CONFIG } from "./config/company";
 import {
   MISMO_NAMESPACE,
@@ -620,16 +621,16 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string): XMLNode {
     });
   }
 
-  if (application.status === "approved" || application.status === "pre_approved") {
+  if (isApprovedGradeLoanAppStatus(application.status)) {
     loanChildren.push({
       tag: "UNDERWRITING",
       children: [
         {
           tag: "UNDERWRITING_DETAIL",
           children: [
-            { 
-              tag: "UnderwritingDecisionType", 
-              text: application.status === "approved" ? "Approve" : "Approve"
+            {
+              tag: "UnderwritingDecisionType",
+              text: "Approve"
             },
             { tag: "UnderwritingMethodType", text: "AutomatedUnderwriting" },
           ],

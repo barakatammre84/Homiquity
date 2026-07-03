@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication, AgentProfile } from "@shared/schema";
+import { isApprovedGradeLoanAppStatus } from "@shared/schema";
 import {
   MapPin,
   Bed,
@@ -177,7 +178,7 @@ export default function PropertyDetail() {
   // Get pre-approval data
   const preApproval = useMemo(() => {
     if (!applications?.length) return null;
-    return applications.find(app => app.status === "pre_approved" || app.status === "approved") || applications[0];
+    return applications.find(app => isApprovedGradeLoanAppStatus(app.status)) || applications[0];
   }, [applications]);
 
   const hasPreApproval = preApproval && 
