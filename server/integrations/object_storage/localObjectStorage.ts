@@ -23,6 +23,17 @@ export function isObjectStorageConfigured(): boolean {
   return Boolean(process.env.PRIVATE_OBJECT_DIR);
 }
 
+/**
+ * Whether the local filesystem fallback may be used. It is DEV-ONLY: in
+ * production we never silently store uploads on ephemeral disk (that is the
+ * exact "uploads succeed then vanish on redeploy" bug this whole flow fixes).
+ * If a production deploy has no GCS bucket configured, uploads refuse loudly
+ * (503) so the misconfiguration is obvious rather than quietly lossy.
+ */
+export function isLocalFallbackEnabled(): boolean {
+  return !isObjectStorageConfigured() && process.env.NODE_ENV !== "production";
+}
+
 // Object ids are server-generated UUIDs. Validating the shape defeats path
 // traversal on the one endpoint that takes an id from the client (the PUT).
 const OBJECT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

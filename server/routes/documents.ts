@@ -12,6 +12,7 @@ import {
   ObjectStorageService,
   ObjectNotFoundError,
   isObjectStorageConfigured,
+  isLocalFallbackEnabled,
   isValidObjectId,
   createLocalUpload,
   writeLocalObject,
@@ -59,10 +60,14 @@ export function registerDocumentRoutes(
         return res.status(400).json({ error: "File too large (max 10MB)" });
       }
 
-      // Local dev without a GCS bucket: hand back a local upload target so the
-      // same client flow works end-to-end. Production (bucket configured) uses
-      // a real presigned Cloud Storage URL.
+      // Without a GCS bucket: local dev hands back a local upload target so the
+      // same client flow works end-to-end; production refuses loudly rather
+      // than silently storing on ephemeral disk. Bucket configured → real
+      // presigned Cloud Storage URL below.
       if (!isObjectStorageConfigured()) {
+        if (!isLocalFallbackEnabled()) {
+          return res.status(503).json({ error: "File uploads are not configured" });
+        }
         const { uploadURL, objectPath } = createLocalUpload();
         return res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
       }
@@ -90,7 +95,9 @@ export function registerDocumentRoutes(
     isAuthenticated,
     express.raw({ type: () => true, limit: 10 * 1024 * 1024 }),
     (req, res) => {
-      if (isObjectStorageConfigured()) {
+      // Only meaningful in local dev; 404s in production and whenever real
+      // object storage is configured, so it can never be a prod write surface.
+      if (!isLocalFallbackEnabled()) {
         return res.status(404).json({ error: "Not found" });
       }
       const { objectId } = req.params;
@@ -151,6 +158,9 @@ export function registerDocumentRoutes(
 
       logAudit(req, "document.download", "document", req.path, { role: user.role });
       if (!isObjectStorageConfigured()) {
+        if (!isLocalFallbackEnabled()) {
+          return res.status(404).json({ error: "Object not found" });
+        }
         return streamLocalObject(req.path, res);
       }
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
@@ -195,6 +205,9 @@ export function registerDocumentRoutes(
         // (e.g. crafted HTML/SVG/PDF) cannot execute in the browser context.
         res.set("Content-Disposition", `attachment; filename="${document.fileName}"`);
         if (!isObjectStorageConfigured()) {
+          if (!isLocalFallbackEnabled()) {
+            return res.status(404).json({ error: "File not found in storage" });
+          }
           return streamLocalObject(document.storagePath, res);
         }
         const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);

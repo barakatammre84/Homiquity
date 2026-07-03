@@ -21,6 +21,7 @@ export { registerObjectStorageRoutes } from "./routes";
 
 export {
   isObjectStorageConfigured,
+  isLocalFallbackEnabled,
   isValidObjectId,
   createLocalUpload,
   localObjectExists,

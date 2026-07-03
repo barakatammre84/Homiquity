@@ -25,6 +25,7 @@ import {
   ObjectStorageService,
   ObjectNotFoundError,
   isObjectStorageConfigured,
+  isLocalFallbackEnabled,
   localObjectExists,
 } from "../integrations/object_storage";
 import { logAudit } from "../auditLog";
@@ -1040,6 +1041,9 @@ export function registerLendingRoutes(
 
       // Confirm the bytes actually reached storage before recording the document,
       // so a failed/skipped upload can't leave a DB row pointing at nothing.
+      if (!isObjectStorageConfigured() && !isLocalFallbackEnabled()) {
+        return res.status(503).json({ error: "File uploads are not configured" });
+      }
       let objectExists = false;
       if (isObjectStorageConfigured()) {
         try {
