@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useParams, Link, useLocation } from "wouter";
+import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -29,9 +29,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Send,
-  Phone,
-  Video,
-  MoreVertical,
   ArrowLeft,
   Circle,
   MessageCircle,
@@ -44,7 +41,14 @@ import {
   FileUp,
 } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { isStaffRole } from "@shared/schema";
 import type { TeamMessage, DocumentRequestData } from "@shared/schema";
+import {
+  UploadDocumentDialog,
+  DocumentNeedsSummary,
+  canonicalDocumentType,
+} from "@/components/UploadDocumentDialog";
 
 interface TeamMember {
   id: string;
@@ -53,7 +57,8 @@ interface TeamMember {
   email: string | null;
   profileImageUrl: string | null;
   initials: string;
-  presenceStatus: 'online' | 'away' | 'offline';
+  /** Absent for partners resolved from conversations (no live presence). */
+  presenceStatus?: 'online' | 'away' | 'offline';
 }
 
 interface ConversationData {
@@ -114,7 +119,6 @@ function DocumentRequestDialog({
   const [open, setOpen] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState("");
   const [description, setDescription] = useState("");
-  const [, navigate] = useLocation();
   const { toast } = useToast();
   
   const sendDocRequestMutation = useMutation({
@@ -224,17 +228,19 @@ function DocumentRequestDialog({
 }
 
 // Document Request Message Card Component
-function DocumentRequestCard({ 
-  data, 
+function DocumentRequestCard({
+  data,
   isFromCurrentUser,
   messageId,
-}: { 
-  data: DocumentRequestData; 
+  applicationId,
+  partnerId,
+}: {
+  data: DocumentRequestData;
   isFromCurrentUser: boolean;
   messageId: string;
+  applicationId?: string | null;
+  partnerId: string;
 }) {
-  const [, navigate] = useLocation();
-  
   const getStatusBadge = () => {
     switch (data.status) {
       case "pending":
@@ -249,11 +255,9 @@ function DocumentRequestCard({
         return null;
     }
   };
-  
-  const handleUploadClick = () => {
-    navigate("/documents");
-  };
-  
+
+  const canUpload = !isFromCurrentUser && (data.status === "pending" || data.status === "rejected");
+
   return (
     <Card className={`max-w-sm ${isFromCurrentUser ? 'bg-primary/5' : 'bg-muted/50'}`}>
       <CardContent className="p-3">
@@ -269,16 +273,19 @@ function DocumentRequestCard({
             {data.description && (
               <p className="text-xs text-muted-foreground mb-2">{data.description}</p>
             )}
-            {!isFromCurrentUser && data.status === "pending" && (
-              <Button 
-                size="sm" 
-                onClick={handleUploadClick}
-                className="w-full mt-2"
-                data-testid="button-upload-doc"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Document
-              </Button>
+            {canUpload && (
+              <UploadDocumentDialog
+                applicationId={applicationId}
+                defaultDocumentType={canonicalDocumentType(data.documentType)}
+                requestMessageId={messageId}
+                confirmToRecipientId={partnerId}
+                trigger={
+                  <Button size="sm" className="w-full mt-2" data-testid="button-upload-doc">
+                    <Upload className="h-4 w-4 mr-2" />
+                    {data.status === "rejected" ? "Re-upload Document" : "Upload Document"}
+                  </Button>
+                }
+              />
             )}
           </div>
         </div>
@@ -293,6 +300,8 @@ export default function Messages() {
   const [message, setMessage] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isStaff = isStaffRole(user?.role || "");
 
   // Presence heartbeat - update every 30 seconds
   useEffect(() => {
@@ -346,10 +355,39 @@ export default function Messages() {
     },
   });
 
-  // Find selected member
-  const selectedMember = memberId 
-    ? teamMembers.find(m => m.id === memberId) || null 
+  // The loan file this thread is about — messages are stamped server-side, so
+  // the newest stamped message is authoritative (drives the needs summary).
+  const threadApplicationId = [...messages].reverse().find((m) => m.applicationId)?.applicationId ?? null;
+
+  // Find the chat partner: assigned team member first, else resolve from the
+  // conversation itself (this is how staff see their borrower threads).
+  const conversationPartner = memberId
+    ? conversations.find(c => c.partnerId === memberId)?.partner || null
     : null;
+  const selectedMember = memberId
+    ? teamMembers.find(m => m.id === memberId) || conversationPartner
+    : null;
+
+  // List entries, role-aware:
+  //  - staff: their conversations (borrower threads), newest first
+  //  - borrower: assigned team (message or not) + any other existing threads
+  const listEntries: { member: TeamMember; lastMessage?: TeamMessage; unreadCount: number }[] = (() => {
+    const fromConversations = conversations
+      .filter(c => c.partner)
+      .map(c => ({ member: c.partner as TeamMember, lastMessage: c.lastMessage, unreadCount: c.unreadCount }));
+    if (isStaff) {
+      return fromConversations.sort((a, b) =>
+        new Date(b.lastMessage?.createdAt ?? 0).getTime() - new Date(a.lastMessage?.createdAt ?? 0).getTime()
+      );
+    }
+    const teamIds = new Set(teamMembers.map(m => m.id));
+    const teamEntries = teamMembers.map(m => {
+      const conv = conversations.find(c => c.partnerId === m.id);
+      return { member: m, lastMessage: conv?.lastMessage, unreadCount: conv?.unreadCount ?? 0 };
+    });
+    return [...teamEntries, ...fromConversations.filter(e => !teamIds.has(e.member.id))];
+  })();
+  const isLoadingList = isStaff ? isLoadingConversations : isLoadingTeam;
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -375,12 +413,6 @@ export default function Messages() {
     }
   };
 
-  // Helper to get last message for a team member
-  const getLastMessageForMember = (memberId: string) => {
-    const conv = conversations.find(c => c.partnerId === memberId);
-    return conv?.lastMessage;
-  };
-
   // If no member selected, show conversation list
   if (!memberId) {
     return (
@@ -399,7 +431,7 @@ export default function Messages() {
               Messages
             </h1>
             <p className="mt-1 text-primary-foreground/80">
-              Chat with your mortgage team
+              {isStaff ? "Secure messages with your borrowers" : "Chat with your mortgage team"}
             </p>
           </div>
         </div>
@@ -407,10 +439,10 @@ export default function Messages() {
         <div className="p-4 sm:p-6 lg:p-8 -mt-6">
           <Card className="shadow-lg border-0">
             <CardHeader>
-              <CardTitle>Your Team</CardTitle>
+              <CardTitle>{isStaff ? "Conversations" : "Your Team"}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {isLoadingTeam ? (
+              {isLoadingList ? (
                 <div className="p-4 space-y-4">
                   {[1, 2, 3].map(i => (
                     <div key={i} className="flex items-center gap-4">
@@ -422,24 +454,31 @@ export default function Messages() {
                     </div>
                   ))}
                 </div>
-              ) : teamMembers.length === 0 ? (
+              ) : listEntries.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground" data-testid="empty-team">
                   <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No team members assigned yet</p>
-                  <p className="text-sm mt-1">Team members will appear here once assigned to your loan</p>
+                  {isStaff ? (
+                    <>
+                      <p>No borrower conversations yet</p>
+                      <p className="text-sm mt-1">When a borrower messages you, the thread appears here</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>No team members assigned yet</p>
+                      <p className="text-sm mt-1">Team members will appear here once assigned to your loan</p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="divide-y">
-                  {teamMembers.map((member) => {
-                    const lastMessage = getLastMessageForMember(member.id);
-                    const conv = conversations.find(c => c.partnerId === member.id);
+                  {listEntries.map(({ member, lastMessage, unreadCount }) => {
                     return (
-                      <Link 
-                        key={member.id} 
+                      <Link
+                        key={member.id}
                         href={`/messages/${member.id}`}
                         data-testid={`link-conversation-${member.id}`}
                       >
-                        <div 
+                        <div
                           className="flex items-center gap-4 p-4 cursor-pointer transition-colors hover-elevate"
                         >
                           <div className="relative">
@@ -448,10 +487,12 @@ export default function Messages() {
                                 {member.initials}
                               </AvatarFallback>
                             </Avatar>
-                            <Circle 
-                              className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-current ${getPresenceColor(member.presenceStatus)}`}
-                              data-testid={`status-indicator-${member.id}`}
-                            />
+                            {member.presenceStatus && (
+                              <Circle
+                                className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 fill-current ${getPresenceColor(member.presenceStatus)}`}
+                                data-testid={`status-indicator-${member.id}`}
+                              />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
@@ -471,9 +512,9 @@ export default function Messages() {
                                   {lastMessage.message}
                                 </span>
                               )}
-                              {conv && conv.unreadCount > 0 && (
+                              {unreadCount > 0 && (
                                 <Badge className="ml-auto shrink-0" data-testid={`badge-unread-${member.id}`}>
-                                  {conv.unreadCount}
+                                  {unreadCount}
                                 </Badge>
                               )}
                             </div>
@@ -519,34 +560,29 @@ export default function Messages() {
                       {selectedMember.initials}
                     </AvatarFallback>
                   </Avatar>
-                  <Circle 
-                    className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current ${getPresenceColor(selectedMember.presenceStatus)}`}
-                    data-testid="status-chat-member"
-                  />
+                  {selectedMember.presenceStatus && (
+                    <Circle
+                      className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 fill-current ${getPresenceColor(selectedMember.presenceStatus)}`}
+                      data-testid="status-chat-member"
+                    />
+                  )}
                 </div>
                 <div>
                   <h2 className="font-semibold" data-testid="text-chat-member-name">{selectedMember.name}</h2>
                   <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <span data-testid="text-chat-member-role">{ROLE_DISPLAY_NAMES[selectedMember.role] || selectedMember.role}</span>
-                    <span className="text-xs">·</span>
-                    <span className={`text-xs ${getPresenceColor(selectedMember.presenceStatus)}`} data-testid="text-presence-status">
-                      {getPresenceLabel(selectedMember.presenceStatus)}
-                    </span>
+                    {selectedMember.presenceStatus && (
+                      <>
+                        <span className="text-xs">·</span>
+                        <span className={`text-xs ${getPresenceColor(selectedMember.presenceStatus)}`} data-testid="text-presence-status">
+                          {getPresenceLabel(selectedMember.presenceStatus)}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </>
             )}
-          </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" data-testid="button-call">
-              <Phone className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" data-testid="button-video">
-              <Video className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" data-testid="button-more">
-              <MoreVertical className="h-5 w-5" />
-            </Button>
           </div>
         </div>
       </div>
@@ -599,10 +635,12 @@ export default function Messages() {
                         </Avatar>
                       )}
                       {isDocumentRequest ? (
-                        <DocumentRequestCard 
+                        <DocumentRequestCard
                           data={msg.documentRequestData as DocumentRequestData}
                           isFromCurrentUser={isFromCurrentUser}
                           messageId={msg.id}
+                          applicationId={msg.applicationId}
+                          partnerId={memberId!}
                         />
                       ) : (
                         <div 
@@ -635,11 +673,16 @@ export default function Messages() {
 
       {/* Message Input */}
       <div className="border-t bg-background p-4">
+        {!isStaff && (
+          <DocumentNeedsSummary applicationId={threadApplicationId} recipientId={memberId!} />
+        )}
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
-          <DocumentRequestDialog 
-            recipientId={memberId!}
-            recipientName={selectedMember?.name || "Team Member"}
-          />
+          {isStaff && (
+            <DocumentRequestDialog
+              recipientId={memberId!}
+              recipientName={selectedMember?.name || "this borrower"}
+            />
+          )}
           <Input
             placeholder="Type a message..."
             value={message}

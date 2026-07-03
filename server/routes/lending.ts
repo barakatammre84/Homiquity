@@ -21,7 +21,7 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
-import { upload, verifyFileSignature } from "./utils";
+import { upload, verifyFileSignature, allowedUploadTypes } from "./utils";
 import { logAudit } from "../auditLog";
 import { hasBorrowerConsent } from "../consentGate";
 import * as creditService from "../services/creditService";
@@ -1093,31 +1093,108 @@ export function registerLendingRoutes(
     }
   });
 
-  app.post("/api/documents/upload", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
+  // Two ingestion modes, one registration path:
+  //  - multipart: the file travels through the server (multer + magic-byte check)
+  //  - JSON: the file already went browser → object storage via a signed URL
+  //    (the flow Documents/Tasks/Messages use); the body registers its metadata.
+  // Every accepted upload becomes a document record — unsolicited files are
+  // stamped onto the borrower's latest application instead of being lost.
+  const uploadRegistrationSchema = z.object({
+    objectPath: z.string().regex(/^\/objects\/[^\s]+$/, "objectPath must be a normalized /objects/ path"),
+    fileName: z.string().min(1).max(255),
+    fileSize: z.number().int().positive().max(25 * 1024 * 1024, "File exceeds the 25MB limit"),
+    mimeType: z.string().refine((m) => allowedUploadTypes.includes(m), "Unsupported file type"),
+    documentType: z.string().max(50).optional(),
+    applicationId: z.string().optional(),
+    description: z.string().max(500).optional(),
+  });
+
+  const multerIfMultipart = (req: any, res: any, next: any) => {
+    if (!req.is("multipart/form-data")) return next();
+    upload.single("file")(req, res, (err: unknown) => {
+      if (err) return res.status(400).json({ error: err instanceof Error ? err.message : "Upload failed" });
+      verifyFileSignature(req, res, next);
+    });
+  };
+
+  app.post("/api/documents/upload", isAuthenticated, multerIfMultipart, async (req, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
+      const user = req.user as User;
+      const userId = user.id;
+
+      let fileMeta: { fileName: string; fileSize: number; mimeType: string; storagePath: string };
+      let documentType: string;
+      let requestedApplicationId: string | undefined;
+      let description: string | undefined;
+
+      if (req.file) {
+        fileMeta = {
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          mimeType: req.file.mimetype,
+          storagePath: req.file.path,
+        };
+        documentType = (req.body.documentType as string) || "other";
+        requestedApplicationId = req.body.applicationId as string | undefined;
+      } else {
+        const parsed = uploadRegistrationSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            error: "No file uploaded",
+            details: parsed.error.flatten().fieldErrors,
+            acceptedTypes: allowedUploadTypes,
+          });
+        }
+        fileMeta = {
+          fileName: parsed.data.fileName,
+          fileSize: parsed.data.fileSize,
+          mimeType: parsed.data.mimeType,
+          storagePath: parsed.data.objectPath,
+        };
+        documentType = parsed.data.documentType || "other";
+        requestedApplicationId = parsed.data.applicationId;
+        description = parsed.data.description;
       }
 
-      const { documentType, applicationId } = req.body;
-      const userId = req.user!.id;
-
-      if (applicationId) {
-        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, (req.user as User).role);
+      if (requestedApplicationId) {
+        const application = await storage.getLoanApplicationWithAccess(requestedApplicationId, userId, user.role);
         if (!application) {
           return res.status(403).json({ error: "You do not have access to this application" });
         }
       }
 
+      // Never let an unsolicited borrower upload float free of the loan file:
+      // default to the borrower's most recent application.
+      let applicationId = requestedApplicationId || null;
+      if (!applicationId && !isStaffRole(user.role)) {
+        const apps = await storage.getLoanApplicationsByUser(userId);
+        applicationId = apps[0]?.id ?? null;
+      }
+
+      // Soft duplicate detection (same name + size for this borrower). Never
+      // blocks — the response carries the hint so the UI can surface it.
+      const existingDocs = await storage.getDocumentsByUser(userId);
+      const similar = existingDocs.find(
+        (d) => d.fileName === fileMeta.fileName && d.fileSize === fileMeta.fileSize,
+      );
+
       const document = await storage.createDocument({
         userId,
-        applicationId: applicationId || null,
-        documentType: documentType || "other",
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        storagePath: req.file.path,
+        applicationId,
+        documentType,
+        fileName: fileMeta.fileName,
+        fileSize: fileMeta.fileSize,
+        mimeType: fileMeta.mimeType,
+        storagePath: fileMeta.storagePath,
         status: "uploaded",
+        notes: description || null,
+      });
+
+      logAudit(req, "document.uploaded", "document", document.id, {
+        applicationId,
+        documentType,
+        fileName: fileMeta.fileName,
+        duplicateOf: similar?.id ?? null,
       });
 
       if (applicationId) {
@@ -1125,16 +1202,16 @@ export function registerLendingRoutes(
           applicationId,
           activityType: "document_uploaded",
           title: "Document Uploaded",
-          description: `${req.file.originalname} has been uploaded.`,
+          description: `${fileMeta.fileName} has been uploaded.`,
           performedBy: userId,
         });
-        
+
         // Emit document uploaded event for Task Engine
         const { taskEventEmitter } = await import("../services/taskEventEmitter");
         await taskEventEmitter.emitDocumentEvent("DOCUMENT_UPLOADED", {
           applicationId,
           documentId: document.id,
-          documentType: documentType || "other",
+          documentType,
           triggeredBy: userId,
         });
 
@@ -1144,8 +1221,8 @@ export function registerLendingRoutes(
           const { matchUploadedDocumentToConditions } = await import("../pipelineEngine");
           await matchUploadedDocumentToConditions({
             applicationId,
-            documentType: documentType || "other",
-            fileName: req.file.originalname,
+            documentType,
+            fileName: fileMeta.fileName,
             uploadedBy: userId,
           });
         } catch (matchErr) {
@@ -1153,7 +1230,38 @@ export function registerLendingRoutes(
         }
       }
 
-      res.status(201).json(document);
+      // Fire-and-forget extraction for types that need no extra inputs — the
+      // record is created either way; extraction enriches it in the background.
+      const AUTO_EXTRACT: Record<string, "extractPayStubData" | "extractBankStatementData" | "extractLeaseData"> = {
+        pay_stub: "extractPayStubData",
+        bank_statement: "extractBankStatementData",
+        lease_agreement: "extractLeaseData",
+      };
+      const extractor = AUTO_EXTRACT[documentType];
+      if (extractor) {
+        (async () => {
+          const svc = await import("../extractionService");
+          const extracted = await svc[extractor](document.storagePath);
+          await storage.updateDocument(document.id, {
+            status: extracted.confidence === "high" ? "verified" : "uploaded",
+            notes: JSON.stringify({
+              extractedAt: new Date().toISOString(),
+              extractedFields: extracted.extractedFields,
+              confidence: extracted.confidence,
+              warnings: extracted.warnings,
+            }),
+          });
+        })().catch((err) =>
+          console.warn(`[Documents] Auto-extraction failed for ${document.id} (non-fatal):`, err?.message || err),
+        );
+      }
+
+      res.status(201).json({
+        ...document,
+        similarDocument: similar
+          ? { id: similar.id, fileName: similar.fileName, uploadedAt: similar.createdAt }
+          : null,
+      });
     } catch (error) {
       console.error("Document upload error:", error);
       try {

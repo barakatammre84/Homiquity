@@ -54,6 +54,14 @@ describe("computeRefiSavings", () => {
     const s = computeRefiSavings(350_000, 6.0, 7.0);
     expect(s.monthlySavings).toBeLessThan(0);
   });
+
+  it("projects lifetime savings over the REMAINING term, not a fresh 360 months", () => {
+    // A loan 10 years in has 240 months left — claiming 360 months of savings
+    // would overstate the benefit by 50% (the misleading-refi-claim pattern).
+    const s = computeRefiSavings(350_000, 7.5, 6.5, 360, 240);
+    expect(s.lifetimeSavings).toBeCloseTo(s.monthlySavings * 240, 5);
+    expect(s.lifetimeSavings).toBeLessThan(s.monthlySavings * 360);
+  });
 });
 
 describe("thresholds", () => {

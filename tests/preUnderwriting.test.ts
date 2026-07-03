@@ -112,8 +112,23 @@ describe("buildFlagOutreach", () => {
     expect(outreach.emailText).toContain("Hi Riley");
     expect(outreach.emailText).toContain("last two years of federal tax returns (1040s)");
     expect(outreach.emailText).toContain("profit & loss");
-    expect(outreach.smsBody).toContain("2yrs tax returns");
+    expect(outreach.smsBody).toMatch(/needs \d+ required document/);
     expect(outreach.subject.length).toBeGreaterThan(0);
+  });
+
+  it("frames outreach as a documentation request, never a decision signal (ECOA/UDAAP)", () => {
+    const flags = derivePreUnderwritingFlags({
+      annualIncome: "90,000",
+      purchasePrice: "400,000",
+      downPayment: "80,000",
+      employmentType: "self_employed",
+      verifiedAssetsTotal: null,
+    });
+    const outreach = buildFlagOutreach("Riley", flags)!;
+    // Must carry the explicit not-a-decision disclaimer…
+    expect(outreach.emailText).toContain("not a loan decision");
+    // …and must not imply an outcome in either direction.
+    expect(outreach.emailText).not.toMatch(/good news|congratulations|approved|denied/i);
   });
 
   it("explains the reserves shortfall in months without alarming language", () => {

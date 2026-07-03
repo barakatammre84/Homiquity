@@ -16,6 +16,8 @@ import {
 import crypto from "crypto";
 import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
+import { logAudit } from "../auditLog";
+import { sendNotificationEmail } from "../services/emailService";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -2443,32 +2445,127 @@ export function registerBorrowerRoutes(
     }
   });
 
-  // Send a message (supports regular text and document requests)
+  // Send a message (supports regular text and document requests).
+  // Borrower communications are loan-file records: every send is validated,
+  // scoped to borrower↔staff pairs, stamped with the loan application, audit
+  // logged, and the recipient is actually notified (in-app + email).
+  const sendMessageSchema = z.object({
+    recipientId: z.string().min(1),
+    message: z.string().trim().min(1).max(2000),
+    applicationId: z.string().optional(),
+    messageType: z.enum(["text", "document_request"]).default("text"),
+    documentRequestData: z
+      .object({
+        documentType: z.string().min(1).max(100),
+        documentName: z.string().min(1).max(200),
+        description: z.string().max(500).optional(),
+        status: z.literal("pending").default("pending"),
+      })
+      .optional(),
+  });
+
   app.post("/api/messages", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user!.id;
-      const { recipientId, message, applicationId, messageType, documentRequestData } = req.body;
-      
-      if (!recipientId || !message) {
-        return res.status(400).json({ error: "recipientId and message are required" });
+      const user = req.user as User;
+
+      const parsed = sendMessageSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid message", details: parsed.error.flatten().fieldErrors });
       }
-      
-      // Verify recipient exists
+      const { recipientId, message, messageType, documentRequestData } = parsed.data;
+
       const recipient = await storage.getUser(recipientId);
       if (!recipient) {
         return res.status(404).json({ error: "Recipient not found" });
       }
-      
+
+      // Scoping: messaging exists between a borrower and their loan team.
+      // Borrower↔borrower (or any pair with no staff member) is not a thing.
+      const senderIsStaff = isStaffRole(user.role);
+      const recipientIsStaff = isStaffRole(recipient.role || "");
+      if (!senderIsStaff && !recipientIsStaff) {
+        return res.status(403).json({ error: "Messages can only be exchanged with your loan team" });
+      }
+
+      // Document requests are a staff→borrower workflow.
+      if (messageType === "document_request") {
+        if (!senderIsStaff) {
+          return res.status(403).json({ error: "Only your loan team can send document requests" });
+        }
+        if (!documentRequestData) {
+          return res.status(400).json({ error: "documentRequestData is required for document requests" });
+        }
+      }
+
+      // Stamp the message onto the borrower's loan file so the conversation is
+      // part of the (retained, examinable) loan record. If the caller supplied
+      // an applicationId, verify it belongs to the borrower side of the pair;
+      // otherwise derive the borrower's most recent application.
+      const borrowerParty = senderIsStaff ? recipient : user;
+      let applicationId: string | null = null;
+      if (parsed.data.applicationId) {
+        const application = await storage.getLoanApplication(parsed.data.applicationId);
+        if (!application || application.userId !== borrowerParty.id) {
+          return res.status(403).json({ error: "Application does not belong to this conversation" });
+        }
+        applicationId = application.id;
+      } else {
+        const apps = await storage.getLoanApplicationsByUser(borrowerParty.id);
+        applicationId = apps[0]?.id ?? null; // newest first; null pre-application
+      }
+
       const newMessage = await storage.sendMessage({
-        senderId: userId,
+        senderId: user.id,
         recipientId,
         message,
-        applicationId: applicationId || null,
-        messageType: messageType || 'text',
+        applicationId,
+        messageType,
         documentRequestData: documentRequestData || null,
         isRead: false,
       });
-      
+
+      logAudit(req, "message.sent", "team_message", newMessage.id, {
+        recipientId,
+        applicationId,
+        messageType,
+      });
+
+      // Notify the recipient — the UI promises this, so the backend delivers it.
+      // The email intentionally carries no message content (PII stays behind login).
+      const senderName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Your loan team";
+      try {
+        const isDocRequest = messageType === "document_request";
+        await storage.createNotification({
+          userId: recipientId,
+          type: isDocRequest ? "document_request" : "message_received",
+          title: isDocRequest ? "Document requested" : `New message from ${senderName}`,
+          body: isDocRequest
+            ? `${senderName} requested: ${documentRequestData!.documentName}. Upload it from your Documents page.`
+            : "You have a new secure message. Open Messages to read and reply.",
+          entityType: "team_message",
+          entityId: newMessage.id,
+          status: "unread",
+        });
+        if (recipient.email) {
+          if (isDocRequest) {
+            sendNotificationEmail({
+              type: "document_requested",
+              recipientEmail: recipient.email,
+              data: { borrowerName: recipient.firstName || "there", documentName: documentRequestData!.documentName },
+            });
+          } else {
+            sendNotificationEmail({
+              type: "message_received",
+              recipientEmail: recipient.email,
+              data: { recipientName: recipient.firstName || "there", senderName },
+            });
+          }
+        }
+      } catch (notifyErr) {
+        // Delivery of the message itself must not fail on notification errors.
+        console.error("[Messages] Failed to notify recipient (non-fatal):", notifyErr);
+      }
+
       res.status(201).json(newMessage);
     } catch (error) {
       console.error("Send message error:", error);

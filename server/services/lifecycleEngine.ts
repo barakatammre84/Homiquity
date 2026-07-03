@@ -75,12 +75,21 @@ export interface RefiMath {
   lifetimeSavings: number;
 }
 
-/** Savings from refinancing the remaining balance at the market rate. */
+/**
+ * Savings from refinancing the remaining balance at the market rate.
+ *
+ * Like-for-like: both payments are computed on the SAME balance and term, so
+ * the difference isolates the rate effect (no term-reset sleight of hand).
+ * `lifetimeMonths` should be the borrower's REMAINING months — projecting the
+ * monthly delta over a fresh 360 months would overstate lifetime savings for
+ * seasoned loans, which is exactly the misleading refi claim UDAAP targets.
+ */
 export function computeRefiSavings(
   balance: number,
   currentRatePct: number,
   marketRatePct: number,
   termMonths = 360,
+  lifetimeMonths = termMonths,
 ): RefiMath {
   const currentPayment = monthlyPayment(balance, currentRatePct, termMonths);
   const marketPayment = monthlyPayment(balance, marketRatePct, termMonths);
@@ -89,7 +98,7 @@ export function computeRefiSavings(
     currentPayment,
     marketPayment,
     monthlySavings,
-    lifetimeSavings: monthlySavings * termMonths,
+    lifetimeSavings: monthlySavings * lifetimeMonths,
   };
 }
 
@@ -277,7 +286,14 @@ async function sweepProfile(
       )
       .limit(1);
     if (!openAlert) {
-      const savings = computeRefiSavings(balance, rate, marketRate);
+      // Lifetime projection runs over the borrower's REMAINING term, not a
+      // fresh 360 months (see computeRefiSavings) — seasoned loans must not
+      // get inflated lifetime-savings claims.
+      const monthsElapsed = profile.loanCloseDate
+        ? Math.max(0, Math.floor((Date.now() - new Date(profile.loanCloseDate).getTime()) / (30.44 * 24 * 3600 * 1000)))
+        : 0;
+      const remainingMonths = Math.max(360 - monthsElapsed, 1);
+      const savings = computeRefiSavings(balance, rate, marketRate, 360, remainingMonths);
       await db.insert(refiAlerts).values({
         homeownerProfileId: profile.id,
         currentRate: rate.toFixed(3),
@@ -286,14 +302,19 @@ async function sweepProfile(
         potentialSavingsLifetime: savings.lifetimeSavings.toFixed(2),
         isActionable: true,
       });
+      // Savings claims stay estimates with the material caveats attached
+      // (closing costs, qualification) — factual market data, no promises.
       await storage.createNotification({
         userId: profile.userId,
         type: "refi_opportunity",
         title: "Rates dipped below your mortgage rate",
-        body: `30-year rates are at ${marketRate.toFixed(3)}% — ${(rate - marketRate).toFixed(2)} points below your ${rate.toFixed(3)}%. Refinancing could save about $${Math.round(savings.monthlySavings).toLocaleString()}/month. See your Homeowner Hub for the breakdown.`,
+        body:
+          `30-year rates in our system are at ${marketRate.toFixed(3)}% — ${(rate - marketRate).toFixed(2)} points below your ${rate.toFixed(3)}%. ` +
+          `Refinancing your remaining balance could lower your payment by an estimated $${Math.round(savings.monthlySavings).toLocaleString()}/month, ` +
+          `before closing costs and subject to credit approval. See your Homeowner Hub for the full breakdown.`,
         entityType: "homeowner_profile",
         entityId: profile.id,
-        metadata: { currentRate: rate, marketRate, monthlySavings: Math.round(savings.monthlySavings) },
+        metadata: { currentRate: rate, marketRate, monthlySavings: Math.round(savings.monthlySavings), remainingMonths },
       });
       counters.refiAlertsCreated += 1;
     }
