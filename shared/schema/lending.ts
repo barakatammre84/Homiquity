@@ -368,7 +368,16 @@ export const urlaPersonalInfo = pgTable("urla_personal_info", {
   lastName: varchar("last_name", { length: 100 }),
   suffix: varchar("suffix", { length: 20 }),
   
+  // DEPRECATED plaintext SSN — writes now go to the encrypted columns below and
+  // this is set to null. Kept only so the backfill script can migrate legacy
+  // rows; drop the column once the backfill has run in every environment.
   ssn: varchar("ssn", { length: 11 }),
+  // SSN at rest: AES-256-GCM via encryptionService (same scheme as credit
+  // reports). Server-managed only — never accepted from the client.
+  ssnEncrypted: text("ssn_encrypted"),
+  ssnIv: varchar("ssn_iv", { length: 32 }),
+  ssnKeyId: varchar("ssn_key_id", { length: 10 }),
+  ssnLast4: varchar("ssn_last4", { length: 4 }),
   dateOfBirth: varchar("date_of_birth", { length: 10 }),
   citizenship: varchar("citizenship", { length: 50 }),
   

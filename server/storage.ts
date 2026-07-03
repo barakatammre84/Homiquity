@@ -1,6 +1,20 @@
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, or, ilike, asc, count, inArray } from "drizzle-orm";
 import {
+  resolveSsnInput,
+  clearedSsnColumns,
+  maskedSsnFromRow,
+  decryptSsnFromRow,
+} from "./services/ssnVault";
+
+/** Thrown by upsertUrlaPersonalInfo when the supplied SSN is not 9 digits — routes translate it to a 400. */
+export class InvalidSsnError extends Error {
+  constructor() {
+    super("SSN must be 9 digits");
+    this.name = "InvalidSsnError";
+  }
+}
+import {
   users,
   loanApplications,
   loanOptions,
@@ -349,6 +363,8 @@ export interface IStorage {
   getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber?: number): Promise<UrlaPersonalInfo | undefined>;
   getAllUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo[]>;
   upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo>;
+  /** Full decrypted SSN — caller must authorize AND write an audit entry. All other reads return the masked form. */
+  getDecryptedUrlaSsn(applicationId: string, borrowerSequenceNumber?: number): Promise<string | null>;
   
   getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]>;
   getEmploymentHistoryById(id: string): Promise<EmploymentHistory | undefined>;
@@ -1326,7 +1342,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   // URLA Personal Info
-  async getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber: number = 1): Promise<UrlaPersonalInfo | undefined> {
+  /**
+   * Present a urla_personal_info row outside the storage layer: the SSN comes
+   * back masked (XXX-XX-1234) and the ciphertext columns are withheld. Full
+   * SSNs are available only via getDecryptedUrlaSsn (audited callers).
+   */
+  private presentUrlaPersonalInfo(row: UrlaPersonalInfo): UrlaPersonalInfo {
+    return {
+      ...row,
+      ssn: maskedSsnFromRow(row),
+      ssnEncrypted: null,
+      ssnIv: null,
+      ssnKeyId: null,
+    };
+  }
+
+  private async getUrlaPersonalInfoRaw(applicationId: string, borrowerSequenceNumber: number = 1): Promise<UrlaPersonalInfo | undefined> {
     const [info] = await db
       .select()
       .from(urlaPersonalInfo)
@@ -1338,33 +1369,70 @@ export class DatabaseStorage implements IStorage {
     return info;
   }
 
+  async getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber: number = 1): Promise<UrlaPersonalInfo | undefined> {
+    const info = await this.getUrlaPersonalInfoRaw(applicationId, borrowerSequenceNumber);
+    return info ? this.presentUrlaPersonalInfo(info) : undefined;
+  }
+
   async getAllUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo[]> {
-    return await db
+    const rows = await db
       .select()
       .from(urlaPersonalInfo)
       .where(eq(urlaPersonalInfo.applicationId, applicationId))
       .orderBy(asc(urlaPersonalInfo.borrowerSequenceNumber));
+    return rows.map((row) => this.presentUrlaPersonalInfo(row));
+  }
+
+  /**
+   * Full, decrypted SSN for a borrower on an application. Callers are
+   * responsible for authorization and for writing an audit entry — this is
+   * intentionally the ONLY path that returns more than the last 4.
+   */
+  async getDecryptedUrlaSsn(applicationId: string, borrowerSequenceNumber: number = 1): Promise<string | null> {
+    const row = await this.getUrlaPersonalInfoRaw(applicationId, borrowerSequenceNumber);
+    if (!row) return null;
+    return decryptSsnFromRow(row);
   }
 
   async upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo> {
     const seq = (data as any).borrowerSequenceNumber ?? 1;
-    const existing = await this.getUrlaPersonalInfo(data.applicationId, seq);
-    // Remove any timestamp fields that might have been serialized as strings from frontend
-    const { createdAt, updatedAt, id, ...cleanData } = data as any;
-    
+    const existing = await this.getUrlaPersonalInfoRaw(data.applicationId, seq);
+    // Remove timestamp fields that might have been serialized as strings from
+    // the frontend, plus the server-managed SSN columns — clients must never
+    // write ciphertext fields directly.
+    const {
+      createdAt, updatedAt, id,
+      ssn: ssnInput, ssnEncrypted: _e, ssnIv: _i, ssnKeyId: _k, ssnLast4: _l,
+      ...cleanData
+    } = data as any;
+
+    // Encrypt SSN server-side. A masked echo from the UI (XXX-XX-1234) means
+    // "unchanged"; an invalid value is rejected before anything is written.
+    const ssnResolution = resolveSsnInput(ssnInput);
+    if (ssnResolution.action === "invalid") {
+      throw new InvalidSsnError();
+    }
+    const ssnColumns =
+      ssnResolution.action === "set" ? ssnResolution.columns :
+      ssnResolution.action === "clear" ? clearedSsnColumns() :
+      {};
+
     if (existing) {
       const [updated] = await db
         .update(urlaPersonalInfo)
-        .set({ ...cleanData, borrowerSequenceNumber: seq, updatedAt: new Date() })
+        .set({ ...cleanData, ...ssnColumns, borrowerSequenceNumber: seq, updatedAt: new Date() })
         .where(and(
           eq(urlaPersonalInfo.applicationId, data.applicationId),
           eq(urlaPersonalInfo.borrowerSequenceNumber, seq),
         ))
         .returning();
-      return updated;
+      return this.presentUrlaPersonalInfo(updated);
     }
-    const [created] = await db.insert(urlaPersonalInfo).values({ ...cleanData, borrowerSequenceNumber: seq }).returning();
-    return created;
+    const [created] = await db
+      .insert(urlaPersonalInfo)
+      .values({ ...cleanData, ...ssnColumns, borrowerSequenceNumber: seq })
+      .returning();
+    return this.presentUrlaPersonalInfo(created);
   }
 
   // Employment History
@@ -1670,17 +1738,25 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
-    const [user, urlaData, loanOpts, docs] = await Promise.all([
+    const [user, urlaData, loanOpts, docs, fullSsn] = await Promise.all([
       application.userId ? this.getUser(application.userId) : Promise.resolve(undefined),
       this.getCompleteUrlaData(applicationId),
       this.getLoanOptionsByApplication(applicationId),
       this.getDocumentsByApplication(applicationId),
+      // GSE loan delivery requires the real TaxpayerIdentifierValue. This is
+      // the one read path that decrypts the SSN; the export route restricts
+      // access (deal team / staff) and records the export as a deal activity.
+      this.getDecryptedUrlaSsn(applicationId),
     ]);
+
+    const personalInfo = urlaData.personalInfo
+      ? { ...urlaData.personalInfo, ssn: fullSsn }
+      : null;
 
     return {
       application,
       user: user || null,
-      personalInfo: urlaData.personalInfo || null,
+      personalInfo,
       employment: urlaData.employmentHistory,
       assets: urlaData.assets,
       liabilities: urlaData.liabilities,
