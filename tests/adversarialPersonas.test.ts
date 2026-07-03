@@ -46,6 +46,7 @@ const GRIDS: Record<string, Cell[]> = {
   CONVENTIONAL_DTI_CAP: [{ value: 43 }],
   CONVENTIONAL_STRETCH_DTI: [{ value: 50 }],
   CONVENTIONAL_LTV_CAP: [{ value: 95 }],
+  CONVENTIONAL_FICO_FLOOR: [{ value: 620 }],
   HAIRCUT_STOCK_INVESTMENT: [{ value: 60 }],
   HAIRCUT_RETIREMENT: [{ value: 70 }],
   CONVENTIONAL_PMI: [],
@@ -503,52 +504,52 @@ describe("Persona 4 — Thin-File Physician (FICO 612 @ 90% LTV)", () => {
     proposedPiti: 3_000,
   });
 
-  it("PIN: sub-620 FICO with PMI-range LTV crashes the matrix instead of declining", async () => {
-    // LLPA covers FICO down to 300, but the PMI grid's floor is 620 and no
-    // FICO-floor rule runs first — so a decline-worthy file throws instead.
-    await expect(makeEngine().evaluate(physicianInput)).rejects.toThrow(
-      /CRITICAL DECISIONING ERROR.*d1: 612/,
-    );
-  });
-
-  it.fails("SPEC: FICO below the 620 conforming minimum must resolve to REJECTED with a reason", async () => {
+  it("FIXED(#4): sub-620 FICO declines with a credit-score reason instead of crashing the PMI matrix", async () => {
+    // The FICO-floor guard runs before any lookup, so a decline-worthy file is
+    // REJECTED with a specific reason rather than missing a PMI cell.
     const result = await makeEngine().evaluate(physicianInput);
     expect(result.decision).toBe("REJECTED");
     expect(result.rejectionReasons.join(" ")).toMatch(/credit score/i);
+    // Nothing was priced on the rejected file.
+    expect(result.resolvedPmiMonthlyPremium).toBe(0);
+    expect(result.resolvedLlpafUpfrontFee).toBe(0);
   });
 
-  it("PIN: FICO 851 (score-model ceiling / typo) crashes the LLPA lookup for the best applicants", async () => {
-    await expect(
-      makeEngine().evaluate(baseConventionalInput({ representativeFico: 851, originalLoanAmount: 750_000 })),
-    ).rejects.toThrow(/CRITICAL DECISIONING ERROR/);
-  });
-
-  it("FIXED(#1): the orchestrator routes the out-of-band file to MANUAL_REVIEW without leaking internals", async () => {
+  it("FIXED(#4): the orchestrator returns a clean adverse-action-grade REJECTED, no internal leak", async () => {
     primeOrchestrator(
       makeApp({ creditScore: 612, purchasePrice: "500000", downPayment: "50000", propertyValue: "500000", annualIncome: "390000", monthlyDebts: "800" }),
       { piti: 3000 },
     );
     const d = await runInstantDecision("app-1");
-    // Previously: NEEDS_MORE_INFO with the raw "CRITICAL DECISIONING ERROR"
-    // string as the missing item, looping forever. Now it is an auditable
-    // decision with borrower-safe copy.
+    // Was NEEDS_MORE_INFO leaking "CRITICAL DECISIONING ERROR" (pre-#1), then a
+    // generic MANUAL_REVIEW (post-#1). Now it is a specific credit decline.
     expect(d.status).toBe("DECISION_READY");
-    expect(d.decision).toBe("MANUAL_REVIEW");
-    expect(d.missingItems).toHaveLength(0);
+    expect(d.decision).toBe("REJECTED");
+    expect(d.reasons.join(" ")).toMatch(/credit score/i);
     expect(JSON.stringify(d)).not.toMatch(/CRITICAL/);
   });
 
-  it.fails("SPEC(#4): a sub-620 file must decline with a FICO reason, not route to generic MANUAL_REVIEW", async () => {
-    // Fix #1 stops the crash and routes to a human; fix #4 (explicit FICO-floor
-    // rule) is still needed to turn this into a specific, adverse-action-grade
-    // REJECTED rather than a generic manual review.
+  it("FIXED(#1): a genuinely uncovered profile (FICO 851) routes to MANUAL_REVIEW, not a crash or a loop", async () => {
+    // 851 clears the floor but exceeds the score-grid ceiling (850): a real
+    // matrix gap the automated engine cannot price, so it goes to a human
+    // (POLICY_OUT_OF_BAND) instead of throwing or looping for documents.
     primeOrchestrator(
-      makeApp({ creditScore: 612, purchasePrice: "500000", downPayment: "50000", propertyValue: "500000", annualIncome: "390000", monthlyDebts: "800" }),
-      { piti: 3000 },
+      makeApp({ creditScore: 851, purchasePrice: "800000", downPayment: "50000", propertyValue: "800000", annualIncome: "600000" }),
+      { piti: 4000 },
     );
     const d = await runInstantDecision("app-1");
-    expect(d.decision).toBe("REJECTED");
-    expect(d.reasons.join(" ")).toMatch(/credit score/i);
+    expect(d.status).toBe("DECISION_READY");
+    expect(d.decision).toBe("MANUAL_REVIEW");
+    expect(JSON.stringify(d)).not.toMatch(/CRITICAL/);
+  });
+
+  it("PIN: FICO 851 exceeds the score-grid ceiling at the engine level (out-of-band, open finding)", async () => {
+    // The engine still throws for a >850 score; the orchestrator (above) turns
+    // that into MANUAL_REVIEW. A dedicated FICO-range validity check is a
+    // separate, later concern.
+    await expect(
+      makeEngine().evaluate(baseConventionalInput({ representativeFico: 851, originalLoanAmount: 750_000 })),
+    ).rejects.toThrow(/CRITICAL DECISIONING ERROR/);
   });
 });
 

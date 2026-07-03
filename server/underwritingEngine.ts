@@ -154,17 +154,30 @@ export class ConsolidatedUnderwritingEngine {
 
     // Standard Conforming Loan Path
     if (targetLoanType === "CONVENTIONAL") {
+      // Eligibility floor: a credit score below the conventional minimum is a
+      // decline, not a pricing gap. Enforce it BEFORE any matrix lookup — the
+      // PMI grid's lowest band starts at the floor, so an ineligible score would
+      // otherwise miss a cell and surface as a generic out-of-band review
+      // instead of a specific, adverse-action-grade credit rejection.
+      const conventionalFicoFloor = await this.resolver.getPolicyScalar("CONVENTIONAL_FICO_FLOOR");
+      if (input.representativeFico < conventionalFicoFloor) {
+        reasons.push(
+          `Representative credit score of ${input.representativeFico} is below the conventional minimum of ${conventionalFicoFloor}`,
+        );
+      }
+
       if (calculatedDti > stretchDti * 100) {
         reasons.push(
           `Debt-to-Income ratio (${calculatedDti.toFixed(2)}%) exceeds the system's hard stretch ceiling of ${(stretchDti * 100).toFixed(0)}%`,
         );
       }
 
-      // A loan over the LTV ceiling is already a decline (reason pushed in
-      // Step 3). Skip pricing it: the PMI/LLPA matrices intentionally do not
-      // cover LTVs above the cap, so querying them would throw an out-of-band
-      // error and lose the rejection we already have. Return it cleanly below.
-      if (calculatedLtv <= ltvCap) {
+      // Price only an eligible file. If any rejection reason is already present
+      // (LTV over the ceiling, sub-floor credit, or a stretch-DTI breach), skip
+      // the PMI/LLPA matrices — they intentionally do not cover out-of-policy
+      // coordinates, so querying them would throw and lose the rejection we
+      // already have. The decline is returned cleanly below.
+      if (reasons.length === 0) {
         // Query standard Monthly BPMI rate matrix if LTV > 80%
         if (calculatedLtv > 80.0) {
           const pmiRate = await this.resolveOrOutOfBand(
