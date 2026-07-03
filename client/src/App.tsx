@@ -67,6 +67,7 @@ const TaskDetail = lazy(() => import("@/pages/borrower/TaskDetail"));
 const Messages = lazy(() => import("@/pages/borrower/Messages"));
 const URLAForm = lazy(() => import("@/pages/borrower/URLAForm"));
 const CreditConsent = lazy(() => import("@/pages/borrower/CreditConsent"));
+const AdverseActionNotice = lazy(() => import("@/pages/borrower/AdverseActionNotice"));
 const Verification = lazy(() => import("@/pages/borrower/Verification"));
 const IdentityVerification = lazy(() => import("@/pages/borrower/IdentityVerification"));
 const OnboardingJourney = lazy(() => import("@/pages/borrower/OnboardingJourney"));
@@ -320,6 +321,9 @@ function Router() {
         </Route>
         <Route path="/credit-consent/:id">
           {(params) => <BorrowerPage><CreditConsent /></BorrowerPage>}
+        </Route>
+        <Route path="/adverse-action/:id">
+          {(params) => <BorrowerPage><AdverseActionNotice /></BorrowerPage>}
         </Route>
         <Route path="/hmda/:id">
           {(params) => <BorrowerPage><HmdaDemographics /></BorrowerPage>}
