@@ -9,7 +9,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { logAudit } from "../auditLog";
-import { refreshRates } from "../services/rateService";
+import { refreshRates, syncBestExecutionRates } from "../services/rateService";
 import { requireRole } from "../auth";
 
 export function registerAdminRoutes(
@@ -549,7 +549,16 @@ export function registerAdminRoutes(
   app.post("/api/admin/mortgage-rates/refresh", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const result = await refreshRates();
-      res.json({ success: true, source: result.source, count: result.count });
+      // Best execution runs AFTER the survey refresh so wholesale-sheet lows
+      // always win for the programs they cover — we only advertise rates the
+      // desk can actually execute.
+      const bestExecution = await syncBestExecutionRates();
+      res.json({
+        success: true,
+        source: result.source,
+        count: result.count,
+        bestExecution: { programs: bestExecution.programs, count: bestExecution.synced },
+      });
     } catch (error) {
       console.error("Refresh mortgage rates error:", error);
       res.status(500).json({ error: "Failed to refresh mortgage rates" });

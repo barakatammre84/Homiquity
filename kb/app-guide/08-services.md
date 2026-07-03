@@ -10,7 +10,8 @@ depth.
 |---------|------|
 | `borrowerGraph.ts` | **The** read layer: aggregates all borrower data into one profile with 3-tier trust (self-reported → documented → verified) |
 | `borrowerStateMachine.ts` | Tracks/advances a borrower's journey stage; writes state history |
-| `decisionEngine.ts` | Orchestrates underwriting decision records |
+| `decisionEngine.ts` | Instant-decision orchestrator: completeness → pricing → deterministic underwrite; stamps immutable decision snapshots on every recalc trigger |
+| `loanAnalysis.ts` | Deterministic intake analysis (replaced the retired Gemini path): engine decision + rule-cited analysis strings + illustrative scenarios; never sets `denied` (ECOA locus) |
 | `ruleEngine.ts` | Evaluates the deterministic underwriting rules DSL |
 | `../underwritingEngine.ts` | Fannie/Freddie-aligned underwriting evaluation |
 | `../underwriting.ts` | Underwriting orchestration/entry |
@@ -26,8 +27,7 @@ depth.
 | Service | Does |
 |---------|------|
 | `documentEngine.ts` | Document lifecycle: classification, status |
-| `../extractionService.ts` | Runs AI extraction on uploaded docs (paystub/W-2/bank statement/tax return) |
-| `../gemini.ts` | Gemini client wrapper |
+| `../extractionService.ts` | Runs AI extraction on uploaded docs (paystub/W-2/bank statement/tax return) — owns its own Gemini client |
 | `documentConfidence.ts` | Scores extraction trustworthiness |
 | `aiGateway.ts` | Provider-pluggable AI gateway (Gemini default; Claude via `AI_GATEWAY_PROVIDER` + `ANTHROPIC_API_KEY`) |
 | `coachingService.ts` | AI Homebuyer Coach (OpenAI) |

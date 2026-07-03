@@ -57,8 +57,8 @@ just supporting detail.
 - Client asks `server/routes/documents.ts` for an **upload URL** → uploads the
   file **directly to GCS** (the server never proxies bytes).
 - `server/services/documentEngine.ts` classifies; `server/extractionService.ts`
-  + `server/gemini.ts` run OCR/AI extraction (paystubs, W-2s, bank statements,
-  tax returns); `documentConfidence.ts` scores how trustworthy the extraction is.
+  runs OCR/AI extraction (paystubs, W-2s, bank statements, tax returns);
+  `documentConfidence.ts` scores how trustworthy the extraction is.
 
 ### 5. Verification
 - `server/plaid.ts` + `server/services/verification.ts`: borrower links

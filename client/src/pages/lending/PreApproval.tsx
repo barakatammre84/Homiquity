@@ -887,8 +887,8 @@ function PreApprovalFunnel() {
       }
 
       toast({
-        title: "Pre-Approval Complete!",
-        description: "Analyzing your profile with AI...",
+        title: "Application submitted",
+        description: "Your numbers were run against underwriting guidelines — no AI, just math.",
       });
       navigate(`/loan-options/${result.id}`);
     },

@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders, properties } from "@shared/schema";
-import { refreshRates } from "./services/rateService";
+import { refreshRates, syncBestExecutionRates } from "./services/rateService";
+import { seedMarketPricing } from "./seedMarketPricing";
 
 export async function seedDatabase() {
   try {
@@ -765,6 +766,20 @@ For more information, visit www.consumerfinance.gov/learnmore`,
         await db.insert(properties).values(prop);
       }
       console.log(`Seeded ${sampleProperties.length} sample properties`);
+    }
+
+    await seedMarketPricing();
+
+    // Advertised rates = lowest executable rate per program from the active
+    // wholesale sheets. Runs every boot so the storefront tracks the vendor
+    // rate database, not the survey feed, whenever sheets are loaded.
+    try {
+      const be = await syncBestExecutionRates();
+      if (be.synced > 0) {
+        console.log(`Advertised rates set from wholesale best execution (${be.synced} programs)`);
+      }
+    } catch (err) {
+      console.error("Best-execution rate sync error:", err);
     }
 
     console.log("Database seeded successfully");

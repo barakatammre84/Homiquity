@@ -7,7 +7,7 @@ the code lives.
 |-------------|---------|----------|------|------------|
 | **Neon** (Postgres) | Production database | `DATABASE_URL` | `server/db.ts` | App won't function (health check 503s) |
 | **Plaid** | Income, employment, identity, asset verification | `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` | `server/plaid.ts`, `services/verification.ts`, client `react-plaid-link` | Verification features disabled; manual documents only |
-| **Google Gemini** | Document OCR/data extraction (paystubs, W-2s, bank statements, tax returns) | `GEMINI_API_KEY` | `server/gemini.ts`, `extractionService.ts` | Uploads still work; no auto-extraction |
+| **Google Gemini** | Document OCR/data extraction (paystubs, W-2s, bank statements, tax returns) | `GEMINI_API_KEY` | `server/extractionService.ts` | Uploads still work; no auto-extraction |
 | **OpenAI** | AI Homebuyer Coach | `AI_INTEGRATIONS_OPENAI_API_KEY` (+ optional `..._BASE_URL`) | `services/coachingService.ts` | Coach chat unavailable |
 | **AI Gateway** | Optional provider switch (Gemini ⇄ Claude) | `AI_GATEWAY_PROVIDER`, `ANTHROPIC_API_KEY`, model overrides | `services/aiGateway.ts` | Defaults to Gemini |
 | **Google Cloud Storage** | Document/file storage via signed URLs | `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` | `server/integrations/object_storage/` | Document upload/download broken |
@@ -20,6 +20,33 @@ the code lives.
 
 > Replit (the app's former host) was fully removed on 2026-07-02 — no Replit
 > code, config, or env vars remain.
+
+## Wholesale market pricing (vendor-ready, sample-fed today)
+
+Borrower-facing live pricing (`GET /api/loan-applications/:id/offers`, rendered
+on LoanOptions as "Live Market Pricing") is computed per request by
+`services/pricingAdapter.ts` from four tables: `wholesale_lenders`,
+`rate_sheets` (date-windowed, `status=ACTIVE`), `rate_sheet_products`
+(base rate + lock-term grid + eligibility box), and
+`lender_pricing_adjustments` (overlays). `server/seedMarketPricing.ts` seeds
+three fictional lenders with 90-day demo sheets on first boot (guarded on
+lender code `SWL`).
+
+**Onboarding a real pricing vendor = loading these same tables** — via
+`POST /api/rate-sheets` + `POST /api/rate-sheets/:id/products/bulk`, or a feed
+job writing through `storage.ts`. No UI or pricing-code changes needed:
+borrowers reprice automatically on next request. Expired sheets silently stop
+pricing, so daily feeds keep pricing fresh by construction. Pricing is labeled
+**Indicative** until the borrower's profile is verification-grade
+(`shared/dataProvenance.ts`); rate locking stays gated on verification.
+
+The **advertised rates** (landing page + `/rates` pages, `mortgage_rates`
+table) are also fed from the sheets: `rateService.syncBestExecutionRates()`
+writes the lowest executable rate per program (priced at a disclosed 780
+FICO / 70% LTV marketing profile) on every boot and after every
+`POST /api/admin/mortgage-rates/refresh`, overriding the RapidAPI survey
+rates for the programs the sheets cover — we only advertise what the desk
+can execute.
 
 ## Integration patterns to follow
 

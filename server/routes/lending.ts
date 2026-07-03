@@ -7,7 +7,7 @@ import {
   VALID_US_STATES,
   type User,
 } from "@shared/schema";
-import { analyzeLoanApplication } from "../gemini";
+import { analyzeIntake } from "../services/loanAnalysis";
 import { generateMISMO34XML, type MISMOLoanDTO } from "../mismo";
 import { db } from "../db";
 import {
@@ -27,7 +27,8 @@ import { hasBorrowerConsent } from "../consentGate";
 import * as creditService from "../services/creditService";
 import { sendNotificationEmail } from "../services/emailService";
 import { COMPANY_CONFIG } from "../config/company";
-import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
+import { assertVerifiedForDecisioning, isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
+import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -577,21 +578,13 @@ export function registerLendingRoutes(
           console.warn("[OPT-5] State sync failed for analyzing (non-fatal):", syncErr);
         }
 
-        const analysisResult = await analyzeLoanApplication({
-          annualIncome: applicationData.annualIncome,
-          monthlyDebts: applicationData.monthlyDebts,
-          creditScore: String(formData.creditScore),
-          purchasePrice: applicationData.purchasePrice,
-          downPayment: applicationData.downPayment,
-          propertyType: applicationData.propertyType || "single_family",
-          loanPurpose: applicationData.loanPurpose || "purchase",
-          isVeteran: applicationData.isVeteran,
-          isFirstTimeBuyer: applicationData.isFirstTimeBuyer,
-          employmentType: applicationData.employmentType || "employed",
-          employmentYears: String(formData.employmentYears || 0),
-        });
+        // Deterministic decision path (Reg B): matrix-driven engine + closed-form
+        // math, no AI. Intake never auto-denies — non-approvals go to a human
+        // underwriter (ECOA adverse-action locus), with the engine's cited
+        // reasons preserved in the analysis and the decision snapshot.
+        const analysisResult = await analyzeIntake(application.id);
 
-        const newStatus = analysisResult.isApproved ? "pre_approved" : "denied";
+        const newStatus = analysisResult.outcome;
 
         try {
           const { syncApplicationStatusToStateMachine } = await import("../services/optimizationEngine");
@@ -621,13 +614,16 @@ export function registerLendingRoutes(
         }
 
         try {
+          const firstReason = analysisResult.analysis.concerns[0];
           await storage.createDealActivity({
             applicationId: application.id,
             activityType: "status_change",
             title: analysisResult.isApproved ? "Pre-Approval Issued" : "Application Under Review",
-            description: analysisResult.isApproved 
+            description: analysisResult.isApproved
               ? `Pre-approval issued for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}. Final terms subject to underwriting review.`
-              : "Your application requires additional review by the underwriting team.",
+              : firstReason
+                ? `A licensed underwriter will review your application. Flagged for review: ${firstReason}`
+                : "A licensed underwriter will review your application.",
           });
         } catch (actErr) {
           console.error("[Analysis] Failed to create deal activity:", actErr);
@@ -653,20 +649,22 @@ export function registerLendingRoutes(
               });
             }
           } else {
+            // Not a denial: intake routes non-approvals to a human underwriter
+            // (auto-denial would trigger ECOA adverse-action obligations).
             await storage.createNotification({
               userId,
-              type: "application_denied",
+              type: "application_under_review",
               title: "Application Under Review",
-              body: "Your application requires additional review by the underwriting team. Please check your dashboard for details.",
+              body: "A licensed underwriter is reviewing your application. Check your dashboard to see what was flagged and what happens next.",
               entityType: "loan_application",
               entityId: application.id,
               status: "unread",
             });
             if (user.email) {
               sendNotificationEmail({
-                type: "application_denied",
+                type: "status_update",
                 recipientEmail: user.email,
-                data: { borrowerName },
+                data: { borrowerName, statusLabel: "Under Review", applicationId: application.id },
               });
             }
           }
@@ -703,7 +701,7 @@ export function registerLendingRoutes(
           console.error("[Analysis] Pre-underwriting validation failed (non-fatal):", preUwErr);
         }
       } catch (analysisError) {
-        console.error("AI analysis error:", analysisError);
+        console.error("Intake analysis error:", analysisError);
         await storage.updateLoanApplication(application.id, { status: "submitted" });
       }
     } catch (error) {
@@ -772,6 +770,103 @@ export function registerLendingRoutes(
     } catch (error) {
       console.error("Get loan options error:", error);
       res.status(500).json({ error: "Failed to get loan options" });
+    }
+  });
+
+  // Live market pricing (Binding Contract 2): price the borrower's profile
+  // against the active wholesale rate sheets on every request — base rate +
+  // LLPA + lock term + lender overlays, all deterministic. Sample sheets and
+  // vendor-fed sheets flow through the same tables, so this endpoint reprices
+  // automatically as market data updates. PRELIMINARY (self-reported) profiles
+  // get indicative pricing only; locking stays gated on verification.
+  app.get("/api/loan-applications/:id/offers", isAuthenticated, async (req, res) => {
+    try {
+      const application = await storage.getLoanApplicationWithAccess(
+        req.params.id,
+        req.user!.id,
+        req.user!.role,
+      );
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const qualifier = isDecisionGrade(application.financialDataProvenance as DataProvenance)
+        ? "VERIFIED"
+        : "PRELIMINARY";
+      const pricedAt = new Date().toISOString();
+      const lockTermDays = Math.max(15, Math.min(90, parseInt(String(req.query.lockTerm)) || 30));
+
+      const purchasePrice = parseFloat(String(application.purchasePrice ?? "0"));
+      const downPayment = parseFloat(String(application.downPayment ?? "0"));
+      const loanAmount = purchasePrice - downPayment;
+      const missingItems: string[] = [];
+      if (!purchasePrice || purchasePrice <= 0) missingItems.push("Purchase price");
+      if (isNaN(downPayment) || loanAmount <= 0) missingItems.push("Down payment below purchase price");
+      if (!application.creditScore) missingItems.push("Credit score");
+
+      const base = { qualifier, indicative: qualifier === "PRELIMINARY", pricedAt, lockTermDays };
+      if (missingItems.length > 0) {
+        return res.json({ ...base, status: "INSUFFICIENT_PROFILE", missingItems, offers: [], inputs: null, assumptions: [] });
+      }
+
+      // VA products are only priced for VA-eligible borrowers.
+      const productTypes = ["CONVENTIONAL", "FHA", "JUMBO", "ARM", ...(application.isVeteran ? ["VA"] : [])];
+
+      const profile: BorrowerPricingProfile = {
+        creditScore: application.creditScore!,
+        loanAmount,
+        propertyValue: purchasePrice,
+        propertyType: (application.propertyType as BorrowerPricingProfile["propertyType"]) || "single_family",
+        occupancyType: "primary_residence",
+        loanPurpose: (application.loanPurpose as BorrowerPricingProfile["loanPurpose"]) || "purchase",
+        isFirstTimeHomeBuyer: application.isFirstTimeBuyer ?? false,
+        borrowerIncome: parseFloat(String(application.annualIncome ?? "0")),
+        lockTermDays,
+        productTypes,
+      };
+
+      // Out-of-matrix profiles (e.g. LLPA grid has no band for this LTV) are a
+      // pricing gap, not a server error — surface them as unpriceable.
+      let offers: Awaited<ReturnType<typeof computeOffers>> = [];
+      try {
+        offers = await computeOffers(storage, profile);
+      } catch (pricingErr) {
+        console.warn(`[Offers] Pricing matrices do not cover application ${application.id}:`, pricingErr);
+        return res.json({
+          ...base,
+          status: "UNPRICEABLE_PROFILE",
+          missingItems: ["Live pricing is not available for this loan profile yet — your loan team will quote it directly."],
+          offers: [],
+          inputs: null,
+          assumptions: [],
+        });
+      }
+
+      res.json({
+        ...base,
+        status: offers.length > 0 ? "PRICED" : "NO_ACTIVE_RATE_SHEETS",
+        inputs: {
+          creditScore: profile.creditScore,
+          loanAmount,
+          ltv: Number(((loanAmount / purchasePrice) * 100).toFixed(1)),
+          propertyType: profile.propertyType,
+          occupancyType: profile.occupancyType,
+          productTypes,
+        },
+        assumptions: [
+          `${lockTermDays}-day rate lock`,
+          "Primary residence occupancy",
+          qualifier === "PRELIMINARY"
+            ? "Pricing is indicative — based on your self-reported profile, not a rate quote or a commitment to lend"
+            : "Pricing reflects your verified profile; final terms set at rate lock",
+          "Taxes and insurance estimated; exact escrow set at Loan Estimate",
+        ],
+        missingItems: [],
+        offers,
+      });
+    } catch (error) {
+      console.error("Market offers error:", error);
+      res.status(500).json({ error: "Failed to price offers" });
     }
   });
 
