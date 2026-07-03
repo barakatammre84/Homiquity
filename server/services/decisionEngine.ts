@@ -1,7 +1,7 @@
 import { eq, desc } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
-import { consolidatedUnderwritingEngine, type UnderwritingInput, type AssetProfile } from "../underwritingEngine";
+import { consolidatedUnderwritingEngine, UnderwritingError, type UnderwritingInput, type AssetProfile } from "../underwritingEngine";
 import { generateLoanEstimate } from "./loanEstimate";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { decisionSnapshots, type LoanApplication } from "@shared/schema";
@@ -207,10 +207,25 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   try {
     result = await consolidatedUnderwritingEngine.evaluate(input);
   } catch (err) {
-    // The engine throws for missing VA inputs (family size / square footage) or
-    // invalid values — surface as a "need more info" gap rather than a 500.
-    const detail = err instanceof Error ? err.message : "additional information required";
-    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: [detail], metrics: null, ...base };
+    if (err instanceof UnderwritingError) {
+      // A genuinely missing/unusable input is the only case that should loop
+      // back for more information — and only with a borrower-safe message, never
+      // the raw internal detail.
+      if (err.kind === "INPUT_INCOMPLETE" || err.kind === "INPUT_INVALID") {
+        return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: [err.publicMessage], metrics: null, ...base };
+      }
+      // A profile outside the automated pricing/eligibility matrices is a
+      // DECISION, not a documentation gap: route it to a human as MANUAL_REVIEW
+      // so it lands in the queue with an auditable reason instead of crashing or
+      // looping forever asking for documents that would never resolve it.
+      if (err.kind === "POLICY_OUT_OF_BAND") {
+        return { status: "DECISION_READY", decision: "MANUAL_REVIEW", reasons: [err.publicMessage], missingItems: [], metrics: null, ...base };
+      }
+    }
+    // Anything else (e.g. a missing policy matrix) is a system fault, not an
+    // underwriting outcome — let it surface as a real error rather than masking
+    // it as "needs more info".
+    throw err;
   }
 
   return {
