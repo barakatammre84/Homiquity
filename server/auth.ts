@@ -28,9 +28,14 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
+  // A malformed stored value (missing salt separator, truncated hex) must be
+  // an authentication failure, not a thrown 500 — timingSafeEqual throws on
+  // length mismatch and Buffer.from(undefined) throws outright.
   const [hashedPassword, salt] = stored.split(".");
+  if (!hashedPassword || !salt) return false;
   const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
   const suppliedPasswordBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  if (hashedPasswordBuf.length !== suppliedPasswordBuf.length) return false;
   return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
 }
 
