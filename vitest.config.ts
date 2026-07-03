@@ -21,6 +21,8 @@ export default defineConfig({
       "tests/scenarioCatalog.test.ts",
       "tests/statusVocabulary.test.ts",
       "tests/intakeSchema.test.ts",
+      "tests/ssnVault.test.ts",
+      "tests/loginLockout.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

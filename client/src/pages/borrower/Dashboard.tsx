@@ -16,7 +16,8 @@ import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
 import { TrustLayer } from "@/components/TrustLayer";
 import { RenterHome } from "@/pages/borrower/RenterHome";
-import { isStaffRole, isTerminalLoanAppStatus } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
+import { isTerminalLoanAppStatus } from "@shared/schema";
 import PredictionInsights from "@/components/borrower/PredictionInsights";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {

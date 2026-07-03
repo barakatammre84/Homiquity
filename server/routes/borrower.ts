@@ -1,6 +1,7 @@
 import type { Express } from "express";
-import type { IStorage } from "../storage";
+import { InvalidSsnError, type IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
+import { logAudit } from "../auditLog";
 import {
   insertCalculatorResultSchema,
   insertHomeownershipGoalSchema,
@@ -9,6 +10,7 @@ import {
   insertJourneyMilestoneSchema,
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
+  insertUrlaPersonalInfoSchema,
   isStaffRole,
   isInternalStaffRole,
   LOAN_APP_TERMINAL_STATUSES,
@@ -18,6 +20,7 @@ import { updatePipelineStage } from "../pipelineEngine";
 import crypto from "crypto";
 import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
+import { sendNotificationEmail } from "../services/emailService";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -383,12 +386,60 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.upsertUrlaPersonalInfo(data);
+      const parsed = insertUrlaPersonalInfoSchema.safeParse({ ...req.body, applicationId });
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid personal info",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+      const result = await storage.upsertUrlaPersonalInfo(parsed.data);
       res.json(result);
     } catch (error) {
+      if (error instanceof InvalidSsnError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Save personal info error:", error);
       res.status(500).json({ error: "Failed to save personal info" });
+    }
+  });
+
+  /**
+   * Audited full-SSN reveal. Everything else in the API returns the masked
+   * form; this endpoint exists for the narrow staff workflows that genuinely
+   * need the full value (credit pulls, GSE casefile fixes). Owner borrowers
+   * may read their own. Every call writes an audit entry.
+   */
+  app.get("/api/urla/:applicationId/ssn", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const seq = Math.max(parseInt(String(req.query.borrowerSequenceNumber ?? "1"), 10) || 1, 1);
+
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const isOwner = application.userId === user.id;
+      const allowedStaff = ["admin", "underwriter", "processor"];
+      if (!isOwner && !allowedStaff.includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const ssn = await storage.getDecryptedUrlaSsn(applicationId, seq);
+      if (!ssn) {
+        return res.status(404).json({ error: "No SSN on file" });
+      }
+
+      await logAudit(req, "urla.ssn_reveal", "loan_application", applicationId, {
+        borrowerSequenceNumber: seq,
+        role: user.role,
+      });
+      res.json({ ssn });
+    } catch (error) {
+      console.error("SSN reveal error:", error);
+      res.status(500).json({ error: "Failed to retrieve SSN" });
     }
   });
 
@@ -2361,11 +2412,18 @@ export function registerBorrowerRoutes(
   // Team Messaging API Routes
   // ============================================
 
-  // Get all staff users for team display
+  // Team members for the Messages view. A borrower sees only THEIR assigned
+  // loan team (deal-team members + assigned LOs), not the whole staff
+  // directory; staff keep the full list for internal coordination. Borrowers
+  // with no team assigned yet fall back to all staff so they can still reach
+  // someone (see storage.getTeamMembersForBorrower).
   app.get("/api/team-members", isAuthenticated, async (req, res) => {
     try {
-      const staffUsersWithPresence = await storage.getTeamMembersWithPresence();
-      
+      const user = req.user as User;
+      const staffUsersWithPresence = isStaffRole(user.role)
+        ? await storage.getTeamMembersWithPresence()
+        : await storage.getTeamMembersForBorrower(user.id);
+
       // Transform to include display info and presence
       const teamMembers = staffUsersWithPresence.map(user => ({
         id: user.id,
@@ -2446,32 +2504,138 @@ export function registerBorrowerRoutes(
     }
   });
 
-  // Send a message (supports regular text and document requests)
+  // Send a message (supports regular text and document requests).
+  // Borrower communications are loan-file records: every send is validated,
+  // scoped to borrower↔staff pairs, stamped with the loan application, audit
+  // logged, and the recipient is actually notified (in-app + email).
+  const sendMessageSchema = z.object({
+    recipientId: z.string().min(1),
+    message: z.string().trim().min(1).max(2000),
+    applicationId: z.string().optional(),
+    messageType: z.enum(["text", "document_request"]).default("text"),
+    documentRequestData: z
+      .object({
+        documentType: z.string().min(1).max(100),
+        documentName: z.string().min(1).max(200),
+        description: z.string().max(500).optional(),
+        status: z.literal("pending").default("pending"),
+      })
+      .optional(),
+  });
+
   app.post("/api/messages", isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user!.id;
-      const { recipientId, message, applicationId, messageType, documentRequestData } = req.body;
-      
-      if (!recipientId || !message) {
-        return res.status(400).json({ error: "recipientId and message are required" });
+      const user = req.user as User;
+
+      const parsed = sendMessageSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid message", details: parsed.error.flatten().fieldErrors });
       }
-      
-      // Verify recipient exists
+      const { recipientId, message, messageType, documentRequestData } = parsed.data;
+
       const recipient = await storage.getUser(recipientId);
       if (!recipient) {
         return res.status(404).json({ error: "Recipient not found" });
       }
-      
+
+      // Scoping: messaging exists between a borrower and their loan team.
+      // Borrower↔borrower (or any pair with no staff member) is not a thing.
+      const senderIsStaff = isStaffRole(user.role);
+      const recipientIsStaff = isStaffRole(recipient.role || "");
+      if (!senderIsStaff && !recipientIsStaff) {
+        return res.status(403).json({ error: "Messages can only be exchanged with your loan team" });
+      }
+
+      // A borrower may only message staff on their OWN team (deal-team + LOs).
+      // Mirrors the scoped team-members list, so they can't reach an arbitrary
+      // staff member by user id. If they have no team yet, the team list falls
+      // back to all staff, and so does this check — no dead end.
+      if (!senderIsStaff && recipientIsStaff) {
+        const onTeam = await storage.isStaffOnBorrowerTeam(user.id, recipientId);
+        if (!onTeam) {
+          return res.status(403).json({ error: "You can only message members of your assigned loan team" });
+        }
+      }
+
+      // Document requests are a staff→borrower workflow.
+      if (messageType === "document_request") {
+        if (!senderIsStaff) {
+          return res.status(403).json({ error: "Only your loan team can send document requests" });
+        }
+        if (!documentRequestData) {
+          return res.status(400).json({ error: "documentRequestData is required for document requests" });
+        }
+      }
+
+      // Stamp the message onto the borrower's loan file so the conversation is
+      // part of the (retained, examinable) loan record. If the caller supplied
+      // an applicationId, verify it belongs to the borrower side of the pair;
+      // otherwise derive the borrower's most recent application.
+      const borrowerParty = senderIsStaff ? recipient : user;
+      let applicationId: string | null = null;
+      if (parsed.data.applicationId) {
+        const application = await storage.getLoanApplication(parsed.data.applicationId);
+        if (!application || application.userId !== borrowerParty.id) {
+          return res.status(403).json({ error: "Application does not belong to this conversation" });
+        }
+        applicationId = application.id;
+      } else {
+        const apps = await storage.getLoanApplicationsByUser(borrowerParty.id);
+        applicationId = apps[0]?.id ?? null; // newest first; null pre-application
+      }
+
       const newMessage = await storage.sendMessage({
-        senderId: userId,
+        senderId: user.id,
         recipientId,
         message,
-        applicationId: applicationId || null,
-        messageType: messageType || 'text',
+        applicationId,
+        messageType,
         documentRequestData: documentRequestData || null,
         isRead: false,
       });
-      
+
+      logAudit(req, "message.sent", "team_message", newMessage.id, {
+        recipientId,
+        applicationId,
+        messageType,
+      });
+
+      // Notify the recipient — the UI promises this, so the backend delivers it.
+      // The email intentionally carries no message content (PII stays behind login).
+      const senderName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Your loan team";
+      try {
+        const isDocRequest = messageType === "document_request";
+        await storage.createNotification({
+          userId: recipientId,
+          type: isDocRequest ? "document_request" : "message_received",
+          title: isDocRequest ? "Document requested" : `New message from ${senderName}`,
+          body: isDocRequest
+            ? `${senderName} requested: ${documentRequestData!.documentName}. Upload it from your Documents page.`
+            : "You have a new secure message. Open Messages to read and reply.",
+          entityType: "team_message",
+          entityId: newMessage.id,
+          status: "unread",
+        });
+        if (recipient.email) {
+          if (isDocRequest) {
+            sendNotificationEmail({
+              type: "document_requested",
+              recipientEmail: recipient.email,
+              data: { borrowerName: recipient.firstName || "there", documentName: documentRequestData!.documentName },
+            });
+          } else {
+            sendNotificationEmail({
+              type: "message_received",
+              recipientEmail: recipient.email,
+              data: { recipientName: recipient.firstName || "there", senderName },
+            });
+          }
+        }
+      } catch (notifyErr) {
+        // Delivery of the message itself must not fail on notification errors.
+        console.error("[Messages] Failed to notify recipient (non-fatal):", notifyErr);
+      }
+
       res.status(201).json(newMessage);
     } catch (error) {
       console.error("Send message error:", error);
@@ -2527,10 +2691,36 @@ export function registerBorrowerRoutes(
         }
       }
 
-      const updated = await storage.updateDocumentRequestStatus(messageId, status, documentId);
+      // State-machine guard (prevents lost updates when borrower + staff act
+      // concurrently, e.g. borrower re-submits while staff approves). Only the
+      // listed prior states may transition to the target; the update below is
+      // conditional on the current state, so a stale writer gets a 409.
+      const LEGAL_FROM: Record<string, string[]> = {
+        submitted: ["pending", "rejected"],       // borrower (re)uploads
+        approved: ["submitted"],                   // staff clears a submitted doc
+        rejected: ["submitted"],                   // staff bounces a submitted doc
+        pending: ["submitted", "approved", "rejected"], // staff resets
+      };
+      const currentStatus = (message.documentRequestData as { status?: string } | null)?.status ?? "pending";
+      if (currentStatus === status) {
+        return res.json(message); // idempotent no-op
+      }
+      if (!LEGAL_FROM[status]?.includes(currentStatus)) {
+        return res.status(409).json({
+          error: `Cannot move a "${currentStatus}" request to "${status}".`,
+          currentStatus,
+        });
+      }
+
+      const updated = await storage.updateDocumentRequestStatus(messageId, status, documentId, LEGAL_FROM[status]);
 
       if (!updated) {
-        return res.status(404).json({ error: "Document request not found" });
+        // 0 rows matched the expected prior state — another writer beat us.
+        const fresh = await storage.getMessageById(messageId);
+        return res.status(409).json({
+          error: "This request was just updated by someone else. Refresh to see the latest status.",
+          currentStatus: (fresh?.documentRequestData as { status?: string } | null)?.status ?? null,
+        });
       }
 
       res.json(updated);

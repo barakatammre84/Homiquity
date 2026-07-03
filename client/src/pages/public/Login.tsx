@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 
 function getRoleHomeRoute(role: string): string {

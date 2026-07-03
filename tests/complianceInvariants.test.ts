@@ -24,6 +24,7 @@ const DECISION_PATH_MODULES = [
   "server/services/underwritingNuance.ts",
   "server/services/preUnderwriting.ts",
   "server/services/decisionEngine.ts",
+  "server/services/loanAnalysis.ts",
   "server/services/ausSubmission.ts",
   "server/pricing.ts",
   "server/underwriting.ts",
@@ -102,14 +103,24 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
   });
 });
 
-describe("Reg B: the approval decision stays deterministic even in the AI module", () => {
-  it("gemini.ts computes isApproved from hard rules, never from model output", () => {
-    const source = read("server/gemini.ts");
-    // The prompt must forbid the model from deciding…
-    expect(source).toMatch(/Do not make approval decisions/);
-    expect(source).toMatch(/approval is determined server-side/);
-    // …and the decision must be the deterministic DTI/score rule.
-    expect(source).toMatch(/isApproved\s*=\s*dtiRatio\s*<=\s*43\s*&&\s*creditScore\s*>=\s*620/);
+describe("Reg B: the intake decision path is fully deterministic", () => {
+  it("the intake route no longer imports the retired LLM analysis module", () => {
+    const source = read("server/routes/lending.ts");
+    expect(source).not.toMatch(/from\s+["'][^"']*\/gemini["']/);
+    // The route drives the deterministic finalizer, which wraps the engine.
+    expect(source).toContain("finalizeIntake");
+    const analysis = read("server/services/loanAnalysis.ts");
+    expect(analysis).toContain("analyzeIntake");
+  });
+
+  it("intake analysis derives approval from the engine, never sets denied itself", () => {
+    const source = read("server/services/loanAnalysis.ts");
+    // Approval comes from the deterministic engine's decision…
+    expect(source).toMatch(/decision\?\.decision === "APPROVED"/);
+    // …and the only statuses intake may set exclude "denied" (ECOA locus:
+    // only a human may deny, with adverse-action handling).
+    expect(source).toMatch(/"pre_approved" \| "under_review"/);
+    expect(source).not.toMatch(/outcome[^\n]*"denied"/);
   });
 });
 

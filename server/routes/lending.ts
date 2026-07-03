@@ -3,18 +3,18 @@ import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import {
   insertBorrowerDeclarationsSchema,
-  isStaffRole,
   LOAN_APP_STATUSES,
   loanApplicationIntakeSchema,
   loanApplicationIntakeUpdateSchema,
   type LoanAppStatus,
   type User,
 } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
 import { updatePipelineStage, PipelineTransitionError } from "../pipelineEngine";
 import { computeNextAction } from "../services/nextAction";
 import { getUserActivitySummary } from "../services/activitySummary";
 import { isTerminalLoanAppStatus } from "@shared/schema";
-import { analyzeLoanApplication } from "../gemini";
+import { finalizeIntake } from "../services/loanAnalysis";
 import { generateMISMO34XML, type MISMOLoanDTO } from "../mismo";
 import { db } from "../db";
 import {
@@ -28,13 +28,14 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
-import { upload, verifyFileSignature } from "./utils";
+import { upload, verifyFileSignature, allowedUploadTypes } from "./utils";
 import { logAudit } from "../auditLog";
 import { hasBorrowerConsent } from "../consentGate";
 import * as creditService from "../services/creditService";
 import { sendNotificationEmail } from "../services/emailService";
 import { COMPANY_CONFIG } from "../config/company";
-import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
+import { assertVerifiedForDecisioning, isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
+import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -540,142 +541,15 @@ export function registerLendingRoutes(
 
       res.status(201).json(application);
 
+      // Deterministic decision path (Reg B): matrix-driven engine + closed-form
+      // math, no AI. Runs after the response so intake stays snappy. This same
+      // finalizer is re-drivable by the recovery sweep if a downstream drop
+      // strands the application mid-analysis (never left stuck in "analyzing").
       try {
-        // Single writer: milestone/event/state-machine side effects included.
-        await updatePipelineStage(application.id, "analyzing");
-
-        const analysisResult = await analyzeLoanApplication({
-          annualIncome: applicationData.annualIncome,
-          monthlyDebts: applicationData.monthlyDebts,
-          creditScore: String(formData.creditScore),
-          purchasePrice: applicationData.purchasePrice,
-          downPayment: applicationData.downPayment,
-          propertyType: applicationData.propertyType || "single_family",
-          loanPurpose: applicationData.loanPurpose || "purchase",
-          isVeteran: applicationData.isVeteran,
-          isFirstTimeBuyer: applicationData.isFirstTimeBuyer,
-          employmentType: applicationData.employmentType || "employed",
-          employmentYears: String(formData.employmentYears || 0),
-        });
-
-        const newStatus: LoanAppStatus = analysisResult.isApproved ? "pre_approved" : "denied";
-
-        // Analysis figures land first so stage-event handlers see them, then
-        // the status moves through the single writer (milestones, task events,
-        // state sync). The automated "denied" carries no denial reasons, so
-        // no HMDA LAR code is stamped — the formal adverse-action flow owns
-        // that disposition.
-        await storage.updateLoanApplication(application.id, {
-          preApprovalAmount: analysisResult.preApprovalAmount,
-          dtiRatio: analysisResult.dtiRatio,
-          ltvRatio: analysisResult.ltvRatio,
-          aiAnalysis: analysisResult.analysis,
-          aiAnalyzedAt: new Date(),
-        });
-        await updatePipelineStage(application.id, newStatus);
-
-        for (const scenario of analysisResult.scenarios) {
-          try {
-            await storage.createLoanOption({
-              applicationId: application.id,
-              ...scenario,
-            });
-          } catch (optErr) {
-            console.error("[Analysis] Failed to create loan option:", optErr);
-          }
-        }
-
-        try {
-          await storage.createDealActivity({
-            applicationId: application.id,
-            activityType: "status_change",
-            title: analysisResult.isApproved ? "Pre-Approval Issued" : "Application Under Review",
-            description: analysisResult.isApproved 
-              ? `Pre-approval issued for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}. Final terms subject to underwriting review.`
-              : "Your application requires additional review by the underwriting team.",
-          });
-        } catch (actErr) {
-          console.error("[Analysis] Failed to create deal activity:", actErr);
-        }
-
-        const borrowerName = user.firstName || "Borrower";
-        try {
-          if (analysisResult.isApproved) {
-            await storage.createNotification({
-              userId,
-              type: "application_pre_approved",
-              title: "Pre-Approval Issued",
-              body: `Your pre-approval has been issued for up to $${(parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString()}. Final terms are subject to underwriting review.`,
-              entityType: "loan_application",
-              entityId: application.id,
-              status: "unread",
-            });
-            if (user.email) {
-              sendNotificationEmail({
-                type: "application_pre_approved",
-                recipientEmail: user.email,
-                data: { borrowerName, amount: (parseFloat(analysisResult.preApprovalAmount) || 0).toLocaleString(), applicationId: application.id },
-              });
-            }
-          } else {
-            await storage.createNotification({
-              userId,
-              type: "application_denied",
-              title: "Application Under Review",
-              body: "Your application requires additional review by the underwriting team. Please check your dashboard for details.",
-              entityType: "loan_application",
-              entityId: application.id,
-              status: "unread",
-            });
-            if (user.email) {
-              sendNotificationEmail({
-                type: "application_denied",
-                recipientEmail: user.email,
-                data: { borrowerName },
-              });
-            }
-          }
-        } catch (notifErr) {
-          console.error("[Analysis] Failed to send notifications:", notifErr);
-        }
-
-        if (analysisResult.isApproved) {
-          try {
-            const updatedApp = await storage.getLoanApplication(application.id);
-            if (updatedApp) {
-              const { initializeLoanPipeline } = await import("../pipelineEngine");
-              await initializeLoanPipeline(updatedApp, userId);
-              
-              await storage.createDealActivity({
-                applicationId: application.id,
-                activityType: "status_change",
-                title: "Document Collection Started",
-                description: "Required documents have been identified. Please upload them to continue your application.",
-                performedBy: "system",
-              });
-            }
-          } catch (pipelineErr) {
-            console.error("[Analysis] Pipeline initialization failed (non-fatal):", pipelineErr);
-          }
-        }
-
-        // Automated pre-underwriting validation the moment intake completes
-        // (reserves vs verified assets, complex-income flags, borrower outreach).
-        try {
-          const { runPreUnderwriting } = await import("../services/preUnderwriting");
-          await runPreUnderwriting(application.id, "intake");
-        } catch (preUwErr) {
-          console.error("[Analysis] Pre-underwriting validation failed (non-fatal):", preUwErr);
-        }
+        await finalizeIntake(application.id);
       } catch (analysisError) {
-        console.error("AI analysis error:", analysisError);
-        // Roll back to "submitted" so the file re-enters the review queue
-        // rather than sitting in "analyzing" forever.
-        try {
-          await updatePipelineStage(application.id, "submitted");
-        } catch (rollbackErr) {
-          console.error("[Analysis] Rollback to submitted failed:", rollbackErr);
-        }
+        console.error("Intake analysis error:", analysisError);
+        // finalizeIntake already reset status to "submitted" for retry.
       }
     } catch (error) {
       console.error("Create application error:", error);
@@ -743,6 +617,103 @@ export function registerLendingRoutes(
     } catch (error) {
       console.error("Get loan options error:", error);
       res.status(500).json({ error: "Failed to get loan options" });
+    }
+  });
+
+  // Live market pricing (Binding Contract 2): price the borrower's profile
+  // against the active wholesale rate sheets on every request — base rate +
+  // LLPA + lock term + lender overlays, all deterministic. Sample sheets and
+  // vendor-fed sheets flow through the same tables, so this endpoint reprices
+  // automatically as market data updates. PRELIMINARY (self-reported) profiles
+  // get indicative pricing only; locking stays gated on verification.
+  app.get("/api/loan-applications/:id/offers", isAuthenticated, async (req, res) => {
+    try {
+      const application = await storage.getLoanApplicationWithAccess(
+        req.params.id,
+        req.user!.id,
+        req.user!.role,
+      );
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const qualifier = isDecisionGrade(application.financialDataProvenance as DataProvenance)
+        ? "VERIFIED"
+        : "PRELIMINARY";
+      const pricedAt = new Date().toISOString();
+      const lockTermDays = Math.max(15, Math.min(90, parseInt(String(req.query.lockTerm)) || 30));
+
+      const purchasePrice = parseFloat(String(application.purchasePrice ?? "0"));
+      const downPayment = parseFloat(String(application.downPayment ?? "0"));
+      const loanAmount = purchasePrice - downPayment;
+      const missingItems: string[] = [];
+      if (!purchasePrice || purchasePrice <= 0) missingItems.push("Purchase price");
+      if (isNaN(downPayment) || loanAmount <= 0) missingItems.push("Down payment below purchase price");
+      if (!application.creditScore) missingItems.push("Credit score");
+
+      const base = { qualifier, indicative: qualifier === "PRELIMINARY", pricedAt, lockTermDays };
+      if (missingItems.length > 0) {
+        return res.json({ ...base, status: "INSUFFICIENT_PROFILE", missingItems, offers: [], inputs: null, assumptions: [] });
+      }
+
+      // VA products are only priced for VA-eligible borrowers.
+      const productTypes = ["CONVENTIONAL", "FHA", "JUMBO", "ARM", ...(application.isVeteran ? ["VA"] : [])];
+
+      const profile: BorrowerPricingProfile = {
+        creditScore: application.creditScore!,
+        loanAmount,
+        propertyValue: purchasePrice,
+        propertyType: (application.propertyType as BorrowerPricingProfile["propertyType"]) || "single_family",
+        occupancyType: "primary_residence",
+        loanPurpose: (application.loanPurpose as BorrowerPricingProfile["loanPurpose"]) || "purchase",
+        isFirstTimeHomeBuyer: application.isFirstTimeBuyer ?? false,
+        borrowerIncome: parseFloat(String(application.annualIncome ?? "0")),
+        lockTermDays,
+        productTypes,
+      };
+
+      // Out-of-matrix profiles (e.g. LLPA grid has no band for this LTV) are a
+      // pricing gap, not a server error — surface them as unpriceable.
+      let offers: Awaited<ReturnType<typeof computeOffers>> = [];
+      try {
+        offers = await computeOffers(storage, profile);
+      } catch (pricingErr) {
+        console.warn(`[Offers] Pricing matrices do not cover application ${application.id}:`, pricingErr);
+        return res.json({
+          ...base,
+          status: "UNPRICEABLE_PROFILE",
+          missingItems: ["Live pricing is not available for this loan profile yet — your loan team will quote it directly."],
+          offers: [],
+          inputs: null,
+          assumptions: [],
+        });
+      }
+
+      res.json({
+        ...base,
+        status: offers.length > 0 ? "PRICED" : "NO_ACTIVE_RATE_SHEETS",
+        inputs: {
+          creditScore: profile.creditScore,
+          loanAmount,
+          ltv: Number(((loanAmount / purchasePrice) * 100).toFixed(1)),
+          propertyType: profile.propertyType,
+          occupancyType: profile.occupancyType,
+          productTypes,
+        },
+        assumptions: [
+          `${lockTermDays}-day rate lock`,
+          "Primary residence occupancy",
+          qualifier === "PRELIMINARY"
+            ? "Pricing is indicative — based on your self-reported profile, not a rate quote or a commitment to lend"
+            : "Pricing reflects your verified profile; final terms set at rate lock",
+          "Taxes and insurance estimated; exact escrow set at Loan Estimate",
+        ],
+        missingItems: [],
+        offers,
+      });
+    } catch (error) {
+      console.error("Market offers error:", error);
+      res.status(500).json({ error: "Failed to price offers" });
     }
   });
 
@@ -969,31 +940,140 @@ export function registerLendingRoutes(
     }
   });
 
-  app.post("/api/documents/upload", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
+  // Two ingestion modes, one registration path:
+  //  - multipart: the file travels through the server (multer + magic-byte check)
+  //  - JSON: the file already went browser → object storage via a signed URL
+  //    (the flow Documents/Tasks/Messages use); the body registers its metadata.
+  // Every accepted upload becomes a document record — unsolicited files are
+  // stamped onto the borrower's latest application instead of being lost.
+  const uploadRegistrationSchema = z.object({
+    objectPath: z.string().regex(/^\/objects\/[^\s]+$/, "objectPath must be a normalized /objects/ path"),
+    fileName: z.string().min(1).max(255),
+    fileSize: z.number().int().positive().max(25 * 1024 * 1024, "File exceeds the 25MB limit"),
+    mimeType: z.string().refine((m) => allowedUploadTypes.includes(m), "Unsupported file type"),
+    documentType: z.string().max(50).optional(),
+    applicationId: z.string().optional(),
+    description: z.string().max(500).optional(),
+  });
+
+  const multerIfMultipart = (req: any, res: any, next: any) => {
+    if (!req.is("multipart/form-data")) return next();
+    upload.single("file")(req, res, (err: unknown) => {
+      if (err) return res.status(400).json({ error: err instanceof Error ? err.message : "Upload failed" });
+      verifyFileSignature(req, res, next);
+    });
+  };
+
+  app.post("/api/documents/upload", isAuthenticated, multerIfMultipart, async (req, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
+      const user = req.user as User;
+      const userId = user.id;
+
+      let fileMeta: { fileName: string; fileSize: number; mimeType: string; storagePath: string };
+      let documentType: string;
+      let requestedApplicationId: string | undefined;
+      let description: string | undefined;
+
+      if (req.file) {
+        fileMeta = {
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          mimeType: req.file.mimetype,
+          storagePath: req.file.path,
+        };
+        documentType = (req.body.documentType as string) || "other";
+        requestedApplicationId = req.body.applicationId as string | undefined;
+      } else {
+        const parsed = uploadRegistrationSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            error: "No file uploaded",
+            details: parsed.error.flatten().fieldErrors,
+            acceptedTypes: allowedUploadTypes,
+          });
+        }
+        // Object-level authorization + content verification (P0). The client
+        // supplies the storage path, so before we trust it: confirm the object
+        // exists, that this user owns it (not someone else's object — IDOR),
+        // and that its REAL content-type/size match the allow-list rather than
+        // the client-declared MIME (magic-byte parity for the JSON path).
+        const { ObjectStorageService } = await import("../integrations/object_storage/objectStorage");
+        const objectStorage = new ObjectStorageService();
+        const verification = await objectStorage.verifyAndClaimObject(parsed.data.objectPath, userId);
+        if (verification.configured && !verification.ok) {
+          return res.status(403).json({ error: verification.reason });
+        }
+        if (verification.configured && verification.ok) {
+          if (verification.contentType && !allowedUploadTypes.includes(verification.contentType)) {
+            return res.status(400).json({ error: "Unsupported file type", acceptedTypes: allowedUploadTypes });
+          }
+          if (verification.size !== undefined && verification.size > 25 * 1024 * 1024) {
+            return res.status(400).json({ error: "File exceeds the 25MB limit" });
+          }
+        } else if (process.env.NODE_ENV === "production") {
+          // Storage misconfigured in prod: fail CLOSED rather than trust the
+          // client's path blindly.
+          return res.status(503).json({ error: "Uploads are temporarily unavailable" });
+        }
+
+        fileMeta = {
+          fileName: parsed.data.fileName,
+          // Prefer storage-verified size/type when available; fall back to the
+          // client values in unconfigured dev.
+          fileSize:
+            verification.configured && verification.ok && verification.size !== undefined
+              ? verification.size
+              : parsed.data.fileSize,
+          mimeType:
+            verification.configured && verification.ok && verification.contentType
+              ? verification.contentType
+              : parsed.data.mimeType,
+          storagePath: parsed.data.objectPath,
+        };
+        documentType = parsed.data.documentType || "other";
+        requestedApplicationId = parsed.data.applicationId;
+        description = parsed.data.description;
       }
 
-      const { documentType, applicationId } = req.body;
-      const userId = req.user!.id;
-
-      if (applicationId) {
-        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, (req.user as User).role);
+      if (requestedApplicationId) {
+        const application = await storage.getLoanApplicationWithAccess(requestedApplicationId, userId, user.role);
         if (!application) {
           return res.status(403).json({ error: "You do not have access to this application" });
         }
       }
 
+      // Never let an unsolicited borrower upload float free of the loan file:
+      // default to the borrower's most recent application.
+      let applicationId = requestedApplicationId || null;
+      if (!applicationId && !isStaffRole(user.role)) {
+        const apps = await storage.getLoanApplicationsByUser(userId);
+        applicationId = apps[0]?.id ?? null;
+      }
+
+      // Soft duplicate detection (same name + size for this borrower). Never
+      // blocks — the response carries the hint so the UI can surface it.
+      const existingDocs = await storage.getDocumentsByUser(userId);
+      const similar = existingDocs.find(
+        (d) => d.fileName === fileMeta.fileName && d.fileSize === fileMeta.fileSize,
+      );
+
       const document = await storage.createDocument({
         userId,
-        applicationId: applicationId || null,
-        documentType: documentType || "other",
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        storagePath: req.file.path,
+        applicationId,
+        documentType,
+        fileName: fileMeta.fileName,
+        fileSize: fileMeta.fileSize,
+        mimeType: fileMeta.mimeType,
+        storagePath: fileMeta.storagePath,
         status: "uploaded",
+        notes: description || null,
+      });
+
+      logAudit(req, "document.uploaded", "document", document.id, {
+        applicationId,
+        documentType,
+        fileName: fileMeta.fileName,
+        duplicateOf: similar?.id ?? null,
       });
 
       if (applicationId) {
@@ -1001,16 +1081,16 @@ export function registerLendingRoutes(
           applicationId,
           activityType: "document_uploaded",
           title: "Document Uploaded",
-          description: `${req.file.originalname} has been uploaded.`,
+          description: `${fileMeta.fileName} has been uploaded.`,
           performedBy: userId,
         });
-        
+
         // Emit document uploaded event for Task Engine
         const { taskEventEmitter } = await import("../services/taskEventEmitter");
         await taskEventEmitter.emitDocumentEvent("DOCUMENT_UPLOADED", {
           applicationId,
           documentId: document.id,
-          documentType: documentType || "other",
+          documentType,
           triggeredBy: userId,
         });
 
@@ -1020,8 +1100,8 @@ export function registerLendingRoutes(
           const { matchUploadedDocumentToConditions } = await import("../pipelineEngine");
           await matchUploadedDocumentToConditions({
             applicationId,
-            documentType: documentType || "other",
-            fileName: req.file.originalname,
+            documentType,
+            fileName: fileMeta.fileName,
             uploadedBy: userId,
           });
         } catch (matchErr) {
@@ -1029,7 +1109,38 @@ export function registerLendingRoutes(
         }
       }
 
-      res.status(201).json(document);
+      // Fire-and-forget extraction for types that need no extra inputs — the
+      // record is created either way; extraction enriches it in the background.
+      const AUTO_EXTRACT: Record<string, "extractPayStubData" | "extractBankStatementData" | "extractLeaseData"> = {
+        pay_stub: "extractPayStubData",
+        bank_statement: "extractBankStatementData",
+        lease_agreement: "extractLeaseData",
+      };
+      const extractor = AUTO_EXTRACT[documentType];
+      if (extractor) {
+        (async () => {
+          const svc = await import("../extractionService");
+          const extracted = await svc[extractor](document.storagePath);
+          await storage.updateDocument(document.id, {
+            status: extracted.confidence === "high" ? "verified" : "uploaded",
+            notes: JSON.stringify({
+              extractedAt: new Date().toISOString(),
+              extractedFields: extracted.extractedFields,
+              confidence: extracted.confidence,
+              warnings: extracted.warnings,
+            }),
+          });
+        })().catch((err) =>
+          console.warn(`[Documents] Auto-extraction failed for ${document.id} (non-fatal):`, err?.message || err),
+        );
+      }
+
+      res.status(201).json({
+        ...document,
+        similarDocument: similar
+          ? { id: similar.id, fileName: similar.fileName, uploadedAt: similar.createdAt }
+          : null,
+      });
     } catch (error) {
       console.error("Document upload error:", error);
       try {

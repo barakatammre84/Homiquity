@@ -1,6 +1,8 @@
 import { db } from "../db";
 import { mortgageRates } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { storage } from "../storage";
+import { computeOffers, type BorrowerPricingProfile, type ComputedOffer } from "./pricingAdapter";
 
 const RAPIDAPI_HOSTS = [
   "realty-in-us.p.rapidapi.com",
@@ -150,4 +152,111 @@ export async function refreshRates(): Promise<{ source: string; count: number }>
   const source = liveRates ? "live_api" : "cached";
   const count = await syncRatesToDatabase(rates);
   return { source, count };
+}
+
+// =============================================================================
+// BEST-EXECUTION ADVERTISED RATES
+//
+// Populates the advertised-rate rows (mortgage_rates — what the landing page,
+// rate pages, and refi alerts display) with the LOWEST rate achievable per
+// program across the active wholesale rate sheets, priced by the same
+// deterministic engine borrowers see (pricingAdapter.computeOffers). Vendor
+// sheet rates always win over survey rates: advertising a survey rate we
+// cannot execute would be a Reg Z advertising problem, not a marketing win.
+//
+// The marketing assumption profile below is written onto each row
+// (loanAmount / downPaymentPercent / creditScoreMin), and the rate pages
+// already render those fields as the "rates assume…" disclosure line.
+// =============================================================================
+
+const MARKETING_PROFILE: BorrowerPricingProfile = {
+  creditScore: 780,
+  loanAmount: 280000,
+  propertyValue: 400000, // 70% LTV — top LLPA band
+  propertyType: "single_family",
+  occupancyType: "primary_residence",
+  loanPurpose: "purchase",
+  isFirstTimeHomeBuyer: false,
+  lockTermDays: 30,
+};
+
+/** Map a priced wholesale offer onto the advertised-rate program catalog. */
+function programIdForOffer(offer: ComputedOffer): string | null {
+  if (offer.amortizationType === "ARM" || offer.productType === "ARM") {
+    if (/5\s*\/\s*[16]/.test(offer.productName)) return "prog-5-6-arm";
+    if (/7\s*\/\s*[16]/.test(offer.productName)) return "prog-7-6-arm";
+    return null;
+  }
+  if (offer.productType === "FHA") return offer.loanTerm === 360 ? "prog-30yr-fha" : null;
+  if (offer.productType === "VA") return offer.loanTerm === 360 ? "prog-30yr-va" : null;
+  if (offer.productType === "CONVENTIONAL") {
+    switch (offer.loanTerm) {
+      case 360: return "prog-30yr-fixed";
+      case 240: return "prog-20yr-fixed";
+      case 180: return "prog-15yr-fixed";
+      case 120: return "prog-10yr-fixed";
+    }
+  }
+  return null; // jumbo & everything else has no advertised program yet
+}
+
+// APR display estimate over the note rate: FHA carries annual MIP; others get
+// a fee-driven spread (same order of magnitude the survey sync uses).
+function aprEstimateFor(programId: string, rate: number): number {
+  return programId === "prog-30yr-fha" ? rate + 0.45 : rate + 0.2;
+}
+
+export async function syncBestExecutionRates(): Promise<{ synced: number; programs: string[] }> {
+  let offers: ComputedOffer[];
+  try {
+    offers = await computeOffers(storage, MARKETING_PROFILE);
+  } catch (err) {
+    console.warn("[Rates] Best-execution pricing unavailable (matrix gap?):", err);
+    return { synced: 0, programs: [] };
+  }
+  if (offers.length === 0) return { synced: 0, programs: [] };
+
+  // Lowest final rate per program. Advertised rates fail CLOSED: a non-finite
+  // or non-positive rate is never published (the storefront would rather show
+  // nothing than "NaN%" — a Reg Z advertising problem).
+  const best = new Map<string, ComputedOffer>();
+  for (const offer of offers) {
+    if (!Number.isFinite(offer.adjustedRate) || offer.adjustedRate <= 0) continue;
+    const programId = programIdForOffer(offer);
+    if (!programId) continue;
+    const current = best.get(programId);
+    if (!current || offer.adjustedRate < current.adjustedRate) {
+      best.set(programId, offer);
+    }
+  }
+
+  const now = new Date();
+  for (const [programId, offer] of best) {
+    const rate = offer.adjustedRate.toFixed(3);
+    const apr = aprEstimateFor(programId, offer.adjustedRate).toFixed(3);
+    const row = {
+      rate,
+      apr,
+      points: "0.00",
+      loanAmount: String(MARKETING_PROFILE.loanAmount),
+      downPaymentPercent: 30,
+      creditScoreMin: MARKETING_PROFILE.creditScore,
+      isActive: true,
+      effectiveDate: now,
+    };
+
+    const existing = await db
+      .select()
+      .from(mortgageRates)
+      .where(eq(mortgageRates.programId, programId))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db.update(mortgageRates).set({ ...row, updatedAt: now }).where(eq(mortgageRates.id, existing[0].id));
+    } else {
+      await db.insert(mortgageRates).values({ programId, ...row });
+    }
+  }
+
+  return { synced: best.size, programs: [...best.keys()] };
 }

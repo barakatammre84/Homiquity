@@ -150,9 +150,10 @@ export default function Documents() {
 
     const response = await uploadFile(file);
     if (response) {
-      await fetch("/api/documents/upload", {
+      const registered = await fetch("/api/documents/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           objectPath: response.objectPath,
           fileName: file.name,
@@ -161,8 +162,17 @@ export default function Documents() {
           documentType: activeDocType,
         }),
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      toast({ title: "Document uploaded", description: "We'll review it shortly. You'll be notified when it's processed." });
+      if (registered.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+        toast({ title: "Document uploaded", description: "We'll review it shortly. You'll be notified when it's processed." });
+      } else {
+        // Never claim success on a failed registration — that's how files get lost.
+        toast({
+          title: "Upload didn't complete",
+          description: "The file reached storage but couldn't be filed on your loan. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
 
     if (fileInputRef.current) {

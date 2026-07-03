@@ -118,6 +118,7 @@ export async function wireExtractionToReadiness(
 const APP_STATUS_TO_STATE_MAP: Record<string, { state: BorrowerState; trigger: TransitionTrigger }> = {
   submitted: { state: "profiling", trigger: "application_started" },
   analyzing: { state: "pre_qualification", trigger: "application_submitted" },
+  under_review: { state: "pre_qualification", trigger: "application_submitted" },
   pre_approved: { state: "pre_approval", trigger: "pre_approval_issued" },
   doc_collection: { state: "pre_approval", trigger: "documents_uploaded" },
   processing: { state: "in_contract", trigger: "offer_accepted" },

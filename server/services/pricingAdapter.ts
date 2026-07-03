@@ -149,6 +149,9 @@ export async function computeOffers(
       if (!checkEligibility(product, profile)) continue;
 
       const baseRate = parseFloat(product.baseRate);
+      // A vendor sheet with a null/garbage base rate must not poison the
+      // output — skip it rather than emit a NaN rate downstream.
+      if (!Number.isFinite(baseRate) || baseRate <= 0) continue;
 
       let lockAdj = 0;
       const lockAdjMap = product.lockTermAdjustments as Record<string, number> | null;
@@ -163,6 +166,9 @@ export async function computeOffers(
 
       const adjustedRate = baseRate + llpaAdj + lockAdj + totalLenderAdj;
       const totalAdjustments = llpaAdj + lockAdj + totalLenderAdj;
+      // Guard against a non-finite adjustment (e.g. a malformed lender rule)
+      // producing a bogus final rate.
+      if (!Number.isFinite(adjustedRate) || adjustedRate <= 0) continue;
 
       const monthlyPI = calculateMonthlyPayment(profile.loanAmount, adjustedRate, product.loanTerm);
 

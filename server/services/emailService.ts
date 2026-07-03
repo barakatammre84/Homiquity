@@ -271,6 +271,28 @@ export const emailTemplates = {
     };
   },
 
+  // Secure-message notification: deliberately carries NO message content —
+  // loan communications stay behind login (PII never travels over email).
+  messageReceived(recipientName: string, senderName: string): EmailOptions {
+    return {
+      to: "",
+      subject: `New message from ${senderName}`,
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">You have a new message</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${recipientName},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          ${senderName} sent you a secure message about your mortgage. For your privacy,
+          the message is only viewable inside your account.
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
+          Log into your Homiquity account and open <strong>Messages</strong> to read and reply.
+        </p>
+      `, `${senderName} sent you a secure message`),
+    };
+  },
+
   documentRequested(borrowerName: string, documentName: string): EmailOptions {
     return {
       to: "",
@@ -422,6 +444,7 @@ export type NotificationType =
   | "application_submitted"
   | "application_pre_approved"
   | "application_denied"
+  | "message_received"
   | "document_requested"
   | "document_uploaded"
   | "invite_sent"
@@ -450,6 +473,9 @@ export function sendNotificationEmail(mapping: NotificationEmailMapping): void {
       break;
     case "application_denied":
       email = emailTemplates.applicationDenied(data.borrowerName);
+      break;
+    case "message_received":
+      email = emailTemplates.messageReceived(data.recipientName, data.senderName);
       break;
     case "document_requested":
       email = emailTemplates.documentRequested(data.borrowerName, data.documentName);

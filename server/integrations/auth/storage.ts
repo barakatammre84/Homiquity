@@ -8,6 +8,7 @@ export interface IAuthStorage {
   upsertUser(userData: { id: string; email?: string | null; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null }): Promise<User>;
   createUserWithPassword(userData: { email: string; passwordHash: string; firstName?: string | null; lastName?: string | null }): Promise<User>;
   upsertSocialUser(userData: { email: string; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null; authProvider: string }): Promise<User>;
+  setLockoutState(userId: string, state: { failedLoginAttempts: number; lockoutUntil: Date | null }): Promise<void>;
 }
 
 class AuthStorage implements IAuthStorage {
@@ -83,6 +84,16 @@ class AuthStorage implements IAuthStorage {
       })
       .returning();
     return user;
+  }
+
+  async setLockoutState(userId: string, state: { failedLoginAttempts: number; lockoutUntil: Date | null }): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        failedLoginAttempts: state.failedLoginAttempts,
+        lockoutUntil: state.lockoutUntil,
+      })
+      .where(eq(users.id, userId));
   }
 }
 

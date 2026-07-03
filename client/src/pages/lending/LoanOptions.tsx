@@ -129,6 +129,194 @@ function RateBreakdown({ optionId }: { optionId: string }) {
   );
 }
 
+interface MarketOffer {
+  lenderName: string;
+  lenderCode: string;
+  lenderId: string;
+  productId: string;
+  productName: string;
+  productType: string;
+  loanTerm: number;
+  baseRate: number;
+  adjustedRate: number;
+  lockTerm: number;
+  pricingBreakdown: {
+    baseRate: number;
+    llpaAdjustment: number;
+    lockTermAdjustment: number;
+    lenderAdjustments: { name: string; value: number }[];
+    totalAdjustments: number;
+    finalRate: number;
+  };
+  estimatedMonthlyPI: number;
+  estimatedMonthlyMI: number;
+  estimatedMonthlyTotal: number;
+  labels: string[];
+}
+
+interface MarketOffersResponse {
+  status: "PRICED" | "NO_ACTIVE_RATE_SHEETS" | "INSUFFICIENT_PROFILE" | "UNPRICEABLE_PROFILE";
+  qualifier: "PRELIMINARY" | "VERIFIED";
+  indicative: boolean;
+  pricedAt: string;
+  lockTermDays: number;
+  assumptions: string[];
+  missingItems: string[];
+  offers: MarketOffer[];
+}
+
+const OFFER_LABELS: Record<string, string> = {
+  LOWEST_RATE: "Lowest rate",
+  LOWEST_PAYMENT: "Lowest payment",
+};
+
+const fmtRatePts = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(3)}%`;
+
+/**
+ * Live market pricing (Binding Contract 2): the borrower's profile priced
+ * against active wholesale rate sheets, with the full deterministic rate
+ * decomposition. Indicative until the profile is verified — locking stays
+ * behind verification, so estimates are never dressed up as commitments.
+ */
+function MarketPricingSection({ market }: { market: MarketOffersResponse }) {
+  const [openOffer, setOpenOffer] = useState<string | null>(null);
+
+  if (market.status !== "PRICED") return null;
+
+  const pricedTime = new Date(market.pricedAt).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const lenderCount = new Set(market.offers.map((o) => o.lenderId)).size;
+
+  return (
+    <div className="mb-12" data-testid="section-market-pricing">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold">Live Market Pricing</h2>
+            {market.indicative && (
+              <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-300">
+                Indicative
+              </Badge>
+            )}
+          </div>
+          <p className="text-muted-foreground">
+            Your profile priced against {lenderCount} wholesale lender rate sheets
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Clock className="h-4 w-4" />
+          <span>Priced {pricedTime} · {market.lockTermDays}-day lock</span>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        {market.offers.map((offer) => {
+          const key = `${offer.lenderId}-${offer.productId}`;
+          const bd = offer.pricingBreakdown;
+          return (
+            <Card
+              key={key}
+              className={offer.labels.includes("LOWEST_RATE") ? "ring-2 ring-primary" : ""}
+              data-testid={`card-market-offer-${offer.productType.toLowerCase()}`}
+            >
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-lg">{offer.lenderName}</CardTitle>
+                    <CardDescription>{offer.productName}</CardDescription>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    {offer.labels.map((l) => (
+                      <Badge key={l} variant="secondary">{OFFER_LABELS[l] ?? l}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/50 p-4">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Rate</p>
+                    <p className="text-2xl font-bold" data-testid={`text-offer-rate-${key}`}>
+                      {offer.adjustedRate.toFixed(3)}%
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Est. monthly</p>
+                    <p className="text-2xl font-bold">{formatCurrency(String(offer.estimatedMonthlyTotal))}</p>
+                    <p className="text-xs text-muted-foreground">
+                      P&I {formatCurrency(String(offer.estimatedMonthlyPI))}
+                      {offer.estimatedMonthlyMI > 0 && <> + MI {formatCurrency(String(offer.estimatedMonthlyMI))}</>}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setOpenOffer(openOffer === key ? null : key)}
+                  data-testid={`button-offer-breakdown-${key}`}
+                >
+                  <Percent className="mr-2 h-4 w-4" />
+                  {openOffer === key ? "Hide rate details" : "Why this rate?"}
+                </Button>
+                {openOffer === key && (
+                  <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Sheet base rate</span>
+                        <span className="font-medium">{bd.baseRate.toFixed(3)}%</span>
+                      </div>
+                      {bd.llpaAdjustment !== 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Credit score & LTV (LLPA)</span>
+                          <span className="font-medium">{fmtRatePts(bd.llpaAdjustment)}</span>
+                        </div>
+                      )}
+                      {bd.lockTermAdjustment !== 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">{offer.lockTerm}-day lock</span>
+                          <span className="font-medium">{fmtRatePts(bd.lockTermAdjustment)}</span>
+                        </div>
+                      )}
+                      {bd.lenderAdjustments.map((a) => (
+                        <div key={a.name} className="flex justify-between">
+                          <span className="text-muted-foreground">{a.name}</span>
+                          <span className="font-medium">{fmtRatePts(a.value)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between border-t pt-1.5 text-base">
+                        <span className="font-semibold">Final rate</span>
+                        <span className="font-bold text-primary">{bd.finalRate.toFixed(3)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {market.indicative && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5 shrink-0" />
+                    <span>Verify your income & assets to make this rate lockable</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 space-y-0.5">
+        {market.assumptions.map((a) => (
+          <p key={a} className="text-xs text-muted-foreground">· {a}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function LoanOptions() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -137,6 +325,15 @@ export default function LoanOptions() {
     queryKey: ['/api/loan-applications', id, 'options'],
     enabled: !!id,
   });
+
+  // Live wholesale pricing — repriced server-side on every request from the
+  // active rate sheets, so vendor-fed market updates show up automatically.
+  const { data: market } = useQuery<MarketOffersResponse>({
+    queryKey: ['/api/loan-applications', id, 'offers'],
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+  const marketPriced = market?.status === "PRICED";
 
   // Reg Z anti-steering: the loan-options disclosure must be acknowledged
   // before a rate can be locked. The server enforces this on the lock
@@ -205,30 +402,55 @@ export default function LoanOptions() {
   }
 
   const { application, options } = data;
-  const preApprovalAmount = application.preApprovalAmount 
-    ? formatCurrency(application.preApprovalAmount) 
+  const preApprovalAmount = application.preApprovalAmount
+    ? formatCurrency(application.preApprovalAmount)
     : formatCurrency(application.purchasePrice || "0");
+  // Only a pre-approved (or further-along) file gets the congratulations
+  // header. Anything still in front of an underwriter gets the honest state.
+  const awaitingDecision = ["draft", "submitted", "analyzing", "under_review", "denied"].includes(
+    application.status,
+  );
 
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-gradient-to-b from-primary/5 to-background py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-1.5 dark:bg-green-900/30">
-              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <span className="text-sm font-medium text-green-700 dark:text-green-300">
-                Pre-Approved
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Congratulations! You're pre-approved for
-            </h1>
-            <p className="mt-4 text-5xl font-bold text-primary" data-testid="text-preapproval-amount">
-              {preApprovalAmount}
-            </p>
-            <p className="mt-4 text-muted-foreground">
-              Compare your loan options below and lock in your rate today.
-            </p>
+            {awaitingDecision ? (
+              <>
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 dark:bg-amber-900/30">
+                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                    Under Review
+                  </span>
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                  Your application is with our underwriting team
+                </h1>
+                <p className="mt-4 text-muted-foreground" data-testid="text-under-review">
+                  A licensed underwriter is reviewing your numbers — check your dashboard for what
+                  was flagged. The scenarios below are estimates, not offers.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-1.5 dark:bg-green-900/30">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                    Pre-Approved
+                  </span>
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                  Congratulations! You're pre-approved for
+                </h1>
+                <p className="mt-4 text-5xl font-bold text-primary" data-testid="text-preapproval-amount">
+                  {preApprovalAmount}
+                </p>
+                <p className="mt-4 text-muted-foreground">
+                  Compare your loan options below and lock in your rate today.
+                </p>
+              </>
+            )}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <GenerateLetterButton applicationId={application.id} status={application.status} />
               <PreQualLetterButton applicationId={application.id} status={application.status} />
@@ -249,11 +471,14 @@ export default function LoanOptions() {
             />
           </div>
         )}
+        {market && <MarketPricingSection market={market} />}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Your Loan Options</h2>
+            <h2 className="text-2xl font-bold">{marketPriced ? "Payment Scenarios" : "Your Loan Options"}</h2>
             <p className="text-muted-foreground">
-              Based on your profile, here are your best options
+              {marketPriced
+                ? "Illustrative payment breakdowns by loan program"
+                : "Based on your profile, here are your best options"}
             </p>
           </div>
           <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
@@ -267,7 +492,7 @@ export default function LoanOptions() {
             <Clock className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">Analyzing Your Application</h3>
             <p className="mt-2 text-muted-foreground">
-              Our AI is calculating your best loan options. This usually takes less than a minute.
+              Your scenarios are being computed against underwriting guidelines. This usually takes less than a minute.
             </p>
           </Card>
         ) : (

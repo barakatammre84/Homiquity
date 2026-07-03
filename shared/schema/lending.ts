@@ -39,6 +39,9 @@ export const LOAN_APP_STATUSES = [
   "draft",
   "submitted",
   "analyzing",
+  // Intake automation could not auto-approve — a licensed underwriter must
+  // decide (ECOA: automation never issues a denial). See finalizeIntake.
+  "under_review",
   "pre_approved",
   "doc_collection",
   "processing",
@@ -65,8 +68,11 @@ export const LOAN_APP_TERMINAL_STATUSES: readonly LoanAppStatus[] = [
 export const LOAN_APP_TRANSITIONS: Record<LoanAppStatus, readonly LoanAppStatus[]> = {
   draft:          ["submitted", "withdrawn"],
   submitted:      ["analyzing", "suspended", "withdrawn"],
-  // "submitted" allows the analysis-failure rollback (system retry path).
-  analyzing:      ["pre_approved", "denied", "suspended", "withdrawn", "submitted"],
+  // "submitted" allows the analysis-failure rollback (system retry path);
+  // "under_review" is the intake automation's non-approval outcome.
+  analyzing:      ["pre_approved", "under_review", "denied", "suspended", "withdrawn", "submitted"],
+  // Awaiting a human underwriting decision — they may approve, advance, deny, or hold.
+  under_review:   ["pre_approved", "doc_collection", "underwriting", "denied", "suspended", "withdrawn"],
   pre_approved:   ["doc_collection", "expired", "withdrawn", "denied"],
   doc_collection: ["processing", "suspended", "withdrawn", "denied"],
   processing:     ["underwriting", "suspended", "withdrawn", "denied"],
@@ -133,6 +139,7 @@ export const LOAN_APP_STATUS_META: Record<LoanAppStatus, LoanAppStatusMeta> = {
   draft:          { label: "Incomplete",     description: "Pick up where you left off.",                          progressPercent: 5,   phase: "intake",      badgeVariant: "outline" },
   submitted:      { label: "Submitted",      description: "Your application has been received.",                  progressPercent: 15,  phase: "application", badgeVariant: "outline" },
   analyzing:      { label: "Analyzing",      description: "Your application is being reviewed.",                  progressPercent: 20,  phase: "application", badgeVariant: "secondary" },
+  under_review:   { label: "Under Review",   description: "A licensed underwriter is reviewing your application.", progressPercent: 25,  phase: "application", badgeVariant: "secondary" },
   pre_approved:   { label: "Pre-Approved",   description: "You're pre-approved. Time to find your home.",         progressPercent: 35,  phase: "application", badgeVariant: "default" },
   doc_collection: { label: "Documents",      description: "We're collecting your documents.",                     progressPercent: 45,  phase: "processing",  badgeVariant: "secondary" },
   processing:     { label: "Processing",     description: "Your file is being processed.",                        progressPercent: 55,  phase: "processing",  badgeVariant: "secondary" },
@@ -501,7 +508,16 @@ export const urlaPersonalInfo = pgTable("urla_personal_info", {
   lastName: varchar("last_name", { length: 100 }),
   suffix: varchar("suffix", { length: 20 }),
   
+  // DEPRECATED plaintext SSN — writes now go to the encrypted columns below and
+  // this is set to null. Kept only so the backfill script can migrate legacy
+  // rows; drop the column once the backfill has run in every environment.
   ssn: varchar("ssn", { length: 11 }),
+  // SSN at rest: AES-256-GCM via encryptionService (same scheme as credit
+  // reports). Server-managed only — never accepted from the client.
+  ssnEncrypted: text("ssn_encrypted"),
+  ssnIv: varchar("ssn_iv", { length: 32 }),
+  ssnKeyId: varchar("ssn_key_id", { length: 10 }),
+  ssnLast4: varchar("ssn_last4", { length: 4 }),
   dateOfBirth: varchar("date_of_birth", { length: 10 }),
   citizenship: varchar("citizenship", { length: 50 }),
   
@@ -565,6 +581,13 @@ export const insertUrlaPersonalInfoSchema = createInsertSchema(urlaPersonalInfo)
   id: true,
   createdAt: true,
   updatedAt: true,
+  // Server-managed SSN-at-rest columns — never accepted from clients. The
+  // plaintext `ssn` field stays accepted as INPUT (encrypted server-side in
+  // storage.upsertUrlaPersonalInfo; masked echoes are ignored there).
+  ssnEncrypted: true,
+  ssnIv: true,
+  ssnKeyId: true,
+  ssnLast4: true,
 });
 
 export type InsertUrlaPersonalInfo = z.infer<typeof insertUrlaPersonalInfoSchema>;

@@ -86,8 +86,15 @@ describe("loan-application status vocabulary is canonical", () => {
     // payload sets `status:` must live in pipelineEngine.ts (the single
     // writer), the migration script, or seed data. Everything else must call
     // updatePipelineStage so side effects can't drift.
+    //
+    // loanAnalysis.ts (finalizeIntake) is the one other sanctioned writer: it
+    // owns the self-contained intake→analysis flow (analyzing → pre_approved /
+    // under_review), does its own state-machine sync, and is idempotent with a
+    // recovery sweep. It is NOT a general status writer — pipeline/staff
+    // transitions still go through updatePipelineStage.
     const ALLOWED = new Set([
       "server/pipelineEngine.ts",
+      "server/services/loanAnalysis.ts",
       "scripts/migrate-status-vocabulary.ts",
       "server/seed.ts",
     ]);

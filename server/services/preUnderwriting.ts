@@ -297,20 +297,26 @@ export function buildFlagOutreach(
     }
   });
 
+  // Configurable so non-production environments never send borrowers to the
+  // wrong host; defaults preserve current production behavior.
+  const documentsUrl = `${process.env.APP_BASE_URL || "https://mortgage-stream.vercel.app"}/documents`;
+
   const subject = "Your Homiquity application: a quick document request";
   const emailText = [
     `Hi ${name},`,
     "",
-    "Good news — your application is moving. Our automated review found a couple of items we'll need so nothing slows you down later:",
+    // Neutral, factual framing: this is a documentation request, and it must
+    // never read as a decision signal in either direction (ECOA/UDAAP).
+    "Thanks for your application. Our automated document review found a few items we'll need so nothing slows you down later:",
     "",
     ...explanations.map((e, i) => `${i + 1}. ${e}`),
     "",
     "What to upload:",
     ...uniqueDocs.map((d) => `• ${d}`),
     "",
-    "Upload securely in your document center: https://mortgage-stream.vercel.app/documents",
+    `Upload securely in your document center: ${documentsUrl}`,
     "",
-    "No action is needed beyond the uploads — your file re-checks automatically the moment they arrive.",
+    "This is a request for documentation only — not a loan decision. Your file re-checks automatically the moment your documents arrive.",
     "— The Homiquity Team",
   ].join("\n");
 
@@ -319,7 +325,7 @@ export function buildFlagOutreach(
     .map((line) => (line ? `<p style="margin:4px 0">${line}</p>` : "<br/>"))
     .join("");
 
-  const smsBody = `Homiquity: your loan file needs ${uniqueDocs.length} document${uniqueDocs.length === 1 ? "" : "s"} (${flags.map((f) => (f.code === "COMPLEX_INCOME_CHECK" ? "2yrs tax returns" : "asset statements")).join(", ")}). Upload securely: https://mortgage-stream.vercel.app/documents`;
+  const smsBody = `Homiquity: your loan file needs ${uniqueDocs.length} required document${uniqueDocs.length === 1 ? "" : "s"}. Upload securely: ${documentsUrl}`;
 
   return { subject, emailHtml, emailText, smsBody };
 }

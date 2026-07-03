@@ -268,7 +268,7 @@ export function registerAgentBrokerRoutes(
 
       // Derive the authoritative loan amount from the application record.
       // Purchases: purchase price minus down payment (consistent with pipelineEngine
-      // and gemini). Fall back to the pre-approval amount (e.g. refinances) when a
+      // and loanAnalysis). Fall back to the pre-approval amount (e.g. refinances) when a
       // purchase price is not on file.
       const purchasePrice = Number(application.purchasePrice ?? 0);
       const downPayment = Number(application.downPayment ?? 0);
