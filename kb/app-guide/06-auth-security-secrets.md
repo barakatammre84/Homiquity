@@ -48,7 +48,27 @@ are done inline in handlers — always add them for borrower data.
 ## Data protection
 
 - **Field encryption**: credit-related PII is encrypted at rest with
-  `CREDIT_ENCRYPTION_KEY` (`server/services/encryptionService.ts`).
+  AES-256-GCM (`server/services/encryptionService.ts`). Ciphertext is tagged with
+  a `keyId` that resolves to a key in an in-memory registry, so multiple key
+  versions coexist — new writes use the *active* key, historical rows keep
+  decrypting under whatever key wrote them. This is the **rotation path**.
+  - *App-level keys* (`v1`, `v2`, …) come from `CREDIT_ENCRYPTION_KEY` /
+    `CREDIT_ENCRYPTION_KEY_V2` …; `v1` is the original single key (every legacy
+    row is tagged `v1`). Rotate by adding `CREDIT_ENCRYPTION_KEY_V2` and setting
+    `ENCRYPTION_ACTIVE_KEY_ID=v2`.
+  - *Cloud KMS envelope encryption* (`kms-1`, …) is the production-grade option:
+    Data Encryption Keys are stored **wrapped** by a Cloud KMS key (the KEK,
+    which never leaves KMS / HSM) and unwrapped once at boot (`initEncryption`,
+    awaited in `registerRoutes`). Field ops stay synchronous because the unwrap
+    is a one-time startup cost. Enable with `PII_KMS_KEY_NAME` +
+    `PII_KMS_WRAPPED_DEKS`; boot **fails closed** if KMS is configured but
+    unreachable or the `@google-cloud/kms` dep is missing.
+  - **Rotation runbook**: `PII_KMS_KEY_NAME=… npx tsx scripts/kms-wrap-dek.ts kms-2`
+    prints a new wrapped DEK → append it (last) to the `PII_KMS_WRAPPED_DEKS`
+    JSON array → redeploy. New writes use `kms-2`; old rows still decrypt under
+    `kms-1`, which stays in the array. Tests: `tests/encryptionRotation.test.ts`
+    (the live KMS unwrap needs a real keyring and is verified in a KMS-enabled
+    environment, not in CI).
 - **PII vault (direct identifiers)**: SSNs and bank account numbers are stored
   **only** as AES-256-GCM ciphertext + a last-4 fragment
   (`server/services/piiVault.ts`). They are **write-only** through the API:
@@ -112,6 +132,8 @@ app won't boot or a core feature dies without it.
 | `LOOKUP_MATRIX_STAMP_WINDOW_MS` | Lookup-matrix tuning |
 | `CSP_ENFORCE` | `true` switches the production CSP from Report-Only to blocking. Leave unset for a Report-Only soak first. |
 | `CREDIT_VENDOR_MODE` | Bureau vendors are simulated until contracts land. Production **refuses** to fabricate credit scores unless this is `simulation` (staging only). |
+| `CREDIT_ENCRYPTION_KEY_V2…V9`, `ENCRYPTION_ACTIVE_KEY_ID` | App-level PII key rotation (add a new key, then pin it active). |
+| `PII_KMS_KEY_NAME`, `PII_KMS_WRAPPED_DEKS` | Cloud KMS envelope encryption — the KEK resource name and the wrapped Data Encryption Keys (JSON). Needs `npm i @google-cloud/kms` (optional dep, not in package.json) + GCP creds. |
 
 ### Where secrets live
 - **Local**: `.env` (gitignored; template in `.env.example`). The production
