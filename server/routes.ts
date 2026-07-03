@@ -26,6 +26,7 @@ import { registerGeocodeRoutes } from "./routes/geocode";
 import { registerCalculatorRoutes } from "./routes/calculators";
 import { registerAusRoutes } from "./routes/aus";
 import { registerJobRoutes } from "./routes/jobs";
+import { registerShellRoutes } from "./routes/shell";
 import { seedDatabase } from "./seed";
 import { pool } from "./db";
 import { assertEncryptionConfig } from "./services/encryptionService";
@@ -80,6 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerCalculatorRoutes(app, storage);
   registerAusRoutes(app);
   registerJobRoutes(app);
+  registerShellRoutes(app, storage);
 
   app.all("/api/*", (_req, res) => {
     res.status(404).json({ error: "Not found" });
