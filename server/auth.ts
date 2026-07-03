@@ -5,6 +5,7 @@ import { authStorage } from "./integrations/auth/storage";
 import { setupSocialAuth } from "./socialAuth";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import { isLockedOut, recordFailure, recordSuccess } from "./services/loginLockout";
 
 const scryptAsync = promisify(scrypt);
 
@@ -28,9 +29,14 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
+  // A malformed stored value (missing salt separator, truncated hex) must be
+  // an authentication failure, not a thrown 500 — timingSafeEqual throws on
+  // length mismatch and Buffer.from(undefined) throws outright.
   const [hashedPassword, salt] = stored.split(".");
+  if (!hashedPassword || !salt) return false;
   const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
   const suppliedPasswordBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  if (hashedPasswordBuf.length !== suppliedPasswordBuf.length) return false;
   return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
 }
 
@@ -137,9 +143,25 @@ function setupEmailPasswordAuth(app: Express) {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
+      // Per-account lockout (see services/loginLockout.ts). The response body
+      // is identical to a wrong password so the lockout can't be used to
+      // probe whether an account exists.
+      const lockoutState = {
+        failedLoginAttempts: user.failedLoginAttempts ?? 0,
+        lockoutUntil: user.lockoutUntil ?? null,
+      };
+      if (isLockedOut(lockoutState)) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
       const isValid = await comparePasswords(password, user.passwordHash);
       if (!isValid) {
+        await authStorage.setLockoutState(user.id, recordFailure(lockoutState));
         return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      if (lockoutState.failedLoginAttempts > 0 || lockoutState.lockoutUntil) {
+        await authStorage.setLockoutState(user.id, recordSuccess());
       }
 
       req.login(

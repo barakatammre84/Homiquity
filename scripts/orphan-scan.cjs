@@ -23,6 +23,8 @@ const ENTRY_FILES = new Set([
   "server/app.ts", // esbuild entry for the Vercel bundle (api/_app.mjs)
   "server/mcp/index.ts",
   "server/scripts/seedLendingGrids.ts",
+  "server/scripts/backfillSsnEncryption.ts",
+  "server/scripts/markMigrationsApplied.ts",
   "server/seed.ts",
   "api/index.ts",
 ]);

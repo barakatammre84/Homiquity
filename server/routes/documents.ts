@@ -22,6 +22,19 @@ function publicExtraction<T extends Record<string, any>>(extractedData: T) {
   return rest;
 }
 
+/**
+ * document.fileName is uploader-controlled. Quotes/control chars in a quoted
+ * Content-Disposition filename can break out of the quoting or corrupt the
+ * header, so strip them before echoing the name back in a download header.
+ */
+function safeDispositionFilename(fileName: string | null | undefined): string {
+  const cleaned = (fileName ?? "download")
+    .replace(/[\r\n"\\]/g, "_")
+    .replace(/[\x00-\x1f\x7f]/g, "_")
+    .trim();
+  return cleaned || "download";
+}
+
 /** Zero-touch: route an uploaded document at its outstanding conditions (non-fatal). */
 async function matchConditionsForUpload(
   applicationId: string | null | undefined,
@@ -145,14 +158,24 @@ export function registerDocumentRoutes(
 
       if (document.storagePath?.startsWith("/objects/")) {
         const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);
+        // Defense in depth: even though the app-level checks above passed, the
+        // object's own ACL is the second gate — so a document record that was
+        // somehow pointed at another user's object still cannot be streamed.
+        if (objectStorageService.isConfigured()) {
+          const allowed = await objectStorageService.canAccessObjectEntity({ userId: user.id, objectFile });
+          const isPrivileged = user.role === "admin";
+          if (!allowed && !isPrivileged) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+        }
         // Force download rather than inline render so borrower-uploaded files
         // (e.g. crafted HTML/SVG/PDF) cannot execute in the browser context.
-        res.set("Content-Disposition", `attachment; filename="${document.fileName}"`);
+        res.set("Content-Disposition", `attachment; filename="${safeDispositionFilename(document.fileName)}"`);
         await objectStorageService.downloadObject(objectFile, res);
       } else if (document.storagePath) {
         const fs = await import("fs");
         if (fs.existsSync(document.storagePath)) {
-          res.set("Content-Disposition", `attachment; filename="${document.fileName}"`);
+          res.set("Content-Disposition", `attachment; filename="${safeDispositionFilename(document.fileName)}"`);
           res.set("Content-Type", document.mimeType || "application/octet-stream");
           fs.createReadStream(document.storagePath).pipe(res);
         } else {

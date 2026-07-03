@@ -377,14 +377,15 @@ export const urlaPersonalInfo = pgTable("urla_personal_info", {
   lastName: varchar("last_name", { length: 100 }),
   suffix: varchar("suffix", { length: 20 }),
   
-  // SSN is stored ONLY as AES-256-GCM ciphertext (server/services/piiVault.ts).
-  // Clients submit plaintext SSN as a write-only virtual field; the storage
-  // layer encrypts it and only ssnLast4 is ever returned in API responses.
-  // Full-value decryption is reserved for MISMO/AUS delivery. The legacy
-  // plaintext `ssn` column is backfilled + nulled by scripts/migrate-encrypt-pii.ts.
+  // DEPRECATED plaintext SSN — writes now go to the encrypted columns below and
+  // this is set to null. Kept only so the backfill script can migrate legacy
+  // rows; drop the column once the backfill has run in every environment.
+  ssn: varchar("ssn", { length: 11 }),
+  // SSN at rest: AES-256-GCM via encryptionService (ssnVault, same scheme as
+  // credit reports). Server-managed only — never accepted from the client.
   ssnEncrypted: text("ssn_encrypted"),
   ssnIv: varchar("ssn_iv", { length: 32 }),
-  ssnKeyId: varchar("ssn_key_id", { length: 20 }),
+  ssnKeyId: varchar("ssn_key_id", { length: 10 }),
   ssnLast4: varchar("ssn_last4", { length: 4 }),
   dateOfBirth: varchar("date_of_birth", { length: 10 }),
   citizenship: varchar("citizenship", { length: 50 }),
@@ -449,6 +450,13 @@ export const insertUrlaPersonalInfoSchema = createInsertSchema(urlaPersonalInfo)
   id: true,
   createdAt: true,
   updatedAt: true,
+  // Server-managed SSN-at-rest columns — never accepted from clients. The
+  // plaintext `ssn` field stays accepted as INPUT (encrypted server-side in
+  // storage.upsertUrlaPersonalInfo; masked echoes are ignored there).
+  ssnEncrypted: true,
+  ssnIv: true,
+  ssnKeyId: true,
+  ssnLast4: true,
 });
 
 export type InsertUrlaPersonalInfo = z.infer<typeof insertUrlaPersonalInfoSchema>;

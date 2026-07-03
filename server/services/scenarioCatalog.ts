@@ -122,6 +122,27 @@ export const SCENARIO_CATALOG: ScenarioCatalogEntry[] = [
     engineRef: "server/services/underwritingNuance.ts detectSignificantDeposits",
   },
   {
+    scenarioId: "S-05",
+    version: "1.0.0",
+    title: "Rental Income Calculation (Schedule E)",
+    flagCode: "RENTAL_INCOME_OFFSET",
+    status: "implemented",
+    triggers: ["incomeSources[].type = rental with one or more rentalProperties entries"],
+    regulations: ["Fannie Mae Selling Guide B3-3.1-08 (Rental Income)"],
+    riskImpact:
+      "Gross rent overstates qualifying income; a 25% vacancy/expense factor must be applied and netted against the property's own PITIA before it can offset DTI.",
+    workflow: {
+      loanOfficerActions: ["Review the per-property qualifying rent and net offset before finalizing DTI"],
+      borrowerActions: ["Upload the executed lease agreement(s) and most recent Schedule E for each rental property"],
+      automationEngineActions: [
+        "Compute qualifying rental income at 75% of gross rent per property",
+        "Net against the property's reported PITIA/debt payment",
+        "Raise RENTAL_INCOME_OFFSET naming the qualifying amount and required documents",
+      ],
+    },
+    engineRef: "server/services/underwritingNuance.ts calculateRentalIncomeOffsets",
+  },
+  {
     scenarioId: "F-LOW-RESERVES",
     version: "1.0.0",
     title: "Low post-closing reserves (foundation)",

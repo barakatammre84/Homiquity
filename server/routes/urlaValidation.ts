@@ -80,12 +80,14 @@ const optionalTrimmed = (schema: z.ZodTypeAny) =>
  * Format checks for the identity fields on URLA Section 1a. Applied after
  * pickTableFields, so unknown keys are already gone; passthrough keeps the
  * rest of the whitelisted fields.
+ *
+ * SSN is intentionally NOT validated here — it is validated and encrypted in
+ * the storage layer by ssnVault.resolveSsnInput, which also recognises a masked
+ * echo (XXX-XX-1234) as "unchanged". Validating the format here would wrongly
+ * reject that masked round-trip from an edit form.
  */
 export const personalInfoFieldChecks = z
   .object({
-    ssn: optionalTrimmed(
-      z.string().regex(/^\d{3}-?\d{2}-?\d{4}$/, "SSN must be 9 digits (XXX-XX-XXXX)"),
-    ),
     dateOfBirth: optionalTrimmed(
       z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be YYYY-MM-DD"),
     ),

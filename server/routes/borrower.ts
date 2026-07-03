@@ -1,6 +1,7 @@
 import type { Express } from "express";
-import type { IStorage } from "../storage";
+import { InvalidSsnError, type IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
+import { logAudit } from "../auditLog";
 import {
   insertCalculatorResultSchema,
   insertHomeownershipGoalSchema,
@@ -9,6 +10,7 @@ import {
   insertJourneyMilestoneSchema,
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
+  insertUrlaPersonalInfoSchema,
   isStaffRole,
   isInternalStaffRole,
   type User,
@@ -18,7 +20,6 @@ import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
 import { pickTableFields, sanitizePersonalInfoBody, URLA_TABLES } from "./urlaValidation";
 import { stripEncryptedFields } from "../services/piiVault";
-import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 
 // Verify that an internal staff user is actually assigned to the given application.
@@ -393,6 +394,10 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
+      // Whitelist to table columns (mass-assignment defense) and pass the raw
+      // `ssn` through to storage, where ssnVault validates + encrypts it
+      // (InvalidSsnError → 400 below). stripEncryptedFields keeps ciphertext
+      // out of the response.
       const sanitized = sanitizePersonalInfoBody(req.body);
       if (!sanitized.ok) {
         return res.status(400).json({ error: sanitized.error });
@@ -401,8 +406,50 @@ export function registerBorrowerRoutes(
       const result = await storage.upsertUrlaPersonalInfo(data as any);
       res.json(stripEncryptedFields(result));
     } catch (error) {
+      if (error instanceof InvalidSsnError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Save personal info error:", error);
       res.status(500).json({ error: "Failed to save personal info" });
+    }
+  });
+
+  /**
+   * Audited full-SSN reveal. Everything else in the API returns the masked
+   * form; this endpoint exists for the narrow staff workflows that genuinely
+   * need the full value (credit pulls, GSE casefile fixes). Owner borrowers
+   * may read their own. Every call writes an audit entry.
+   */
+  app.get("/api/urla/:applicationId/ssn", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const seq = Math.max(parseInt(String(req.query.borrowerSequenceNumber ?? "1"), 10) || 1, 1);
+
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const isOwner = application.userId === user.id;
+      const allowedStaff = ["admin", "underwriter", "processor"];
+      if (!isOwner && !allowedStaff.includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const ssn = await storage.getDecryptedUrlaSsn(applicationId, seq);
+      if (!ssn) {
+        return res.status(404).json({ error: "No SSN on file" });
+      }
+
+      await logAudit(req, "urla.ssn_reveal", "loan_application", applicationId, {
+        borrowerSequenceNumber: seq,
+        role: user.role,
+      });
+      res.json({ ssn });
+    } catch (error) {
+      console.error("SSN reveal error:", error);
+      res.status(500).json({ error: "Failed to retrieve SSN" });
     }
   });
 
@@ -2401,11 +2448,18 @@ export function registerBorrowerRoutes(
   // Team Messaging API Routes
   // ============================================
 
-  // Get all staff users for team display
+  // Team members for the Messages view. A borrower sees only THEIR assigned
+  // loan team (deal-team members + assigned LOs), not the whole staff
+  // directory; staff keep the full list for internal coordination. Borrowers
+  // with no team assigned yet fall back to all staff so they can still reach
+  // someone (see storage.getTeamMembersForBorrower).
   app.get("/api/team-members", isAuthenticated, async (req, res) => {
     try {
-      const staffUsersWithPresence = await storage.getTeamMembersWithPresence();
-      
+      const user = req.user as User;
+      const staffUsersWithPresence = isStaffRole(user.role)
+        ? await storage.getTeamMembersWithPresence()
+        : await storage.getTeamMembersForBorrower(user.id);
+
       // Transform to include display info and presence
       const teamMembers = staffUsersWithPresence.map(user => ({
         id: user.id,
@@ -2526,6 +2580,17 @@ export function registerBorrowerRoutes(
       const recipientIsStaff = isStaffRole(recipient.role || "");
       if (!senderIsStaff && !recipientIsStaff) {
         return res.status(403).json({ error: "Messages can only be exchanged with your loan team" });
+      }
+
+      // A borrower may only message staff on their OWN team (deal-team + LOs).
+      // Mirrors the scoped team-members list, so they can't reach an arbitrary
+      // staff member by user id. If they have no team yet, the team list falls
+      // back to all staff, and so does this check — no dead end.
+      if (!senderIsStaff && recipientIsStaff) {
+        const onTeam = await storage.isStaffOnBorrowerTeam(user.id, recipientId);
+        if (!onTeam) {
+          return res.status(403).json({ error: "You can only message members of your assigned loan team" });
+        }
       }
 
       // Document requests are a staff→borrower workflow.
@@ -2662,10 +2727,36 @@ export function registerBorrowerRoutes(
         }
       }
 
-      const updated = await storage.updateDocumentRequestStatus(messageId, status, documentId);
+      // State-machine guard (prevents lost updates when borrower + staff act
+      // concurrently, e.g. borrower re-submits while staff approves). Only the
+      // listed prior states may transition to the target; the update below is
+      // conditional on the current state, so a stale writer gets a 409.
+      const LEGAL_FROM: Record<string, string[]> = {
+        submitted: ["pending", "rejected"],       // borrower (re)uploads
+        approved: ["submitted"],                   // staff clears a submitted doc
+        rejected: ["submitted"],                   // staff bounces a submitted doc
+        pending: ["submitted", "approved", "rejected"], // staff resets
+      };
+      const currentStatus = (message.documentRequestData as { status?: string } | null)?.status ?? "pending";
+      if (currentStatus === status) {
+        return res.json(message); // idempotent no-op
+      }
+      if (!LEGAL_FROM[status]?.includes(currentStatus)) {
+        return res.status(409).json({
+          error: `Cannot move a "${currentStatus}" request to "${status}".`,
+          currentStatus,
+        });
+      }
+
+      const updated = await storage.updateDocumentRequestStatus(messageId, status, documentId, LEGAL_FROM[status]);
 
       if (!updated) {
-        return res.status(404).json({ error: "Document request not found" });
+        // 0 rows matched the expected prior state — another writer beat us.
+        const fresh = await storage.getMessageById(messageId);
+        return res.status(409).json({
+          error: "This request was just updated by someone else. Refresh to see the latest status.",
+          currentStatus: (fresh?.documentRequestData as { status?: string } | null)?.status ?? null,
+        });
       }
 
       res.json(updated);

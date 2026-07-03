@@ -125,6 +125,17 @@ const extractionLimiter = rateLimit({
   message: { error: "Too many document extraction requests, please try again later" },
 });
 
+// Unauthenticated proxies to paid third-party APIs (Google geocoding, live
+// property/listing data vendors). Tighter than the general limiter because
+// each request is billable and requires no login — a cheap cost-DoS vector.
+const vendorProxyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+});
+
 app.use("/api/login", authLimiter);
 app.use("/api/callback", authLimiter);
 app.use("/api/test-login", authLimiter);
@@ -136,6 +147,14 @@ app.use("/api/documents/extract-tax-return", extractionLimiter);
 app.use("/api/documents/extract-paystub", extractionLimiter);
 app.use("/api/documents/extract-bank-statement", extractionLimiter);
 app.use("/api/calculators/extract-lease", extractionLimiter);
+app.use("/api/geocode", vendorProxyLimiter);
+app.use("/api/properties/auto-complete", vendorProxyLimiter);
+app.use("/api/properties/search-live", vendorProxyLimiter);
+app.use("/api/properties/detail-live", vendorProxyLimiter);
+app.use("/api/properties/similar-homes", vendorProxyLimiter);
+app.use("/api/properties/search-sold", vendorProxyLimiter);
+app.use("/api/listings/search", vendorProxyLimiter);
+app.use("/api/listings/nearby", vendorProxyLimiter);
 app.use("/api/track", trackLimiter);
 app.use("/api/email-capture", emailCaptureLimiter);
 app.use(generalLimiter);
@@ -312,7 +331,16 @@ export async function createApp(
 
     log(`Express error: ${status} ${message}`, "error");
     if (!res.headersSent) {
-      res.status(status).json({ message });
+      // 5xx messages are internal detail (driver errors, stack fragments,
+      // connection strings in pg errors) — log them, but never send them to
+      // the client in production. 4xx messages are intentional client-facing
+      // contract and pass through.
+      const isServerError = status >= 500;
+      const clientMessage =
+        isServerError && process.env.NODE_ENV === "production"
+          ? "Internal Server Error"
+          : message;
+      res.status(status).json({ message: clientMessage });
     }
   });
 

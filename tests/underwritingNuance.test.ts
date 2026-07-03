@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   adjustLiabilities,
   assessIncomeSeasoning,
+  calculateRentalIncomeOffsets,
   computeDti,
   computeVaResidualIncome,
   computeWhatIfPayoff,
@@ -176,5 +177,35 @@ describe("computeDti", () => {
     // gross $6,000/mo, PITI $1,900
     expect(computeDti(200, 1_720, 6_000)).toBeCloseTo(0.32);
     expect(computeDti(850, 1_910, 6_000)).toBeCloseTo(0.46);
+  });
+});
+
+describe("calculateRentalIncomeOffsets (Fannie B3-3.1-08)", () => {
+  it("reproduces S-05's worked example: $2,000 rent, $1,200 PITIA -> +$300/mo", () => {
+    const offsets = calculateRentalIncomeOffsets([
+      { address: "123 Main St", monthlyRentalIncome: "2000", monthlyDebtPayment: "1200" },
+    ]);
+    expect(offsets).toHaveLength(1);
+    expect(offsets[0].qualifyingRentalIncome).toBeCloseTo(1_500);
+    expect(offsets[0].netOffset).toBeCloseTo(300);
+  });
+
+  it("produces a negative net offset (added debt) when qualifying rent doesn't cover PITIA", () => {
+    const offsets = calculateRentalIncomeOffsets([
+      { address: "456 Oak Ave", monthlyRentalIncome: "1000", monthlyDebtPayment: "900" },
+    ]);
+    expect(offsets[0].qualifyingRentalIncome).toBeCloseTo(750);
+    expect(offsets[0].netOffset).toBeCloseTo(-150);
+  });
+
+  it("sums across multiple properties independently and returns [] for none", () => {
+    const offsets = calculateRentalIncomeOffsets([
+      { address: "A", monthlyRentalIncome: "2000", monthlyDebtPayment: "1200" },
+      { address: "B", monthlyRentalIncome: "1500", monthlyDebtPayment: "1600" },
+    ]);
+    expect(offsets).toHaveLength(2);
+    expect(offsets.reduce((s, o) => s + o.netOffset, 0)).toBeCloseTo(-175);
+    expect(calculateRentalIncomeOffsets(null)).toHaveLength(0);
+    expect(calculateRentalIncomeOffsets([])).toHaveLength(0);
   });
 });

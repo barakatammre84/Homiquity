@@ -55,7 +55,7 @@ import {
   Users,
 } from "lucide-react";
 import { format } from "date-fns";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { LoanApplication, Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
 

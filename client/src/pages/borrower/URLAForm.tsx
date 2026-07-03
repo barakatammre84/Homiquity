@@ -68,7 +68,9 @@ interface DemographicsState {
 // SSN and account numbers are WRITE-ONLY virtual fields: the server encrypts
 // them at rest and never returns the value — responses carry only ssnLast4 /
 // accountNumberLast4, which the inputs surface via their placeholders.
-type PersonalInfoForm = Partial<UrlaPersonalInfo> & { ssn?: string };
+// `ssn` is a column on UrlaPersonalInfo (write-only; the server encrypts it and
+// returns only ssnLast4), so Partial already covers it — no override needed.
+type PersonalInfoForm = Partial<UrlaPersonalInfo>;
 type AssetForm = Partial<UrlaAsset> & { accountNumber?: string };
 type LiabilityForm = Partial<UrlaLiability> & { accountNumber?: string };
 
