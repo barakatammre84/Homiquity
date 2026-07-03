@@ -75,8 +75,10 @@ export class ConsolidatedUnderwritingEngine {
     // Round up to the nearest whole percentage point for matrix lookups
     const lookupLtv = Math.ceil(calculatedLtv);
 
-    // Step 3: Enforce maximum LTV ceiling
-    if (calculatedLtv > ltvCap) {
+    // Step 3: Enforce the conventional maximum LTV ceiling. The scalar is
+    // CONVENTIONAL_LTV_CAP by definition — VA loans are guaranteed to 100% LTV
+    // ($0 down), so the cap must not reject the VA path.
+    if (targetLoanType === "CONVENTIONAL" && calculatedLtv > ltvCap) {
       reasons.push(`Calculated LTV of ${calculatedLtv.toFixed(2)}% exceeds policy ceiling of ${ltvCap}%`);
     }
 

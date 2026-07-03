@@ -98,6 +98,15 @@ const loanApplicationInputSchema = z.object({
   propertyState: z.string()
     .refine(v => !v || (VALID_US_STATES as readonly string[]).includes(v), { message: "Please select a valid US state" })
     .optional(),
+  // VA residual-income inputs, collected by the funnel for veterans only.
+  householdFamilySize: z.string().or(z.number()).transform(v => {
+    const n = parseInt(String(v).replace(/[,$]/g, ""));
+    return isNaN(n) ? null : Math.max(1, Math.min(20, n));
+  }).nullable().optional(),
+  homeSquareFootage: z.string().or(z.number()).transform(v => {
+    const n = parseInt(String(v).replace(/[,$]/g, ""));
+    return isNaN(n) ? null : Math.max(100, Math.min(50000, n));
+  }).nullable().optional(),
   incomeSources: z.array(serverIncomeSourceSchema).optional(),
   // FCRA soft-pull authorization acknowledged on the funnel's final step.
   // When true, a credit_consents evidence row (IP, user agent, canonical
@@ -490,6 +499,8 @@ export function registerLendingRoutes(
         isVeteran: formData.isVeteran,
         isFirstTimeBuyer: formData.isFirstTimeBuyer,
         propertyState: formData.propertyState,
+        householdFamilySize: formData.householdFamilySize ?? null,
+        homeSquareFootage: formData.homeSquareFootage ?? null,
         incomeSources: formData.incomeSources || null,
         referringBrokerId,
       };
@@ -701,6 +712,14 @@ export function registerLendingRoutes(
           await runPreUnderwriting(application.id, "intake");
         } catch (preUwErr) {
           console.error("[Analysis] Pre-underwriting validation failed (non-fatal):", preUwErr);
+        }
+
+        // Instant deterministic decision at intake — persists the first
+        // decision_snapshots row (trigger "intake") in the context-graph trail.
+        // Best-effort and non-binding; recalculateDecision never throws.
+        {
+          const { recalculateDecision } = await import("../services/decisionEngine");
+          await recalculateDecision(application.id, "intake");
         }
       } catch (analysisError) {
         console.error("AI analysis error:", analysisError);

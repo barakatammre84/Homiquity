@@ -18,6 +18,9 @@ import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema"
  *   payment so VA eligibility can drive the zero-down path: a VA-eligible
  *   purchase allows a $0 down payment and suppresses PMI guidance (VA loans
  *   carry no PMI).
+ * - `householdFamilySize` and `homeSquareFootage` are injected for veterans:
+ *   both feed the VA residual-income evaluation (regional residual table and
+ *   the $0.14/sqft utility deduction), which cannot run without them.
  *
  * NOTE: no SSN is collected at this stage by design — pre-approval runs a
  * SOFT credit pull gated on FCRA consent (see the `final` gate), not on SSN.
@@ -32,6 +35,8 @@ export type FunnelStepId =
   | "purchasePrice"
   | "downPayment"
   | "propertyState"
+  | "householdFamilySize"
+  | "homeSquareFootage"
   | "annualIncome"
   | "employmentType"
   | "employmentYears"
@@ -50,6 +55,8 @@ export const CANONICAL_ORDER: readonly FunnelStepId[] = [
   "purchasePrice",
   "downPayment",
   "propertyState",
+  "householdFamilySize",
+  "homeSquareFootage",
   "annualIncome",
   "employmentType",
   "employmentYears",
@@ -73,6 +80,8 @@ export const PRE_APPROVAL_DEFAULTS: PreApprovalFormData = {
   isVeteran: false,
   isFirstTimeBuyer: false,
   propertyState: "",
+  householdFamilySize: "",
+  homeSquareFootage: "",
   hasAdditionalIncome: false,
   incomeSources: [],
 };
@@ -118,11 +127,14 @@ export function computeRoute(answers: PreApprovalFormData): FunnelStepId[] {
     "purchasePrice",
     "downPayment",
     "propertyState",
-    "annualIncome",
-    "employmentType",
-    "employmentYears",
-    "hasAdditionalIncome",
   ];
+  // VA residual-income inputs (38 CFR 36.4340(e)): family size and square
+  // footage are required to underwrite any veteran, so the steps are injected
+  // whenever the borrower reports military service.
+  if (answers.isVeteran) {
+    route.push("householdFamilySize", "homeSquareFootage");
+  }
+  route.push("annualIncome", "employmentType", "employmentYears", "hasAdditionalIncome");
   const hasEnteredSources = (answers.incomeSources?.length ?? 0) > 0;
   if (answers.hasAdditionalIncome || flags.complexIncome || hasEnteredSources) {
     route.push("incomeSources");
