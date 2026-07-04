@@ -13,12 +13,17 @@ vi.mock("../server/services/lookupResolver", () => ({
         CONVENTIONAL_DTI_CAP: 43,
         CONVENTIONAL_STRETCH_DTI: 50,
         CONVENTIONAL_LTV_CAP: 97,
+        CONVENTIONAL_FICO_FLOOR: 620,
+        CONFORMING_LOAN_LIMIT: 806500,
         HAIRCUT_STOCK_INVESTMENT: 70,
         HAIRCUT_RETIREMENT: 60,
       };
       return scalars[code];
     },
-    resolveMatrixValue: async () => 0,
+    // Eligibility matrices must cover the fixture's coordinates; pricing
+    // matrices (PMI/LLPA) resolve to a 0 adjustment.
+    resolveMatrixValue: async ({ matrixCode }: { matrixCode: string }) =>
+      matrixCode === "CONVENTIONAL_MAX_LTV" ? 97 : 0,
   },
 }));
 
