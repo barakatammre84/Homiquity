@@ -1,5 +1,7 @@
 import "./bootstrap"; // must stay first: protects stdout + loads .env
 
+import { createHash } from "node:crypto";
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -17,6 +19,11 @@ import {
   wholesaleLenders,
 } from "@shared/schema";
 import { calculateLLPA } from "../pricing";
+import {
+  DEFAULT_AGENT_CALLER_IDENTITY,
+  logAgentToolInvocation,
+  recordExternalSoftPull,
+} from "../services/creditService";
 import { fetchAvm, softPullCredit, withTimeout } from "./vendors";
 
 /**
@@ -28,15 +35,63 @@ import { fetchAvm, softPullCredit, withTimeout } from "./vendors";
  *
  * Errors are returned as MCP tool errors (isError: true), which the SDK maps
  * onto JSON-RPC 2.0 — never as protocol-level crashes.
+ *
+ * AG-1 (AI governance): every tool invocation is chained into the
+ * tamper-evident credit_audit_log via creditService — soft-pull persistence
+ * goes through recordExternalSoftPull (chained pull_requested/pull_completed),
+ * and each terminal outcome additionally writes an mcp_tool_invocation entry
+ * carrying the tool name, an SHA-256 hash of the arguments, and a result
+ * summary.
  */
 
 const server = new McpServer({ name: "homiquity", version: "1.0.0" });
+
+// AG-2 seam: identifies the transport until per-agent identity lands. A
+// deployment can already name its agent via MCP_CALLER_IDENTITY.
+const CALLER_IDENTITY = process.env.MCP_CALLER_IDENTITY ?? DEFAULT_AGENT_CALLER_IDENTITY;
 
 function ok(payload: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }] };
 }
 function fail(message: string) {
   return { isError: true, content: [{ type: "text" as const, text: message }] };
+}
+
+function hashToolArgs(args: Record<string, unknown>): string {
+  return createHash("sha256").update(JSON.stringify(args)).digest("hex");
+}
+
+/**
+ * Invocation-level audit entry, best-effort: an audit-write failure must not
+ * mask the tool result it describes, so it is reported on stderr only (stdout
+ * is owned by JSON-RPC). The FCRA-material entries for an actual pull are
+ * written in-band by recordExternalSoftPull and DO fail the tool call.
+ */
+async function auditInvocation(entry: {
+  toolName: string;
+  args: Record<string, unknown>;
+  outcome: "success" | "refused" | "error";
+  resultSummary?: Record<string, unknown>;
+  applicationId?: string;
+  userId?: string;
+  consentId?: string;
+  creditPullId?: string;
+}): Promise<void> {
+  try {
+    await logAgentToolInvocation({
+      toolName: entry.toolName,
+      argsHash: hashToolArgs(entry.args),
+      outcome: entry.outcome,
+      resultSummary: entry.resultSummary,
+      applicationId: entry.applicationId,
+      userId: entry.userId,
+      consentId: entry.consentId,
+      creditPullId: entry.creditPullId,
+      callerIdentity: CALLER_IDENTITY,
+    });
+  } catch (err) {
+    console.error(`[homiquity-mcp] audit write failed (${entry.toolName}):`, err);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +114,8 @@ server.registerTool(
     },
   },
   async ({ firstName, lastName, address, email }) => {
+    const toolName = "run_soft_credit_pull";
+    const args = { firstName, lastName, address, email };
     try {
       // 1. Resolve the borrower.
       const matches = await db
@@ -72,8 +129,22 @@ server.registerTool(
           ),
         )
         .limit(5);
-      if (matches.length === 0) return fail(`No borrower named "${firstName} ${lastName}" found.`);
+      if (matches.length === 0) {
+        await auditInvocation({
+          toolName,
+          args,
+          outcome: "refused",
+          resultSummary: { reason: "borrower_not_found" },
+        });
+        return fail(`No borrower named "${firstName} ${lastName}" found.`);
+      }
       if (matches.length > 1) {
+        await auditInvocation({
+          toolName,
+          args,
+          outcome: "refused",
+          resultSummary: { reason: "ambiguous_borrower", matchCount: matches.length },
+        });
         return fail(
           `${matches.length} borrowers named "${firstName} ${lastName}" — pass the email parameter to disambiguate.`,
         );
@@ -91,6 +162,13 @@ server.registerTool(
         .orderBy(desc(loanApplications.createdAt))
         .limit(1);
       if (!application) {
+        await auditInvocation({
+          toolName,
+          args,
+          outcome: "refused",
+          resultSummary: { reason: "no_loan_application" },
+          userId: borrower.id,
+        });
         return fail("Borrower has no loan application; a soft pull must attach to an application.");
       }
 
@@ -111,6 +189,15 @@ server.registerTool(
       const monthlyIncome = application.annualIncome ? Number(application.annualIncome) / 12 : null;
       if (existing) {
         const monthly = existing.monthlyPayments ? Number(existing.monthlyPayments) : null;
+        await auditInvocation({
+          toolName,
+          args,
+          outcome: "success",
+          resultSummary: { cached: true },
+          applicationId: application.id,
+          userId: borrower.id,
+          creditPullId: existing.id,
+        });
         return ok({
           cached: true,
           creditPullId: existing.id,
@@ -142,42 +229,48 @@ server.registerTool(
         .orderBy(desc(creditConsents.consentTimestamp))
         .limit(1);
       if (!consent) {
+        // FCRA-relevant evidence: an agent attempted a pull without consent.
+        await auditInvocation({
+          toolName,
+          args,
+          outcome: "refused",
+          resultSummary: { reason: "no_active_consent" },
+          applicationId: application.id,
+          userId: borrower.id,
+        });
         return fail(
           "FCRA: no active credit consent on file for this borrower. A soft pull cannot be " +
             "performed until the borrower completes the credit consent flow.",
         );
       }
 
-      // 5. Pull via the bureau adapter and persist.
+      // 5. Pull via the bureau adapter; persistence goes through creditService
+      // so the pull lands in the tamper-evident audit chain (AG-1).
       const pull = await softPullCredit(firstName, lastName, address);
       const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // soft pulls: 90 days
-      const [inserted] = await db
-        .insert(creditPulls)
-        .values({
-          applicationId: application.id,
-          consentId: consent.id,
-          requestedBy: borrower.id,
-          pullType: "soft",
-          bureaus: ["experian", "equifax", "transunion"],
-          status: "completed",
-          externalRequestId: pull.vendorRequestId,
-          experianScore: pull.experianScore,
-          equifaxScore: pull.equifaxScore,
-          transunionScore: pull.transunionScore,
+      const inserted = await recordExternalSoftPull({
+        applicationId: application.id,
+        consentId: consent.id,
+        requestedBy: borrower.id,
+        expiresAt,
+        vendor: pull,
+        callerIdentity: CALLER_IDENTITY,
+      });
+
+      await auditInvocation({
+        toolName,
+        args,
+        outcome: "success",
+        resultSummary: {
+          cached: false,
+          simulated: pull.simulated,
           representativeScore: pull.representativeScore,
-          vantageScore4: pull.vantageScore4,
-          totalTradelines: pull.tradelines.length,
-          openTradelines: pull.tradelines.length,
-          totalDebt: pull.totalDebt.toFixed(2),
-          monthlyPayments: pull.totalMonthlyPayments.toFixed(2),
-          // Machine-readable ledger for deterministic underwriting math
-          // (deferred-student-loan 1% rule, new-tradeline detection).
-          liabilities: pull.tradelines,
-          vendorRequestId: pull.vendorRequestId,
-          completedAt: new Date(),
-          expiresAt,
-        })
-        .returning({ id: creditPulls.id });
+        },
+        applicationId: application.id,
+        userId: borrower.id,
+        consentId: consent.id,
+        creditPullId: inserted.id,
+      });
 
       return ok({
         cached: false,
@@ -197,7 +290,14 @@ server.registerTool(
         expiresAt: expiresAt.toISOString(),
       });
     } catch (err) {
-      return fail(`run_soft_credit_pull failed: ${err instanceof Error ? err.message : String(err)}`);
+      const message = err instanceof Error ? err.message : String(err);
+      await auditInvocation({
+        toolName,
+        args,
+        outcome: "error",
+        resultSummary: { error: message },
+      });
+      return fail(`run_soft_credit_pull failed: ${message}`);
     }
   },
 );
@@ -238,6 +338,8 @@ server.registerTool(
     },
   },
   async ({ creditScore, ltv, zipCode, loanAmount, productType }) => {
+    const toolName = "get_best_execution_rates";
+    const args = { creditScore, ltv, zipCode, loanAmount, productType };
     try {
       const rows = await withTimeout(
         db
@@ -260,7 +362,15 @@ server.registerTool(
       const filtered = productType
         ? rows.filter((r) => r.productType.toUpperCase() === productType.toUpperCase())
         : rows;
-      if (filtered.length === 0) return fail("No rate sheet products found (check productType filter / seed data).");
+      if (filtered.length === 0) {
+        await auditInvocation({
+          toolName,
+          args,
+          outcome: "error",
+          resultSummary: { reason: "no_rate_sheet_products" },
+        });
+        return fail("No rate sheet products found (check productType filter / seed data).");
+      }
 
       // Newest sheet per lender+product only.
       const latest = new Map<string, (typeof filtered)[number]>();
@@ -301,6 +411,18 @@ server.registerTool(
         .sort((a, b) => a.borrowerRate - b.borrowerRate)
         .slice(0, 8);
 
+      await auditInvocation({
+        toolName,
+        args,
+        outcome: "success",
+        resultSummary: {
+          offerCount: offers.length,
+          bestLender: offers[0].lenderCode,
+          bestBorrowerRate: offers[0].borrowerRate,
+          llpaPoints: llpa.totalLLPA,
+        },
+      });
+
       return ok({
         formula: "P_borrower = R_investor + M_base + ΔM_risk + ΔM_geography (+ LLPA/4)",
         inputs: { creditScore, ltv, zipCode, loanAmount, productType: productType ?? "all" },
@@ -308,7 +430,9 @@ server.registerTool(
         offers,
       });
     } catch (err) {
-      return fail(`get_best_execution_rates failed: ${err instanceof Error ? err.message : String(err)}`);
+      const message = err instanceof Error ? err.message : String(err);
+      await auditInvocation({ toolName, args, outcome: "error", resultSummary: { error: message } });
+      return fail(`get_best_execution_rates failed: ${message}`);
     }
   },
 );
@@ -330,6 +454,8 @@ server.registerTool(
     },
   },
   async ({ address, zipCode }) => {
+    const toolName = "retrieve_property_valuation";
+    const args = { address, zipCode };
     try {
       const avm = await fetchAvm(address, zipCode);
 
@@ -355,6 +481,19 @@ server.registerTool(
           .where(eq(properties.id, property.id));
       }
 
+      await auditInvocation({
+        toolName,
+        args,
+        outcome: "success",
+        resultSummary: {
+          provider: avm.provider,
+          simulated: avm.simulated,
+          estimatedValue: avm.estimatedValue,
+          confidence: avm.confidence,
+          persistedToPropertyId: property?.id ?? null,
+        },
+      });
+
       return ok({
         simulated: avm.simulated,
         provider: avm.provider,
@@ -366,7 +505,9 @@ server.registerTool(
         persistedToPropertyId: property?.id ?? null,
       });
     } catch (err) {
-      return fail(`retrieve_property_valuation failed: ${err instanceof Error ? err.message : String(err)}`);
+      const message = err instanceof Error ? err.message : String(err);
+      await auditInvocation({ toolName, args, outcome: "error", resultSummary: { error: message } });
+      return fail(`retrieve_property_valuation failed: ${message}`);
     }
   },
 );

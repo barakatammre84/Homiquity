@@ -241,3 +241,41 @@ describe("Protocol & platform safety", () => {
     expect(aus).toMatch(/simulated/);
   });
 });
+
+describe("AI governance (AG-1): MCP tool actions land in the tamper-evident audit chain", () => {
+  it("the MCP server never inserts credit pulls directly — persistence goes through creditService", () => {
+    const source = read("server/mcp/index.ts");
+    expect(source).not.toMatch(/insert\(\s*creditPulls\s*\)/);
+    expect(source).toContain("recordExternalSoftPull");
+  });
+
+  it("every registered tool writes an invocation entry (tool name + args hash) to the chain", () => {
+    const source = read("server/mcp/index.ts");
+    const registered = [...source.matchAll(/server\.registerTool\(\s*\n?\s*"([a-z_]+)"/g)].map(
+      (m) => m[1],
+    );
+    expect(registered.length).toBeGreaterThanOrEqual(3);
+    for (const tool of registered) {
+      // Each tool handler pins its toolName, and the shared audit helper
+      // hashes the args and routes through creditService's hash chain.
+      expect(source).toMatch(new RegExp(`const toolName = "${tool}"`));
+    }
+    expect(source).toContain("auditInvocation");
+    expect(source).toContain("logAgentToolInvocation");
+    expect(source).toMatch(/createHash\("sha256"\)/);
+  });
+
+  it("audited soft-pull persistence re-verifies FCRA consent inside creditService", () => {
+    const credit = read("server/services/creditService.ts");
+    expect(credit).toMatch(/export async function recordExternalSoftPull/);
+    expect(credit).toMatch(/Valid consent required before credit pull/);
+    expect(credit).toMatch(/does not belong to this borrower/);
+  });
+
+  it("agent caller identity stays pluggable (AG-2 seam)", () => {
+    expect(read("server/services/creditService.ts")).toMatch(
+      /DEFAULT_AGENT_CALLER_IDENTITY = "mcp-stdio"/,
+    );
+    expect(read("server/mcp/index.ts")).toMatch(/MCP_CALLER_IDENTITY/);
+  });
+});
