@@ -443,14 +443,14 @@ export default function BorrowerFile() {
                   </Badge>
                   {application.financialDataProvenance === "verified" ? (
                     <Badge
-                      className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      className="bg-success-subtle text-success-subtle-foreground"
                       data-testid="badge-financials-verified"
                     >
                       <CheckCircle2 className="mr-1 h-3 w-3" /> Financials Verified
                     </Badge>
                   ) : (
                     <>
-                      <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300">
+                      <Badge variant="outline" className="border-border text-warning-subtle-foreground">
                         Financials Unverified
                       </Badge>
                       {isStaff2 && (
@@ -539,7 +539,7 @@ export default function BorrowerFile() {
                       </div>
                       {(statusUpdate.status === "approved" || statusUpdate.status === "pre_approved") &&
                         application.financialDataProvenance !== "verified" && (
-                          <div className="rounded-md border border-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-200">
+                          <div className="rounded-md border border-border bg-warning-subtle p-3 text-sm text-warning-subtle-foreground">
                             Financials must be verified before an approval outcome can be set. Use
                             "Mark Financials Verified" above once the borrower's income, assets, and
                             credit are backed by documentation.
@@ -811,7 +811,7 @@ export default function BorrowerFile() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          <AlertCircle className="h-5 w-5 text-amber-500" />
+                          <AlertCircle className="h-5 w-5 text-warning-subtle-foreground" />
                           Outstanding ({outstandingConditions.length})
                         </CardTitle>
                       </CardHeader>
@@ -886,7 +886,7 @@ export default function BorrowerFile() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground" />
                           Resolved ({clearedConditions.length})
                         </CardTitle>
                       </CardHeader>
@@ -901,7 +901,7 @@ export default function BorrowerFile() {
                               {clearedConditions.map((cond) => (
                                 <div
                                   key={cond.id}
-                                  className="rounded-lg border border-green-500/20 p-3"
+                                  className="rounded-lg border border-border/20 p-3"
                                   data-testid={`condition-resolved-${cond.id}`}
                                 >
                                   <div className="flex items-start justify-between gap-2">
@@ -1003,8 +1003,8 @@ export default function BorrowerFile() {
                         {creditData?.hasActiveConsent ? (
                           <div className="space-y-3">
                             <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-5 w-5 text-green-500" />
-                              <span className="font-medium text-green-700 dark:text-green-400" data-testid="text-consent-status">
+                              <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground" />
+                              <span className="font-medium text-success-subtle-foreground" data-testid="text-consent-status">
                                 Consent Active
                               </span>
                             </div>
@@ -1017,8 +1017,8 @@ export default function BorrowerFile() {
                         ) : (
                           <div className="space-y-3">
                             <div className="flex items-center gap-2">
-                              <AlertCircle className="h-5 w-5 text-amber-500" />
-                              <span className="font-medium text-amber-700 dark:text-amber-400" data-testid="text-consent-status">
+                              <AlertCircle className="h-5 w-5 text-warning-subtle-foreground" />
+                              <span className="font-medium text-warning-subtle-foreground" data-testid="text-consent-status">
                                 No Active Consent
                               </span>
                             </div>
@@ -1139,9 +1139,9 @@ export default function BorrowerFile() {
                   </div>
 
                   {creditData?.adverseActionCount && creditData.adverseActionCount > 0 && (
-                    <Card className="border-red-200 dark:border-red-800">
+                    <Card className="border-border">
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                        <CardTitle className="flex items-center gap-2 text-destructive">
                           <AlertOctagon className="h-5 w-5" />
                           Adverse Action Notices ({creditData.adverseActionCount})
                         </CardTitle>

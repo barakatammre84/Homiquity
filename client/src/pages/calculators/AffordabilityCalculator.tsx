@@ -349,17 +349,17 @@ export default function AffordabilityCalculator() {
   };
 
   const getDTIColor = (dti: number) => {
-    if (dti <= 28) return "text-green-600 dark:text-green-400";
-    if (dti <= 36) return "text-yellow-600 dark:text-yellow-400";
-    return "text-red-600 dark:text-red-400";
+    if (dti <= 28) return "text-success-subtle-foreground";
+    if (dti <= 36) return "text-warning-subtle-foreground";
+    return "text-destructive";
   };
 
   const paymentBreakdown = [
-    { label: "Principal & Interest", value: results.monthlyPI, color: "bg-blue-500" },
-    { label: "Property Tax", value: results.monthlyTax, color: "bg-emerald-500" },
-    { label: "Insurance", value: results.monthlyInsurance, color: "bg-amber-500" },
-    { label: "PMI", value: results.monthlyPMI, color: "bg-orange-500" },
-    { label: "HOA", value: inputs.hoaMonthly, color: "bg-purple-500" },
+    { label: "Principal & Interest", value: results.monthlyPI, color: "bg-chart-1" },
+    { label: "Property Tax", value: results.monthlyTax, color: "bg-chart-2" },
+    { label: "Insurance", value: results.monthlyInsurance, color: "bg-chart-3" },
+    { label: "PMI", value: results.monthlyPMI, color: "bg-chart-4" },
+    { label: "HOA", value: inputs.hoaMonthly, color: "bg-chart-5" },
   ].filter((item) => item.value > 0);
 
   const debtTypeIcon = (type: string) => {
@@ -925,25 +925,25 @@ export default function AffordabilityCalculator() {
                 <CardTitle className="text-base">Price Ranges</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="rounded-lg bg-green-50 dark:bg-green-950/30 p-3">
+                <div className="rounded-lg bg-success-subtle p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground" />
                       <span className="text-sm font-medium">Comfortable</span>
                     </div>
-                    <span className="font-bold text-green-600 dark:text-green-400" data-testid="text-comfortable-price">
+                    <span className="font-bold text-success-subtle-foreground" data-testid="text-comfortable-price">
                       {formatCurrency(results.comfortablePrice)}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground pl-6">Room for savings and lifestyle</p>
                 </div>
-                <div className="rounded-lg bg-yellow-50 dark:bg-yellow-950/30 p-3">
+                <div className="rounded-lg bg-warning-subtle p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                      <AlertTriangle className="h-4 w-4 text-warning-subtle-foreground" />
                       <span className="text-sm font-medium">Stretch</span>
                     </div>
-                    <span className="font-bold text-yellow-600 dark:text-yellow-400" data-testid="text-stretch-price">
+                    <span className="font-bold text-warning-subtle-foreground" data-testid="text-stretch-price">
                       {formatCurrency(results.stretchPrice)}
                     </span>
                   </div>
