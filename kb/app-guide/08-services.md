@@ -21,7 +21,8 @@ depth.
 | `apr.ts` | Actuarial APR solver (Reg Z §1026.22 / Appendix J) — every displayed APR (ads, LE) must come from here; includes the representative fee model for advertised rates |
 | `loanEstimate.ts` | Loan estimate calculations; APR via `apr.ts`, TRID timing via `businessDays.ts` anchored to `tridTriggeredAt` |
 | `lenderMatchingEngine.ts` | Matches borrowers to lender products |
-| `../pipelineEngine.ts` | Loan pipeline stage logic for staff views |
+| `../pipelineEngine.ts` | Loan pipeline stage logic for staff views; `PipelineSummary` carries `daysIdle` + `fileHealth` for the LO Command Center |
+| `fileHealth.ts` | Pure, deterministic green/yellow/red "No-Stall" light per file (48h-idle stall, 30-day pipeline age, stage-amount coherence, condition pile-up); Reg B — no model input |
 
 ## Documents & AI
 

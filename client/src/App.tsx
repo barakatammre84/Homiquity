@@ -77,6 +77,7 @@ const BuyerProperties = lazy(() => import("@/pages/borrower/BuyerProperties"));
 const HmdaDemographics = lazy(() => import("@/pages/borrower/HmdaDemographics"));
 
 const StaffDashboard = lazy(() => import("@/pages/staff/StaffDashboard"));
+const LoCommandCenter = lazy(() => import("@/pages/staff/LoCommandCenter"));
 const BorrowerFile = lazy(() => import("@/pages/staff/BorrowerFile"));
 const PolicyOps = lazy(() => import("@/pages/staff/PolicyOps"));
 const PricingMatrices = lazy(() => import("@/pages/staff/PricingMatrices"));
@@ -338,6 +339,9 @@ function Router() {
         {/* Private Pages - Staff (brokers, lenders processing mortgage applications) */}
         <Route path="/staff-dashboard">
           <StaffPage><StaffDashboard /></StaffPage>
+        </Route>
+        <Route path="/lo-command-center">
+          <StaffPage><LoCommandCenter /></StaffPage>
         </Route>
         <Route path="/pipeline-queue">
           <Redirect to="/staff-dashboard" />

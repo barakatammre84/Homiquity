@@ -9,9 +9,10 @@ import type {
   Task,
   InsertTask,
 } from "@shared/schema";
-import { loanConditions, loanMilestones, users } from "@shared/schema";
+import { loanConditions, loanMilestones, users, dealActivities } from "@shared/schema";
 import { db } from "./db";
-import { inArray, desc } from "drizzle-orm";
+import { inArray, desc, eq, max } from "drizzle-orm";
+import { computeFileHealth, daysSince, type FileHealth } from "./services/fileHealth";
 import {
   LOAN_APP_TRANSITIONS,
   isLoanAppStatus,
@@ -674,6 +675,12 @@ export interface PipelineSummary {
   percentComplete: number;
   nextAction: string;
   priority: "normal" | "high" | "urgent";
+  /** Most recent touch on the file: latest deal activity or application update. */
+  lastActivityAt: Date | null;
+  /** Whole days since lastActivityAt; null when no timestamp exists. */
+  daysIdle: number | null;
+  /** Deterministic green/yellow/red No-Stall signal (services/fileHealth). */
+  fileHealth: FileHealth;
 }
 
 function resolveBorrowerName(user: User | undefined): string {
@@ -693,6 +700,7 @@ function buildPipelineSummary(
   milestones: LoanMilestone | undefined,
   conditions: LoanCondition[],
   borrowerName: string,
+  latestActivityAt: Date | null,
 ): PipelineSummary {
   const submittedAt = milestones?.submittedAt || application.createdAt;
   const daysInPipeline = submittedAt
@@ -757,6 +765,25 @@ function buildPipelineSummary(
     priority = "urgent";
   }
 
+  // "Last touch" is the freshest of the activity log and the application row
+  // itself, so status flips that never write an activity still reset the
+  // idle clock.
+  const updatedAt = application.updatedAt ? new Date(application.updatedAt) : null;
+  let lastActivityAt = latestActivityAt;
+  if (updatedAt && (!lastActivityAt || updatedAt > lastActivityAt)) {
+    lastActivityAt = updatedAt;
+  }
+  const daysIdle = daysSince(lastActivityAt);
+
+  const fileHealth = computeFileHealth({
+    status: currentStage,
+    daysIdle,
+    daysInPipeline,
+    conditionsOutstanding,
+    preApprovalAmount: application.preApprovalAmount,
+    purchasePrice: application.purchasePrice,
+  });
+
   return {
     applicationId: application.id,
     borrowerName,
@@ -768,6 +795,9 @@ function buildPipelineSummary(
     percentComplete,
     nextAction,
     priority,
+    lastActivityAt,
+    daysIdle,
+    fileHealth,
   };
 }
 
@@ -775,11 +805,23 @@ export async function getPipelineSummary(applicationId: string): Promise<Pipelin
   const application = await storage.getLoanApplication(applicationId);
   if (!application) return null;
 
-  const milestones = await storage.getLoanMilestones(applicationId);
-  const conditions = await storage.getLoanConditionsByApplication(applicationId);
-  const user = await storage.getUser(application.userId);
+  const [milestones, conditions, user, [latestActivity]] = await Promise.all([
+    storage.getLoanMilestones(applicationId),
+    storage.getLoanConditionsByApplication(applicationId),
+    storage.getUser(application.userId),
+    db
+      .select({ last: max(dealActivities.createdAt) })
+      .from(dealActivities)
+      .where(eq(dealActivities.applicationId, applicationId)),
+  ]);
 
-  return buildPipelineSummary(application, milestones, conditions, resolveBorrowerName(user));
+  return buildPipelineSummary(
+    application,
+    milestones,
+    conditions,
+    resolveBorrowerName(user),
+    latestActivity?.last ?? null,
+  );
 }
 
 /**
@@ -799,7 +841,7 @@ export async function getPipelineSummaries(
     new Set(applications.map(a => a.userId).filter((id): id is string => !!id)),
   );
 
-  const [milestoneRows, conditionRows, userRows] = await Promise.all([
+  const [milestoneRows, conditionRows, userRows, activityRows] = await Promise.all([
     db.select().from(loanMilestones).where(inArray(loanMilestones.applicationId, appIds)),
     db
       .select()
@@ -811,6 +853,14 @@ export async function getPipelineSummaries(
     userIds.length > 0
       ? db.select().from(users).where(inArray(users.id, userIds))
       : Promise.resolve([] as User[]),
+    db
+      .select({
+        applicationId: dealActivities.applicationId,
+        last: max(dealActivities.createdAt),
+      })
+      .from(dealActivities)
+      .where(inArray(dealActivities.applicationId, appIds))
+      .groupBy(dealActivities.applicationId),
   ]);
 
   // One milestone row per application; keep the first if duplicates exist.
@@ -829,6 +879,11 @@ export async function getPipelineSummaries(
   const userById = new Map<string, User>();
   for (const u of userRows) userById.set(u.id, u);
 
+  const latestActivityByApp = new Map<string, Date>();
+  for (const row of activityRows) {
+    if (row.last) latestActivityByApp.set(row.applicationId, row.last);
+  }
+
   return applications.map(app => {
     const user = app.userId ? userById.get(app.userId) : undefined;
     return buildPipelineSummary(
@@ -836,6 +891,7 @@ export async function getPipelineSummaries(
       milestoneByApp.get(app.id),
       conditionsByApp.get(app.id) ?? [],
       resolveBorrowerName(user),
+      latestActivityByApp.get(app.id) ?? null,
     );
   });
 }
