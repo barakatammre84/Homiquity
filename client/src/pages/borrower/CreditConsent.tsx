@@ -365,6 +365,10 @@ export default function CreditConsent() {
                     maxLength={4}
                     data-testid="input-ssn-last4"
                   />
+                  <p className="text-xs text-muted-foreground" data-testid="text-ssn-whisper">
+                    Used only to match you with your credit report — we never ask for your full
+                    SSN here, and sharing it is optional.
+                  </p>
                 </div>
                 
                 <div className="space-y-2">
