@@ -98,6 +98,9 @@ import {
   loanDeliveryData,
   type LoanDeliveryData,
   type InsertLoanDeliveryData,
+  lenderSubmissions,
+  type LenderSubmission,
+  type InsertLenderSubmission,
   type Task,
   type InsertTask,
   type TaskDocument,
@@ -430,6 +433,12 @@ export interface IStorage {
   // GSE loan delivery data (ULDD / UCD closing-stage datapoints)
   getLoanDeliveryData(applicationId: string): Promise<LoanDeliveryData | undefined>;
   upsertLoanDeliveryData(data: InsertLoanDeliveryData): Promise<LoanDeliveryData>;
+
+  // Wholesale lender submissions
+  createLenderSubmission(data: InsertLenderSubmission): Promise<LenderSubmission>;
+  getLenderSubmission(id: string): Promise<LenderSubmission | undefined>;
+  getLenderSubmissionsByApplication(applicationId: string): Promise<LenderSubmission[]>;
+  updateLenderSubmission(id: string, data: Partial<InsertLenderSubmission>): Promise<LenderSubmission | undefined>;
 
   getRealEstateOwnedByApplication(applicationId: string): Promise<RealEstateOwned[]>;
   getHmdaDemographicsByApplication(applicationId: string): Promise<HmdaDemographics[]>;
@@ -1703,6 +1712,39 @@ export class DatabaseStorage implements IStorage {
     }
     const [created] = await db.insert(loanDeliveryData).values(cleanData).returning();
     return created;
+  }
+
+  // Wholesale lender submissions
+  async createLenderSubmission(data: InsertLenderSubmission): Promise<LenderSubmission> {
+    const [created] = await db.insert(lenderSubmissions).values(data).returning();
+    return created;
+  }
+
+  async getLenderSubmission(id: string): Promise<LenderSubmission | undefined> {
+    const [row] = await db
+      .select()
+      .from(lenderSubmissions)
+      .where(eq(lenderSubmissions.id, id))
+      .limit(1);
+    return row;
+  }
+
+  async getLenderSubmissionsByApplication(applicationId: string): Promise<LenderSubmission[]> {
+    return await db
+      .select()
+      .from(lenderSubmissions)
+      .where(eq(lenderSubmissions.applicationId, applicationId))
+      .orderBy(desc(lenderSubmissions.submittedAt));
+  }
+
+  async updateLenderSubmission(id: string, data: Partial<InsertLenderSubmission>): Promise<LenderSubmission | undefined> {
+    const { createdAt, updatedAt, id: _id, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(lenderSubmissions)
+      .set({ ...cleanData, statusUpdatedAt: new Date(), updatedAt: new Date() })
+      .where(eq(lenderSubmissions.id, id))
+      .returning();
+    return updated;
   }
 
   // Borrower Declarations

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { SubmissionReadinessDialog } from "@/components/SubmissionReadinessDialog";
 import { isInternalStaffRole } from "@shared/roles";
 import { getLoanAppStatusMeta } from "@shared/schema";
 import { AlertCircle, Download, ExternalLink, Gauge, Loader2, Users } from "lucide-react";
@@ -316,6 +317,10 @@ export default function LoCommandCenter() {
                                 Open
                               </Link>
                             </Button>
+                            <SubmissionReadinessDialog
+                              applicationId={file.applicationId}
+                              borrowerName={file.borrowerName}
+                            />
                             <Button
                               variant="outline"
                               size="sm"

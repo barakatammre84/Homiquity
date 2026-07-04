@@ -57,6 +57,13 @@
       "when": 1783593600002,
       "tag": "0007_delivery_fees_and_project_data",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783593600003,
+      "tag": "0008_lender_submissions",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,7 @@ import {
   decimal,
   jsonb,
   text,
+  index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -108,3 +109,54 @@ export const insertLoanDeliveryDataSchema = createInsertSchema(loanDeliveryData)
 
 export type LoanDeliveryData = typeof loanDeliveryData.$inferSelect;
 export type InsertLoanDeliveryData = z.infer<typeof insertLoanDeliveryDataSchema>;
+
+// =============================================================================
+// WHOLESALE LENDER SUBMISSIONS
+//
+// One row per file-to-lender submission (a file may be submitted to multiple
+// lenders over its life). Created only through the server-enforced readiness
+// gate in server/services/lenderSubmission.ts; status advances via the
+// transition machine in shared/wholesaleLenders.ts as the lender responds.
+// The lender leg is a deterministic simulation until broker agreements exist.
+// =============================================================================
+
+export const lenderSubmissions = pgTable(
+  "lender_submissions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+    /** Wholesale lender id from shared/wholesaleLenders.ts. */
+    lenderId: varchar("lender_id", { length: 40 }).notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("submitted"),
+    /** True while the lender leg is the deterministic simulation. */
+    simulated: boolean("simulated").notNull().default(true),
+    /** Lender-side confirmation/loan number (simulated until live). */
+    confirmationId: varchar("confirmation_id", { length: 60 }),
+    /** Snapshot of the submission-readiness report at the moment of submission. */
+    readinessSnapshot: jsonb("readiness_snapshot"),
+    /** Staff user who performed the submission. */
+    submittedBy: varchar("submitted_by").notNull(),
+    submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+    /** Free-form status notes (condition lists, lender contacts). */
+    notes: text("notes"),
+    statusUpdatedAt: timestamp("status_updated_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    // Plain index: resubmission to the same lender after a withdrawal is
+    // legitimate — "one ACTIVE submission per lender" is enforced in the
+    // service, not the schema.
+    index("lender_submissions_app_lender_idx").on(table.applicationId, table.lenderId),
+  ],
+);
+
+export const insertLenderSubmissionSchema = createInsertSchema(lenderSubmissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  statusUpdatedAt: true,
+});
+
+export type LenderSubmission = typeof lenderSubmissions.$inferSelect;
+export type InsertLenderSubmission = z.infer<typeof insertLenderSubmissionSchema>;
