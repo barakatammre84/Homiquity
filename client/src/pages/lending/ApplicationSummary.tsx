@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication } from "@shared/schema";
+import { isTerminalLoanAppStatus } from "@shared/schema";
 import {
   Home,
   ChevronRight,
@@ -47,7 +48,7 @@ export default function ApplicationSummary() {
 
   const applications = data?.applications || [];
   const activeApplication = applications.find(
-    (app) => !["closed", "denied"].includes(app.status)
+    (app) => !isTerminalLoanAppStatus(app.status)
   );
 
   const loanAmount = activeApplication

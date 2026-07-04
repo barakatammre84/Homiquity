@@ -12,11 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
+import { TermTooltip } from "@/components/TermTooltip";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
 import { TrustLayer } from "@/components/TrustLayer";
 import { RenterHome } from "@/pages/borrower/RenterHome";
 import { isStaffRole } from "@shared/roles";
+import { isTerminalLoanAppStatus } from "@shared/schema";
 import PredictionInsights from "@/components/borrower/PredictionInsights";
 import type { LoanApplication, DealActivity } from "@shared/schema";
 import {
@@ -48,6 +50,22 @@ import {
   Zap,
 } from "lucide-react";
 
+/** Server-computed next action (see server/services/nextAction.ts). */
+interface NextActionData {
+  kind:
+    | "start_application" | "resume_draft" | "renew_preapproval" | "read_messages"
+    | "strengthen_file" | "upload_documents" | "complete_tasks" | "clear_conditions"
+    | "browse_homes" | "contact_team" | "talk_to_coach" | "homeowner_hub" | "in_review";
+  title: string;
+  description: string;
+  href: string;
+  buttonLabel: string;
+  whyNeeded?: string;
+  timeEstimate?: string;
+  count?: number;
+  urgency?: "normal" | "urgent" | "expired";
+}
+
 interface DashboardData {
   applications: LoanApplication[];
   stats: {
@@ -61,9 +79,28 @@ interface DashboardData {
   pendingTasksByApplication?: Record<string, { total: number; documents: number }>;
   loanOptionCounts?: Record<string, number>;
   hmdaStatus?: Record<string, boolean>;
-  recentOptions?: Array<{ id: string; applicationId: string; interestRate: string; loanType: string; programName: string }>;
+  recentOptions?: Array<{ id: string; applicationId: string; interestRate: string; loanType: string; loanTerm: number; monthlyPayment: string; isRecommended: boolean | null; lockedAt: string | null }>;
   verificationStatus?: Record<string, { hasCreditConsent: boolean; hasIdVerification: boolean; hasBankConnected: boolean; hasRateLocked: boolean }>;
+  activitySummary?: { totalPageViews: number; propertySearches: number; calculatorUses: number; coachChats: number; propertyViews: number };
+  nextAction?: NextActionData;
 }
+
+/** Icon per next-action kind — the only presentation decision left client-side. */
+const NEXT_ACTION_ICONS: Record<NextActionData["kind"], React.ElementType> = {
+  start_application: Sparkles,
+  resume_draft: FileText,
+  renew_preapproval: AlertTriangle,
+  read_messages: MessageCircle,
+  strengthen_file: AlertTriangle,
+  upload_documents: FileText,
+  complete_tasks: FileText,
+  clear_conditions: AlertCircle,
+  browse_homes: Home,
+  contact_team: Sparkles,
+  talk_to_coach: Bot,
+  homeowner_hub: Home,
+  in_review: Clock,
+};
 
 /** Shape of loan_applications.pre_uw_flags (written by the pre-underwriting validator). */
 interface PreUwFlagsPayload {
@@ -132,9 +169,8 @@ function getReadinessPercent(
     conditional: 85,
     clear_to_close: 95,
     closing: 98,
-    closed: 100,
+    funded: 100,
     denied: 10,
-    declined: 10,
   };
   let base = statusWeights[status] || 30;
   if (verificationStatus) {
@@ -148,25 +184,12 @@ function getReadinessPercent(
   return Math.min(base, 100);
 }
 
-function getPersonalizedGreeting(user: { firstName?: string | null } | null | undefined, application: LoanApplication | null, goal: string | null): { title: string; subtitle: string } {
+function getPersonalizedGreeting(user: { firstName?: string | null } | null | undefined, application: LoanApplication | null): { title: string; subtitle: string } {
   const name = user?.firstName || "";
   const greeting = name ? `Hi, ${name}` : "Welcome back";
 
   if (!application) {
-    switch (goal) {
-      case "buying_first_home":
-        return { title: greeting, subtitle: "Your pre-approval is the first step. Let's get started." };
-      case "buying_next_home":
-        return { title: greeting, subtitle: "Let's find the right mortgage for your next home." };
-      case "refinancing":
-        return { title: greeting, subtitle: "Let's see if refinancing could lower your payment." };
-      case "investing":
-        return { title: greeting, subtitle: "Get pre-approved for your next investment property." };
-      case "just_exploring":
-        return { title: greeting, subtitle: "Explore your options. Start when you're ready." };
-      default:
-        return { title: greeting, subtitle: "Here's where you stand on your mortgage journey." };
-    }
+    return { title: greeting, subtitle: "Here's where you stand on your mortgage journey." };
   }
 
   switch (application.status) {
@@ -188,210 +211,18 @@ function getPersonalizedGreeting(user: { firstName?: string | null } | null | un
     case "closing":
       return { title: greeting, subtitle: "You're clear to close. The finish line is in sight." };
     case "denied":
-    case "declined":
       return { title: greeting, subtitle: "Let's look at your options and find a path forward." };
+    case "funded":
+      return { title: greeting, subtitle: "Congratulations on closing! Your Homeowner Hub is tracking your equity." };
+    case "suspended":
+      return { title: greeting, subtitle: "Your application is on hold. Your loan team will be in touch." };
+    case "expired":
+      return { title: greeting, subtitle: "Your pre-approval expired. Renew it to keep shopping with confidence." };
     default:
       return { title: greeting, subtitle: "Here's where things stand with your mortgage." };
   }
 }
 
-function getDominantAction(
-  application: LoanApplication | null,
-  goal: string | null,
-  pendingTasks: { total: number; documents: number },
-  pendingDocuments: number,
-  unreadMessages: number,
-  expirationInfo: { label: string; daysLeft: number; urgency: "expired" | "urgent" | "normal" } | null,
-  activitySummary?: { totalPageViews: number; propertySearches: number; calculatorUses: number; coachChats: number; propertyViews: number } | null,
-): { icon: React.ElementType; title: string; description: string; href: string; buttonLabel: string; whyNeeded?: string; timeEstimate?: string } {
-  if (!application) {
-    if (activitySummary && activitySummary.propertySearches > 0) {
-      return {
-        icon: Sparkles,
-        title: "Get pre-approved to make offers",
-        description: "You've been browsing homes. A pre-approval letter shows sellers you're serious.",
-        href: "/apply",
-        buttonLabel: "Start Now",
-      };
-    }
-    if (activitySummary && activitySummary.calculatorUses > 0) {
-      return {
-        icon: Sparkles,
-        title: "See what you qualify for",
-        description: "You've run the numbers. Now find out your actual pre-approval amount.",
-        href: "/apply",
-        buttonLabel: "Start Now",
-      };
-    }
-    switch (goal) {
-      case "buying_first_home":
-        return {
-          icon: Sparkles,
-          title: "Start your pre-approval",
-          description: "Takes about 3 minutes. No hard credit check.",
-          href: "/apply",
-          buttonLabel: "Get Started",
-        };
-      case "refinancing":
-        return {
-          icon: Sparkles,
-          title: "Check your refinance options",
-          description: "See if you could lower your payment or tap into your equity.",
-          href: "/apply",
-          buttonLabel: "Get Started",
-        };
-      case "investing":
-        return {
-          icon: Sparkles,
-          title: "Pre-qualify for investment financing",
-          description: "Get pre-approved for your next investment property in minutes.",
-          href: "/apply",
-          buttonLabel: "Get Started",
-        };
-      default:
-        return {
-          icon: Sparkles,
-          title: "Start your pre-approval",
-          description: "Takes about 3 minutes. No hard credit check.",
-          href: "/apply",
-          buttonLabel: "Get Started",
-        };
-    }
-  }
-
-  const status = application.status;
-
-  if (expirationInfo?.urgency === "expired") {
-    return {
-      icon: AlertTriangle,
-      title: "Renew your pre-approval",
-      description: "Your pre-approval has expired. Renew it to keep shopping with confidence.",
-      href: "/apply",
-      buttonLabel: "Renew Now",
-    };
-  }
-
-  if (status === "draft") {
-    return {
-      icon: FileText,
-      title: "Complete your application",
-      description: "Pick up right where you left off. It only takes a few minutes.",
-      href: "/apply",
-      buttonLabel: "Continue",
-      timeEstimate: "about 3 minutes",
-    };
-  }
-
-  if (unreadMessages > 0) {
-    return {
-      icon: MessageCircle,
-      title: `You have ${unreadMessages} new message${unreadMessages > 1 ? "s" : ""}`,
-      description: "Your loan team sent you a message. Respond to keep things moving.",
-      href: "/messages",
-      buttonLabel: "View Messages",
-    };
-  }
-
-  // Pre-underwriting flags outrank generic tasks — they name the exact
-  // documents underwriting is waiting on.
-  const preUw = getPreUwFlags(application);
-  if (preUw?.flags && preUw.flags.length > 0) {
-    return {
-      icon: AlertTriangle,
-      title: "Strengthen your file",
-      description: preUw.flags[0].reason,
-      href: "/documents",
-      buttonLabel: "Add Documents",
-      whyNeeded: "Clearing these flags keeps your approval on track — your file re-checks automatically when documents arrive.",
-      timeEstimate: "a few minutes",
-    };
-  }
-
-  // Document requests grouped into ONE milestone action, not N task rows.
-  if (pendingTasks.documents > 0) {
-    return {
-      icon: FileText,
-      title: `Upload your documents — ${pendingTasks.documents} needed`,
-      description: "Everything on the list unlocks your next stage. Upload what you have; each document checks itself off.",
-      href: "/documents",
-      buttonLabel: "Upload Documents",
-      whyNeeded: "Underwriting can't start until your document set is complete.",
-      timeEstimate: "a few minutes",
-    };
-  }
-
-  if (pendingTasks.total > 0) {
-    return {
-      icon: FileText,
-      title: `Complete ${pendingTasks.total} pending task${pendingTasks.total > 1 ? "s" : ""}`,
-      description: "These tasks are needed to move your application forward.",
-      href: "/tasks",
-      buttonLabel: "View Tasks",
-      whyNeeded: "Completing tasks on time prevents delays in your approval.",
-      timeEstimate: "a few minutes",
-    };
-  }
-
-  if (pendingDocuments > 0) {
-    return {
-      icon: FileText,
-      title: `Upload ${pendingDocuments} document${pendingDocuments > 1 ? "s" : ""}`,
-      description: "We need these documents to continue reviewing your application.",
-      href: "/documents",
-      buttonLabel: "Upload",
-      whyNeeded: "Documents verify the information in your application, as required by federal regulations.",
-      timeEstimate: "about 5 minutes",
-    };
-  }
-
-  if (status === "conditional") {
-    return {
-      icon: AlertCircle,
-      title: "Clear remaining conditions",
-      description: "Review and fulfill the conditions to move to final approval.",
-      href: `/pipeline/${application.id}`,
-      buttonLabel: "View Conditions",
-    };
-  }
-
-  if (status === "pre_approved") {
-    return {
-      icon: Home,
-      title: "Check if you can afford a home",
-      description: "You're pre-approved. See if a specific home fits your budget.",
-      href: "/afford",
-      buttonLabel: "Can I Afford This Home?",
-    };
-  }
-
-  if (status === "clear_to_close" || status === "closing") {
-    return {
-      icon: Sparkles,
-      title: "You're almost there",
-      description: "Your loan is clear to close. Your closer will reach out to schedule signing.",
-      href: "/messages",
-      buttonLabel: "Contact Team",
-    };
-  }
-
-  if (status === "denied" || status === "declined") {
-    return {
-      icon: Bot,
-      title: "Let's explore your options",
-      description: "Chat with our AI Coach to learn what you can do next.",
-      href: "/ai-coach",
-      buttonLabel: "Talk to Coach",
-    };
-  }
-
-  return {
-    icon: Clock,
-    title: "Your application is being reviewed",
-    description: "We're analyzing your information. You'll hear back shortly.",
-    href: "/dashboard",
-    buttonLabel: "View Status",
-  };
-}
 
 interface BorrowerGraphData {
   bestAnnualIncome: number | null;
@@ -447,7 +278,7 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
       : "text-red-600 dark:text-red-400"
     : "text-muted-foreground";
 
-  const signals: Array<{ icon: React.ElementType; label: string; value: string; color: string; testId: string }> = [];
+  const signals: Array<{ icon: React.ElementType; label: string; value: string; color: string; testId: string; termKey?: string }> = [];
 
   if (eligibility.creditScore) {
     signals.push({
@@ -466,6 +297,7 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
       value: `${eligibility.estimatedDTI}%`,
       color: dtiColor,
       testId: "signal-dti",
+      termKey: "dti",
     });
   }
 
@@ -540,7 +372,13 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
               <div key={signal.testId} className="flex items-center justify-between gap-3 flex-wrap" data-testid={signal.testId}>
                 <div className="flex items-center gap-2.5">
                   <signal.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-muted-foreground">{signal.label}</span>
+                  {signal.termKey ? (
+                    <TermTooltip term={signal.termKey} className="text-xs text-muted-foreground">
+                      {signal.label}
+                    </TermTooltip>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{signal.label}</span>
+                  )}
                 </div>
                 <span className={`text-xs font-medium ${signal.color}`}>{signal.value}</span>
               </div>
@@ -549,7 +387,13 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
               <div key={signal.testId} className="flex items-center justify-between gap-3 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200" data-testid={signal.testId}>
                 <div className="flex items-center gap-2.5">
                   <signal.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-muted-foreground">{signal.label}</span>
+                  {signal.termKey ? (
+                    <TermTooltip term={signal.termKey} className="text-xs text-muted-foreground">
+                      {signal.label}
+                    </TermTooltip>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{signal.label}</span>
+                  )}
                 </div>
                 <span className={`text-xs font-medium ${signal.color}`}>{signal.value}</span>
               </div>
@@ -774,21 +618,11 @@ export default function Dashboard() {
     enabled: !authLoading && !isStaff,
   });
 
-  const { data: homeownershipGoal } = useQuery<{ goal: string | null }>({
-    queryKey: ["/api/homeownership-goal"],
-    enabled: !authLoading && !isStaff,
-  });
-
-  const { data: activitySummary } = useQuery<{
-    totalPageViews: number;
-    propertySearches: number;
-    calculatorUses: number;
-    coachChats: number;
-    propertyViews: number;
-  }>({
-    queryKey: ["/api/user-activity-summary"],
-    enabled: !authLoading && !isStaff,
-  });
+  // activitySummary and nextAction now ride on /api/dashboard — two fewer
+  // request waterfalls on mount. (The old /api/homeownership-goal query fed a
+  // goal-string switch that never matched — the endpoint returns an object —
+  // so it's dropped, not moved.)
+  const activitySummary = data?.activitySummary;
 
   const { data: borrowerGraph, isError: graphError } = useQuery<BorrowerGraphData>({
     queryKey: ["/api/borrower-graph"],
@@ -822,12 +656,14 @@ export default function Dashboard() {
   const pendingTasksByApplication = data?.pendingTasksByApplication || {};
 
   const defaultApp = applications.find(
-    (app) => !["closed", "denied"].includes(app.status)
+    (app) => !isTerminalLoanAppStatus(app.status)
   );
 
   // Post-close borrowers graduate to the Homeowner module (equity tracking,
   // refi alerts). This is the only in-app path to /homeowner-dashboard.
-  const hasClosedLoan = applications.some((app) => app.status === "closed");
+  // ("funded" is the canonical post-close status — the old check for "closed"
+  // matched a value no backend path ever wrote, so this link never appeared.)
+  const hasClosedLoan = applications.some((app) => app.status === "funded");
 
   const activeApplication = selectedAppId
     ? applications.find(app => app.id === selectedAppId) || defaultApp
@@ -890,20 +726,20 @@ export default function Dashboard() {
   const { title: greetingTitle, subtitle: greetingSubtitle } = getPersonalizedGreeting(
     user,
     activeApplication || null,
-    homeownershipGoal?.goal || null
   );
 
-  const dominant = getDominantAction(
-    activeApplication || null,
-    homeownershipGoal?.goal || null,
-    activeTaskCounts,
-    data?.stats?.pendingDocuments || 0,
-    unreadMessages,
-    expirationInfo,
-    activitySummary,
-  );
+  // Server-computed next action — one source of truth for "what should the
+  // borrower do next" (server/services/nextAction.ts). The generic fallback
+  // only shows if the payload predates the field (stale cache mid-deploy).
+  const dominant: NextActionData = data?.nextAction ?? {
+    kind: "in_review",
+    title: "Your application is being reviewed",
+    description: "We're analyzing your information. You'll hear back shortly.",
+    href: "/dashboard",
+    buttonLabel: "View Status",
+  };
 
-  const DominantIcon = dominant.icon;
+  const DominantIcon = NEXT_ACTION_ICONS[dominant.kind] ?? Clock;
 
   // File-health signal: pre-underwriting flags drive the header chip — amber
   // "action needed" when flagged, green check once the automated review is clean.

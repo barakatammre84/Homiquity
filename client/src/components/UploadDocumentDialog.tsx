@@ -3,6 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
+import { friendlyApiError } from "@/lib/errorMessage";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -65,7 +67,9 @@ export function canonicalDocumentType(type: string | undefined | null): string {
 }
 
 const ACCEPTED_EXTENSIONS = ".pdf,.jpg,.jpeg,.png,.doc,.docx";
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
+// Shared with the server so the client pre-flight matches what the server will
+// actually accept (see shared/uploads.ts).
+const MAX_FILE_BYTES = MAX_UPLOAD_BYTES;
 
 interface ChecklistItem {
   id: string;
@@ -146,7 +150,7 @@ export function UploadDocumentDialog({
     if (picked.size > MAX_FILE_BYTES) {
       toast({
         title: "File too large",
-        description: "The limit is 25MB. Try compressing the file or splitting it into parts.",
+        description: `The limit is ${MAX_UPLOAD_LABEL}. Try compressing the file or splitting it into parts.`,
         variant: "destructive",
       });
       return;
@@ -217,7 +221,10 @@ export function UploadDocumentDialog({
       setPhase("idle");
       toast({
         title: "Upload didn't go through",
-        description: error.message || "Nothing was lost — the file is still on your device. Please try again.",
+        description: friendlyApiError(
+          error,
+          "Nothing was lost — the file is still on your device. Please try again.",
+        ),
         variant: "destructive",
       });
     },

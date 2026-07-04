@@ -13,6 +13,7 @@ import {
   parsePlaidAssetReport,
   submitToDU,
 } from "../services/ausSubmission";
+import { validateMISMOCompleteness, evaluateGseSubmissionReadiness } from "../services/mismoValidation";
 
 /**
  * AUS orchestration routes: Plaid asset webhook ingestion and GSE (Fannie DU)
@@ -180,11 +181,12 @@ export function registerAusRoutes(app: Express) {
 
         // Completeness gate: refuse to hand DU a casefile that is missing
         // required URLA fields (SSN, DOB, citizenship, address, employment,
-        // declarations, HMDA, ARM/ATR-QM…). Catch it here with an actionable
-        // field list rather than letting it fail downstream at the GSE.
-        const { validateMISMOCompleteness, evaluateGseSubmissionReadiness } = await import(
-          "../services/mismoValidation"
-        );
+        // declarations, HMDA) or carries critical compliance errors (ARM,
+        // ATR/QM points-and-fees — both surface via criticalErrors). Blocks
+        // with an actionable field list rather than failing downstream at the
+        // GSE. Deliberately does NOT block on a merely-low completeness score
+        // or missing document uploads: DU runs on casefile data, and its
+        // findings often determine which documents are needed.
         const validation = await validateMISMOCompleteness(applicationId);
         const gate = evaluateGseSubmissionReadiness(validation);
         if (gate.blocked) {

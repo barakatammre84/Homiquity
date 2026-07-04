@@ -4,6 +4,8 @@ import {
   insertContentCategorySchema,
   insertArticleSchema,
   insertFaqSchema,
+  insertMortgageRateProgramSchema,
+  insertMortgageRateSchema,
   ALL_ROLES,
   type User,
 } from "@shared/schema";
@@ -12,6 +14,7 @@ import { logAudit } from "../auditLog";
 import { refreshRates, syncBestExecutionRates } from "../services/rateService";
 import { requireRole } from "../auth";
 import { microCache } from "../middleware/httpCache";
+import { parseBodyOr400 } from "./validate";
 
 export function registerAdminRoutes(
   app: Express,
@@ -105,7 +108,9 @@ export function registerAdminRoutes(
   // Update category (admin)
   app.patch("/api/admin/content-categories/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const updated = await storage.updateContentCategory(req.params.id, req.body);
+      const data = parseBodyOr400(insertContentCategorySchema.partial(), req.body, res);
+      if (data === undefined) return;
+      const updated = await storage.updateContentCategory(req.params.id, data);
       if (!updated) {
         return res.status(404).json({ error: "Category not found" });
       }
@@ -176,15 +181,17 @@ export function registerAdminRoutes(
   // Update article (admin)
   app.patch("/api/admin/articles/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const updateData = { ...req.body };
+      const data = parseBodyOr400(insertArticleSchema.omit({ authorId: true }).partial(), req.body, res);
+      if (data === undefined) return;
+      const updateData: Record<string, unknown> = { ...data };
       // Set publishedAt when publishing for the first time
-      if (req.body.status === "published") {
+      if (data.status === "published") {
         const existing = await storage.getArticle(req.params.id);
         if (existing && existing.status !== "published") {
           updateData.publishedAt = new Date();
         }
       }
-      
+
       const updated = await storage.updateArticle(req.params.id, updateData);
       if (!updated) {
         return res.status(404).json({ error: "Article not found" });
@@ -255,7 +262,9 @@ export function registerAdminRoutes(
   // Update FAQ (admin)
   app.patch("/api/admin/faqs/:id", requireRole("admin", "lo"), async (req, res) => {
     try {
-      const updated = await storage.updateFaq(req.params.id, req.body);
+      const data = parseBodyOr400(insertFaqSchema.omit({ authorId: true }).partial(), req.body, res);
+      if (data === undefined) return;
+      const updated = await storage.updateFaq(req.params.id, data);
       if (!updated) {
         return res.status(404).json({ error: "FAQ not found" });
       }
@@ -471,7 +480,9 @@ export function registerAdminRoutes(
   // Create a new rate program (admin only)
   app.post("/api/admin/mortgage-rate-programs", requireRole("admin"), async (req, res) => {
     try {
-      const program = await storage.createMortgageRateProgram(req.body);
+      const data = parseBodyOr400(insertMortgageRateProgramSchema, req.body, res);
+      if (data === undefined) return;
+      const program = await storage.createMortgageRateProgram(data);
       res.status(201).json(program);
     } catch (error) {
       console.error("Create mortgage rate program error:", error);
@@ -482,7 +493,9 @@ export function registerAdminRoutes(
   // Update a rate program (admin only)
   app.patch("/api/admin/mortgage-rate-programs/:id", requireRole("admin"), async (req, res) => {
     try {
-      const program = await storage.updateMortgageRateProgram(req.params.id, req.body);
+      const data = parseBodyOr400(insertMortgageRateProgramSchema.partial(), req.body, res);
+      if (data === undefined) return;
+      const program = await storage.updateMortgageRateProgram(req.params.id, data);
       if (!program) {
         return res.status(404).json({ error: "Program not found" });
       }
@@ -508,12 +521,9 @@ export function registerAdminRoutes(
   app.post("/api/admin/mortgage-rates", requireRole("admin"), async (req, res) => {
     try {
       const user = req.user as User;
-      const rateData = {
-        ...req.body,
-        createdBy: user.id,
-        updatedBy: user.id,
-      };
-      const rate = await storage.createMortgageRate(rateData);
+      const data = parseBodyOr400(insertMortgageRateSchema.omit({ createdBy: true, updatedBy: true }), req.body, res);
+      if (data === undefined) return;
+      const rate = await storage.createMortgageRate({ ...data, createdBy: user.id, updatedBy: user.id });
       res.status(201).json(rate);
     } catch (error) {
       console.error("Create mortgage rate error:", error);
@@ -525,11 +535,9 @@ export function registerAdminRoutes(
   app.patch("/api/admin/mortgage-rates/:id", requireRole("admin"), async (req, res) => {
     try {
       const user = req.user as User;
-      const rateData = {
-        ...req.body,
-        updatedBy: user.id,
-      };
-      const rate = await storage.updateMortgageRate(req.params.id, rateData);
+      const data = parseBodyOr400(insertMortgageRateSchema.omit({ createdBy: true, updatedBy: true }).partial(), req.body, res);
+      if (data === undefined) return;
+      const rate = await storage.updateMortgageRate(req.params.id, { ...data, updatedBy: user.id });
       if (!rate) {
         return res.status(404).json({ error: "Rate not found" });
       }

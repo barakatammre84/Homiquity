@@ -1,11 +1,17 @@
 import { storage } from "./storage";
-import type { 
-  LoanApplication, 
-  LoanCondition, 
+import type {
+  LoanApplication,
+  LoanCondition,
   InsertLoanCondition,
   InsertLoanMilestone,
   Task,
   InsertTask,
+} from "@shared/schema";
+import {
+  LOAN_APP_TRANSITIONS,
+  isLoanAppStatus,
+  isValidLoanAppTransition,
+  type LoanAppStatus,
 } from "@shared/schema";
 import {
   qualifyIncome,
@@ -410,16 +416,58 @@ export async function matchUploadedDocumentToConditions(args: {
   return { matchedConditionIds: matches.map((c) => c.id) };
 }
 
+/**
+ * Thrown when a caller asks for a stage move the transition table forbids.
+ * Carries the allowed targets so endpoints can return them — staff UIs can
+ * grey out impossible moves instead of discovering them by error.
+ */
+export class PipelineTransitionError extends Error {
+  constructor(
+    public readonly fromStage: string,
+    public readonly toStage: string,
+    public readonly allowed: readonly LoanAppStatus[],
+  ) {
+    super(
+      `Invalid stage transition from '${fromStage}' to '${toStage}'. Allowed from '${fromStage}': ${allowed.length ? allowed.join(", ") : "none (terminal state)"}`,
+    );
+    this.name = "PipelineTransitionError";
+  }
+}
+
+/**
+ * THE single writer for loanApplications.status. Every status change — staff
+ * endpoints, borrower withdraw, automated analysis — funnels through here so
+ * milestones, HMDA codes, task-engine events, the borrower state machine, and
+ * homeowner graduation can never drift apart. Direct storage.updateLoanApplication
+ * calls with a status field are forbidden (see tests/statusVocabulary.test.ts).
+ */
 export async function updatePipelineStage(
   applicationId: string,
-  newStage: string,
-  options?: { denialReasons?: string[] }
+  newStage: LoanAppStatus,
+  options?: {
+    denialReasons?: string[];
+    /** Admin escape hatch: skip transition validation (still runs all side effects). */
+    force?: boolean;
+  }
 ): Promise<void> {
   const now = new Date();
 
-  // Get current stage before update for event
+  if (!isLoanAppStatus(newStage)) {
+    throw new PipelineTransitionError("unknown", newStage, []);
+  }
+
   const application = await storage.getLoanApplication(applicationId);
-  const previousStage = application?.status || "unknown";
+  if (!application) {
+    throw new Error(`Application not found: ${applicationId}`);
+  }
+  const previousStage = application.status;
+
+  // Idempotent: re-asserting the current stage is a no-op, not an error.
+  if (previousStage === newStage) return;
+
+  if (!options?.force && isLoanAppStatus(previousStage) && !isValidLoanAppTransition(previousStage, newStage)) {
+    throw new PipelineTransitionError(previousStage, newStage, LOAN_APP_TRANSITIONS[previousStage]);
+  }
 
   const milestoneUpdate: Record<string, any> = {};
   
@@ -468,18 +516,32 @@ export async function updatePipelineStage(
 
   // Populate HMDA Reg C "action taken" codes for the Loan Application Register.
   // "funded" is the correct point to record code 1 (loan originated); "denied"
-  // records code 3 along with the denial reasons required for LAR reporting.
+  // records code 3 along with the denial reasons required for LAR reporting —
+  // but only when reasons are supplied (staff decision paths always supply
+  // them; the automated analysis path must NOT fabricate a LAR entry, its
+  // "denied" is finalized through the formal adverse-action flow). "withdrawn"
+  // records code 4 regardless of who initiated it (staff or borrower).
   const applicationUpdate: Record<string, any> = { status: newStage };
   if (newStage === "funded") {
     applicationUpdate.hmdaActionTaken = "1";
-  } else if (newStage === "denied") {
+  } else if (newStage === "denied" && options?.denialReasons && options.denialReasons.length > 0) {
     applicationUpdate.hmdaActionTaken = "3";
-    if (options?.denialReasons && options.denialReasons.length > 0) {
-      applicationUpdate.hmdaDenialReasons = options.denialReasons;
-    }
+    applicationUpdate.hmdaDenialReasons = options.denialReasons;
+  } else if (newStage === "withdrawn") {
+    applicationUpdate.hmdaActionTaken = "4";
   }
 
   await storage.updateLoanApplication(applicationId, applicationUpdate);
+
+  // Keep the borrower journey state machine in lockstep with the pipeline —
+  // previously synced only at creation, which froze Intelligence surfaces at
+  // pre-qualification for any loan that progressed. Best-effort by design.
+  try {
+    const { syncApplicationStatusToStateMachine } = await import("./services/optimizationEngine");
+    await syncApplicationStatusToStateMachine(application.userId, applicationId, newStage);
+  } catch (syncErr) {
+    console.warn("[PipelineEngine] State-machine sync failed (non-fatal):", syncErr);
+  }
   
   // Emit workflow event for Task Engine integration
   try {

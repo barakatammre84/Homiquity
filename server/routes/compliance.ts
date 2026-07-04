@@ -4,6 +4,7 @@ import { isAuthenticated, requireRole } from "../auth";
 import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
 import { z } from "zod";
 import * as creditService from "../services/creditService";
+import { encryptToken } from "../services/piiVault";
 
 export function registerComplianceRoutes(
   app: Express,
@@ -96,7 +97,9 @@ export function registerComplianceRoutes(
         userId,
         verificationType,
         plaidItemId: itemId,
-        plaidAccessToken: accessToken,
+        // Bearer credential to the borrower's bank data — encrypted at rest.
+        // Decrypt with piiVault.decryptToken() at the point of a Plaid API call.
+        plaidAccessToken: encryptToken(accessToken),
         status: "in_progress",
         verificationMethod: "plaid_payroll",
       });
@@ -1152,6 +1155,30 @@ export function registerComplianceRoutes(
     } catch (error) {
       console.error("Save HMDA demographics error:", error);
       res.status(500).json({ error: "Failed to save demographic data" });
+    }
+  });
+
+  // Fair-lending disparate-impact report (four-fifths rule) across decision
+  // outcomes and HMDA demographics. Aggregate only; admin-gated; the access is
+  // itself audit-logged since it reads protected-class data.
+  app.get("/api/compliance/fair-lending/disparate-impact", requireRole("admin"), async (req, res) => {
+    try {
+      const { runDisparateImpactAnalysis } = await import("../services/fairLendingAnalysis");
+      const minSampleSize = req.query.minSampleSize
+        ? Math.max(1, parseInt(req.query.minSampleSize as string, 10) || 30)
+        : undefined;
+      const report = await runDisparateImpactAnalysis({ minSampleSize });
+
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "fair_lending.disparate_impact_run", "compliance_report", undefined, {
+        totalApplications: report.totalApplications,
+        flaggedCount: report.flaggedCount,
+      });
+
+      res.json(report);
+    } catch (error) {
+      console.error("Disparate-impact analysis error:", error);
+      res.status(500).json({ error: "Failed to run disparate-impact analysis" });
     }
   });
 }

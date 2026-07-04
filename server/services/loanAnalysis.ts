@@ -329,9 +329,14 @@ export async function analyzeIntake(applicationId: string): Promise<IntakeAnalys
     preApprovalAmount = String(Math.max(maxPrice, purchasePrice));
   }
 
+  // A pre-approval must be for a positive amount. If the engine approved but the
+  // qualifying math yields no coherent amount (e.g. income missing/zero), route
+  // to human review rather than persisting an incoherent $0 pre-approval (#7).
+  const approvedForAmount = isApproved && parseFloat(preApprovalAmount) > 0;
+
   return {
-    outcome: isApproved ? "pre_approved" : "under_review",
-    isApproved,
+    outcome: approvedForAmount ? "pre_approved" : "under_review",
+    isApproved: approvedForAmount,
     preApprovalAmount,
     dtiRatio: metrics ? metrics.dti.toFixed(2) : "0",
     ltvRatio: metrics ? metrics.ltv.toFixed(2) : "0",

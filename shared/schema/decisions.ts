@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, varchar, text, integer, decimal, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, integer, decimal, timestamp, index, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { loanApplications } from "./lending";
 
@@ -38,6 +38,12 @@ export const decisionSnapshots = pgTable(
 
     reasons: text("reasons").array(),
     missingItems: text("missing_items").array(),
+
+    // Reproducibility: the resolved policy thresholds/matrix cells this decision
+    // used, plus a short fingerprint over them. Lookup matrices are mutable, so
+    // these let a past decision be reconstructed even after a matrix edit.
+    resolvedPolicy: jsonb("resolved_policy"),
+    policyFingerprint: varchar("policy_fingerprint", { length: 64 }),
 
     createdAt: timestamp("created_at").notNull().default(sql`now()`),
   },

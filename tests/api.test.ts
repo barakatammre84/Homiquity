@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { apiGet, apiPost, fetchPage } from "./setup";
+import { apiGet, apiPost, fetchPage, BASE_URL } from "./setup";
 
 describe("API Health & Auth", () => {
   it("returns 401 for unauthenticated /api/auth/user", async () => {
@@ -12,6 +12,9 @@ describe("API Health & Auth", () => {
       "/api/loan-applications",
       "/api/documents",
       "/api/tasks",
+      "/api/staff/applications",
+      "/api/staff/users",
+      "/api/task-engine/tasks/by-role/lo",
     ];
 
     const results = await Promise.all(protectedRoutes.map((r) => apiGet(r)));
@@ -155,7 +158,7 @@ describe("Data Integrity", () => {
 
 describe("API Error Handling", () => {
   it("returns proper error for invalid JSON body", async () => {
-    const res = await fetch("http://localhost:5000/api/loan-applications", {
+    const res = await fetch(`${BASE_URL}/api/loan-applications`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "not valid json{{{",
@@ -164,7 +167,7 @@ describe("API Error Handling", () => {
   });
 
   it("handles unsupported API methods gracefully", async () => {
-    const res = await fetch("http://localhost:5000/api/properties", {
+    const res = await fetch(`${BASE_URL}/api/properties`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     });

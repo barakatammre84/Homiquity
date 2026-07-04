@@ -3,6 +3,8 @@
 **Date:** 2026-07-03 · **Lens:** what a wholesale lender's technical/compliance review would find
 **Companion docs:** [STATE_OF_THE_PLATFORM.md](STATE_OF_THE_PLATFORM.md) (general platform assessment) · [CTO_ROADMAP.md](../CTO_ROADMAP.md) (the living checklist — items L1–L5 added from this analysis)
 
+> **⚠️ PARTIALLY SUPERSEDED (2026-07-03):** the H1/H2/H3 "recommended sprint" below **has since shipped** — funnel consent persisted (L1), `requireConsent` gate wired + tested (L2), anti-steering disclosure built (L3), plus upload→condition matching (L4/M1) and borrower LLPA transparency (L5/M5). Commits `4d3cc29`, `3211e09`. **For current status, trust [CTO_ROADMAP.md](../CTO_ROADMAP.md), not this doc.** The remaining HIGH items (H4 vault credentials, H5 email) are the still-open P0s (roadmap #1/#3).
+
 ## Scorecard: the "vendor-ready" pillars vs. reality
 
 | Pillar | Status | Evidence |

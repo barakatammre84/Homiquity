@@ -161,7 +161,11 @@ export const creditPulls = pgTable("credit_pulls", {
   vendorRequestId: varchar("vendor_request_id", { length: 255 }),
   vendorResponseHash: varchar("vendor_response_hash", { length: 64 }), // SHA-256 of raw response
   vendorBillingRef: varchar("vendor_billing_ref", { length: 255 }),
-  
+  // True when the scores were fabricated (no live bureau). Surfaced so staff and
+  // audit can tell a real pull from a simulated one at a glance — the flag also
+  // lives inside the encrypted raw response, but this column keeps it queryable.
+  isSimulated: boolean("is_simulated").default(false).notNull(),
+
   // Error Handling
   errorCode: varchar("error_code", { length: 50 }),
   errorMessage: text("error_message"),

@@ -13,6 +13,7 @@ the code lives.
 | **Google Cloud Storage** | Document/file storage via signed URLs | `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` | `server/integrations/object_storage/` | Document upload/download broken |
 | **Google Maps Platform** | Address autocomplete, geocoding, address validation, maps, street view | `GOOGLE_MAPS_API_KEY` | `server/routes/geocode.ts`; client `AddressInput`, `PropertyMap`, `StreetView` | Manual address entry; no maps |
 | **RapidAPI (Realty)** | Property listings search + live market rates | `RAPIDAPI_KEY` | `server/routes/listings.ts`, `services/rateService.ts` | Listings/live-rate features degrade (rates fall back to DB) |
+| **CFPB HMDA + Fannie Mae (public data)** | Competitor rate benchmarks + historical default/prepay rates | none (public APIs / bulk files) | `server/services/hmdaIngestService.ts`, `services/competitorRateService.ts`, `npm run data:hmda` / `data:fannie` — see [kb/FREE_DATA_MOAT.md](../FREE_DATA_MOAT.md) | Market-data endpoints return 404 until ingested |
 | **Email (SMTP / SendGrid)** | Notifications, invites | `SMTP_*` or `SENDGRID_API_KEY`, `FROM_EMAIL`, `FROM_NAME` | `services/emailService.ts` | Emails print to server console (current state) |
 | **Social OAuth** | Google / LinkedIn / Apple sign-in | provider client ids/secrets, `APPLE_*` | `server/socialAuth.ts` | Email/password login only |
 | **Vercel** | Hosting: CDN for client, serverless for API | (dashboard env vars) | `vercel.json`, `api/index.ts` | See [10-deploy-ops.md](10-deploy-ops.md) |

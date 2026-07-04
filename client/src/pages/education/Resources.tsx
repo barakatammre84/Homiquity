@@ -10,6 +10,7 @@ import {
   FileText,
   CheckSquare,
   Home,
+  BookOpen,
 } from "lucide-react";
 import { usePageView } from "@/hooks/useActivityTracker";
 
@@ -114,6 +115,17 @@ const resources: ResourceCard[] = [
     category: ["process"],
     type: "article",
     action: "Read more",
+  },
+  {
+    id: "glossary",
+    title: "Mortgage & homeownership glossary",
+    description: "Look up any term you come across",
+    category: ["process", "affordability", "offer"],
+    type: "article",
+    icon: BookOpen,
+    label: "A–Z glossary",
+    action: "Browse terms",
+    href: "/glossary",
   },
 ];
 

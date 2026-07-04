@@ -8,14 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { isStaffRole } from "@shared/roles";
+import { getRoleHomeRoute } from "@/lib/roleRoutes";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
-
-function getRoleHomeRoute(role: string): string {
-  if (role === "admin") return "/admin";
-  if (isStaffRole(role)) return "/staff-dashboard";
-  return "/dashboard";
-}
 
 export default function Login() {
   const [email, setEmail] = useState("");

@@ -26,10 +26,52 @@ export const app = express();
 
 app.set("trust proxy", 1);
 
+// Content Security Policy — the authorized-script control for PCI DSS 4.0.1
+// Req 6.4.3 / 11.6.1. Every third-party origin listed here is a deliberate,
+// documented authorization (script inventory lives in kb/app-guide/06):
+//   - maps.googleapis.com  : Google Maps JS API + Street View (PropertyMap/StreetView)
+//   - cdn.plaid.com        : Plaid Link (react-plaid-link script + iframe)
+//   - fonts.googleapis.com / fonts.gstatic.com : Google Fonts (until self-hosted)
+//   - storage.googleapis.com : direct-to-GCS document uploads (presigned PUT)
+//   - images.unsplash.com  : marketing/property imagery
+// Rollout: report-only by default so violations surface in logs without breaking
+// pages; set CSP_ENFORCE=true to switch the browser to blocking mode.
+// Dev is exempt — Vite HMR needs inline scripts and websockets.
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", "https://maps.googleapis.com", "https://cdn.plaid.com"],
+  styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+  fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+  imgSrc: [
+    "'self'",
+    "data:",
+    "blob:",
+    "https://maps.googleapis.com",
+    "https://maps.gstatic.com",
+    "https://*.googleapis.com",
+    "https://images.unsplash.com",
+  ],
+  connectSrc: ["'self'", "https://maps.googleapis.com", "https://storage.googleapis.com"],
+  frameSrc: ["https://cdn.plaid.com"],
+  workerSrc: ["'self'", "blob:"],
+  objectSrc: ["'none'"],
+  baseUri: ["'self'"],
+  formAction: ["'self'"],
+  frameAncestors: ["'none'"],
+  reportUri: ["/api/csp-report"],
+};
+
 app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy:
+    process.env.NODE_ENV === "production"
+      ? {
+          directives: cspDirectives,
+          reportOnly: process.env.CSP_ENFORCE !== "true",
+        }
+      : false,
+  crossOriginEmbedderPolicy: false, // Google Maps tiles are not CORP-tagged
 }));
+
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -129,6 +171,24 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
+// Browser-generated CSP violation reports. Registered after the rate limiters
+// but before the CSRF check (reports are cross-context POSTs with no Origin
+// header) and parsed with the report-specific content types express.json()
+// ignores by default.
+app.post(
+  "/api/csp-report",
+  express.json({ type: ["application/json", "application/csp-report", "application/reports+json"], limit: "50kb" }),
+  (req, res) => {
+    const report = (req.body && (req.body["csp-report"] || req.body)) || {};
+    log(
+      `CSP violation: directive=${report["violated-directive"] || report.violatedDirective || "?"} ` +
+        `blocked=${report["blocked-uri"] || report.blockedURI || "?"} page=${report["document-uri"] || report.documentURI || "?"}`,
+      "csp",
+    );
+    res.status(204).end();
+  },
+);
+
 // CSRF Protection for session-based routes
 // Check Origin/Referer headers for state-changing requests
 app.use((req, res, next) => {
@@ -200,19 +260,16 @@ const SENSITIVE_PATH_PATTERNS: Array<[RegExp, string]> = [
   [/^(\/api\/staff-invites\/validate\/)([^/]+)/, "$1[REDACTED]"],
 ];
 
-const SUPPRESS_RESPONSE_BODY_PATTERNS: RegExp[] = [
-  /^\/api\/staff-invites(\/|$)/,
-  /^\/api\/auth\/user$/,
-  // Document extraction routes return full OCR/AI-extracted borrower financial data
-  // (income, account balances, tax figures, employer details). Suppress to keep
-  // sensitive PII out of deployment logs.
-  /^\/api\/documents\/[^/]+\/extract$/,
-  /^\/api\/documents\/extract-tax-return$/,
-  /^\/api\/documents\/extract-paystub$/,
-  /^\/api\/documents\/extract-bank-statement$/,
-  // Loan application detail includes embedded documents and activities arrays
-  // that can carry document metadata and extraction-derived records.
-  /^\/api\/loan-applications\/[^/]+$/,
+// Response bodies are logged ONLY for paths on this allowlist. Almost every
+// endpoint in this app can carry borrower PII (SSNs, income, account data), so
+// the safe default is to log status/duration only. A denylist was the previous
+// approach and it silently missed new PII routes (e.g. /api/urla/* responses
+// contain the borrower's SSN) — do not revert to one. Add a path here only if
+// its response can never contain personal or credential data.
+const RESPONSE_BODY_LOG_ALLOWLIST: RegExp[] = [
+  /^\/api\/health$/,
+  /^\/api\/track$/, // responds { ok: true } only
+  /^\/api\/csp-report$/,
 ];
 
 function sanitizePathForLog(path: string): string {
@@ -224,8 +281,8 @@ function sanitizePathForLog(path: string): string {
   return path;
 }
 
-function shouldSuppressResponseBody(path: string): boolean {
-  return SUPPRESS_RESPONSE_BODY_PATTERNS.some((p) => p.test(path));
+function mayLogResponseBody(path: string): boolean {
+  return RESPONSE_BODY_LOG_ALLOWLIST.some((p) => p.test(path));
 }
 
 app.use((req, res, next) => {
@@ -244,7 +301,7 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       const safePath = sanitizePathForLog(path);
       let logLine = `${req.method} ${safePath} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse && !shouldSuppressResponseBody(path)) {
+      if (capturedJsonResponse && mayLogResponseBody(path)) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 

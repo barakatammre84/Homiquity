@@ -99,6 +99,14 @@ from application data, credit tradelines, bank transactions, or public records.
 - Verified live: $9,482 simulated deposit vs $5,000 threshold → flag raised through the webhook path
 - Future depth: automated e-sign gift-letter generation with donor link (blocked on e-signature provider + SendGrid)
 
+### S-05: Rental Income Calculation (Schedule E)
+- Status: Implemented 2026-07-03
+- Guideline: Fannie Mae Selling Guide B3-3.1-08 (Rental Income)
+- Engine: `calculateRentalIncomeOffsets` in [underwritingNuance.ts](../server/services/underwritingNuance.ts) → flag `RENTAL_INCOME_OFFSET`
+- Signal source: intake `incomeSources[].rentalProperties[]` (monthlyRentalIncome + monthlyDebtPayment per property)
+- Tests: `tests/underwritingNuance.test.ts` (reproduces the source doc: $2,000 rent × 0.75 − $1,200 PITIA = +$300/month; also covers a negative net-offset case and multi-property summation)
+- Verified live: fresh registered borrower, rental income source with $2,000/mo rent + $1,200/mo PITIA → `RENTAL_INCOME_OFFSET` raised with "$1,500/month qualifying... adds $300/month toward your qualifying income", borrower notified
+
 ### Foundation scenarios (shipped before the registry existed)
 - **Low reserves** (`LOW_RESERVES_WARNING`): post-closing reserves < 2 months PITI from verified assets — auto-condition + outreach. *Threshold is platform policy; formal citation research pending (Fannie reserve requirements, B3-4.1-01, vary by transaction type).*
 - **Complex income** (`COMPLEX_INCOME_CHECK`): self-employed → 2-year tax-return conditions gate clear-to-close
@@ -108,14 +116,6 @@ from application data, credit tradelines, bank transactions, or public records.
 ---
 
 ## Backlog (processed top-down, one per daily run)
-
-### S-05: Rental Income Calculation (Schedule E)
-Status: Proposed
-Story: The borrower owns a rental property with an executed lease and wants the rental income to offset the property's debt for DTI purposes.
-Guideline: Fannie Mae Selling Guide B3-3.1-08 (Rental Income)
-Signal: Schedule E (Form 1040) rental income and an executed lease agreement; intake already captures rental income sources with per-property rent.
-Rule: Qualifying rental income = (Gross Monthly Rent × 0.75) − property PITIA. Example: rent $2,000 × 0.75 = $1,500; PITIA $1,200 → +$300/month qualifying income.
-Resolution: "We applied a 25% vacancy/expense factor to your reported rent ($300/month qualifying). Please upload the executed lease agreement and your most recent Schedule E to document rental history."
 
 ### S-06: Multi-Unit Subject Property Rental Income
 Status: Proposed

@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import type { LoanApplication, Verification } from "@shared/schema";
+import { isTerminalLoanAppStatus } from "@shared/schema";
 import {
   CheckCircle2,
   Clock,
@@ -208,7 +209,7 @@ export default function VerificationPage() {
 
   const applications = dashboardData?.applications || [];
   const activeApplication = applications.find(
-    (app) => !["closed", "denied"].includes(app.status)
+    (app) => !isTerminalLoanAppStatus(app.status)
   );
 
   const { data: verifications, isLoading: verificationsLoading, refetch } = useQuery<Verification[]>({

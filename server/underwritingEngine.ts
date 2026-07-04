@@ -1,8 +1,121 @@
+import crypto from "crypto";
 import { lookupResolver } from "./services/lookupResolver";
+
+/**
+ * The policy thresholds and matrix cells the engine actually resolved for a
+ * given evaluation. Snapshotting these makes a decision reproducible: the
+ * lookup matrices are mutable in Postgres, so re-running later can resolve
+ * different values — but the recorded ResolvedPolicy shows exactly which
+ * numbers produced the original decision. `fingerprint` is a short hash over
+ * these values for quick equality checks / grouping across snapshots.
+ */
+export interface ResolvedPolicy {
+  loanType: "CONVENTIONAL" | "VA";
+  conventionalDtiCapPct: number;
+  conventionalStretchDtiPct: number;
+  conventionalLtvCapPct: number;
+  haircutStockInvestment: number;
+  haircutRetirement: number;
+  pmiRatePct?: number;
+  llpaRatePct?: number;
+  vaRequiredResidualIncome?: number;
+  fingerprint: string;
+}
 
 export interface AssetProfile {
   type: "CHECKING_SAVINGS" | "STOCK_INVESTMENT" | "RETIREMENT_IRA_401K";
   balance: number;
+}
+
+/**
+ * Normalizes the free-text occupancy string written across the app
+ * (primary_residence / primary, second_home / secondary, investment /
+ * investment_property, …) to the matrix's dim3 identifier plus a human label.
+ * Unknown/absent values fall back to owner-occupied primary — the least
+ * restrictive, pre-existing default.
+ */
+function normalizeOccupancy(occupancyType: string | null | undefined): {
+  code: "PRIMARY" | "SECOND" | "INVESTMENT";
+  label: string;
+} {
+  const t = (occupancyType ?? "").toLowerCase();
+  if (/(^|[^a-z])(invest|investor|rental|non[-_ ]?owner)/.test(t)) {
+    return { code: "INVESTMENT", label: "investment" };
+  }
+  if (/(second|secondary|vacation)/.test(t)) {
+    return { code: "SECOND", label: "second home" };
+  }
+  return { code: "PRIMARY", label: "primary residence" };
+}
+
+/**
+ * The unit-count range implied by a property type, or null when the type does
+ * not constrain units (unknown / "other"). single_family, condo, townhouse and
+ * manufactured are one-unit dwellings; multi_family is 2-4 units for
+ * conforming residential.
+ */
+function impliedUnitRange(propertyType: string | null | undefined): { min: number; max: number } | null {
+  const t = (propertyType ?? "").toLowerCase().replace(/[\s-]+/g, "_");
+  if (/^(single_family|singlefamily|sfr|condo|condominium|townhouse|townhome|manufactured|pud)$/.test(t)) {
+    return { min: 1, max: 1 };
+  }
+  if (/(multi_family|multifamily|duplex|triplex|fourplex|2_4_unit)/.test(t)) {
+    return { min: 2, max: 4 };
+  }
+  return null;
+}
+
+/**
+ * Reconciles the subject property's declared type/units against (a) their own
+ * internal consistency and (b) an externally OBSERVED type/units when supplied.
+ * Returns human-readable mismatch reasons; an empty array means no discrepancy.
+ * Pure and side-effect free so it can be unit-tested in isolation.
+ *
+ * NOTE: the internal check only catches contradictory DECLARATIONS (e.g.
+ * "single_family" filed with 4 units). Catching a CONSISTENT misstatement
+ * (declared single_family / 1 unit that is really a 4-unit) requires the
+ * observed descriptor — which depends on capturing the address/AVM lookup at
+ * intake (not yet wired), hence the optional observed inputs.
+ */
+export function reconcileSubjectProperty(input: {
+  propertyType?: string;
+  numberOfUnits?: number;
+  observedPropertyType?: string;
+  observedNumberOfUnits?: number;
+}): string[] {
+  const reasons: string[] = [];
+  const declaredUnits =
+    input.numberOfUnits && input.numberOfUnits >= 1 ? Math.floor(input.numberOfUnits) : undefined;
+
+  // (a) Internal: does the declared type's implied unit range contain the
+  // declared unit count?
+  const declaredRange = impliedUnitRange(input.propertyType);
+  if (declaredRange && declaredUnits !== undefined) {
+    if (declaredUnits < declaredRange.min || declaredUnits > declaredRange.max) {
+      reasons.push(
+        `Declared property type "${input.propertyType}" is inconsistent with the declared unit count of ${declaredUnits} — verify the subject property`,
+      );
+    }
+  }
+
+  // (b) Observed vs declared: flag a type family or unit-count divergence.
+  const observedRange = impliedUnitRange(input.observedPropertyType);
+  if (declaredRange && observedRange && declaredRange.max !== observedRange.max) {
+    reasons.push(
+      `Declared property type "${input.propertyType}" conflicts with the looked-up property type "${input.observedPropertyType}" — verify the subject property`,
+    );
+  }
+  const observedUnits =
+    input.observedNumberOfUnits && input.observedNumberOfUnits >= 1
+      ? Math.floor(input.observedNumberOfUnits)
+      : undefined;
+  if (declaredUnits !== undefined && observedUnits !== undefined && declaredUnits !== observedUnits) {
+    reasons.push(
+      `Declared unit count of ${declaredUnits} conflicts with the looked-up unit count of ${observedUnits} — verify the subject property`,
+    );
+  }
+
+  return reasons;
 }
 
 export interface UnderwritingInput {
@@ -21,6 +134,31 @@ export interface UnderwritingInput {
   homeSquareFootage?: number;
   subjectPropertyState?: string;
   householdFamilySize?: number;
+  /**
+   * Subject-property occupancy and unit count. Agency max LTV varies sharply by
+   * both — an investment 2-4 unit is capped far below an owner-occupied SFR — so
+   * omitting them (the prior behavior) let a multi-unit investment file be
+   * priced as an owner-occupied single-family. Free-text occupancy is normalized
+   * internally; both default conservatively to a 1-unit primary residence when
+   * absent, preserving the pre-existing single-family behavior.
+   */
+  occupancyType?: string;
+  numberOfUnits?: number;
+  /**
+   * Declared subject-property type (single_family / condo / townhouse /
+   * multi_family / manufactured). Used to reconcile against the declared unit
+   * count — a "single_family" filed with 4 units is a contradiction worth a
+   * human look.
+   */
+  propertyType?: string;
+  /**
+   * Property type and unit count as OBSERVED by an external source (e.g. the
+   * address/AVM lookup), when available. Reconciled against the declared values
+   * to surface a possible misrepresentation. Optional and additive: when absent,
+   * only the internal declared-vs-declared consistency check runs.
+   */
+  observedPropertyType?: string;
+  observedNumberOfUnits?: number;
 }
 
 export interface UnderwritingResult {
@@ -35,6 +173,14 @@ export interface UnderwritingResult {
   actualResidualIncome?: number;
   requiredResidualIncome?: number;
   rejectionReasons: string[];
+  /**
+   * Reasons the file routed to MANUAL_REVIEW rather than a clean APPROVED —
+   * jumbo routing, a subject-property mismatch, etc. Distinct from
+   * rejectionReasons: these are "a human must look," not "declined."
+   */
+  reviewReasons: string[];
+  /** The resolved thresholds/matrix cells this decision used (reproducibility). */
+  resolvedPolicy: ResolvedPolicy;
 }
 
 /**
@@ -53,6 +199,9 @@ export class ConsolidatedUnderwritingEngine {
 
   public async evaluate(input: UnderwritingInput): Promise<UnderwritingResult> {
     const reasons: string[] = [];
+    // MANUAL_REVIEW explanations (jumbo routing, subject-property mismatch) —
+    // kept separate from `reasons`, which drive a REJECTED decision.
+    const reviewReasons: string[] = [];
     const targetLoanType = input.isVeteran ? "VA" : "CONVENTIONAL";
 
     // Step 1: Process dynamic values from Postgres lookup tables
@@ -66,6 +215,12 @@ export class ConsolidatedUnderwritingEngine {
     const propertyBasisValue = Math.min(input.contractSalesPrice, input.appraisalValue);
     if (propertyBasisValue <= 0) {
       throw new Error("CRITICAL VALUE INPUT ERROR: Property valuation basis must be greater than zero.");
+    }
+    // A non-positive loan amount (e.g. down payment >= price) would produce a
+    // sub-zero LTV that silently clears the ceiling, skips MI, and drives a
+    // negative LLPA fee — an "approval" on nonsensical inputs. Reject it.
+    if (input.originalLoanAmount <= 0) {
+      throw new Error("CRITICAL VALUE INPUT ERROR: Loan amount must be greater than zero.");
     }
     const rawLtvFraction = (input.originalLoanAmount / propertyBasisValue) * 100;
 
@@ -103,34 +258,101 @@ export class ConsolidatedUnderwritingEngine {
     let resolvedPmiMonthlyPremium = 0;
     let resolvedLlpafUpfrontFee = 0;
 
+    // Captured for the reproducibility snapshot (ResolvedPolicy).
+    let resolvedPmiRatePct: number | undefined;
+    let resolvedLlpaRatePct: number | undefined;
+
     let actualResidualIncome: number | undefined;
     let requiredResidualIncome: number | undefined;
 
     // Standard Conforming Loan Path
     if (targetLoanType === "CONVENTIONAL") {
+      // Eligibility floor: a credit score below the conventional minimum is a
+      // decline, not a pricing gap. Enforce it BEFORE any matrix lookup — the
+      // PMI grid's lowest band starts at the floor, so an ineligible score would
+      // otherwise miss a cell and surface as a generic out-of-band gap instead
+      // of a specific, adverse-action-grade credit rejection.
+      const conventionalFicoFloor = await this.resolver.getPolicyScalar("CONVENTIONAL_FICO_FLOOR");
+      if (input.representativeFico < conventionalFicoFloor) {
+        reasons.push(
+          `Representative credit score of ${input.representativeFico} is below the conventional minimum of ${conventionalFicoFloor}`,
+        );
+      }
+
+      // Conforming loan-limit awareness: this engine prices the conforming
+      // product, so a loan above the limit cannot be decisioned as conforming.
+      // Route it to jumbo review (not a decline, not a conforming approval).
+      const conformingLimit = await this.resolver.getPolicyScalar("CONFORMING_LOAN_LIMIT");
+      if (input.originalLoanAmount > conformingLimit) {
+        reviewReasons.push(
+          `Loan amount of $${Math.round(input.originalLoanAmount).toLocaleString()} exceeds the conforming limit of $${Math.round(conformingLimit).toLocaleString()} — jumbo product review required`,
+        );
+      }
+
+      // Subject-property reconciliation: a declared property type that conflicts
+      // with the declared unit count (or with a looked-up descriptor, when
+      // available) is a potential misrepresentation — route to human review.
+      reviewReasons.push(
+        ...reconcileSubjectProperty({
+          propertyType: input.propertyType,
+          numberOfUnits: input.numberOfUnits,
+          observedPropertyType: input.observedPropertyType,
+          observedNumberOfUnits: input.observedNumberOfUnits,
+        }),
+      );
+
+      // Occupancy/units LTV eligibility (Fannie Eligibility Matrix). The agency
+      // max LTV depends on both occupancy and unit count — an investment 2-4
+      // unit is capped far below an owner-occupied SFR — so enforce the specific
+      // cap here. Absent data defaults to a 1-unit primary residence, matching
+      // the prior single-family behavior. An unseeded combination (e.g. a 2-unit
+      // second home, or 5+ units) misses its matrix cell, which the orchestrator
+      // routes to human review as out-of-band.
+      const occupancy = normalizeOccupancy(input.occupancyType);
+      const units = input.numberOfUnits && input.numberOfUnits >= 1 ? Math.floor(input.numberOfUnits) : 1;
+      const occupancyMaxLtv = await this.resolver.resolveMatrixValue({
+        matrixCode: "CONVENTIONAL_MAX_LTV",
+        dim1Value: units,
+        dim3Identifier: occupancy.code,
+      });
+      if (calculatedLtv > occupancyMaxLtv) {
+        reasons.push(
+          `Calculated LTV of ${calculatedLtv.toFixed(2)}% exceeds the ${occupancyMaxLtv}% maximum for a ${units}-unit ${occupancy.label} property`,
+        );
+      }
+
       if (calculatedDti > stretchDti * 100) {
         reasons.push(
           `Debt-to-Income ratio (${calculatedDti.toFixed(2)}%) exceeds the system's hard stretch ceiling of ${(stretchDti * 100).toFixed(0)}%`,
         );
       }
 
-      // Query standard Monthly BPMI rate matrix if LTV > 80%
-      if (calculatedLtv > 80.0) {
-        const pmiRate = await this.resolver.resolveMatrixValue({
-          matrixCode: "CONVENTIONAL_PMI",
-          dim1Value: input.representativeFico,
-          dim2Value: calculatedLtv,
-        });
-        resolvedPmiMonthlyPremium = (input.originalLoanAmount * (pmiRate / 100)) / 12;
-      }
+      // Price only an eligible file. If any rejection reason is already present
+      // (LTV over the ceiling, sub-floor credit, or a stretch-DTI breach), skip
+      // the PMI/LLPA matrices — they intentionally do not cover out-of-policy
+      // coordinates, so querying them would throw and lose the rejection we
+      // already have. The decline is returned cleanly below.
+      if (reasons.length === 0) {
+        // Query standard Monthly BPMI rate matrix if LTV > 80%
+        if (calculatedLtv > 80.0) {
+          const pmiRate = await this.resolver.resolveMatrixValue({
+            matrixCode: "CONVENTIONAL_PMI",
+            dim1Value: input.representativeFico,
+            dim2Value: calculatedLtv,
+          });
+          resolvedPmiRatePct = pmiRate;
+          resolvedPmiMonthlyPremium = (input.originalLoanAmount * (pmiRate / 100)) / 12;
+        }
 
-      // Query dynamic Fannie Mae LLPA Matrix
-      const llpaAdjustmentRate = await this.resolver.resolveMatrixValue({
-        matrixCode: "FANNIE_LLPA",
-        dim1Value: input.representativeFico,
-        dim2Value: lookupLtv,
-      });
-      resolvedLlpafUpfrontFee = input.originalLoanAmount * (llpaAdjustmentRate / 100);
+        // Query dynamic Fannie Mae LLPA Matrix
+        const llpaAdjustmentRate = await this.resolver.resolveMatrixValue({
+          matrixCode: "FANNIE_LLPA",
+          dim1Value: input.representativeFico,
+          dim2Value: lookupLtv,
+        });
+        resolvedLlpaRatePct = llpaAdjustmentRate;
+        resolvedLlpafUpfrontFee = input.originalLoanAmount * (llpaAdjustmentRate / 100);
+      }
 
       // VA Veteran Loan Path
     } else {
@@ -191,10 +413,26 @@ export class ConsolidatedUnderwritingEngine {
 
     if (reasons.length > 0) {
       decision = "REJECTED";
+    } else if (reviewReasons.length > 0) {
+      // Jumbo routing or a subject-property mismatch: a human must look, but it
+      // is not a decline.
+      decision = "MANUAL_REVIEW";
     } else if (targetLoanType === "CONVENTIONAL" && calculatedDti > dtiCap * 100) {
       // DTI between baseline (43%) and stretch (50%) moves to Manual Review
       decision = "MANUAL_REVIEW";
     }
+
+    const resolvedPolicy = buildResolvedPolicy({
+      loanType: targetLoanType,
+      conventionalDtiCapPct: dtiCap * 100,
+      conventionalStretchDtiPct: stretchDti * 100,
+      conventionalLtvCapPct: ltvCap,
+      haircutStockInvestment: haircutStock,
+      haircutRetirement: haircutRetirement,
+      pmiRatePct: resolvedPmiRatePct,
+      llpaRatePct: resolvedLlpaRatePct,
+      vaRequiredResidualIncome: requiredResidualIncome,
+    });
 
     return {
       decision,
@@ -208,6 +446,8 @@ export class ConsolidatedUnderwritingEngine {
       actualResidualIncome,
       requiredResidualIncome,
       rejectionReasons: reasons,
+      reviewReasons,
+      resolvedPolicy,
     };
   }
 
@@ -233,6 +473,25 @@ export class ConsolidatedUnderwritingEngine {
       `CRITICAL COMPLIANCE ERROR: Received unrecognized state parameter [${state}]. Unable to resolve geographic region mapping.`,
     );
   }
+}
+
+/**
+ * Build a ResolvedPolicy and stamp it with a deterministic fingerprint over the
+ * threshold values (undefined fields omitted, numbers rounded to 4 dp so
+ * floating-point noise doesn't change the hash).
+ */
+function buildResolvedPolicy(p: Omit<ResolvedPolicy, "fingerprint">): ResolvedPolicy {
+  const round = (n: number) => Math.round(n * 1e4) / 1e4;
+  const canonical: Record<string, unknown> = { loanType: p.loanType };
+  for (const [k, v] of Object.entries(p)) {
+    if (k === "loanType") continue;
+    if (typeof v === "number" && Number.isFinite(v)) canonical[k] = round(v);
+  }
+  const fingerprint = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(canonical))
+    .digest("hex");
+  return { ...p, fingerprint };
 }
 
 export const consolidatedUnderwritingEngine = new ConsolidatedUnderwritingEngine();

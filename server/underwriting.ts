@@ -337,16 +337,21 @@ export async function calculateDTI(
   const stretchDti = await lookupResolver.getPolicyScalar("CONVENTIONAL_STRETCH_DTI");
   const effectiveCap = maxBackEndRatio ?? dtiCap;
 
-  const frontEndRatio = qualifyingIncome > 0 
-    ? (housingExpense / qualifyingIncome) * 100 
+  const frontEndRatio = qualifyingIncome > 0
+    ? (housingExpense / qualifyingIncome) * 100
     : 0;
 
-  const backEndRatio = qualifyingIncome > 0 
-    ? ((housingExpense + nonHousingDebts) / qualifyingIncome) * 100 
+  const backEndRatio = qualifyingIncome > 0
+    ? ((housingExpense + nonHousingDebts) / qualifyingIncome) * 100
     : 0;
 
+  // A borrower with zero or negative qualifying income cannot support any debt;
+  // the ratio is undefined (division by zero would otherwise read as 0% → pass).
+  // Fail explicitly rather than letting the default "pass" stand.
   let status: "pass" | "fail" | "stretch" = "pass";
-  if (backEndRatio > effectiveCap) {
+  if (qualifyingIncome <= 0) {
+    status = "fail";
+  } else if (backEndRatio > effectiveCap) {
     status = backEndRatio <= stretchDti ? "stretch" : "fail";
   }
 
@@ -384,6 +389,22 @@ export async function checkPropertyEligibility(
   representativeFico?: number
 ): Promise<PropertyEligibilityResult> {
   const reasons: string[] = [];
+
+  // Guard non-positive income up front: the final DTI divides by income, so a 0
+  // (or NaN) would produce an "Infinity%" DTI in the returned reason text. Fail
+  // closed with a clear message instead.
+  if (!(borrowerIncome > 0)) {
+    return {
+      maxLoanAmount: 0,
+      maxDownPaymentPercent: 0,
+      requiredDownPayment: 0,
+      ltvRatio: 0,
+      estimatedPITI: 0,
+      finalDTI: 0,
+      canBuyProperty: false,
+      reasons: ["Borrower income must be greater than zero to assess affordability."],
+    };
+  }
 
   // Policy ceilings come from the dynamic matrices, not hardcoded 95/50 limits.
   const ltvCap = await lookupResolver.getPolicyScalar("CONVENTIONAL_LTV_CAP");
