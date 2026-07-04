@@ -10,6 +10,30 @@
 
 ---
 
+## 🚀 Launch sprint — the only list that matters right now (opened 2026-07-04)
+
+**Goal: live production — take real borrower applications and deliver complete files to wholesale lenders for approval and closing.** Maintained nightly by the evening triage routine (sole append authority; keep it under ~12 items — anything not launch-blocking belongs in the sections below, not here). The 16-routine executive suite was consolidated to 4 launch routines the same day (see [kb/PRE_PRODUCTION_OPS_ROUTINES.md](kb/PRE_PRODUCTION_OPS_ROUTINES.md)).
+
+**Founder (⛔ human — blocks everything commercial):**
+
+- [ ] **LS-1. F1 NMLS licensing (+ MERS org ID).** `server/config/company.ts` still says `PENDING`; no wholesale lender will credential an unlicensed broker. This is the single longest-lead item — everything else exists to be ready the day it clears.
+- [ ] **LS-2. Ops env vars in Vercel:** GCS bucket credentials (#1), `SENDGRID_API_KEY`/`FROM_EMAIL` + SPF/DKIM DNS (#3), `SENTRY_DSN` + uptime monitor on `/api/health` (#4). ~1 hour of account setup; unblocks real email, error visibility, and durable uploads.
+- [ ] **LS-3. Decide + merge PR #39** (VA residual income primary-source fix — resolves #29, the standing FAIL).
+- [ ] **LS-4. Start F3 (credit vendor) and F6 (DU/LPA access) applications now** — vendor paperwork lead time runs in parallel with F1, not after it.
+
+**Engineering (Claude):**
+
+- [ ] **LS-5. Roadmap #1 — production file uploads → GCS presigned flow** (branch `claude/uploads-memory-presigned` exists; verify its state before rebuilding).
+- [ ] **LS-6. Land PR #37 + PR #38, then prod DB catch-up:** `npm run db:migrate` (0005/0006/0007) + prod reseed for #24 (grids rerun + BRC-J30 jumbo min 806500.01 — seedMarketPricing is skip-if-exists).
+- [ ] **LS-7. Fix G-E route collision, then land the persona-LP branch** `claude/distracted-ramanujan-35682b` — the 4 landing pages are the intake front door.
+- [ ] **LS-8. G-A speed-to-lead notification** — lead creation is a no-op today; #1 conversion lever.
+- [ ] **LS-9. LO-M11 — GSE submission gate must block on an undeclared/unscored co-applicant.**
+- [ ] **LS-10. Lender submission adapter (post-#38)** — the actual delivery leg to wholesale lenders.
+
+Everything else in this file is explicitly **not** the sprint: CS\*, ARC-\*, CH-\*, G-B/G-C, LO-M16/M17, S-07+ wait until we are live or their blocker clears.
+
+---
+
 ## Do next — engineering, in order
 
 ### Make the product safe to put in front of a stranger
