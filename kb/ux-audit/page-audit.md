@@ -32,7 +32,7 @@ ramp + semantic tokens (verified by grep; 60 of ~130 client TSX files still matc
 | Borrower dashboard | `pages/borrower/Dashboard.tsx` | 🟡 | JourneyTracker (center of page) off-palette (roadmap #15); task signal now scoped/grouped (roadmap #6 done) | S2 |
 | Tasks / TaskDetail | `pages/borrower/Tasks.tsx` | ✅ | Milestone grouping shipped; keep ≤5 visible next steps as the invariant | S3 |
 | Documents | `pages/borrower/Documents.tsx` | 🟡 | Off-palette accents; upload→condition auto-match shipped (L4) — surface "we matched this to X" confirmation to close the loop for the borrower | S2 |
-| URLA (1003) | `pages/borrower/URLAForm.tsx` | 🟡 | Long-form; needs the funnel's chunking + autosave treatment (it's where SSN enters — reassurance copy matters most here) | S2 |
+| URLA (1003) | `pages/borrower/URLAForm.tsx` | ✅ | UX-18 shipped 2026-07-04: 7-step wizard (sections split into `pages/borrower/urla/`), save-on-continue autosave, SSN/account encryption reassurance copy, declarations as Yes/No segmented buttons, advisory progress bar | S2 |
 | Verification / IdentityVerification | `pages/borrower/Verification.tsx` | 🟡 | Off-palette; verification steps are peak-stress moments — apply calm-language patterns (see psychology-patterns.md §4) | S2 |
 | EConsent / CreditConsent / HMDA | `pages/borrower/*.tsx` | 🟡 | Consent ledger wiring done (L1–L3); visual sweep pending. Do NOT reword legal copy during sweep | S2 |
 | Messages | `pages/borrower/Messages.tsx` | 🟡 | Presence dots are decorative (no WebSocket, F9) — remove or wire; fake liveness is an anti-trust pattern | S2 |
