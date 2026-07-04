@@ -152,6 +152,30 @@ const QUESTIONS: Question[] = [
     subtext: "Select from the list below"
   },
   {
+    // VA-only step (routed in only when isVeteran): family size selects the
+    // regional residual-income requirement for VA underwriting.
+    id: "householdFamilySize",
+    field: "householdFamilySize",
+    type: "number",
+    question: "How many people are in your household?",
+    placeholder: "3",
+    subtext: "Include yourself, your spouse, and any dependents.",
+    why: "VA loans are approved on residual income — the money left over each month — and the requirement scales with household size.",
+    icon: Users
+  },
+  {
+    // VA-only step: square footage drives the VA utility-cost deduction
+    // ($0.14/sqft) in the residual-income calculation.
+    id: "homeSquareFootage",
+    field: "homeSquareFootage",
+    type: "number",
+    question: "Roughly how big is the home you're buying?",
+    placeholder: "2,000",
+    subtext: "Square footage — an estimate is fine if you're still shopping.",
+    why: "The VA estimates utility costs from square footage when checking that the loan leaves you enough residual income.",
+    icon: Home
+  },
+  {
     id: "annualIncome",
     field: "annualIncome",
     type: "currency",
@@ -318,6 +342,10 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
         return "Tip: A 20% down payment avoids Private Mortgage Insurance (PMI).";
       case "propertyState":
         return "Location affects property taxes and available loan programs.";
+      case "householdFamilySize":
+        return "VA underwriting checks residual income — what's left after bills — and the required cushion grows with your household size.";
+      case "homeSquareFootage":
+        return "The VA estimates monthly utilities at $0.14 per square foot when verifying your loan leaves enough residual income.";
       case "annualIncome":
         return "We use gross income to calculate your debt-to-income ratio. We'll verify with W-2s or tax returns later.";
       case "employmentType":

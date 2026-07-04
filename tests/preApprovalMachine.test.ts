@@ -96,6 +96,16 @@ describe("computeRoute — deterministic dynamic routing", () => {
     const a = answers({ employmentType: "self_employed" });
     expect(computeRoute(a)).toEqual(computeRoute({ ...a }));
   });
+
+  it("injects the VA residual-income steps for veterans only", () => {
+    const va = computeRoute(answers({ isVeteran: true }));
+    expect(va.indexOf("householdFamilySize")).toBe(va.indexOf("propertyState") + 1);
+    expect(va.indexOf("homeSquareFootage")).toBe(va.indexOf("householdFamilySize") + 1);
+
+    const conventional = computeRoute(answers({ isVeteran: false }));
+    expect(conventional).not.toContain("householdFamilySize");
+    expect(conventional).not.toContain("homeSquareFootage");
+  });
 });
 
 describe("computeFlags", () => {
@@ -167,6 +177,28 @@ describe("stepGate — validation gates", () => {
   it("passes final submission with consent and complete answers", () => {
     const gate = stepGate("final", completeAnswers(), CONSENT);
     expect(gate.ok).toBe(true);
+  });
+
+  it("requires the VA residual-income inputs for veterans at the final gate", () => {
+    const missing = stepGate(
+      "final",
+      completeAnswers({ isVeteran: true, downPayment: "0" }),
+      CONSENT,
+    );
+    expect(missing.ok).toBe(false);
+    expect(missing.errors.join(" ")).toMatch(/household size/i);
+
+    const complete = stepGate(
+      "final",
+      completeAnswers({
+        isVeteran: true,
+        downPayment: "0",
+        householdFamilySize: "3",
+        homeSquareFootage: "2000",
+      }),
+      CONSENT,
+    );
+    expect(complete.ok).toBe(true);
   });
 
   it("reports schema violations at the final gate", () => {

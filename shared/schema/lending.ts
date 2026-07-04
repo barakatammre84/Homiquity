@@ -224,6 +224,12 @@ export const loanApplications = pgTable("loan_applications", {
   preferredLoanType: varchar("preferred_loan_type", { length: 50 }),
   isVeteran: boolean("is_veteran").default(false),
   isFirstTimeBuyer: boolean("is_first_time_buyer").default(false),
+
+  // VA residual-income inputs (38 CFR 36.4340(e): family size drives the
+  // regional residual table; square footage drives the $0.14/sqft utility
+  // deduction). Collected by the funnel only for VA-eligible borrowers.
+  householdFamilySize: integer("household_family_size"),
+  homeSquareFootage: integer("home_square_footage"),
   
   // Multi-income source tracking
   incomeSources: jsonb("income_sources"),
@@ -974,6 +980,21 @@ const preApprovalFormBaseSchema = z.object({
       (v) => VALID_US_STATES.includes(v as any),
       { message: "Please select a valid US state" }
     ),
+
+  // VA residual-income inputs — required for veterans (enforced in the
+  // superRefine below); routed into the funnel only on the VA path.
+  householdFamilySize: z.string()
+    .refine(
+      (v) => { if (!v) return true; const n = parseInt(v); return !isNaN(n) && n >= 1 && n <= 20; },
+      { message: "Household size must be between 1 and 20" }
+    )
+    .optional(),
+  homeSquareFootage: z.string()
+    .refine(
+      (v) => { if (!v) return true; const n = parseInt(v); return !isNaN(n) && n >= 100 && n <= 50000; },
+      { message: "Home square footage must be between 100 and 50,000" }
+    )
+    .optional(),
 });
 
 export type PreApprovalFormData = z.infer<typeof preApprovalFormBaseSchema>;
@@ -994,8 +1015,34 @@ const downPaymentWithinPurchasePrice = (
   }
 };
 
+// The VA residual-income evaluation (underwritingEngine) cannot run without
+// household size and square footage — require both for veterans.
+const vaResidualInputsPresent = (
+  data: { isVeteran?: boolean; householdFamilySize?: unknown; homeSquareFootage?: unknown },
+  ctx: z.RefinementCtx,
+) => {
+  if (!data.isVeteran) return;
+  if (!data.householdFamilySize) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Household size is required for VA loan eligibility",
+      path: ["householdFamilySize"],
+    });
+  }
+  if (!data.homeSquareFootage) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Home square footage is required for VA loan eligibility",
+      path: ["homeSquareFootage"],
+    });
+  }
+};
+
 export const preApprovalFormSchema = preApprovalFormBaseSchema.superRefine(
-  downPaymentWithinPurchasePrice,
+  (data, ctx) => {
+    downPaymentWithinPurchasePrice(data, ctx);
+    vaResidualInputsPresent(data, ctx);
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -1026,7 +1073,7 @@ const stripCurrency = (v: string) => v.replace(/[,$]/g, "");
 function stringifyIntakeScalars(input: unknown): unknown {
   if (input === null || typeof input !== "object" || Array.isArray(input)) return input;
   const out: Record<string, unknown> = { ...(input as Record<string, unknown>) };
-  for (const key of ["annualIncome", "monthlyDebts", "purchasePrice", "downPayment", "employmentYears", "creditScore"]) {
+  for (const key of ["annualIncome", "monthlyDebts", "purchasePrice", "downPayment", "employmentYears", "creditScore", "householdFamilySize", "homeSquareFootage"]) {
     if (typeof out[key] === "number") out[key] = String(out[key]);
   }
   if (Array.isArray(out.incomeSources)) {

@@ -234,6 +234,12 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     missing.push("Down payment must be less than the purchase price");
   }
   if (!app.propertyState) missing.push("Property state");
+  // VA path: the residual-income evaluation needs both of these — surface them
+  // as named gaps here instead of letting the engine throw its protocol error.
+  if (app.isVeteran) {
+    if (!app.householdFamilySize) missing.push("Household size (required for VA residual income)");
+    if (!app.homeSquareFootage) missing.push("Home square footage (required for VA residual income)");
+  }
 
   if (missing.length > 0) {
     return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: missing, metrics: null, resolvedPolicy: null, ...base };
@@ -272,6 +278,8 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     // OBSERVED (vendor-lookup) descriptor is not yet wired — capturing it at
     // intake is the remaining piece to catch a consistent misstatement.
     propertyType: app.propertyType ?? undefined,
+    householdFamilySize: app.householdFamilySize ?? undefined,
+    homeSquareFootage: app.homeSquareFootage ?? undefined,
   };
 
   let result;
