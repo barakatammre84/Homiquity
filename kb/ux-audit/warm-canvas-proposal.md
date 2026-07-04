@@ -1,6 +1,10 @@
 # Proposal: Warm-neutral canvas variant ("Warm Paper")
 
-**Status: PROPOSED — not applied.** This is a decision memo, not shipped work.
+**Status: APPLIED 2026-07-04** after the user reaffirmed the warm direction (three
+consecutive warm-design briefs). Shipped as its own commit so it reverts independently;
+scope grew slightly beyond the 3-token sketch: background/border/card-border/
+popover-border/secondary/muted/input warmed, skeleton keyframes now var-driven.
+Original memo below for the record.
 
 ## The conflict this memo exists to surface
 
