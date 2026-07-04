@@ -574,12 +574,13 @@ describe("Persona 5 — Reyes family (VA, family of 6, $79,999.50 loan)", () => 
   it("PARTIAL(#1): VA files still dead-end for now, but with borrower-safe copy instead of a leaked internal error", async () => {
     primeOrchestrator(makeApp({ isVeteran: true, annualIncome: "144000" }), { piti: 2200 });
     const d = await runInstantDecision("app-1");
-    // Fix #1 reclassifies the VA-protocol throw as INPUT_INCOMPLETE, so the raw
-    // "CRITICAL VA PROTOCOL ERROR" no longer leaks. The dead-end itself needs
-    // fix #3 (plumb family size / square footage from intake).
+    // The VA-protocol throw is sanitized by describeEngineGap into borrower-safe
+    // labels ("Household size", "Home square footage"), so the raw "CRITICAL VA
+    // PROTOCOL ERROR" no longer leaks. The dead-end itself needs fix #3 (plumb
+    // family size / square footage from intake).
     expect(d.status).toBe("NEEDS_MORE_INFO");
     expect(JSON.stringify(d)).not.toMatch(/CRITICAL/);
-    expect(d.missingItems[0]).toMatch(/square footage/i);
+    expect(d.missingItems.join(" ")).toMatch(/square footage/i);
   });
 
   it.fails("SPEC(#3): VA applications must be able to reach a decision through the instant-decision path", async () => {
