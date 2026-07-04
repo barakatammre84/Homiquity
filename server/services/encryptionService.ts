@@ -277,16 +277,34 @@ export interface AuditEntryHashInput {
   previousEntryHash: string | null;
 }
 
+// Deterministic canonicalization for audit hashing: object keys sorted
+// recursively. actionDetails round-trips through a Postgres jsonb column,
+// and jsonb does NOT preserve key order (it sorts by length, then bytes) —
+// hashing insertion-ordered JSON would never re-verify after a read.
+function sortKeysDeep(value: any): any {
+  if (Array.isArray(value)) return value.map(sortKeysDeep);
+  if (value && typeof value === "object" && !(value instanceof Date)) {
+    return Object.fromEntries(
+      Object.keys(value)
+        .sort()
+        .map((k) => [k, sortKeysDeep(value[k])])
+    );
+  }
+  return value;
+}
+
 export function computeAuditEntryHash(entry: AuditEntryHashInput): string {
-  const canonical = JSON.stringify({
-    applicationId: entry.applicationId,
-    userId: entry.userId,
-    action: entry.action,
-    actionDetails: entry.actionDetails,
-    timestamp: entry.timestamp.toISOString(),
-    previousHash: entry.previousEntryHash || "GENESIS",
-  });
-  
+  const canonical = JSON.stringify(
+    sortKeysDeep({
+      applicationId: entry.applicationId,
+      userId: entry.userId,
+      action: entry.action,
+      actionDetails: entry.actionDetails,
+      timestamp: entry.timestamp.toISOString(),
+      previousHash: entry.previousEntryHash || "GENESIS",
+    })
+  );
+
   return computeHash(canonical);
 }
 

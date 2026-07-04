@@ -1258,8 +1258,8 @@ export async function verifyAuditLogIntegrity(
     .select()
     .from(creditAuditLog)
     .where(eq(creditAuditLog.applicationId, applicationId))
-    .orderBy(creditAuditLog.timestamp);
-  
+    .orderBy(creditAuditLog.timestamp, creditAuditLog.sequenceNumber);
+
   if (entries.length === 0) {
     return { valid: true, totalEntries: 0 };
   }
