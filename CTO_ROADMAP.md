@@ -73,6 +73,17 @@
 - [ ] **G-C. Cycle-time / pull-through report.** `loanApplications` only keeps one mutable `updatedAt`, but every status transition is already captured with `previousStatus`/`newStatus` + timestamp in `audit_logs` (`server/routes/lending.ts:1496`, `loan_application.status_changed`). Build the actual query (first `loan_application.created` → first status-changed event reaching funded/closed) so the 70% pull-through / 12-day cycle-time gates are reportable from day one of real traffic instead of raw unassembled audit rows. Acceptance: a report/query returns pull-through % and median cycle-time days for a given window.
 - [ ] **G-D. CreditConsent SSN whisper-copy.** `client/src/pages/borrower/CreditConsent.tsx:358-368` — the "Last 4 of SSN (optional)" field has no trust microcopy explaining why it's needed or that it's vault-encrypted (standing gap, carried across multiple routines). Proposed copy: "We only use this to match you with your credit report. It's encrypted the moment you submit it and never shown to loan officers." Small isolated-worktree PR, founder glance first since it's consent-adjacent UI.
 
+### LO workflow correctness (from kb/lo-audit/2026-07-04.md)
+
+- [ ] **LO-M11. GSE submission gate ignores an undeclared/unscored co-applicant.** `server/services/mismoValidation.ts:766-784` (`evaluateGseSubmissionReadiness`) blocks only on `gseGatingFailed` or `criticalErrors.length > 0` — `coApplicantLimitation` (set at `mismoValidation.ts:577-580` when a co-borrower is declared but has zero URLA rows) is never checked, so a joint application with a co-borrower entirely missing from the casefile can still pass DU submission. Acceptance: add `coApplicantLimitation !== null` as a third block condition, surfaced as its own field in the 422 body; add a regression test.
+- [ ] **LO-M16. VA zero-down advisory panel shows a PMI-inclusive live number next to copy saying PMI is waived.** `client/src/pages/lending/PreApproval.tsx:294-326` — `estMortgage` hardcodes a PMI-inclusive tax/insurance factor regardless of `flags.vaZeroDown`, while the advisory text at 337-343 correctly tells the veteran PMI is waived. The live DTI/payment number and the advisory copy disagree for the same borrower on the same screen. Acceptance: branch `estMortgage`'s PMI assumption on `formValues.isVeteran && loanPurpose === "purchase"`, matching the copy's existing branch.
+
+### Architecture / route-binding backlog (from kb/founder-routines/2026-07-04-bridge-bind.md)
+
+- [ ] **ARC-1. `/api/leads` ships with zero client binding.** `server/routes/leads.ts` (public intake + staff views, roadmap #8) has no caller anywhere in `client/src` — no landing-page form, no partner-embed, nothing. Needs a product decision first (Amr): headless/partner-embed vs. a Homiquity-hosted intake form. Then Claude implements. Est: 0.5h decision + 3h build if a UI page is wanted.
+- [ ] **ARC-2. Bind the market-data moat endpoints to a staff view.** `server/routes/market-data.ts` (`competitor-benchmark`, `undercut-quote`, `risk-profile`) has zero client references — built but invisible to staff. Acceptance: a staff pricing-intelligence panel/page calls all three. Est: 4h.
+- [ ] **ARC-3. Wire `/api/scenario-calculator` into a borrower-facing what-if tool on LoanOptions.** The scenario engine (S-01..S-06) is fully implemented server-side but borrowers can't self-serve scenario comparisons anywhere in the UI — the highest-leverage orphaned endpoint since it directly touches conversion. Est: 4-6h.
+
 ---
 
 ## Future — blocked on business, do NOT start yet
