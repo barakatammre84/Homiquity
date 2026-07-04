@@ -1092,12 +1092,41 @@ export function registerUnderwritingRoutes(
 
       const validResults = validationResults.filter((r): r is NonNullable<typeof r> => r !== null);
 
+      // ECOA §1002.9 delivery watchdog, read-only view: how many adverse-action
+      // notices in this user's visible scope are undelivered and how many have
+      // aged into the warning/breach bands. Denied apps are filtered out of
+      // `activeApps` above, so this is computed against the full visible set.
+      // Read-only classification only — the notification-raising sweep runs from
+      // the cron job, never from a dashboard GET.
+      const { getUndeliveredAdverseActions } = await import("../services/creditService");
+      const { classifyAdverseActionDelivery } = await import("../services/adverseActionDelivery");
+      const visibleAppIds = new Set(applications.map(a => a.id));
+      const undelivered = (await getUndeliveredAdverseActions()).filter(aa =>
+        visibleAppIds.has(aa.applicationId),
+      );
+      const now = new Date();
+      let aaWarning = 0;
+      let aaBreach = 0;
+      for (const aa of undelivered) {
+        const c = classifyAdverseActionDelivery(
+          { noticeDate: aa.noticeDate, deliveredAt: aa.deliveredAt },
+          now,
+        );
+        if (c === "warning") aaWarning += 1;
+        else if (c === "breach") aaBreach += 1;
+      }
+
       res.json({
         total: validResults.length,
         gseReady: validResults.filter(r => r.gseReady).length,
         ulddCompliant: validResults.filter(r => r.ulddCompliant).length,
         needsAttention: validResults.filter(r => r.criticalCount > 0).length,
         applications: validResults,
+        adverseActionDelivery: {
+          undelivered: undelivered.length,
+          warning: aaWarning,
+          breach: aaBreach,
+        },
       });
     } catch (error) {
       console.error("Compliance dashboard error:", error);

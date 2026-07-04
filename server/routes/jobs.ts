@@ -1,6 +1,7 @@
 import type { Express, Request } from "express";
 import { requireRole } from "../auth";
 import { runLifecycleSweep, graduateClosedLoan } from "../services/lifecycleEngine";
+import { sweepUndeliveredAdverseActions } from "../services/adverseActionDelivery";
 import { buildStaffSignals } from "../services/signalEngine";
 import { logAudit } from "../auditLog";
 import { db } from "../db";
@@ -45,6 +46,38 @@ export function registerJobRoutes(app: Express) {
       } catch (err) {
         console.error("[jobs] Lifecycle sweep failed:", err);
         res.status(500).json({ ok: false, error: "Lifecycle sweep failed" });
+      }
+    });
+  });
+
+  // ECOA §1002.9 adverse-action delivery watchdog. Same dual-trigger shape as
+  // the lifecycle sweep: Vercel cron (CRON_SECRET) or an admin session. Flags
+  // any generated-but-undelivered adverse-action notice approaching or past the
+  // 30-day statutory delivery window and raises a staff task for it.
+  app.get("/api/jobs/adverse-action-delivery", async (req, res, next) => {
+    if (isCronRequest(req)) {
+      try {
+        const result = await sweepUndeliveredAdverseActions();
+        return res.json({ ok: true, trigger: "cron", ...result });
+      } catch (err) {
+        console.error("[jobs] Adverse-action delivery sweep failed:", err);
+        return res.status(500).json({ ok: false, error: "Adverse-action delivery sweep failed" });
+      }
+    }
+    // Not a cron call — fall through to the admin-authenticated variant.
+    return requireRole("admin")(req, res, async () => {
+      try {
+        const result = await sweepUndeliveredAdverseActions();
+        logAudit(req, "jobs.adverse_action_delivery_sweep", "system", "adverse_action", {
+          scanned: result.scanned,
+          warning: result.warning,
+          breach: result.breach,
+          notificationsCreated: result.notificationsCreated,
+        });
+        res.json({ ok: true, trigger: "manual", ...result });
+      } catch (err) {
+        console.error("[jobs] Adverse-action delivery sweep failed:", err);
+        res.status(500).json({ ok: false, error: "Adverse-action delivery sweep failed" });
       }
     });
   });

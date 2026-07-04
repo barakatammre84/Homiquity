@@ -14,6 +14,7 @@ export default defineConfig({
       "tests/accessControl.test.ts",
       "tests/adversarialPersonas.test.ts",
       "tests/adverseActionNotice.test.ts",
+      "tests/adverseActionDelivery.test.ts",
       "tests/apr.test.ts",
       "tests/aprValidation.test.ts",
       "tests/encryptionRotation.test.ts",
