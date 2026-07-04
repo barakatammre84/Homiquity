@@ -30,8 +30,13 @@ export default function Login() {
     }
   }, [toast]);
 
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate(getRoleHomeRoute(user.role));
+    }
+  }, [isAuthenticated, user, navigate]);
+
   if (isAuthenticated && user) {
-    navigate(getRoleHomeRoute(user.role));
     return null;
   }
 
