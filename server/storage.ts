@@ -1813,8 +1813,9 @@ export class DatabaseStorage implements IStorage {
       this.getLoanOptionsByApplication(applicationId),
       this.getDocumentsByApplication(applicationId),
       // GSE loan delivery requires the real TaxpayerIdentifierValue. This is
-      // the one read path that decrypts the SSN; the export route restricts
-      // access (deal team / staff) and records the export as a deal activity.
+      // the one read path that decrypts the SSN; the export route is gated to
+      // internal staff roles only (never broker/lender partners or clients)
+      // and records the export as a deal activity.
       this.getDecryptedUrlaSsn(applicationId),
     ]);
 

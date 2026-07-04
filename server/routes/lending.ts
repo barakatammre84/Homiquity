@@ -855,13 +855,15 @@ export function registerLendingRoutes(
     }
   });
 
-  // MISMO 3.4 XML Export Route - GSE compliant loan delivery format
-  app.get("/api/loan-applications/:id/mismo-export", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
+  // MISMO 3.4 XML Export Route - GSE compliant loan delivery format.
+  // Internal staff only: the XML carries the full SSN and DOB for GSE delivery,
+  // and submitting to DU/LP is not a partner-facing action, so broker/lender
+  // are excluded (GLBA/Reg B data minimization).
+  app.get("/api/loan-applications/:id/mismo-export", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
       const { id } = req.params;
 
-      // Verify the caller is authorized for this specific application.
-      // broker/lender must be deal-team members; internal staff have global access.
+      // Object-level check kept as defense-in-depth alongside the role gate.
       const authorizedApp = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!authorizedApp) {
         return res.status(403).json({ error: "Access denied" });
