@@ -20,6 +20,8 @@ import { updatePipelineStage } from "../pipelineEngine";
 import crypto from "crypto";
 import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
+import { pickTableFields, sanitizePersonalInfoBody, URLA_TABLES } from "./urlaValidation";
+import { stripEncryptedFields } from "../services/piiVault";
 import { sendNotificationEmail } from "../services/emailService";
 
 // Verify that an internal staff user is actually assigned to the given application.
@@ -398,7 +400,15 @@ export function registerBorrowerRoutes(
         }
         urlaData.allPersonalInfo = (urlaData.allPersonalInfo ?? []).map(maskUrlaPersonalInfo);
       }
-      res.json({ application, ...urlaData });
+      // Ciphertext/IV/key columns never leave the server — clients get last4 only.
+      res.json({
+        application,
+        ...urlaData,
+        personalInfo: urlaData.personalInfo ? stripEncryptedFields(urlaData.personalInfo) : urlaData.personalInfo,
+        allPersonalInfo: urlaData.allPersonalInfo.map(stripEncryptedFields),
+        assets: urlaData.assets.map(stripEncryptedFields),
+        liabilities: urlaData.liabilities.map(stripEncryptedFields),
+      });
     } catch (error) {
       console.error("Get URLA data error:", error);
       res.status(500).json({ error: "Failed to get URLA data" });
@@ -413,15 +423,17 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const parsed = insertUrlaPersonalInfoSchema.safeParse({ ...req.body, applicationId });
-      if (!parsed.success) {
-        return res.status(400).json({
-          error: "Invalid personal info",
-          details: parsed.error.flatten().fieldErrors,
-        });
+      // Whitelist to table columns (mass-assignment defense) and pass the raw
+      // `ssn` through to storage, where ssnVault validates + encrypts it
+      // (InvalidSsnError → 400 below). stripEncryptedFields keeps ciphertext
+      // out of the response.
+      const sanitized = sanitizePersonalInfoBody(req.body);
+      if (!sanitized.ok) {
+        return res.status(400).json({ error: sanitized.error });
       }
-      const result = await storage.upsertUrlaPersonalInfo(parsed.data);
-      res.json(result);
+      const data = { ...sanitized.data, applicationId };
+      const result = await storage.upsertUrlaPersonalInfo(data as any);
+      res.json(stripEncryptedFields(result));
     } catch (error) {
       if (error instanceof InvalidSsnError) {
         return res.status(400).json({ error: error.message });
@@ -478,8 +490,8 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.createEmploymentHistory(data);
+      const data = { ...pickTableFields(URLA_TABLES.employment, req.body), applicationId };
+      const result = await storage.createEmploymentHistory(data as any);
       res.status(201).json(result);
     } catch (error) {
       console.error("Create employment error:", error);
@@ -499,9 +511,9 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      // Strip applicationId from body — it is immutable and must not be re-parented
-      const { applicationId: _appId, ...safeBody } = req.body;
-      const result = await storage.updateEmploymentHistory(id, safeBody);
+      // Whitelist to table columns; applicationId is always stripped (immutable).
+      const safeBody = pickTableFields(URLA_TABLES.employment, req.body);
+      const result = await storage.updateEmploymentHistory(id, safeBody as any);
       if (!result) {
         return res.status(404).json({ error: "Employment record not found" });
       }
@@ -540,8 +552,8 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.createOtherIncomeSource(data);
+      const data = { ...pickTableFields(URLA_TABLES.otherIncome, req.body), applicationId };
+      const result = await storage.createOtherIncomeSource(data as any);
       res.status(201).json(result);
     } catch (error) {
       console.error("Create other income error:", error);
@@ -577,9 +589,9 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.createUrlaAsset(data);
-      res.status(201).json(result);
+      const data = { ...pickTableFields(URLA_TABLES.asset, req.body, ["accountNumber"]), applicationId };
+      const result = await storage.createUrlaAsset(data as any);
+      res.status(201).json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Create asset error:", error);
       res.status(500).json({ error: "Failed to create asset" });
@@ -598,13 +610,13 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      // Strip applicationId from body — it is immutable and must not be re-parented
-      const { applicationId: _appId, ...safeBody } = req.body;
-      const result = await storage.updateUrlaAsset(id, safeBody);
+      // Whitelist to table columns; applicationId is always stripped (immutable).
+      const safeBody = pickTableFields(URLA_TABLES.asset, req.body, ["accountNumber"]);
+      const result = await storage.updateUrlaAsset(id, safeBody as any);
       if (!result) {
         return res.status(404).json({ error: "Asset not found" });
       }
-      res.json(result);
+      res.json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Update asset error:", error);
       res.status(500).json({ error: "Failed to update asset" });
@@ -639,9 +651,9 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.createUrlaLiability(data);
-      res.status(201).json(result);
+      const data = { ...pickTableFields(URLA_TABLES.liability, req.body, ["accountNumber"]), applicationId };
+      const result = await storage.createUrlaLiability(data as any);
+      res.status(201).json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Create liability error:", error);
       res.status(500).json({ error: "Failed to create liability" });
@@ -660,13 +672,13 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      // Strip applicationId from body — it is immutable and must not be re-parented
-      const { applicationId: _appId, ...safeBody } = req.body;
-      const result = await storage.updateUrlaLiability(id, safeBody);
+      // Whitelist to table columns; applicationId is always stripped (immutable).
+      const safeBody = pickTableFields(URLA_TABLES.liability, req.body, ["accountNumber"]);
+      const result = await storage.updateUrlaLiability(id, safeBody as any);
       if (!result) {
         return res.status(404).json({ error: "Liability not found" });
       }
-      res.json(result);
+      res.json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Update liability error:", error);
       res.status(500).json({ error: "Failed to update liability" });
@@ -701,8 +713,8 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.upsertUrlaPropertyInfo(data);
+      const data = { ...pickTableFields(URLA_TABLES.propertyInfo, req.body), applicationId };
+      const result = await storage.upsertUrlaPropertyInfo(data as any);
       res.json(result);
     } catch (error) {
       console.error("Save property info error:", error);
@@ -738,7 +750,9 @@ export function registerBorrowerRoutes(
       const collectionMethod = isStaffRole(user.role) ? "loan_officer" : "borrower";
 
       // Writes one borrower's URLA sections, scoped to a borrowerSequenceNumber.
-      // Returns false if any referenced child record fails the ownership check.
+      // Bodies are whitelisted to their table's columns (pickTableFields) before
+      // any write. Returns ok=false with an http status when a referenced child
+      // record fails the ownership check or a field fails format validation.
       const writeBorrowerSections = async (opts: {
         seq: number;
         isPrimary: boolean;
@@ -748,35 +762,40 @@ export function registerBorrowerRoutes(
         liabilities?: any[];
         declarations?: any;
         demographics?: any;
-      }): Promise<{ ok: boolean; results: any }> => {
+      }): Promise<{ ok: boolean; status?: number; error?: string; results: any }> => {
         const { seq, isPrimary } = opts;
         const results: any = {};
 
         if (hasContent(opts.personalInfo)) {
+          const sanitized = sanitizePersonalInfoBody(opts.personalInfo);
+          if (!sanitized.ok) {
+            return { ok: false, status: 400, error: sanitized.error, results };
+          }
           results.personalInfo = await storage.upsertUrlaPersonalInfo({
-            ...opts.personalInfo,
+            ...sanitized.data,
             applicationId,
             borrowerSequenceNumber: seq,
             isPrimaryBorrower: isPrimary,
-          });
+          } as any);
         }
 
         if (Array.isArray(opts.employmentHistory) && opts.employmentHistory.length > 0) {
           results.employmentHistory = [];
           for (const emp of opts.employmentHistory) {
             if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
+            const cleanEmp = pickTableFields(URLA_TABLES.employment, emp);
             if (emp.id) {
               const existing = await storage.getEmploymentHistoryById(emp.id);
               if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
-              const updated = await storage.updateEmploymentHistory(emp.id, { ...emp, borrowerSequenceNumber: seq });
+              const updated = await storage.updateEmploymentHistory(emp.id, { ...cleanEmp, borrowerSequenceNumber: seq } as any);
               if (updated) results.employmentHistory.push(updated);
             } else {
               const created = await storage.createEmploymentHistory({
-                ...emp,
+                ...cleanEmp,
                 applicationId,
                 borrowerSequenceNumber: seq,
-                employmentType: emp.employmentType || "current",
-              });
+                employmentType: cleanEmp.employmentType || "current",
+              } as any);
               results.employmentHistory.push(created);
             }
           }
@@ -786,13 +805,14 @@ export function registerBorrowerRoutes(
           results.assets = [];
           for (const asset of opts.assets) {
             if (!asset.accountType && !asset.financialInstitution) continue;
+            const cleanAsset = pickTableFields(URLA_TABLES.asset, asset, ["accountNumber"]);
             if (asset.id) {
               const existing = await storage.getUrlaAssetById(asset.id);
               if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
-              const updated = await storage.updateUrlaAsset(asset.id, { ...asset, borrowerSequenceNumber: seq });
+              const updated = await storage.updateUrlaAsset(asset.id, { ...cleanAsset, borrowerSequenceNumber: seq } as any);
               if (updated) results.assets.push(updated);
             } else if (asset.accountType) {
-              const created = await storage.createUrlaAsset({ ...asset, applicationId, borrowerSequenceNumber: seq });
+              const created = await storage.createUrlaAsset({ ...cleanAsset, applicationId, borrowerSequenceNumber: seq } as any);
               results.assets.push(created);
             }
           }
@@ -802,13 +822,14 @@ export function registerBorrowerRoutes(
           results.liabilities = [];
           for (const liability of opts.liabilities) {
             if (!liability.liabilityType && !liability.creditorName) continue;
+            const cleanLiability = pickTableFields(URLA_TABLES.liability, liability, ["accountNumber"]);
             if (liability.id) {
               const existing = await storage.getUrlaLiabilityById(liability.id);
               if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
-              const updated = await storage.updateUrlaLiability(liability.id, { ...liability, borrowerSequenceNumber: seq });
+              const updated = await storage.updateUrlaLiability(liability.id, { ...cleanLiability, borrowerSequenceNumber: seq } as any);
               if (updated) results.liabilities.push(updated);
             } else if (liability.liabilityType) {
-              const created = await storage.createUrlaLiability({ ...liability, applicationId, borrowerSequenceNumber: seq });
+              const created = await storage.createUrlaLiability({ ...cleanLiability, applicationId, borrowerSequenceNumber: seq } as any);
               results.liabilities.push(created);
             }
           }
@@ -816,20 +837,20 @@ export function registerBorrowerRoutes(
 
         if (hasContent(opts.declarations)) {
           results.declarations = await storage.upsertBorrowerDeclarations({
-            ...opts.declarations,
+            ...pickTableFields(URLA_TABLES.declarations, opts.declarations),
             applicationId,
             borrowerSequenceNumber: seq,
-          });
+          } as any);
         }
 
         if (demographicsHasContent(opts.demographics)) {
           results.demographics = await storage.upsertHmdaDemographics({
-            ...opts.demographics,
+            ...pickTableFields(URLA_TABLES.demographics, opts.demographics),
             applicationId,
             borrowerId: application.userId,
             borrowerSequenceNumber: seq,
             collectionMethod,
-          });
+          } as any);
         }
 
         return { ok: true, results };
@@ -847,13 +868,16 @@ export function registerBorrowerRoutes(
         demographics,
       });
       if (!primary.ok) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(primary.status ?? 403).json({ error: primary.error ?? "Access denied" });
       }
       const results: any = { ...primary.results };
 
       // Property info (shared subject property)
       if (hasContent(propertyInfo)) {
-        results.propertyInfo = await storage.upsertUrlaPropertyInfo({ ...propertyInfo, applicationId });
+        results.propertyInfo = await storage.upsertUrlaPropertyInfo({
+          ...pickTableFields(URLA_TABLES.propertyInfo, propertyInfo),
+          applicationId,
+        } as any);
       }
 
       // Other income sources (primary only) - only create new ones
@@ -862,7 +886,10 @@ export function registerBorrowerRoutes(
         for (const income of otherIncomeSources) {
           if (!income.incomeSource || !income.monthlyAmount) continue;
           if (income.id) continue;
-          const created = await storage.createOtherIncomeSource({ ...income, applicationId });
+          const created = await storage.createOtherIncomeSource({
+            ...pickTableFields(URLA_TABLES.otherIncome, income),
+            applicationId,
+          } as any);
           results.otherIncomeSources.push(created);
         }
       }
@@ -883,13 +910,25 @@ export function registerBorrowerRoutes(
             demographics: co.demographics,
           });
           if (!coResult.ok) {
-            return res.status(403).json({ error: "Access denied" });
+            return res.status(coResult.status ?? 403).json({ error: coResult.error ?? "Access denied" });
           }
           results.coApplicants.push(coResult.results);
         }
       }
 
-      res.json(results);
+      // Ciphertext/IV/key columns never leave the server.
+      const sanitizeBorrowerResults = (r: any) => ({
+        ...r,
+        ...(r.personalInfo ? { personalInfo: stripEncryptedFields(r.personalInfo) } : {}),
+        ...(Array.isArray(r.assets) ? { assets: r.assets.map(stripEncryptedFields) } : {}),
+        ...(Array.isArray(r.liabilities) ? { liabilities: r.liabilities.map(stripEncryptedFields) } : {}),
+      });
+      const safeResults = sanitizeBorrowerResults(results);
+      if (Array.isArray(safeResults.coApplicants)) {
+        safeResults.coApplicants = safeResults.coApplicants.map(sanitizeBorrowerResults);
+      }
+
+      res.json(safeResults);
     } catch (error) {
       console.error("Save URLA data error:", error);
       res.status(500).json({ error: "Failed to save URLA data" });

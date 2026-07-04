@@ -448,7 +448,16 @@ export const documents = pgTable("documents", {
   
   status: varchar("status", { length: 50 }).default("uploaded"),
   notes: text("notes"),
-  
+
+  // AI-extraction lineage (mirrors the credit-pull vendor-response pattern):
+  // a SHA-256 of the raw model output, and that raw output encrypted at rest
+  // (it can carry PII). Lets an auditor confirm the stored fields came from a
+  // specific model response, and re-examine it for drift/dispute review.
+  extractionResponseHash: varchar("extraction_response_hash", { length: 64 }),
+  extractionRawEncrypted: text("extraction_raw_encrypted"),
+  extractionRawIv: varchar("extraction_raw_iv", { length: 32 }),
+  extractionRawKeyId: varchar("extraction_raw_key_id", { length: 20 }),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
@@ -512,8 +521,8 @@ export const urlaPersonalInfo = pgTable("urla_personal_info", {
   // this is set to null. Kept only so the backfill script can migrate legacy
   // rows; drop the column once the backfill has run in every environment.
   ssn: varchar("ssn", { length: 11 }),
-  // SSN at rest: AES-256-GCM via encryptionService (same scheme as credit
-  // reports). Server-managed only — never accepted from the client.
+  // SSN at rest: AES-256-GCM via encryptionService (ssnVault, same scheme as
+  // credit reports). Server-managed only — never accepted from the client.
   ssnEncrypted: text("ssn_encrypted"),
   ssnIv: varchar("ssn_iv", { length: 32 }),
   ssnKeyId: varchar("ssn_key_id", { length: 10 }),
@@ -676,7 +685,12 @@ export const urlaAssets = pgTable("urla_assets", {
 
   accountType: varchar("account_type", { length: 100 }).notNull(),
   financialInstitution: varchar("financial_institution", { length: 255 }),
-  accountNumber: varchar("account_number", { length: 100 }),
+  // Account number is encrypted at rest (piiVault); only last4 is returned to
+  // clients. Legacy plaintext column handled by scripts/migrate-encrypt-pii.ts.
+  accountNumberEncrypted: text("account_number_encrypted"),
+  accountNumberIv: varchar("account_number_iv", { length: 32 }),
+  accountNumberKeyId: varchar("account_number_key_id", { length: 20 }),
+  accountNumberLast4: varchar("account_number_last4", { length: 4 }),
   cashOrMarketValue: decimal("cash_or_market_value", { precision: 12, scale: 2 }),
   
   createdAt: timestamp("created_at").defaultNow(),
@@ -700,7 +714,12 @@ export const urlaLiabilities = pgTable("urla_liabilities", {
 
   liabilityType: varchar("liability_type", { length: 100 }).notNull(),
   creditorName: varchar("creditor_name", { length: 255 }),
-  accountNumber: varchar("account_number", { length: 100 }),
+  // Account number is encrypted at rest (piiVault); only last4 is returned to
+  // clients. Legacy plaintext column handled by scripts/migrate-encrypt-pii.ts.
+  accountNumberEncrypted: text("account_number_encrypted"),
+  accountNumberIv: varchar("account_number_iv", { length: 32 }),
+  accountNumberKeyId: varchar("account_number_key_id", { length: 20 }),
+  accountNumberLast4: varchar("account_number_last4", { length: 4 }),
   unpaidBalance: decimal("unpaid_balance", { precision: 12, scale: 2 }),
   monthlyPayment: decimal("monthly_payment", { precision: 10, scale: 2 }),
   toBePaidOff: boolean("to_be_paid_off").default(false),
@@ -2663,6 +2682,8 @@ export const verifications = pgTable("verifications", {
   verificationType: varchar("verification_type", { length: 50 }).notNull(),
 
   plaidItemId: varchar("plaid_item_id", { length: 255 }),
+  // Encrypted at rest ("encv1:keyId:iv:ciphertext" envelope, piiVault.encryptToken).
+  // Never returned in API responses; decrypt server-side only for Plaid calls.
   plaidAccessToken: text("plaid_access_token"),
   plaidVerificationId: varchar("plaid_verification_id", { length: 255 }),
 

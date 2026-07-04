@@ -18,6 +18,7 @@ import {
 } from "../services/outcomeTracker";
 import {
   getAccuracyByDocType,
+  getExtractionAccuracyReport,
   getPendingReviews,
   getConfidenceTrend,
   recordHumanReview,
@@ -157,6 +158,23 @@ export function registerDataIntelligenceRoutes(app: Express) {
       } catch (error) {
         console.error("Doc accuracy error:", error);
         res.status(500).json({ error: "Failed to fetch document accuracy" });
+      }
+    }
+  );
+
+  // MR-6: extraction-accuracy report with model-drift alerts (flags doc types
+  // whose human-verified accuracy has fallen below target).
+  app.get("/api/documents/confidence/accuracy-report",
+    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    async (req, res) => {
+      try {
+        const daysBack = parseInt(req.query.days as string) || 30;
+        const minReviews = parseInt(req.query.minReviews as string) || 10;
+        const report = await getExtractionAccuracyReport(daysBack, minReviews);
+        res.json(report);
+      } catch (error) {
+        console.error("Extraction accuracy report error:", error);
+        res.status(500).json({ error: "Failed to build extraction accuracy report" });
       }
     }
   );

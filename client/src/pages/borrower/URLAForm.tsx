@@ -66,20 +66,29 @@ interface DemographicsState {
   ageNotProvided: boolean;
 }
 
+// SSN and account numbers are WRITE-ONLY virtual fields: the server encrypts
+// them at rest and never returns the value — responses carry only ssnLast4 /
+// accountNumberLast4, which the inputs surface via their placeholders.
+// `ssn` is a column on UrlaPersonalInfo (write-only; the server encrypts it and
+// returns only ssnLast4), so Partial already covers it — no override needed.
+type PersonalInfoForm = Partial<UrlaPersonalInfo>;
+type AssetForm = Partial<UrlaAsset> & { accountNumber?: string };
+type LiabilityForm = Partial<UrlaLiability> & { accountNumber?: string };
+
 interface BorrowerSlice {
-  personalInfo: Partial<UrlaPersonalInfo>;
+  personalInfo: PersonalInfoForm;
   employmentRecords: Partial<EmploymentHistory>[];
-  assets: Partial<UrlaAsset>[];
-  liabilities: Partial<UrlaLiability>[];
+  assets: AssetForm[];
+  liabilities: LiabilityForm[];
   declarations: Partial<BorrowerDeclarations>;
   demographics: DemographicsState;
 }
 
 interface SectionsPayload {
-  personalInfo: Partial<UrlaPersonalInfo>;
+  personalInfo: PersonalInfoForm;
   employmentHistory: Partial<EmploymentHistory>[];
-  assets: Partial<UrlaAsset>[];
-  liabilities: Partial<UrlaLiability>[];
+  assets: AssetForm[];
+  liabilities: LiabilityForm[];
   declarations: Partial<BorrowerDeclarations>;
   demographics: Record<string, unknown>;
 }
@@ -220,13 +229,13 @@ export default function URLAForm() {
 
   // Same-named accessors so the existing section JSX works unchanged across borrowers
   const personalInfo = slice.personalInfo;
-  const setPersonalInfo = (v: Partial<UrlaPersonalInfo>) => updateSlice({ personalInfo: v });
+  const setPersonalInfo = (v: PersonalInfoForm) => updateSlice({ personalInfo: v });
   const employmentRecords = slice.employmentRecords;
   const setEmploymentRecords = (v: Partial<EmploymentHistory>[]) => updateSlice({ employmentRecords: v });
   const assets = slice.assets;
-  const setAssets = (v: Partial<UrlaAsset>[]) => updateSlice({ assets: v });
+  const setAssets = (v: AssetForm[]) => updateSlice({ assets: v });
   const liabilities = slice.liabilities;
-  const setLiabilities = (v: Partial<UrlaLiability>[]) => updateSlice({ liabilities: v });
+  const setLiabilities = (v: LiabilityForm[]) => updateSlice({ liabilities: v });
   const declarations = slice.declarations;
   const setDeclarations = (v: Partial<BorrowerDeclarations>) => updateSlice({ declarations: v });
   const demographics = slice.demographics;
@@ -512,7 +521,11 @@ export default function URLAForm() {
                         <Label htmlFor="ssn">Social Security Number</Label>
                         <Input
                           id="ssn"
-                          placeholder="XXX-XX-XXXX"
+                          placeholder={
+                            personalInfo.ssnLast4
+                              ? `On file: •••-••-${personalInfo.ssnLast4} (enter to replace)`
+                              : "XXX-XX-XXXX"
+                          }
                           value={personalInfo.ssn || ""}
                           onChange={(e) => setPersonalInfo({ ...personalInfo, ssn: e.target.value })}
                           data-testid="input-ssn"
@@ -1195,7 +1208,11 @@ export default function URLAForm() {
                           <div className="space-y-2">
                             <Label>Account Number</Label>
                             <Input
-                              placeholder="Account #"
+                              placeholder={
+                                asset.accountNumberLast4
+                                  ? `On file: ••••${asset.accountNumberLast4} (enter to replace)`
+                                  : "Account #"
+                              }
                               value={asset.accountNumber || ""}
                               onChange={(e) => {
                                 const updated = [...assets];

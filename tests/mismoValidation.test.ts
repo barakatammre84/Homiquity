@@ -78,7 +78,8 @@ function completePersonalInfo(overrides: Record<string, any> = {}) {
   return {
     firstName: "Jane",
     lastName: "Borrower",
-    ssn: "123-45-6789",
+    // SSN is encrypted at rest; validation reads the masked last-4 fragment.
+    ssnLast4: "6789",
     dateOfBirth: "1985-04-12",
     citizenship: "us_citizen",
     maritalStatus: "married",
@@ -251,7 +252,7 @@ describe("GSE gating (hard-fail on sections 1a, 4, 5)", () => {
 
   it("hard-fails when section 1a (personal info) has a missing required field", async () => {
     setFixtures({
-      urla: baseUrla({ personalInfo: completePersonalInfo({ ssn: null }) }),
+      urla: baseUrla({ personalInfo: completePersonalInfo({ ssnLast4: null }) }),
     });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.gseGatingFailed).toBe(true);
@@ -1324,7 +1325,7 @@ describe("ulddCompliant thresholds", () => {
   });
 
   it("is false when gating fails", async () => {
-    setFixtures({ urla: baseUrla({ personalInfo: completePersonalInfo({ ssn: null }) }) });
+    setFixtures({ urla: baseUrla({ personalInfo: completePersonalInfo({ ssnLast4: null }) }) });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.gseGatingFailed).toBe(true);
     expect(result.ulddCompliant).toBe(false);

@@ -1,4 +1,4 @@
-const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:5000";
+export const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:5000";
 
 export async function apiGet(path: string, options?: { headers?: Record<string, string> }) {
   const res = await fetch(`${BASE_URL}${path}`, {

@@ -123,6 +123,17 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
       applicationId = created.body.id;
     }
 
+    // The loan-estimate route is gated by requireConsent("e_disclosure").
+    // Grant it here so the suite is hermetic — otherwise the test depends on
+    // ambient consent state left in a shared dev DB.
+    const consent = await authPost(cookie, "/api/consents", {
+      applicationId,
+      consentType: "e_disclosure",
+      consentGiven: true,
+      consentMethod: "click",
+    });
+    expect([200, 201]).toContain(consent.status);
+
     const props = await publicGet("/api/properties");
     expect(Array.isArray(props.body)).toBe(true);
     expect(props.body.length).toBeGreaterThan(0); // sample properties are seeded

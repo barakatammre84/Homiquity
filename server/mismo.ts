@@ -33,10 +33,14 @@ import {
 export interface MISMOLoanDTO {
   application: LoanApplication;
   user: User | null;
-  personalInfo: UrlaPersonalInfo | null;
+  // `ssn` is a virtual field: SSNs are encrypted at rest, and
+  // storage.getMISMOLoanData() decrypts the full value onto the record because
+  // GSE loan delivery (TaxpayerIdentifierValue) requires it.
+  personalInfo: (UrlaPersonalInfo & { ssn?: string | null }) | null;
   employment: EmploymentHistory[];
-  assets: UrlaAsset[];
-  liabilities: UrlaLiability[];
+  // Asset/liability `accountNumber` is likewise a decrypted virtual field.
+  assets: (UrlaAsset & { accountNumber?: string | null })[];
+  liabilities: (UrlaLiability & { accountNumber?: string | null })[];
   propertyInfo: UrlaPropertyInfo | null;
   declarations: BorrowerDeclarations | null;
   loanOptions: LoanOption[];
