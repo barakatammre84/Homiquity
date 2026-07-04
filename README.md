@@ -40,11 +40,12 @@ is the truth and the document is a bug** — fix or flag it.
 | Document | What it decides |
 |---|---|
 | [PRODUCT_SPINE.md](PRODUCT_SPINE.md) | Product modules, roles, AI boundaries (AI never decides lending outcomes). |
+| [kb/TEAM_PRACTICES.md](kb/TEAM_PRACTICES.md) | How every session works: doc-staleness rules, branch/worktree lifecycle, definition of done, push policy. |
 | [kb/UNDERWRITING_SCENARIOS.md](kb/UNDERWRITING_SCENARIOS.md) | Living scenario registry — the "no citation → not implemented" contract. |
 | [kb/AI_GOVERNANCE_POLICY.md](kb/AI_GOVERNANCE_POLICY.md) · [kb/MODEL_RISK_GOVERNANCE.md](kb/MODEL_RISK_GOVERNANCE.md) | Adopted AI governance policy + model inventory under it. |
 | [kb/REGULATORY_MONITORING.md](kb/REGULATORY_MONITORING.md) | How statutory constants stay verifiably aligned with official sources. |
 | [kb/SCENARIO_ARCHITECT.md](kb/SCENARIO_ARCHITECT.md) | Operating instructions for scenario/guardian work. |
-| [kb/PRE_PRODUCTION_OPS_ROUTINES.md](kb/PRE_PRODUCTION_OPS_ROUTINES.md) | The founder's pre-launch operating routines (current: 4-routine launch suite). |
+| [kb/PRE_PRODUCTION_OPS_ROUTINES.md](kb/PRE_PRODUCTION_OPS_ROUTINES.md) | The founder's pre-launch operating routines (current: 5-routine launch suite). |
 | [docs/fannie-mae/](docs/fannie-mae/) | Official GSE reference documents — never work from memory on ULDD/UCD/URLA/MISMO. |
 | [design_guidelines.md](design_guidelines.md) | Obsidian Indigo design system rules. |
 | [threat_model.md](threat_model.md) | Security threat model. |

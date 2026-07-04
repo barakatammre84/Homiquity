@@ -21,12 +21,13 @@ the fact/assumption register is [ASSUMPTIONS.md](../ASSUMPTIONS.md).
 
 | Doc | Status |
 |---|---|
+| [TEAM_PRACTICES.md](TEAM_PRACTICES.md) | **How every session works** — doc rules, branch lifecycle, definition of done, push policy (adopted 2026-07-04) |
 | [UNDERWRITING_SCENARIOS.md](UNDERWRITING_SCENARIOS.md) | **Living registry** — the "no citation → not implemented" contract |
 | [SCENARIO_ARCHITECT.md](SCENARIO_ARCHITECT.md) | Operating instructions for scenario/guardian sessions |
 | [AI_GOVERNANCE_POLICY.md](AI_GOVERNANCE_POLICY.md) | Adopted 2026-07-04 (v1.0), annual review |
 | [MODEL_RISK_GOVERNANCE.md](MODEL_RISK_GOVERNANCE.md) | Model inventory under the AI governance policy |
 | [REGULATORY_MONITORING.md](REGULATORY_MONITORING.md) | How statutory constants stay aligned with official sources |
-| [PRE_PRODUCTION_OPS_ROUTINES.md](PRE_PRODUCTION_OPS_ROUTINES.md) | Founder operating routines (current: 4-routine launch suite) |
+| [PRE_PRODUCTION_OPS_ROUTINES.md](PRE_PRODUCTION_OPS_ROUTINES.md) | Founder operating routines (current: 5-routine launch suite incl. the sprint-blitz builder) |
 | [FREE_DATA_MOAT.md](FREE_DATA_MOAT.md) | HMDA + GSE public-data ingestion design |
 
 **Dated snapshots (Tier 4 — true as of their date; verify against code before acting):**

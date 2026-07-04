@@ -61,9 +61,11 @@ without re-running them). Schema-change workflow: [ROLLBACK.md](ROLLBACK.md) §3
 
 ## 6. Run it
 ```bash
-npm run dev
+PORT=5001 npm run dev
 ```
-Open http://localhost:5000. Edits hot-reload.
+Open http://localhost:5001. Edits hot-reload. (Local convention: **5001** — macOS
+AirPlay squats on 5000 and answers with an HTTP 403 that looks like a broken app.
+Worktree test servers use 5002+.)
 
 ## 7. Typecheck before committing
 ```bash

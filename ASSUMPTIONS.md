@@ -44,12 +44,16 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 Numbers that actively gate decisions but lack a regulatory citation (tracked as roadmap
 items; the "no citation → not implemented" contract in kb/UNDERWRITING_SCENARIOS.md):
 
-- **Roadmap #29** — VA residual income: engine uses uncited 18% tax model + 5% active-duty
-  discount; the cited implementation (22%, no discount) is not the executing path. Fix is
-  **open PR #39, awaiting founder decision (LS-3)**.
-- **Roadmap #30–32** — conventional DTI/LTV/FICO caps and asset haircuts in
-  `seedLendingGrids.ts`, plus two `underwritingNuance.ts` constants, lack ledger entries.
-  **Open PR #45** adds the citations — verify on merge.
+- **Roadmap #29 — resolved (merged 2026-07-04, PR #39):** VA residual income unified on the
+  cited 22% tax-estimate model; the 5% reduction verified real (26-7 Item 43) but disjunctive
+  (gate corrected to OR); family-of-seven cap added; ledger entries
+  `va-26-7-ch4-residual-reduction` + `platform-va-residual-tax-estimate`; compliance
+  invariants now also read `underwritingEngine.ts`.
+- **Roadmap #30–32 — resolved (merged 2026-07-04, PR #45):** every conventional policy scalar
+  in `seedLendingGrids.ts` now carries a ledger citation (agency-sourced or explicitly
+  PLATFORM POLICY); the dead `INCOME_DISCREPANCY_THRESHOLD_PCT` constant was deleted. One
+  open verification: the Eligibility Matrix 95/97 LTV split needs a human pass (source PDF
+  is bot-protected).
 
 ## 4. Facts verified against code this audit (2026-07-04)
 

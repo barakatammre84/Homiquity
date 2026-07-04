@@ -1,8 +1,9 @@
 # CLAUDE.md — Homiquity (MortgageStream)
 
 Guidance for Claude Code when working in this repository. The deep engineering map is
-[DEVELOPER_PLAYBOOK.md](DEVELOPER_PLAYBOOK.md); the per-subsystem handbook is [kb/app-guide/](kb/app-guide/).
-This file covers what must be true in *every* session.
+[DEVELOPER_PLAYBOOK.md](DEVELOPER_PLAYBOOK.md); the per-subsystem handbook is [kb/app-guide/](kb/app-guide/);
+session working practices (doc rules, branch lifecycle, definition of done, push policy)
+are [kb/TEAM_PRACTICES.md](kb/TEAM_PRACTICES.md). This file covers what must be true in *every* session.
 
 ## Compliance first: Fannie Mae loan delivery (ULDD / UCD / URLA / MISMO)
 

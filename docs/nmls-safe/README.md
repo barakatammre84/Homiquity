@@ -29,6 +29,11 @@ sponsorship, renewal, unique-identifier and disclosure obligations — lives at
    documents. The engineering plumbing for that is ticketed in CTO_ROADMAP.md (#33) so it
    lights up the day F1 clears.
 
+## Reading the PDF locally
+
+Claude's Read tool renders it directly; scripted extraction uses `python3` + `pypdf`
+(installed `--user`; no poppler on this machine).
+
 ## Maintenance
 
 Keep original filenames/editions traceable. When NMLS publishes a new guidebook edition or

@@ -94,6 +94,22 @@ When Fannie Mae publishes new threshold years or SFC editions, update the data i
 modules from the replacement document — never from memory — and update the pinned values
 in `tests/qmThresholds.test.ts` / `tests/specialFeatureCodes.test.ts` in the same commit.
 
+## Reading these files (humans and Claude sessions)
+
+Every file in this directory is readable locally — nothing requires an external service:
+
+- **PDF** — Claude's Read tool renders them directly; scripted extraction uses `pypdf`
+  (installed `--user` on this machine; `pymupdf` for page rendering).
+- **XLSX** (the ULAD mapping workbook, UCD matrices, ULDD Phase 5 visual) — not readable
+  raw; use `openpyxl` (installed `--user`):
+  ```bash
+  python3 -c "import openpyxl; wb = openpyxl.load_workbook('docs/fannie-mae/schemas/ulad-mapping-document.xlsx', read_only=True); print(wb.sheetnames)"
+  ```
+- **XSD / XML** — plain text; open directly. `MISMO_3_0.xsd` is 1.9 MB — read it in slices
+  or grep for the element you need rather than loading it whole.
+- **Filenames contain spaces** (official Fannie Mae names, kept deliberately — see
+  Maintenance below): always quote paths in shell commands.
+
 ## Maintenance
 
 Keep original Fannie Mae filenames so versions/effective dates stay traceable. When Fannie Mae

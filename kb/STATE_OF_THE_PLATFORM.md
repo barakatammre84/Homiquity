@@ -8,9 +8,11 @@
 > pending, LS-2), §3.7 error monitoring built (DSN pending, LS-2), §3.9 legal-page shells +
 > adverse-action flow ✓ (#26), §4.1 task engine ✓ (#6), §4.2 stage-gated validation ✓ (#7),
 > §4.4 leads API ✓ (#8), §4.5 lifecycle jobs ✓ (#9), §4.8 self-cleaning tests ✓ (#10),
-> §4.9 demo rate sheets ✓ (#11), and the entire §5 palette sweep ✓ (#12–23). Still true:
-> licensing (F1), vendor contracts (F3–F7), uploads (#1 → open PR #44), CI (#5 — workflow
-> authored but stranded off-main; see ASSUMPTIONS.md §2).
+> §4.9 demo rate sheets ✓ (#11), and the entire §5 palette sweep ✓ (#12–23).
+> **2026-07-04 evening:** the 13-PR launch batch (#37, #39–#50) merged to main in one push —
+> any "open PR" reference in this doc is historical. Uploads (#1) code shipped (PR #44;
+> GCS env vars pending, LS-2). Still true: licensing (F1), vendor contracts (F3–F7),
+> CI (#5 — workflow authored but stranded off-main; see ASSUMPTIONS.md §2).
 **Audience:** Frontend, Backend/Platform, Data, DevOps, Compliance, AI, QA, Product
 **Production:** https://mortgage-stream.vercel.app (homiquity.com custom domain pending) · **Repo:** single source of truth on `main`, every push deploys
 **How to use this doc:** every numbered item in §3/§4 and every row in §5 is scoped to be a single work prompt/session — name the item, point at the files, state the acceptance check.

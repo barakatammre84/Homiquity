@@ -126,9 +126,10 @@ A lender can: open the package, see every document organized, click to view each
 ## Development Rule (updated 2026-07-04)
 
 **The 🚀 Launch sprint section of [CTO_ROADMAP.md](CTO_ROADMAP.md) is the only work queue.**
-The blanket feature freeze below is superseded: sprint items ship even when they are new
-features (landing pages, speed-to-lead), because they are launch-blocking. For anything
-*not* on the sprint, the original gate still applies:
+Two regimes, no overlap: (1) items ON the sprint list ship even when they are new features
+(landing pages, speed-to-lead) — they are launch-blocking by definition; (2) for everything
+*not* on the sprint list, the feature-freeze gate below is in force, and it re-engages in
+full the day the sprint section is empty:
 
 **Nothing new ships unless it improves correctness, compliance, or reliability.**
 
