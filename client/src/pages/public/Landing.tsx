@@ -40,7 +40,7 @@ const AUDIENCE_PATHS = [
     title: "Current Homeowners",
     description: "See if refinancing could lower your payment or unlock your equity.",
     cta: "Check Refinance Options",
-    href: "/apply?type=refinance",
+    href: "/refinance",
   },
   {
     id: "move-up",

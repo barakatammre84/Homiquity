@@ -41,6 +41,7 @@ function EmailCaptureGate() {
 }
 
 const Landing = lazy(() => import("@/pages/public/Landing"));
+const Refinance = lazy(() => import("@/pages/public/Refinance"));
 const Privacy = lazy(() => import("@/pages/public/Privacy"));
 const Terms = lazy(() => import("@/pages/public/Terms"));
 const Disclosures = lazy(() => import("@/pages/public/Disclosures"));
@@ -178,6 +179,8 @@ function Router() {
       <Switch>
         {/* Public Pages - Anyone can access */}
         <Route path="/" component={Landing} />
+        {/* Dedicated refinance conversion page — renders its own SkipLink/main/Footer like Landing */}
+        <Route path="/refinance" component={Refinance} />
         <Route path="/login"><BareLayout><Login /></BareLayout></Route>
         <Route path="/signup"><BareLayout><Signup /></BareLayout></Route>
         <Route path="/forgot-password"><BareLayout><ForgotPassword /></BareLayout></Route>
