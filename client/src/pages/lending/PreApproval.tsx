@@ -569,7 +569,9 @@ function PreApprovalFunnel() {
       propertyType: (urlPropertyType as any) || "single_family",
       purchasePrice: urlPrice || "",
       downPayment: "",
-      isVeteran: false,
+      // /va-loans pre-screens service status; honor it so veterans aren't
+      // asked twice (checkbox stays visible/editable at its step).
+      isVeteran: urlType === "va",
       isFirstTimeBuyer: false,
       propertyState: urlState || "",
       hasAdditionalIncome: false,

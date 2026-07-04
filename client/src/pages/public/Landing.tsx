@@ -64,7 +64,7 @@ const AUDIENCE_PATHS = [
     title: "Veterans & Military",
     description: "VA loans with no down payment. Built by a fellow veteran.",
     cta: "Explore VA Loans",
-    href: "/apply?type=va",
+    href: "/va-loans",
   },
   {
     id: "investors",
