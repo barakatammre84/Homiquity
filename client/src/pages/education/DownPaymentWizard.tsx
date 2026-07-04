@@ -47,11 +47,11 @@ const US_STATES = [
 
 function ProgramTypeBadge({ type }: { type: string }) {
   const styles: Record<string, string> = {
-    grant: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    forgivable_loan: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-    deferred_loan: "bg-purple-500/10 text-purple-700 dark:text-purple-300",
-    second_mortgage: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-    matched_savings: "bg-pink-500/10 text-pink-700 dark:text-pink-300",
+    grant: "bg-success/10 text-success-subtle-foreground",
+    forgivable_loan: "bg-info/10 text-info",
+    deferred_loan: "bg-primary/10 text-primary",
+    second_mortgage: "bg-warning/10 text-warning-subtle-foreground",
+    matched_savings: "bg-primary/10 text-primary",
   };
   const labels: Record<string, string> = {
     grant: "Grant",
@@ -206,7 +206,7 @@ export default function DownPaymentWizard() {
                       <ProgramTypeBadge type={program.assistanceType} />
                       <Badge variant="outline" className="text-[10px]">{program.programType}</Badge>
                       {program.firstTimeBuyerOnly && (
-                        <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                        <Badge variant="outline" className="text-[10px] border-border/30 text-success-subtle-foreground">
                           <Users className="h-3 w-3 mr-0.5" /> First-Time Only
                         </Badge>
                       )}

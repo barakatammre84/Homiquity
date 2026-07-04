@@ -147,7 +147,7 @@ function calculateAffordabilityForProperty(
 function StatusBadge({ status }: { status: string }) {
   if (status === "affordable") {
     return (
-      <Badge variant="default" className="bg-green-600 text-white gap-1" data-testid="badge-affordable">
+      <Badge variant="default" className="bg-success text-success-foreground gap-1" data-testid="badge-affordable">
         <CheckCircle2 className="h-3 w-3" />
         Within Your Budget
       </Badge>
@@ -155,7 +155,7 @@ function StatusBadge({ status }: { status: string }) {
   }
   if (status === "stretch") {
     return (
-      <Badge variant="default" className="bg-amber-500 text-white gap-1" data-testid="badge-stretch">
+      <Badge variant="default" className="bg-warning text-warning-foreground gap-1" data-testid="badge-stretch">
         <AlertTriangle className="h-3 w-3" />
         Stretch Budget
       </Badge>
@@ -517,13 +517,13 @@ export default function AffordabilityCheck() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm text-muted-foreground">Front-End DTI (Housing)</span>
-                      <span className={`text-sm font-medium ${result.frontEndDTI > 28 ? "text-destructive" : "text-green-600"}`}>
+                      <span className={`text-sm font-medium ${result.frontEndDTI > 28 ? "text-destructive" : "text-success-subtle-foreground"}`}>
                         {result.frontEndDTI.toFixed(1)}%
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-muted overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${result.frontEndDTI > 28 ? "bg-destructive" : result.frontEndDTI > 25 ? "bg-amber-500" : "bg-green-500"}`}
+                        className={`h-full rounded-full transition-all ${result.frontEndDTI > 28 ? "bg-destructive" : result.frontEndDTI > 25 ? "bg-warning" : "bg-success"}`}
                         style={{ width: `${Math.min(result.frontEndDTI / 40 * 100, 100)}%` }}
                       />
                     </div>
@@ -532,13 +532,13 @@ export default function AffordabilityCheck() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm text-muted-foreground">Back-End DTI (All Debts)</span>
-                      <span className={`text-sm font-medium ${result.backEndDTI > result.maxBackEndDTI ? "text-destructive" : "text-green-600"}`}>
+                      <span className={`text-sm font-medium ${result.backEndDTI > result.maxBackEndDTI ? "text-destructive" : "text-success-subtle-foreground"}`}>
                         {result.backEndDTI.toFixed(1)}%
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-muted overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${result.backEndDTI > result.maxBackEndDTI ? "bg-destructive" : result.backEndDTI > result.maxBackEndDTI - 5 ? "bg-amber-500" : "bg-green-500"}`}
+                        className={`h-full rounded-full transition-all ${result.backEndDTI > result.maxBackEndDTI ? "bg-destructive" : result.backEndDTI > result.maxBackEndDTI - 5 ? "bg-warning" : "bg-success"}`}
                         style={{ width: `${Math.min(result.backEndDTI / 55 * 100, 100)}%` }}
                       />
                     </div>
@@ -546,8 +546,8 @@ export default function AffordabilityCheck() {
                   </div>
 
                   {result.downPaymentPercent < 20 && (
-                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-3">
-                      <p className="text-xs text-amber-800 dark:text-amber-300">
+                    <div className="bg-warning-subtle border border-border rounded-md p-3">
+                      <p className="text-xs text-warning-subtle-foreground">
                         Your down payment is {result.downPaymentPercent.toFixed(1)}% — below 20%. PMI of {formatCurrency(result.monthlyPMI)}/mo is included.
                         Increasing your down payment to {formatCurrency(property.price * 0.2)} eliminates PMI.
                       </p>

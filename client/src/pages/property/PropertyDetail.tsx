@@ -280,8 +280,8 @@ export default function PropertyDetail() {
                 {qualification && (
                   <Badge 
                     className={`gap-1 px-3 py-1.5 text-base ${
-                      qualification.status === "within_guidelines" ? "bg-green-500" :
-                      qualification.status === "requires_review" ? "bg-yellow-500" : "bg-red-500"
+                      qualification.status === "within_guidelines" ? "bg-success" :
+                      qualification.status === "requires_review" ? "bg-warning" : "bg-destructive"
                     }`}
                   >
                     {qualification.status === "within_guidelines" && <CheckCircle className="h-4 w-4" />}
@@ -411,8 +411,8 @@ export default function PropertyDetail() {
                       <span className="font-medium">Debt-to-Income Ratio</span>
                       <span className={
                         qualification.dtiWithProperty > 43 
-                          ? "font-medium text-yellow-600" 
-                          : "font-medium text-green-600"
+                          ? "font-medium text-warning-subtle-foreground" 
+                          : "font-medium text-success-subtle-foreground"
                       }>
                         {qualification.dtiWithProperty.toFixed(1)}%
                       </span>
@@ -457,15 +457,15 @@ export default function PropertyDetail() {
             {/* Qualification Status */}
             {qualification && (
               <Card className={
-                qualification.status === "within_guidelines" ? "border-green-200 bg-green-50/50" :
-                qualification.status === "requires_review" ? "border-yellow-200 bg-yellow-50/50" : 
-                "border-red-200 bg-red-50/50"
+                qualification.status === "within_guidelines" ? "border-border bg-success-subtle/50" :
+                qualification.status === "requires_review" ? "border-border bg-warning-subtle/50" : 
+                "border-border bg-destructive-subtle/50"
               }>
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    {qualification.status === "within_guidelines" && <CheckCircle className="h-5 w-5 text-green-600" />}
-                    {qualification.status === "requires_review" && <AlertTriangle className="h-5 w-5 text-yellow-600" />}
-                    {qualification.status === "exceeds_guidelines" && <XCircle className="h-5 w-5 text-red-600" />}
+                    {qualification.status === "within_guidelines" && <CheckCircle className="h-5 w-5 text-success-subtle-foreground" />}
+                    {qualification.status === "requires_review" && <AlertTriangle className="h-5 w-5 text-warning-subtle-foreground" />}
+                    {qualification.status === "exceeds_guidelines" && <XCircle className="h-5 w-5 text-destructive" />}
                     {qualification.status === "within_guidelines" ? "Within Guidelines" :
                      qualification.status === "requires_review" ? "Requires Review" : "Exceeds Guidelines"}
                   </CardTitle>

@@ -57,12 +57,12 @@ const serviceTypeIcons: Record<string, typeof CreditCard> = {
 };
 
 const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  submitted: "bg-blue-100 text-blue-800",
-  in_progress: "bg-purple-100 text-purple-800",
-  completed: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
-  cancelled: "bg-gray-100 text-gray-800",
+  pending: "bg-warning-subtle text-warning-subtle-foreground",
+  submitted: "bg-info-subtle text-info",
+  in_progress: "bg-secondary text-primary",
+  completed: "bg-success-subtle text-success-subtle-foreground",
+  failed: "bg-destructive-subtle text-destructive",
+  cancelled: "bg-muted text-muted-foreground",
 };
 
 const serviceTypeLabels: Record<string, string> = {
@@ -288,7 +288,7 @@ export default function PartnerServices() {
               return (
                 <Card key={provider.id} className="relative" data-testid={`card-provider-${provider.code}`}>
                   {provider.isTestMode && (
-                    <Badge className="absolute top-2 right-2 bg-yellow-100 text-yellow-800">
+                    <Badge className="absolute top-2 right-2 bg-warning-subtle text-warning-subtle-foreground">
                       Test Mode
                     </Badge>
                   )}

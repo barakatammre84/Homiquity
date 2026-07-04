@@ -75,12 +75,12 @@ export default function VaRates() {
       />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900 mb-8">
+        <Card className="bg-info-subtle border-border mb-8">
           <CardContent className="flex items-center gap-4 py-4">
-            <Star className="h-8 w-8 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <Star className="h-8 w-8 text-info flex-shrink-0" />
             <div>
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100">Thank You for Your Service</h3>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <h3 className="font-semibold text-info">Thank You for Your Service</h3>
+              <p className="text-sm text-info">
                 VA loans offer exclusive benefits including no down payment, no PMI, and competitive rates for eligible veterans, 
                 active-duty service members, and surviving spouses.
               </p>

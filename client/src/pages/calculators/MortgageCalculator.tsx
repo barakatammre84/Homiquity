@@ -192,11 +192,11 @@ export default function MortgageCalculator() {
   };
 
   const paymentBreakdown = [
-    { label: "Principal & Interest", value: results.monthlyPrincipalInterest, color: "bg-blue-500" },
-    { label: "Property Tax", value: results.monthlyPropertyTax, color: "bg-green-500" },
-    { label: "Insurance", value: results.monthlyInsurance, color: "bg-yellow-500" },
-    { label: "PMI", value: results.monthlyPMI, color: "bg-orange-500" },
-    { label: "HOA", value: results.monthlyHOA, color: "bg-purple-500" },
+    { label: "Principal & Interest", value: results.monthlyPrincipalInterest, color: "bg-chart-1" },
+    { label: "Property Tax", value: results.monthlyPropertyTax, color: "bg-chart-2" },
+    { label: "Insurance", value: results.monthlyInsurance, color: "bg-chart-3" },
+    { label: "PMI", value: results.monthlyPMI, color: "bg-chart-4" },
+    { label: "HOA", value: results.monthlyHOA, color: "bg-chart-5" },
   ].filter((item) => item.value > 0);
 
   return (
@@ -252,7 +252,7 @@ export default function MortgageCalculator() {
                     data-testid="slider-down-payment"
                   />
                   {inputs.downPaymentPercent < 20 && (
-                    <p className="mt-1 text-sm text-yellow-600">
+                    <p className="mt-1 text-sm text-warning-subtle-foreground">
                       PMI required (less than 20% down)
                     </p>
                   )}
@@ -414,7 +414,7 @@ export default function MortgageCalculator() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total Interest Paid</span>
-                    <span className="font-medium text-red-600" data-testid="text-total-interest">
+                    <span className="font-medium text-destructive" data-testid="text-total-interest">
                       {formatCurrency(results.totalInterestPaid)}
                     </span>
                   </div>
@@ -442,7 +442,7 @@ export default function MortgageCalculator() {
                     <div key={year.year} className="flex items-center justify-between text-sm">
                       <span>Year {year.year}</span>
                       <div className="flex gap-4">
-                        <span className="text-green-600">
+                        <span className="text-success-subtle-foreground">
                           +{formatCurrency(year.principal)} principal
                         </span>
                         <span className="text-muted-foreground">

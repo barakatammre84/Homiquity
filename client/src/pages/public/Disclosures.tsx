@@ -23,11 +23,11 @@ export default function Disclosures() {
       <Navigation />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(213,52%,18%)] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-blue-400/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-info/10 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-success/10 blur-3xl" />
         <div className="relative mx-auto max-w-4xl text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
-            <Shield className="h-4 w-4 text-emerald-400" />
+            <Shield className="h-4 w-4 text-success-subtle-foreground" />
             Transparency
           </div>
           <h1 className="text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl" data-testid="text-disclosures-title">
@@ -131,7 +131,7 @@ export default function Disclosures() {
               age, disability, familial status, or any other characteristic protected by federal, state, or local law.
             </p>
             <div className="flex items-start gap-3 rounded-md border p-4">
-              <AlertCircle className="h-5 w-5 shrink-0 text-amber-500" />
+              <AlertCircle className="h-5 w-5 shrink-0 text-warning-subtle-foreground" />
               <p className="text-xs text-muted-foreground leading-relaxed">
                 If you believe you have been discriminated against in a credit transaction, you may file a complaint 
                 with the Consumer Financial Protection Bureau (CFPB) at consumerfinance.gov or contact the 

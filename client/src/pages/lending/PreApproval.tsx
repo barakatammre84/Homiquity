@@ -67,7 +67,7 @@ interface Question {
   placeholder?: string;
   subtext?: string;
   /** "Why we ask" micro-copy — shown below the input, doubles as mobile
-   *  parity for the desktop-only advisory panel. */
+   * parity for the desktop-only advisory panel. */
   why?: string;
   icon?: typeof Home;
   booleanFields?: { field: keyof PreApprovalFormData; label: string; icon: typeof Home }[];
@@ -291,21 +291,21 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
       case "downPayment":
         if (formValues.isVeteran && formValues.loanPurpose === "purchase") {
           return (
-            <span className="text-green-600 dark:text-green-400 font-medium">
+            <span className="text-success-subtle-foreground font-medium">
               VA benefit detected: VA loans allow $0 down with no PMI. We'll price both VA and conventional options so you can compare.
             </span>
           );
         }
         if (stats.loanAmount > 766550) {
           return (
-            <span className="text-amber-600 dark:text-amber-400 font-medium">
+            <span className="text-warning-subtle-foreground font-medium">
               Note: This loan amount enters 'Jumbo' territory, which may require a higher credit score and larger down payment.
             </span>
           );
         }
         if (stats.downPaymentPercent >= 20) {
           return (
-            <span className="text-green-600 dark:text-green-400">
+            <span className="text-success-subtle-foreground">
               Great! Putting 20%+ down avoids PMI (Private Mortgage Insurance), saving you money each month.
             </span>
           );
@@ -318,7 +318,7 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
       case "employmentType":
         if (formValues.employmentType === "self_employed") {
           return (
-            <span className="text-green-600 dark:text-green-400">
+            <span className="text-success-subtle-foreground">
               Self-employed income confuses most automated lenders — not us. We handle 1099 and business income all the time, and we'll build you a custom document checklist so nothing stalls your approval.
             </span>
           );
@@ -345,10 +345,10 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
 
   const getDtiStatus = () => {
     if (stats.dti <= 0) return { color: "bg-muted", text: "Enter your info to see DTI" };
-    if (stats.dti < 36) return { color: "bg-green-500", text: "Looking great! Lenders love a DTI under 36%." };
-    if (stats.dti < 43) return { color: "bg-yellow-500", text: "You're in the approval zone, but consider the budget." };
-    if (stats.dti < 50) return { color: "bg-orange-500", text: "This is getting tight. You may need to reduce the loan amount." };
-    return { color: "bg-red-500", text: "This loan amount might be a stretch for standard approval." };
+    if (stats.dti < 36) return { color: "bg-success", text: "Looking great! Lenders love a DTI under 36%." };
+    if (stats.dti < 43) return { color: "bg-warning", text: "You're in the approval zone, but consider the budget." };
+    if (stats.dti < 50) return { color: "bg-warning", text: "This is getting tight. You may need to reduce the loan amount." };
+    return { color: "bg-destructive", text: "This loan amount might be a stretch for standard approval." };
   };
 
   const dtiStatus = getDtiStatus();
@@ -372,7 +372,7 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
           <div>
             <div className="flex justify-between text-xs mb-1.5">
               <span className="text-muted-foreground">Debt-to-Income Ratio</span>
-              <span className={`font-bold ${stats.dti > 43 ? "text-red-500" : stats.dti > 36 ? "text-yellow-600" : "text-green-600"}`}>
+              <span className={`font-bold ${stats.dti > 43 ? "text-destructive" : stats.dti > 36 ? "text-warning-subtle-foreground" : "text-success-subtle-foreground"}`}>
                 {stats.dti > 0 ? `${stats.dti.toFixed(0)}%` : "—"}
               </span>
             </div>
@@ -415,7 +415,7 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
         {stats.ltv > 0 && stats.ltv < 100 && (
           <div className="flex justify-between text-xs border-t pt-3">
             <span className="text-muted-foreground">Loan-to-Value (LTV)</span>
-            <span className={`font-medium ${stats.ltv <= 80 ? "text-green-600" : "text-yellow-600"}`}>
+            <span className={`font-medium ${stats.ltv <= 80 ? "text-success-subtle-foreground" : "text-warning-subtle-foreground"}`}>
               {stats.ltv.toFixed(0)}%
             </span>
           </div>

@@ -60,7 +60,7 @@ function activityToNotification(activity: DealActivity, index: number): Notifica
 
   if (type.includes("document")) {
     icon = FileText;
-    iconColor = "text-blue-500";
+    iconColor = "text-info";
     href = "/documents";
   } else if (type.includes("message")) {
     icon = MessageCircle;
@@ -68,11 +68,11 @@ function activityToNotification(activity: DealActivity, index: number): Notifica
     href = "/messages";
   } else if (type.includes("approved") || type.includes("verified")) {
     icon = CheckCircle2;
-    iconColor = "text-emerald-500";
+    iconColor = "text-success-subtle-foreground";
     href = "/dashboard";
   } else if (type.includes("task")) {
     icon = Upload;
-    iconColor = "text-amber-500";
+    iconColor = "text-warning-subtle-foreground";
     href = "/tasks";
   } else if (type.includes("denied") || type.includes("rejected")) {
     icon = AlertCircle;
@@ -112,7 +112,7 @@ function realNotificationToItem(n: RealNotification): NotificationItem {
   const type = n.type || "";
   if (type.includes("document")) {
     icon = FileText;
-    iconColor = "text-blue-500";
+    iconColor = "text-info";
     href = "/documents";
   } else if (type.includes("message")) {
     icon = MessageCircle;
@@ -120,10 +120,10 @@ function realNotificationToItem(n: RealNotification): NotificationItem {
     href = "/messages";
   } else if (type.includes("approved") || type.includes("verified")) {
     icon = CheckCircle2;
-    iconColor = "text-emerald-500";
+    iconColor = "text-success-subtle-foreground";
   } else if (type.includes("task")) {
     icon = Upload;
-    iconColor = "text-amber-500";
+    iconColor = "text-warning-subtle-foreground";
     href = "/tasks";
   } else if (type.includes("denied") || type.includes("rejected") || type.includes("alert")) {
     icon = AlertCircle;

@@ -384,7 +384,7 @@ export default function LivePropertyDetailPage() {
                         </div>
                         {school.rating !== null && (
                           <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 text-amber-500" />
+                            <Star className="h-4 w-4 text-warning-subtle-foreground" />
                             <span className="font-bold">{school.rating}/10</span>
                           </div>
                         )}

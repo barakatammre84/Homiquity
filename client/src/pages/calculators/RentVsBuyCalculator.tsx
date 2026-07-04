@@ -379,9 +379,9 @@ export default function RentVsBuyCalculator() {
             <Card
               className={`border-2 ${
                 results.recommendation === "buy"
-                  ? "border-green-500 bg-green-50 dark:bg-green-950"
+                  ? "border-border bg-success-subtle"
                   : results.recommendation === "rent"
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                  ? "border-border bg-info-subtle"
                   : "border-muted"
               }`}
             >
@@ -394,7 +394,7 @@ export default function RentVsBuyCalculator() {
                   {results.recommendation !== "neutral" && (
                     <CheckCircle2
                       className={`h-6 w-6 ${
-                        results.recommendation === "buy" ? "text-green-600" : "text-blue-600"
+                        results.recommendation === "buy" ? "text-success-subtle-foreground" : "text-info"
                       }`}
                     />
                   )}
@@ -424,7 +424,7 @@ export default function RentVsBuyCalculator() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between rounded-lg bg-muted p-4">
                     <div className="flex items-center gap-2">
-                      <Building className="h-5 w-5 text-blue-600" />
+                      <Building className="h-5 w-5 text-info" />
                       <span>Monthly Rent</span>
                     </div>
                     <span className="text-xl font-bold" data-testid="text-monthly-rent">
@@ -433,7 +433,7 @@ export default function RentVsBuyCalculator() {
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-muted p-4">
                     <div className="flex items-center gap-2">
-                      <Home className="h-5 w-5 text-green-600" />
+                      <Home className="h-5 w-5 text-success-subtle-foreground" />
                       <span>Monthly Ownership</span>
                     </div>
                     <span className="text-xl font-bold" data-testid="text-monthly-ownership">
@@ -459,9 +459,9 @@ export default function RentVsBuyCalculator() {
                         {formatCurrency(results.totalRentCost)}
                       </span>
                     </div>
-                    <div className="mt-1 h-3 rounded-full bg-blue-200">
+                    <div className="mt-1 h-3 rounded-full bg-info-subtle">
                       <div
-                        className="h-3 rounded-full bg-blue-600"
+                        className="h-3 rounded-full bg-info"
                         style={{
                           width: `${Math.min(
                             100,
@@ -483,9 +483,9 @@ export default function RentVsBuyCalculator() {
                         {formatCurrency(results.totalOwnershipCost)}
                       </span>
                     </div>
-                    <div className="mt-1 h-3 rounded-full bg-green-200">
+                    <div className="mt-1 h-3 rounded-full bg-success-subtle">
                       <div
-                        className="h-3 rounded-full bg-green-600"
+                        className="h-3 rounded-full bg-success"
                         style={{
                           width: `${Math.min(
                             100,
@@ -515,7 +515,7 @@ export default function RentVsBuyCalculator() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span>Home Equity After {inputs.yearsToStay} Years</span>
-                    <span className="font-bold text-green-600" data-testid="text-home-equity">
+                    <span className="font-bold text-success-subtle-foreground" data-testid="text-home-equity">
                       {formatCurrency(results.homeEquity)}
                     </span>
                   </div>

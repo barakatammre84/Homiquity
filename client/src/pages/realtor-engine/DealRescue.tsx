@@ -56,9 +56,9 @@ function getUrgencyVariant(urgency: string): "destructive" | "default" | "second
 
 function getUrgencyClassName(urgency: string): string {
   switch (urgency) {
-    case "high": return "bg-orange-600 text-white border-orange-600";
-    case "medium": return "bg-amber-500 text-white border-amber-500";
-    case "low": return "bg-blue-500 text-white border-blue-500";
+    case "high": return "bg-warning text-warning-foreground border-border";
+    case "medium": return "bg-warning text-warning-foreground border-border";
+    case "low": return "bg-info text-info-foreground border-border";
     default: return "";
   }
 }
@@ -74,9 +74,9 @@ function getStatusVariant(status: string): "destructive" | "default" | "secondar
 
 function getStatusClassName(status: string): string {
   switch (status) {
-    case "open": return "bg-yellow-500 text-white border-yellow-500";
-    case "in_progress": return "bg-blue-500 text-white border-blue-500";
-    case "resolved": return "bg-green-600 text-white border-green-600";
+    case "open": return "bg-warning text-warning-foreground border-border";
+    case "in_progress": return "bg-info text-info-foreground border-border";
+    case "resolved": return "bg-success text-success-foreground border-border";
     default: return "";
   }
 }
@@ -368,8 +368,8 @@ export default function DealRescue() {
         <Card data-testid="card-stat-open">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-md bg-yellow-500/10 p-2">
-                <Shield className="h-5 w-5 text-yellow-600" />
+              <div className="rounded-md bg-warning/10 p-2">
+                <Shield className="h-5 w-5 text-warning-subtle-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground" data-testid="text-stat-open-count">{openCount}</p>
@@ -394,8 +394,8 @@ export default function DealRescue() {
         <Card data-testid="card-stat-resolution">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-md bg-green-500/10 p-2">
-                <Clock className="h-5 w-5 text-green-600" />
+              <div className="rounded-md bg-success/10 p-2">
+                <Clock className="h-5 w-5 text-success-subtle-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground" data-testid="text-stat-avg-resolution">{avgResolution}</p>

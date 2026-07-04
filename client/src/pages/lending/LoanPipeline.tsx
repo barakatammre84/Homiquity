@@ -684,8 +684,8 @@ export default function LoanPipeline() {
               <Card data-testid="card-stat-conditions">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
-                      <CheckCheck className="h-6 w-6 text-green-500" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-success/10">
+                      <CheckCheck className="h-6 w-6 text-success-subtle-foreground" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold" data-testid="text-conditions-count">
@@ -704,8 +704,8 @@ export default function LoanPipeline() {
               <Card data-testid="card-stat-timeline">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-500/10">
-                      <Timer className="h-6 w-6 text-orange-500" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-warning/10">
+                      <Timer className="h-6 w-6 text-warning-subtle-foreground" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold" data-testid="text-days-pipeline">
@@ -789,7 +789,7 @@ export default function LoanPipeline() {
                     >
                       <div className="mt-0.5">
                         {condition.status === "submitted" ? (
-                          <Clock className="h-5 w-5 text-yellow-500" />
+                          <Clock className="h-5 w-5 text-warning-subtle-foreground" />
                         ) : (
                           <Circle className="h-5 w-5 text-muted-foreground" />
                         )}
@@ -837,7 +837,7 @@ export default function LoanPipeline() {
               <Card data-testid="card-cleared-conditions">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
-                    <CheckCheck className="h-5 w-5 text-green-500" />
+                    <CheckCheck className="h-5 w-5 text-success-subtle-foreground" />
                     <CardTitle className="text-lg">Cleared Items</CardTitle>
                   </div>
                 </CardHeader>
@@ -849,7 +849,7 @@ export default function LoanPipeline() {
                         className="flex items-center gap-2 text-sm text-muted-foreground"
                         data-testid={`cleared-item-${condition.id}`}
                       >
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground" />
                         <span>{condition.title}</span>
                       </div>
                     ))}

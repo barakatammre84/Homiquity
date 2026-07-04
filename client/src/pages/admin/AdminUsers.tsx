@@ -276,8 +276,8 @@ export default function AdminUsers() {
         <Card data-testid="card-stat-admins">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900">
-                <Wrench className="h-5 w-5 text-red-600 dark:text-red-300" />
+              <div className="p-2 rounded-lg bg-destructive-subtle">
+                <Wrench className="h-5 w-5 text-destructive" />
               </div>
               <div>
                 <p className="text-2xl font-bold" data-testid="text-admin-count">{userStats.admins}</p>
@@ -289,8 +289,8 @@ export default function AdminUsers() {
         <Card data-testid="card-stat-staff">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                <UserCheck className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+              <div className="p-2 rounded-lg bg-info-subtle">
+                <UserCheck className="h-5 w-5 text-info" />
               </div>
               <div>
                 <p className="text-2xl font-bold" data-testid="text-staff-count">{userStats.totalStaff}</p>
@@ -302,8 +302,8 @@ export default function AdminUsers() {
         <Card data-testid="card-stat-clients">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
-                <Home className="h-5 w-5 text-green-600 dark:text-green-300" />
+              <div className="p-2 rounded-lg bg-success-subtle">
+                <Home className="h-5 w-5 text-success-subtle-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-bold" data-testid="text-client-count">{userStats.totalClients}</p>
@@ -580,7 +580,7 @@ export default function AdminUsers() {
                             onClick={() => copyToClipboard(invite.code)}
                             data-testid={`button-copy-invite-${invite.id}`}
                           >
-                            {copiedCode === invite.code ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                            {copiedCode === invite.code ? <Check className="h-4 w-4 text-success-subtle-foreground" /> : <Copy className="h-4 w-4" />}
                           </Button>
                         )}
                       </TableCell>

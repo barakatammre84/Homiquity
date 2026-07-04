@@ -213,13 +213,13 @@ function DocStatusBadge({ status }: { status: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const lower = (status || "").toLowerCase();
-  let className = "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
+  let className = "bg-muted text-muted-foreground";
   if (lower === "complete" || lower === "ready for underwriting review") {
-    className = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200";
+    className = "bg-success-subtle text-success-subtle-foreground";
   } else if (lower === "started" || lower === "partial") {
-    className = "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
+    className = "bg-warning-subtle text-warning-subtle-foreground";
   } else if (lower === "pending items" || lower === "not started") {
-    className = "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200";
+    className = "bg-muted text-muted-foreground";
   }
   return (
     <Badge className={`text-xs no-default-hover-elevate no-default-active-elevate ${className}`} data-testid={`badge-status-${lower.replace(/\s+/g, "-")}`}>

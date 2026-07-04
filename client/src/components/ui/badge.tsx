@@ -17,7 +17,7 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-destructive-foreground shadow-xs",
 
         // Semantic status pills — subtle tint surface, AA-safe in light + dark.
-        // Reach for these instead of hand-rolling bg-emerald-100 text-emerald-800.
+        // Reach for these instead of hand-rolling raw emerald/amber palette classes.
         success:
           "border-transparent bg-success-subtle text-success-subtle-foreground",
         warning:

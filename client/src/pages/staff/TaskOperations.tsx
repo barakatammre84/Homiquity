@@ -179,21 +179,21 @@ function SlaHeatmap({ data }: { data: Record<string, { green: number; amber: num
             <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
               {stats.green > 0 && (
                 <div 
-                  className="bg-emerald-500 transition-all" 
+                  className="bg-success transition-all" 
                   style={{ width: `${(stats.green / total) * 100}%` }}
                   title={`${stats.green} on track`}
                 />
               )}
               {stats.amber > 0 && (
                 <div 
-                  className="bg-amber-500 transition-all" 
+                  className="bg-warning transition-all" 
                   style={{ width: `${(stats.amber / total) * 100}%` }}
                   title={`${stats.amber} at risk`}
                 />
               )}
               {stats.red > 0 && (
                 <div 
-                  className="bg-red-500 transition-all" 
+                  className="bg-destructive transition-all" 
                   style={{ width: `${(stats.red / total) * 100}%` }}
                   title={`${stats.red} breached`}
                 />
