@@ -1026,7 +1026,7 @@ export default function AICoach() {
           <div className="flex items-center gap-2 border-b px-3 py-2">
             <Sheet open={mobileConvOpen} onOpenChange={setMobileConvOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden" data-testid="button-mobile-conversations">
+                <Button variant="ghost" size="icon" aria-label="Conversations" className="lg:hidden" data-testid="button-mobile-conversations">
                   <MessageSquare className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
@@ -1052,7 +1052,7 @@ export default function AICoach() {
             {hasSidePanel && (
               <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="xl:hidden" data-testid="button-mobile-panel">
+                  <Button variant="ghost" size="icon" aria-label="Details panel" className="xl:hidden" data-testid="button-mobile-panel">
                     <Sparkles className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -1123,7 +1123,7 @@ export default function AICoach() {
                   data-testid="input-coach-message"
                 />
                 <Button
-                  size="icon"
+                  size="icon" aria-label="Send"
                   onClick={() => handleSend()}
                   disabled={!inputValue.trim() || sendMessage.isPending || !!usage?.isLimited}
                   data-testid="button-send-message"

@@ -305,7 +305,7 @@ export function Navigation() {
 
             <Button
               variant="ghost"
-              size="icon"
+              size="icon" aria-label="Close"
               className="lg:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               data-testid="button-mobile-menu"

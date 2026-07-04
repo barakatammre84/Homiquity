@@ -254,7 +254,7 @@ export default function InviteGenerator() {
                       data-testid="input-generated-link"
                     />
                     <Button
-                      size="icon"
+                      size="icon" aria-label="Copy link"
                       variant="outline"
                       onClick={() => copyToClipboard(generatedLink)}
                       data-testid="button-copy-link"
@@ -580,7 +580,7 @@ export default function InviteGenerator() {
                         {invite.status !== "applied" && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button size="icon" variant="ghost" data-testid={`button-more-${invite.id}`}>
+                              <Button size="icon" aria-label="More options" variant="ghost" data-testid={`button-more-${invite.id}`}>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>

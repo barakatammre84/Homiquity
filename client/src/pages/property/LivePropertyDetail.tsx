@@ -774,18 +774,18 @@ function PhotoGallery({ photos, address }: { photos: string[]; address: string }
             data-testid="img-main-photo"
           />
           <div className="absolute bottom-4 left-4 flex gap-2">
-            <Button variant="secondary" size="icon" onClick={handlePrev} data-testid="button-photo-prev">
+            <Button variant="secondary" size="icon" aria-label="Previous photo" onClick={handlePrev} data-testid="button-photo-prev">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" size="icon" onClick={handleNext} data-testid="button-photo-next">
+            <Button variant="secondary" size="icon" aria-label="Next photo" onClick={handleNext} data-testid="button-photo-next">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
           <div className="absolute bottom-4 right-4 flex gap-2">
-            <Button variant="secondary" size="icon">
+            <Button variant="secondary" size="icon" aria-label="Save">
               <Heart className="h-4 w-4" />
             </Button>
-            <Button variant="secondary" size="icon">
+            <Button variant="secondary" size="icon" aria-label="Share">
               <Share2 className="h-4 w-4" />
             </Button>
           </div>

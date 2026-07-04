@@ -256,10 +256,10 @@ export default function PropertyDetail() {
               
               {/* Action Buttons */}
               <div className="absolute right-4 top-4 flex gap-2">
-                <Button variant="secondary" size="icon">
+                <Button variant="secondary" size="icon" aria-label="Save">
                   <Heart className="h-4 w-4" />
                 </Button>
-                <Button variant="secondary" size="icon">
+                <Button variant="secondary" size="icon" aria-label="Share">
                   <Share2 className="h-4 w-4" />
                 </Button>
               </div>

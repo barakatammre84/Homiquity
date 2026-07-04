@@ -452,7 +452,7 @@ export default function AffordabilityCalculator() {
                                       {formatCurrency(debt.monthlyPayment)}/mo
                                     </span>
                                     <Button
-                                      size="icon"
+                                      size="icon" aria-label="Edit"
                                       variant="ghost"
                                       onClick={() => startEditDebt(debt)}
                                       data-testid={`button-edit-debt-${debt.id}`}
@@ -460,7 +460,7 @@ export default function AffordabilityCalculator() {
                                       <Pencil className="h-4 w-4" />
                                     </Button>
                                     <Button
-                                      size="icon"
+                                      size="icon" aria-label="Delete"
                                       variant="ghost"
                                       onClick={() => removeDebt(debt.id)}
                                       data-testid={`button-remove-debt-${debt.id}`}

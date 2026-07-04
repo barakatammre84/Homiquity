@@ -468,7 +468,7 @@ export default function AdminUsers() {
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="icon" aria-label="More options"
                               data-testid={`button-actions-${user.id}`}
                             >
                               <MoreHorizontal className="h-4 w-4" />
@@ -576,7 +576,7 @@ export default function AdminUsers() {
                         {!isUsed && !isExpired && (
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon" aria-label="Copy"
                             onClick={() => copyToClipboard(invite.code)}
                             data-testid={`button-copy-invite-${invite.id}`}
                           >
@@ -613,7 +613,7 @@ export default function AdminUsers() {
                 <code className="px-4 py-2 rounded-lg bg-muted text-lg font-mono font-bold tracking-widest" data-testid="text-new-invite-code">
                   {copiedCode}
                 </code>
-                <Button variant="ghost" size="icon" onClick={() => copyToClipboard(copiedCode)} data-testid="button-copy-new-code">
+                <Button variant="ghost" size="icon" aria-label="Copy" onClick={() => copyToClipboard(copiedCode)} data-testid="button-copy-new-code">
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>

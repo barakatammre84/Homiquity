@@ -322,7 +322,7 @@ export default function BorrowerDealComparison() {
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" data-testid="button-info-tooltip">
+                <Button variant="ghost" size="icon" aria-label="More information" data-testid="button-info-tooltip">
                   <Info className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>

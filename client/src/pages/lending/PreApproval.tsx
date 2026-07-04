@@ -1302,7 +1302,7 @@ function PreApprovalFunnel() {
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="icon"
+                                  size="icon" aria-label="Delete"
                                   data-testid={`button-remove-rental-${idx}`}
                                   onClick={() => removeRentalProperty(idx)}
                                 >

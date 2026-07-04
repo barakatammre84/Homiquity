@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Navigation } from "@/components/Navigation";
+import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { useQuery } from "@tanstack/react-query";
@@ -84,8 +85,10 @@ export default function Landing() {
         description="Homiquity gives you clarity, organization, and confidence in every stage of homeownership. Pre-approval, property search, AI coaching, and smart tools — all in one place."
         ogType="website"
       />
+      <SkipLink />
       <Navigation />
 
+      <main id="main" tabIndex={-1} className="focus:outline-none">
       <section className="relative overflow-hidden bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-precision-700/25 blur-3xl" />
         <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-precision-500/15 blur-3xl" />
@@ -353,6 +356,7 @@ export default function Landing() {
           </p>
         </div>
       </section>
+      </main>
 
       <Footer />
     </div>

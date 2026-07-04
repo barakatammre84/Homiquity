@@ -459,7 +459,7 @@ export default function BuyerProperties() {
                     {/* Save Button */}
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="icon" aria-label="Save"
                       className="absolute right-3 top-3 bg-white/80 hover:bg-white"
                       onClick={(e) => {
                         e.preventDefault();

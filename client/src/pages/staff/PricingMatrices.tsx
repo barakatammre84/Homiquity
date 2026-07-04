@@ -889,7 +889,7 @@ function PublishDialog({
                     </TableCell>
                     <TableCell>
                       <Button
-                        size="icon"
+                        size="icon" aria-label="Delete"
                         variant="ghost"
                         onClick={() => setCells((prev) => prev.filter((_, i) => i !== idx))}
                         disabled={cells.length === 1}

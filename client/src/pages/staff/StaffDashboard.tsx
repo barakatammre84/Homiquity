@@ -1108,7 +1108,7 @@ export default function StaffDashboard() {
                             {task.status === "OPEN" ? "Open" : task.status === "IN_PROGRESS" ? "In Progress" : task.status}
                           </Badge>
                           <Button
-                            size="icon"
+                            size="icon" aria-label="View"
                             variant="ghost"
                             onClick={(e) => { e.stopPropagation(); navigate(`/borrower-file/${task.applicationId}`); }}
                             data-testid={`button-view-file-${task.id}`}

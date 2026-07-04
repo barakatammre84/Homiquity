@@ -168,7 +168,7 @@ function DocumentRequestDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" data-testid="button-request-doc">
+        <Button variant="ghost" size="icon" aria-label="Request document" data-testid="button-request-doc">
           <FileUp className="h-5 w-5" />
         </Button>
       </DialogTrigger>
@@ -550,7 +550,7 @@ export default function Messages() {
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <Link href="/messages">
-              <Button variant="ghost" size="icon" data-testid="button-back">
+              <Button variant="ghost" size="icon" aria-label="Back" data-testid="button-back">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
@@ -702,7 +702,7 @@ export default function Messages() {
             data-testid="input-message"
           />
           <Button 
-            size="icon" 
+            size="icon" aria-label="Send message" 
             onClick={handleSendMessage}
             disabled={!message.trim() || sendMessageMutation.isPending}
             data-testid="button-send"

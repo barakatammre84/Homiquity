@@ -176,7 +176,7 @@ export default function LoanEstimate() {
     <>
       <div className="flex items-center justify-between border-b bg-background px-6 py-3">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="icon" aria-label="Copy link" asChild>
             <Link href={`/borrower-file/${id}`}>
               <ArrowLeft className="h-4 w-4" />
             </Link>

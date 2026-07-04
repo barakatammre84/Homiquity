@@ -186,7 +186,7 @@ export default function HmdaDemographics() {
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
-          size="icon"
+          size="icon" aria-label="Back"
           onClick={() => setLocation(`/dashboard`)}
           data-testid="button-back-dashboard"
         >

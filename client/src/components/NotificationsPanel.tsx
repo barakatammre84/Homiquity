@@ -200,7 +200,7 @@ export function NotificationsBell({ unreadCount, activities }: NotificationsBell
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative" data-testid="button-notifications">
+        <Button variant="ghost" size="icon" aria-label="Notifications" className="relative" data-testid="button-notifications">
           <Bell className="h-5 w-5" />
           {totalUnread > 0 && (
             <span

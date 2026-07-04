@@ -308,7 +308,7 @@ export function UploadDocumentDialog({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Close"
                     onClick={() => {
                       setFile(null);
                       if (fileInputRef.current) fileInputRef.current.value = "";

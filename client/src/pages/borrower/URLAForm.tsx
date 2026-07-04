@@ -783,7 +783,7 @@ export default function URLAForm() {
                           {index > 0 && (
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="icon" aria-label="Delete"
                               onClick={() => setEmploymentRecords(employmentRecords.filter((_, i) => i !== index))}
                               data-testid={`button-remove-employment-${index}`}
                             >
@@ -1106,7 +1106,7 @@ export default function URLAForm() {
                             </div>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="icon" aria-label="Delete"
                               onClick={() => setOtherIncomes(otherIncomes.filter((_, i) => i !== index))}
                               data-testid={`button-remove-income-${index}`}
                             >
@@ -1150,7 +1150,7 @@ export default function URLAForm() {
                           {index > 0 && (
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="icon" aria-label="Delete"
                               onClick={() => setAssets(assets.filter((_, i) => i !== index))}
                               data-testid={`button-remove-asset-${index}`}
                             >
@@ -1259,7 +1259,7 @@ export default function URLAForm() {
                           {index > 0 && (
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="icon" aria-label="Delete"
                               onClick={() => setLiabilities(liabilities.filter((_, i) => i !== index))}
                               data-testid={`button-remove-liability-${index}`}
                             >
