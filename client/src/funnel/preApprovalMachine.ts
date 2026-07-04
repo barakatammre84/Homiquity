@@ -1,4 +1,5 @@
 import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
+import { toNum as toNumber } from "@shared/lib/number";
 
 /**
  * Deterministic state machine for the PreApproval funnel (/apply).
@@ -76,12 +77,6 @@ export const PRE_APPROVAL_DEFAULTS: PreApprovalFormData = {
   hasAdditionalIncome: false,
   incomeSources: [],
 };
-
-function toNumber(value: string | undefined | null): number {
-  if (!value) return NaN;
-  const n = parseFloat(String(value).replace(/[,$]/g, ""));
-  return isNaN(n) ? NaN : n;
-}
 
 export interface FunnelFlags {
   /** VA-eligible purchase: $0 down allowed, no PMI. */

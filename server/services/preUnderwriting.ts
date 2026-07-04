@@ -28,6 +28,8 @@ import { sendEmail } from "./emailService";
  */
 
 import type { IncomeSourceEntry } from "@shared/schema";
+import { toNum as toNumber } from "@shared/lib/number";
+import { COMPANY_CONFIG } from "../config/company";
 import {
   adjustLiabilities,
   assessIncomeSeasoning,
@@ -84,11 +86,6 @@ export interface PreUwInput {
   transactions?: DepositoryTransaction[] | null;
 }
 
-function toNumber(value: string | number | null | undefined): number {
-  if (value === null || value === undefined) return NaN;
-  const n = typeof value === "number" ? value : parseFloat(String(value).replace(/[,$]/g, ""));
-  return isNaN(n) ? NaN : n;
-}
 
 /** Estimated PITI on the target home: 30-yr P&I at the assumed rate + tax/ins. */
 export function estimateMonthlyPITI(purchasePrice: number, downPayment: number): number {
@@ -333,7 +330,7 @@ export function buildFlagOutreach(
 
   // Configurable so non-production environments never send borrowers to the
   // wrong host; defaults preserve current production behavior.
-  const documentsUrl = `${process.env.APP_BASE_URL || "https://mortgage-stream.vercel.app"}/documents`;
+  const documentsUrl = `${COMPANY_CONFIG.baseUrl}/documents`;
 
   const subject = "Your Homiquity application: a quick document request";
   const emailText = [
