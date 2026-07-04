@@ -17,7 +17,7 @@ import {
   type AdverseAction,
   type DraftConsentProgress,
 } from "@shared/schema";
-import { eq, and, desc, lt } from "drizzle-orm";
+import { eq, and, desc, isNull, lt } from "drizzle-orm";
 import {
   computeAuditEntryHash,
   encryptSensitiveData,
@@ -1147,7 +1147,7 @@ export async function markAdverseActionDelivered(
   }
 }
 
-async function logCreditAction(data: {
+interface CreditAuditEntryInput {
   applicationId?: string;
   userId?: string;
   consentId?: string;
@@ -1159,27 +1159,48 @@ async function logCreditAction(data: {
   performedByRole?: string;
   ipAddress?: string;
   userAgent?: string;
-}): Promise<void> {
+}
+
+// Chain appends serialize through an in-process queue: concurrent writers
+// would otherwise read the same chain head and fork the chain (MCP clients
+// pipeline tool calls, so this happens in practice, not just in theory).
+// Writers in OTHER processes can still race; that needs a DB-side lock or a
+// unique (application_id, sequence_number) constraint with retry.
+let auditChainTail: Promise<unknown> = Promise.resolve();
+
+function logCreditAction(data: CreditAuditEntryInput): Promise<void> {
+  const write = auditChainTail.then(() => appendCreditAuditEntry(data));
+  auditChainTail = write.catch(() => undefined);
+  return write;
+}
+
+async function appendCreditAuditEntry(data: CreditAuditEntryInput): Promise<void> {
   const timestamp = new Date();
-  
+
   let previousEntryHash: string | null = null;
   let sequenceNumber = 1;
-  
-  if (data.applicationId) {
-    const [lastEntry] = await db
-      .select({
-        entryHash: creditAuditLog.entryHash,
-        sequenceNumber: creditAuditLog.sequenceNumber,
-      })
-      .from(creditAuditLog)
-      .where(eq(creditAuditLog.applicationId, data.applicationId))
-      .orderBy(desc(creditAuditLog.timestamp))
-      .limit(1);
-    
-    if (lastEntry) {
-      previousEntryHash = lastEntry.entryHash;
-      sequenceNumber = (lastEntry.sequenceNumber || 0) + 1;
-    }
+
+  // Chain scope: application-tied entries chain per application; entries with
+  // no application (e.g. agent tool invocations that never resolved to a loan)
+  // chain in a shared null-application scope so they stay tamper-evident too.
+  // The sequenceNumber tiebreak matters: consecutive entries often land within
+  // the same millisecond, and timestamp alone would pick the wrong chain head.
+  const chainScope = data.applicationId
+    ? eq(creditAuditLog.applicationId, data.applicationId)
+    : isNull(creditAuditLog.applicationId);
+  const [lastEntry] = await db
+    .select({
+      entryHash: creditAuditLog.entryHash,
+      sequenceNumber: creditAuditLog.sequenceNumber,
+    })
+    .from(creditAuditLog)
+    .where(chainScope)
+    .orderBy(desc(creditAuditLog.timestamp), desc(creditAuditLog.sequenceNumber))
+    .limit(1);
+
+  if (lastEntry) {
+    previousEntryHash = lastEntry.entryHash;
+    sequenceNumber = (lastEntry.sequenceNumber || 0) + 1;
   }
   
   const entryHash = computeAuditEntryHash({
@@ -1276,6 +1297,197 @@ export async function verifyAuditLogIntegrity(
     }))
   );
   
+  return { ...result, totalEntries: entries.length };
+}
+
+// ---------------------------------------------------------------------------
+// Agent (MCP) audit surface — AG-1.
+//
+// AI-agent tool invocations must land in the same tamper-evident hash chain
+// as every other credit action. Two entry points:
+//  - recordExternalSoftPull: audited persistence for soft pulls whose bureau
+//    data was fetched by an external caller (the MCP server) rather than the
+//    in-app request/complete flow.
+//  - logAgentToolInvocation: an invocation-level record (tool name, args
+//    hash, outcome, result summary) for every MCP tool call.
+//
+// AG-2 seam: callerIdentity names the transport ("mcp-stdio") until per-agent
+// identity lands; it is stored in performedByRole and in actionDetails.
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_AGENT_CALLER_IDENTITY = "mcp-stdio";
+
+export interface ExternalSoftPullVendorData {
+  simulated: boolean;
+  vendorRequestId: string;
+  experianScore: number;
+  equifaxScore: number;
+  transunionScore: number;
+  representativeScore: number;
+  vantageScore4: number;
+  tradelines: Array<{
+    creditor: string;
+    type: string;
+    balance: number;
+    monthlyPayment: number;
+    deferred?: boolean;
+    openedDaysAgo?: number;
+  }>;
+  totalDebt: number;
+  totalMonthlyPayments: number;
+}
+
+/**
+ * Persist a completed soft pull fetched by an external caller, writing the
+ * chained pull_requested / pull_completed audit entries the in-app flow gets
+ * from requestCreditPull + completion. Re-verifies the FCRA consent so no
+ * caller can persist a pull the borrower never authorized.
+ */
+export async function recordExternalSoftPull(params: {
+  applicationId: string;
+  consentId: string;
+  requestedBy: string;
+  expiresAt: Date;
+  vendor: ExternalSoftPullVendorData;
+  callerIdentity?: string;
+}): Promise<CreditPull> {
+  const callerIdentity = params.callerIdentity ?? DEFAULT_AGENT_CALLER_IDENTITY;
+
+  const consent = await getConsentById(params.consentId);
+  if (!consent || !consent.consentGiven || !consent.isActive) {
+    throw new Error("Valid consent required before credit pull");
+  }
+  if (consent.userId !== params.requestedBy) {
+    throw new Error("Consent on file does not belong to this borrower");
+  }
+
+  const { vendor } = params;
+  const bureaus = ["experian", "equifax", "transunion"];
+
+  const [pull] = await db
+    .insert(creditPulls)
+    .values({
+      applicationId: params.applicationId,
+      consentId: params.consentId,
+      requestedBy: params.requestedBy,
+      pullType: "soft",
+      bureaus,
+      status: "completed",
+      externalRequestId: vendor.vendorRequestId,
+      experianScore: vendor.experianScore,
+      equifaxScore: vendor.equifaxScore,
+      transunionScore: vendor.transunionScore,
+      representativeScore: vendor.representativeScore,
+      vantageScore4: vendor.vantageScore4,
+      totalTradelines: vendor.tradelines.length,
+      openTradelines: vendor.tradelines.length,
+      totalDebt: vendor.totalDebt.toFixed(2),
+      monthlyPayments: vendor.totalMonthlyPayments.toFixed(2),
+      // Machine-readable ledger for deterministic underwriting math
+      // (deferred-student-loan 1% rule, new-tradeline detection).
+      liabilities: vendor.tradelines,
+      vendorRequestId: vendor.vendorRequestId,
+      isSimulated: vendor.simulated,
+      completedAt: new Date(),
+      expiresAt: params.expiresAt,
+    })
+    .returning();
+
+  await logCreditAction({
+    applicationId: params.applicationId,
+    userId: params.requestedBy,
+    consentId: params.consentId,
+    creditPullId: pull.id,
+    action: "pull_requested",
+    actionDetails: { pullType: "soft", bureaus, source: callerIdentity },
+    performedBy: params.requestedBy,
+    performedByRole: callerIdentity,
+  });
+
+  await logCreditAction({
+    applicationId: params.applicationId,
+    userId: params.requestedBy,
+    consentId: params.consentId,
+    creditPullId: pull.id,
+    action: "pull_completed",
+    actionDetails: {
+      representativeScore: vendor.representativeScore,
+      bureausReturned: bureaus,
+      vendorRequestId: vendor.vendorRequestId,
+      simulated: vendor.simulated,
+      source: callerIdentity,
+    },
+    performedBy: params.requestedBy,
+    performedByRole: callerIdentity,
+  });
+
+  return pull;
+}
+
+/**
+ * Chain an invocation-level audit entry for an AI-agent tool call. Entries
+ * that resolved to an application join that application's chain; the rest
+ * join the shared null-application chain (verifyAgentAuditLogIntegrity).
+ */
+export async function logAgentToolInvocation(params: {
+  toolName: string;
+  argsHash: string;
+  outcome: "success" | "refused" | "error";
+  resultSummary?: Record<string, unknown>;
+  applicationId?: string;
+  userId?: string;
+  consentId?: string;
+  creditPullId?: string;
+  callerIdentity?: string;
+}): Promise<void> {
+  const callerIdentity = params.callerIdentity ?? DEFAULT_AGENT_CALLER_IDENTITY;
+  await logCreditAction({
+    applicationId: params.applicationId,
+    userId: params.userId,
+    consentId: params.consentId,
+    creditPullId: params.creditPullId,
+    action: "mcp_tool_invocation",
+    actionDetails: {
+      toolName: params.toolName,
+      argsHash: params.argsHash,
+      outcome: params.outcome,
+      callerIdentity,
+      ...(params.resultSummary ? { resultSummary: params.resultSummary } : {}),
+    },
+    performedByRole: callerIdentity,
+  });
+}
+
+/** Integrity check for the null-application chain (agent invocations that
+ * never resolved to a loan application). */
+export async function verifyAgentAuditLogIntegrity(): Promise<{
+  valid: boolean;
+  brokenAt?: number;
+  reason?: string;
+  totalEntries: number;
+}> {
+  const entries = await db
+    .select()
+    .from(creditAuditLog)
+    .where(isNull(creditAuditLog.applicationId))
+    .orderBy(creditAuditLog.timestamp, creditAuditLog.sequenceNumber);
+
+  if (entries.length === 0) {
+    return { valid: true, totalEntries: 0 };
+  }
+
+  const result = verifyHashChain(
+    entries.map(e => ({
+      entryHash: e.entryHash,
+      previousEntryHash: e.previousEntryHash,
+      applicationId: e.applicationId,
+      userId: e.userId,
+      action: e.action,
+      actionDetails: e.actionDetails as Record<string, any> | null,
+      timestamp: e.timestamp,
+    }))
+  );
+
   return { ...result, totalEntries: entries.length };
 }
 
