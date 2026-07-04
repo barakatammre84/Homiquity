@@ -24,7 +24,6 @@ const EMAIL_CAPTURE_PATHS = [
   "/resources",
   "/learn",
   "/education",
-  "/first-time-buyer",
   "/down-payment-wizard",
   "/article",
   "/faq",
@@ -214,6 +213,10 @@ function Router() {
         <Route path="/learn">
           <PublicPage><LearningCenter /></PublicPage>
         </Route>
+        {/* Must precede /learn/:slug — Switch takes the first match */}
+        <Route path="/learn/first-time-buyer">
+          <PublicPage><FirstTimeBuyerHub /></PublicPage>
+        </Route>
         <Route path="/learn/:slug">
           {(params) => <PublicPage><ArticleDetail /></PublicPage>}
         </Route>
@@ -234,9 +237,6 @@ function Router() {
         </Route>
         
         {/* Property Pages - Public */}
-        <Route path="/first-time-buyer">
-          <PublicPage><FirstTimeBuyerHub /></PublicPage>
-        </Route>
         <Route path="/down-payment-wizard">
           <PublicPage><DownPaymentWizard /></PublicPage>
         </Route>

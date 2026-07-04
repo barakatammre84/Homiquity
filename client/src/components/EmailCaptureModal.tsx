@@ -53,7 +53,7 @@ export function EmailCaptureModal() {
     if (isLoading) return;
     if (isAuthenticated) return;
 
-    const allowedPaths = ["/resources", "/learn", "/education", "/first-time-buyer", "/down-payment-wizard", "/article", "/faq"];
+    const allowedPaths = ["/resources", "/learn", "/education", "/down-payment-wizard", "/article", "/faq"];
     if (!allowedPaths.some(p => location.startsWith(p))) return;
 
     const state = getState();

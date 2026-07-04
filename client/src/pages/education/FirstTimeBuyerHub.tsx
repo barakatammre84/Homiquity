@@ -145,7 +145,7 @@ const COMMON_MISTAKES = [
 ];
 
 export default function FirstTimeBuyerHub() {
-  usePageView("/first-time-buyer");
+  usePageView("/learn/first-time-buyer");
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="first-time-buyer-hub">
