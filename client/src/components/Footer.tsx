@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Phone, Mail } from "lucide-react";
+import { COMPANY_IDENTITY, companyNmlsDisplay } from "@shared/companyIdentity";
 
 export function Footer() {
   // Deep Ink container in both modes (bg-primary would invert badly in dark
@@ -60,15 +61,24 @@ export function Footer() {
         </div>
 
         <div className="mt-12 border-t border-white/20 pt-8">
-          <p className="text-xs text-white/60 leading-relaxed">
-            &copy; {new Date().getFullYear()} Homiquity Inc. Equal Housing Lender. 
-            Loans made or arranged pursuant to applicable state licensing. 
-            Not available in all states.
+          {/* Broker-accurate legal copy (roadmap #33): Homiquity is a mortgage
+              broker, not a direct lender — claiming "direct loans" would be a
+              Reg N / UDAAP misrepresentation. The NMLS unique identifier
+              renders only once licensing assigns a real ID (SAFE Act / Reg H;
+              companyNmlsDisplay() returns null while PENDING — never show a
+              placeholder). */}
+          <p className="text-xs text-white/60 leading-relaxed" data-testid="text-footer-legal">
+            &copy; {new Date().getFullYear()} {COMPANY_IDENTITY.legalName}.
+            {companyNmlsDisplay() ? ` ${companyNmlsDisplay()}.` : ""} Equal Housing Opportunity.
           </p>
-          <p className="mt-4 text-xs text-white/60 leading-relaxed">
-            Home lending products offered by Homiquity Inc. are direct loans. 
-            Loans made or arranged pursuant to applicable state licensing. Not available in all states. Equal Housing Lender. 
-            NMLS Consumer Access.
+          <p className="mt-4 text-xs text-white/60 leading-relaxed" data-testid="text-footer-disclosure">
+            {COMPANY_IDENTITY.legalName} is a mortgage broker. Loans are arranged with third-party
+            wholesale lending partners and are subject to credit approval; {COMPANY_IDENTITY.shortName} does
+            not make credit decisions or fund loans. Licensing pursuant to applicable state law.
+            Not available in all states. Verify our licensing at{" "}
+            <a href="https://www.nmlsconsumeraccess.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-white transition-colors">
+              NMLS Consumer Access
+            </a>.
           </p>
         </div>
       </div>
