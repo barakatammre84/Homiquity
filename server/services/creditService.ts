@@ -1038,6 +1038,20 @@ export async function getAdverseActionsByApplication(applicationId: string): Pro
     .orderBy(desc(adverseActions.noticeDate));
 }
 
+/**
+ * Every adverse-action notice that has been generated but never marked
+ * delivered — the raw material for the ECOA §1002.9 delivery-window watchdog
+ * (see services/adverseActionDelivery.ts). The sweep classifies the entire set
+ * every run, so ordering is not load-bearing.
+ */
+export async function getUndeliveredAdverseActions(): Promise<AdverseAction[]> {
+  return db
+    .select()
+    .from(adverseActions)
+    .where(isNull(adverseActions.deliveredAt))
+    .orderBy(desc(adverseActions.noticeDate));
+}
+
 // HMDA LAR denial-reason labels (what the staff UI collects) mapped onto the
 // ECOA/Reg B adverse-action reason catalog above, so any denial can produce a
 // compliant notice without double data entry. Keep in sync with
