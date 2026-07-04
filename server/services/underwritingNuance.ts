@@ -13,7 +13,7 @@
  * service — the coach may EXPLAIN outcomes, it never computes them.
  */
 
-import type { IncomeSourceEntry } from "@shared/schema";
+import type { IncomeSourceEntry, RentalPropertyEntry } from "@shared/schema";
 
 const toNum = (v: string | number | null | undefined): number => {
   if (v === null || v === undefined) return NaN;
@@ -299,4 +299,42 @@ export function detectSignificantDeposits(
       description: t.description,
       threshold: Number(threshold.toFixed(2)),
     }));
+}
+
+// ---------------------------------------------------------------------------
+// Scenario 5 — rental income calculation (Fannie B3-3.1-08)
+// ---------------------------------------------------------------------------
+
+/** Fannie Mae B3-3.1-08: qualifying rental income = 75% of gross rent (a
+ * standard 25% vacancy/expense factor), net of the rental property's PITIA. */
+export const RENTAL_INCOME_VACANCY_FACTOR = 0.75;
+
+export interface RentalIncomeOffset {
+  address: string;
+  grossMonthlyRent: number;
+  qualifyingRentalIncome: number;
+  monthlyPitia: number;
+  /** qualifyingRentalIncome − monthlyPitia; negative values add to DTI. */
+  netOffset: number;
+}
+
+/** Per-property rental income offset from intake's rentalProperties entries. */
+export function calculateRentalIncomeOffsets(
+  rentalProperties: RentalPropertyEntry[] | null | undefined,
+): RentalIncomeOffset[] {
+  if (!rentalProperties || rentalProperties.length === 0) return [];
+  return rentalProperties.map((p) => {
+    const grossMonthlyRent = toNum(p.monthlyRentalIncome);
+    const monthlyPitia = toNum(p.monthlyDebtPayment);
+    const rent = isNaN(grossMonthlyRent) ? 0 : grossMonthlyRent;
+    const pitia = isNaN(monthlyPitia) ? 0 : monthlyPitia;
+    const qualifyingRentalIncome = rent * RENTAL_INCOME_VACANCY_FACTOR;
+    return {
+      address: p.address,
+      grossMonthlyRent: rent,
+      qualifyingRentalIncome,
+      monthlyPitia: pitia,
+      netOffset: qualifyingRentalIncome - pitia,
+    };
+  });
 }

@@ -13,6 +13,7 @@ import {
 } from "../underwriting";
 import { calculateLLPA, getAreaMedianIncome } from "../pricing";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
+import { assertStageRequirements } from "@shared/stageRequirements";
 
 /**
  * Checks whether a staff user is authorized to mutate a specific loan application.
@@ -517,6 +518,23 @@ export function registerUnderwritingRoutes(
         } catch (guardErr) {
           return res.status(422).json({
             error: guardErr instanceof Error ? guardErr.message : "Financial data must be verified",
+          });
+        }
+
+        // ...and must carry a coherent loan amount — a decision stage with no
+        // pre-approval amount or purchase price is an impossible state (#7).
+        try {
+          assertStageRequirements(
+            {
+              status: newStage,
+              preApprovalAmount: application.preApprovalAmount,
+              purchasePrice: application.purchasePrice,
+            },
+            `advancing to '${newStage}'`,
+          );
+        } catch (guardErr) {
+          return res.status(422).json({
+            error: guardErr instanceof Error ? guardErr.message : "A loan amount is required at this stage",
           });
         }
       }

@@ -12,6 +12,7 @@ import {
 import { eq, and, gte, sql, desc, isNotNull, avg } from "drizzle-orm";
 import { buildBorrowerGraph } from "./borrowerGraph";
 import { emitEvent } from "./analyticsEventPipeline";
+import { isCommittedStage } from "@shared/stageRequirements";
 import { createHash } from "crypto";
 
 interface PredictionInput {
@@ -33,6 +34,7 @@ interface PredictionInput {
   isVeteran: boolean;
   engagementLevel: string;
   intentScore: number;
+  committedStage: boolean;
 }
 
 function hashInput(input: PredictionInput): string {
@@ -88,6 +90,10 @@ export async function computePrediction(
     isVeteran: activeApp?.isVeteran || false,
     engagementLevel: graph.predictiveSignals.engagementLevel,
     intentScore: graph.predictiveSignals.intentScore,
+    // Once the borrower has a pre-approval or later, engagement-based
+    // "uncertainty" signals no longer apply (§4.3). Part of the input so the
+    // prediction cache differentiates committed vs. pre-commitment borrowers.
+    committedStage: isCommittedStage(activeApp?.status),
   };
 
   const inputHash = hashInput(input);
@@ -162,8 +168,14 @@ export async function computePrediction(
   if (input.hasBankruptcy) { score -= 8; riskFactors.push("Prior bankruptcy history"); }
 
   if (input.engagementLevel === "high") { score += 5; positiveFactors.push("High platform engagement"); }
-  else if (input.engagementLevel === "dormant") { score -= 10; riskFactors.push("Borrower appears inactive"); }
-  else if (input.engagementLevel === "low") { score -= 3; riskFactors.push("Low engagement may indicate uncertainty"); }
+  else if (!input.committedStage) {
+    // Engagement-based uncertainty signals only apply pre-commitment. A borrower
+    // at pre-approval or beyond has demonstrated intent; low recent clickstream
+    // activity there means mid-process, not wavering — flagging "uncertain /
+    // inactive" would contradict their status (§4.3).
+    if (input.engagementLevel === "dormant") { score -= 10; riskFactors.push("Borrower appears inactive"); }
+    else if (input.engagementLevel === "low") { score -= 3; riskFactors.push("Low engagement may indicate uncertainty"); }
+  }
 
   if (input.intentScore >= 70) { score += 5; positiveFactors.push("Strong intent signals"); }
 

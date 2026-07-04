@@ -35,6 +35,7 @@ import * as creditService from "../services/creditService";
 import { sendNotificationEmail } from "../services/emailService";
 import { COMPANY_CONFIG } from "../config/company";
 import { assertVerifiedForDecisioning, isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
+import { assertStageRequirements } from "@shared/stageRequirements";
 import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
@@ -1121,12 +1122,22 @@ export function registerLendingRoutes(
         (async () => {
           const svc = await import("../extractionService");
           const extracted = await svc[extractor](document.storagePath);
+          const { recordCoarseExtraction } = await import("../services/documentConfidence");
+          const { humanReviewRequired } = await recordCoarseExtraction({
+            documentId: document.id,
+            documentType,
+            applicationId: applicationId || null,
+            confidence: extracted.confidence,
+            extractedFields: extracted.extractedFields,
+            fileSize: document.fileSize ?? undefined,
+          });
           await storage.updateDocument(document.id, {
-            status: extracted.confidence === "high" ? "verified" : "uploaded",
+            status: !humanReviewRequired ? "verified" : "uploaded",
             notes: JSON.stringify({
               extractedAt: new Date().toISOString(),
               extractedFields: extracted.extractedFields,
               confidence: extracted.confidence,
+              humanReviewRequired,
               warnings: extracted.warnings,
             }),
           });
@@ -1302,6 +1313,24 @@ export function registerLendingRoutes(
             error: guardErr instanceof Error ? guardErr.message : "Financial data must be verified",
           });
         }
+      }
+
+      // Every amount-bearing status must carry a coherent loan amount — a
+      // pre-approval/approval/underwriting file with no amount is an impossible
+      // state. Self-filters to a no-op for pre-decision statuses (#7).
+      try {
+        assertStageRequirements(
+          {
+            status,
+            preApprovalAmount: application.preApprovalAmount,
+            purchasePrice: application.purchasePrice,
+          },
+          `setting status to '${status}'`,
+        );
+      } catch (guardErr) {
+        return res.status(422).json({
+          error: guardErr instanceof Error ? guardErr.message : "A loan amount is required at this stage",
+        });
       }
 
       const previousStatus = application.status;

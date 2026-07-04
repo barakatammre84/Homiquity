@@ -78,25 +78,50 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
   let applicationId: string;
   let propertyId: string | undefined;
 
+  // This suite's fixture application. The calculate-* endpoints take their
+  // inputs in the request body, so the row is mostly a container for the :id;
+  // the affordability + loan-estimate cases read creditScore/purchasePrice.
+  const FIXTURE = {
+    annualIncome: "120000",
+    monthlyDebts: "500",
+    creditScore: "760",
+    employmentType: "employed",
+    employmentYears: "5",
+    propertyType: "single_family",
+    purchasePrice: "400000",
+    downPayment: "40000",
+    loanPurpose: "purchase",
+    propertyState: "CA",
+    isFirstTimeBuyer: true,
+  };
+
   beforeAll(async () => {
     cookie = await login("buyer@test.com", process.env.DEV_TEST_PASSWORD!);
 
-    const created = await authPost(cookie, "/api/loan-applications", {
-      annualIncome: "120000",
-      monthlyDebts: "500",
-      creditScore: "760",
-      employmentType: "employed",
-      employmentYears: "5",
-      propertyType: "single_family",
-      purchasePrice: "400000",
-      downPayment: "40000",
-      loanPurpose: "purchase",
-      propertyState: "CA",
-      isFirstTimeBuyer: true,
-    });
-    expect(created.status).toBe(201);
-    expect(created.body).toHaveProperty("id");
-    applicationId = created.body.id;
+    // Self-cleaning by reuse: find an existing fixture application before
+    // creating one, so consecutive runs don't accumulate orphan pre-approved
+    // applications for buyer@test.com and drift the admin dashboards (#10).
+    // Delete-based cleanup isn't viable here — loan_applications has ~30 child
+    // FKs with no ON DELETE CASCADE and no delete endpoint — so an idempotent,
+    // reused fixture is the robust way to keep runs from drifting the DB.
+    const existing = await authGet(cookie, "/api/loan-applications");
+    const match = Array.isArray(existing.body)
+      ? existing.body.find(
+          (a: any) =>
+            Number(a.creditScore) === 760 &&
+            parseFloat(a.purchasePrice) === 400000 &&
+            a.propertyState === "CA",
+        )
+      : undefined;
+
+    if (match) {
+      applicationId = match.id;
+    } else {
+      const created = await authPost(cookie, "/api/loan-applications", FIXTURE);
+      expect(created.status).toBe(201);
+      expect(created.body).toHaveProperty("id");
+      applicationId = created.body.id;
+    }
 
     const props = await publicGet("/api/properties");
     expect(Array.isArray(props.body)).toBe(true);

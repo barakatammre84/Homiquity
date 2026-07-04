@@ -31,6 +31,7 @@ import type { IncomeSourceEntry } from "@shared/schema";
 import {
   adjustLiabilities,
   assessIncomeSeasoning,
+  calculateRentalIncomeOffsets,
   computeDti,
   computeWhatIfPayoff,
   detectSignificantDeposits,
@@ -52,7 +53,8 @@ export type PreUwFlagCode =
   | "COMPLEX_INCOME_CHECK"
   | "INCOME_SEASONING"
   | "VERIFIED_DEBT_DTI"
-  | "LARGE_DEPOSIT_SOURCING";
+  | "LARGE_DEPOSIT_SOURCING"
+  | "RENTAL_INCOME_OFFSET";
 
 export interface PreUwRequiredDoc {
   documentType: string;
@@ -264,6 +266,37 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     }
   }
 
+  // --- Rental income calculation (Fannie B3-3.1-08): 75% of gross rent, net
+  // of the property's PITIA, per rental property declared at intake. --------
+  const rentalProperties = (input.incomeSources ?? [])
+    .filter((s) => s.type === "rental")
+    .flatMap((s) => s.rentalProperties ?? []);
+  const rentalOffsets = calculateRentalIncomeOffsets(rentalProperties);
+  if (rentalOffsets.length > 0) {
+    const totalQualifying = rentalOffsets.reduce((sum, r) => sum + r.qualifyingRentalIncome, 0);
+    const totalNetOffset = rentalOffsets.reduce((sum, r) => sum + r.netOffset, 0);
+    flags.push({
+      code: "RENTAL_INCOME_OFFSET",
+      severity: "warning",
+      reason:
+        `We applied a 25% vacancy/expense factor to your reported rental income (standard guidelines): ` +
+        `$${Math.round(totalQualifying).toLocaleString()}/month qualifying across ${rentalOffsets.length} propert${rentalOffsets.length === 1 ? "y" : "ies"}, ` +
+        (totalNetOffset >= 0
+          ? `net of the property payment this adds $${Math.round(totalNetOffset).toLocaleString()}/month toward your qualifying income.`
+          : `net of the property payment this adds $${Math.round(Math.abs(totalNetOffset)).toLocaleString()}/month to your qualifying debt.`) +
+        ` Please upload the executed lease agreement(s) and your most recent Schedule E to document rental history.`,
+      requiredDocs: [
+        { documentType: "lease_agreement", description: "Executed lease agreement for each rental property" },
+        { documentType: "tax_return", description: "Most recent Schedule E (Form 1040) documenting rental history" },
+      ],
+      metrics: {
+        propertyCount: rentalOffsets.length,
+        totalQualifyingRentalIncome: Number(totalQualifying.toFixed(2)),
+        totalNetOffset: Number(totalNetOffset.toFixed(2)),
+      },
+    });
+  }
+
   return flags;
 }
 
@@ -285,6 +318,7 @@ export function buildFlagOutreach(
       case "INCOME_SEASONING":
       case "VERIFIED_DEBT_DTI":
       case "LARGE_DEPOSIT_SOURCING":
+      case "RENTAL_INCOME_OFFSET":
         // These reasons are already written borrower-first with the specific
         // numbers and the resolution path baked in.
         return f.reason;
