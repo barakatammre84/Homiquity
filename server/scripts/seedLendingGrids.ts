@@ -151,6 +151,39 @@ export async function seed() {
   }
 
   // ==========================================
+  // SEED: Conventional max LTV by occupancy x units (Fannie Eligibility Matrix)
+  // ==========================================
+  const maxLtvId = await createMatrix(
+    "CONVENTIONAL_MAX_LTV",
+    "Maximum LTV for purchase, fixed-rate conventional loans by unit count and occupancy",
+  );
+
+  // [units, occupancy] -> max LTV. Standard purchase/fixed-rate limits.
+  // Second homes are 1-unit only; other combinations are intentionally unseeded
+  // (out of band -> manual review).
+  const maxLtvDefs: Array<{ units: number; occupancy: string; maxLtv: number }> = [
+    { units: 1, occupancy: "PRIMARY", maxLtv: 95 },
+    { units: 2, occupancy: "PRIMARY", maxLtv: 85 },
+    { units: 3, occupancy: "PRIMARY", maxLtv: 75 },
+    { units: 4, occupancy: "PRIMARY", maxLtv: 75 },
+    { units: 1, occupancy: "SECOND", maxLtv: 90 },
+    { units: 1, occupancy: "INVESTMENT", maxLtv: 85 },
+    { units: 2, occupancy: "INVESTMENT", maxLtv: 75 },
+    { units: 3, occupancy: "INVESTMENT", maxLtv: 75 },
+    { units: 4, occupancy: "INVESTMENT", maxLtv: 75 },
+  ];
+
+  for (const def of maxLtvDefs) {
+    await db.insert(lookupMatrixCells).values({
+      matrixId: maxLtvId,
+      dim1Min: def.units.toString(),
+      dim1Max: def.units.toString(),
+      dim3Identifier: def.occupancy,
+      outputValue: def.maxLtv.toString(),
+    });
+  }
+
+  // ==========================================
   // SEED: Fannie Mae Conforming LLPA Matrix
   // ==========================================
   const llpaId = await createMatrix("FANNIE_LLPA", "Standard baseline upfront risk-adjusted fees by Credit Score vs Rounded LTV");

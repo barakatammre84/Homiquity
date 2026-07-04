@@ -49,6 +49,19 @@ const GRIDS: Record<string, Cell[]> = {
   CONVENTIONAL_LTV_CAP: [{ value: 95 }],
   CONVENTIONAL_FICO_FLOOR: [{ value: 620 }],
   CONFORMING_LOAN_LIMIT: [{ value: CONFORMING_LOAN_LIMIT_2026 }],
+  // Occupancy x units max LTV (Fannie Eligibility Matrix). Second homes are
+  // 1-unit only; other combinations are intentionally unseeded (out of band).
+  CONVENTIONAL_MAX_LTV: [
+    { d1Min: 1, d1Max: 1, d3: "PRIMARY", value: 95 },
+    { d1Min: 2, d1Max: 2, d3: "PRIMARY", value: 85 },
+    { d1Min: 3, d1Max: 3, d3: "PRIMARY", value: 75 },
+    { d1Min: 4, d1Max: 4, d3: "PRIMARY", value: 75 },
+    { d1Min: 1, d1Max: 1, d3: "SECOND", value: 90 },
+    { d1Min: 1, d1Max: 1, d3: "INVESTMENT", value: 85 },
+    { d1Min: 2, d1Max: 2, d3: "INVESTMENT", value: 75 },
+    { d1Min: 3, d1Max: 3, d3: "INVESTMENT", value: 75 },
+    { d1Min: 4, d1Max: 4, d3: "INVESTMENT", value: 75 },
+  ],
   HAIRCUT_STOCK_INVESTMENT: [{ value: 60 }],
   HAIRCUT_RETIREMENT: [{ value: 70 }],
   CONVENTIONAL_PMI: [],
@@ -173,6 +186,7 @@ const mocks = vi.hoisted(() => ({
   getOtherIncomeSources: vi.fn(),
   getUrlaLiabilities: vi.fn(),
   getUrlaAssets: vi.fn(),
+  getUrlaPropertyInfo: vi.fn(),
   generateLoanEstimate: vi.fn(),
 }));
 
@@ -205,6 +219,7 @@ function primeOrchestrator(app: Record<string, unknown>, data: {
   otherIncome?: Record<string, unknown>[];
   liabilities?: Record<string, unknown>[];
   urlaAssets?: Record<string, unknown>[];
+  propertyInfo?: Record<string, unknown>;
   piti?: number;
 } = {}) {
   mocks.getLoanApplication.mockResolvedValue(app);
@@ -212,6 +227,7 @@ function primeOrchestrator(app: Record<string, unknown>, data: {
   mocks.getOtherIncomeSources.mockResolvedValue(data.otherIncome ?? []);
   mocks.getUrlaLiabilities.mockResolvedValue(data.liabilities ?? []);
   mocks.getUrlaAssets.mockResolvedValue(data.urlaAssets ?? []);
+  mocks.getUrlaPropertyInfo.mockResolvedValue(data.propertyInfo ?? undefined);
   mocks.generateLoanEstimate.mockResolvedValue({
     projectedPayments: { years1Through5: { estimatedTotal: data.piti ?? 3000 } },
   });
@@ -345,38 +361,47 @@ describe("Persona 1 — Marcus Vale (K-1 losses + $2M asset spike)", () => {
 // application is filed as a single-family primary residence.
 // ===========================================================================
 describe("Persona 2 — Dana Okafor (multi-unit filed as SFR primary)", () => {
-  it("PIN: the engine input has no occupancy/property-type field, so the 4-plex investor approves as an owner-occupant", async () => {
-    // Every field below is identical whether the collateral is an SFR primary
-    // or a 4-unit investment — UnderwritingInput cannot express the difference.
-    const result = await makeEngine().evaluate(baseConventionalInput({
-      baseMonthlyIncome: 15000,
-      existingMonthlyDebts: 1500,
-      originalLoanAmount: 666_000,
-      contractSalesPrice: 740_000,
-      appraisalValue: 740_000,
-      representativeFico: 745,
-      proposedPiti: 4800,
-    }));
+  const fourPlexFinancials = {
+    baseMonthlyIncome: 15000,
+    existingMonthlyDebts: 1500,
+    originalLoanAmount: 666_000,
+    contractSalesPrice: 740_000,
+    appraisalValue: 740_000,
+    representativeFico: 745,
+    proposedPiti: 4800,
+  } as const;
+
+  it("FIXED(#3b): a 90% LTV 4-unit investment property is REJECTED, not approved on the SFR path", async () => {
+    const result = await makeEngine().evaluate(
+      baseConventionalInput({ ...fourPlexFinancials, occupancyType: "investment", numberOfUnits: 4 }),
+    );
     expect(result.calculatedLtv).toBe(90);
-    expect(result.decision).toBe("APPROVED");
-    // Priced with owner-occupied SFR grids: no investment-occupancy or
-    // 2-4-unit LLPA exists in the matrix to even query.
-    expect(result.resolvedPmiMonthlyPremium).toBeCloseTo((666_000 * 0.0038) / 12, 6);
+    // Agency caps a 4-unit investment at 75% LTV — 90% is ineligible.
+    expect(result.decision).toBe("REJECTED");
+    expect(result.rejectionReasons.join(" ")).toMatch(/4-unit investment/);
+    expect(result.rejectionReasons.join(" ")).toMatch(/75% maximum/);
+    // Nothing priced on the rejected file.
+    expect(result.resolvedPmiMonthlyPremium).toBe(0);
   });
 
-  it.fails("SPEC: a 90% LTV 4-unit investment property must not auto-approve down the SFR primary path", async () => {
-    const result = await makeEngine().evaluate(baseConventionalInput({
-      baseMonthlyIncome: 15000,
-      existingMonthlyDebts: 1500,
-      originalLoanAmount: 666_000,
-      contractSalesPrice: 740_000,
-      appraisalValue: 740_000,
-      representativeFico: 745,
-      proposedPiti: 4800,
-    }));
-    // Requires occupancy/units on UnderwritingInput plus an eligibility rule
-    // (agency caps multi-unit investment LTV far below 90%).
-    expect(result.decision).not.toBe("APPROVED");
+  it("DEFAULT: with no occupancy/units captured, the engine still assumes a 1-unit primary (residual gap for #3c)", async () => {
+    // Same financials, occupancy omitted: defaults to 1-unit primary (95% cap),
+    // so 90% approves. Catching a MISREPRESENTED type (declared SFR, actually a
+    // 4-plex) needs the vendor-lookup reconciliation layer, not this rule.
+    const result = await makeEngine().evaluate(baseConventionalInput(fourPlexFinancials));
+    expect(result.decision).toBe("APPROVED");
+  });
+
+  it("FIXED(#3b): the orchestrator pulls occupancy/units from URLA property info and declines the mismatch", async () => {
+    primeOrchestrator(makeApp({ annualIncome: "180000" }), {
+      piti: 4000,
+      propertyInfo: { occupancyType: "investment", numberOfUnits: 4 },
+    });
+    const d = await runInstantDecision("app-1");
+    // loan 720k / value 900k = 80% LTV on a 4-unit investment (75% cap).
+    expect(d.status).toBe("DECISION_READY");
+    expect(d.decision).toBe("REJECTED");
+    expect(d.reasons.join(" ")).toMatch(/4-unit investment/);
   });
 
   it("PIN: an unparseable appraised value silently collapses to the contract price", async () => {

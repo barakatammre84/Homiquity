@@ -43,6 +43,27 @@ export interface AssetProfile {
   balance: number;
 }
 
+/**
+ * Normalizes the free-text occupancy string written across the app
+ * (primary_residence / primary, second_home / secondary, investment /
+ * investment_property, …) to the matrix's dim3 identifier plus a human label.
+ * Unknown/absent values fall back to owner-occupied primary — the least
+ * restrictive, pre-existing default.
+ */
+function normalizeOccupancy(occupancyType: string | null | undefined): {
+  code: "PRIMARY" | "SECOND" | "INVESTMENT";
+  label: string;
+} {
+  const t = (occupancyType ?? "").toLowerCase();
+  if (/(^|[^a-z])(invest|investor|rental|non[-_ ]?owner)/.test(t)) {
+    return { code: "INVESTMENT", label: "investment" };
+  }
+  if (/(second|secondary|vacation)/.test(t)) {
+    return { code: "SECOND", label: "second home" };
+  }
+  return { code: "PRIMARY", label: "primary residence" };
+}
+
 export interface UnderwritingInput {
   isVeteran: boolean;
   isActiveDuty?: boolean;
@@ -59,6 +80,16 @@ export interface UnderwritingInput {
   homeSquareFootage?: number;
   subjectPropertyState?: string;
   householdFamilySize?: number;
+  /**
+   * Subject-property occupancy and unit count. Agency max LTV varies sharply by
+   * both — an investment 2-4 unit is capped far below an owner-occupied SFR — so
+   * omitting them (the prior behavior) let a multi-unit investment file be
+   * priced as an owner-occupied single-family. Free-text occupancy is normalized
+   * internally; both default conservatively to a 1-unit primary residence when
+   * absent, preserving the pre-existing single-family behavior.
+   */
+  occupancyType?: string;
+  numberOfUnits?: number;
 }
 
 export interface UnderwritingResult {
@@ -178,6 +209,24 @@ export class ConsolidatedUnderwritingEngine {
       const conformingLimit = await this.resolver.getPolicyScalar("CONFORMING_LOAN_LIMIT");
       if (input.originalLoanAmount > conformingLimit) {
         exceedsConformingLimit = true;
+      }
+
+      // Occupancy/units LTV eligibility (Fannie Eligibility Matrix). The agency
+      // max LTV depends on both occupancy and unit count — an investment 2-4
+      // unit is capped far below an owner-occupied SFR — so enforce the specific
+      // cap here. Absent data defaults to a 1-unit primary residence, matching
+      // the prior single-family behavior. An unseeded combination (e.g. a 2-unit
+      // second home, or 5+ units) is out of band -> human review.
+      const occupancy = normalizeOccupancy(input.occupancyType);
+      const units = input.numberOfUnits && input.numberOfUnits >= 1 ? Math.floor(input.numberOfUnits) : 1;
+      const occupancyMaxLtv = await this.resolveOrOutOfBand(
+        { matrixCode: "CONVENTIONAL_MAX_LTV", dim1Value: units, dim3Identifier: occupancy.code },
+        "occupancy/units LTV eligibility",
+      );
+      if (calculatedLtv > occupancyMaxLtv) {
+        reasons.push(
+          `Calculated LTV of ${calculatedLtv.toFixed(2)}% exceeds the ${occupancyMaxLtv}% maximum for a ${units}-unit ${occupancy.label} property`,
+        );
       }
 
       if (calculatedDti > stretchDti * 100) {
