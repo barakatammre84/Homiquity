@@ -44,6 +44,7 @@ const Landing = lazy(() => import("@/pages/public/Landing"));
 const Refinance = lazy(() => import("@/pages/public/Refinance"));
 const VALoans = lazy(() => import("@/pages/public/VALoans"));
 const SelfEmployed = lazy(() => import("@/pages/public/SelfEmployed"));
+const FirstTimeBuyer = lazy(() => import("@/pages/public/FirstTimeBuyer"));
 const Privacy = lazy(() => import("@/pages/public/Privacy"));
 const Terms = lazy(() => import("@/pages/public/Terms"));
 const Disclosures = lazy(() => import("@/pages/public/Disclosures"));
@@ -185,6 +186,7 @@ function Router() {
         <Route path="/refinance" component={Refinance} />
         <Route path="/va-loans" component={VALoans} />
         <Route path="/self-employed" component={SelfEmployed} />
+        <Route path="/first-time-buyer" component={FirstTimeBuyer} />
         <Route path="/login"><BareLayout><Login /></BareLayout></Route>
         <Route path="/signup"><BareLayout><Signup /></BareLayout></Route>
         <Route path="/forgot-password"><BareLayout><ForgotPassword /></BareLayout></Route>

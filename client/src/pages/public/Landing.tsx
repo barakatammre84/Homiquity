@@ -32,7 +32,7 @@ const AUDIENCE_PATHS = [
     title: "First-Time Buyers",
     description: "Not sure where to start? We'll walk you through it step by step.",
     cta: "See Where You Stand",
-    href: "/ai-coach",
+    href: "/first-time-buyer",
   },
   {
     id: "homeowners",
