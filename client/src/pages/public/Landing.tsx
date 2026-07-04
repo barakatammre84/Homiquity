@@ -55,8 +55,8 @@ const AUDIENCE_PATHS = [
     icon: Briefcase,
     title: "Complex Income",
     description: "Self-employed, multiple properties, or non-traditional income? We handle it.",
-    cta: "Get Pre-Approved",
-    href: "/apply",
+    cta: "See How We Handle It",
+    href: "/self-employed",
   },
   {
     id: "veterans",

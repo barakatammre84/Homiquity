@@ -561,7 +561,10 @@ function PreApprovalFunnel() {
     mode: "onChange",
     defaultValues: {
       annualIncome: "",
-      employmentType: "employed",
+      // /self-employed pre-screens income shape; honor it so those borrowers
+      // land with the right employment type preselected (still editable at
+      // its step — the route recomputes if they change it).
+      employmentType: urlType === "self-employed" ? "self_employed" : "employed",
       employmentYears: "",
       monthlyDebts: "",
       creditScore: "",
