@@ -999,7 +999,7 @@ function PreApprovalFunnel() {
               />
             </div>
             {fieldError && (
-              <p className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
+              <p role="alert" className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 {fieldError.message as string}
               </p>
@@ -1034,7 +1034,7 @@ function PreApprovalFunnel() {
               />
             </div>
             {fieldError && (
-              <p className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
+              <p role="alert" className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 {fieldError.message as string}
               </p>

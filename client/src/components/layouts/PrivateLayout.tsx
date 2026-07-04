@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { NotificationsBell } from "@/components/NotificationsPanel";
+import { SkipLink } from "@/components/SkipLink";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { isStaffRole } from "@shared/roles";
 import type { DealActivity } from "@shared/schema";
@@ -93,6 +94,7 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
 
   return (
     <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+      <SkipLink />
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
@@ -112,7 +114,7 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
               )}
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto bg-background pb-16 md:pb-0">
+          <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto bg-background pb-16 md:pb-0 focus:outline-none">
             {children}
           </main>
           <MobileBottomNav />
