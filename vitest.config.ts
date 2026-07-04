@@ -52,6 +52,7 @@ export default defineConfig({
       "tests/loanDeliveryEdits.test.ts",
       "tests/brokerSubmissionReadiness.test.ts",
       "tests/lenderSubmission.test.ts",
+      "tests/pipelineEngineDocumentRequirements.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
