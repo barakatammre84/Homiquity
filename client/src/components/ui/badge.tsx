@@ -16,6 +16,15 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow-xs",
 
+        // Semantic status pills — subtle tint surface, AA-safe in light + dark.
+        // Reach for these instead of hand-rolling bg-emerald-100 text-emerald-800.
+        success:
+          "border-transparent bg-success-subtle text-success-subtle-foreground",
+        warning:
+          "border-transparent bg-warning-subtle text-warning-subtle-foreground",
+        info:
+          "border-transparent bg-info-subtle text-info-subtle-foreground",
+
         outline: " border [border-color:var(--badge-outline)] shadow-xs",
       },
     },

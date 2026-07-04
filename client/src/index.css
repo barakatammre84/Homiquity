@@ -47,27 +47,44 @@
   /* Accent: Deep Ink #0C1625 — quieter than primary, same hue family */
   --accent: 216 51% 10%;
   --accent-foreground: 0 0% 100%;
-  /* Semantic pop: danger #EF4444 */
-  --destructive: 0 84% 60%;
+  /* Semantic pop: danger. Red-600 (was red-500 #EF4444) so white text on the
+     solid fill clears WCAG AA (4.80:1, was 3.76:1). */
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   /* Input borders: between Dusty Ice and Frost */
   --input: 216 30% 79%;
   --ring: 216 60% 5%;
-  /* Charts: value ramp + semantic pop */
-  --chart-1: 216 51% 10%;
-  --chart-2: 215 29% 34%;
-  --chart-3: 217 29% 64%;
-  --chart-4: 160 84% 39%;
-  --chart-5: 38 92% 51%;
-  /* Semantic pop: success #10B981 (Day 1 Certainty / auto-approved) */
+  /* Charts: colorblind-safe CATEGORICAL set (max hue separation, tinted to the
+     brand). Deliberately does NOT reuse success/warning hues so a green series
+     never reads as "good". For a single ordered metric use the navy value ramp
+     (precision.900→300) instead of these. */
+  --chart-1: 216 51% 24%;  /* navy anchor */
+  --chart-2: 184 65% 34%;  /* teal */
+  --chart-3: 38 85% 45%;   /* amber */
+  --chart-4: 255 55% 58%;  /* indigo */
+  --chart-5: 340 68% 50%;  /* rose */
+  /* Semantic pop: success #10B981 (Day 1 Certainty / auto-approved).
+     Foreground is Obsidian, not white — dark-on-emerald is 7.78:1 (AA);
+     white-on-emerald was only 2.54:1. Matches warning's dark-on-fill model. */
   --success: 160 84% 39%;
-  --success-foreground: 0 0% 100%;
+  --success-foreground: 216 60% 5%;
   /* Semantic pop: warning #F59E0B (pending review) */
   --warning: 38 92% 51%;
   --warning-foreground: 216 60% 5%;
   /* Info: mid-value of the house hue */
   --info: 216 51% 40%;
   --info-foreground: 0 0% 100%;
+  /* Subtle semantic surfaces — the AA-safe pattern for status badges/alerts
+     (dark tint text on a pale tint fill). Replaces the hand-rolled
+     bg-*-100 text-*-800 dark:bg-*-900 pairs. All pairs verified ≥5.5:1. */
+  --success-subtle: 160 60% 94%;
+  --success-subtle-foreground: 160 84% 24%;
+  --warning-subtle: 38 92% 92%;
+  --warning-subtle-foreground: 30 90% 26%;
+  --info-subtle: 216 60% 94%;
+  --info-subtle-foreground: 216 51% 30%;
+  --destructive-subtle: 0 84% 96%;
+  --destructive-subtle-foreground: 0 74% 38%;
   --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: "Source Serif 4", Georgia, serif;
   --font-mono: "Geist Mono", "JetBrains Mono", monospace;
@@ -154,17 +171,17 @@
   /* Accent: Steel Blue surfaces */
   --accent: 215 40% 24%;
   --accent-foreground: 216 63% 97%;
-  /* Semantic pop: danger */
-  --destructive: 0 84% 60%;
+  /* Semantic pop: danger (red-600, matches light mode for AA on the fill) */
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --input: 215 40% 25%;
   --ring: 217 29% 64%;
-  /* Charts: light ramp + semantic pop */
-  --chart-1: 216 52% 88%;
-  --chart-2: 217 29% 64%;
-  --chart-3: 215 29% 44%;
-  --chart-4: 160 84% 45%;
-  --chart-5: 38 92% 55%;
+  /* Charts (dark): same categorical hues lifted for contrast on Obsidian. */
+  --chart-1: 216 40% 72%;  /* navy anchor */
+  --chart-2: 184 60% 52%;  /* teal */
+  --chart-3: 38 90% 60%;   /* amber */
+  --chart-4: 255 70% 74%;  /* indigo */
+  --chart-5: 340 75% 68%;  /* rose */
   /* Semantic pop: success */
   --success: 160 84% 45%;
   --success-foreground: 216 60% 5%;
@@ -174,6 +191,16 @@
   /* Info: Dusty Ice */
   --info: 217 29% 64%;
   --info-foreground: 216 60% 5%;
+  /* Subtle semantic surfaces (dark): pale tint text on a deep tint fill.
+     All pairs verified ≥7.9:1 against the Obsidian Night ramp. */
+  --success-subtle: 160 50% 14%;
+  --success-subtle-foreground: 160 70% 72%;
+  --warning-subtle: 33 60% 15%;
+  --warning-subtle-foreground: 38 92% 70%;
+  --info-subtle: 216 45% 18%;
+  --info-subtle-foreground: 217 40% 78%;
+  --destructive-subtle: 0 60% 16%;
+  --destructive-subtle-foreground: 0 90% 80%;
   --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.20);
   --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.25), 0 1px 2px -1px hsl(0 0% 0% / 0.20);
   --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.30), 0 1px 2px -1px hsl(0 0% 0% / 0.22);
