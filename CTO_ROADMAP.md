@@ -61,6 +61,11 @@
 - [x] **L4. Auto-match uploads to conditions.** Document upload currently changes nothing — match the uploaded documentType against outstanding condition requiredDocumentTypes, mark them "submitted" for review (never auto-clear), notify assigned staff, and surface one-click stage advance when checkPipelineProgress says ready. Acceptance: uploading a W-2 flips its condition to submitted and staff sees a notification.
 - [x] **L5. Show the borrower why their rate is their rate.** calculateLLPA already returns the full base/adjustments/total breakdown — render it on LoanOptions ("760 FICO: −0.25 · 80% LTV: +0.125"). Acceptance: each loan option shows its adjustment decomposition.
 
+### Customer-success readiness (from kb/founder-routines/2026-07-04-customer-success.md)
+
+- [ ] **CS1. Seed `sla_class_configs` and `task_type_sla_mapping`.** Both tables are empty in the dev DB (verified via direct query, 2026-07-04) even though `server/services/taskEngine.ts` computes SLA due dates and breach escalation against them. Today every task silently falls back to `{ slaDueAt: null, slaClass: "S3" }` (`computeSlaDueAt`, `server/services/taskEngine.ts:111-123`) — no due date is ever set, so `checkSlaBreaches`/auto-escalation (`server/services/taskEngine.ts:549-569`) never fires. Acceptance: seed the S0–S5 target-hour configs (comments already document the intended targets: S0 0-1h/15m escalation … S4 72h/60h, `shared/schema/underwriting.ts:26-32`) and the `TASK_TYPE_CODES` → SLA-class mapping, then confirm a manually-aged task actually gets flagged as breached.
+- [ ] **CS2. Automated flag on discrimination/credit-error language in borrower messages.** No code today distinguishes a routine borrower message from one alleging discrimination or a credit-reporting error — both land in the assigned LO's normal inbox with no priority bump or founder visibility. Add a keyword/pattern check on `POST /api/messages` (`server/routes/borrower.ts:2607`) that flags matches for immediate founder notification, per `kb/support-playbooks/discrimination-credit-error-escalation.md`. Acceptance: sending a message containing a trigger phrase creates a flagged, founder-visible record distinct from normal message traffic.
+
 ---
 
 ## Future — blocked on business, do NOT start yet
