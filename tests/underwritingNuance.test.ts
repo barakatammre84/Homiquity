@@ -157,7 +157,7 @@ describe("detectSignificantDeposits (Fannie B3-4.3-04)", () => {
       [
         { amount: -12_000, date: "2026-06-15", description: "TRANSFER CREDIT" },
         { amount: -2_500, date: "2026-06-20", description: "PAYROLL" },
-        { amount: 800, date: "2026-06-21", description: "RENT" }, // outflow — ignored
+        { amount: 800, date: "2026-06-21", description: "RENT" }, // below threshold — ignored (detection is sign-agnostic)
       ],
       6_000,
     );

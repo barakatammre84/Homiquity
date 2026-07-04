@@ -270,7 +270,14 @@ export class ConsolidatedUnderwritingEngine {
     }
     const rawLtvFraction = (input.originalLoanAmount / propertyBasisValue) * 100;
 
-    // Truncate calculated LTV to 2 decimal places
+    // ELIGIBILITY basis: the true ratio, rounded to 4 decimals only to shed
+    // floating-point noise. Eligibility ceilings must compare against the real
+    // LTV — flooring first let a loan sized into the truncation window (e.g. a
+    // true 95.0099% reading as 95.00%) clear a 95% cap it actually exceeds.
+    const preciseLtv = Math.round(rawLtvFraction * 10000) / 10000;
+
+    // REPORTING/PRICING basis: truncated to 2 decimals (display, PMI band
+    // lookups) — unchanged so quoted figures stay consistent with rate cards.
     const calculatedLtv = Math.floor(rawLtvFraction * 100) / 100;
 
     // Round up to the nearest whole percentage point for matrix lookups
@@ -279,8 +286,8 @@ export class ConsolidatedUnderwritingEngine {
     // Step 3: Enforce the conventional maximum LTV ceiling. The scalar is
     // CONVENTIONAL_LTV_CAP by definition — VA loans are guaranteed to 100% LTV
     // ($0 down), so the cap must not reject the VA path.
-    if (targetLoanType === "CONVENTIONAL" && calculatedLtv > ltvCap) {
-      reasons.push(`Calculated LTV of ${calculatedLtv.toFixed(2)}% exceeds policy ceiling of ${ltvCap}%`);
+    if (targetLoanType === "CONVENTIONAL" && preciseLtv > ltvCap) {
+      reasons.push(`Calculated LTV of ${preciseLtv.toFixed(2)}% exceeds policy ceiling of ${ltvCap}%`);
     }
 
     // Step 4: Process and aggregate assets using haircuts to determine verified reserves
@@ -366,9 +373,9 @@ export class ConsolidatedUnderwritingEngine {
         { matrixCode: "CONVENTIONAL_MAX_LTV", dim1Value: units, dim3Identifier: occupancy.code },
         "occupancy/units LTV eligibility",
       );
-      if (calculatedLtv > occupancyMaxLtv) {
+      if (preciseLtv > occupancyMaxLtv) {
         reasons.push(
-          `Calculated LTV of ${calculatedLtv.toFixed(2)}% exceeds the ${occupancyMaxLtv}% maximum for a ${units}-unit ${occupancy.label} property`,
+          `Calculated LTV of ${preciseLtv.toFixed(2)}% exceeds the ${occupancyMaxLtv}% maximum for a ${units}-unit ${occupancy.label} property`,
         );
       }
 
@@ -437,16 +444,25 @@ export class ConsolidatedUnderwritingEngine {
         input.existingMonthlyDebts -
         estimatedUtilityCosts;
 
-      // Select dynamic minimum residual threshold matching regional guidelines
+      // Select dynamic minimum residual threshold matching regional guidelines.
+      // The VA_RESIDUAL table (Pamphlet 26-7 Table 4-2) is defined for family
+      // sizes 1-5; larger families use the size-5 baseline plus a per-member
+      // addition — resolve at the clamp and add the extra below, instead of
+      // crashing off the end of the matrix.
+      const familySize = Math.max(1, Math.round(input.householdFamilySize));
       requiredResidualIncome = await this.resolveOrOutOfBand(
         {
           matrixCode: "VA_RESIDUAL",
-          dim1Value: input.householdFamilySize,
+          dim1Value: Math.min(familySize, 5),
           dim2Value: input.originalLoanAmount,
           dim3Identifier: vaRegion,
         },
         "VA residual-income requirement",
       );
+      if (familySize > 5) {
+        const extraPerMember = await this.resolver.getPolicyScalar("VA_RESIDUAL_EXTRA_MEMBER");
+        requiredResidualIncome += (familySize - 5) * extraPerMember;
+      }
 
       // Implement Active-Duty Commissary Facility Discount
       if (input.isActiveDuty && input.hasExchangeAccess) {

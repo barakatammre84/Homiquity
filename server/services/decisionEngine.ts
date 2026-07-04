@@ -49,6 +49,12 @@ export interface InstantDecision {
     incomeBasis: "urla_line_items" | "application_summary";
     /** Verified liquid reserves (post-haircut) and how many PITI payments they cover. */
     liquidAssets: number;
+    /**
+     * Post-closing months of reserves: liquid assets REMAINING AFTER the down
+     * payment, divided by PITI — the same basis as preUnderwriting's
+     * computeMonthsOfReserves, so the two surfaces can never quote different
+     * reserve pictures for the same borrower. Floored at 0.
+     */
     monthsOfReserves: number;
   } | null;
 }
@@ -329,8 +335,11 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
       borrowerCount: fin.borrowerCount,
       incomeBasis: fin.incomeBasis,
       liquidAssets: result.calculatedLiquidAssets,
+      // Net of the down payment (post-closing reserves), matching
+      // preUnderwriting.computeMonthsOfReserves — previously the gross balance
+      // was divided, overstating reserves by the entire down payment.
       monthsOfReserves: monthlyPiti > 0
-        ? Math.round((result.calculatedLiquidAssets / monthlyPiti) * 10) / 10
+        ? Math.round((Math.max(result.calculatedLiquidAssets - downPayment, 0) / monthlyPiti) * 10) / 10
         : 0,
     },
     ...base,
