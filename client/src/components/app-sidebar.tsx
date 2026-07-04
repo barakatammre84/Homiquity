@@ -49,6 +49,7 @@ import {
   PiggyBank,
   ClipboardList,
   Palette,
+  Gauge,
 } from "lucide-react";
 
 interface TeamMember {
@@ -120,6 +121,7 @@ const staffNavigation: NavSection[] = [
     section: "Operations",
     items: [
       { title: "Dashboard", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
+      { title: "LO Command Center", href: "/lo-command-center", icon: Gauge, testId: "link-lo-command-center" },
       { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations" },
       { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops" },
       { title: "Pricing Matrices", href: "/pricing-matrices", icon: Grid3x3, testId: "link-pricing-matrices", roles: ["admin", "underwriter"] },

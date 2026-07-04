@@ -31,6 +31,7 @@ export default defineConfig({
       "tests/statusVocabulary.test.ts",
       "tests/intakeSchema.test.ts",
       "tests/stageRequirements.test.ts",
+      "tests/fileHealth.test.ts",
       "tests/borrowerStateMachine.test.ts",
       "tests/ssnVault.test.ts",
       "tests/loginLockout.test.ts",
