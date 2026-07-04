@@ -1,5 +1,4 @@
 import type { Express } from "express";
-import fs from "fs";
 import type { IStorage } from "../storage";
 import { calculateLLPA } from "../pricing";
 import { getPMIRateCard } from "../propertyAnalyzer";
@@ -103,17 +102,17 @@ export function registerCalculatorRoutes(app: Express, storage: IStorage) {
   // ============================================================
   // PUBLIC LEASE EXTRACTION (no auth)
   // Best-effort extraction of monthly rent from an uploaded lease for
-  // the Rent-to-Own Readiness tool. Files are processed in memory and
-  // deleted immediately; nothing is persisted for anonymous users.
+  // the Rent-to-Own Readiness tool. The file lives only in request memory
+  // (multer memoryStorage) — nothing touches disk or object storage, and
+  // nothing is persisted for anonymous users.
   // ============================================================
   app.post("/api/calculators/extract-lease", upload.single("file"), verifyFileSignature, async (req, res) => {
-    const filePath = req.file?.path;
     try {
-      if (!filePath) {
+      if (!req.file?.buffer) {
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      const extracted = await extractLeaseData(filePath, req.file?.mimetype);
+      const extracted = await extractLeaseData(req.file.buffer, req.file.mimetype);
 
       res.json({
         monthlyRent: extracted.monthlyRent ?? null,
@@ -124,10 +123,6 @@ export function registerCalculatorRoutes(app: Express, storage: IStorage) {
     } catch (err) {
       console.error("Lease extraction (public) error:", err);
       res.status(500).json({ error: "Failed to extract lease" });
-    } finally {
-      if (filePath) {
-        fs.promises.unlink(filePath).catch(() => {});
-      }
     }
   });
 }

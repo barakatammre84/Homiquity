@@ -8,12 +8,11 @@ import {
   extractLeaseData,
 } from "../extractionService";
 import { recordCoarseExtraction } from "../services/documentConfidence";
-import { upload, allowedUploadTypes, verifyFileSignature } from "./utils";
+import { allowedUploadTypes } from "./utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
 import { ObjectStorageService, ObjectNotFoundError } from "../integrations/object_storage";
 import { type User } from "@shared/schema";
 import { logAudit } from "../auditLog";
-import { sendNotificationEmail } from "../services/emailService";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -37,28 +36,23 @@ function safeDispositionFilename(fileName: string | null | undefined): string {
   return cleaned || "download";
 }
 
-/** Zero-touch: route an uploaded document at its outstanding conditions (non-fatal). */
-async function matchConditionsForUpload(
-  applicationId: string | null | undefined,
-  documentType: string,
-  fileName: string,
-  uploadedBy: string,
-): Promise<void> {
-  if (!applicationId) return;
-  try {
-    const { matchUploadedDocumentToConditions } = await import("../pipelineEngine");
-    await matchUploadedDocumentToConditions({ applicationId, documentType, fileName, uploadedBy });
-  } catch (err) {
-    console.error("[Documents] Condition matching failed (non-fatal):", err);
-  }
-}
-
 export function registerDocumentRoutes(
   app: Express,
   storage: IStorage,
 ) {
   app.post("/api/uploads/request-url", isAuthenticated, async (req, res) => {
     try {
+      // Graceful gate until the GCS env vars land (GCS_SERVICE_ACCOUNT_KEY +
+      // PRIVATE_OBJECT_DIR, see .env.example): a deliberate 503 JSON envelope
+      // that the client surfaces as a maintenance message, instead of a
+      // generated URL that could never work.
+      if (!objectStorageService.isConfigured()) {
+        return res.status(503).json({
+          error: "Document uploads are temporarily unavailable. Please try again later.",
+          code: "UPLOADS_UNCONFIGURED",
+        });
+      }
+
       const { name, size, contentType } = req.body;
 
       if (!name) {
@@ -379,258 +373,4 @@ export function registerDocumentRoutes(
     }
   );
 
-  app.post("/api/documents/extract-tax-return", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
-      const { documentYear, applicationId } = req.body;
-      const userId = req.user!.id;
-
-      if (applicationId) {
-        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, req.user!.role);
-        if (!application) {
-          return res.status(403).json({ error: "Access denied to the specified application" });
-        }
-      }
-
-      const document = await storage.createDocument({
-        userId,
-        applicationId: applicationId || null,
-        documentType: "tax_return",
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        storagePath: req.file.path,
-        status: "uploaded",
-      });
-
-      const extractedData = await extractTaxReturnData(req.file.path, documentYear);
-
-      const { humanReviewRequired } = await recordCoarseExtraction({
-        documentId: document.id,
-        documentType: "tax_return",
-        applicationId: applicationId || null,
-        confidence: extractedData.confidence,
-        extractedFields: extractedData.extractedFields,
-        fileSize: req.file.size,
-      });
-      await storage.updateDocument(document.id, {
-        // "verified" is reserved for human review (POST /api/documents/:id/verify);
-        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
-        // able to mark itself verified). main's review-gate signal still routes:
-        // a doc that clears the type-specific confidence threshold is staged
-        // "verifying" for a human to confirm; everything else stays "uploaded".
-        status: !humanReviewRequired ? "verifying" : "uploaded",
-        notes: JSON.stringify({
-          extractedAt: new Date().toISOString(),
-          extractedFields: extractedData.extractedFields,
-          confidence: extractedData.confidence,
-          humanReviewRequired,
-          warnings: extractedData.warnings,
-          modelId: extractedData.modelId,
-          promptVersion: extractedData.promptVersion,
-          responseHash: extractedData.rawResponseHash,
-        }),
-        extractionResponseHash: extractedData.rawResponseHash,
-        extractionRawEncrypted: extractedData.rawResponseEncrypted,
-        extractionRawIv: extractedData.rawResponseIv,
-        extractionRawKeyId: extractedData.rawResponseKeyId,
-      });
-
-      if (applicationId) {
-        await storage.createDealActivity({
-          applicationId,
-          activityType: "document_uploaded",
-          title: "Tax Return Extracted",
-          description: `Tax return for ${documentYear || extractedData.documentYear} extracted with ${extractedData.confidence} confidence.`,
-          performedBy: userId,
-          metadata: { documentId: document.id, extractedData },
-        });
-        await matchConditionsForUpload(applicationId, "tax_return", req.file.originalname, userId);
-      }
-
-      res.status(201).json({
-        document,
-        extraction: {
-          documentType: "tax_return",
-          ...publicExtraction(extractedData),
-        },
-      });
-    } catch (error) {
-      console.error("Tax return extraction error:", error);
-      res.status(500).json({ error: "Failed to extract tax return" });
-    }
-  });
-
-  app.post("/api/documents/extract-paystub", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
-      const { applicationId } = req.body;
-      const userId = req.user!.id;
-
-      if (applicationId) {
-        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, req.user!.role);
-        if (!application) {
-          return res.status(403).json({ error: "Access denied to the specified application" });
-        }
-      }
-
-      const document = await storage.createDocument({
-        userId,
-        applicationId: applicationId || null,
-        documentType: "pay_stub",
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        storagePath: req.file.path,
-        status: "uploaded",
-      });
-
-      const extractedData = await extractPayStubData(req.file.path);
-
-      const { humanReviewRequired } = await recordCoarseExtraction({
-        documentId: document.id,
-        documentType: "pay_stub",
-        applicationId: applicationId || null,
-        confidence: extractedData.confidence,
-        extractedFields: extractedData.extractedFields,
-        fileSize: req.file.size,
-      });
-      await storage.updateDocument(document.id, {
-        // "verified" is reserved for human review (POST /api/documents/:id/verify);
-        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
-        // able to mark itself verified). main's review-gate signal still routes:
-        // a doc that clears the type-specific confidence threshold is staged
-        // "verifying" for a human to confirm; everything else stays "uploaded".
-        status: !humanReviewRequired ? "verifying" : "uploaded",
-        notes: JSON.stringify({
-          extractedAt: new Date().toISOString(),
-          extractedFields: extractedData.extractedFields,
-          confidence: extractedData.confidence,
-          humanReviewRequired,
-          warnings: extractedData.warnings,
-          modelId: extractedData.modelId,
-          promptVersion: extractedData.promptVersion,
-          responseHash: extractedData.rawResponseHash,
-        }),
-        extractionResponseHash: extractedData.rawResponseHash,
-        extractionRawEncrypted: extractedData.rawResponseEncrypted,
-        extractionRawIv: extractedData.rawResponseIv,
-        extractionRawKeyId: extractedData.rawResponseKeyId,
-      });
-
-      if (applicationId) {
-        await storage.createDealActivity({
-          applicationId,
-          activityType: "document_uploaded",
-          title: "Pay Stub Extracted",
-          description: `Pay stub extracted with ${extractedData.confidence} confidence. Gross pay: ${extractedData.grossPay ? '$' + extractedData.grossPay.toLocaleString() : 'not extracted'}`,
-          performedBy: userId,
-          metadata: { documentId: document.id, extractedData },
-        });
-        await matchConditionsForUpload(applicationId, "pay_stub", req.file.originalname, userId);
-      }
-
-      res.status(201).json({
-        document,
-        extraction: {
-          documentType: "pay_stub",
-          ...publicExtraction(extractedData),
-        },
-      });
-    } catch (error) {
-      console.error("Pay stub extraction error:", error);
-      res.status(500).json({ error: "Failed to extract pay stub" });
-    }
-  });
-
-  app.post("/api/documents/extract-bank-statement", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
-      const { applicationId } = req.body;
-      const userId = req.user!.id;
-
-      if (applicationId) {
-        const application = await storage.getLoanApplicationWithAccess(applicationId, userId, req.user!.role);
-        if (!application) {
-          return res.status(403).json({ error: "Access denied to the specified application" });
-        }
-      }
-
-      const document = await storage.createDocument({
-        userId,
-        applicationId: applicationId || null,
-        documentType: "bank_statement",
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
-        storagePath: req.file.path,
-        status: "uploaded",
-      });
-
-      const extractedData = await extractBankStatementData(req.file.path);
-
-      const { humanReviewRequired } = await recordCoarseExtraction({
-        documentId: document.id,
-        documentType: "bank_statement",
-        applicationId: applicationId || null,
-        confidence: extractedData.confidence,
-        extractedFields: extractedData.extractedFields,
-        fileSize: req.file.size,
-      });
-      await storage.updateDocument(document.id, {
-        // "verified" is reserved for human review (POST /api/documents/:id/verify);
-        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
-        // able to mark itself verified). main's review-gate signal still routes:
-        // a doc that clears the type-specific confidence threshold is staged
-        // "verifying" for a human to confirm; everything else stays "uploaded".
-        status: !humanReviewRequired ? "verifying" : "uploaded",
-        notes: JSON.stringify({
-          extractedAt: new Date().toISOString(),
-          extractedFields: extractedData.extractedFields,
-          confidence: extractedData.confidence,
-          humanReviewRequired,
-          warnings: extractedData.warnings,
-          modelId: extractedData.modelId,
-          promptVersion: extractedData.promptVersion,
-          responseHash: extractedData.rawResponseHash,
-        }),
-        extractionResponseHash: extractedData.rawResponseHash,
-        extractionRawEncrypted: extractedData.rawResponseEncrypted,
-        extractionRawIv: extractedData.rawResponseIv,
-        extractionRawKeyId: extractedData.rawResponseKeyId,
-      });
-
-      if (applicationId) {
-        await storage.createDealActivity({
-          applicationId,
-          activityType: "document_uploaded",
-          title: "Bank Statement Extracted",
-          description: `Bank statement extracted with ${extractedData.confidence} confidence. Closing balance: ${extractedData.closingBalance ? '$' + extractedData.closingBalance.toLocaleString() : 'not extracted'}`,
-          performedBy: userId,
-          metadata: { documentId: document.id, extractedData },
-        });
-        await matchConditionsForUpload(applicationId, "bank_statement", req.file.originalname, userId);
-      }
-
-      res.status(201).json({
-        document,
-        extraction: {
-          documentType: "bank_statement",
-          ...publicExtraction(extractedData),
-        },
-      });
-    } catch (error) {
-      console.error("Bank statement extraction error:", error);
-      res.status(500).json({ error: "Failed to extract bank statement" });
-    }
-  });
 }

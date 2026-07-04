@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useUpload } from "@/hooks/use-upload";
 import { useLocation, useRoute } from "wouter";
 import { isStaffRole } from "@shared/roles";
 import type { Task, Document, TaskDocument } from "@shared/schema";
@@ -57,6 +58,7 @@ export default function TaskDetail() {
   const taskId = params?.id;
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { uploadFile } = useUpload();
   const [, navigate] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -69,20 +71,21 @@ export default function TaskDetail() {
 
   const uploadDocumentMutation = useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("documentType", task?.documentCategory || "other");
-      formData.append("applicationId", task?.applicationId || "");
-
-      const response = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Upload failed");
+      // Presigned flow: the file goes browser → object storage directly, then
+      // the JSON call registers it as a document (the multipart leg is gone).
+      const stored = await uploadFile(file);
+      if (!stored) {
+        throw new Error("The file could not be uploaded to secure storage. Please try again.");
       }
+
+      const response = await apiRequest("POST", "/api/documents/upload", {
+        objectPath: stored.objectPath,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        documentType: task?.documentCategory || "other",
+        applicationId: task?.applicationId || undefined,
+      });
 
       const document = await response.json();
 
