@@ -1421,7 +1421,7 @@ describe("TRID leRequired / cdRequired status flags", () => {
 describe("evaluateGseSubmissionReadiness — submit-gse 422 gate", () => {
   it("blocks a gating-section gap (missing SSN) and lists the field", async () => {
     setFixtures({
-      urla: baseUrla({ personalInfo: completePersonalInfo({ ssn: null }) }),
+      urla: baseUrla({ personalInfo: completePersonalInfo({ ssnLast4: null }) }),
     });
     const gate = evaluateGseSubmissionReadiness(await validateMISMOCompleteness("app-1"));
 
