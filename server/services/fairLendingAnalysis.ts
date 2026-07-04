@@ -14,6 +14,13 @@ import { db } from "../db";
 // and the route that exposes it is admin-gated. A flag means "investigate",
 // not "violation": small samples, legitimate underwriting factors, and data
 // gaps all matter and are surfaced (insufficientData, not a rate).
+//
+// Legal basis note (2026-07-21): Regulation B no longer recognizes
+// disparate-impact ("effects test") liability (see kb/regulatory-ledger.json
+// reg-b-2026-disparate-impact). This monitoring is retained deliberately as
+// internal risk management — HMDA is unaffected and state fair-lending laws
+// still recognize effects-based claims. Do not present its output as a Reg B
+// requirement.
 // =============================================================================
 
 export type DecisionOutcome = "APPROVED" | "REJECTED" | "MANUAL_REVIEW";

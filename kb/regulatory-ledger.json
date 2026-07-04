@@ -132,6 +132,50 @@
       "lastVerified": "2026-07-03",
       "reviewIntervalDays": 180,
       "notes": ""
+    },
+    {
+      "id": "cfpb-reg-v-medical-debt-vacated",
+      "rule": "NO federal ban on medical debt in credit reports or underwriting — the CFPB Reg V medical-debt rule was VACATED; do not re-import it",
+      "value": "vacated 2025-07-11",
+      "citation": "Cornerstone Credit Union League v. CFPB (E.D. Tex., joint request), vacating 'Prohibition on Creditors and CRAs Concerning Medical Information (Regulation V)'; no appeal filed within the window. Same ruling held FCRA preempts state medical-debt reporting bans, so state bans are legally doubtful.",
+      "sourceUrl": "https://www.consumerfinance.gov/rules-policy/final-rules/prohibition-on-creditors-and-consumer-reporting-agencies-concerning-medical-information-regulation-v/",
+      "codeRef": "CTO_ROADMAP.md #28 (no engine change — documented so nobody encodes the vacated rule)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Bureau voluntary policies still hold: unpaid medical collections < $500 and all paid medical collections are not reported by Equifax/Experian/TransUnion. The pre-production doctrine's 'Medical Debt DTI exclusion (2026 rule)' claim is FALSE as a federal rule; the real, citable medical carve-outs are agency underwriting policies (see fnma-b3-5.3-09-medical-collections and fha-4000-1-collections-capacity)."
+    },
+    {
+      "id": "fnma-b3-5.3-09-medical-collections",
+      "rule": "GSE payoff policy: medical collection accounts excluded from collection/charge-off payoff limits (never required to be paid at/prior to closing); non-medical limits: 1-unit primary none, 2-4-unit owner-occ + second homes > $5,000 total, investment $250 individual / $1,000 total",
+      "value": "medical excluded; $5,000 / $250 / $1,000",
+      "citation": "Fannie Mae Selling Guide B3-5.3-09 (DU Credit Report Analysis — Past-Due, Collection and Charge-Off of Non-Mortgage Accounts)",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-5.3-09/du-credit-report-analysis",
+      "codeRef": "CTO_ROADMAP.md #28 (not yet in code — activates with F3 real credit adapter; collections do not exist in the simulated soft pull)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Verified against the live guide page 2026-07-04 (guide edition 06/03/2026). The $5,000 2-4-unit/second-home threshold differs from the older $250/$1,000 rule of thumb — re-confirm the exact threshold table on next verification. Freddie Mac equivalent (Guide 5401.2) not yet verified — do so before building the F3 adapter."
+    },
+    {
+      "id": "fha-4000-1-collections-capacity",
+      "rule": "FHA capacity analysis: if aggregate NON-MEDICAL collection balances > $2,000, include 5% of outstanding balance as monthly debt in DTI (or documented payment plan, or payoff); MEDICAL collections excluded entirely from the threshold and the DTI add",
+      "value": "0.05 above $2,000; medical excluded",
+      "citation": "HUD Handbook 4000.1, Origination through Post-Closing — Collection Accounts (TOTAL: II.A.4.b.iv; Manual: II.A.5.a.iv)",
+      "sourceUrl": "https://www.hud.gov/hud-partners/single-family-handbook-4000-1",
+      "codeRef": "CTO_ROADMAP.md #28 (not yet in code — the engine has no collections-to-DTI path today; must ship WITH the F3 adapter or FHA files will compute DTI wrong in both directions)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Subsection letters within II.A.4.b.iv / II.A.5.a.iv shift between handbook updates - cite the Collection Accounts heading, and pin exact subsections when implementing."
+    },
+    {
+      "id": "reg-b-2026-disparate-impact",
+      "rule": "Reg B amended effective 2026-07-21: disparate-impact ('effects test') liability removed from Regulation B; 'discouragement' narrowed to intentional statements; SPCP restrictions added",
+      "value": "effective 2026-07-21",
+      "citation": "CFPB final rule, Equal Credit Opportunity Act (Regulation B), 91 FR (2026-04-22), docket 2026-07804",
+      "sourceUrl": "https://www.federalregister.gov/documents/2026/04/22/2026-07804/equal-credit-opportunity-act-regulation-b",
+      "codeRef": "server/services/fairLendingAnalysis.ts",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Our four-fifths-rule monitoring in fairLendingAnalysis.ts is RETAINED deliberately as internal risk management: HMDA is unaffected, state fair-lending laws still recognize effects-based claims, and the deterministic-decisioning invariants don't depend on Reg B's effects test. Do not delete the monitoring in response to this rule; revisit framing/copy that cites Reg B disparate-impact as a legal requirement. This is the real 'July 2026 Reg B rule' the pre-production doctrine referenced - it is unrelated to medical debt."
     }
   ]
 }
