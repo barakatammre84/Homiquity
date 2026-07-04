@@ -114,7 +114,10 @@ export const creditPulls = pgTable("credit_pulls", {
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
   consentId: varchar("consent_id").references(() => creditConsents.id).notNull(),
   requestedBy: varchar("requested_by").references(() => users.id).notNull(),
-  
+  // AG-2: which AI agent performed the pull (e.g. "agent:<id>"); requestedBy
+  // stays the borrower. Null for pulls made by humans through the app.
+  agentIdentity: varchar("agent_identity", { length: 120 }),
+
   // Pull Type
   pullType: varchar("pull_type", { length: 50 }).notNull(), // soft, hard, tri_merge
   bureaus: text("bureaus").array(), // ['experian', 'equifax', 'transunion']

@@ -276,6 +276,50 @@ describe("AI governance (AG-1): MCP tool actions land in the tamper-evident audi
     expect(read("server/services/creditService.ts")).toMatch(
       /DEFAULT_AGENT_CALLER_IDENTITY = "mcp-stdio"/,
     );
-    expect(read("server/mcp/index.ts")).toMatch(/MCP_CALLER_IDENTITY/);
+    expect(read("server/mcp/identity.ts")).toMatch(/MCP_CALLER_IDENTITY/);
+  });
+});
+
+describe("AI governance (AG-2): the MCP surface authenticates WHICH agent it serves", () => {
+  it("identity is resolved and enforced before the transport connects", () => {
+    const source = read("server/mcp/index.ts");
+    const resolveAt = source.indexOf("resolveAgentIdentity(process.env)");
+    const enforceAt = source.indexOf("assertDeploymentAllowed(");
+    const connectAt = source.indexOf("await server.connect(");
+    expect(resolveAt).toBeGreaterThan(-1);
+    expect(enforceAt).toBeGreaterThan(resolveAt);
+    expect(connectAt).toBeGreaterThan(enforceAt);
+  });
+
+  it("the registry holds token hashes, compared in constant time — never plaintext", () => {
+    const identity = read("server/mcp/identity.ts");
+    expect(identity).toMatch(/createHash\("sha256"\)/);
+    expect(identity).toMatch(/timingSafeEqual/);
+    expect(identity).not.toMatch(/token\s*===\s*/);
+  });
+
+  it("production deployments refuse to serve without an authenticated agent", () => {
+    const identity = read("server/mcp/identity.ts");
+    expect(identity).toMatch(/NODE_ENV === "production"/);
+    expect(identity).toMatch(/MCP_REQUIRE_AGENT_IDENTITY/);
+    expect(identity).toMatch(/Refusing to serve tools/);
+  });
+
+  it("a failed handshake never downgrades to the unauthenticated fallback", () => {
+    expect(read("server/mcp/identity.ts")).toMatch(/handshake failed/);
+  });
+
+  it("agent identity is stamped on every row the MCP surface persists", () => {
+    expect(read("shared/schema/compliance.ts")).toMatch(/agent_identity/);
+    expect(read("shared/schema/property.ts")).toMatch(/avm_agent_identity/);
+    expect(read("server/services/creditService.ts")).toMatch(/agentIdentity: callerIdentity/);
+    expect(read("server/mcp/index.ts")).toMatch(/avmAgentIdentity: CALLER_IDENTITY/);
+    expect(read("migrations/0005_ag2_agent_identity.sql")).toMatch(/ADD COLUMN IF NOT EXISTS/);
+  });
+
+  it("every audit entry carries the resolved agent context", () => {
+    const source = read("server/mcp/index.ts");
+    expect(source).toMatch(/agentContext: agentContext\(\)/);
+    expect(read("server/services/creditService.ts")).toMatch(/agentContext/);
   });
 });

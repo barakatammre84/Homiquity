@@ -354,6 +354,7 @@ describe("recordExternalSoftPull (AG-1)", () => {
       totalDebt: "36200.00",
       monthlyPayments: "126.00",
       isSimulated: true,
+      agentIdentity: DEFAULT_AGENT_CALLER_IDENTITY,
     });
     expect(pullRows[0].liabilities).toHaveLength(2);
 
@@ -369,6 +370,35 @@ describe("recordExternalSoftPull (AG-1)", () => {
     expect(rows[1].previousEntryHash).toBe(rows[0].entryHash);
 
     expect(await verifyAuditLogIntegrity("app-1")).toMatchObject({ valid: true, totalEntries: 2 });
+  });
+
+  it("stamps the resolved agent identity onto the row and both audit entries (AG-2)", async () => {
+    seedConsent();
+    const agentContext = {
+      agentId: "uw-copilot",
+      operator: "ammre@bistelligent.com",
+      authenticated: true,
+      client: { name: "claude-code", version: "2.0" },
+    };
+    await recordPull({ callerIdentity: "agent:uw-copilot", agentContext });
+
+    expect(h.tableRows(PULLS)[0].agentIdentity).toBe("agent:uw-copilot");
+    for (const row of auditRows()) {
+      expect(row.performedByRole).toBe("agent:uw-copilot");
+      expect(row.actionDetails.agentContext).toEqual(agentContext);
+    }
+
+    await logAgentToolInvocation({
+      toolName: "run_soft_credit_pull",
+      argsHash: "a".repeat(64),
+      outcome: "success",
+      applicationId: "app-1",
+      callerIdentity: "agent:uw-copilot",
+      agentContext,
+    });
+    const invocation = auditRows().find((r) => r.action === "mcp_tool_invocation")!;
+    expect(invocation.actionDetails.agentContext).toEqual(agentContext);
+    expect(await verifyAuditLogIntegrity("app-1")).toMatchObject({ valid: true, totalEntries: 3 });
   });
 
   it("refuses without a consent row on file", async () => {

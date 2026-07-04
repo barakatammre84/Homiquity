@@ -91,6 +91,8 @@ export const properties = pgTable("properties", {
   avmConfidence: decimal("avm_confidence", { precision: 5, scale: 4 }), // 0-1
   avmProvider: varchar("avm_provider", { length: 50 }),
   avmAsOf: timestamp("avm_as_of"),
+  // AG-2: which AI agent wrote the AVM refresh. Null for non-agent writes.
+  avmAgentIdentity: varchar("avm_agent_identity", { length: 120 }),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),

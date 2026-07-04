@@ -1350,6 +1350,9 @@ export async function recordExternalSoftPull(params: {
   expiresAt: Date;
   vendor: ExternalSoftPullVendorData;
   callerIdentity?: string;
+  /** AG-2: resolved agent identity context (agentId, operator, authenticated,
+   * self-reported client) recorded on both audit entries. */
+  agentContext?: Record<string, unknown>;
 }): Promise<CreditPull> {
   const callerIdentity = params.callerIdentity ?? DEFAULT_AGENT_CALLER_IDENTITY;
 
@@ -1388,6 +1391,9 @@ export async function recordExternalSoftPull(params: {
       liabilities: vendor.tradelines,
       vendorRequestId: vendor.vendorRequestId,
       isSimulated: vendor.simulated,
+      // AG-2: the row itself records which agent performed the pull;
+      // requestedBy stays the borrower (FK to users).
+      agentIdentity: callerIdentity,
       completedAt: new Date(),
       expiresAt: params.expiresAt,
     })
@@ -1399,7 +1405,12 @@ export async function recordExternalSoftPull(params: {
     consentId: params.consentId,
     creditPullId: pull.id,
     action: "pull_requested",
-    actionDetails: { pullType: "soft", bureaus, source: callerIdentity },
+    actionDetails: {
+      pullType: "soft",
+      bureaus,
+      source: callerIdentity,
+      ...(params.agentContext ? { agentContext: params.agentContext } : {}),
+    },
     performedBy: params.requestedBy,
     performedByRole: callerIdentity,
   });
@@ -1416,6 +1427,7 @@ export async function recordExternalSoftPull(params: {
       vendorRequestId: vendor.vendorRequestId,
       simulated: vendor.simulated,
       source: callerIdentity,
+      ...(params.agentContext ? { agentContext: params.agentContext } : {}),
     },
     performedBy: params.requestedBy,
     performedByRole: callerIdentity,
@@ -1439,6 +1451,9 @@ export async function logAgentToolInvocation(params: {
   consentId?: string;
   creditPullId?: string;
   callerIdentity?: string;
+  /** AG-2: resolved agent identity context (agentId, operator, authenticated,
+   * self-reported client) recorded alongside the invocation. */
+  agentContext?: Record<string, unknown>;
 }): Promise<void> {
   const callerIdentity = params.callerIdentity ?? DEFAULT_AGENT_CALLER_IDENTITY;
   await logCreditAction({
@@ -1452,6 +1467,7 @@ export async function logAgentToolInvocation(params: {
       argsHash: params.argsHash,
       outcome: params.outcome,
       callerIdentity,
+      ...(params.agentContext ? { agentContext: params.agentContext } : {}),
       ...(params.resultSummary ? { resultSummary: params.resultSummary } : {}),
     },
     performedByRole: callerIdentity,
