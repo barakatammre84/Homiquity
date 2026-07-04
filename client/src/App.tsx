@@ -107,6 +107,7 @@ const FAQ = lazy(() => import("@/pages/education/FAQ"));
 const Resources = lazy(() => import("@/pages/education/Resources"));
 const AcceleratorProgram = lazy(() => import("@/pages/education/AcceleratorProgram"));
 const AICoach = lazy(() => import("@/pages/education/AICoach"));
+const Glossary = lazy(() => import("@/pages/education/Glossary"));
 
 const HomeownerDashboard = lazy(() => import("@/pages/homeowner/HomeownerDashboard"));
 
@@ -200,6 +201,9 @@ function Router() {
         </Route>
         <Route path="/faq">
           <PublicPage><FAQ /></PublicPage>
+        </Route>
+        <Route path="/glossary">
+          <PublicPage><Glossary /></PublicPage>
         </Route>
         <Route path="/privacy">
           <Privacy />
