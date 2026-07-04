@@ -49,3 +49,22 @@
 - Note: memory said CTO roadmap 1–26 shipped; **main's CTO_ROADMAP.md still shows 1–5, 8, 11,
   13–26 open** — overnight work may be on unmerged branches. Audit is grounded in main.
 - Next run: UX-1 (unify readiness scores) or first palette-sweep commit (UX-6, Passport).
+
+### 2026-07-04 (later) — reconciliation lands most of the P0/P1 backlog at once
+- Investigated the unmerged-branch discrepancy: the overnight work was real, spread across ~13
+  branches. Consolidated it (with PRs #16/#17/#20 that landed on main mid-session) into PR #22.
+- **Baseline shifts once PR #22 merges** (numbers in this audit's older sections are pre-merge):
+  - Off-palette classes: 60 files -> **0** (kind-borg codemod + ratchet guard
+    `scripts/design-token-guard.cjs` — regression now fails loudly).
+  - aria-labels: 2 -> **60**; skip-links, landmarks, announced form errors shipped (UX-2 mostly
+    done — keyboard-order/focus audit on the funnel remains).
+  - **UX-1 done**: RenterHome readiness unified to the single server-side score.
+  - **UX-3 pending re-check**: verify Messages presence dots post-merge.
+  - **UX-4 partially done**: demo rate sheets self-refresh so prod always quotes; the honest
+    empty-state fallback is still worth adding.
+  - **UX-11 (empty states) done** for StaffDashboard; other staff views to verify.
+- Also landed with the reconciliation: password reset + email verification, error monitoring,
+  leads API, TCPA quiet hours + SMS STOP, TRID/APR/adverse-action compliance, VA residual inputs.
+- Still open from the P0/P2 lists: UX-5 (funnel gate/resume instrumentation), UX-9 (calculator ->
+  /apply context seeding), UX-15–UX-21 (completion & emotion polish), dark-mode follow-through.
+- Next run: re-verify the borrower section of page-audit.md against post-merge main; then UX-5.
