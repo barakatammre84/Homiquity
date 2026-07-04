@@ -1,8 +1,11 @@
 import type { Express } from "express";
+import { isApprovedGradeLoanAppStatus, insertPropertySchema } from "@shared/schema";
 import type { IStorage } from "../storage";
 import { isAuthenticated } from "../auth";
 import { checkPropertyEligibility } from "../underwriting";
 import { lookupResolver } from "../services/lookupResolver";
+import { parseValueEstimate } from "../services/valueEstimate";
+import { parseBodyOr400 } from "./validate";
 
 export function registerPropertyRoutes(
   app: Express,
@@ -483,7 +486,7 @@ export function registerPropertyRoutes(
       // Get user's latest pre-approved loan application
       const applications = await storage.getLoanApplicationsByUser(userId);
       const preApproval = applications.find(
-        app => app.status === "pre_approved" || app.status === "approved"
+        app => isApprovedGradeLoanAppStatus(app.status)
       ) || applications[0];
 
       if (!preApproval) {
@@ -578,13 +581,13 @@ export function registerPropertyRoutes(
         return res.status(403).json({ error: "Agent profile required to create listings" });
       }
 
-      const propertyData = {
-        ...req.body,
+      const data = parseBodyOr400(insertPropertySchema.omit({ agentId: true, listedAt: true }), req.body, res);
+      if (data === undefined) return;
+      const property = await storage.createProperty({
+        ...data,
         agentId: agentProfile?.id || null,
         listedAt: new Date(),
-      };
-
-      const property = await storage.createProperty(propertyData);
+      });
       
       if (agentProfile) {
         await storage.updateAgentProfile(agentProfile.id, {
@@ -616,7 +619,10 @@ export function registerPropertyRoutes(
         }
       }
 
-      const updated = await storage.updateProperty(req.params.id, req.body);
+      // agentId omitted so an agent cannot reassign a listing to another agent.
+      const data = parseBodyOr400(insertPropertySchema.omit({ agentId: true }).partial(), req.body, res);
+      if (data === undefined) return;
+      const updated = await storage.updateProperty(req.params.id, data);
       res.json(updated);
     } catch (error) {
       console.error("Update property error:", error);
@@ -801,6 +807,7 @@ export function registerPropertyRoutes(
             hoaMonthly: 0,
             mortgage: null,
             neighborhoods: [],
+            valueEstimate: parseValueEstimate(firstResult.estimates),
           },
         });
       }
@@ -852,6 +859,7 @@ export function registerPropertyRoutes(
             name: n.name,
             medianPrice: n.geo_statistics?.housing_market?.median_sold_price || null,
           })),
+          valueEstimate: parseValueEstimate(p.estimates),
         },
       });
     } catch (error) {

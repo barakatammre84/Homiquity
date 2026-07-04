@@ -130,6 +130,7 @@ const QUESTIONS: Question[] = [
     question: "What is the estimated purchase price?",
     placeholder: "500,000",
     subtext: "It's okay to estimate if you haven't found 'the one' yet.",
+    why: "This anchors your loan amount so we can estimate a realistic monthly payment.",
     icon: DollarSign
   },
   {
@@ -139,6 +140,7 @@ const QUESTIONS: Question[] = [
     question: "How much are you planning to put down?",
     placeholder: "100,000",
     subtext: "We can adjust this later to fine-tune your monthly payment.",
+    why: "You don't need 20% down — some programs start around 3%. This just sets your starting point.",
     icon: DollarSign
   },
   {
@@ -157,6 +159,7 @@ const QUESTIONS: Question[] = [
     question: "What is your total annual household income?",
     placeholder: "120,000",
     subtext: "Gross income before taxes. Include salary, bonuses, etc.",
+    why: "Income and debts together set your buying power — lenders compare them, not income alone.",
     icon: Briefcase
   },
   {
@@ -180,6 +183,7 @@ const QUESTIONS: Question[] = [
     question: "How many years have you been at your current job?",
     placeholder: "5",
     subtext: "Round to the nearest year",
+    why: "A shorter tenure doesn't disqualify you — recent job changes in the same field usually count as continuous history.",
     icon: Clock
   },
   {
@@ -207,6 +211,7 @@ const QUESTIONS: Question[] = [
     question: "What are your total monthly debt payments?",
     placeholder: "1,500",
     subtext: "Car, student, and personal loans, credit card minimums, child support. Don't include rent, utilities, or groceries.",
+    why: "Only the monthly minimums count here — not your total balances. This is the other half of your debt-to-income ratio.",
     icon: CreditCard
   },
   {

@@ -9,8 +9,11 @@ import {
   type User,
   isInternalStaffRole,
   insertAgentReferralRequestSchema,
+  insertAgentProfileSchema,
+  insertApplicationMilestoneSchema,
   loanApplications,
 } from "@shared/schema";
+import { parseBodyOr400 } from "./validate";
 
 export function registerAgentBrokerRoutes(
   app: Express,
@@ -176,12 +179,15 @@ export function registerAgentBrokerRoutes(
       const userId = req.user!.id;
       let profile = await storage.getAgentProfileByUserId(userId);
       
+      // userId omitted so a caller can't create/reassign a profile for another user.
+      const data = parseBodyOr400(insertAgentProfileSchema.omit({ userId: true }).partial(), req.body, res);
+      if (data === undefined) return;
       if (!profile) {
-        profile = await storage.createAgentProfile({ userId, ...req.body });
+        profile = await storage.createAgentProfile({ ...data, userId });
       } else {
-        profile = await storage.updateAgentProfile(profile.id, req.body);
+        profile = await storage.updateAgentProfile(profile.id, data);
       }
-      
+
       res.json(profile);
     } catch (error) {
       console.error("Update agent profile error:", error);
@@ -752,7 +758,9 @@ export function registerAgentBrokerRoutes(
         milestone = await storage.createApplicationMilestone({ applicationId });
       }
 
-      const updated = await storage.updateApplicationMilestone(applicationId, req.body);
+      const data = parseBodyOr400(insertApplicationMilestoneSchema.omit({ applicationId: true }).partial(), req.body, res);
+      if (data === undefined) return;
+      const updated = await storage.updateApplicationMilestone(applicationId, data);
       res.json(updated);
     } catch (error) {
       console.error("Update application milestones error:", error);

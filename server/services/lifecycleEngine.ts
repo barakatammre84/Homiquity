@@ -8,11 +8,14 @@ import {
   mortgageRatePrograms,
   mortgageRates,
   refiAlerts,
+  LOAN_APP_STATUSES,
+  LOAN_APP_TERMINAL_STATUSES,
   type HomeownerProfile,
 } from "@shared/schema";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { storage } from "../storage";
 import { fetchAvm } from "../mcp/vendors";
+import { toNum } from "@shared/lib/number";
 
 /**
  * Lifecycle engine — the "evergreen client" automation (CTO_ROADMAP #9).
@@ -34,12 +37,6 @@ import { fetchAvm } from "../mcp/vendors";
 
 export const PMI_REMOVAL_LTV_THRESHOLD = 80;
 export const REFI_ALERT_RATE_DROP = 0.25; // percentage points below current rate
-
-const toNum = (v: string | number | null | undefined): number => {
-  if (v === null || v === undefined) return NaN;
-  const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[,$]/g, ""));
-  return isNaN(n) ? NaN : n;
-};
 
 /** Standard amortized monthly P&I payment. */
 export function monthlyPayment(principal: number, annualRatePct: number, termMonths = 360): number {
@@ -127,6 +124,7 @@ interface SweepResult {
   pmiAlerts: number;
   refiAlertsCreated: number;
   docExpiryNudges: number;
+  stuckIntakeRecovered: number;
   errors: number;
 }
 
@@ -135,16 +133,18 @@ const DOC_FRESHNESS_DAYS = 30;
 /** Nudge borrowers a few days before the cliff. */
 const DOC_NUDGE_AT_DAYS = 25;
 
-const IN_FLIGHT_STATUSES = [
-  "submitted",
-  "analyzing",
-  "pre_approved",
-  "verified",
-  "doc_collection",
-  "processing",
-  "underwriting",
-  "conditional",
-];
+// Derived from the canonical vocabulary rather than hand-listed — files
+// moved to any non-terminal working status stay inside the freshness sweep.
+// Excluded: "draft" (nothing submitted yet, nothing can go stale) and the
+// closing-track statuses ("clear_to_close", "closing") where documents are
+// already locked into the closing package.
+const IN_FLIGHT_STATUSES = LOAN_APP_STATUSES.filter(
+  (s) =>
+    !(LOAN_APP_TERMINAL_STATUSES as readonly string[]).includes(s) &&
+    s !== "draft" &&
+    s !== "clear_to_close" &&
+    s !== "closing",
+);
 
 /**
  * Consumer freshness signal: documents on in-flight applications crossing the
@@ -329,8 +329,20 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
     pmiAlerts: 0,
     refiAlertsCreated: 0,
     docExpiryNudges: 0,
+    stuckIntakeRecovered: 0,
     errors: 0,
   };
+
+  // Recover any application stranded mid-analysis by a downstream drop before
+  // the homeowner sweeps — a borrower waiting on a decision is the priority.
+  try {
+    const { recoverStuckIntakeApplications } = await import("./loanAnalysis");
+    const recovery = await recoverStuckIntakeApplications();
+    counters.stuckIntakeRecovered = recovery.recovered;
+  } catch (err) {
+    counters.errors += 1;
+    console.error("[lifecycle] Stuck-intake recovery failed (continuing):", err);
+  }
 
   const marketRate = await getMarketRate30YrFixed();
   const profiles = await db.select().from(homeownerProfiles);
@@ -356,7 +368,7 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
     `[lifecycle] Sweep complete: ${counters.profilesProcessed} profiles, ` +
       `${counters.snapshotsCreated} snapshots, ${counters.pmiAlerts} PMI alerts, ` +
       `${counters.refiAlertsCreated} refi alerts, ${counters.docExpiryNudges} doc nudges, ` +
-      `${counters.errors} errors` +
+      `${counters.stuckIntakeRecovered} stuck-intake recovered, ${counters.errors} errors` +
       (marketRate === null ? " (no market rate data — refi checks skipped)" : ""),
   );
   return counters;

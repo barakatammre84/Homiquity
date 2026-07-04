@@ -35,7 +35,7 @@ other URL uses Neon. No code change needed.
    ```
    DATABASE_URL=postgresql://postgres:pass@localhost:5432/homiquity
    ```
-3. `npm run db:push` then `npm run dev`. That's it — fully offline, $0.
+3. `npm run db:migrate` then `npm run dev`. That's it — fully offline, $0.
 
 ## 4. Create your `.env`
 ```bash
@@ -52,8 +52,12 @@ Paste those lines into `.env`, add your `DATABASE_URL`, and (optionally) a
 
 ## 5. Create the tables
 ```bash
-npm run db:push
+npm run db:migrate
 ```
+Fresh databases are built from the committed migration files in `migrations/`.
+If your database was created earlier with `db:push`, adopt it once with
+`npm run db:migrate:adopt -- --apply` (records existing migrations as applied
+without re-running them). Schema-change workflow: [ROLLBACK.md](ROLLBACK.md) §3.
 
 ## 6. Run it
 ```bash

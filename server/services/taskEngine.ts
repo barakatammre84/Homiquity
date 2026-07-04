@@ -8,6 +8,7 @@ import {
   escalationActions,
   users,
   loanApplications,
+  isInternalStaffRole,
   type Task,
   type InsertTask,
   type TaskEvent,
@@ -45,6 +46,17 @@ export function userRoleToOwnerRole(userRole: string): string {
 // Convert task owner role to user role (lowercase)
 export function ownerRoleToUserRole(ownerRole: string): string {
   return OWNER_ROLE_TO_USER_ROLE[ownerRole.toUpperCase()] || ownerRole.toLowerCase();
+}
+
+// Authorization for the shared role work queue (GET /api/task-engine/tasks/by-role/:role).
+// Admin may query any role's queue. A non-admin internal-staff member may query ONLY their
+// own role's queue — owner-role forms are compared so aliases match (e.g. underwriter -> "UW").
+// External partners (broker, lender) and clients are always denied; this is the single source
+// of truth for that gate so the route handler and its tests can't drift apart.
+export function canAccessRoleQueue(userRole: string, requestedRole: string): boolean {
+  if (userRole === "admin") return true;
+  if (!isInternalStaffRole(userRole)) return false;
+  return userRoleToOwnerRole(userRole) === userRoleToOwnerRole(requestedRole);
 }
 
 // SLA Status computation
@@ -218,6 +230,12 @@ export class TaskEngineService {
       return { task: null, event: taskEvent };
     }
 
+    // A statutory/legal deadline carried on the event payload (e.g. the ECOA
+    // 30-day adverse-action deadline) is distinct from the SLA target and is
+    // persisted to the task's dueDate column so it can be surfaced/escalated.
+    const dueDateRaw = payload.dueDate as string | undefined;
+    const dueDate = dueDateRaw ? new Date(dueDateRaw) : undefined;
+
     const task = await this.createTask(
       {
         applicationId: event.applicationId,
@@ -225,6 +243,7 @@ export class TaskEngineService {
         description,
         taskType: payload.taskType as string || "review",
         taskTypeCode,
+        ...(dueDate ? { dueDate } : {}),
       },
       undefined,
       event.eventSource,

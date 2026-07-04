@@ -152,7 +152,8 @@ function scorePersonalInfo(personalInfo: UrlaPersonalInfo | null | undefined): U
   const fields = [
     { name: "First Name", value: personalInfo?.firstName, required: true },
     { name: "Last Name", value: personalInfo?.lastName, required: true },
-    { name: "SSN", value: personalInfo?.ssn, required: true },
+    // SSN is encrypted at rest; presence (masked) is all validation needs.
+    { name: "SSN", value: personalInfo?.ssnLast4 ? `XXX-XX-${personalInfo.ssnLast4}` : undefined, required: true },
     { name: "Date of Birth", value: personalInfo?.dateOfBirth, required: true },
     { name: "Citizenship Status", value: personalInfo?.citizenship, required: true },
     { name: "Marital Status", value: personalInfo?.maritalStatus, required: true },
@@ -731,4 +732,53 @@ export async function getBatchValidationStatus(applicationIds: string[]) {
   );
 
   return results.filter(r => r !== null);
+}
+
+export interface GseSubmissionGate {
+  /** True when the application must not be handed to the GSE (Fannie DU) yet. */
+  blocked: boolean;
+  /** HTTP status the submit-gse route returns when blocked. */
+  status: 422;
+  /** Response body the route returns verbatim when blocked. */
+  body: {
+    error: string;
+    gseReady: boolean;
+    gseGatingFailed: boolean;
+    overallScore: number;
+    criticalErrors: string[];
+    missingFields: string[];
+  };
+}
+
+/**
+ * Pre-submission gate for POST /api/underwrite/submit-gse: decide whether an
+ * application may be submitted to Fannie Mae DU, and build the 422 payload the
+ * route returns when it may not.
+ *
+ * Blocks on missing required URLA fields (gating sections 1a/4/5) or any
+ * criticalError — the latter already folds in ARM and ATR/QM regulatory
+ * failures. Deliberately does NOT block on the >=90 overallScore threshold
+ * that gseReady additionally requires: an application with every required
+ * field present but sparse optional fields can score below 90, and blocking it
+ * would return an empty, unactionable error list. Kept as a pure function so
+ * the gate decision is unit-testable without mounting the route.
+ */
+export function evaluateGseSubmissionReadiness(validation: MISMOValidationResult): GseSubmissionGate {
+  const missingFields = validation.sections
+    .filter(s => s.missingFields.length > 0)
+    .flatMap(s => s.missingFields.map(f => `${s.section}: ${f}`));
+
+  return {
+    blocked: validation.gseGatingFailed || validation.criticalErrors.length > 0,
+    status: 422,
+    body: {
+      error:
+        "Application is missing required URLA fields — resolve these before submitting to Fannie Mae DU.",
+      gseReady: validation.gseReady,
+      gseGatingFailed: validation.gseGatingFailed,
+      overallScore: validation.overallScore,
+      criticalErrors: validation.criticalErrors,
+      missingFields,
+    },
+  };
 }

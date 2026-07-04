@@ -78,25 +78,61 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
   let applicationId: string;
   let propertyId: string | undefined;
 
+  // This suite's fixture application. The calculate-* endpoints take their
+  // inputs in the request body, so the row is mostly a container for the :id;
+  // the affordability + loan-estimate cases read creditScore/purchasePrice.
+  const FIXTURE = {
+    annualIncome: "120000",
+    monthlyDebts: "500",
+    creditScore: "760",
+    employmentType: "employed",
+    employmentYears: "5",
+    propertyType: "single_family",
+    purchasePrice: "400000",
+    downPayment: "40000",
+    loanPurpose: "purchase",
+    propertyState: "CA",
+    isFirstTimeBuyer: true,
+  };
+
   beforeAll(async () => {
     cookie = await login("buyer@test.com", process.env.DEV_TEST_PASSWORD!);
 
-    const created = await authPost(cookie, "/api/loan-applications", {
-      annualIncome: "120000",
-      monthlyDebts: "500",
-      creditScore: "760",
-      employmentType: "employed",
-      employmentYears: "5",
-      propertyType: "single_family",
-      purchasePrice: "400000",
-      downPayment: "40000",
-      loanPurpose: "purchase",
-      propertyState: "CA",
-      isFirstTimeBuyer: true,
+    // Self-cleaning by reuse: find an existing fixture application before
+    // creating one, so consecutive runs don't accumulate orphan pre-approved
+    // applications for buyer@test.com and drift the admin dashboards (#10).
+    // Delete-based cleanup isn't viable here — loan_applications has ~30 child
+    // FKs with no ON DELETE CASCADE and no delete endpoint — so an idempotent,
+    // reused fixture is the robust way to keep runs from drifting the DB.
+    const existing = await authGet(cookie, "/api/loan-applications");
+    const match = Array.isArray(existing.body)
+      ? existing.body.find(
+          (a: any) =>
+            Number(a.creditScore) === 760 &&
+            parseFloat(a.purchasePrice) === 400000 &&
+            a.propertyState === "CA",
+        )
+      : undefined;
+
+    if (match) {
+      applicationId = match.id;
+    } else {
+      const created = await authPost(cookie, "/api/loan-applications", FIXTURE);
+      expect(created.status).toBe(201);
+      expect(created.body).toHaveProperty("id");
+      applicationId = created.body.id;
+    }
+
+    // The loan-estimate route is gated by requireConsent("e_disclosure").
+    // Grant it here so the suite is hermetic — otherwise the test depends on
+    // ambient consent state left in a shared dev DB.
+    const consent = await authPost(cookie, "/api/consents", {
+      applicationId,
+      consentType: "e_disclosure",
+      consentGiven: true,
+      consentMethod: "click",
     });
-    expect(created.status).toBe(201);
-    expect(created.body).toHaveProperty("id");
-    applicationId = created.body.id;
+    expect([200, 201]).toContain(consent.status);
 
     const props = await publicGet("/api/properties");
     expect(Array.isArray(props.body)).toBe(true);
@@ -290,6 +326,17 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
   // ==========================================================================
   describe("GET /api/loan-applications/:id/loan-estimate", () => {
     it("generates a TRID-style loan estimate with a stable shape", async () => {
+      // The LE sits behind the e-disclosure consent gate (ESIGN) — accept it
+      // first via POST /api/consents (borrower_consents is the table the
+      // gate reads), exactly as the borrower UI does.
+      const consent = await authPost(cookie, `/api/consents`, {
+        applicationId,
+        consentType: "e_disclosure",
+        consentGiven: true,
+        consentMethod: "click",
+      });
+      expect([200, 201]).toContain(consent.status);
+
       const res = await authGet(cookie, `/api/loan-applications/${applicationId}/loan-estimate`);
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty("applicationId", applicationId);

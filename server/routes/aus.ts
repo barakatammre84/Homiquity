@@ -13,6 +13,7 @@ import {
   parsePlaidAssetReport,
   submitToDU,
 } from "../services/ausSubmission";
+import { validateMISMOCompleteness, evaluateGseSubmissionReadiness } from "../services/mismoValidation";
 
 /**
  * AUS orchestration routes: Plaid asset webhook ingestion and GSE (Fannie DU)
@@ -43,7 +44,16 @@ export function registerAusRoutes(app: Express) {
    */
   app.post("/api/webhooks/plaid-assets", async (req, res) => {
     try {
+      // Fail CLOSED in production: an unset secret must not leave an open,
+      // unauthenticated endpoint that forges asset-verification reports
+      // (gseEligible=true with attacker-controlled balances). Same posture as
+      // CRON_SECRET in routes/jobs.ts — unset means the path is disabled, not
+      // open. Dev/test keeps the permissive behavior for simulated vendors.
       const secret = process.env.PLAID_WEBHOOK_SECRET;
+      if (process.env.NODE_ENV === "production" && !secret) {
+        console.error("[aus] plaid-assets webhook rejected: PLAID_WEBHOOK_SECRET is not configured");
+        return res.status(503).json({ error: "Webhook not configured" });
+      }
       if (secret && req.headers["x-webhook-secret"] !== secret) {
         return res.status(401).json({ error: "Invalid webhook secret" });
       }
@@ -168,6 +178,21 @@ export function registerAusRoutes(app: Express) {
             error: "Application is missing purchase price / down payment — cannot build a DU casefile.",
           });
         }
+
+        // Completeness gate: refuse to hand DU a casefile that is missing
+        // required URLA fields (SSN, DOB, citizenship, address, employment,
+        // declarations, HMDA) or carries critical compliance errors (ARM,
+        // ATR/QM points-and-fees — both surface via criticalErrors). Blocks
+        // with an actionable field list rather than failing downstream at the
+        // GSE. Deliberately does NOT block on a merely-low completeness score
+        // or missing document uploads: DU runs on casefile data, and its
+        // findings often determine which documents are needed.
+        const validation = await validateMISMOCompleteness(applicationId);
+        const gate = evaluateGseSubmissionReadiness(validation);
+        if (gate.blocked) {
+          return res.status(gate.status).json(gate.body);
+        }
+
         const monthlyIncome = application.annualIncome ? Number(application.annualIncome) / 12 : null;
         const dti =
           monthlyIncome && application.monthlyDebts

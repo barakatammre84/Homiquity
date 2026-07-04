@@ -4,6 +4,7 @@ import { logAudit } from "../auditLog";
 import { insertWholesaleLenderSchema, insertRateSheetSchema, insertRateSheetProductSchema, insertLenderPricingAdjustmentSchema } from "@shared/schema";
 import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
 import { requireRole } from "../auth";
+import { parseBodyOr400 } from "./validate";
 
 export function registerRateSheetRoutes(
   app: Express,
@@ -63,9 +64,11 @@ export function registerRateSheetRoutes(
     try {
       const existing = await storage.getWholesaleLender(req.params.id);
       if (!existing) return res.status(404).json({ error: "Lender not found" });
-      const lender = await storage.updateWholesaleLender(req.params.id, req.body);
+      const data = parseBodyOr400(insertWholesaleLenderSchema.partial(), req.body, res);
+      if (data === undefined) return;
+      const lender = await storage.updateWholesaleLender(req.params.id, data);
       await logAudit(req, "WHOLESALE_LENDER_UPDATED", "wholesale_lender", req.params.id, {
-        updatedFields: Object.keys(req.body),
+        updatedFields: Object.keys(data),
       });
       res.json(lender);
     } catch (err) {
@@ -146,9 +149,11 @@ export function registerRateSheetRoutes(
     try {
       const existing = await storage.getRateSheet(req.params.id);
       if (!existing) return res.status(404).json({ error: "Rate sheet not found" });
-      const sheet = await storage.updateRateSheet(req.params.id, req.body);
+      const data = parseBodyOr400(insertRateSheetSchema.partial(), req.body, res);
+      if (data === undefined) return;
+      const sheet = await storage.updateRateSheet(req.params.id, data);
       await logAudit(req, "RATE_SHEET_UPDATED", "rate_sheet", req.params.id, {
-        updatedFields: Object.keys(req.body),
+        updatedFields: Object.keys(data),
       });
       res.json(sheet);
     } catch (err) {
@@ -249,9 +254,11 @@ export function registerRateSheetRoutes(
     try {
       const existing = await storage.getRateSheetProduct(req.params.id);
       if (!existing) return res.status(404).json({ error: "Product not found" });
-      const product = await storage.updateRateSheetProduct(req.params.id, req.body);
+      const data = parseBodyOr400(insertRateSheetProductSchema.omit({ rateSheetId: true }).partial(), req.body, res);
+      if (data === undefined) return;
+      const product = await storage.updateRateSheetProduct(req.params.id, data);
       await logAudit(req, "RATE_SHEET_PRODUCT_UPDATED", "rate_sheet_product", req.params.id, {
-        updatedFields: Object.keys(req.body),
+        updatedFields: Object.keys(data),
       });
       res.json(product);
     } catch (err) {
@@ -302,10 +309,12 @@ export function registerRateSheetRoutes(
 
   app.patch("/api/lender-pricing-adjustments/:id", requireRole("admin"), async (req, res) => {
     try {
-      const adj = await storage.updateLenderPricingAdjustment(req.params.id, req.body);
+      const data = parseBodyOr400(insertLenderPricingAdjustmentSchema.partial(), req.body, res);
+      if (data === undefined) return;
+      const adj = await storage.updateLenderPricingAdjustment(req.params.id, data);
       if (!adj) return res.status(404).json({ error: "Adjustment not found" });
       await logAudit(req, "PRICING_ADJUSTMENT_UPDATED", "lender_pricing_adjustment", req.params.id, {
-        updatedFields: Object.keys(req.body),
+        updatedFields: Object.keys(data),
       });
       res.json(adj);
     } catch (err) {

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import { requireConsent } from "../consentGate";
-import { isStaffRole, isInternalStaffRole } from "@shared/schema";
+import { isStaffRole, isInternalStaffRole, isLoanAppStatus, LOAN_APP_STATUSES } from "@shared/schema";
 import type { User } from "@shared/schema";
 import { 
   qualifyIncome, 
@@ -15,6 +15,7 @@ import { calculateLLPA, getAreaMedianIncome } from "../pricing";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 import { tridHardStopError } from "../services/trid";
 import * as creditService from "../services/creditService";
+import { assertStageRequirements } from "@shared/stageRequirements";
 
 /**
  * Checks whether a staff user is authorized to mutate a specific loan application.
@@ -118,9 +119,11 @@ export function registerUnderwritingRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
+      // Presence check (not truthiness): a legitimate 0 housing expense or 0
+      // non-housing debt must be accepted, not rejected as "missing".
       const { qualifyingIncome, housingExpense, nonHousingDebts } = req.body;
-      if (!qualifyingIncome || !housingExpense || nonHousingDebts === undefined) {
-        return res.status(400).json({ error: "Missing required parameters" });
+      if (qualifyingIncome == null || housingExpense == null || nonHousingDebts == null) {
+        return res.status(400).json({ error: "qualifyingIncome, housingExpense, and nonHousingDebts are required" });
       }
 
       const parsedIncome = parseFloat(qualifyingIncome);
@@ -128,6 +131,12 @@ export function registerUnderwritingRoutes(
       const parsedDebts = parseFloat(nonHousingDebts);
       if (isNaN(parsedIncome) || isNaN(parsedHousing) || isNaN(parsedDebts)) {
         return res.status(400).json({ error: "qualifyingIncome, housingExpense, and nonHousingDebts must be valid numbers" });
+      }
+      if (parsedIncome <= 0) {
+        return res.status(400).json({ error: "qualifyingIncome must be greater than zero" });
+      }
+      if (parsedHousing < 0 || parsedDebts < 0) {
+        return res.status(400).json({ error: "housingExpense and nonHousingDebts cannot be negative" });
       }
 
       const result = await calculateDTI(parsedIncome, parsedHousing, parsedDebts);
@@ -158,8 +167,10 @@ export function registerUnderwritingRoutes(
         homeInsuranceEstimate = 150,
       } = req.body;
 
-      if (!borrowerAssets || !borrowerIncome || borrowerDebts === undefined || !propertyPrice) {
-        return res.status(400).json({ error: "Missing required parameters" });
+      // Presence check (not truthiness): $0 assets or $0 debts are legitimate
+      // inputs and must not be rejected as "missing".
+      if (borrowerAssets == null || borrowerIncome == null || borrowerDebts == null || propertyPrice == null) {
+        return res.status(400).json({ error: "borrowerAssets, borrowerIncome, borrowerDebts, and propertyPrice are required" });
       }
 
       const pAssets = parseFloat(borrowerAssets);
@@ -170,6 +181,15 @@ export function registerUnderwritingRoutes(
       const pInsurance = parseFloat(homeInsuranceEstimate);
       if ([pAssets, pIncome, pDebts, pPrice, pHoa, pInsurance].some(isNaN)) {
         return res.status(400).json({ error: "All numeric parameters must be valid numbers" });
+      }
+      if (pIncome <= 0) {
+        return res.status(400).json({ error: "borrowerIncome must be greater than zero" });
+      }
+      if (pPrice <= 0) {
+        return res.status(400).json({ error: "propertyPrice must be greater than zero" });
+      }
+      if (pAssets < 0 || pDebts < 0) {
+        return res.status(400).json({ error: "borrowerAssets and borrowerDebts cannot be negative" });
       }
 
       const repFico = application.creditScore ?? undefined;
@@ -492,6 +512,13 @@ export function registerUnderwritingRoutes(
       if (!newStage) {
         return res.status(400).json({ error: "New stage is required" });
       }
+      if (!isLoanAppStatus(newStage)) {
+        return res.status(400).json({
+          error: `Unknown stage '${newStage}'`,
+          code: "unknown_status",
+          allowedStatuses: LOAN_APP_STATUSES,
+        });
+      }
 
       // HMDA LAR requires at least 2 denial reasons when an application is denied.
       if (newStage === "denied" && (!Array.isArray(denialReasons) || denialReasons.length < 2)) {
@@ -521,6 +548,23 @@ export function registerUnderwritingRoutes(
             error: guardErr instanceof Error ? guardErr.message : "Financial data must be verified",
           });
         }
+
+        // ...and must carry a coherent loan amount — a decision stage with no
+        // pre-approval amount or purchase price is an impossible state (#7).
+        try {
+          assertStageRequirements(
+            {
+              status: newStage,
+              preApprovalAmount: application.preApprovalAmount,
+              purchasePrice: application.purchasePrice,
+            },
+            `advancing to '${newStage}'`,
+          );
+        } catch (guardErr) {
+          return res.status(422).json({
+            error: guardErr instanceof Error ? guardErr.message : "A loan amount is required at this stage",
+          });
+        }
       }
 
       // Verify the caller is on the deal team for this application (admins bypass)
@@ -537,12 +581,13 @@ export function registerUnderwritingRoutes(
         });
       }
 
-      const { updatePipelineStage, checkPipelineProgress } = await import("../pipelineEngine");
+      const { updatePipelineStage, checkPipelineProgress, PipelineTransitionError } = await import("../pipelineEngine");
 
       const progress = await checkPipelineProgress(id);
       if (!progress.readyForNextStage && newStage !== "denied") {
         return res.status(400).json({
           error: "Cannot advance stage",
+          code: "stage_blocked",
           blockers: progress.blockers
         });
       }
@@ -570,7 +615,20 @@ export function registerUnderwritingRoutes(
         }
       }
 
-      await updatePipelineStage(id, newStage, newStage === "denied" ? { denialReasons } : undefined);
+      try {
+        await updatePipelineStage(id, newStage, newStage === "denied" ? { denialReasons } : undefined);
+      } catch (stageErr) {
+        if (stageErr instanceof PipelineTransitionError) {
+          return res.status(409).json({
+            error: stageErr.message,
+            code: "invalid_transition",
+            fromStatus: stageErr.fromStage,
+            toStatus: stageErr.toStage,
+            allowedStatuses: stageErr.allowed,
+          });
+        }
+        throw stageErr;
+      }
 
       await storage.createDealActivity({
         applicationId: id,
@@ -651,6 +709,71 @@ export function registerUnderwritingRoutes(
     } catch (error) {
       console.error("Get pipeline queue error:", error);
       res.status(500).json({ error: "Failed to get pipeline queue" });
+    }
+  });
+
+  // Staff-scoped applications listing for the internal dashboard.
+  // Admin sees every application; every other internal-staff role sees only the
+  // applications they are an active deal-team member on — mirroring the scoping
+  // used by GET /api/pipeline/queue. This is the non-admin equivalent of the
+  // admin-only GET /api/admin/applications.
+  app.get("/api/staff/applications", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
+    try {
+      const user = req.user as User;
+      let applications: Awaited<ReturnType<typeof storage.getAllLoanApplications>>;
+      if (user.role === "admin") {
+        applications = await storage.getAllLoanApplications();
+      } else {
+        const memberships = await storage.getTeamMembersByUser(user.id);
+        const byId = new Map<string, NonNullable<(typeof memberships)[number]["application"]>>();
+        for (const m of memberships) {
+          if (m.application) byId.set(m.application.id, m.application);
+        }
+        applications = [...byId.values()];
+      }
+      res.json(applications);
+    } catch (error) {
+      console.error("Get staff applications error:", error);
+      res.status(500).json({ error: "Failed to get applications" });
+    }
+  });
+
+  // Staff-scoped user directory for label resolution (borrower/assignee names) on
+  // the internal dashboard. Returns a MINIMAL name-only projection — never
+  // credential or full-profile fields. Admin resolves against all users; a
+  // non-admin internal-staff member resolves only against the internal-staff team
+  // directory plus the borrowers on their own deal-team applications. This is the
+  // least-privilege, non-admin equivalent of the admin-only GET /api/admin/users.
+  app.get("/api/staff/users", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
+    try {
+      const user = req.user as User;
+      let directory: User[];
+      if (user.role === "admin") {
+        directory = await storage.getAllUsers();
+      } else {
+        const memberships = await storage.getTeamMembersByUser(user.id);
+        const borrowerIds = [...new Set(
+          memberships.map(m => m.application?.userId).filter((id): id is string => !!id)
+        )];
+        const [staff, borrowers] = await Promise.all([
+          storage.getTeamMembersWithPresence(),
+          borrowerIds.length ? storage.getUsersByIds(borrowerIds) : Promise.resolve([] as User[]),
+        ]);
+        const byId = new Map<string, User>();
+        for (const u of staff) byId.set(u.id, u as User);
+        for (const u of borrowers) byId.set(u.id, u);
+        directory = [...byId.values()];
+      }
+      res.json(directory.map(u => ({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        role: u.role,
+      })));
+    } catch (error) {
+      console.error("Get staff user directory error:", error);
+      res.status(500).json({ error: "Failed to get users" });
     }
   });
 

@@ -21,15 +21,19 @@ const VALID_TRANSITIONS: StateTransitionRule[] = [
   { from: ["profiling"], to: "pre_qualification", triggers: ["application_submitted", "credit_pulled"] },
   { from: ["pre_qualification"], to: "pre_approval", triggers: ["pre_qual_issued", "pre_approval_issued", "documents_uploaded"] },
   { from: ["pre_approval"], to: "property_search", triggers: ["pre_approval_issued", "property_selected"] },
-  { from: ["property_search"], to: "in_contract", triggers: ["offer_accepted"] },
-  { from: ["in_contract"], to: "underwriting", triggers: ["underwriting_submitted"] },
+  // Pipeline-driven jumps: property search and contract signing often happen
+  // off-platform, so the loan pipeline (which syncs into this machine via
+  // updatePipelineStage) may legitimately arrive at these states without the
+  // journey having recorded the intermediate step.
+  { from: ["property_search", "pre_approval"], to: "in_contract", triggers: ["offer_accepted"] },
+  { from: ["in_contract", "property_search", "pre_approval"], to: "underwriting", triggers: ["underwriting_submitted"] },
   { from: ["underwriting"], to: "conditional_approval", triggers: ["conditions_cleared"] },
-  { from: ["conditional_approval"], to: "clear_to_close", triggers: ["clear_to_close_issued"] },
+  { from: ["conditional_approval", "underwriting"], to: "clear_to_close", triggers: ["clear_to_close_issued"] },
   { from: ["clear_to_close"], to: "closing", triggers: ["closing_scheduled"] },
   { from: ["closing"], to: "funded", triggers: ["funded"] },
   { from: ["funded"], to: "homeowner", triggers: ["funded"] },
-  { from: ["exploring", "profiling", "pre_qualification", "pre_approval", "property_search", "in_contract", "underwriting"], to: "withdrawn", triggers: ["borrower_withdrew"] },
-  { from: ["pre_qualification", "pre_approval", "underwriting", "conditional_approval"], to: "denied", triggers: ["application_denied"] },
+  { from: ["exploring", "profiling", "pre_qualification", "pre_approval", "property_search", "in_contract", "underwriting", "conditional_approval", "clear_to_close", "closing"], to: "withdrawn", triggers: ["borrower_withdrew"] },
+  { from: ["pre_qualification", "pre_approval", "in_contract", "underwriting", "conditional_approval"], to: "denied", triggers: ["application_denied"] },
   { from: ["pre_qualification", "pre_approval", "property_search"], to: "expired", triggers: ["application_expired"] },
 ];
 

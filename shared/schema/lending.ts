@@ -24,6 +24,146 @@ import {
 } from "./underwriting";
 import { creditConsents } from "./compliance";
 
+// ---------------------------------------------------------------------------
+// Loan application status — the canonical vocabulary.
+//
+// This is the ONLY list of statuses `loanApplications.status` may hold, and
+// LOAN_APP_TRANSITIONS is the ONLY definition of which moves are legal. Both
+// client and server import from here; a status literal that isn't in this
+// list is a bug (enforced by tests/statusVocabulary.test.ts). All status
+// writes go through updatePipelineStage (server/pipelineEngine.ts), which
+// rejects transitions not in this table.
+// ---------------------------------------------------------------------------
+
+export const LOAN_APP_STATUSES = [
+  "draft",
+  "submitted",
+  "analyzing",
+  // Intake automation could not auto-approve — a licensed underwriter must
+  // decide (ECOA: automation never issues a denial). See finalizeIntake.
+  "under_review",
+  "pre_approved",
+  "doc_collection",
+  "processing",
+  "underwriting",
+  "conditional",
+  "clear_to_close",
+  "closing",
+  "funded",
+  "denied",
+  "withdrawn",
+  "suspended",
+  "expired",
+] as const;
+
+export type LoanAppStatus = (typeof LOAN_APP_STATUSES)[number];
+
+export const LOAN_APP_TERMINAL_STATUSES: readonly LoanAppStatus[] = [
+  "funded",
+  "denied",
+  "withdrawn",
+  "expired",
+] as const;
+
+export const LOAN_APP_TRANSITIONS: Record<LoanAppStatus, readonly LoanAppStatus[]> = {
+  draft:          ["submitted", "withdrawn"],
+  submitted:      ["analyzing", "suspended", "withdrawn"],
+  // "submitted" allows the analysis-failure rollback (system retry path);
+  // "under_review" is the intake automation's non-approval outcome.
+  analyzing:      ["pre_approved", "under_review", "denied", "suspended", "withdrawn", "submitted"],
+  // Awaiting a human underwriting decision — they may approve, advance, deny, or hold.
+  under_review:   ["pre_approved", "doc_collection", "underwriting", "denied", "suspended", "withdrawn"],
+  pre_approved:   ["doc_collection", "expired", "withdrawn", "denied"],
+  doc_collection: ["processing", "suspended", "withdrawn", "denied"],
+  processing:     ["underwriting", "suspended", "withdrawn", "denied"],
+  underwriting:   ["conditional", "clear_to_close", "denied", "suspended", "withdrawn"],
+  conditional:    ["clear_to_close", "denied", "suspended", "withdrawn"],
+  clear_to_close: ["closing", "suspended", "withdrawn"],
+  closing:        ["funded", "suspended", "withdrawn"],
+  funded:         [],
+  denied:         [],
+  withdrawn:      [],
+  // Suspension pauses a file; it resumes to any in-flight working stage.
+  suspended:      ["doc_collection", "processing", "underwriting", "conditional", "withdrawn", "denied"],
+  // An expired pre-approval can be renewed by re-submitting.
+  expired:        ["submitted"],
+};
+
+export function isLoanAppStatus(value: string): value is LoanAppStatus {
+  return (LOAN_APP_STATUSES as readonly string[]).includes(value);
+}
+
+export function isTerminalLoanAppStatus(value: string): boolean {
+  return (LOAN_APP_TERMINAL_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * Statuses at or past pre-approval that haven't ended in denial/withdrawal —
+ * "this borrower holds an approval". Used for approval-rate metrics, MISMO
+ * underwriting-decision blocks, and "can this borrower make offers" checks.
+ */
+export const LOAN_APP_APPROVED_GRADE_STATUSES: readonly LoanAppStatus[] = [
+  "pre_approved",
+  "doc_collection",
+  "processing",
+  "underwriting",
+  "conditional",
+  "clear_to_close",
+  "closing",
+  "funded",
+] as const;
+
+export function isApprovedGradeLoanAppStatus(value: string): boolean {
+  return (LOAN_APP_APPROVED_GRADE_STATUSES as readonly string[]).includes(value);
+}
+
+export interface LoanAppStatusMeta {
+  /** Short badge/label text. */
+  label: string;
+  /** Borrower-facing one-liner for dashboards and status screens. */
+  description: string;
+  /** 0–100 journey progress for progress bars. */
+  progressPercent: number;
+  phase: "intake" | "application" | "processing" | "closing" | "complete" | "terminal";
+  /** shadcn Badge variant so every status renders the same everywhere. */
+  badgeVariant: "default" | "secondary" | "outline" | "destructive";
+}
+
+/**
+ * The single source of borrower-facing status semantics. Client components
+ * must render from this map instead of maintaining their own status switches
+ * (which is how phantom statuses like "declined"/"closed"/"under_review"
+ * crept in — checks for values no backend path ever wrote).
+ */
+export const LOAN_APP_STATUS_META: Record<LoanAppStatus, LoanAppStatusMeta> = {
+  draft:          { label: "Incomplete",     description: "Pick up where you left off.",                          progressPercent: 5,   phase: "intake",      badgeVariant: "outline" },
+  submitted:      { label: "Submitted",      description: "Your application has been received.",                  progressPercent: 15,  phase: "application", badgeVariant: "outline" },
+  analyzing:      { label: "Analyzing",      description: "Your application is being reviewed.",                  progressPercent: 20,  phase: "application", badgeVariant: "secondary" },
+  under_review:   { label: "Under Review",   description: "A licensed underwriter is reviewing your application.", progressPercent: 25,  phase: "application", badgeVariant: "secondary" },
+  pre_approved:   { label: "Pre-Approved",   description: "You're pre-approved. Time to find your home.",         progressPercent: 35,  phase: "application", badgeVariant: "default" },
+  doc_collection: { label: "Documents",      description: "We're collecting your documents.",                     progressPercent: 45,  phase: "processing",  badgeVariant: "secondary" },
+  processing:     { label: "Processing",     description: "Your file is being processed.",                        progressPercent: 55,  phase: "processing",  badgeVariant: "secondary" },
+  underwriting:   { label: "Underwriting",   description: "Your file is with underwriting.",                      progressPercent: 65,  phase: "processing",  badgeVariant: "secondary" },
+  conditional:    { label: "Conditional",    description: "Almost there — a few conditions left to clear.",       progressPercent: 80,  phase: "processing",  badgeVariant: "secondary" },
+  clear_to_close: { label: "Clear to Close", description: "You're clear to close.",                               progressPercent: 90,  phase: "closing",     badgeVariant: "default" },
+  closing:        { label: "Closing",        description: "Closing is being scheduled.",                          progressPercent: 95,  phase: "closing",     badgeVariant: "default" },
+  funded:         { label: "Funded",         description: "Congratulations — your loan is funded!",               progressPercent: 100, phase: "complete",    badgeVariant: "default" },
+  denied:         { label: "Denied",         description: "Let's look at your options and find a path forward.",  progressPercent: 0,   phase: "terminal",    badgeVariant: "destructive" },
+  withdrawn:      { label: "Withdrawn",      description: "This application was withdrawn.",                      progressPercent: 0,   phase: "terminal",    badgeVariant: "destructive" },
+  suspended:      { label: "On Hold",        description: "Your application is temporarily on hold.",             progressPercent: 0,   phase: "terminal",    badgeVariant: "secondary" },
+  expired:        { label: "Expired",        description: "Your pre-approval expired — renew to keep shopping.",  progressPercent: 0,   phase: "terminal",    badgeVariant: "destructive" },
+};
+
+/** Meta lookup that tolerates legacy/unknown strings (pre-migration rows). */
+export function getLoanAppStatusMeta(status: string): LoanAppStatusMeta {
+  if (isLoanAppStatus(status)) return LOAN_APP_STATUS_META[status];
+  return { label: "In Progress", description: "Here's where things stand with your mortgage.", progressPercent: 0, phase: "application", badgeVariant: "outline" };
+}
+
+export function isValidLoanAppTransition(from: LoanAppStatus, to: LoanAppStatus): boolean {
+  return LOAN_APP_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
 // Loan Applications
 export const loanApplications = pgTable("loan_applications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -313,7 +453,16 @@ export const documents = pgTable("documents", {
   
   status: varchar("status", { length: 50 }).default("uploaded"),
   notes: text("notes"),
-  
+
+  // AI-extraction lineage (mirrors the credit-pull vendor-response pattern):
+  // a SHA-256 of the raw model output, and that raw output encrypted at rest
+  // (it can carry PII). Lets an auditor confirm the stored fields came from a
+  // specific model response, and re-examine it for drift/dispute review.
+  extractionResponseHash: varchar("extraction_response_hash", { length: 64 }),
+  extractionRawEncrypted: text("extraction_raw_encrypted"),
+  extractionRawIv: varchar("extraction_raw_iv", { length: 32 }),
+  extractionRawKeyId: varchar("extraction_raw_key_id", { length: 20 }),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
@@ -373,7 +522,16 @@ export const urlaPersonalInfo = pgTable("urla_personal_info", {
   lastName: varchar("last_name", { length: 100 }),
   suffix: varchar("suffix", { length: 20 }),
   
+  // DEPRECATED plaintext SSN — writes now go to the encrypted columns below and
+  // this is set to null. Kept only so the backfill script can migrate legacy
+  // rows; drop the column once the backfill has run in every environment.
   ssn: varchar("ssn", { length: 11 }),
+  // SSN at rest: AES-256-GCM via encryptionService (ssnVault, same scheme as
+  // credit reports). Server-managed only — never accepted from the client.
+  ssnEncrypted: text("ssn_encrypted"),
+  ssnIv: varchar("ssn_iv", { length: 32 }),
+  ssnKeyId: varchar("ssn_key_id", { length: 10 }),
+  ssnLast4: varchar("ssn_last4", { length: 4 }),
   dateOfBirth: varchar("date_of_birth", { length: 10 }),
   citizenship: varchar("citizenship", { length: 50 }),
   
@@ -437,6 +595,13 @@ export const insertUrlaPersonalInfoSchema = createInsertSchema(urlaPersonalInfo)
   id: true,
   createdAt: true,
   updatedAt: true,
+  // Server-managed SSN-at-rest columns — never accepted from clients. The
+  // plaintext `ssn` field stays accepted as INPUT (encrypted server-side in
+  // storage.upsertUrlaPersonalInfo; masked echoes are ignored there).
+  ssnEncrypted: true,
+  ssnIv: true,
+  ssnKeyId: true,
+  ssnLast4: true,
 });
 
 export type InsertUrlaPersonalInfo = z.infer<typeof insertUrlaPersonalInfoSchema>;
@@ -525,7 +690,12 @@ export const urlaAssets = pgTable("urla_assets", {
 
   accountType: varchar("account_type", { length: 100 }).notNull(),
   financialInstitution: varchar("financial_institution", { length: 255 }),
-  accountNumber: varchar("account_number", { length: 100 }),
+  // Account number is encrypted at rest (piiVault); only last4 is returned to
+  // clients. Legacy plaintext column handled by scripts/migrate-encrypt-pii.ts.
+  accountNumberEncrypted: text("account_number_encrypted"),
+  accountNumberIv: varchar("account_number_iv", { length: 32 }),
+  accountNumberKeyId: varchar("account_number_key_id", { length: 20 }),
+  accountNumberLast4: varchar("account_number_last4", { length: 4 }),
   cashOrMarketValue: decimal("cash_or_market_value", { precision: 12, scale: 2 }),
   
   createdAt: timestamp("created_at").defaultNow(),
@@ -549,7 +719,12 @@ export const urlaLiabilities = pgTable("urla_liabilities", {
 
   liabilityType: varchar("liability_type", { length: 100 }).notNull(),
   creditorName: varchar("creditor_name", { length: 255 }),
-  accountNumber: varchar("account_number", { length: 100 }),
+  // Account number is encrypted at rest (piiVault); only last4 is returned to
+  // clients. Legacy plaintext column handled by scripts/migrate-encrypt-pii.ts.
+  accountNumberEncrypted: text("account_number_encrypted"),
+  accountNumberIv: varchar("account_number_iv", { length: 32 }),
+  accountNumberKeyId: varchar("account_number_key_id", { length: 20 }),
+  accountNumberLast4: varchar("account_number_last4", { length: 4 }),
   unpaidBalance: decimal("unpaid_balance", { precision: 12, scale: 2 }),
   monthlyPayment: decimal("monthly_payment", { precision: 10, scale: 2 }),
   toBePaidOff: boolean("to_be_paid_off").default(false),
@@ -808,19 +983,140 @@ const preApprovalFormBaseSchema = z.object({
 
 export type PreApprovalFormData = z.infer<typeof preApprovalFormBaseSchema>;
 
-export const preApprovalFormSchema = preApprovalFormBaseSchema.superRefine(
-  (data, ctx) => {
-    const dp = parseFloat(data.downPayment.replace(/[,$]/g, ""));
-    const pp = parseFloat(data.purchasePrice.replace(/[,$]/g, ""));
-    if (!isNaN(dp) && !isNaN(pp) && dp > pp) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Down payment cannot be more than the purchase price",
-        path: ["downPayment"],
-      });
-    }
+const downPaymentWithinPurchasePrice = (
+  data: { downPayment?: string; purchasePrice?: string },
+  ctx: z.RefinementCtx,
+) => {
+  if (!data.downPayment || !data.purchasePrice) return;
+  const dp = parseFloat(data.downPayment.replace(/[,$]/g, ""));
+  const pp = parseFloat(data.purchasePrice.replace(/[,$]/g, ""));
+  if (!isNaN(dp) && !isNaN(pp) && dp > pp) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Down payment cannot be more than the purchase price",
+      path: ["downPayment"],
+    });
   }
+};
+
+export const preApprovalFormSchema = preApprovalFormBaseSchema.superRefine(
+  downPaymentWithinPurchasePrice,
 );
+
+// ---------------------------------------------------------------------------
+// Wire-format intake schema — the SERVER-side validation for the same payload
+// the funnel validates client-side. Derived from preApprovalFormBaseSchema so
+// the two can never drift: the server rejects exactly what the client
+// rejects. (The old server-local schema silently clamped out-of-range values
+// — credit score 900 became 850, employmentYears NaN became 0 — turning
+// validation errors into fabricated data.)
+// ---------------------------------------------------------------------------
+
+/** The credit bands the funnel collects; "not_sure" maps to the named default. */
+export const CREDIT_SCORE_BAND_VALUES = ["760", "720", "680", "640", "600", "not_sure"] as const;
+/**
+ * Midpoint used when the borrower doesn't know their score. Explicit and
+ * named — not a silent clamp. The figure stays `self_reported` provenance
+ * until a real credit pull replaces it (see shared/dataProvenance.ts).
+ */
+export const CREDIT_SCORE_UNKNOWN_DEFAULT = 680;
+
+const stripCurrency = (v: string) => v.replace(/[,$]/g, "");
+
+/**
+ * JSON callers (staff tools, tests, future API consumers) may send numbers
+ * where the form sends strings; normalize scalars to the string form the
+ * field validators expect BEFORE validation so the rules stay identical.
+ */
+function stringifyIntakeScalars(input: unknown): unknown {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) return input;
+  const out: Record<string, unknown> = { ...(input as Record<string, unknown>) };
+  for (const key of ["annualIncome", "monthlyDebts", "purchasePrice", "downPayment", "employmentYears", "creditScore"]) {
+    if (typeof out[key] === "number") out[key] = String(out[key]);
+  }
+  if (Array.isArray(out.incomeSources)) {
+    out.incomeSources = out.incomeSources.map((source) => {
+      if (source === null || typeof source !== "object") return source;
+      const s: Record<string, unknown> = { ...(source as Record<string, unknown>) };
+      for (const key of ["annualAmount", "yearsInRole"]) {
+        if (typeof s[key] === "number") s[key] = String(s[key]);
+      }
+      if (Array.isArray(s.rentalProperties)) {
+        s.rentalProperties = s.rentalProperties.map((prop) => {
+          if (prop === null || typeof prop !== "object") return prop;
+          const p: Record<string, unknown> = { ...(prop as Record<string, unknown>) };
+          for (const key of ["monthlyRentalIncome", "monthlyDebtPayment"]) {
+            if (typeof p[key] === "number") p[key] = String(p[key]);
+          }
+          return p;
+        });
+      }
+      return s;
+    });
+  }
+  return out;
+}
+
+/** Post-validation normalization: DB-ready values, no silent invention. */
+function normalizeIntakeValues<T extends Partial<PreApprovalFormData>>(d: T) {
+  return {
+    ...d,
+    ...(d.annualIncome !== undefined && { annualIncome: stripCurrency(d.annualIncome) }),
+    ...(d.monthlyDebts !== undefined && { monthlyDebts: stripCurrency(d.monthlyDebts) }),
+    ...(d.purchasePrice !== undefined && { purchasePrice: stripCurrency(d.purchasePrice) }),
+    ...(d.downPayment !== undefined && { downPayment: stripCurrency(d.downPayment) }),
+    ...(d.employmentYears !== undefined && { employmentYears: parseInt(d.employmentYears) }),
+    ...(d.creditScore !== undefined && {
+      creditScore: d.creditScore === "not_sure" ? CREDIT_SCORE_UNKNOWN_DEFAULT : parseInt(d.creditScore),
+    }),
+    ...(d.incomeSources !== undefined && {
+      incomeSources: d.incomeSources?.map((s) => ({
+        ...s,
+        annualAmount: stripCurrency(s.annualAmount),
+        rentalProperties: s.rentalProperties?.map((p) => ({
+          ...p,
+          monthlyRentalIncome: stripCurrency(p.monthlyRentalIncome),
+          ...(p.monthlyDebtPayment !== undefined && { monthlyDebtPayment: stripCurrency(p.monthlyDebtPayment) }),
+        })),
+      })),
+    }),
+  };
+}
+
+export const loanApplicationIntakeSchema = z.preprocess(
+  stringifyIntakeScalars,
+  preApprovalFormBaseSchema
+    .extend({
+      // FCRA soft-pull authorization acknowledged on the funnel's final step.
+      softPullConsentAccepted: z.boolean().optional(),
+      // The funnel always asks these; API callers may omit them. Defaulting a
+      // boolean eligibility flag to false is safe — unlike financial figures,
+      // it can't fabricate data (it just doesn't claim VA/FTHB benefits).
+      isVeteran: z.boolean().optional().default(false),
+      isFirstTimeBuyer: z.boolean().optional().default(false),
+    })
+    .superRefine(downPaymentWithinPurchasePrice)
+    .transform(normalizeIntakeValues),
+);
+export type LoanApplicationIntake = z.infer<typeof loanApplicationIntakeSchema>;
+
+/** Partial variant for draft field updates (borrower PATCH while in "draft"). */
+export const loanApplicationIntakeUpdateSchema = z.preprocess(
+  stringifyIntakeScalars,
+  preApprovalFormBaseSchema
+    .partial()
+    .extend({
+      employerName: z.string().max(200, "Employer name is too long").optional(),
+      propertyAddress: z.string().max(500, "Address is too long").optional(),
+      propertyCity: z.string().max(100, "City name is too long").optional(),
+      propertyZip: z.string()
+        .refine((v) => !v || /^\d{5}(-\d{4})?$/.test(v), { message: "ZIP code must be 5 digits (e.g., 90210) or ZIP+4 (e.g., 90210-1234)" })
+        .optional(),
+    })
+    .superRefine(downPaymentWithinPurchasePrice)
+    .transform(normalizeIntakeValues),
+);
+export type LoanApplicationIntakeUpdate = z.infer<typeof loanApplicationIntakeUpdateSchema>;
 
 // =============================================================================
 // MORTGAGE RATES
@@ -2391,6 +2687,8 @@ export const verifications = pgTable("verifications", {
   verificationType: varchar("verification_type", { length: 50 }).notNull(),
 
   plaidItemId: varchar("plaid_item_id", { length: 255 }),
+  // Encrypted at rest ("encv1:keyId:iv:ciphertext" envelope, piiVault.encryptToken).
+  // Never returned in API responses; decrypt server-side only for Plaid calls.
   plaidAccessToken: text("plaid_access_token"),
   plaidVerificationId: varchar("plaid_verification_id", { length: 255 }),
 

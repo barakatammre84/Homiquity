@@ -139,7 +139,17 @@ class TaskEventEmitter {
     // Map event type to task type code
     const taskMapping = this.getWorkflowTaskMapping(eventType, newStage);
     if (!taskMapping) return;
-    
+
+    // ECOA §1002.9(a)(1): an adverse-action notice must be delivered within 30
+    // days of taking adverse action. Stamp the compliance task with that
+    // statutory deadline (denial date + 30 days) so it surfaces as overdue
+    // instead of silently lapsing. Other workflow tasks keep their SLA-derived
+    // due dates.
+    const statutoryDueDate =
+      taskMapping.taskTypeCode === "CMP_ADVERSE_ACTION"
+        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        : undefined;
+
     const event: InsertTaskEvent = {
       eventType,
       eventSource: "WORKFLOW_STATE",
@@ -152,6 +162,7 @@ class TaskEventEmitter {
         taskTypeCode: taskMapping.taskTypeCode,
         previousStage,
         newStage,
+        ...(statutoryDueDate ? { dueDate: statutoryDueDate.toISOString() } : {}),
         ...metadata,
       },
     };

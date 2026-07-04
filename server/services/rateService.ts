@@ -226,9 +226,12 @@ export async function syncBestExecutionRates(): Promise<{ synced: number; progra
   }
   if (offers.length === 0) return { synced: 0, programs: [] };
 
-  // Lowest final rate per program.
+  // Lowest final rate per program. Advertised rates fail CLOSED: a non-finite
+  // or non-positive rate is never published (the storefront would rather show
+  // nothing than "NaN%" — a Reg Z advertising problem).
   const best = new Map<string, ComputedOffer>();
   for (const offer of offers) {
+    if (!Number.isFinite(offer.adjustedRate) || offer.adjustedRate <= 0) continue;
     const programId = programIdForOffer(offer);
     if (!programId) continue;
     const current = best.get(programId);

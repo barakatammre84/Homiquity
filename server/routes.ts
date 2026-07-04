@@ -26,9 +26,11 @@ import { registerGeocodeRoutes } from "./routes/geocode";
 import { registerCalculatorRoutes } from "./routes/calculators";
 import { registerAusRoutes } from "./routes/aus";
 import { registerJobRoutes } from "./routes/jobs";
+import { registerShellRoutes } from "./routes/shell";
+import { registerMarketDataRoutes } from "./routes/market-data";
 import { seedDatabase } from "./seed";
 import { pool } from "./db";
-import { assertEncryptionConfig } from "./services/encryptionService";
+import { assertEncryptionConfig, initEncryption } from "./services/encryptionService";
 
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -47,6 +49,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   assertEncryptionConfig();
+  // Unwrap KMS Data Encryption Keys (if configured) and select the active key
+  // before any request can encrypt/decrypt PII. Fails closed: a misconfigured
+  // KMS setup stops boot rather than silently falling back.
+  await initEncryption();
 
   await setupAuth(app);
   await seedDatabase();
@@ -80,6 +86,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerCalculatorRoutes(app, storage);
   registerAusRoutes(app);
   registerJobRoutes(app);
+  registerShellRoutes(app, storage);
+  registerMarketDataRoutes(app);
 
   app.all("/api/*", (_req, res) => {
     res.status(404).json({ error: "Not found" });

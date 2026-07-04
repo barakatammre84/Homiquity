@@ -143,8 +143,11 @@ export function Navigation() {
     enabled: isAuthenticated && !location.startsWith("/apply") && !location.startsWith("/dashboard"),
   });
 
+  // "draft" is the only resumable status — the old check matched statuses no
+  // backend path writes ("under_review", "pending") and treated submitted
+  // applications as resumable, so the banner showed for the wrong people.
   const hasDraft = dashboardData?.applications?.some(
-    (app) => app.status === "submitted" || app.status === "under_review" || app.status === "pending"
+    (app) => app.status === "draft"
   );
 
   return (
@@ -180,6 +183,11 @@ export function Navigation() {
             <Link href="/resources">
               <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
                 Resources
+              </button>
+            </Link>
+            <Link href="/glossary">
+              <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
+                Glossary
               </button>
             </Link>
           </div>
@@ -327,10 +335,18 @@ export function Navigation() {
               </Link>
               <Link href="/resources">
                 <button
-                  className="w-full py-4 text-left font-medium text-foreground"
+                  className="w-full border-b border-border py-4 text-left font-medium text-foreground"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Resources
+                </button>
+              </Link>
+              <Link href="/glossary">
+                <button
+                  className="w-full py-4 text-left font-medium text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Glossary
                 </button>
               </Link>
 

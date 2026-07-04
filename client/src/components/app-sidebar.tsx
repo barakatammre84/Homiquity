@@ -19,7 +19,8 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { getPresenceColor } from "@/lib/formatters";
-import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
+import { isStaffRole, isInternalStaffRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
+import { useShellBadges } from "@/hooks/useShellBadges";
 import {
   LayoutDashboard,
   FileText,
@@ -136,6 +137,21 @@ const staffNavigation: NavSection[] = [
   },
 ];
 
+// External partners (broker, lender) get a partner-only nav — the internal
+// operations links (Task/Policy Operations, Pricing Matrices) don't apply to them.
+const partnerNavigation: NavSection[] = [
+  {
+    section: "Partner",
+    items: [
+      { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
+      { title: "Client Pipeline", href: "/agent-pipeline", icon: ClipboardList, testId: "link-agent-pipeline" },
+      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
+      { title: "Co-Branding", href: "/co-branding", icon: Palette, testId: "link-co-branding" },
+      { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
+    ],
+  },
+];
+
 const adminNavigation: NavSection[] = [
   {
     section: "Administration",
@@ -161,13 +177,10 @@ export function AppSidebar() {
     refetchInterval: 30000,
   });
 
-  const { data: unreadData } = useQuery<{ count: number }>({
-    queryKey: ["/api/messages/unread/count"],
-    enabled: !!user,
-    refetchInterval: 10000,
-  });
-
-  const unreadCount = unreadData?.count || 0;
+  // Message/task badge counts come from the shared shell-badges poll so the
+  // sidebar, mobile nav, and notifications bell make one request between them.
+  const badges = useShellBadges();
+  const unreadCount = badges.unreadMessages;
 
   const isActive = (href: string) => {
     if (href === "/messages") return location === href || location.startsWith("/messages/");
@@ -176,20 +189,17 @@ export function AppSidebar() {
 
   const userRole = user?.role || "";
   const isStaff = isStaffRole(userRole);
+  const isInternalStaff = isInternalStaffRole(userRole);
   const isAdmin = userRole === "admin";
   const isAspiringOwner = userRole === "aspiring_owner";
 
-  const { data: pendingTasksData } = useQuery<{ pendingCount: number }>({
-    queryKey: ["/api/task-engine/my-tasks/pending-count"],
-    enabled: !!user && !isStaff,
-    refetchInterval: 30000,
-  });
-
-  const pendingTaskCount = pendingTasksData?.pendingCount || 0;
+  const pendingTaskCount = isStaff ? 0 : badges.pendingTasks;
 
   let navigation: NavSection[];
-  if (isStaff) {
+  if (isInternalStaff) {
     navigation = staffNavigation;
+  } else if (isStaff) {
+    navigation = partnerNavigation;
   } else if (isAspiringOwner) {
     navigation = aspiringOwnerNavigation;
   } else {
