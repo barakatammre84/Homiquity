@@ -11,9 +11,10 @@ memory; statutes/regulations control over any summary here.
   (125 items: Federal Mortgage-related Laws 23%, General Mortgage Knowledge 23%,
   Origination Activities 25%, Ethics 16%, Uniform State Content 13%), including the
   full reference list of statutes/regulations the test draws from (pp. 16–17).
-- `NMLS Policy Guidebook for Licensees 2026.03.31.pdf` — NMLS policy guidebook
-  (2026-03-31 edition): licensure records, sponsorship, renewal, unique-identifier and
-  disclosure obligations for licensees.
+
+The **NMLS Policy Guidebook for Licensees (2026-03-31)** — licensure records,
+sponsorship, renewal, unique-identifier and disclosure obligations — lives at
+[docs/nmls/](../nmls/) (vendored separately with a chapter map; PR #47).
 
 ## Why these live in the repo
 
