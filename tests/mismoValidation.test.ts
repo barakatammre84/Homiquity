@@ -1428,7 +1428,9 @@ describe("TRID leRequired / cdRequired status flags", () => {
 describe("evaluateGseSubmissionReadiness — submit-gse 422 gate", () => {
   it("blocks a gating-section gap (missing SSN) and lists the field", async () => {
     setFixtures({
-      urla: baseUrla({ personalInfo: completePersonalInfo({ ssnLast4: null }) }),
+      // SSN presence is decided by the vault's ssnLast4 marker (plaintext ssn
+      // is never stored post-encryption), so "missing SSN" means clearing it.
+      urla: baseUrla({ personalInfo: completePersonalInfo({ ssn: null, ssnLast4: null }) }),
     });
     const gate = evaluateGseSubmissionReadiness(await validateMISMOCompleteness("app-1"));
 
