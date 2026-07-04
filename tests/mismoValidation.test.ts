@@ -28,7 +28,10 @@ vi.mock("../server/storage", () => ({
   },
 }));
 
-import { validateMISMOCompleteness } from "../server/services/mismoValidation";
+import {
+  validateMISMOCompleteness,
+  evaluateGseSubmissionReadiness,
+} from "../server/services/mismoValidation";
 
 // ---------------------------------------------------------------------------
 // Fixture factories — each call returns a fresh, fully-complete object so
@@ -1406,5 +1409,108 @@ describe("TRID leRequired / cdRequired status flags", () => {
     const result = await validateMISMOCompleteness("app-1");
     expect(result.tridStatus.leIssued).toBe(true);
     expect(result.tridStatus.cdIssued).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// submit-gse 422 gate (server/routes/aus.ts): evaluateGseSubmissionReadiness
+// is the pure decision the route calls before handing a casefile to Fannie DU.
+// Driven through the real validator here so these double as regression tests
+// for "an incomplete URLA must not reach the GSE."
+// ---------------------------------------------------------------------------
+describe("evaluateGseSubmissionReadiness — submit-gse 422 gate", () => {
+  it("blocks a gating-section gap (missing SSN) and lists the field", async () => {
+    setFixtures({
+      // SSN presence is decided by the vault's ssnLast4 marker (plaintext ssn
+      // is never stored post-encryption), so "missing SSN" means clearing it.
+      urla: baseUrla({ personalInfo: completePersonalInfo({ ssn: null, ssnLast4: null }) }),
+    });
+    const gate = evaluateGseSubmissionReadiness(await validateMISMOCompleteness("app-1"));
+
+    expect(gate.blocked).toBe(true);
+    expect(gate.status).toBe(422);
+    expect(gate.body.gseGatingFailed).toBe(true);
+    expect(gate.body.gseReady).toBe(false);
+    // missingFields uses "<Section name>: <Field>"; criticalErrors add "is required".
+    expect(gate.body.missingFields).toContain("Personal Information: SSN");
+    expect(gate.body.criticalErrors).toContain("Personal Information: SSN is required");
+    expect(gate.body.error).toMatch(/missing required URLA fields/i);
+  });
+
+  it("blocks a critical error in a non-gating section even when gating passes", async () => {
+    // Null account type (section 2a, non-gating) raises a critical error
+    // without failing gating; the VA fixture keeps the score >= 90.
+    setFixtures(
+      gseReadyOpts({
+        urla: baseUrla({
+          assets: [
+            {
+              accountType: null,
+              financialInstitution: "Big Bank",
+              cashOrMarketValue: "50000",
+              borrowerSequenceNumber: 1,
+            },
+          ],
+        }),
+      })
+    );
+    const result = await validateMISMOCompleteness("app-1");
+    const gate = evaluateGseSubmissionReadiness(result);
+
+    expect(result.gseGatingFailed).toBe(false);
+    expect(result.overallScore).toBeGreaterThanOrEqual(90);
+    expect(gate.blocked).toBe(true); // via criticalErrors, not gating
+    expect(gate.body.missingFields).toContain("Assets & Accounts: Account Type");
+  });
+
+  it("blocks an ARM loan missing required ARM fields (surfaced via criticalErrors)", async () => {
+    setFixtures(gseReadyOpts({ application: { amortizationType: "adjustable" } }));
+    const gate = evaluateGseSubmissionReadiness(await validateMISMOCompleteness("app-1"));
+
+    expect(gate.blocked).toBe(true);
+    expect(gate.body.criticalErrors.some(e => /^ARM:/.test(e))).toBe(true);
+  });
+
+  it("blocks a co-applicant-only gap via criticalErrors (gating stays clean)", async () => {
+    setFixtures({
+      urla: urlaWithCoApplicant({
+        employment: [coEmployment({ employerName: null })],
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    const gate = evaluateGseSubmissionReadiness(result);
+
+    expect(result.gseGatingFailed).toBe(false); // gating scores the primary only
+    expect(gate.blocked).toBe(true);
+    expect(gate.body.criticalErrors).toContain(
+      "Co-applicant #2 Employment & Income: Employer Name is required"
+    );
+  });
+
+  it("does NOT block a required-complete application that merely scores below 90", async () => {
+    // The key design choice: the baseline conventional app has every required
+    // field present (no gating fail, no critical errors) but scores 88, so
+    // gseReady is false. The gate must let it through rather than emit an
+    // empty, unactionable 422.
+    setFixtures();
+    const result = await validateMISMOCompleteness("app-1");
+    const gate = evaluateGseSubmissionReadiness(result);
+
+    expect(result.overallScore).toBeLessThan(90);
+    expect(result.gseReady).toBe(false);
+    expect(result.gseGatingFailed).toBe(false);
+    expect(result.criticalErrors).toEqual([]);
+    expect(gate.blocked).toBe(false);
+  });
+
+  it("does NOT block a fully GSE-ready application", async () => {
+    setFixtures(gseReadyOpts());
+    const result = await validateMISMOCompleteness("app-1");
+    const gate = evaluateGseSubmissionReadiness(result);
+
+    expect(result.gseReady).toBe(true);
+    expect(gate.blocked).toBe(false);
+    expect(gate.body.gseReady).toBe(true);
+    expect(gate.body.missingFields).toEqual([]);
   });
 });
