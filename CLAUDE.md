@@ -34,6 +34,7 @@ Where this code lives:
 | Loan Delivery / UCD / EarlyCheck pre-delivery edit mirror | `shared/fannieMae/loanDeliveryEdits.ts` |
 | UCD fee/prepaid/escrow enumerations by CD section | `shared/fannieMae/ucdFeeEnumerations.ts` |
 | Delivery-readiness workflow + `loan_delivery_data` capture | `server/services/loanDeliveryReadiness.ts`, `shared/schema/delivery.ts` |
+| Broker submission workflow (intake → DU → lender package) | `server/services/brokerSubmissionReadiness.ts` |
 | AUS submission (DU today; LPA leg not yet built) | `server/services/ausSubmission.ts`, `server/routes/aus.ts` |
 | Lending / underwriting routes | `server/routes/lending.ts`, `server/routes/underwriting.ts` |
 

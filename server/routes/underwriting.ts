@@ -809,6 +809,31 @@ export function registerUnderwritingRoutes(
     }
   });
 
+  // Broker submission workflow: staged gate from intake to wholesale-lender
+  // package (intake/TRID → DU → package + anti-steering), with the Fannie Mae
+  // delivery edits as an informational lender's-eye pre-flight. This is the
+  // operational "can this file go to a lender today" view for LO/processor.
+  app.get(
+    "/api/loan-applications/:id/submission-readiness",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { evaluateBrokerSubmissionReadiness } = await import("../services/brokerSubmissionReadiness");
+        const report = await evaluateBrokerSubmissionReadiness(id);
+        res.json(report);
+      } catch (error) {
+        console.error("Submission readiness error:", error);
+        res.status(500).json({ error: "Failed to evaluate submission readiness" });
+      }
+    },
+  );
+
   // Fannie Mae delivery readiness: URLA gating + Loan Delivery / UCD /
   // EarlyCheck edit mirror + Special Feature Code derivation. Internal staff
   // only — this is a delivery-ops view, not a partner/borrower surface.
