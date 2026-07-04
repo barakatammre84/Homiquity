@@ -881,7 +881,14 @@ export function registerLendingRoutes(
         ...mismoData,
       };
 
-      const xml = generateMISMO34XML(dto);
+      // Delivery shape per the ULDD Implementation Guide: AtClosing + Current
+      // LOAN states, no ASSET container. The note date (when captured on the
+      // delivery row) stamps the AtClosing loan state.
+      const deliveryData = await storage.getLoanDeliveryData(id);
+      const xml = generateMISMO34XML(dto, {
+        purpose: "loanDelivery",
+        noteDate: deliveryData?.noteDate ?? undefined,
+      });
       
       // Set proper headers for XML download
       res.setHeader("Content-Type", "application/xml");

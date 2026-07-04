@@ -809,6 +809,209 @@ export function registerUnderwritingRoutes(
     }
   });
 
+  // Broker submission workflow: staged gate from intake to wholesale-lender
+  // package (intake/TRID → DU → package + anti-steering), with the Fannie Mae
+  // delivery edits as an informational lender's-eye pre-flight. This is the
+  // operational "can this file go to a lender today" view for LO/processor.
+  app.get(
+    "/api/loan-applications/:id/submission-readiness",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { evaluateBrokerSubmissionReadiness } = await import("../services/brokerSubmissionReadiness");
+        const report = await evaluateBrokerSubmissionReadiness(id);
+        res.json(report);
+      } catch (error) {
+        console.error("Submission readiness error:", error);
+        res.status(500).json({ error: "Failed to evaluate submission readiness" });
+      }
+    },
+  );
+
+  // Wholesale lender catalog (Target-5 shortlist + approval status).
+  app.get(
+    "/api/wholesale-lenders",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (_req, res) => {
+      const { WHOLESALE_LENDERS } = await import("@shared/wholesaleLenders");
+      res.json(WHOLESALE_LENDERS);
+    },
+  );
+
+  // Submit a packaging-complete file to a wholesale lender. Server-enforced:
+  // the broker submission-readiness gate must pass (stages 1–3 blocker-free)
+  // and only one active submission per lender is allowed.
+  app.post(
+    "/api/loan-applications/:id/lender-submissions",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        const lenderId = typeof req.body?.lenderId === "string" ? req.body.lenderId : "";
+        if (!lenderId) {
+          return res.status(400).json({ error: "lenderId is required" });
+        }
+
+        const { submitToWholesaleLender, SubmissionBlockedError } = await import("../services/lenderSubmission");
+        try {
+          const result = await submitToWholesaleLender(id, lenderId, req.user!.id);
+          const { logAudit } = await import("../auditLog");
+          logAudit(req, "broker.lender_submission_created", "loan_application", id, {
+            lenderId,
+            submissionId: result.submission.id,
+            confirmationId: result.submission.confirmationId,
+            simulated: result.submission.simulated,
+          });
+          res.status(201).json(result.submission);
+        } catch (err) {
+          if (err instanceof SubmissionBlockedError) {
+            return res.status(422).json({ error: err.message, blockers: err.blockers });
+          }
+          throw err;
+        }
+      } catch (error) {
+        console.error("Lender submission error:", error);
+        res.status(500).json({ error: "Failed to submit to lender" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/loan-applications/:id/lender-submissions",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        res.json(await storage.getLenderSubmissionsByApplication(id));
+      } catch (error) {
+        console.error("List lender submissions error:", error);
+        res.status(500).json({ error: "Failed to list lender submissions" });
+      }
+    },
+  );
+
+  // Advance a submission's status as the lender responds (transition-checked).
+  app.patch(
+    "/api/lender-submissions/:submissionId",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { submissionId } = req.params;
+        const submission = await storage.getLenderSubmission(submissionId);
+        if (!submission) {
+          return res.status(404).json({ error: "Submission not found" });
+        }
+        const application = await storage.getLoanApplicationWithAccess(
+          submission.applicationId, req.user!.id, req.user!.role,
+        );
+        if (!application) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+
+        const toStatus = typeof req.body?.status === "string" ? req.body.status : "";
+        const notes = typeof req.body?.notes === "string" ? req.body.notes.slice(0, 2000) : undefined;
+        const { updateSubmissionStatus, SubmissionBlockedError } = await import("../services/lenderSubmission");
+        try {
+          const updated = await updateSubmissionStatus(submissionId, toStatus, notes, req.user!.id);
+          const { logAudit } = await import("../auditLog");
+          logAudit(req, "broker.lender_submission_status", "loan_application", submission.applicationId, {
+            submissionId,
+            from: submission.status,
+            to: toStatus,
+          });
+          res.json(updated);
+        } catch (err) {
+          if (err instanceof SubmissionBlockedError) {
+            return res.status(422).json({ error: err.message });
+          }
+          throw err;
+        }
+      } catch (error) {
+        console.error("Update lender submission error:", error);
+        res.status(500).json({ error: "Failed to update submission" });
+      }
+    },
+  );
+
+  // Fannie Mae delivery readiness: URLA gating + Loan Delivery / UCD /
+  // EarlyCheck edit mirror + Special Feature Code derivation. Internal staff
+  // only — this is a delivery-ops view, not a partner/borrower surface.
+  app.get(
+    "/api/loan-applications/:id/delivery-readiness",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { evaluateDeliveryReadiness } = await import("../services/loanDeliveryReadiness");
+        const report = await evaluateDeliveryReadiness(id);
+        res.json(report);
+      } catch (error) {
+        console.error("Delivery readiness error:", error);
+        res.status(500).json({ error: "Failed to evaluate delivery readiness" });
+      }
+    },
+  );
+
+  // Capture/update the closing-stage delivery data (Regulation Z / QM
+  // datapoints, UCD Phase 3 closing-cost containers, SFC attributes) the
+  // delivery-readiness edits evaluate. Internal staff only.
+  app.put(
+    "/api/loan-applications/:id/delivery-data",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { insertLoanDeliveryDataSchema } = await import("@shared/schema");
+        const parsed = insertLoanDeliveryDataSchema
+          .partial()
+          .omit({ applicationId: true })
+          .safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ error: "Invalid delivery data", details: parsed.error.flatten() });
+        }
+
+        const saved = await storage.upsertLoanDeliveryData({
+          ...parsed.data,
+          applicationId: id,
+        });
+
+        const { logAudit } = await import("../auditLog");
+        logAudit(req, "gse.delivery_data_updated", "loan_application", id, {
+          fields: Object.keys(parsed.data),
+        });
+
+        res.json(saved);
+      } catch (error) {
+        console.error("Delivery data update error:", error);
+        res.status(500).json({ error: "Failed to save delivery data" });
+      }
+    },
+  );
+
   app.get("/api/loan-applications/:id/loan-estimate", isAuthenticated, requireConsent("e_disclosure"), async (req, res) => {
     try {
       const { id } = req.params;

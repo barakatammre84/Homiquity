@@ -1,0 +1,146 @@
+import { describe, it, expect } from "vitest";
+import {
+  deriveSubmissionStages,
+  type StageDerivationInputs,
+} from "../server/services/brokerSubmissionReadiness";
+
+// ---------------------------------------------------------------------------
+// Broker workflow stage derivation. Pure function — no DB. The division of
+// labor under test: stages 1–3 gate the wholesale-lender submission; stage 4
+// (Fannie Mae delivery edits) is informational only, because closing data
+// and loan delivery belong to the wholesale lender, not the broker.
+// ---------------------------------------------------------------------------
+
+function cleanInputs(overrides: Partial<StageDerivationInputs> = {}): StageDerivationInputs {
+  return {
+    urla: {
+      gseGatingFailed: false,
+      criticalErrors: [],
+      missingDocuments: [],
+      qmStatus: "QM",
+      pointsAndFeesCompliant: true,
+      tridStatus: { leRequired: true, leDueDate: new Date("2099-01-01"), leIssued: true },
+      ...(overrides.urla ?? {}),
+    },
+    uldd: { valid: true, errors: [], warnings: [], ...(overrides.uldd ?? {}) },
+    aus: { casefileId: "CF-123", recommendation: "Approve/Eligible", lpaAssessed: true, ...(overrides.aus ?? {}) },
+    consents: { eDisclosure: true, antiSteering: true, ...(overrides.consents ?? {}) },
+    deliveryEdits: {
+      deliverable: true,
+      fatalCount: 0,
+      warningCount: 0,
+      notEvaluatedCount: 0,
+      ...(overrides.deliveryEdits ?? {}),
+    },
+    now: overrides.now,
+  };
+}
+
+const stage = (r: ReturnType<typeof deriveSubmissionStages>, key: string) =>
+  r.stages.find(s => s.key === key)!;
+
+describe("a packaging-complete file", () => {
+  it("is ready to submit to a wholesale lender", () => {
+    const r = deriveSubmissionStages(cleanInputs());
+    expect(r.readyToSubmitToLender).toBe(true);
+    expect(stage(r, "intake").status).toBe("ready");
+    expect(stage(r, "lenderPackage").status).toBe("ready");
+    expect(r.nextActions).toEqual(["File is packaging-complete — select a wholesale lender and submit"]);
+  });
+});
+
+describe("stage 1 — intake & disclosures", () => {
+  it("blocks on missing URLA gating fields", () => {
+    const r = deriveSubmissionStages(cleanInputs({ urla: { gseGatingFailed: true } as any }));
+    expect(stage(r, "intake").status).toBe("blocked");
+    expect(r.readyToSubmitToLender).toBe(false);
+    expect(r.currentStage).toBe("intake");
+  });
+
+  it("blocks when the TRID LE deadline has passed without issuance", () => {
+    const r = deriveSubmissionStages(cleanInputs({
+      urla: { tridStatus: { leRequired: true, leDueDate: new Date("2026-01-02"), leIssued: false } } as any,
+      now: new Date("2026-01-05"),
+    }));
+    expect(stage(r, "intake").blockers.some(b => b.includes("past its 3-business-day"))).toBe(true);
+  });
+
+  it("only warns while the LE clock is still running", () => {
+    const r = deriveSubmissionStages(cleanInputs({
+      urla: { tridStatus: { leRequired: true, leDueDate: new Date("2099-01-01"), leIssued: false } } as any,
+    }));
+    expect(stage(r, "intake").status).toBe("attention");
+    expect(r.readyToSubmitToLender).toBe(true); // attention does not block
+  });
+
+  it("warns (not blocks) without ESIGN consent — paper delivery remains lawful", () => {
+    const r = deriveSubmissionStages(cleanInputs({ consents: { eDisclosure: false, antiSteering: true } }));
+    expect(stage(r, "intake").status).toBe("attention");
+    expect(stage(r, "intake").blockers).toEqual([]);
+  });
+});
+
+describe("stage 2 — AUS", () => {
+  it("blocks on critical URLA/regulatory errors", () => {
+    const r = deriveSubmissionStages(cleanInputs({ urla: { criticalErrors: ["ARM: margin missing"] } as any }));
+    expect(stage(r, "aus").status).toBe("blocked");
+    expect(r.readyToSubmitToLender).toBe(false);
+  });
+
+  it("flags a file that has never been run through DU", () => {
+    const r = deriveSubmissionStages(cleanInputs({ aus: { casefileId: null, recommendation: null, lpaAssessed: false } }));
+    expect(stage(r, "aus").status).toBe("attention");
+    expect(stage(r, "aus").warnings.some(w => w.includes("No DU casefile"))).toBe(true);
+  });
+
+  it("flags DU-only casefiles until the LPA leg has run (dual-AUS doctrine)", () => {
+    const duOnly = deriveSubmissionStages(cleanInputs({
+      aus: { casefileId: "CF-123", recommendation: "Approve/Eligible", lpaAssessed: false },
+    }));
+    expect(stage(duOnly, "aus").warnings.some(w => w.includes("LPA leg has not run"))).toBe(true);
+
+    const dual = deriveSubmissionStages(cleanInputs());
+    expect(stage(dual, "aus").warnings).toEqual([]);
+    expect(stage(dual, "aus").status).toBe("ready");
+  });
+});
+
+describe("stage 3 — wholesale lender package", () => {
+  it("blocks when the MISMO file is invalid", () => {
+    const r = deriveSubmissionStages(cleanInputs({
+      uldd: { valid: false, errors: ["NoteAmount is required and must be greater than 0"], warnings: [] },
+    }));
+    expect(stage(r, "lenderPackage").status).toBe("blocked");
+    expect(stage(r, "lenderPackage").blockers[0]).toContain("NoteAmount");
+  });
+
+  it("blocks on outstanding required documents", () => {
+    const r = deriveSubmissionStages(cleanInputs({ urla: { missingDocuments: ["paystub", "w2"] } as any }));
+    expect(stage(r, "lenderPackage").blockers.some(b => b.includes("2 required document(s)"))).toBe(true);
+  });
+
+  it("blocks when points and fees fail the QM pre-flight", () => {
+    const r = deriveSubmissionStages(cleanInputs({
+      urla: { qmStatus: "Non-QM", pointsAndFeesCompliant: false } as any,
+    }));
+    expect(stage(r, "lenderPackage").blockers.some(b => b.includes("QM pre-flight"))).toBe(true);
+  });
+
+  it("blocks without the anti-steering disclosure (Reg Z §1026.36(e)(3))", () => {
+    const r = deriveSubmissionStages(cleanInputs({ consents: { eDisclosure: true, antiSteering: false } }));
+    expect(stage(r, "lenderPackage").blockers.some(b => b.includes("Anti-steering"))).toBe(true);
+    expect(r.readyToSubmitToLender).toBe(false);
+  });
+});
+
+describe("stage 4 — delivery pre-flight is informational only", () => {
+  it("never blocks the broker submission, even with fatal delivery edits", () => {
+    const r = deriveSubmissionStages(cleanInputs({
+      deliveryEdits: { deliverable: false, fatalCount: 7, warningCount: 2, notEvaluatedCount: 5 },
+    }));
+    expect(stage(r, "deliveryPreflight").status).toBe("attention");
+    expect(stage(r, "deliveryPreflight").blockers).toEqual([]);
+    expect(r.readyToSubmitToLender).toBe(true);
+    expect(stage(r, "deliveryPreflight").warnings.some(w => w.includes("7 Loan Delivery/UCD edit(s)"))).toBe(true);
+  });
+});

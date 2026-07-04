@@ -42,11 +42,14 @@ depth.
 | `trid.ts` | TRID six-piece trigger (§1026.2(a)(3)): sole writer of `tridTriggeredAt`, starts the 3-business-day LE clock, hard-stops forward status/stage moves when the LE is overdue |
 | `businessDays.ts` | Shared TRID business-day math (weekends + federal holidays) — never reimplement with calendar arithmetic |
 | `encryptionService.ts` | Field encryption, PII hashing, audit hash-chaining |
-| `mismoValidation.ts` + `../mismo.ts` | MISMO 3.4 XML export + GSE/ULDD validation |
+| `mismoValidation.ts` + `../mismo.ts` | MISMO 3.4 XML export + GSE/ULDD validation. ATR/QM points-and-fees uses the tiered Reg Z caps from `shared/fannieMae/qmThresholds.ts` (note-date-year tables) |
+| `loanDeliveryReadiness.ts` | Fannie Mae delivery-readiness workflow: URLA gating + Loan Delivery/UCD/EarlyCheck edit mirror + SFC derivation, over the `loan_delivery_data` row. Pure rules live in `shared/fannieMae/` (`qmThresholds.ts`, `specialFeatureCodes.ts`, `loanDeliveryEdits.ts`, `ucdFeeEnumerations.ts`), all transcribed from `docs/fannie-mae/` job aids — never extend from memory. Routes: `GET /api/loan-applications/:id/delivery-readiness`, `PUT .../delivery-data` (internal staff) |
+| `brokerSubmissionReadiness.ts` | Broker submission workflow: staged gate intake/TRID → DU → wholesale-lender package (MISMO validity, docs, QM pre-flight, anti-steering §1026.36(e)(3)) with the delivery edits as an informational lender's-eye pre-flight that never blocks. Pure stage derivation is unit-tested. Route: `GET /api/loan-applications/:id/submission-readiness` (internal staff) |
 | `../auditLog.ts` | General audit logging |
 | `verification.ts` | Plaid-driven income/employment/asset verification |
 | `../plaid.ts` | Plaid API client |
-| `ausSubmission.ts` | GSE leg: Plaid asset-report parsing, DU 12.1 casefile submission (simulated until Fannie onboarding), Day 1 Certainty parsing, commitment letter builder |
+| `ausSubmission.ts` | GSE leg: Plaid asset-report parsing, dual-AUS casefile submission — DU 12.1 + LPA (both simulated until GSE onboarding; LPA rides in `ausFindings.lpa`), Day 1 Certainty parsing, commitment letter builder |
+| `lenderSubmission.ts` | Wholesale submit action: gated on submission-readiness (422 + blockers), one active submission per lender, deterministic simulated acknowledgment behind the per-lender portal seam; status machine in `shared/wholesaleLenders.ts` |
 
 ## Ops & intelligence
 

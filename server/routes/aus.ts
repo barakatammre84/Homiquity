@@ -12,6 +12,7 @@ import {
   buildCommitmentLetter,
   parsePlaidAssetReport,
   submitToDU,
+  submitToLPA,
 } from "../services/ausSubmission";
 import { validateMISMOCompleteness, evaluateGseSubmissionReadiness } from "../services/mismoValidation";
 
@@ -199,7 +200,7 @@ export function registerAusRoutes(app: Express) {
             ? Number((Number(application.monthlyDebts) / monthlyIncome).toFixed(4))
             : null;
 
-        const findings = await submitToDU({
+        const casefileInput = {
           applicationId,
           loanAmount,
           propertyValue: purchasePrice,
@@ -208,7 +209,15 @@ export function registerAusRoutes(app: Express) {
           voaReportId: voa?.voaReportId ?? null,
           voieReportId: voie?.voieReportId ?? null,
           auditCopyToken: voa?.auditCopyToken ?? null,
-        });
+        };
+
+        // Dual AUS: DU and LPA run on the same casefile inputs so lender
+        // selection can follow whichever engine reads the file better. DU
+        // stays the headline recommendation; LPA rides along in ausFindings.
+        const [findings, lpaFindings] = await Promise.all([
+          submitToDU(casefileInput),
+          submitToLPA(casefileInput),
+        ]);
 
         // Persist findings onto the application…
         await db
@@ -217,7 +226,7 @@ export function registerAusRoutes(app: Express) {
             ausCasefileId: findings.casefileId,
             ausRecommendation: findings.recommendation,
             ausSubmittedAt: new Date(),
-            ausFindings: findings,
+            ausFindings: { ...findings, lpa: lpaFindings },
             d1cAssetsRelief: findings.day1Certainty.assets.relief,
             d1cIncomeRelief: findings.day1Certainty.income.relief,
             d1cEmploymentRelief: findings.day1Certainty.employment.relief,
