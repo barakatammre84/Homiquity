@@ -108,7 +108,7 @@ from application data, credit tradelines, bank transactions, or public records.
 - Verified live: fresh registered borrower, rental income source with $2,000/mo rent + $1,200/mo PITIA → `RENTAL_INCOME_OFFSET` raised with "$1,500/month qualifying... adds $300/month toward your qualifying income", borrower notified
 
 ### S-06: Multi-Unit Subject Property Rental Income
-- Status: Implemented 2026-07-04 (commit 083811d)
+- Status: Implemented 2026-07-04 (commit b7f6e5d)
 - Guideline: Fannie Mae Selling Guide B3-3.1-08 (Rental Income from Subject Property)
 - Engine: `calculateSubjectPropertyRentalOffset` in [underwritingNuance.ts](../server/services/underwritingNuance.ts) → flag `SUBJECT_PROPERTY_RENTAL_OFFSET`
 - Signal source: `urla_property_info.numberOfUnits` + `.occupancyType` + new `.estimatedMarketRent` column (appraisal rent schedule / lease estimate captured on the URLA property step)
