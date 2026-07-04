@@ -31,6 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { LoanApplication } from "@shared/schema";
+import { getLoanAppStatusMeta, isTerminalLoanAppStatus } from "@shared/schema";
 import {
   ChevronDown,
   Home,
@@ -101,27 +102,8 @@ function getOccupancyLabel(occupancy: string | null | undefined): string {
 }
 
 function getStatusBadge(status: string): { label: string; variant: "default" | "secondary" | "outline" | "destructive" } {
-  switch (status) {
-    case "pre_approved":
-      return { label: "Pre-Approved", variant: "default" };
-    case "conditionally_approved":
-      return { label: "Conditional", variant: "secondary" };
-    case "under_review":
-      return { label: "In Review", variant: "secondary" };
-    case "submitted":
-      return { label: "Submitted", variant: "outline" };
-    case "draft":
-    case "incomplete":
-      return { label: "Incomplete", variant: "outline" };
-    case "denied":
-      return { label: "Denied", variant: "destructive" };
-    case "withdrawn":
-      return { label: "Withdrawn", variant: "destructive" };
-    case "closed":
-      return { label: "Closed", variant: "secondary" };
-    default:
-      return { label: "In Progress", variant: "outline" };
-  }
+  const meta = getLoanAppStatusMeta(status);
+  return { label: meta.label, variant: meta.badgeVariant };
 }
 
 function generateReferenceNumber(app: LoanApplication): string {
@@ -233,7 +215,7 @@ export function ApplicationSwitcher({
             const AppIcon = getLoanPurposeIcon(app.loanPurpose);
             const status = getStatusBadge(app.status);
             const isActive = app.id === activeApplicationId;
-            const canWithdraw = !["closed", "denied", "withdrawn"].includes(app.status);
+            const canWithdraw = !isTerminalLoanAppStatus(app.status);
             
             return (
               <DropdownMenuItem

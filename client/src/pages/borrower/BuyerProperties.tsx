@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication } from "@shared/schema";
+import { isApprovedGradeLoanAppStatus } from "@shared/schema";
 import {
   Search,
   MapPin,
@@ -159,7 +160,7 @@ export default function BuyerProperties() {
   const preApproval = useMemo(() => {
     if (!applications?.length) return null;
     const approved = applications.find(
-      (app) => app.status === "pre_approved" || app.status === "approved"
+      (app) => isApprovedGradeLoanAppStatus(app.status)
     );
     return approved || applications[0];
   }, [applications]);

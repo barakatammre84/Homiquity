@@ -13,8 +13,10 @@ import {
   insertUrlaPersonalInfoSchema,
   isStaffRole,
   isInternalStaffRole,
+  LOAN_APP_TERMINAL_STATUSES,
   type User,
 } from "@shared/schema";
+import { updatePipelineStage } from "../pipelineEngine";
 import crypto from "crypto";
 import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
@@ -1918,14 +1920,15 @@ export function registerBorrowerRoutes(
       }
 
       // Check if already withdrawn or in a terminal state
-      if (["withdrawn", "closed", "denied"].includes(application.status)) {
+      if ((LOAN_APP_TERMINAL_STATUSES as readonly string[]).includes(application.status)) {
         return res.status(400).json({ error: "Application cannot be withdrawn in its current state" });
       }
 
-      // Update application status to withdrawn
-      const updatedApp = await storage.updateLoanApplication(applicationId, {
-        status: "withdrawn",
-      });
+      // Single writer: stamps the HMDA Reg C action-taken code 4 (previously
+      // missed on borrower-initiated withdrawals), emits task-engine events,
+      // and keeps the borrower state machine in sync.
+      await updatePipelineStage(applicationId, "withdrawn");
+      const updatedApp = await storage.getLoanApplication(applicationId);
 
       // Log the withdrawal activity
       await storage.createDealActivity({
@@ -3936,40 +3939,8 @@ export function registerBorrowerRoutes(
   app.get("/api/user-activity-summary", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as User).id;
-      const { userActivities } = await import("@shared/schema");
-      const { db } = await import("../db");
-      const { eq, sql, and, gte } = await import("drizzle-orm");
-
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      const recentActivities = await db
-        .select({
-          activityType: userActivities.activityType,
-          count: sql<number>`count(*)::int`,
-          lastSeen: sql<string>`max(${userActivities.createdAt})`,
-        })
-        .from(userActivities)
-        .where(and(
-          eq(userActivities.userId, userId),
-          gte(userActivities.createdAt, sevenDaysAgo)
-        ))
-        .groupBy(userActivities.activityType);
-
-      const totalPageViews = recentActivities.find(a => a.activityType === "page_view")?.count || 0;
-      const propertySearches = recentActivities.find(a => a.activityType === "property_search")?.count || 0;
-      const calculatorUses = recentActivities.find(a => a.activityType === "calculator_use")?.count || 0;
-      const coachChats = recentActivities.find(a => a.activityType === "coach_chat")?.count || 0;
-      const propertyViews = recentActivities.find(a => a.activityType === "property_view")?.count || 0;
-
-      res.json({
-        totalPageViews,
-        propertySearches,
-        calculatorUses,
-        coachChats,
-        propertyViews,
-        activities: recentActivities,
-      });
+      const { getUserActivitySummary } = await import("../services/activitySummary");
+      res.json(await getUserActivitySummary(userId));
     } catch (error) {
       console.error("Activity summary error:", error);
       res.status(500).json({ error: "Failed to load activity summary" });

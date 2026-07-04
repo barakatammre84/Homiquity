@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import type { Task, LoanApplication } from "@shared/schema";
+import { isTerminalLoanAppStatus } from "@shared/schema";
 import {
   CheckCircle2,
   Clock,
@@ -188,7 +189,7 @@ export default function Tasks() {
 
   const applications = dashboardData?.applications || [];
   const activeApplication = applications.find(
-    (app) => !["closed", "denied"].includes(app.status)
+    (app) => !isTerminalLoanAppStatus(app.status)
   );
 
   // Scope to the ACTIVE application — tasks from old/denied applications are

@@ -8,6 +8,8 @@ import {
   mortgageRatePrograms,
   mortgageRates,
   refiAlerts,
+  LOAN_APP_STATUSES,
+  LOAN_APP_TERMINAL_STATUSES,
   type HomeownerProfile,
 } from "@shared/schema";
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
@@ -136,16 +138,18 @@ const DOC_FRESHNESS_DAYS = 30;
 /** Nudge borrowers a few days before the cliff. */
 const DOC_NUDGE_AT_DAYS = 25;
 
-const IN_FLIGHT_STATUSES = [
-  "submitted",
-  "analyzing",
-  "pre_approved",
-  "verified",
-  "doc_collection",
-  "processing",
-  "underwriting",
-  "conditional",
-];
+// Derived from the canonical vocabulary rather than hand-listed — files
+// moved to any non-terminal working status stay inside the freshness sweep.
+// Excluded: "draft" (nothing submitted yet, nothing can go stale) and the
+// closing-track statuses ("clear_to_close", "closing") where documents are
+// already locked into the closing package.
+const IN_FLIGHT_STATUSES = LOAN_APP_STATUSES.filter(
+  (s) =>
+    !(LOAN_APP_TERMINAL_STATUSES as readonly string[]).includes(s) &&
+    s !== "draft" &&
+    s !== "clear_to_close" &&
+    s !== "closing",
+);
 
 /**
  * Consumer freshness signal: documents on in-flight applications crossing the

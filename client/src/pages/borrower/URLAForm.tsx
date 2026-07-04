@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { US_STATES } from "@/lib/us-states";
 import type { LoanApplication, UrlaPersonalInfo, EmploymentHistory, UrlaAsset, UrlaLiability, UrlaPropertyInfo, OtherIncomeSource, BorrowerDeclarations, HmdaDemographics } from "@shared/schema";
+import { isTerminalLoanAppStatus } from "@shared/schema";
 import {
   User,
   Users,
@@ -197,7 +198,7 @@ export default function URLAForm() {
 
   const applications = dashboardData?.applications || [];
   const activeApplication = applications.find(
-    (app) => !["closed", "denied"].includes(app.status)
+    (app) => !isTerminalLoanAppStatus(app.status)
   );
 
   const { data: urlaData, isLoading: urlaLoading } = useQuery<UrlaData>({

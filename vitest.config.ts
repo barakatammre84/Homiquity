@@ -19,6 +19,8 @@ export default defineConfig({
       "tests/underwritingNuance.test.ts",
       "tests/complianceInvariants.test.ts",
       "tests/scenarioCatalog.test.ts",
+      "tests/statusVocabulary.test.ts",
+      "tests/intakeSchema.test.ts",
       "tests/stageRequirements.test.ts",
       "tests/borrowerStateMachine.test.ts",
       "tests/ssnVault.test.ts",

@@ -1,12 +1,19 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
-import { 
+import {
   insertBorrowerDeclarationsSchema,
-  isStaffRole,
-  VALID_US_STATES,
+  LOAN_APP_STATUSES,
+  loanApplicationIntakeSchema,
+  loanApplicationIntakeUpdateSchema,
+  type LoanAppStatus,
   type User,
 } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
+import { updatePipelineStage, PipelineTransitionError } from "../pipelineEngine";
+import { computeNextAction } from "../services/nextAction";
+import { getUserActivitySummary } from "../services/activitySummary";
+import { isTerminalLoanAppStatus } from "@shared/schema";
 import { finalizeIntake } from "../services/loanAnalysis";
 import { generateMISMO34XML, type MISMOLoanDTO } from "../mismo";
 import { db } from "../db";
@@ -35,85 +42,10 @@ const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().
   applicationId: z.string().optional(),
 });
 
-const validEmploymentTypes = ["employed", "self_employed", "retired", "other"] as const;
-const validPropertyTypes = ["single_family", "condo", "townhouse", "multi_family"] as const;
-const validLoanPurposes = ["purchase", "refinance", "cash_out"] as const;
-
-const serverCurrencyTransform = (fieldLabel: string) =>
-  z.string().or(z.number())
-    .transform(v => String(v).replace(/[,$]/g, ""))
-    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n >= 0; }, { message: `${fieldLabel} must be a valid dollar amount` })
-    .refine(v => parseFloat(v) <= 100_000_000, { message: `${fieldLabel} exceeds the maximum allowed value` });
-
-const serverPositiveCurrencyTransform = (fieldLabel: string) =>
-  z.string().or(z.number())
-    .transform(v => String(v).replace(/[,$]/g, ""))
-    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n > 0; }, { message: `${fieldLabel} must be greater than $0` })
-    .refine(v => parseFloat(v) <= 100_000_000, { message: `${fieldLabel} exceeds the maximum allowed value` });
-
-const serverRentalPropertySchema = z.object({
-  address: z.string().min(1, "Property address is required").max(500, "Address is too long"),
-  city: z.string().max(100).optional(),
-  state: z.string().refine(v => !v || (VALID_US_STATES as readonly string[]).includes(v), { message: "Invalid state code" }).optional(),
-  monthlyRentalIncome: z.string().or(z.number())
-    .transform(v => String(v).replace(/[,$]/g, ""))
-    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n > 0; }, { message: "Rental income must be greater than $0" }),
-  monthlyDebtPayment: z.string().or(z.number())
-    .transform(v => String(v).replace(/[,$]/g, ""))
-    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n >= 0; }, { message: "Debt payment must be a valid amount" })
-    .optional(),
-});
-
-const serverIncomeSourceSchema = z.object({
-  type: z.enum(["w2", "self_employed", "rental", "social_security", "pension", "investment", "other"]),
-  annualAmount: z.string().or(z.number())
-    .transform(v => String(v).replace(/[,$]/g, ""))
-    .refine(v => { const n = parseFloat(v); return !isNaN(n) && n > 0; }, { message: "Income amount must be greater than $0" }),
-  employerName: z.string().max(200, "Employer name is too long").optional(),
-  yearsInRole: z.string().or(z.number())
-    .transform(v => { const n = parseInt(String(v)); return isNaN(n) ? "0" : String(Math.max(0, Math.min(80, n))); })
-    .optional(),
-  rentalProperties: z.array(serverRentalPropertySchema).optional(),
-});
-
-const loanApplicationInputSchema = z.object({
-  annualIncome: serverPositiveCurrencyTransform("Annual income"),
-  monthlyDebts: serverCurrencyTransform("Monthly debts"),
-  creditScore: z.string().or(z.number()).transform(v => {
-    const s = String(v);
-    if (s === "not_sure") return 680;
-    const n = parseInt(s);
-    if (isNaN(n)) throw new Error("Credit score must be a valid number");
-    return Math.max(300, Math.min(850, n));
-  }).refine(v => v >= 300 && v <= 850, { message: "Credit score must be between 300 and 850" }),
-  employmentType: z.enum(validEmploymentTypes, { errorMap: () => ({ message: "Please select a valid employment type" }) }).optional(),
-  employmentYears: z.string().or(z.number()).transform(v => {
-    const n = parseInt(String(v));
-    return isNaN(n) ? 0 : Math.max(0, Math.min(80, n));
-  }).optional(),
-  propertyType: z.enum(validPropertyTypes, { errorMap: () => ({ message: "Please select a valid property type" }) }).optional(),
-  purchasePrice: serverPositiveCurrencyTransform("Purchase price"),
-  downPayment: serverCurrencyTransform("Down payment"),
-  loanPurpose: z.enum(validLoanPurposes, { errorMap: () => ({ message: "Please select a valid loan purpose" }) }).optional(),
-  isVeteran: z.boolean().optional().default(false),
-  isFirstTimeBuyer: z.boolean().optional().default(false),
-  propertyState: z.string()
-    .refine(v => !v || (VALID_US_STATES as readonly string[]).includes(v), { message: "Please select a valid US state" })
-    .optional(),
-  incomeSources: z.array(serverIncomeSourceSchema).optional(),
-  // FCRA soft-pull authorization acknowledged on the funnel's final step.
-  // When true, a credit_consents evidence row (IP, user agent, canonical
-  // disclosure text) is recorded alongside the application.
-  softPullConsentAccepted: z.boolean().optional(),
-}).refine(
-  (data) => {
-    const dp = parseFloat(String(data.downPayment));
-    const pp = parseFloat(String(data.purchasePrice));
-    if (isNaN(dp) || isNaN(pp)) return true;
-    return dp <= pp;
-  },
-  { message: "Down payment cannot be more than the purchase price", path: ["downPayment"] }
-);
+// Intake validation lives in shared/schema/lending.ts (loanApplicationIntakeSchema),
+// derived from the same base schema the funnel validates with client-side — the
+// server rejects exactly what the client rejects, and "not_sure" credit maps to
+// the named CREDIT_SCORE_UNKNOWN_DEFAULT instead of a silent clamp.
 
 export function registerLendingRoutes(
   app: Express,
@@ -122,11 +54,12 @@ export function registerLendingRoutes(
   app.get("/api/dashboard", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const [applications, documents, stats, unreadMessages] = await Promise.all([
+      const [applications, documents, stats, unreadMessages, activitySummary] = await Promise.all([
         storage.getLoanApplicationsByUser(userId),
         storage.getDocumentsByUser(userId),
         storage.getDashboardStats(userId),
         storage.getUnreadMessageCount(userId),
+        getUserActivitySummary(userId),
       ]);
 
       // One batched query per table across the visible applications, all in a
@@ -146,6 +79,14 @@ export function registerLendingRoutes(
           loanOptionCounts: {},
           hmdaStatus: {},
           verificationStatus: {},
+          activitySummary,
+          nextAction: computeNextAction({
+            application: null,
+            pendingTasks: { total: 0, documents: 0 },
+            pendingDocuments: stats?.pendingDocuments || 0,
+            unreadMessages,
+            activitySummary,
+          }),
         });
       }
 
@@ -155,7 +96,18 @@ export function registerLendingRoutes(
       const [optionRows, activityRows, taskRows, hmdaRows, consentRows, verificationRows] =
         await Promise.all([
           db
-            .select()
+            .select({
+              // Card fields only — full rows carry pricing-grid JSON that
+              // inflates the dashboard payload for no rendering benefit.
+              id: loanOptions.id,
+              applicationId: loanOptions.applicationId,
+              interestRate: loanOptions.interestRate,
+              loanType: loanOptions.loanType,
+              loanTerm: loanOptions.loanTerm,
+              monthlyPayment: loanOptions.monthlyPayment,
+              isRecommended: loanOptions.isRecommended,
+              lockedAt: loanOptions.lockedAt,
+            })
             .from(loanOptions)
             .where(inArray(loanOptions.applicationId, topAppIds))
             // Match storage.getLoanOptionsByApplication's ordering so the
@@ -234,8 +186,10 @@ export function registerLendingRoutes(
             (v) => v.verificationType === "identity" && v.identityVerified,
           ),
           hasBankConnected: appVerifications.some((v) => v.verificationType === "income"),
+          // "lockedAt" is the real column — the old check read a field
+          // ("rateLockedAt") that never existed, so this flag was always false.
           hasRateLocked: recentOptions.some(
-            (o: any) => o.applicationId === appId && o.rateLockedAt,
+            (o) => o.applicationId === appId && o.lockedAt,
           ),
         };
       }
@@ -243,6 +197,21 @@ export function registerLendingRoutes(
       const allActivities = Object.values(activitiesMap).flat()
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 10);
+
+      // The single server-computed "what should the borrower do next" for the
+      // active (first non-terminal) application — replaces four drifting
+      // client-side copies of the stage→action mapping.
+      const activeApplication = applications.find((a) => !isTerminalLoanAppStatus(a.status)) || null;
+      const activeTasks = activeApplication
+        ? pendingTasksByApplication[activeApplication.id] || { total: 0, documents: 0 }
+        : { total: 0, documents: 0 };
+      const nextAction = computeNextAction({
+        application: activeApplication,
+        pendingTasks: activeTasks,
+        pendingDocuments: stats?.pendingDocuments || 0,
+        unreadMessages,
+        activitySummary,
+      });
 
       res.json({
         applications,
@@ -256,6 +225,8 @@ export function registerLendingRoutes(
         loanOptionCounts,
         hmdaStatus,
         verificationStatus,
+        activitySummary,
+        nextAction,
       });
     } catch (error) {
       console.error("Dashboard error:", error);
@@ -466,28 +437,30 @@ export function registerLendingRoutes(
       const user = req.user as User;
       const userId = user.id;
       
-      const parsed = loanApplicationInputSchema.safeParse(req.body);
+      const parsed = loanApplicationIntakeSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
       }
       const formData = parsed.data;
-      
+
       let referringBrokerId: string | undefined = undefined;
       if (user.referredByUserId) {
         referringBrokerId = user.referredByUserId;
       }
-      
+
+      // All figures are schema-required and validated — no "|| 0" fallbacks
+      // manufacturing $0 incomes out of missing data.
       const applicationData = {
         userId,
         status: "submitted" as const,
-        annualIncome: formData.annualIncome || "0",
-        monthlyDebts: formData.monthlyDebts || "0",
+        annualIncome: formData.annualIncome,
+        monthlyDebts: formData.monthlyDebts,
         creditScore: formData.creditScore,
         employmentType: formData.employmentType,
-        employmentYears: formData.employmentYears || 0,
+        employmentYears: formData.employmentYears,
         propertyType: formData.propertyType,
-        purchasePrice: formData.purchasePrice || "0",
-        downPayment: formData.downPayment || "0",
+        purchasePrice: formData.purchasePrice,
+        downPayment: formData.downPayment,
         loanPurpose: formData.loanPurpose,
         isVeteran: formData.isVeteran,
         isFirstTimeBuyer: formData.isFirstTimeBuyer,
@@ -1204,39 +1177,6 @@ export function registerLendingRoutes(
     }
   });
 
-  const loanApplicationUpdateSchema = z.object({
-    annualIncome: serverPositiveCurrencyTransform("Annual income").optional(),
-    monthlyDebts: serverCurrencyTransform("Monthly debts").optional(),
-    creditScore: z.string().or(z.number()).transform(v => {
-      const s = String(v);
-      if (s === "not_sure") return 680;
-      const n = parseInt(s);
-      if (isNaN(n)) throw new Error("Credit score must be a valid number");
-      return Math.max(300, Math.min(850, n));
-    }).refine(v => v >= 300 && v <= 850, { message: "Credit score must be between 300 and 850" }).optional(),
-    employmentType: z.enum(validEmploymentTypes, { errorMap: () => ({ message: "Invalid employment type" }) }).optional(),
-    employmentYears: z.string().or(z.number()).transform(v => {
-      const n = parseInt(String(v));
-      return isNaN(n) ? 0 : Math.max(0, Math.min(80, n));
-    }).optional(),
-    propertyType: z.enum(validPropertyTypes, { errorMap: () => ({ message: "Invalid property type" }) }).optional(),
-    purchasePrice: serverPositiveCurrencyTransform("Purchase price").optional(),
-    downPayment: serverCurrencyTransform("Down payment").optional(),
-    loanPurpose: z.enum(validLoanPurposes, { errorMap: () => ({ message: "Invalid loan purpose" }) }).optional(),
-    isVeteran: z.boolean().optional(),
-    isFirstTimeBuyer: z.boolean().optional(),
-    propertyState: z.string()
-      .refine(v => !v || (VALID_US_STATES as readonly string[]).includes(v), { message: "Invalid state code" })
-      .optional(),
-    employerName: z.string().max(200, "Employer name is too long").optional(),
-    propertyAddress: z.string().max(500, "Address is too long").optional(),
-    propertyCity: z.string().max(100, "City name is too long").optional(),
-    propertyZip: z.string()
-      .refine(v => !v || /^\d{5}(-\d{4})?$/.test(v), { message: "ZIP code must be 5 digits (e.g., 90210) or ZIP+4 (e.g., 90210-1234)" })
-      .optional(),
-    incomeSources: z.array(serverIncomeSourceSchema).optional(),
-  });
-
   app.patch("/api/loan-applications/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
@@ -1251,33 +1191,42 @@ export function registerLendingRoutes(
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      const parsed = loanApplicationUpdateSchema.safeParse(req.body);
+      // Borrower field edits apply to drafts only. Previously this endpoint
+      // force-reset ANY application to "draft" — a borrower editing figures
+      // mid-underwriting would silently pull the file out of the pipeline
+      // (and could rewrite verified financials). Submitted files change
+      // through staff channels.
+      if (application.status !== "draft") {
+        return res.status(409).json({
+          error: "This application has been submitted and can no longer be edited directly. Contact your loan team to update it.",
+          code: "not_editable",
+        });
+      }
+
+      // Shared-derived schema: same field rules the funnel enforces client-side,
+      // no silent clamps, values normalized (commas stripped, credit band →
+      // number) by the schema itself. Present-and-valid fields pass through;
+      // absent fields are left untouched — never defaulted to "0".
+      const parsed = loanApplicationIntakeUpdateSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
       }
 
       const formData = parsed.data;
-      const updateData: any = {
-        status: "draft",
-      };
-
-      if (formData.annualIncome !== undefined) updateData.annualIncome = formData.annualIncome || "0";
-      if (formData.monthlyDebts !== undefined) updateData.monthlyDebts = formData.monthlyDebts || "0";
-      if (formData.creditScore !== undefined) updateData.creditScore = formData.creditScore;
-      if (formData.employmentType !== undefined) updateData.employmentType = formData.employmentType;
-      if (formData.employmentYears !== undefined) updateData.employmentYears = formData.employmentYears;
-      if (formData.propertyType !== undefined) updateData.propertyType = formData.propertyType;
-      if (formData.purchasePrice !== undefined) updateData.purchasePrice = formData.purchasePrice || "0";
-      if (formData.downPayment !== undefined) updateData.downPayment = formData.downPayment || "0";
-      if (formData.loanPurpose !== undefined) updateData.loanPurpose = formData.loanPurpose;
-      if (formData.isVeteran !== undefined) updateData.isVeteran = formData.isVeteran;
-      if (formData.isFirstTimeBuyer !== undefined) updateData.isFirstTimeBuyer = formData.isFirstTimeBuyer;
-      if (formData.propertyState !== undefined) updateData.propertyState = formData.propertyState;
-      if (formData.employerName !== undefined) updateData.employerName = formData.employerName;
-      if (formData.propertyAddress !== undefined) updateData.propertyAddress = formData.propertyAddress;
-      if (formData.propertyCity !== undefined) updateData.propertyCity = formData.propertyCity;
-      if (formData.propertyZip !== undefined) updateData.propertyZip = formData.propertyZip;
-      if (formData.incomeSources !== undefined) updateData.incomeSources = formData.incomeSources;
+      // Only real loan_applications columns — the funnel schema also carries
+      // UI-only helpers (hasAdditionalIncome) that must not reach the DB.
+      const UPDATABLE_COLUMNS = [
+        "annualIncome", "monthlyDebts", "creditScore", "employmentType",
+        "employmentYears", "propertyType", "purchasePrice", "downPayment",
+        "loanPurpose", "isVeteran", "isFirstTimeBuyer", "propertyState",
+        "employerName", "propertyAddress", "propertyCity", "propertyZip",
+        "incomeSources",
+      ] as const;
+      const updateData: Record<string, unknown> = {};
+      for (const key of UPDATABLE_COLUMNS) {
+        const value = (formData as Record<string, unknown>)[key];
+        if (value !== undefined) updateData[key] = value;
+      }
 
       const updated = await storage.updateLoanApplication(id, updateData);
       res.json(updated);
@@ -1290,23 +1239,24 @@ export function registerLendingRoutes(
   // Statuses that represent a final credit decision. Only underwriters and admins
   // may set these; other roles must go through the guarded advance-stage endpoint
   // in underwriting.ts which enforces the STAGE_TRANSITION_ROLES policy.
-  const PROTECTED_CREDIT_DECISION_STATUSES = new Set(["approved", "denied", "pre_approved"]);
+  const PROTECTED_CREDIT_DECISION_STATUSES = new Set<LoanAppStatus>([
+    "pre_approved", "clear_to_close", "funded", "denied",
+  ]);
 
-  // HMDA Reg C "action taken" codes for the Loan Application Register (LAR). Only the
-  // unambiguous terminal dispositions are auto-populated here: "denied" (3) and
-  // "withdrawn" (4). "approved" is intentionally NOT mapped to code 1 ("loan
-  // originated"), which only applies once the loan funds at closing — populating it
-  // earlier would misreport the LAR. Origination (code 1) must be set at funding.
-  const HMDA_ACTION_TAKEN_BY_STATUS: Record<string, string> = {
-    denied: "3",
-    withdrawn: "4",
-  };
+  // The canonical vocabulary minus system-only states: "draft" belongs to the
+  // borrower funnel, "analyzing"/"expired" are set by automation. HMDA codes
+  // and milestones are stamped inside updatePipelineStage — one writer.
+  const STAFF_SETTABLE_STATUSES = LOAN_APP_STATUSES.filter(
+    (s) => s !== "draft" && s !== "analyzing" && s !== "expired",
+  ) as [LoanAppStatus, ...LoanAppStatus[]];
 
   const staffStatusSchema = z.object({
-    status: z.enum(["submitted", "in_review", "underwriting", "conditional_approval", "pre_approved", "approved", "denied", "suspended", "withdrawn"]),
+    status: z.enum(STAFF_SETTABLE_STATUSES),
     notes: z.string().max(2000).optional(),
     // HMDA requires at least 2 denial reasons when an application is denied.
     denialReasons: z.array(z.string().min(1)).optional(),
+    // Admin-only: bypass the transition table (side effects still run).
+    force: z.boolean().optional(),
   });
 
   app.patch("/api/loan-applications/:id/status", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
@@ -1324,7 +1274,7 @@ export function registerLendingRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
-      const { status, notes, denialReasons } = parsed.data;
+      const { status, notes, denialReasons, force } = parsed.data;
 
       // HMDA LAR requires at least 2 denial reasons when an application is denied.
       if (status === "denied" && (!denialReasons || denialReasons.length < 2)) {
@@ -1352,7 +1302,7 @@ export function registerLendingRoutes(
       // Approval outcomes may not be set on self-reported/estimated data — a
       // favorable credit determination requires verified figures. (Denial is not
       // gated: an application can be denied for unverifiable or incomplete info.)
-      if (status === "approved" || status === "pre_approved") {
+      if (status === "pre_approved" || status === "clear_to_close" || status === "funded") {
         try {
           assertVerifiedForDecisioning(
             application.financialDataProvenance as DataProvenance,
@@ -1385,23 +1335,29 @@ export function registerLendingRoutes(
 
       const previousStatus = application.status;
 
-      // Populate HMDA LAR fields on terminal dispositions so the action-taken code
-      // and denial reasons are captured for Reg C reporting at decision time.
-      const statusUpdate: {
-        status: string;
-        hmdaActionTaken?: string;
-        hmdaDenialReasons?: string[];
-      } = { status };
-
-      const hmdaActionTaken = HMDA_ACTION_TAKEN_BY_STATUS[status];
-      if (hmdaActionTaken) {
-        statusUpdate.hmdaActionTaken = hmdaActionTaken;
+      // Single writer: milestones, HMDA LAR codes, task-engine events, state-
+      // machine sync, and funded→homeowner graduation all happen inside
+      // updatePipelineStage. Invalid transitions come back as 409 with the
+      // allowed set so staff UIs can grey out impossible moves.
+      try {
+        await updatePipelineStage(id, status, {
+          denialReasons,
+          force: force === true && user.role === "admin",
+        });
+      } catch (stageErr) {
+        if (stageErr instanceof PipelineTransitionError) {
+          return res.status(409).json({
+            error: stageErr.message,
+            code: "invalid_transition",
+            fromStatus: stageErr.fromStage,
+            toStatus: stageErr.toStage,
+            allowedStatuses: stageErr.allowed,
+          });
+        }
+        throw stageErr;
       }
-      if (status === "denied" && denialReasons) {
-        statusUpdate.hmdaDenialReasons = denialReasons;
-      }
 
-      const updated = await storage.updateLoanApplication(id, statusUpdate);
+      const updated = await storage.getLoanApplication(id);
 
       await storage.createDealActivity({
         applicationId: id,
@@ -1426,7 +1382,7 @@ export function registerLendingRoutes(
 
         if (borrower.email) {
           const borrowerName = borrower.firstName || "Borrower";
-          if (status === "pre_approved" || status === "approved") {
+          if (status === "pre_approved" || status === "clear_to_close") {
             sendNotificationEmail({
               type: "application_pre_approved",
               recipientEmail: borrower.email,
@@ -1456,8 +1412,8 @@ export function registerLendingRoutes(
         previousStatus,
         newStatus: status,
         changedBy: user.id,
-        ...(statusUpdate.hmdaActionTaken && { hmdaActionTaken: statusUpdate.hmdaActionTaken }),
-        ...(statusUpdate.hmdaDenialReasons && { hmdaDenialReasons: statusUpdate.hmdaDenialReasons }),
+        ...(updated?.hmdaActionTaken && { hmdaActionTaken: updated.hmdaActionTaken }),
+        ...(updated?.hmdaDenialReasons?.length && { hmdaDenialReasons: updated.hmdaDenialReasons }),
       });
 
       res.json(updated);

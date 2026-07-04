@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import { requireConsent } from "../consentGate";
-import { isStaffRole, isInternalStaffRole } from "@shared/schema";
+import { isStaffRole, isInternalStaffRole, isLoanAppStatus, LOAN_APP_STATUSES } from "@shared/schema";
 import type { User } from "@shared/schema";
 import { 
   qualifyIncome, 
@@ -491,6 +491,13 @@ export function registerUnderwritingRoutes(
       if (!newStage) {
         return res.status(400).json({ error: "New stage is required" });
       }
+      if (!isLoanAppStatus(newStage)) {
+        return res.status(400).json({
+          error: `Unknown stage '${newStage}'`,
+          code: "unknown_status",
+          allowedStatuses: LOAN_APP_STATUSES,
+        });
+      }
 
       // HMDA LAR requires at least 2 denial reasons when an application is denied.
       if (newStage === "denied" && (!Array.isArray(denialReasons) || denialReasons.length < 2)) {
@@ -546,17 +553,31 @@ export function registerUnderwritingRoutes(
         });
       }
 
-      const { updatePipelineStage, checkPipelineProgress } = await import("../pipelineEngine");
-      
+      const { updatePipelineStage, checkPipelineProgress, PipelineTransitionError } = await import("../pipelineEngine");
+
       const progress = await checkPipelineProgress(id);
       if (!progress.readyForNextStage && newStage !== "denied") {
-        return res.status(400).json({ 
-          error: "Cannot advance stage", 
-          blockers: progress.blockers 
+        return res.status(400).json({
+          error: "Cannot advance stage",
+          code: "stage_blocked",
+          blockers: progress.blockers
         });
       }
 
-      await updatePipelineStage(id, newStage, newStage === "denied" ? { denialReasons } : undefined);
+      try {
+        await updatePipelineStage(id, newStage, newStage === "denied" ? { denialReasons } : undefined);
+      } catch (stageErr) {
+        if (stageErr instanceof PipelineTransitionError) {
+          return res.status(409).json({
+            error: stageErr.message,
+            code: "invalid_transition",
+            fromStatus: stageErr.fromStage,
+            toStatus: stageErr.toStage,
+            allowedStatuses: stageErr.allowed,
+          });
+        }
+        throw stageErr;
+      }
 
       await storage.createDealActivity({
         applicationId: id,

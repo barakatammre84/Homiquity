@@ -281,6 +281,9 @@ import {
   type InsertLookupMatrix,
   type LookupMatrixCell,
   type InsertLookupMatrixCell,
+  LOAN_APP_STATUSES,
+  isApprovedGradeLoanAppStatus,
+  isTerminalLoanAppStatus,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -1295,8 +1298,11 @@ export class DatabaseStorage implements IStorage {
     ]);
 
     const totalApplications = appStats.reduce((sum, s) => sum + s.count, 0);
-    const approvedRow = appStats.find(s => s.status === "approved");
-    const approvedCount = approvedRow?.count ?? 0;
+    // Approval rate = applications at or past pre-approval. (The old check for
+    // a literal "approved" status matched nothing — that metric read 0.)
+    const approvedCount = appStats
+      .filter(s => isApprovedGradeLoanAppStatus(s.status))
+      .reduce((sum, s) => sum + s.count, 0);
     // Pipeline volume = coherent amount across every amount-bearing status, not
     // just fully-approved files — a pre-approved file has real pipeline value
     // before a property is chosen, so summing only "approved" reads $0 (#7).
@@ -2919,8 +2925,11 @@ export class DatabaseStorage implements IStorage {
       .from(loanApplications)
       .where(eq(loanApplications.referringBrokerId, brokerId));
     
-    const activeStatuses = ["draft", "submitted", "analyzing", "pre_approved", "verified", "underwriting", "approved"];
-    const closedStatuses = ["closed"];
+    // Active = any non-terminal status; closed = funded. (The old hand-lists
+    // contained phantom values — "verified", "approved", "closed" — that no
+    // backend path writes, so broker closed-loan stats were permanently 0.)
+    const activeStatuses = LOAN_APP_STATUSES.filter(s => !isTerminalLoanAppStatus(s)) as string[];
+    const closedStatuses = ["funded"];
     
     const totalReferrals = referrals.length;
     const activeReferrals = referrals.filter(r => activeStatuses.includes(r.status)).length;
@@ -3520,10 +3529,10 @@ export class DatabaseStorage implements IStorage {
 
     for (const app of apps) {
       byStatus[app.status] = (byStatus[app.status] || 0) + 1;
-      if (app.status === "closed" || app.status === "funded") {
+      if (app.status === "funded") {
         const amount = parseFloat(app.preApprovalAmount || "0");
         closedVolume += amount;
-        if (app.status === "funded") fundedVolume += amount;
+        fundedVolume += amount;
       }
     }
 

@@ -110,13 +110,26 @@ export async function wireExtractionToReadiness(
   return { fieldsUpdated, skipped };
 }
 
+// Full pipeline coverage — previously only the pre-approval-and-terminal
+// subset was mapped, so the borrower journey state machine froze at
+// pre-qualification for any loan that progressed. Called from
+// updatePipelineStage on every status change; this map is the single
+// translation between pipeline status and journey state.
 const APP_STATUS_TO_STATE_MAP: Record<string, { state: BorrowerState; trigger: TransitionTrigger }> = {
   submitted: { state: "profiling", trigger: "application_started" },
   analyzing: { state: "pre_qualification", trigger: "application_submitted" },
+  under_review: { state: "pre_qualification", trigger: "application_submitted" },
   pre_approved: { state: "pre_approval", trigger: "pre_approval_issued" },
+  doc_collection: { state: "pre_approval", trigger: "documents_uploaded" },
+  processing: { state: "in_contract", trigger: "offer_accepted" },
+  underwriting: { state: "underwriting", trigger: "underwriting_submitted" },
+  conditional: { state: "conditional_approval", trigger: "conditions_cleared" },
+  clear_to_close: { state: "clear_to_close", trigger: "clear_to_close_issued" },
+  closing: { state: "closing", trigger: "closing_scheduled" },
   denied: { state: "denied", trigger: "application_denied" },
   funded: { state: "funded", trigger: "funded" },
   withdrawn: { state: "withdrawn", trigger: "borrower_withdrew" },
+  expired: { state: "expired", trigger: "application_expired" },
 };
 
 export async function syncApplicationStatusToStateMachine(
