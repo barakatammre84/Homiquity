@@ -140,33 +140,65 @@ export class ConsolidatedUnderwritingEngine {
     let actualResidualIncome: number | undefined;
     let requiredResidualIncome: number | undefined;
 
+    // Set when a conventional loan exceeds the conforming limit: not a credit
+    // decline (a jumbo product may fit), so it routes to human review rather
+    // than a rejection or an APPROVED conforming decision it isn't.
+    let exceedsConformingLimit = false;
+
     // Standard Conforming Loan Path
     if (targetLoanType === "CONVENTIONAL") {
+      // Eligibility floor: a credit score below the conventional minimum is a
+      // decline, not a pricing gap. Enforce it BEFORE any matrix lookup — the
+      // PMI grid's lowest band starts at the floor, so an ineligible score would
+      // otherwise miss a cell and surface as a generic out-of-band gap instead
+      // of a specific, adverse-action-grade credit rejection.
+      const conventionalFicoFloor = await this.resolver.getPolicyScalar("CONVENTIONAL_FICO_FLOOR");
+      if (input.representativeFico < conventionalFicoFloor) {
+        reasons.push(
+          `Representative credit score of ${input.representativeFico} is below the conventional minimum of ${conventionalFicoFloor}`,
+        );
+      }
+
+      // Conforming loan-limit awareness: this engine prices the conforming
+      // product, so a loan above the limit cannot be decisioned as conforming.
+      // Route it to jumbo review (not a decline, not a conforming approval).
+      const conformingLimit = await this.resolver.getPolicyScalar("CONFORMING_LOAN_LIMIT");
+      if (input.originalLoanAmount > conformingLimit) {
+        exceedsConformingLimit = true;
+      }
+
       if (calculatedDti > stretchDti * 100) {
         reasons.push(
           `Debt-to-Income ratio (${calculatedDti.toFixed(2)}%) exceeds the system's hard stretch ceiling of ${(stretchDti * 100).toFixed(0)}%`,
         );
       }
 
-      // Query standard Monthly BPMI rate matrix if LTV > 80%
-      if (calculatedLtv > 80.0) {
-        const pmiRate = await this.resolver.resolveMatrixValue({
-          matrixCode: "CONVENTIONAL_PMI",
-          dim1Value: input.representativeFico,
-          dim2Value: calculatedLtv,
-        });
-        resolvedPmiRatePct = pmiRate;
-        resolvedPmiMonthlyPremium = (input.originalLoanAmount * (pmiRate / 100)) / 12;
-      }
+      // Price only an eligible file. If any rejection reason is already present
+      // (LTV over the ceiling, sub-floor credit, or a stretch-DTI breach), skip
+      // the PMI/LLPA matrices — they intentionally do not cover out-of-policy
+      // coordinates, so querying them would throw and lose the rejection we
+      // already have. The decline is returned cleanly below.
+      if (reasons.length === 0) {
+        // Query standard Monthly BPMI rate matrix if LTV > 80%
+        if (calculatedLtv > 80.0) {
+          const pmiRate = await this.resolver.resolveMatrixValue({
+            matrixCode: "CONVENTIONAL_PMI",
+            dim1Value: input.representativeFico,
+            dim2Value: calculatedLtv,
+          });
+          resolvedPmiRatePct = pmiRate;
+          resolvedPmiMonthlyPremium = (input.originalLoanAmount * (pmiRate / 100)) / 12;
+        }
 
-      // Query dynamic Fannie Mae LLPA Matrix
-      const llpaAdjustmentRate = await this.resolver.resolveMatrixValue({
-        matrixCode: "FANNIE_LLPA",
-        dim1Value: input.representativeFico,
-        dim2Value: lookupLtv,
-      });
-      resolvedLlpaRatePct = llpaAdjustmentRate;
-      resolvedLlpafUpfrontFee = input.originalLoanAmount * (llpaAdjustmentRate / 100);
+        // Query dynamic Fannie Mae LLPA Matrix
+        const llpaAdjustmentRate = await this.resolver.resolveMatrixValue({
+          matrixCode: "FANNIE_LLPA",
+          dim1Value: input.representativeFico,
+          dim2Value: lookupLtv,
+        });
+        resolvedLlpaRatePct = llpaAdjustmentRate;
+        resolvedLlpafUpfrontFee = input.originalLoanAmount * (llpaAdjustmentRate / 100);
+      }
 
       // VA Veteran Loan Path
     } else {
@@ -227,6 +259,9 @@ export class ConsolidatedUnderwritingEngine {
 
     if (reasons.length > 0) {
       decision = "REJECTED";
+    } else if (exceedsConformingLimit) {
+      // Above the conforming limit: route to the jumbo desk, not an auto-approve.
+      decision = "MANUAL_REVIEW";
     } else if (targetLoanType === "CONVENTIONAL" && calculatedDti > dtiCap * 100) {
       // DTI between baseline (43%) and stretch (50%) moves to Manual Review
       decision = "MANUAL_REVIEW";

@@ -23,6 +23,7 @@ import type { User, LoanApplication, BorrowerProfile, RealEstateOwned } from "@s
 import { eq, desc, sql, and, gte, count, isNotNull } from "drizzle-orm";
 import { computeNextAction } from "./nextAction";
 import { isTerminalLoanAppStatus } from "@shared/schema";
+import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 
 export interface IncomeSource {
   source: "document" | "application" | "coach" | "goal";
@@ -740,7 +741,7 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     const dp = parseNum(activeApp.downPayment) || 0;
     return pp - dp;
   })();
-  if (loanAmount !== null && loanAmount > 766550) {
+  if (loanAmount !== null && loanAmount > CONFORMING_LOAN_LIMIT_2026) {
     eligibleLoanTypes.push("jumbo");
   }
   if (activeApp?.loanPurpose === "purchase" && (appPropertyType === "single_family" || appPropertyType === "condo") &&
