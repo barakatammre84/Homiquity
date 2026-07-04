@@ -24,37 +24,98 @@ export async function recordExtractionConfidence(options: {
   pageCount?: number;
   extractionEngine?: string;
   extractionVersion?: string;
-}): Promise<void> {
+}): Promise<{ humanReviewRequired: boolean }> {
   const reviewThreshold = getReviewThreshold(options.documentType);
   const humanReviewRequired = options.overallConfidence < reviewThreshold;
 
-  await db.insert(documentConfidenceScores).values({
+  // Persist the confidence row + analytics event. This is a quality-gate signal,
+  // not the extraction itself, so a persistence failure must never break the
+  // upload flow — compute the review flag first and return it regardless.
+  try {
+    await db.insert(documentConfidenceScores).values({
+      documentId: options.documentId,
+      documentType: options.documentType,
+      applicationId: options.applicationId || null,
+      extractionEngine: options.extractionEngine || "gemini",
+      extractionVersion: options.extractionVersion || null,
+      overallConfidence: options.overallConfidence.toFixed(4),
+      fieldConfidences: options.fieldConfidences,
+      humanReviewRequired,
+      fieldsExtracted: options.fieldConfidences.length,
+      processingTimeMs: options.processingTimeMs || null,
+      fileSize: options.fileSize || null,
+      pageCount: options.pageCount || null,
+    });
+
+    await emitEvent("document", "confidence_scored", {
+      entityType: "document",
+      entityId: options.documentId,
+      applicationId: options.applicationId,
+      numericValue: options.overallConfidence,
+      payload: {
+        documentType: options.documentType,
+        fieldsExtracted: options.fieldConfidences.length,
+        humanReviewRequired,
+        lowConfidenceFields: options.fieldConfidences.filter(f => f.confidence < 0.7).map(f => f.fieldName),
+      },
+      automationTriggered: true,
+    });
+  } catch (err) {
+    console.error("[doc-confidence] Failed to record extraction confidence (non-fatal):", err);
+  }
+
+  return { humanReviewRequired };
+}
+
+/**
+ * Maps the extractor's coarse confidence label to a representative numeric score
+ * for the type-specific review thresholds in {@link getReviewThreshold}. The
+ * document extractors (server/extractionService.ts) emit only high/medium/low,
+ * so this bridge lets the same threshold table gate every extraction path until
+ * the extractor emits a true numeric confidence. Chosen so the prior behavior
+ * ("high" ⇒ auto-verify) is preserved for the doc types those routes handle,
+ * while medium/low now correctly land on the human-review queue.
+ */
+export function coarseConfidenceToNumeric(confidence: "high" | "medium" | "low"): number {
+  switch (confidence) {
+    case "high":
+      return 0.9;
+    case "medium":
+      return 0.7;
+    case "low":
+      return 0.4;
+  }
+}
+
+/**
+ * Convenience wrapper for the extraction routes: records confidence from the
+ * coarse extractor output and returns whether the document must go to human
+ * review before it can be marked "verified". This is the single quality gate the
+ * upload/extraction paths call — it strengthens human review, it does NOT clear
+ * conditions (that remains a human decision).
+ */
+export async function recordCoarseExtraction(options: {
+  documentId: string;
+  documentType: string;
+  applicationId?: string | null;
+  confidence: "high" | "medium" | "low";
+  extractedFields: string[];
+  fileSize?: number;
+}): Promise<{ humanReviewRequired: boolean }> {
+  const overallConfidence = coarseConfidenceToNumeric(options.confidence);
+  const fieldConfidences: FieldConfidence[] = (options.extractedFields ?? []).map(fieldName => ({
+    fieldName,
+    value: null,
+    confidence: overallConfidence,
+    needsReview: false,
+  }));
+  return recordExtractionConfidence({
     documentId: options.documentId,
     documentType: options.documentType,
-    applicationId: options.applicationId || null,
-    extractionEngine: options.extractionEngine || "gemini",
-    extractionVersion: options.extractionVersion || null,
-    overallConfidence: options.overallConfidence.toFixed(4),
-    fieldConfidences: options.fieldConfidences,
-    humanReviewRequired,
-    fieldsExtracted: options.fieldConfidences.length,
-    processingTimeMs: options.processingTimeMs || null,
-    fileSize: options.fileSize || null,
-    pageCount: options.pageCount || null,
-  });
-
-  await emitEvent("document", "confidence_scored", {
-    entityType: "document",
-    entityId: options.documentId,
-    applicationId: options.applicationId,
-    numericValue: options.overallConfidence,
-    payload: {
-      documentType: options.documentType,
-      fieldsExtracted: options.fieldConfidences.length,
-      humanReviewRequired,
-      lowConfidenceFields: options.fieldConfidences.filter(f => f.confidence < 0.7).map(f => f.fieldName),
-    },
-    automationTriggered: true,
+    applicationId: options.applicationId ?? undefined,
+    overallConfidence,
+    fieldConfidences,
+    fileSize: options.fileSize,
   });
 }
 
@@ -138,6 +199,73 @@ export async function getAccuracyByDocType(daysBack: number = 90): Promise<Array
     avgProcessingTimeMs: r.avgProcessingTime || null,
     needsReviewCount: r.needsReviewCount,
   }));
+}
+
+// MR-6 — periodic extraction-accuracy report with drift alerts. Wraps the
+// per-doc-type aggregation above and compares each type's human-verified
+// accuracy against its target (the same threshold used to gate review), so a
+// silent drop in extraction quality surfaces as an alert.
+export interface DocTypeAccuracyStatus {
+  documentType: string;
+  totalExtractions: number;
+  reviewedCount: number;
+  avgConfidence: number;
+  avgAccuracy: number | null; // percent
+  targetAccuracyPct: number;
+  needsReviewCount: number;
+  status: "ok" | "below_target" | "insufficient_reviews";
+}
+
+export interface ExtractionAccuracyReport {
+  generatedAt: string;
+  windowDays: number;
+  minReviews: number;
+  docTypes: DocTypeAccuracyStatus[];
+  alerts: string[];
+}
+
+export async function getExtractionAccuracyReport(
+  daysBack: number = 30,
+  minReviews: number = 10,
+): Promise<ExtractionAccuracyReport> {
+  const rows = await getAccuracyByDocType(daysBack);
+
+  const docTypes: DocTypeAccuracyStatus[] = rows.map((r) => {
+    const targetAccuracyPct = getReviewThreshold(r.documentType) * 100;
+    let status: DocTypeAccuracyStatus["status"];
+    if (r.reviewedCount < minReviews) {
+      status = "insufficient_reviews";
+    } else if (r.avgAccuracy !== null && r.avgAccuracy < targetAccuracyPct) {
+      status = "below_target";
+    } else {
+      status = "ok";
+    }
+    return {
+      documentType: r.documentType,
+      totalExtractions: r.totalExtractions,
+      reviewedCount: r.reviewedCount,
+      avgConfidence: r.avgConfidence,
+      avgAccuracy: r.avgAccuracy,
+      targetAccuracyPct,
+      needsReviewCount: r.needsReviewCount,
+      status,
+    };
+  });
+
+  const alerts = docTypes
+    .filter((d) => d.status === "below_target")
+    .map(
+      (d) =>
+        `${d.documentType}: avg accuracy ${d.avgAccuracy}% is below the ${d.targetAccuracyPct}% target over ${d.reviewedCount} human reviews — investigate model/prompt drift.`,
+    );
+
+  return {
+    generatedAt: new Date().toISOString(),
+    windowDays: daysBack,
+    minReviews,
+    docTypes: docTypes.sort((a, b) => a.documentType.localeCompare(b.documentType)),
+    alerts,
+  };
 }
 
 export async function getPendingReviews(): Promise<Array<{

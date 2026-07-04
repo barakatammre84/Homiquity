@@ -112,6 +112,32 @@ const DOCUMENT_CATEGORIES = [
   },
 ];
 
+// Workflow-triggered education: after an upload, tell the borrower what the
+// team actually does with that document, keyed by category. Factual process
+// descriptions only — no approval promises or timelines we can't keep.
+const UPLOAD_NEXT_STEPS: Record<string, string> = {
+  identity:
+    "We'll use this to confirm your identity — a standard step for every mortgage. You'll be notified once it's verified.",
+  income:
+    "Our team will use this to verify your income, which is what turns your estimated numbers into a documented pre-approval. You'll be notified when it's reviewed.",
+  assets:
+    "We'll review this to document your funds for the down payment and closing costs. If we have questions about any deposits, we'll reach out — that's routine.",
+  liabilities:
+    "We'll use this to confirm your monthly payments so your debt-to-income numbers are accurate. You'll be notified when it's reviewed.",
+  property:
+    "This moves your file forward toward final review. We'll let you know if the underwriter needs anything else about the property.",
+};
+
+function getUploadNextStep(docType: string): string {
+  const category = DOCUMENT_CATEGORIES.find(cat =>
+    cat.documents.some(d => d.type === docType)
+  );
+  return (
+    (category && UPLOAD_NEXT_STEPS[category.id]) ||
+    "We'll review it shortly. You'll be notified when it's processed."
+  );
+}
+
 function getStatusBadge(status: string) {
   switch (status) {
     case "verified":
@@ -164,7 +190,7 @@ export default function Documents() {
       });
       if (registered.ok) {
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-        toast({ title: "Document uploaded", description: "We'll review it shortly. You'll be notified when it's processed." });
+        toast({ title: "Document uploaded", description: getUploadNextStep(activeDocType) });
       } else {
         // Never claim success on a failed registration — that's how files get lost.
         toast({

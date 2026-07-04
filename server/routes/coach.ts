@@ -3,6 +3,7 @@ import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
 import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData, deriveUserType, deriveReadinessState, deriveCompletionPercentage, deriveCompletedSteps, coachIntakeSchema, coachActionPlanSchema, coachDocumentChecklistSchema, coachProfileSchema, borrowerPackageSchema } from "../services/coachingService";
 import { buildBorrowerGraph } from "../services/borrowerGraph";
+import { getCoachIntakeSnapshots } from "../services/coachIntake";
 import type { User } from "@shared/schema";
 import { z } from "zod";
 
@@ -231,36 +232,21 @@ export function registerCoachRoutes(app: Express) {
   app.get("/api/coach/intake/latest", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const conversations = await storage.getCoachConversationsByUser(user.id);
+      // One conversations query + one batched messages query (was an N+1 loop).
+      const { snapshots, conversations: sorted } = await getCoachIntakeSnapshots(user.id);
 
-      if (!conversations || conversations.length === 0) {
+      if (sorted.length === 0) {
         return res.json(null);
       }
 
-      const sorted = [...conversations].sort((a, b) =>
-        new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime()
-      );
-
       const intake: CoachIntakeData = {};
 
-      for (const conv of sorted) {
-        const messages = await storage.getCoachMessages(conv.id);
-        const messagesWithData = messages
-          .filter(m => m.role === "assistant" && m.structuredData)
-          .sort((a, b) =>
-            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-          );
-
-        for (const msg of messagesWithData) {
-          const sd = msg.structuredData as any;
-          if (sd?.intake) {
-            const msgIntakeParsed = coachIntakeSchema.safeParse(sd.intake);
-            if (msgIntakeParsed.success) {
-              for (const [key, val] of Object.entries(msgIntakeParsed.data)) {
-                if (val !== null && val !== undefined && val !== "" && !(key in intake)) {
-                  (intake as any)[key] = val;
-                }
-              }
+      for (const snapshot of snapshots) {
+        const msgIntakeParsed = coachIntakeSchema.safeParse(snapshot);
+        if (msgIntakeParsed.success) {
+          for (const [key, val] of Object.entries(msgIntakeParsed.data)) {
+            if (val !== null && val !== undefined && val !== "" && !(key in intake)) {
+              (intake as any)[key] = val;
             }
           }
         }

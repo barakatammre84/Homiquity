@@ -1,8 +1,10 @@
 import type { Express } from "express";
+import { isApprovedGradeLoanAppStatus } from "@shared/schema";
 import type { IStorage } from "../storage";
 import { isAuthenticated } from "../auth";
 import { checkPropertyEligibility } from "../underwriting";
 import { lookupResolver } from "../services/lookupResolver";
+import { parseValueEstimate } from "../services/valueEstimate";
 
 export function registerPropertyRoutes(
   app: Express,
@@ -483,7 +485,7 @@ export function registerPropertyRoutes(
       // Get user's latest pre-approved loan application
       const applications = await storage.getLoanApplicationsByUser(userId);
       const preApproval = applications.find(
-        app => app.status === "pre_approved" || app.status === "approved"
+        app => isApprovedGradeLoanAppStatus(app.status)
       ) || applications[0];
 
       if (!preApproval) {
@@ -801,6 +803,7 @@ export function registerPropertyRoutes(
             hoaMonthly: 0,
             mortgage: null,
             neighborhoods: [],
+            valueEstimate: parseValueEstimate(firstResult.estimates),
           },
         });
       }
@@ -852,6 +855,7 @@ export function registerPropertyRoutes(
             name: n.name,
             medianPrice: n.geo_statistics?.housing_market?.median_sold_price || null,
           })),
+          valueEstimate: parseValueEstimate(p.estimates),
         },
       });
     } catch (error) {

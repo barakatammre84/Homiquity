@@ -1,4 +1,4 @@
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
 
 // Post-login landing route for a given role. Single source of truth so the login
 // flow and its tests can't drift.

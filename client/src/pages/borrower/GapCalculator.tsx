@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
+import { TermTooltip } from "@/components/TermTooltip";
 import { PageShell } from "@/components/PageShell";
 import {
   Form,
@@ -601,7 +602,9 @@ export default function GapCalculator() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">DTI Ratio</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              <TermTooltip term="dti">DTI Ratio</TermTooltip>
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>

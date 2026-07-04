@@ -11,3 +11,4 @@ export * from "./schema/lookup";
 export * from "./schema/ai";
 export * from "./schema/decisions";
 export * from "./schema/leads";
+export * from "./schema/marketData";

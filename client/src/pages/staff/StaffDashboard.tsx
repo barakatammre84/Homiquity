@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { StaffSignalsPanel } from "@/components/StaffSignalsPanel";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { isStaffRole, isInternalStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
+import { isStaffRole, isInternalStaffRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
 import IntelligenceTab from "./IntelligenceTab";
 import type { Task, LoanApplication, User } from "@shared/schema";
 import {

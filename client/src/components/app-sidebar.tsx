@@ -19,7 +19,8 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { getPresenceColor } from "@/lib/formatters";
-import { isStaffRole, isInternalStaffRole, ROLE_DISPLAY_NAMES } from "@shared/schema";
+import { isStaffRole, isInternalStaffRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
+import { useShellBadges } from "@/hooks/useShellBadges";
 import {
   LayoutDashboard,
   FileText,
@@ -176,13 +177,10 @@ export function AppSidebar() {
     refetchInterval: 30000,
   });
 
-  const { data: unreadData } = useQuery<{ count: number }>({
-    queryKey: ["/api/messages/unread/count"],
-    enabled: !!user,
-    refetchInterval: 10000,
-  });
-
-  const unreadCount = unreadData?.count || 0;
+  // Message/task badge counts come from the shared shell-badges poll so the
+  // sidebar, mobile nav, and notifications bell make one request between them.
+  const badges = useShellBadges();
+  const unreadCount = badges.unreadMessages;
 
   const isActive = (href: string) => {
     if (href === "/messages") return location === href || location.startsWith("/messages/");
@@ -195,13 +193,7 @@ export function AppSidebar() {
   const isAdmin = userRole === "admin";
   const isAspiringOwner = userRole === "aspiring_owner";
 
-  const { data: pendingTasksData } = useQuery<{ pendingCount: number }>({
-    queryKey: ["/api/task-engine/my-tasks/pending-count"],
-    enabled: !!user && !isStaff,
-    refetchInterval: 30000,
-  });
-
-  const pendingTaskCount = pendingTasksData?.pendingCount || 0;
+  const pendingTaskCount = isStaff ? 0 : badges.pendingTasks;
 
   let navigation: NavSection[];
   if (isInternalStaff) {

@@ -83,9 +83,24 @@ git push origin main
 
 ## 3. Roll back the database (careful — not automatic)
 
-The app uses Drizzle with **`drizzle-kit push`** (`npm run db:push`), which pushes
-the current schema state forward. It is **not a migration history**, so there is
-no built-in "down". Reverting code does **not** revert schema changes.
+The app uses Drizzle with **versioned migrations** (`migrations/`, applied with
+`npm run db:migrate`). Schema changes are committed SQL files, so every change
+is reviewable and reproducible — but Postgres migrations still have no
+automatic "down". Reverting code does **not** revert schema changes.
+
+The workflow for a schema change:
+1. Edit `shared/schema/*.ts`.
+2. `npm run db:generate` — writes a new SQL file under `migrations/`. Review it
+   like code (especially any `DROP`/`ALTER ... TYPE`).
+3. `npm run db:migrate` — applies pending migrations to `DATABASE_URL`.
+4. Commit the migration file together with the schema change.
+
+(`npm run db:push` still exists for quick local prototyping, but anything that
+merges must carry a generated migration.)
+
+Adopting on a database that was built with `db:push` (already has the schema):
+run `npm run db:migrate:adopt -- --apply` once — it records the existing
+migration files as applied without executing them.
 
 Rules of thumb:
 - **Additive changes** (new nullable column, new table) are safe to leave in
@@ -100,10 +115,6 @@ Before any schema change that drops or rewrites data:
    - Self-hosted Postgres: `pg_dump "$DATABASE_URL" > backup-$(date +%F).sql`
 2. Apply the schema change.
 3. If you must roll back: restore the Neon branch / `psql "$DATABASE_URL" < backup.sql`.
-
-> Recommendation as the app matures: move from `drizzle-kit push` to versioned
-> `drizzle-kit generate` + `migrate` so schema changes have reviewable, reversible
-> migration files. Tracked as future work in [CICD.md](CICD.md).
 
 ---
 

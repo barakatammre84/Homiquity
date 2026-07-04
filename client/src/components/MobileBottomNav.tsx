@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
+import { useShellBadges } from "@/hooks/useShellBadges";
 import {
   LayoutDashboard,
   CheckSquare,
@@ -30,20 +30,9 @@ export function MobileBottomNav() {
   const userRole = user?.role || "";
   const isStaff = isStaffRole(userRole);
 
-  const { data: pendingTasksData } = useQuery<{ pendingCount: number }>({
-    queryKey: ["/api/task-engine/my-tasks/pending-count"],
-    enabled: !!user && !isStaff,
-    refetchInterval: 30000,
-  });
-
-  const { data: unreadData } = useQuery<{ count: number }>({
-    queryKey: ["/api/messages/unread/count"],
-    enabled: !!user,
-    refetchInterval: 10000,
-  });
-
-  const pendingTaskCount = pendingTasksData?.pendingCount || 0;
-  const unreadCount = unreadData?.count || 0;
+  const badges = useShellBadges();
+  const pendingTaskCount = isStaff ? 0 : badges.pendingTasks;
+  const unreadCount = badges.unreadMessages;
 
   const borrowerItems: NavItem[] = [
     { href: "/dashboard", label: "Home", icon: LayoutDashboard, testId: "mobile-nav-dashboard" },

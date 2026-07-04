@@ -1,6 +1,7 @@
 import type { Express } from "express";
-import type { IStorage } from "../storage";
+import { InvalidSsnError, type IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
+import { logAudit } from "../auditLog";
 import {
   insertCalculatorResultSchema,
   insertHomeownershipGoalSchema,
@@ -9,14 +10,18 @@ import {
   insertJourneyMilestoneSchema,
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
+  insertUrlaPersonalInfoSchema,
   isStaffRole,
   isInternalStaffRole,
+  LOAN_APP_TERMINAL_STATUSES,
   type User,
 } from "@shared/schema";
+import { updatePipelineStage } from "../pipelineEngine";
 import crypto from "crypto";
 import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrowerGraph";
-import { logAudit } from "../auditLog";
+import { pickTableFields, sanitizePersonalInfoBody, URLA_TABLES } from "./urlaValidation";
+import { stripEncryptedFields } from "../services/piiVault";
 import { sendNotificationEmail } from "../services/emailService";
 
 // Verify that an internal staff user is actually assigned to the given application.
@@ -44,6 +49,22 @@ async function verifyInternalStaffApplicationAccess(
   }
 
   return false;
+}
+
+// Mask a URLA personal-info record for external partners: SSN reduced to its
+// last 4 digits (e.g. "123-45-6789" -> "•••-••-6789") and DOB dropped entirely.
+// Preserves the input type so it maps cleanly over the allPersonalInfo[]
+// co-borrower array; callers guard the optional single personalInfo field.
+function maskUrlaPersonalInfo<
+  T extends { ssn?: string | null; dateOfBirth?: string | null },
+>(pi: T): T {
+  const digits = (pi.ssn ?? "").replace(/\D/g, "");
+  const last4 = digits.length >= 4 ? digits.slice(-4) : "";
+  return {
+    ...pi,
+    ssn: last4 ? `•••-••-${last4}` : null,
+    dateOfBirth: null,
+  } as T;
 }
 
 export function registerBorrowerRoutes(
@@ -368,7 +389,26 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       const urlaData = await storage.getCompleteUrlaData(applicationId);
-      res.json({ application, ...urlaData });
+      // Redact raw PII for external partners (broker/lender). They may be
+      // deal-team members but must not see full SSN/DOB — matching the
+      // redaction discipline already applied on the credit/verification routes
+      // in compliance.ts. The borrower (a client role) and internal staff are
+      // unaffected and see the full record.
+      if (isStaffRole(user.role) && !isInternalStaffRole(user.role)) {
+        if (urlaData.personalInfo) {
+          urlaData.personalInfo = maskUrlaPersonalInfo(urlaData.personalInfo);
+        }
+        urlaData.allPersonalInfo = (urlaData.allPersonalInfo ?? []).map(maskUrlaPersonalInfo);
+      }
+      // Ciphertext/IV/key columns never leave the server — clients get last4 only.
+      res.json({
+        application,
+        ...urlaData,
+        personalInfo: urlaData.personalInfo ? stripEncryptedFields(urlaData.personalInfo) : urlaData.personalInfo,
+        allPersonalInfo: urlaData.allPersonalInfo.map(stripEncryptedFields),
+        assets: urlaData.assets.map(stripEncryptedFields),
+        liabilities: urlaData.liabilities.map(stripEncryptedFields),
+      });
     } catch (error) {
       console.error("Get URLA data error:", error);
       res.status(500).json({ error: "Failed to get URLA data" });
@@ -383,12 +423,62 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.upsertUrlaPersonalInfo(data);
-      res.json(result);
+      // Whitelist to table columns (mass-assignment defense) and pass the raw
+      // `ssn` through to storage, where ssnVault validates + encrypts it
+      // (InvalidSsnError → 400 below). stripEncryptedFields keeps ciphertext
+      // out of the response.
+      const sanitized = sanitizePersonalInfoBody(req.body);
+      if (!sanitized.ok) {
+        return res.status(400).json({ error: sanitized.error });
+      }
+      const data = { ...sanitized.data, applicationId };
+      const result = await storage.upsertUrlaPersonalInfo(data as any);
+      res.json(stripEncryptedFields(result));
     } catch (error) {
+      if (error instanceof InvalidSsnError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Save personal info error:", error);
       res.status(500).json({ error: "Failed to save personal info" });
+    }
+  });
+
+  /**
+   * Audited full-SSN reveal. Everything else in the API returns the masked
+   * form; this endpoint exists for the narrow staff workflows that genuinely
+   * need the full value (credit pulls, GSE casefile fixes). Owner borrowers
+   * may read their own. Every call writes an audit entry.
+   */
+  app.get("/api/urla/:applicationId/ssn", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const seq = Math.max(parseInt(String(req.query.borrowerSequenceNumber ?? "1"), 10) || 1, 1);
+
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const isOwner = application.userId === user.id;
+      const allowedStaff = ["admin", "underwriter", "processor"];
+      if (!isOwner && !allowedStaff.includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const ssn = await storage.getDecryptedUrlaSsn(applicationId, seq);
+      if (!ssn) {
+        return res.status(404).json({ error: "No SSN on file" });
+      }
+
+      await logAudit(req, "urla.ssn_reveal", "loan_application", applicationId, {
+        borrowerSequenceNumber: seq,
+        role: user.role,
+      });
+      res.json({ ssn });
+    } catch (error) {
+      console.error("SSN reveal error:", error);
+      res.status(500).json({ error: "Failed to retrieve SSN" });
     }
   });
 
@@ -400,8 +490,8 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.createEmploymentHistory(data);
+      const data = { ...pickTableFields(URLA_TABLES.employment, req.body), applicationId };
+      const result = await storage.createEmploymentHistory(data as any);
       res.status(201).json(result);
     } catch (error) {
       console.error("Create employment error:", error);
@@ -421,9 +511,9 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      // Strip applicationId from body — it is immutable and must not be re-parented
-      const { applicationId: _appId, ...safeBody } = req.body;
-      const result = await storage.updateEmploymentHistory(id, safeBody);
+      // Whitelist to table columns; applicationId is always stripped (immutable).
+      const safeBody = pickTableFields(URLA_TABLES.employment, req.body);
+      const result = await storage.updateEmploymentHistory(id, safeBody as any);
       if (!result) {
         return res.status(404).json({ error: "Employment record not found" });
       }
@@ -462,8 +552,8 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.createOtherIncomeSource(data);
+      const data = { ...pickTableFields(URLA_TABLES.otherIncome, req.body), applicationId };
+      const result = await storage.createOtherIncomeSource(data as any);
       res.status(201).json(result);
     } catch (error) {
       console.error("Create other income error:", error);
@@ -499,9 +589,9 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.createUrlaAsset(data);
-      res.status(201).json(result);
+      const data = { ...pickTableFields(URLA_TABLES.asset, req.body, ["accountNumber"]), applicationId };
+      const result = await storage.createUrlaAsset(data as any);
+      res.status(201).json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Create asset error:", error);
       res.status(500).json({ error: "Failed to create asset" });
@@ -520,13 +610,13 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      // Strip applicationId from body — it is immutable and must not be re-parented
-      const { applicationId: _appId, ...safeBody } = req.body;
-      const result = await storage.updateUrlaAsset(id, safeBody);
+      // Whitelist to table columns; applicationId is always stripped (immutable).
+      const safeBody = pickTableFields(URLA_TABLES.asset, req.body, ["accountNumber"]);
+      const result = await storage.updateUrlaAsset(id, safeBody as any);
       if (!result) {
         return res.status(404).json({ error: "Asset not found" });
       }
-      res.json(result);
+      res.json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Update asset error:", error);
       res.status(500).json({ error: "Failed to update asset" });
@@ -561,9 +651,9 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.createUrlaLiability(data);
-      res.status(201).json(result);
+      const data = { ...pickTableFields(URLA_TABLES.liability, req.body, ["accountNumber"]), applicationId };
+      const result = await storage.createUrlaLiability(data as any);
+      res.status(201).json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Create liability error:", error);
       res.status(500).json({ error: "Failed to create liability" });
@@ -582,13 +672,13 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      // Strip applicationId from body — it is immutable and must not be re-parented
-      const { applicationId: _appId, ...safeBody } = req.body;
-      const result = await storage.updateUrlaLiability(id, safeBody);
+      // Whitelist to table columns; applicationId is always stripped (immutable).
+      const safeBody = pickTableFields(URLA_TABLES.liability, req.body, ["accountNumber"]);
+      const result = await storage.updateUrlaLiability(id, safeBody as any);
       if (!result) {
         return res.status(404).json({ error: "Liability not found" });
       }
-      res.json(result);
+      res.json(stripEncryptedFields(result));
     } catch (error) {
       console.error("Update liability error:", error);
       res.status(500).json({ error: "Failed to update liability" });
@@ -623,8 +713,8 @@ export function registerBorrowerRoutes(
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const data = { ...req.body, applicationId };
-      const result = await storage.upsertUrlaPropertyInfo(data);
+      const data = { ...pickTableFields(URLA_TABLES.propertyInfo, req.body), applicationId };
+      const result = await storage.upsertUrlaPropertyInfo(data as any);
       res.json(result);
     } catch (error) {
       console.error("Save property info error:", error);
@@ -660,7 +750,9 @@ export function registerBorrowerRoutes(
       const collectionMethod = isStaffRole(user.role) ? "loan_officer" : "borrower";
 
       // Writes one borrower's URLA sections, scoped to a borrowerSequenceNumber.
-      // Returns false if any referenced child record fails the ownership check.
+      // Bodies are whitelisted to their table's columns (pickTableFields) before
+      // any write. Returns ok=false with an http status when a referenced child
+      // record fails the ownership check or a field fails format validation.
       const writeBorrowerSections = async (opts: {
         seq: number;
         isPrimary: boolean;
@@ -670,35 +762,40 @@ export function registerBorrowerRoutes(
         liabilities?: any[];
         declarations?: any;
         demographics?: any;
-      }): Promise<{ ok: boolean; results: any }> => {
+      }): Promise<{ ok: boolean; status?: number; error?: string; results: any }> => {
         const { seq, isPrimary } = opts;
         const results: any = {};
 
         if (hasContent(opts.personalInfo)) {
+          const sanitized = sanitizePersonalInfoBody(opts.personalInfo);
+          if (!sanitized.ok) {
+            return { ok: false, status: 400, error: sanitized.error, results };
+          }
           results.personalInfo = await storage.upsertUrlaPersonalInfo({
-            ...opts.personalInfo,
+            ...sanitized.data,
             applicationId,
             borrowerSequenceNumber: seq,
             isPrimaryBorrower: isPrimary,
-          });
+          } as any);
         }
 
         if (Array.isArray(opts.employmentHistory) && opts.employmentHistory.length > 0) {
           results.employmentHistory = [];
           for (const emp of opts.employmentHistory) {
             if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
+            const cleanEmp = pickTableFields(URLA_TABLES.employment, emp);
             if (emp.id) {
               const existing = await storage.getEmploymentHistoryById(emp.id);
               if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
-              const updated = await storage.updateEmploymentHistory(emp.id, { ...emp, borrowerSequenceNumber: seq });
+              const updated = await storage.updateEmploymentHistory(emp.id, { ...cleanEmp, borrowerSequenceNumber: seq } as any);
               if (updated) results.employmentHistory.push(updated);
             } else {
               const created = await storage.createEmploymentHistory({
-                ...emp,
+                ...cleanEmp,
                 applicationId,
                 borrowerSequenceNumber: seq,
-                employmentType: emp.employmentType || "current",
-              });
+                employmentType: cleanEmp.employmentType || "current",
+              } as any);
               results.employmentHistory.push(created);
             }
           }
@@ -708,13 +805,14 @@ export function registerBorrowerRoutes(
           results.assets = [];
           for (const asset of opts.assets) {
             if (!asset.accountType && !asset.financialInstitution) continue;
+            const cleanAsset = pickTableFields(URLA_TABLES.asset, asset, ["accountNumber"]);
             if (asset.id) {
               const existing = await storage.getUrlaAssetById(asset.id);
               if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
-              const updated = await storage.updateUrlaAsset(asset.id, { ...asset, borrowerSequenceNumber: seq });
+              const updated = await storage.updateUrlaAsset(asset.id, { ...cleanAsset, borrowerSequenceNumber: seq } as any);
               if (updated) results.assets.push(updated);
             } else if (asset.accountType) {
-              const created = await storage.createUrlaAsset({ ...asset, applicationId, borrowerSequenceNumber: seq });
+              const created = await storage.createUrlaAsset({ ...cleanAsset, applicationId, borrowerSequenceNumber: seq } as any);
               results.assets.push(created);
             }
           }
@@ -724,13 +822,14 @@ export function registerBorrowerRoutes(
           results.liabilities = [];
           for (const liability of opts.liabilities) {
             if (!liability.liabilityType && !liability.creditorName) continue;
+            const cleanLiability = pickTableFields(URLA_TABLES.liability, liability, ["accountNumber"]);
             if (liability.id) {
               const existing = await storage.getUrlaLiabilityById(liability.id);
               if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
-              const updated = await storage.updateUrlaLiability(liability.id, { ...liability, borrowerSequenceNumber: seq });
+              const updated = await storage.updateUrlaLiability(liability.id, { ...cleanLiability, borrowerSequenceNumber: seq } as any);
               if (updated) results.liabilities.push(updated);
             } else if (liability.liabilityType) {
-              const created = await storage.createUrlaLiability({ ...liability, applicationId, borrowerSequenceNumber: seq });
+              const created = await storage.createUrlaLiability({ ...cleanLiability, applicationId, borrowerSequenceNumber: seq } as any);
               results.liabilities.push(created);
             }
           }
@@ -738,20 +837,20 @@ export function registerBorrowerRoutes(
 
         if (hasContent(opts.declarations)) {
           results.declarations = await storage.upsertBorrowerDeclarations({
-            ...opts.declarations,
+            ...pickTableFields(URLA_TABLES.declarations, opts.declarations),
             applicationId,
             borrowerSequenceNumber: seq,
-          });
+          } as any);
         }
 
         if (demographicsHasContent(opts.demographics)) {
           results.demographics = await storage.upsertHmdaDemographics({
-            ...opts.demographics,
+            ...pickTableFields(URLA_TABLES.demographics, opts.demographics),
             applicationId,
             borrowerId: application.userId,
             borrowerSequenceNumber: seq,
             collectionMethod,
-          });
+          } as any);
         }
 
         return { ok: true, results };
@@ -769,13 +868,16 @@ export function registerBorrowerRoutes(
         demographics,
       });
       if (!primary.ok) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(primary.status ?? 403).json({ error: primary.error ?? "Access denied" });
       }
       const results: any = { ...primary.results };
 
       // Property info (shared subject property)
       if (hasContent(propertyInfo)) {
-        results.propertyInfo = await storage.upsertUrlaPropertyInfo({ ...propertyInfo, applicationId });
+        results.propertyInfo = await storage.upsertUrlaPropertyInfo({
+          ...pickTableFields(URLA_TABLES.propertyInfo, propertyInfo),
+          applicationId,
+        } as any);
       }
 
       // Other income sources (primary only) - only create new ones
@@ -784,7 +886,10 @@ export function registerBorrowerRoutes(
         for (const income of otherIncomeSources) {
           if (!income.incomeSource || !income.monthlyAmount) continue;
           if (income.id) continue;
-          const created = await storage.createOtherIncomeSource({ ...income, applicationId });
+          const created = await storage.createOtherIncomeSource({
+            ...pickTableFields(URLA_TABLES.otherIncome, income),
+            applicationId,
+          } as any);
           results.otherIncomeSources.push(created);
         }
       }
@@ -805,13 +910,25 @@ export function registerBorrowerRoutes(
             demographics: co.demographics,
           });
           if (!coResult.ok) {
-            return res.status(403).json({ error: "Access denied" });
+            return res.status(coResult.status ?? 403).json({ error: coResult.error ?? "Access denied" });
           }
           results.coApplicants.push(coResult.results);
         }
       }
 
-      res.json(results);
+      // Ciphertext/IV/key columns never leave the server.
+      const sanitizeBorrowerResults = (r: any) => ({
+        ...r,
+        ...(r.personalInfo ? { personalInfo: stripEncryptedFields(r.personalInfo) } : {}),
+        ...(Array.isArray(r.assets) ? { assets: r.assets.map(stripEncryptedFields) } : {}),
+        ...(Array.isArray(r.liabilities) ? { liabilities: r.liabilities.map(stripEncryptedFields) } : {}),
+      });
+      const safeResults = sanitizeBorrowerResults(results);
+      if (Array.isArray(safeResults.coApplicants)) {
+        safeResults.coApplicants = safeResults.coApplicants.map(sanitizeBorrowerResults);
+      }
+
+      res.json(safeResults);
     } catch (error) {
       console.error("Save URLA data error:", error);
       res.status(500).json({ error: "Failed to save URLA data" });
@@ -1842,14 +1959,15 @@ export function registerBorrowerRoutes(
       }
 
       // Check if already withdrawn or in a terminal state
-      if (["withdrawn", "closed", "denied"].includes(application.status)) {
+      if ((LOAN_APP_TERMINAL_STATUSES as readonly string[]).includes(application.status)) {
         return res.status(400).json({ error: "Application cannot be withdrawn in its current state" });
       }
 
-      // Update application status to withdrawn
-      const updatedApp = await storage.updateLoanApplication(applicationId, {
-        status: "withdrawn",
-      });
+      // Single writer: stamps the HMDA Reg C action-taken code 4 (previously
+      // missed on borrower-initiated withdrawals), emits task-engine events,
+      // and keeps the borrower state machine in sync.
+      await updatePipelineStage(applicationId, "withdrawn");
+      const updatedApp = await storage.getLoanApplication(applicationId);
 
       // Log the withdrawal activity
       await storage.createDealActivity({
@@ -2360,11 +2478,18 @@ export function registerBorrowerRoutes(
   // Team Messaging API Routes
   // ============================================
 
-  // Get all staff users for team display
+  // Team members for the Messages view. A borrower sees only THEIR assigned
+  // loan team (deal-team members + assigned LOs), not the whole staff
+  // directory; staff keep the full list for internal coordination. Borrowers
+  // with no team assigned yet fall back to all staff so they can still reach
+  // someone (see storage.getTeamMembersForBorrower).
   app.get("/api/team-members", isAuthenticated, async (req, res) => {
     try {
-      const staffUsersWithPresence = await storage.getTeamMembersWithPresence();
-      
+      const user = req.user as User;
+      const staffUsersWithPresence = isStaffRole(user.role)
+        ? await storage.getTeamMembersWithPresence()
+        : await storage.getTeamMembersForBorrower(user.id);
+
       // Transform to include display info and presence
       const teamMembers = staffUsersWithPresence.map(user => ({
         id: user.id,
@@ -2485,6 +2610,17 @@ export function registerBorrowerRoutes(
       const recipientIsStaff = isStaffRole(recipient.role || "");
       if (!senderIsStaff && !recipientIsStaff) {
         return res.status(403).json({ error: "Messages can only be exchanged with your loan team" });
+      }
+
+      // A borrower may only message staff on their OWN team (deal-team + LOs).
+      // Mirrors the scoped team-members list, so they can't reach an arbitrary
+      // staff member by user id. If they have no team yet, the team list falls
+      // back to all staff, and so does this check — no dead end.
+      if (!senderIsStaff && recipientIsStaff) {
+        const onTeam = await storage.isStaffOnBorrowerTeam(user.id, recipientId);
+        if (!onTeam) {
+          return res.status(403).json({ error: "You can only message members of your assigned loan team" });
+        }
       }
 
       // Document requests are a staff→borrower workflow.
@@ -3842,40 +3978,8 @@ export function registerBorrowerRoutes(
   app.get("/api/user-activity-summary", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as User).id;
-      const { userActivities } = await import("@shared/schema");
-      const { db } = await import("../db");
-      const { eq, sql, and, gte } = await import("drizzle-orm");
-
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      const recentActivities = await db
-        .select({
-          activityType: userActivities.activityType,
-          count: sql<number>`count(*)::int`,
-          lastSeen: sql<string>`max(${userActivities.createdAt})`,
-        })
-        .from(userActivities)
-        .where(and(
-          eq(userActivities.userId, userId),
-          gte(userActivities.createdAt, sevenDaysAgo)
-        ))
-        .groupBy(userActivities.activityType);
-
-      const totalPageViews = recentActivities.find(a => a.activityType === "page_view")?.count || 0;
-      const propertySearches = recentActivities.find(a => a.activityType === "property_search")?.count || 0;
-      const calculatorUses = recentActivities.find(a => a.activityType === "calculator_use")?.count || 0;
-      const coachChats = recentActivities.find(a => a.activityType === "coach_chat")?.count || 0;
-      const propertyViews = recentActivities.find(a => a.activityType === "property_view")?.count || 0;
-
-      res.json({
-        totalPageViews,
-        propertySearches,
-        calculatorUses,
-        coachChats,
-        propertyViews,
-        activities: recentActivities,
-      });
+      const { getUserActivitySummary } = await import("../services/activitySummary");
+      res.json(await getUserActivitySummary(userId));
     } catch (error) {
       console.error("Activity summary error:", error);
       res.status(500).json({ error: "Failed to load activity summary" });

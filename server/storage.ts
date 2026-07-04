@@ -1,5 +1,23 @@
 import { db } from "./db";
 import { eq, desc, and, gte, lte, sql, or, ilike, asc, count, inArray } from "drizzle-orm";
+// SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
+// branch — main leaves account numbers plaintext).
+import { encryptPiiField, decryptPiiField } from "./services/piiVault";
+import { AMOUNT_BEARING_STATUSES } from "@shared/stageRequirements";
+import {
+  resolveSsnInput,
+  clearedSsnColumns,
+  maskedSsnFromRow,
+  decryptSsnFromRow,
+} from "./services/ssnVault";
+
+/** Thrown by upsertUrlaPersonalInfo when the supplied SSN is not 9 digits — routes translate it to a 400. */
+export class InvalidSsnError extends Error {
+  constructor() {
+    super("SSN must be 9 digits");
+    this.name = "InvalidSsnError";
+  }
+}
 import {
   users,
   loanApplications,
@@ -266,6 +284,9 @@ import {
   type InsertLookupMatrix,
   type LookupMatrixCell,
   type InsertLookupMatrixCell,
+  LOAN_APP_STATUSES,
+  isApprovedGradeLoanAppStatus,
+  isTerminalLoanAppStatus,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -349,7 +370,9 @@ export interface IStorage {
   // URLA Data
   getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber?: number): Promise<UrlaPersonalInfo | undefined>;
   getAllUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo[]>;
-  upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo>;
+  upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo & { ssn?: string | null }): Promise<UrlaPersonalInfo>;
+  /** Full decrypted SSN — caller must authorize AND write an audit entry. All other reads return the masked form. */
+  getDecryptedUrlaSsn(applicationId: string, borrowerSequenceNumber?: number): Promise<string | null>;
   
   getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]>;
   getEmploymentHistoryById(id: string): Promise<EmploymentHistory | undefined>;
@@ -364,14 +387,14 @@ export interface IStorage {
   
   getUrlaAssets(applicationId: string): Promise<UrlaAsset[]>;
   getUrlaAssetById(id: string): Promise<UrlaAsset | undefined>;
-  createUrlaAsset(data: InsertUrlaAsset): Promise<UrlaAsset>;
-  updateUrlaAsset(id: string, data: Partial<UrlaAsset>): Promise<UrlaAsset | undefined>;
+  createUrlaAsset(data: InsertUrlaAsset & { accountNumber?: string | null }): Promise<UrlaAsset>;
+  updateUrlaAsset(id: string, data: Partial<UrlaAsset> & { accountNumber?: string | null }): Promise<UrlaAsset | undefined>;
   deleteUrlaAsset(id: string): Promise<void>;
   
   getUrlaLiabilities(applicationId: string): Promise<UrlaLiability[]>;
   getUrlaLiabilityById(id: string): Promise<UrlaLiability | undefined>;
-  createUrlaLiability(data: InsertUrlaLiability): Promise<UrlaLiability>;
-  updateUrlaLiability(id: string, data: Partial<UrlaLiability>): Promise<UrlaLiability | undefined>;
+  createUrlaLiability(data: InsertUrlaLiability & { accountNumber?: string | null }): Promise<UrlaLiability>;
+  updateUrlaLiability(id: string, data: Partial<UrlaLiability> & { accountNumber?: string | null }): Promise<UrlaLiability | undefined>;
   deleteUrlaLiability(id: string): Promise<void>;
   
   getUrlaPropertyInfo(applicationId: string): Promise<UrlaPropertyInfo | undefined>;
@@ -402,14 +425,16 @@ export interface IStorage {
   upsertHmdaDemographics(data: InsertHmdaDemographics): Promise<HmdaDemographics>;
   getBorrowerProfileByUserId(userId: string): Promise<BorrowerProfile | undefined>;
 
-  // MISMO Export Data
+  // MISMO Export Data. personalInfo carries the DECRYPTED SSN (virtual `ssn`
+  // field) — GSE loan delivery requires the full taxpayer identifier. This is
+  // the only read path that decrypts it; never serialize this object to a client.
   getMISMOLoanData(applicationId: string): Promise<{
     application: LoanApplication;
     user: User | null;
-    personalInfo: UrlaPersonalInfo | null;
+    personalInfo: (UrlaPersonalInfo & { ssn: string | null }) | null;
     employment: EmploymentHistory[];
-    assets: UrlaAsset[];
-    liabilities: UrlaLiability[];
+    assets: (UrlaAsset & { accountNumber: string | null })[];
+    liabilities: (UrlaLiability & { accountNumber: string | null })[];
     propertyInfo: UrlaPropertyInfo | null;
     declarations: BorrowerDeclarations | null;
     loanOptions: LoanOption[];
@@ -726,6 +751,8 @@ export interface IStorage {
   updateUserPresence(userId: string): Promise<void>;
   getUserPresenceStatus(userId: string): Promise<'online' | 'away' | 'offline'>;
   getTeamMembersWithPresence(): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]>;
+  getTeamMembersForBorrower(borrowerUserId: string): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]>;
+  isStaffOnBorrowerTeam(borrowerUserId: string, staffUserId: string): Promise<boolean>;
   updateDocumentRequestStatus(
     messageId: string,
     status: 'pending' | 'submitted' | 'approved' | 'rejected',
@@ -1248,7 +1275,9 @@ export class DatabaseStorage implements IStorage {
       db.select({
         status: loanApplications.status,
         count: sql<number>`count(*)::int`,
-        volume: sql<string>`coalesce(sum(purchase_price::numeric), 0)::text`,
+        // Coherent amount: purchase price once under contract, else the
+        // pre-approval amount — pre-approval precedes property selection (#7).
+        volume: sql<string>`coalesce(sum(coalesce(purchase_price::numeric, pre_approval_amount::numeric)), 0)::text`,
       })
         .from(loanApplications)
         .groupBy(loanApplications.status),
@@ -1274,9 +1303,18 @@ export class DatabaseStorage implements IStorage {
     ]);
 
     const totalApplications = appStats.reduce((sum, s) => sum + s.count, 0);
-    const approvedRow = appStats.find(s => s.status === "approved");
-    const approvedCount = approvedRow?.count ?? 0;
-    const totalLoanVolume = approvedRow?.volume ?? "0";
+    // Approval rate = applications at or past pre-approval. (The old check for
+    // a literal "approved" status matched nothing — that metric read 0.)
+    const approvedCount = appStats
+      .filter(s => isApprovedGradeLoanAppStatus(s.status))
+      .reduce((sum, s) => sum + s.count, 0);
+    // Pipeline volume = coherent amount across every amount-bearing status, not
+    // just fully-approved files — a pre-approved file has real pipeline value
+    // before a property is chosen, so summing only "approved" reads $0 (#7).
+    const totalLoanVolume = appStats
+      .filter(s => AMOUNT_BEARING_STATUSES.has(s.status))
+      .reduce((sum, s) => sum + (parseFloat(s.volume) || 0), 0)
+      .toString();
     const approvalRate = totalApplications > 0
       ? Math.round((approvedCount / totalApplications) * 100)
       : 0;
@@ -1335,7 +1373,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   // URLA Personal Info
-  async getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber: number = 1): Promise<UrlaPersonalInfo | undefined> {
+  /**
+   * Present a urla_personal_info row outside the storage layer: the SSN comes
+   * back masked (XXX-XX-1234) and the ciphertext columns are withheld. Full
+   * SSNs are available only via getDecryptedUrlaSsn (audited callers).
+   */
+  private presentUrlaPersonalInfo(row: UrlaPersonalInfo): UrlaPersonalInfo {
+    return {
+      ...row,
+      ssn: maskedSsnFromRow(row),
+      ssnEncrypted: null,
+      ssnIv: null,
+      ssnKeyId: null,
+    };
+  }
+
+  private async getUrlaPersonalInfoRaw(applicationId: string, borrowerSequenceNumber: number = 1): Promise<UrlaPersonalInfo | undefined> {
     const [info] = await db
       .select()
       .from(urlaPersonalInfo)
@@ -1347,33 +1400,73 @@ export class DatabaseStorage implements IStorage {
     return info;
   }
 
+  async getUrlaPersonalInfo(applicationId: string, borrowerSequenceNumber: number = 1): Promise<UrlaPersonalInfo | undefined> {
+    const info = await this.getUrlaPersonalInfoRaw(applicationId, borrowerSequenceNumber);
+    return info ? this.presentUrlaPersonalInfo(info) : undefined;
+  }
+
   async getAllUrlaPersonalInfo(applicationId: string): Promise<UrlaPersonalInfo[]> {
-    return await db
+    const rows = await db
       .select()
       .from(urlaPersonalInfo)
       .where(eq(urlaPersonalInfo.applicationId, applicationId))
       .orderBy(asc(urlaPersonalInfo.borrowerSequenceNumber));
+    return rows.map((row) => this.presentUrlaPersonalInfo(row));
   }
 
-  async upsertUrlaPersonalInfo(data: InsertUrlaPersonalInfo): Promise<UrlaPersonalInfo> {
+  /**
+   * Full, decrypted SSN for a borrower on an application. Callers are
+   * responsible for authorization and for writing an audit entry — this is
+   * intentionally the ONLY path that returns more than the last 4.
+   */
+  async getDecryptedUrlaSsn(applicationId: string, borrowerSequenceNumber: number = 1): Promise<string | null> {
+    const row = await this.getUrlaPersonalInfoRaw(applicationId, borrowerSequenceNumber);
+    if (!row) return null;
+    return decryptSsnFromRow(row);
+  }
+
+  async upsertUrlaPersonalInfo(
+    data: InsertUrlaPersonalInfo & { ssn?: string | null },
+  ): Promise<UrlaPersonalInfo> {
     const seq = (data as any).borrowerSequenceNumber ?? 1;
-    const existing = await this.getUrlaPersonalInfo(data.applicationId, seq);
-    // Remove any timestamp fields that might have been serialized as strings from frontend
-    const { createdAt, updatedAt, id, ...cleanData } = data as any;
-    
+    const existing = await this.getUrlaPersonalInfoRaw(data.applicationId, seq);
+    // Remove timestamp fields that might have been serialized as strings from
+    // the frontend, plus the server-managed SSN columns — clients must never
+    // write ciphertext fields directly.
+    const {
+      createdAt, updatedAt, id,
+      ssn: ssnInput, ssnEncrypted: _e, ssnIv: _i, ssnKeyId: _k, ssnLast4: _l,
+      ...cleanData
+    } = data as any;
+
+    // Encrypt SSN server-side via ssnVault. A masked echo from the UI
+    // (XXX-XX-1234) means "unchanged"; an invalid value is rejected before
+    // anything is written.
+    const ssnResolution = resolveSsnInput(ssnInput);
+    if (ssnResolution.action === "invalid") {
+      throw new InvalidSsnError();
+    }
+    const ssnColumns =
+      ssnResolution.action === "set" ? ssnResolution.columns :
+      ssnResolution.action === "clear" ? clearedSsnColumns() :
+      {};
+
     if (existing) {
       const [updated] = await db
         .update(urlaPersonalInfo)
-        .set({ ...cleanData, borrowerSequenceNumber: seq, updatedAt: new Date() })
+        .set({ ...cleanData, ...ssnColumns, borrowerSequenceNumber: seq, updatedAt: new Date() })
         .where(and(
           eq(urlaPersonalInfo.applicationId, data.applicationId),
           eq(urlaPersonalInfo.borrowerSequenceNumber, seq),
         ))
         .returning();
-      return updated;
+      return this.presentUrlaPersonalInfo(updated);
     }
-    const [created] = await db.insert(urlaPersonalInfo).values({ ...cleanData, borrowerSequenceNumber: seq }).returning();
-    return created;
+    const [created] = await db
+      .insert(urlaPersonalInfo)
+      .values({ ...cleanData, ...ssnColumns, borrowerSequenceNumber: seq })
+      .returning();
+    return this.presentUrlaPersonalInfo(created);
   }
 
   // Employment History
@@ -1459,14 +1552,29 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
-  async createUrlaAsset(data: InsertUrlaAsset): Promise<UrlaAsset> {
-    const [record] = await db.insert(urlaAssets).values(data).returning();
+  // `accountNumber` is a write-only virtual field on assets/liabilities:
+  // the storage layer encrypts it (piiVault) and persists only ciphertext + last4.
+  private static encryptAccountNumberField(cleanData: any, accountNumber: unknown): void {
+    if (typeof accountNumber === "string" && accountNumber.trim() !== "") {
+      const enc = encryptPiiField(accountNumber.trim());
+      cleanData.accountNumberEncrypted = enc.encrypted;
+      cleanData.accountNumberIv = enc.iv;
+      cleanData.accountNumberKeyId = enc.keyId;
+      cleanData.accountNumberLast4 = enc.last4;
+    }
+  }
+
+  async createUrlaAsset(data: InsertUrlaAsset & { accountNumber?: string | null }): Promise<UrlaAsset> {
+    const { accountNumber, ...cleanData } = data as any;
+    DatabaseStorage.encryptAccountNumberField(cleanData, accountNumber);
+    const [record] = await db.insert(urlaAssets).values(cleanData).returning();
     return record;
   }
 
-  async updateUrlaAsset(id: string, data: Partial<UrlaAsset>): Promise<UrlaAsset | undefined> {
+  async updateUrlaAsset(id: string, data: Partial<UrlaAsset> & { accountNumber?: string | null }): Promise<UrlaAsset | undefined> {
     // Remove id, timestamps, and applicationId (immutable — re-parenting is not allowed)
-    const { createdAt, updatedAt, id: recordId, applicationId, ...cleanData } = data as any;
+    const { createdAt, updatedAt, id: recordId, applicationId, accountNumber, ...cleanData } = data as any;
+    DatabaseStorage.encryptAccountNumberField(cleanData, accountNumber);
     const [updated] = await db
       .update(urlaAssets)
       .set(cleanData)
@@ -1497,14 +1605,17 @@ export class DatabaseStorage implements IStorage {
     return record;
   }
 
-  async createUrlaLiability(data: InsertUrlaLiability): Promise<UrlaLiability> {
-    const [record] = await db.insert(urlaLiabilities).values(data).returning();
+  async createUrlaLiability(data: InsertUrlaLiability & { accountNumber?: string | null }): Promise<UrlaLiability> {
+    const { accountNumber, ...cleanData } = data as any;
+    DatabaseStorage.encryptAccountNumberField(cleanData, accountNumber);
+    const [record] = await db.insert(urlaLiabilities).values(cleanData).returning();
     return record;
   }
 
-  async updateUrlaLiability(id: string, data: Partial<UrlaLiability>): Promise<UrlaLiability | undefined> {
+  async updateUrlaLiability(id: string, data: Partial<UrlaLiability> & { accountNumber?: string | null }): Promise<UrlaLiability | undefined> {
     // Remove id, timestamps, and applicationId (immutable — re-parenting is not allowed)
-    const { createdAt, updatedAt, id: recordId, applicationId, ...cleanData } = data as any;
+    const { createdAt, updatedAt, id: recordId, applicationId, accountNumber, ...cleanData } = data as any;
+    DatabaseStorage.encryptAccountNumberField(cleanData, accountNumber);
     const [updated] = await db
       .update(urlaLiabilities)
       .set(cleanData)
@@ -1679,20 +1790,43 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
 
-    const [user, urlaData, loanOpts, docs] = await Promise.all([
+    const [user, urlaData, loanOpts, docs, fullSsn] = await Promise.all([
       application.userId ? this.getUser(application.userId) : Promise.resolve(undefined),
       this.getCompleteUrlaData(applicationId),
       this.getLoanOptionsByApplication(applicationId),
       this.getDocumentsByApplication(applicationId),
+      // GSE loan delivery requires the real TaxpayerIdentifierValue. This is
+      // the one read path that decrypts the SSN; the export route restricts
+      // access (deal team / staff) and records the export as a deal activity.
+      this.getDecryptedUrlaSsn(applicationId),
     ]);
+
+    // GSE delivery needs full identifiers. The SSN comes from ssnVault's
+    // audited decryption (fullSsn, above); account numbers are decrypted here
+    // via piiVault. This object feeds the MISMO generator only — never a client.
+    const personalInfo = urlaData.personalInfo
+      ? { ...urlaData.personalInfo, ssn: fullSsn }
+      : null;
+    const withAccountNumber = <T extends {
+      accountNumberEncrypted: string | null;
+      accountNumberIv: string | null;
+      accountNumberKeyId: string | null;
+    }>(record: T): T & { accountNumber: string | null } => ({
+      ...record,
+      accountNumber: decryptPiiField({
+        encrypted: record.accountNumberEncrypted,
+        iv: record.accountNumberIv,
+        keyId: record.accountNumberKeyId,
+      }),
+    });
 
     return {
       application,
       user: user || null,
-      personalInfo: urlaData.personalInfo || null,
+      personalInfo,
       employment: urlaData.employmentHistory,
-      assets: urlaData.assets,
-      liabilities: urlaData.liabilities,
+      assets: urlaData.assets.map(withAccountNumber),
+      liabilities: urlaData.liabilities.map(withAccountNumber),
       propertyInfo: urlaData.propertyInfo || null,
       declarations: urlaData.declarations || null,
       loanOptions: loanOpts,
@@ -1713,7 +1847,7 @@ export class DatabaseStorage implements IStorage {
 
     // Personal Information Section
     const personalFields = [
-      "firstName", "lastName", "ssn", "dateOfBirth", "email", "cellPhone",
+      "firstName", "lastName", "ssnLast4", "dateOfBirth", "email", "cellPhone",
       "currentStreet", "currentCity", "currentState", "currentZip"
     ];
     const personalMissing = personalFields.filter(f => !urlaData.personalInfo?.[f as keyof typeof urlaData.personalInfo]);
@@ -1722,7 +1856,7 @@ export class DatabaseStorage implements IStorage {
       name: "Personal Information",
       score: personalScore,
       missingFields: personalMissing,
-      verificationStatus: urlaData.personalInfo?.ssn ? "verified" : "pending",
+      verificationStatus: urlaData.personalInfo?.ssnEncrypted ? "verified" : "pending",
     });
 
     // Employment Section
@@ -2832,8 +2966,11 @@ export class DatabaseStorage implements IStorage {
       .from(loanApplications)
       .where(eq(loanApplications.referringBrokerId, brokerId));
     
-    const activeStatuses = ["draft", "submitted", "analyzing", "pre_approved", "verified", "underwriting", "approved"];
-    const closedStatuses = ["closed"];
+    // Active = any non-terminal status; closed = funded. (The old hand-lists
+    // contained phantom values — "verified", "approved", "closed" — that no
+    // backend path writes, so broker closed-loan stats were permanently 0.)
+    const activeStatuses = LOAN_APP_STATUSES.filter(s => !isTerminalLoanAppStatus(s)) as string[];
+    const closedStatuses = ["funded"];
     
     const totalReferrals = referrals.length;
     const activeReferrals = referrals.filter(r => activeStatuses.includes(r.status)).length;
@@ -3433,10 +3570,10 @@ export class DatabaseStorage implements IStorage {
 
     for (const app of apps) {
       byStatus[app.status] = (byStatus[app.status] || 0) + 1;
-      if (app.status === "closed" || app.status === "funded") {
+      if (app.status === "funded") {
         const amount = parseFloat(app.preApprovalAmount || "0");
         closedVolume += amount;
-        if (app.status === "funded") fundedVolume += amount;
+        fundedVolume += amount;
       }
     }
 
@@ -3747,23 +3884,60 @@ export class DatabaseStorage implements IStorage {
     return 'offline';
   }
   
-  async getTeamMembersWithPresence(): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]> {
-    const staffUsers = await this.getStaffUsersForTeamDisplay();
+  private attachPresence(users: User[]): (User & { presenceStatus: 'online' | 'away' | 'offline' })[] {
     const now = new Date();
-    
-    return staffUsers.map(user => {
+    return users.map(user => {
       let presenceStatus: 'online' | 'away' | 'offline' = 'offline';
-      
       if (user.lastActiveAt) {
-        const lastActive = new Date(user.lastActiveAt);
-        const diffMinutes = (now.getTime() - lastActive.getTime()) / 60000;
-        
+        const diffMinutes = (now.getTime() - new Date(user.lastActiveAt).getTime()) / 60000;
         if (diffMinutes < 2) presenceStatus = 'online';
         else if (diffMinutes < 10) presenceStatus = 'away';
       }
-      
       return { ...user, presenceStatus };
     });
+  }
+
+  async getTeamMembersWithPresence(): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]> {
+    // Staff-facing / internal view: all staff (used for internal coordination).
+    return this.attachPresence(await this.getStaffUsersForTeamDisplay());
+  }
+
+  /**
+   * A borrower's OWN loan team — the staff actually assigned to their
+   * application(s): deal-team members plus assigned loan officers. Scoping the
+   * borrower's Messages view to this set stops them from browsing (and DMing)
+   * the entire staff directory.
+   *
+   * Fallback: a borrower with no assigned team yet (common pre-assignment) gets
+   * the full staff list so they are never left with no one to contact.
+   */
+  async getTeamMembersForBorrower(
+    borrowerUserId: string,
+  ): Promise<(User & { presenceStatus: 'online' | 'away' | 'offline' })[]> {
+    const apps = await this.getLoanApplicationsByUser(borrowerUserId);
+    const staffIds = new Set<string>();
+
+    for (const app of apps) {
+      if (app.loanOfficerId) staffIds.add(app.loanOfficerId);
+      const team = await this.getDealTeamMembers(app.id);
+      for (const m of team) {
+        if (m.userId && isStaffRole(m.user?.role ?? "")) staffIds.add(m.userId);
+      }
+    }
+
+    if (staffIds.size === 0) {
+      // No team assigned yet — don't strand the borrower.
+      return this.getTeamMembersWithPresence();
+    }
+
+    const members = await Promise.all([...staffIds].map((id) => this.getUser(id)));
+    return this.attachPresence(members.filter((u): u is User => !!u));
+  }
+
+  /** True when this staff user is on the borrower's team (or none is assigned). */
+  async isStaffOnBorrowerTeam(borrowerUserId: string, staffUserId: string): Promise<boolean> {
+    const team = await this.getTeamMembersForBorrower(borrowerUserId);
+    return team.some((m) => m.id === staffUserId);
   }
   
   // ============================================

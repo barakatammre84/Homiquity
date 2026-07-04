@@ -143,8 +143,11 @@ export function Navigation() {
     enabled: isAuthenticated && !location.startsWith("/apply") && !location.startsWith("/dashboard"),
   });
 
+  // "draft" is the only resumable status — the old check matched statuses no
+  // backend path writes ("under_review", "pending") and treated submitted
+  // applications as resumable, so the banner showed for the wrong people.
   const hasDraft = dashboardData?.applications?.some(
-    (app) => app.status === "submitted" || app.status === "under_review" || app.status === "pending"
+    (app) => app.status === "draft"
   );
 
   return (

@@ -11,6 +11,7 @@ import { z } from "zod";
 import { logAudit } from "../auditLog";
 import { refreshRates, syncBestExecutionRates } from "../services/rateService";
 import { requireRole } from "../auth";
+import { microCache } from "../middleware/httpCache";
 
 export function registerAdminRoutes(
   app: Express,
@@ -279,7 +280,7 @@ export function registerAdminRoutes(
   // --- Public Learning Center & FAQ Routes ---
 
   // Get active categories (public)
-  app.get("/api/content-categories", async (req, res) => {
+  app.get("/api/content-categories", microCache(300), async (req, res) => {
     try {
       const categories = await storage.getActiveContentCategories();
       res.json(categories);
@@ -289,8 +290,11 @@ export function registerAdminRoutes(
     }
   });
 
-  // Get published articles (public)
-  app.get("/api/articles", async (req, res) => {
+  // Get published articles (public). Cached by full URL, so the default list
+  // and each category filter cache independently; search results too (short
+  // TTL keeps them fresh enough). The single-article route is NOT cached — it
+  // increments a view counter.
+  app.get("/api/articles", microCache(120), async (req, res) => {
     try {
       const { category, search } = req.query;
       
@@ -328,8 +332,9 @@ export function registerAdminRoutes(
     }
   });
 
-  // Get published FAQs (public)
-  app.get("/api/faqs", async (req, res) => {
+  // Get published FAQs (public). Cached by full URL. The single-FAQ route and
+  // the feedback POST are NOT cached (view counter / write).
+  app.get("/api/faqs", microCache(120), async (req, res) => {
     try {
       const { category, search, popular } = req.query;
       
@@ -394,7 +399,7 @@ export function registerAdminRoutes(
   // MORTGAGE RATES
   // =============================================================================
 
-  app.get("/api/rates", async (req, res) => {
+  app.get("/api/rates", microCache(60), async (req, res) => {
     try {
       const rates = await storage.getMortgageRatesForLocation(undefined, undefined);
       const preview = rates.slice(0, 6).map((r: any) => ({
@@ -412,7 +417,7 @@ export function registerAdminRoutes(
   });
 
   // Get mortgage rates for a location (public)
-  app.get("/api/mortgage-rates", async (req, res) => {
+  app.get("/api/mortgage-rates", microCache(60), async (req, res) => {
     try {
       const { state, zipcode } = req.query;
       const rates = await storage.getMortgageRatesForLocation(
@@ -427,7 +432,7 @@ export function registerAdminRoutes(
   });
 
   // Get all rate programs (public)
-  app.get("/api/mortgage-rate-programs", async (req, res) => {
+  app.get("/api/mortgage-rate-programs", microCache(300), async (req, res) => {
     try {
       const programs = await storage.getActiveMortgageRatePrograms();
       res.json(programs);

@@ -586,6 +586,18 @@ export async function simulateCreditPullCompletion(
     transunion?: number;
   }
 ): Promise<CreditPull> {
+  // Simulated bureau data must never ground a real credit decision. Production
+  // refuses to fabricate scores unless CREDIT_VENDOR_MODE=simulation is set
+  // explicitly (e.g. a staging deploy running a production build). Remove that
+  // override entirely once live bureau contracts are wired in.
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.CREDIT_VENDOR_MODE !== "simulation"
+  ) {
+    throw new Error(
+      "Simulated credit pulls are disabled in production. Set CREDIT_VENDOR_MODE=simulation to explicitly allow fabricated bureau data in non-live environments."
+    );
+  }
   const [pull] = await db
     .select()
     .from(creditPulls)
@@ -691,6 +703,7 @@ export async function simulateCreditPullCompletion(
       encryptionIV: encryptedResponse.iv,
       vendorResponseHash: rawResponseHash,
       vendorRequestId: `SIM-${creditPullId.substring(0, 8)}`,
+      isSimulated: true,
       completedAt: new Date(),
       updatedAt: new Date(),
     })

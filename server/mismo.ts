@@ -17,6 +17,7 @@ import type {
   Document,
   BorrowerDeclarations,
 } from "@shared/schema";
+import { isApprovedGradeLoanAppStatus } from "@shared/schema";
 import { COMPANY_CONFIG } from "./config/company";
 import {
   MISMO_NAMESPACE,
@@ -32,10 +33,14 @@ import {
 export interface MISMOLoanDTO {
   application: LoanApplication;
   user: User | null;
-  personalInfo: UrlaPersonalInfo | null;
+  // `ssn` is a virtual field: SSNs are encrypted at rest, and
+  // storage.getMISMOLoanData() decrypts the full value onto the record because
+  // GSE loan delivery (TaxpayerIdentifierValue) requires it.
+  personalInfo: (UrlaPersonalInfo & { ssn?: string | null }) | null;
   employment: EmploymentHistory[];
-  assets: UrlaAsset[];
-  liabilities: UrlaLiability[];
+  // Asset/liability `accountNumber` is likewise a decrypted virtual field.
+  assets: (UrlaAsset & { accountNumber?: string | null })[];
+  liabilities: (UrlaLiability & { accountNumber?: string | null })[];
   propertyInfo: UrlaPropertyInfo | null;
   declarations: BorrowerDeclarations | null;
   loanOptions: LoanOption[];
@@ -620,16 +625,16 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string): XMLNode {
     });
   }
 
-  if (application.status === "approved" || application.status === "pre_approved") {
+  if (isApprovedGradeLoanAppStatus(application.status)) {
     loanChildren.push({
       tag: "UNDERWRITING",
       children: [
         {
           tag: "UNDERWRITING_DETAIL",
           children: [
-            { 
-              tag: "UnderwritingDecisionType", 
-              text: application.status === "approved" ? "Approve" : "Approve"
+            {
+              tag: "UnderwritingDecisionType",
+              text: "Approve"
             },
             { tag: "UnderwritingMethodType", text: "AutomatedUnderwriting" },
           ],

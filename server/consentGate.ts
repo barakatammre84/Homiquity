@@ -40,28 +40,35 @@ export async function hasBorrowerConsent(
  * existing databases (whose consent_templates were seeded before this
  * template existed) receive it without a manual step.
  */
+// IMPORTANT: This disclosure must only assert options the pricing engine
+// actually computes and labels. `computeOffers` in services/pricingAdapter.ts
+// currently labels exactly two options — LOWEST_RATE and LOWEST_PAYMENT (lowest
+// total cost). It does NOT yet evaluate risk features (no negative-amortization/
+// prepayment-penalty/balloon columns exist on rateSheetProducts), so the text
+// must NOT claim a third "lowest rate with no risky features" option was shown.
+// When those columns + a NO_RISKY_FEATURES label are added, restore the third
+// option here and bump the version so the full §1026.36(e)(3) safe harbor applies.
 const ANTI_STEERING_TEMPLATE = {
   consentType: "anti_steering",
-  version: "1.0",
+  version: "1.1",
   title: "Anti-Steering Loan Options Disclosure",
   shortDescription:
-    "Confirms you were shown loan options in your interest, including the lowest-rate and lowest-cost alternatives",
+    "Confirms you were shown the lowest-rate and lowest-cost loan options in your interest",
   fullText: `ANTI-STEERING LOAN OPTIONS DISCLOSURE
 
 Federal law (Regulation Z, 12 C.F.R. §1026.36(e)) prohibits mortgage brokers from steering you toward a loan because it results in greater compensation to the broker, unless the loan is in your interest.
 
-The loan options presented to you include, for the type of transaction you requested:
+For the type of transaction you requested, the loan options presented to you include:
 
-1. The loan with the LOWEST INTEREST RATE for which you likely qualify;
-2. The loan with the LOWEST TOTAL DOLLAR AMOUNT of discount points, origination points, and origination fees; and
-3. The loan with the lowest interest rate that has NO risky features — no negative amortization, no prepayment penalty, no balloon payment in the first 7 years, no demand feature, no shared equity, and no shared appreciation.
+1. The loan with the LOWEST INTEREST RATE for which you likely qualify; and
+2. The loan with the LOWEST TOTAL DOLLAR AMOUNT of discount points, origination points, and origination fees.
 
 Homiquity obtains these options from the wholesale lenders with whom we regularly do business. Our compensation is not based on the interest rate or terms of your loan, other than the loan amount.
 
 By acknowledging below, you confirm that these loan options were presented to you before you selected or locked a loan.`,
-  regulatoryReference: "Reg Z §1026.36(e)(3)",
+  regulatoryReference: "Reg Z §1026.36(e)",
   isActive: true,
-  effectiveDate: new Date("2026-07-01T00:00:00Z"),
+  effectiveDate: new Date("2026-07-03T00:00:00Z"),
 } as const;
 
 let templatesEnsured: Promise<void> | null = null;
@@ -72,7 +79,7 @@ export function ensureComplianceTemplates(): Promise<void> {
     templatesEnsured = (async () => {
       try {
         const [existing] = await db
-          .select({ id: consentTemplates.id })
+          .select({ id: consentTemplates.id, version: consentTemplates.version })
           .from(consentTemplates)
           .where(
             and(
@@ -83,7 +90,29 @@ export function ensureComplianceTemplates(): Promise<void> {
           .limit(1);
         if (!existing) {
           await db.insert(consentTemplates).values({ ...ANTI_STEERING_TEMPLATE });
-          console.log("[consent] Seeded anti-steering disclosure template (v1.0)");
+          console.log(
+            `[consent] Seeded anti-steering disclosure template (v${ANTI_STEERING_TEMPLATE.version})`,
+          );
+        } else if (existing.version !== ANTI_STEERING_TEMPLATE.version) {
+          // Roll forward a stale disclosure. Deactivate (never delete) the old
+          // template so historical borrower_consents keep their templateId/
+          // templateVersion snapshot, then activate the corrected text. This is
+          // what makes a text correction (e.g. the v1.0 over-claim of a third
+          // "no risky features" option) actually reach production, since the
+          // seed above is insert-if-missing only.
+          await db
+            .update(consentTemplates)
+            .set({ isActive: false, expirationDate: new Date() })
+            .where(
+              and(
+                eq(consentTemplates.consentType, ANTI_STEERING_TEMPLATE.consentType),
+                eq(consentTemplates.isActive, true),
+              ),
+            );
+          await db.insert(consentTemplates).values({ ...ANTI_STEERING_TEMPLATE });
+          console.log(
+            `[consent] Rolled anti-steering disclosure forward ${existing.version} -> ${ANTI_STEERING_TEMPLATE.version}`,
+          );
         }
       } catch (err) {
         templatesEnsured = null; // retry on next call

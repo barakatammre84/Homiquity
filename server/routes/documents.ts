@@ -7,6 +7,7 @@ import {
   extractBankStatementData,
   extractLeaseData,
 } from "../extractionService";
+import { recordCoarseExtraction } from "../services/documentConfidence";
 import { upload, allowedUploadTypes, verifyFileSignature } from "./utils";
 import { ObjectStorageService, ObjectNotFoundError } from "../integrations/object_storage";
 import { type User } from "@shared/schema";
@@ -14,6 +15,26 @@ import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 
 const objectStorageService = new ObjectStorageService();
+
+// The encrypted raw model response is stored server-side only; never return the
+// ciphertext/IV/key to the client. The hash and model/prompt lineage are safe.
+function publicExtraction<T extends Record<string, any>>(extractedData: T) {
+  const { rawResponseEncrypted, rawResponseIv, rawResponseKeyId, ...rest } = extractedData;
+  return rest;
+}
+
+/**
+ * document.fileName is uploader-controlled. Quotes/control chars in a quoted
+ * Content-Disposition filename can break out of the quoting or corrupt the
+ * header, so strip them before echoing the name back in a download header.
+ */
+function safeDispositionFilename(fileName: string | null | undefined): string {
+  const cleaned = (fileName ?? "download")
+    .replace(/[\r\n"\\]/g, "_")
+    .replace(/[\x00-\x1f\x7f]/g, "_")
+    .trim();
+  return cleaned || "download";
+}
 
 /** Zero-touch: route an uploaded document at its outstanding conditions (non-fatal). */
 async function matchConditionsForUpload(
@@ -150,12 +171,12 @@ export function registerDocumentRoutes(
         }
         // Force download rather than inline render so borrower-uploaded files
         // (e.g. crafted HTML/SVG/PDF) cannot execute in the browser context.
-        res.set("Content-Disposition", `attachment; filename="${document.fileName}"`);
+        res.set("Content-Disposition", `attachment; filename="${safeDispositionFilename(document.fileName)}"`);
         await objectStorageService.downloadObject(objectFile, res);
       } else if (document.storagePath) {
         const fs = await import("fs");
         if (fs.existsSync(document.storagePath)) {
-          res.set("Content-Disposition", `attachment; filename="${document.fileName}"`);
+          res.set("Content-Disposition", `attachment; filename="${safeDispositionFilename(document.fileName)}"`);
           res.set("Content-Type", document.mimeType || "application/octet-stream");
           fs.createReadStream(document.storagePath).pipe(res);
         } else {
@@ -209,14 +230,35 @@ export function registerDocumentRoutes(
           });
       }
 
+      const { humanReviewRequired } = await recordCoarseExtraction({
+        documentId: id,
+        documentType: document.documentType,
+        applicationId: document.applicationId,
+        confidence: extractedData.confidence,
+        extractedFields: extractedData.extractedFields,
+        fileSize: document.fileSize ?? undefined,
+      });
       await storage.updateDocument(id, {
-        status: extractedData.confidence === "high" ? "verified" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify);
+        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
+        // able to mark itself verified). main's review-gate signal still routes:
+        // a doc that clears the type-specific confidence threshold is staged
+        // "verifying" for a human to confirm; everything else stays "uploaded".
+        status: !humanReviewRequired ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
+          humanReviewRequired,
           warnings: extractedData.warnings,
+          modelId: extractedData.modelId,
+          promptVersion: extractedData.promptVersion,
+          responseHash: extractedData.rawResponseHash,
         }),
+        extractionResponseHash: extractedData.rawResponseHash,
+        extractionRawEncrypted: extractedData.rawResponseEncrypted,
+        extractionRawIv: extractedData.rawResponseIv,
+        extractionRawKeyId: extractedData.rawResponseKeyId,
       });
 
       if (extractedData.confidence !== "low" && extractedData.extractedFields) {
@@ -252,7 +294,7 @@ export function registerDocumentRoutes(
       res.json({
         documentId: id,
         documentType: document.documentType,
-        ...extractedData,
+        ...publicExtraction(extractedData),
       });
     } catch (error) {
       console.error("Document extraction error:", error);
@@ -271,6 +313,62 @@ export function registerDocumentRoutes(
       res.status(500).json({ error: "Failed to extract document data" });
     }
   });
+
+  // Human document verification — the ONLY path to status "verified". AI
+  // extraction can at most advance a document to "verifying"; a staff member
+  // assigned to the deal (or an admin) makes the verify/reject call.
+  app.post(
+    "/api/documents/:id/verify",
+    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    async (req, res) => {
+      try {
+        const user = req.user as User;
+        const { id } = req.params;
+        const { status, reason } = req.body as { status?: string; reason?: string };
+
+        if (status !== "verified" && status !== "rejected") {
+          return res.status(400).json({ error: 'status must be "verified" or "rejected"' });
+        }
+        if (status === "rejected" && (!reason || typeof reason !== "string")) {
+          return res.status(400).json({ error: "A reason is required when rejecting a document" });
+        }
+
+        const document = await storage.getDocument(id);
+        if (!document) {
+          return res.status(404).json({ error: "Document not found" });
+        }
+
+        // Non-admin staff must be active deal-team members on the application.
+        if (user.role !== "admin") {
+          if (!document.applicationId) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+          const app = await storage.getLoanApplicationWithAccess(
+            document.applicationId, user.id, user.role
+          );
+          if (!app) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+        }
+
+        // The rejection reason lives in the audit log (below) — the documents
+        // table has no dedicated column and `notes` holds extraction lineage.
+        const updated = await storage.updateDocument(id, { status });
+
+        logAudit(req, `document.${status}`, "document", id, {
+          documentType: document.documentType,
+          applicationId: document.applicationId,
+          reviewedBy: user.id,
+          ...(reason ? { reason } : {}),
+        });
+
+        res.json(updated);
+      } catch (error) {
+        console.error("Document verify error:", error);
+        res.status(500).json({ error: "Failed to update document status" });
+      }
+    }
+  );
 
   app.post("/api/documents/extract-tax-return", isAuthenticated, upload.single("file"), verifyFileSignature, async (req, res) => {
     try {
@@ -301,14 +399,35 @@ export function registerDocumentRoutes(
 
       const extractedData = await extractTaxReturnData(req.file.path, documentYear);
 
+      const { humanReviewRequired } = await recordCoarseExtraction({
+        documentId: document.id,
+        documentType: "tax_return",
+        applicationId: applicationId || null,
+        confidence: extractedData.confidence,
+        extractedFields: extractedData.extractedFields,
+        fileSize: req.file.size,
+      });
       await storage.updateDocument(document.id, {
-        status: extractedData.confidence === "high" ? "verified" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify);
+        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
+        // able to mark itself verified). main's review-gate signal still routes:
+        // a doc that clears the type-specific confidence threshold is staged
+        // "verifying" for a human to confirm; everything else stays "uploaded".
+        status: !humanReviewRequired ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
+          humanReviewRequired,
           warnings: extractedData.warnings,
+          modelId: extractedData.modelId,
+          promptVersion: extractedData.promptVersion,
+          responseHash: extractedData.rawResponseHash,
         }),
+        extractionResponseHash: extractedData.rawResponseHash,
+        extractionRawEncrypted: extractedData.rawResponseEncrypted,
+        extractionRawIv: extractedData.rawResponseIv,
+        extractionRawKeyId: extractedData.rawResponseKeyId,
       });
 
       if (applicationId) {
@@ -327,7 +446,7 @@ export function registerDocumentRoutes(
         document,
         extraction: {
           documentType: "tax_return",
-          ...extractedData,
+          ...publicExtraction(extractedData),
         },
       });
     } catch (error) {
@@ -365,14 +484,35 @@ export function registerDocumentRoutes(
 
       const extractedData = await extractPayStubData(req.file.path);
 
+      const { humanReviewRequired } = await recordCoarseExtraction({
+        documentId: document.id,
+        documentType: "pay_stub",
+        applicationId: applicationId || null,
+        confidence: extractedData.confidence,
+        extractedFields: extractedData.extractedFields,
+        fileSize: req.file.size,
+      });
       await storage.updateDocument(document.id, {
-        status: extractedData.confidence === "high" ? "verified" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify);
+        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
+        // able to mark itself verified). main's review-gate signal still routes:
+        // a doc that clears the type-specific confidence threshold is staged
+        // "verifying" for a human to confirm; everything else stays "uploaded".
+        status: !humanReviewRequired ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
+          humanReviewRequired,
           warnings: extractedData.warnings,
+          modelId: extractedData.modelId,
+          promptVersion: extractedData.promptVersion,
+          responseHash: extractedData.rawResponseHash,
         }),
+        extractionResponseHash: extractedData.rawResponseHash,
+        extractionRawEncrypted: extractedData.rawResponseEncrypted,
+        extractionRawIv: extractedData.rawResponseIv,
+        extractionRawKeyId: extractedData.rawResponseKeyId,
       });
 
       if (applicationId) {
@@ -391,7 +531,7 @@ export function registerDocumentRoutes(
         document,
         extraction: {
           documentType: "pay_stub",
-          ...extractedData,
+          ...publicExtraction(extractedData),
         },
       });
     } catch (error) {
@@ -429,14 +569,35 @@ export function registerDocumentRoutes(
 
       const extractedData = await extractBankStatementData(req.file.path);
 
+      const { humanReviewRequired } = await recordCoarseExtraction({
+        documentId: document.id,
+        documentType: "bank_statement",
+        applicationId: applicationId || null,
+        confidence: extractedData.confidence,
+        extractedFields: extractedData.extractedFields,
+        fileSize: req.file.size,
+      });
       await storage.updateDocument(document.id, {
-        status: extractedData.confidence === "high" ? "verified" : "uploaded",
+        // "verified" is reserved for human review (POST /api/documents/:id/verify);
+        // AI confidence never auto-verifies (MR-2 — an uploaded doc must not be
+        // able to mark itself verified). main's review-gate signal still routes:
+        // a doc that clears the type-specific confidence threshold is staged
+        // "verifying" for a human to confirm; everything else stays "uploaded".
+        status: !humanReviewRequired ? "verifying" : "uploaded",
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
           confidence: extractedData.confidence,
+          humanReviewRequired,
           warnings: extractedData.warnings,
+          modelId: extractedData.modelId,
+          promptVersion: extractedData.promptVersion,
+          responseHash: extractedData.rawResponseHash,
         }),
+        extractionResponseHash: extractedData.rawResponseHash,
+        extractionRawEncrypted: extractedData.rawResponseEncrypted,
+        extractionRawIv: extractedData.rawResponseIv,
+        extractionRawKeyId: extractedData.rawResponseKeyId,
       });
 
       if (applicationId) {
@@ -455,7 +616,7 @@ export function registerDocumentRoutes(
         document,
         extraction: {
           documentType: "bank_statement",
-          ...extractedData,
+          ...publicExtraction(extractedData),
         },
       });
     } catch (error) {

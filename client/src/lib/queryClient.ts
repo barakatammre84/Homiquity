@@ -18,7 +18,14 @@ async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     if (res.status === 401) {
       const url = typeof res.url === "string" ? res.url : "";
-      if (!url.includes("/api/auth/user") && !url.includes("/api/notifications/unread-count")) {
+      // Background shell polls should not trigger a login redirect on their own;
+      // /api/shell/badges is the consolidated badge poll that replaced the
+      // per-count polls.
+      const isBackgroundPoll =
+        url.includes("/api/auth/user") ||
+        url.includes("/api/notifications/unread-count") ||
+        url.includes("/api/shell/badges");
+      if (!isBackgroundPoll) {
         handleSessionExpired();
       }
     }
