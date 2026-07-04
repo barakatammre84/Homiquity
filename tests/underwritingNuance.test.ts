@@ -145,6 +145,43 @@ describe("computeVaResidualIncome (VA Pamphlet 26-7 Ch. 4)", () => {
     expect(vaResidualBaseline("south", 7)).toBe(1_039 + 160);
   });
 
+  it("reproduces the handbook's family-of-8 example: Georgia → $1,199 (eighth member not considered)", () => {
+    // 26-7 Ch. 4, Topic 9, Item 43: $1,039 + 2 × $80, capped at a family of seven.
+    expect(vaResidualBaseline("south", 8)).toBe(1_199);
+    expect(vaResidualBaseline("south", 12)).toBe(1_199);
+  });
+
+  it("applies the 5% Item 43 reduction to the guideline figure (active-duty/retired or facility benefits)", () => {
+    const result = computeVaResidualIncome({
+      grossMonthlyIncome: 8_000,
+      proposedPiti: 2_000,
+      monthlyDebts: 800,
+      homeSquareFeet: 2_000,
+      state: "TX",
+      familySize: 4,
+      dti: 0.38,
+      qualifiesForResidualReduction: true,
+    });
+    expect(result.baseline).toBe(1_003);
+    expect(result.reductionApplied).toBe(true);
+    expect(result.requiredResidual).toBeCloseTo(952.85); // 1,003 × 0.95
+  });
+
+  it("stacks the reduction under the >41%-DTI cushion (reduced guideline × 1.2)", () => {
+    const result = computeVaResidualIncome({
+      grossMonthlyIncome: 8_000,
+      proposedPiti: 2_400,
+      monthlyDebts: 1_200,
+      homeSquareFeet: 2_500,
+      state: "TX",
+      familySize: 4,
+      dti: 0.45,
+      qualifiesForResidualReduction: true,
+    });
+    expect(result.cushionApplied).toBe(true);
+    expect(result.requiredResidual).toBeCloseTo(1_143.42); // 1,003 × 0.95 × 1.2
+  });
+
   it("maps states to VA regions", () => {
     expect(vaRegionForState("NY")).toBe("northeast");
     expect(vaRegionForState("ca")).toBe("west");

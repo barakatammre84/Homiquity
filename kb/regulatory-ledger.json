@@ -36,14 +36,36 @@
     },
     {
       "id": "va-26-7-ch4-residual-matrix",
-      "rule": "VA residual income baselines by region/family size; $0.14/sqft utilities; 120% cushion when DTI > 41%",
-      "value": "matrix + 0.14 + 1.20 @ 0.41",
-      "citation": "VA Pamphlet 26-7 Chapter 4 (Credit Underwriting), Table 4-2",
+      "rule": "VA residual income baselines by region/family size (+$80/member above 5, capped at a family of 7); $0.14/sqft maintenance+utilities on gross living area; residual must exceed guideline by 20% when DTI > 41%",
+      "value": "matrix + $80/member (cap 7) + 0.14 + 1.20 @ 0.41",
+      "citation": "VA Pamphlet 26-7, Revised (2019-02-22 chapter revision), Chapter 4, Topic 9 Items 19/43 and Topic 10.b",
       "sourceUrl": "https://www.benefits.va.gov/warms/pam26_7.asp",
-      "codeRef": "server/services/underwritingNuance.ts VA_RESIDUAL_MATRIX / VA_UTILITY_RATE_PER_SQFT / VA_CUSHION_MULTIPLIER",
-      "lastVerified": "2026-07-03",
+      "codeRef": "server/services/underwritingNuance.ts VA_RESIDUAL_MATRIX / VA_EXTRA_MEMBER_FAMILY_CAP / VA_UTILITY_RATE_PER_SQFT / VA_CUSHION_MULTIPLIER; server/underwritingEngine.ts VA path (DB matrix VA_RESIDUAL + VA_RESIDUAL_EXTRA_MEMBER scalar)",
+      "lastVerified": "2026-07-04",
       "reviewIntervalDays": 90,
-      "notes": "Residual tables are loan-amount-banded; implemented band is >= $80,000. Verify table values on each review."
+      "notes": "Verified 2026-07-04 against the official handbook text (full-PDF mirror; VA WARMS now redirects to a JS-only portal): matrix values for the >= $80,000 band match code exactly; family-of-7 cap confirmed via the handbook's own family-of-8 Georgia example ($1,199 - 'The eighth person will not be considered'). A second table exists for loans <= $79,999 (lower figures, +$75/member) - NOT implemented; sub-$80k loans over-require (conservative). Utilities example confirms gross living area excludes unfinished basement."
+    },
+    {
+      "id": "va-26-7-ch4-residual-reduction",
+      "rule": "Reduce the residual income table figure by 5% if the borrower is an active-duty OR retired serviceperson, OR there is a clear indication of continued military-facility benefits near the property (Guard/Reserve retirees, 100%-disabled Veterans and family, Medal of Honor recipients) - conditions are disjunctive",
+      "value": "0.95",
+      "citation": "VA Pamphlet 26-7, Revised, Chapter 4, Topic 9, Item 43 'Reducing the Residual Income Figures'",
+      "sourceUrl": "https://www.benefits.va.gov/warms/pam26_7.asp",
+      "codeRef": "server/services/underwritingNuance.ts VA_RESIDUAL_REDUCTION_FACTOR; server/underwritingEngine.ts (isActiveDuty || hasExchangeAccess gate)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Resolves roadmap #29: the engine's 5% 'commissary discount' IS sourceable, but its && gate under-applied it - handbook conditions are OR, and retired servicepersons qualify. Intake lacks a dedicated retired/facility-benefits field; that signal routes through hasExchangeAccess until one exists."
+    },
+    {
+      "id": "platform-va-residual-tax-estimate",
+      "rule": "Estimation model for the tax deduction in VA residual income: fixed 22% (federal + FICA effective) of gross monthly income, pending real income documents",
+      "value": "0.22",
+      "citation": "Platform estimation methodology - NOT a VA figure. VA Pamphlet 26-7 Ch. 4, Topic 9, Items 32-34 prescribe estimated Federal/state income tax and Social Security from IRS/state tax tables on documented income",
+      "sourceUrl": "https://www.benefits.va.gov/warms/pam26_7.asp",
+      "codeRef": "server/services/underwritingNuance.ts RESIDUAL_TAX_RATE (shared; server/underwritingEngine.ts imports it - never fork)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Resolves roadmap #29 tax-rate contradiction: the engine's inline 18% was an uncited fork of this estimation model; unified on 22% (the more conservative figure, and the one the reference tests encode). Replace the fixed rate with IRS/state tax-table estimates when real income documents flow (F3 credit / F5 VOIE)."
     },
     {
       "id": "platform-dti-ceiling-43",
