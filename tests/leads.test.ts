@@ -3,6 +3,9 @@ import { apiPost, apiGet } from "./setup";
 
 const BASE_URL = process.env.TEST_BASE_URL || "http://localhost:5000";
 
+// Dev test-login accounts all share DEV_TEST_PASSWORD (see loCommandCenter.test.ts).
+const TEST_PASSWORD = process.env.DEV_TEST_PASSWORD || "test1234";
+
 // Log in as a role and return the session cookie for authenticated requests.
 async function loginCookie(email: string, password: string): Promise<string> {
   const res = await fetch(`${BASE_URL}/api/test-login`, {
@@ -64,7 +67,7 @@ describe("Leads intake API", () => {
   });
 
   it("lists leads for an admin and includes the created lead", async () => {
-    const cookie = await loginCookie("admin@test.com", "admin123");
+    const cookie = await loginCookie("admin@test.com", TEST_PASSWORD);
     expect(cookie).toBeTruthy();
     const res = await apiGet("/api/leads?source=integration_test", { headers: { Cookie: cookie } });
     expect(res.status).toBe(200);
@@ -78,7 +81,7 @@ describe("Leads intake API", () => {
 // the database identical (roadmap #10).
 afterAll(async () => {
   if (createdLeadIds.length === 0) return;
-  const cookie = await loginCookie("admin@test.com", "admin123");
+  const cookie = await loginCookie("admin@test.com", TEST_PASSWORD);
   for (const id of createdLeadIds) {
     await fetch(`${BASE_URL}/api/leads/${id}`, { method: "DELETE", headers: { Cookie: cookie } });
   }
