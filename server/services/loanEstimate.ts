@@ -1,5 +1,7 @@
 import { storage } from "../storage";
 import { calculateLLPA } from "../pricing";
+import { calculateMortgageAPR } from "./apr";
+import { addBusinessDays } from "./businessDays";
 import type { LoanApplication } from "@shared/schema";
 
 export interface LoanEstimateData {
@@ -117,7 +119,10 @@ export interface LoanEstimateData {
     disclosureProvided: boolean;
     dateProvided: Date | null;
     withinThreeBusinessDays: boolean;
-    applicationDate: Date;
+    /** When the 6th piece of §1026.2(a)(3) information arrived; null until then. */
+    applicationDate: Date | null;
+    /** 3 business days after applicationDate (§1026.19(e)(1)(iii)); null until triggered. */
+    leDueDate: Date | null;
   };
 }
 
@@ -297,13 +302,34 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   const totalInterest = (monthlyPandI * termMonths) - loanAmount;
   const totalInterestPercentage = (totalInterest / loanAmount) * 100;
   
-  const apr = interestRate + (totalClosingCosts / loanAmount / 30 * 100 * 0.1);
-  
-  const applicationDate = application.createdAt ? new Date(application.createdAt) : new Date();
-  const threeDaysLater = new Date(applicationDate);
-  threeDaysLater.setDate(threeDaysLater.getDate() + 3);
-  
+  // Actuarial APR (§1026.22 / Appendix J): solve the payment stream against
+  // the amount financed. Prepaid finance charges per §1026.4 — origination,
+  // points, application/underwriting fees, tax service, prepaid interest,
+  // and upfront MI. Appraisal, credit report, title, survey, pest, and
+  // recording/transfer charges are excluded (§1026.4(c)(7), (e)).
+  const prepaidFinanceCharges =
+    originationFee + points + applicationFee + underwritingFee + taxServiceFee +
+    prepaidInterest + prepaidMortgageInsurance;
+  const apr = calculateMortgageAPR({
+    loanAmount,
+    noteRatePct: interestRate,
+    termMonths,
+    monthlyMI: monthlyPMI,
+    propertyValue: purchasePrice,
+    prepaidFinanceCharges,
+  });
+
+  // TRID timing (§1026.19(e)(1)(iii)): the clock anchors to tridTriggeredAt —
+  // the moment the 6th piece of application information arrived (written by
+  // services/trid.ts) — and runs in business days, never calendar days.
+  const tridTriggeredAt = application.tridTriggeredAt ? new Date(application.tridTriggeredAt) : null;
+  const leDueDate = tridTriggeredAt ? addBusinessDays(tridTriggeredAt, 3) : null;
+  const leIssuedDate = application.leIssuedDate ? new Date(`${application.leIssuedDate}T00:00:00Z`) : null;
+
   const now = new Date();
+  const complianceCheckDate = leIssuedDate ?? now;
+  const endOfDueDay = leDueDate ? new Date(leDueDate) : null;
+  if (endOfDueDay) endOfDueDay.setUTCHours(23, 59, 59, 999);
   const dateIssued = now;
   const expirationDate = new Date(now);
   expirationDate.setDate(expirationDate.getDate() + 10);
@@ -420,10 +446,11 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     lenderCredits: Math.round(lenderCredits),
     
     tridCompliance: {
-      disclosureProvided: false,
-      dateProvided: null,
-      withinThreeBusinessDays: now <= threeDaysLater,
-      applicationDate,
+      disclosureProvided: !!leIssuedDate,
+      dateProvided: leIssuedDate,
+      withinThreeBusinessDays: endOfDueDay ? complianceCheckDate.getTime() <= endOfDueDay.getTime() : true,
+      applicationDate: tridTriggeredAt,
+      leDueDate,
     },
   };
 }

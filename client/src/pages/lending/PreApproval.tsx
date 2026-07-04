@@ -6,6 +6,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry, type IncomeSourceEntry } from "@shared/schema";
+import type { MortgageRateWithProgram } from "@/types/rates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressInput } from "@/components/AddressInput";
@@ -276,6 +277,20 @@ interface AdvisoryPanelProps {
 }
 
 function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
+  // Payment estimates use the live advertised 30-year fixed rate — a payment
+  // figure shown to a borrower must be reproducible from current pricing,
+  // never a hardcoded constant. Falls back to a labeled illustrative rate.
+  const { data: advertisedRates } = useQuery<MortgageRateWithProgram[]>({
+    queryKey: ["/api/mortgage-rates"],
+  });
+  const advertised30YrRate = useMemo(() => {
+    const row = advertisedRates?.find(
+      (r) => r.program?.termYears === 30 && !r.program?.isAdjustable && r.isActive !== false,
+    );
+    const parsed = row ? parseFloat(row.rate) : NaN;
+    return !isNaN(parsed) && parsed > 0 ? parsed : null;
+  }, [advertisedRates]);
+
   const stats = useMemo(() => {
     let income = parseFloat(String(formValues.annualIncome || "").replace(/[^0-9.]/g, "")) || 0;
     if (formValues.incomeSources && formValues.incomeSources.length > 0) {
@@ -288,7 +303,8 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
     const down = parseFloat(String(formValues.downPayment || "").replace(/[^0-9.]/g, "")) || 0;
     
     const loanAmount = price - down;
-    const estRate = 0.065;
+    const estRatePct = advertised30YrRate ?? 6.5;
+    const estRate = estRatePct / 100;
     const monthlyRate = estRate / 12;
     const numPayments = 360;
     
@@ -306,8 +322,8 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
     const ltv = price > 0 ? ((price - down) / price) * 100 : 0;
     const downPaymentPercent = price > 0 ? (down / price) * 100 : 0;
     
-    return { dti, estMortgage, loanAmount, ltv, downPaymentPercent };
-  }, [formValues]);
+    return { dti, estMortgage, loanAmount, ltv, downPaymentPercent, estRatePct };
+  }, [formValues, advertised30YrRate]);
 
   if (currentStepId === "intro" || currentStepId === "loanPurpose" || currentStepId === "propertyType") {
     return null;
@@ -440,7 +456,8 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
               <span className="text-sm text-muted-foreground font-normal">/mo</span>
             </div>
             <p className="text-[10px] text-muted-foreground mt-1">
-              Based on 6.5% rate, 30-year fixed
+              Estimate only — based on {advertised30YrRate ? "today's advertised" : "an illustrative"} {stats.estRatePct}% rate,
+              30-year fixed, plus estimated taxes and insurance. Not an offer of credit; your rate will differ.
             </p>
           </div>
         )}

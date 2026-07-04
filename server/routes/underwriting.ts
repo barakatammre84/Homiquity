@@ -14,6 +14,8 @@ import {
 import { calculateLLPA, getAreaMedianIncome } from "../pricing";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 import { assertStageRequirements } from "@shared/stageRequirements";
+import { tridHardStopError } from "../services/trid";
+import * as creditService from "../services/creditService";
 
 /**
  * Checks whether a staff user is authorized to mutate a specific loan application.
@@ -525,6 +527,13 @@ export function registerUnderwritingRoutes(
         });
       }
 
+      // TRID hard stop (Reg Z §1026.19(e)(1)(iii)): a file with an overdue
+      // Loan Estimate may not advance to any non-exit stage.
+      const tridBlock = tridHardStopError(application, newStage);
+      if (tridBlock) {
+        return res.status(422).json({ error: tridBlock });
+      }
+
       // Approval-grade stages may not be reached on self-reported/estimated data.
       // (Denial is not gated — see the status endpoint for the rationale.)
       const APPROVAL_GRADE_STAGES = new Set(["pre_approved", "conditional", "clear_to_close", "funded"]);
@@ -581,6 +590,29 @@ export function registerUnderwritingRoutes(
           code: "stage_blocked",
           blockers: progress.blockers
         });
+      }
+
+      // ECOA/Reg B §1002.9 + FCRA §615: a denial via this pipeline path must
+      // carry an adverse-action notice, exactly as the status endpoint does.
+      // Generate it BEFORE the stage moves — if it can't, the denial is blocked.
+      if (newStage === "denied") {
+        const aa = await creditService.ensureAdverseActionForDenial({
+          applicationId: id,
+          userId: application.userId,
+          denialReasons,
+          creditScoreUsed: application.creditScore,
+          generatedBy: req.user!.id,
+        });
+        if (!aa.ok) {
+          return res.status(422).json({ error: aa.error });
+        }
+        if (aa.created) {
+          const { logAudit } = await import("../auditLog");
+          logAudit(req, "adverse_action.generated", "loan_application", id, {
+            adverseActionId: aa.adverseActionId,
+            trigger: "advance_stage_denied",
+          });
+        }
       }
 
       try {
@@ -787,6 +819,23 @@ export function registerUnderwritingRoutes(
 
       const { generateLoanEstimate, formatLoanEstimateForDisplay } = await import("../services/loanEstimate");
       const le = await generateLoanEstimate(id);
+
+      // TRID delivery record: the borrower retrieving the LE behind their
+      // e_disclosure consent constitutes electronic delivery (ESIGN). Stamp
+      // leIssuedDate on first borrower retrieval; staff previews don't count.
+      if (!application.leIssuedDate && application.userId === req.user!.id) {
+        const issuedDate = new Date().toISOString().split("T")[0];
+        await storage.updateLoanApplication(id, { leIssuedDate: issuedDate });
+        le.tridCompliance.disclosureProvided = true;
+        le.tridCompliance.dateProvided = new Date(`${issuedDate}T00:00:00Z`);
+        const { logAudit } = await import("../auditLog");
+        logAudit(req, "trid.loan_estimate_delivered", "loan_application", id, {
+          leIssuedDate: issuedDate,
+          leDueDate: le.tridCompliance.leDueDate?.toISOString() ?? null,
+          withinThreeBusinessDays: le.tridCompliance.withinThreeBusinessDays,
+        });
+      }
+
       const formatted = formatLoanEstimateForDisplay(le);
       res.json(formatted);
     } catch (error) {

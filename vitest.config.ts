@@ -13,8 +13,12 @@ export default defineConfig({
     include: [
       "tests/accessControl.test.ts",
       "tests/adversarialPersonas.test.ts",
+      "tests/adverseActionNotice.test.ts",
+      "tests/apr.test.ts",
+      "tests/aprValidation.test.ts",
       "tests/encryptionRotation.test.ts",
       "tests/fairLendingAnalysis.test.ts",
+      "tests/trid.test.ts",
       "tests/lookupResolver.test.ts",
       "tests/mismoValidation.test.ts",
       "tests/preApprovalMachine.test.ts",

@@ -17,8 +17,9 @@ depth.
 | `../underwriting.ts` | Underwriting orchestration/entry |
 | `../pricing.ts` | LLPA (loan-level price adjustment) math |
 | `pricingAdapter.ts` | Composes offers: base rate + LLPA + lock term + lender adjustments across rate sheets |
-| `rateService.ts` | Fetches/refreshes market mortgage rates (RapidAPI) |
-| `loanEstimate.ts` | Loan estimate calculations |
+| `rateService.ts` | Fetches/refreshes market mortgage rates (RapidAPI); advertised APRs come from `apr.ts`, never flat spreads |
+| `apr.ts` | Actuarial APR solver (Reg Z §1026.22 / Appendix J) — every displayed APR (ads, LE) must come from here; includes the representative fee model for advertised rates |
+| `loanEstimate.ts` | Loan estimate calculations; APR via `apr.ts`, TRID timing via `businessDays.ts` anchored to `tridTriggeredAt` |
 | `lenderMatchingEngine.ts` | Matches borrowers to lender products |
 | `../pipelineEngine.ts` | Loan pipeline stage logic for staff views |
 
@@ -36,7 +37,9 @@ depth.
 
 | Service | Does |
 |---------|------|
-| `creditService.ts` | FCRA chain: consent capture, credit pulls (soft/hard), adverse action, hash-chained audit log |
+| `creditService.ts` | FCRA chain: consent capture, credit pulls (soft/hard), adverse action, hash-chained audit log. Denial via the status route auto-generates the Reg B notice (reasons mapped from the HMDA list) |
+| `trid.ts` | TRID six-piece trigger (§1026.2(a)(3)): sole writer of `tridTriggeredAt`, starts the 3-business-day LE clock, hard-stops forward status/stage moves when the LE is overdue |
+| `businessDays.ts` | Shared TRID business-day math (weekends + federal holidays) — never reimplement with calendar arithmetic |
 | `encryptionService.ts` | Field encryption, PII hashing, audit hash-chaining |
 | `mismoValidation.ts` + `../mismo.ts` | MISMO 3.4 XML export + GSE/ULDD validation |
 | `../auditLog.ts` | General audit logging |

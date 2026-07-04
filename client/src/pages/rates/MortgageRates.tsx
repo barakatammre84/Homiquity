@@ -59,21 +59,25 @@ export default function MortgageRates() {
     }
   };
 
-  const currentTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZoneName: "short",
-  });
-
-  const currentDate = new Date().toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
+  // Freshness label comes from the rates' own effectiveDate — never the
+  // render clock. Stamping "updated at {now}" over cached data would
+  // misrepresent how current the rates are.
+  const latestEffectiveDate = rates
+    ?.map((r) => r.effectiveDate)
+    .filter((d): d is string => !!d)
+    .sort()
+    .at(-1);
+  const effectiveDateLabel = latestEffectiveDate
+    ? new Date(latestEffectiveDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
 
   return (
     <>
-      <SEOHead title="Today's Mortgage Rates" description="Compare current mortgage rates for purchase, refinance, cash-out, HELOC, and VA loans. Updated daily with competitive rates from top lenders." />
+      <SEOHead title="Today's Mortgage Rates" description="Compare current mortgage rates and APRs for purchase, refinance, cash-out, HELOC, and VA loans, with the assumptions behind every quote." />
       <div className="bg-gradient-to-b from-primary/5 to-background pb-12">
         <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12">
           <div className="text-center mb-8">
@@ -112,10 +116,12 @@ export default function MortgageRates() {
             </Button>
           </div>
 
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span>Rates updated at {currentTime} on {currentDate}</span>
-          </div>
+          {effectiveDateLabel && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>Rates effective as of {effectiveDateLabel}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -148,8 +154,8 @@ export default function MortgageRates() {
             <Card className="bg-primary/5 border-primary/20 mb-12">
               <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 py-6">
                 <div className="text-center sm:text-left">
-                  <h3 className="text-lg font-semibold mb-1">Have another rate?</h3>
-                  <p className="text-muted-foreground">Let us match or beat it</p>
+                  <h3 className="text-lg font-semibold mb-1">Have another quote?</h3>
+                  <p className="text-muted-foreground">Get a personalized quote and compare side by side</p>
                 </div>
                 <Button asChild>
                   <Link href="/apply" data-testid="link-match-rate">
@@ -232,9 +238,9 @@ export default function MortgageRates() {
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Shield className="h-4 w-4" />
               <span>
-                Rates shown are estimates based on a ${rates?.[0]?.loanAmount ? parseInt(rates[0].loanAmount).toLocaleString() : "160,000"} loan, 
-                {rates?.[0]?.downPaymentPercent || 20}% down payment, and {rates?.[0]?.creditScoreMin || 760}+ credit score. 
-                Your actual rate may vary.
+                Rates and APRs shown are estimates based on the assumptions listed with each
+                program. Your actual rate and APR depend on your credit profile, property,
+                down payment, and loan terms. Not a commitment to lend.
               </span>
             </div>
           </CardContent>
@@ -259,16 +265,17 @@ function RateCard({ rate }: { rate: MortgageRateWithProgram }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold tracking-tight">{parseFloat(rate.rate).toFixed(3)}%</span>
-          <span className="text-muted-foreground">Rate</span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        {/* Reg Z §1026.24(c): the note rate may not be displayed more
+            conspicuously than the APR — identical size and weight. */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <span className="text-sm text-muted-foreground">Rate</span>
+            <p className="text-3xl font-bold tracking-tight">{parseFloat(rate.rate).toFixed(3)}%</p>
+          </div>
           <div>
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger className="flex items-center gap-1 text-muted-foreground">
+                <TooltipTrigger className="flex items-center gap-1 text-sm text-muted-foreground">
                   APR
                   <Info className="h-3 w-3" />
                 </TooltipTrigger>
@@ -280,32 +287,33 @@ function RateCard({ rate }: { rate: MortgageRateWithProgram }) {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <p className="font-semibold text-lg">{parseFloat(rate.apr).toFixed(3)}%</p>
+            <p className="text-3xl font-bold tracking-tight">{parseFloat(rate.apr).toFixed(3)}%</p>
           </div>
-          <div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger className="flex items-center gap-1 text-muted-foreground">
-                  Points
-                  <Info className="h-3 w-3" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs">
-                    Points are upfront fees you can pay to lower your rate.
-                    1 point = 1% of the loan amount.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <p className="font-semibold text-lg">
-              {rate.points ? parseFloat(rate.points).toFixed(2) : "0.00"}
-              {rate.pointsCost && (
-                <span className="text-sm font-normal text-muted-foreground ml-1">
-                  (${parseInt(rate.pointsCost).toLocaleString()})
-                </span>
-              )}
-            </p>
-          </div>
+        </div>
+
+        <div className="text-sm">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger className="flex items-center gap-1 text-muted-foreground">
+                Points
+                <Info className="h-3 w-3" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs">
+                  Points are upfront fees you can pay to lower your rate.
+                  1 point = 1% of the loan amount.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <p className="font-semibold text-lg">
+            {rate.points ? parseFloat(rate.points).toFixed(2) : "0.00"}
+            {rate.pointsCost && (
+              <span className="text-sm font-normal text-muted-foreground ml-1">
+                (${parseInt(rate.pointsCost).toLocaleString()})
+              </span>
+            )}
+          </p>
         </div>
 
         <div className="pt-2 border-t">
@@ -319,15 +327,27 @@ function RateCard({ rate }: { rate: MortgageRateWithProgram }) {
               </Badge>
             ) : (
               <Badge variant="outline" className="text-xs">
-                Lower Initial Rate
+                Adjustable Rate
               </Badge>
             )}
           </div>
+          {!isFixed && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Rate and monthly payment can increase after the initial fixed period.
+            </p>
+          )}
+          {(rate.loanAmount || rate.downPaymentPercent || rate.creditScoreMin) && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Assumes{rate.loanAmount ? ` a $${parseInt(rate.loanAmount).toLocaleString()} loan` : ""}
+              {rate.downPaymentPercent ? `, ${rate.downPaymentPercent}% down payment` : ""}
+              {rate.creditScoreMin ? `, ${rate.creditScoreMin}+ credit score` : ""}.
+            </p>
+          )}
         </div>
 
-        <Button asChild className="w-full" data-testid={`button-lock-rate-${rate.program.slug}`}>
+        <Button asChild className="w-full" data-testid={`button-see-my-rate-${rate.program.slug}`}>
           <Link href="/apply">
-            Lock This Rate
+            See My Rate
             <ArrowRight className="h-4 w-4 ml-2" />
           </Link>
         </Button>

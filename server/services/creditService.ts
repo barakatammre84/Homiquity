@@ -18,15 +18,24 @@ import {
   type DraftConsentProgress,
 } from "@shared/schema";
 import { eq, and, desc, lt } from "drizzle-orm";
-import { 
-  computeAuditEntryHash, 
-  encryptSensitiveData, 
+import {
+  computeAuditEntryHash,
+  encryptSensitiveData,
   computeHash,
-  verifyHashChain 
+  verifyHashChain
 } from "./encryptionService";
+import { COMPANY_CONFIG } from "../config/company";
 
 // v2 (2026-07): rebranded disclosure text from MortgageAI to Homiquity.
 const CURRENT_DISCLOSURE_VERSION = "FCRA-2025-v2";
+
+// ECOA/Reg B §1002.9(b)(1) requires the adverse-action notice to name the
+// federal agency that administers compliance for this creditor. For a
+// non-depository mortgage creditor that default is the CFPB.
+// COUNSEL: confirm the correct administering agency (CFPB vs. FTC, and the
+// exact address per Reg B Appendix A) for this entity before production use.
+const ECOA_ADMINISTERING_AGENCY =
+  "Bureau of Consumer Financial Protection, 1700 G Street NW, Washington, DC 20552";
 
 const FCRA_DISCLOSURE_TEXT = `CONSUMER CREDIT AUTHORIZATION AND DISCLOSURE
 
@@ -208,6 +217,53 @@ const ADVERSE_ACTION_REASONS: Record<string, AdverseActionReasonDetail> = {
     },
     category: "credit_history",
     severity: "low",
+  },
+
+  // Non-bureau denial reasons from the Reg B model notice (Form C-1). These
+  // carry no bureau reason codes — they arise from underwriting, not the
+  // credit report. They complete the mapping from the HMDA LAR denial-reason
+  // list so every denial can auto-generate a compliant adverse-action notice.
+  employment_history: {
+    description: "Employment history does not meet requirements (length, stability, or type of employment)",
+    bureauReasonCodes: {},
+    category: "income",
+    severity: "medium",
+  },
+  collateral_insufficient: {
+    description: "Value or type of collateral is not sufficient for the requested loan",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "high",
+  },
+  insufficient_funds_to_close: {
+    description: "Insufficient funds for down payment and/or closing costs",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "medium",
+  },
+  unverifiable_information: {
+    description: "Unable to verify information provided on the application (income, employment, residence, or credit references)",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "medium",
+  },
+  application_incomplete: {
+    description: "Credit application is incomplete",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "low",
+  },
+  mortgage_insurance_denied: {
+    description: "Mortgage insurance could not be obtained for the requested loan",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "high",
+  },
+  other_credit_decision_factors: {
+    description: "Other factors related to the credit decision (details available on request)",
+    bureauReasonCodes: {},
+    category: "other",
+    severity: "medium",
   },
 };
 
@@ -800,20 +856,26 @@ export async function generateAdverseAction(
     }
   }
 
-  const bureau = data.creditScoreSource 
-    ? BUREAU_CONTACT_INFO[data.creditScoreSource]
-    : BUREAU_CONTACT_INFO.experian;
+  // FCRA §615(a) content applies only when the action was actually based on a
+  // consumer report — signaled by a bureau score source. Do NOT default to a
+  // bureau (previously Experian) or the notice would falsely assert a report
+  // was used on denials made from self-reported data. ECOA content (below) is
+  // unconditional; the consumer-report framing is gated on this flag.
+  const basedOnConsumerReport = !!data.creditScoreSource;
+  const bureau = data.creditScoreSource ? BUREAU_CONTACT_INFO[data.creditScoreSource] : null;
 
   const primaryReasonDetail = ADVERSE_ACTION_REASONS[data.primaryReason];
   const secondaryReasonDetails = data.secondaryReasons?.map(r => ADVERSE_ACTION_REASONS[r]);
-  
-  const bureauKey = data.creditScoreSource || "experian";
-  const primaryBureauCodes = primaryReasonDetail?.bureauReasonCodes?.[bureauKey as keyof typeof primaryReasonDetail.bureauReasonCodes] || [];
-  
+
+  const primaryBureauCodes = basedOnConsumerReport
+    ? primaryReasonDetail?.bureauReasonCodes?.[data.creditScoreSource as keyof typeof primaryReasonDetail.bureauReasonCodes] || []
+    : [];
+
   const noticeText = generateAdverseActionNotice({
     actionType: data.actionType,
     primaryReason: primaryReasonDetail?.description || "Credit decision factors",
     secondaryReasons: secondaryReasonDetails?.map(r => r?.description || ""),
+    basedOnConsumerReport,
     creditScoreUsed: data.creditScoreUsed,
     bureau,
     bureauReasonCodes: primaryBureauCodes,
@@ -826,14 +888,16 @@ export async function generateAdverseAction(
     actionType: data.actionType,
     primaryReason: primaryReasonDetail?.description || "Credit decision factors",
     secondaryReasons: secondaryReasonDetails?.map(r => r?.description || ""),
-    creditScoreUsed: data.creditScoreUsed,
+    creditScoreUsed: basedOnConsumerReport ? data.creditScoreUsed : undefined,
     creditScoreSource: data.creditScoreSource,
-    scoreRangeLow: 300,
-    scoreRangeHigh: 850,
-    bureauName: bureau.name,
-    bureauAddress: bureau.address,
-    bureauPhone: bureau.phone,
-    bureauWebsite: bureau.website,
+    scoreRangeLow: basedOnConsumerReport ? 300 : undefined,
+    scoreRangeHigh: basedOnConsumerReport ? 850 : undefined,
+    // Bureau contact fields are stored only when a consumer report was used —
+    // otherwise they would misrepresent the basis of the action.
+    bureauName: bureau?.name,
+    bureauAddress: bureau?.address,
+    bureauPhone: bureau?.phone,
+    bureauWebsite: bureau?.website,
     noticeText,
     noticeDate: new Date(),
     fcraCompliant: true,
@@ -858,12 +922,14 @@ export async function generateAdverseAction(
   return result;
 }
 
-function generateAdverseActionNotice(data: {
+export function generateAdverseActionNotice(data: {
   actionType: string;
   primaryReason: string;
   secondaryReasons?: string[];
+  /** True only when the action was actually based on a consumer report/score. */
+  basedOnConsumerReport?: boolean;
   creditScoreUsed?: number;
-  bureau: typeof BUREAU_CONTACT_INFO.experian;
+  bureau: typeof BUREAU_CONTACT_INFO.experian | null;
   bureauReasonCodes?: string[];
 }): string {
   const actionTypeText = {
@@ -873,6 +939,13 @@ function generateAdverseActionNotice(data: {
     terms_change: "MODIFICATION OF CREDIT TERMS",
   }[data.actionType] || "ADVERSE ACTION NOTICE";
 
+  // Only claim a consumer report was used when one actually was — asserting it
+  // otherwise is a factual misstatement (FCRA §615(a) applies to report-based
+  // actions).
+  const basisSentence = data.basedOnConsumerReport
+    ? "The decision was based, in whole or in part, on information obtained from a consumer reporting agency."
+    : "";
+
   let notice = `
 NOTICE OF ${actionTypeText}
 
@@ -880,7 +953,7 @@ Date: ${new Date().toLocaleDateString()}
 
 Dear Applicant,
 
-This notice is to inform you that action has been taken on your mortgage loan application. The decision was based, in whole or in part, on information obtained from a consumer reporting agency.
+This notice is to inform you that action has been taken on your mortgage loan application.${basisSentence ? ` ${basisSentence}` : ""}
 
 ACTION TAKEN: ${data.actionType.replace(/_/g, " ").toUpperCase()}
 
@@ -904,16 +977,21 @@ These codes are industry-standard identifiers used by credit bureaus.
 `;
   }
 
-  if (data.creditScoreUsed) {
-    notice += `
+  // FCRA §615(a) content — score disclosure + CRA contact + report rights —
+  // is included only when the action was based on a consumer report and a
+  // bureau is present. On denials made from self-reported data these blocks
+  // are correctly omitted (and the ECOA block below still applies).
+  if (data.basedOnConsumerReport && data.bureau) {
+    if (data.creditScoreUsed) {
+      notice += `
 CREDIT SCORE INFORMATION:
 Your credit score: ${data.creditScoreUsed}
 Credit scores range from 300 to 850.
 Key factors that adversely affected your credit score are listed above.
 `;
-  }
+    }
 
-  notice += `
+    notice += `
 YOUR RIGHTS UNDER THE FAIR CREDIT REPORTING ACT:
 
 You have the right to obtain a free copy of your credit report from the consumer reporting agency named below within 60 days of receiving this notice. The consumer reporting agency did not make the decision to take this action and cannot provide specific reasons for it.
@@ -925,12 +1003,28 @@ ${data.bureau.name}
 ${data.bureau.address}
 Phone: ${data.bureau.phone}
 Website: ${data.bureau.website}
+`;
+  }
 
-For questions about this notice, please contact us at:
-Homiquity
-support@homiquity.com
+  // ECOA / Reg B §1002.9(b)(1): every adverse action on a credit application
+  // must carry the equal-credit-opportunity notice, the creditor's identity,
+  // and the administering federal agency — regardless of whether a consumer
+  // report was used. This block is mandatory; the FCRA block above is not a
+  // substitute for it.
+  notice += `
+YOUR RIGHTS UNDER THE EQUAL CREDIT OPPORTUNITY ACT:
 
-This notice is required by the Fair Credit Reporting Act.
+The federal Equal Credit Opportunity Act prohibits creditors from discriminating against credit applicants on the basis of race, color, religion, national origin, sex, marital status, age (provided the applicant has the capacity to enter into a binding contract); because all or part of the applicant's income derives from any public assistance program; or because the applicant has in good faith exercised any right under the Consumer Credit Protection Act. The federal agency that administers compliance with this law concerning this creditor is:
+${ECOA_ADMINISTERING_AGENCY}
+
+CREDITOR:
+${COMPANY_CONFIG.legalName}
+NMLS #${COMPANY_CONFIG.nmlsId}
+${COMPANY_CONFIG.contactEmail} | ${COMPANY_CONFIG.contactPhone}
+
+For questions about this notice, please contact ${COMPANY_CONFIG.legalName} using the information above.
+
+This notice is required by the Equal Credit Opportunity Act${data.basedOnConsumerReport ? " and the Fair Credit Reporting Act" : ""}.
 `;
 
   return notice;
@@ -942,6 +1036,84 @@ export async function getAdverseActionsByApplication(applicationId: string): Pro
     .from(adverseActions)
     .where(eq(adverseActions.applicationId, applicationId))
     .orderBy(desc(adverseActions.noticeDate));
+}
+
+// HMDA LAR denial-reason labels (what the staff UI collects) mapped onto the
+// ECOA/Reg B adverse-action reason catalog above, so any denial can produce a
+// compliant notice without double data entry. Keep in sync with
+// HMDA_DENIAL_REASONS in client/src/pages/staff/BorrowerFile.tsx.
+export const HMDA_TO_ADVERSE_ACTION_REASON: Record<string, string> = {
+  "Debt-to-income ratio": "dti_high",
+  "Employment history": "employment_history",
+  "Credit history": "insufficient_credit_history",
+  "Collateral": "collateral_insufficient",
+  "Insufficient cash (downpayment, closing costs)": "insufficient_funds_to_close",
+  "Unverifiable information": "unverifiable_information",
+  "Credit application incomplete": "application_incomplete",
+  "Mortgage insurance denied": "mortgage_insurance_denied",
+  "Other": "other_credit_decision_factors",
+};
+
+export interface EnsureAdverseActionResult {
+  ok: boolean;
+  /** Present when ok is false — a borrower-safe message the route returns as 422. */
+  error?: string;
+  adverseActionId?: string;
+  /** True when a new notice was generated; false when one already existed. */
+  created?: boolean;
+}
+
+/**
+ * ECOA/Reg B §1002.9 + FCRA §615 invariant: a denied application must carry an
+ * adverse-action notice. This is the single chokepoint every denial path calls
+ * BEFORE flipping status/stage — if it returns { ok: false }, the caller must
+ * refuse the denial (return the error as a 422). Idempotent: a no-op when a
+ * notice already exists (e.g. staff pre-generated one via the compliance
+ * endpoint). Never throws for expected conditions.
+ */
+export async function ensureAdverseActionForDenial(params: {
+  applicationId: string;
+  /** The borrower's user id. */
+  userId: string;
+  denialReasons?: string[];
+  creditScoreUsed?: number | null;
+  /** The staff user performing the denial. */
+  generatedBy: string;
+}): Promise<EnsureAdverseActionResult> {
+  const existing = await getAdverseActionsByApplication(params.applicationId);
+  if (existing.length > 0) {
+    return { ok: true, created: false, adverseActionId: existing[0].id };
+  }
+
+  const reasonKeys = (params.denialReasons || [])
+    .map((r) => HMDA_TO_ADVERSE_ACTION_REASON[r])
+    .filter((k): k is string => !!k);
+  if (reasonKeys.length === 0) {
+    return {
+      ok: false,
+      error:
+        "Denial reasons could not be mapped to adverse-action reasons; generate an adverse-action notice via the compliance endpoint first",
+    };
+  }
+
+  try {
+    const adverseAction = await generateAdverseAction({
+      applicationId: params.applicationId,
+      userId: params.userId,
+      actionType: "denial",
+      primaryReason: reasonKeys[0],
+      secondaryReasons: reasonKeys.slice(1),
+      creditScoreUsed: params.creditScoreUsed ?? undefined,
+      generatedBy: params.generatedBy,
+    });
+    return { ok: true, created: true, adverseActionId: adverseAction.id };
+  } catch (err) {
+    console.error("Adverse action generation failed — denial blocked:", err);
+    return {
+      ok: false,
+      error: "Could not generate the required adverse-action notice; the denial was not applied",
+    };
+  }
 }
 
 export async function markAdverseActionDelivered(
