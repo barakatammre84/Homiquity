@@ -43,10 +43,10 @@ function getStatusBadge(status: string) {
 
 function getPriorityBadge(priority: string) {
   const config: Record<string, { className: string; label: string }> = {
-    low: { className: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300", label: "Low Priority" },
-    normal: { className: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300", label: "Normal Priority" },
-    high: { className: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300", label: "High Priority" },
-    urgent: { className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300", label: "Urgent" },
+    low: { className: "bg-muted text-muted-foreground", label: "Low Priority" },
+    normal: { className: "bg-info-subtle text-info", label: "Normal Priority" },
+    high: { className: "bg-warning-subtle text-warning-subtle-foreground", label: "High Priority" },
+    urgent: { className: "bg-destructive-subtle text-destructive", label: "Urgent" },
   };
   const p = config[priority] || config.normal;
   return <Badge className={p.className}>{p.label}</Badge>;
@@ -255,7 +255,7 @@ export default function TaskDetail() {
                             key={taskDoc.id}
                             className={`flex items-center justify-between rounded-lg border p-4 ${
                               taskDoc.isVerified
-                                ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                                ? "bg-success-subtle border-border"
                                 : ""
                             }`}
                             data-testid={`document-${taskDoc.id}`}
@@ -273,7 +273,7 @@ export default function TaskDetail() {
                             </div>
                             <div className="flex items-center gap-2">
                               {taskDoc.isVerified ? (
-                                <Badge variant="default" className="bg-green-600">
+                                <Badge variant="success">
                                   <CheckCircle2 className="mr-1 h-3 w-3" />
                                   Verified
                                 </Badge>
@@ -428,15 +428,15 @@ export default function TaskDetail() {
                 )}
 
                 {task.status === "rejected" && (
-                  <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+                  <Card className="border-border bg-destructive-subtle">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
+                        <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
                         <div>
-                          <p className="font-medium text-red-700 dark:text-red-400">
+                          <p className="font-medium text-destructive">
                             Document Rejected
                           </p>
-                          <p className="text-sm text-red-600 dark:text-red-300 mt-1">
+                          <p className="text-sm text-destructive mt-1">
                             Please review the notes and upload a new document.
                           </p>
                         </div>
@@ -446,15 +446,15 @@ export default function TaskDetail() {
                 )}
 
                 {task.status === "verified" && (
-                  <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+                  <Card className="border-border bg-success-subtle">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                        <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground mt-0.5" />
                         <div>
-                          <p className="font-medium text-green-700 dark:text-green-400">
+                          <p className="font-medium text-success-subtle-foreground">
                             Task Complete
                           </p>
-                          <p className="text-sm text-green-600 dark:text-green-300 mt-1">
+                          <p className="text-sm text-success-subtle-foreground mt-1">
                             Your document has been verified and accepted.
                           </p>
                         </div>
