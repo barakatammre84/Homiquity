@@ -176,6 +176,17 @@
       "lastVerified": "2026-07-04",
       "reviewIntervalDays": 90,
       "notes": "Our four-fifths-rule monitoring in fairLendingAnalysis.ts is RETAINED deliberately as internal risk management: HMDA is unaffected, state fair-lending laws still recognize effects-based claims, and the deterministic-decisioning invariants don't depend on Reg B's effects test. Do not delete the monitoring in response to this rule; revisit framing/copy that cites Reg B disparate-impact as a legal requirement. This is the real 'July 2026 Reg B rule' the pre-production doctrine referenced - it is unrelated to medical debt."
+    },
+    {
+      "id": "hppa-trigger-leads",
+      "rule": "Mortgage trigger leads: CRAs may not furnish prescreened consumer reports on residential-mortgage credit inquiries EXCEPT to (a) a party with the consumer's documented opt-in authorization, (b) the originator of the consumer's current mortgage, (c) its current servicer, or (d) an insured depository/credit union holding a current account for the consumer. We must never purchase trigger leads outside these exceptions.",
+      "value": "in effect since 2026-03-04/05",
+      "citation": "Homebuyers Privacy Protection Act, Pub. L. 119-36 (H.R. 2808, 119th Cong.), signed 2025-09-05, amending FCRA §604(c) (15 U.S.C. §1681b(c)); effective 180 days after enactment",
+      "sourceUrl": "https://www.congress.gov/bill/119th-congress/house-bill/2808",
+      "codeRef": "server/routes/leads.ts (first-party intake only: TrustedForm cert + consent IP/UA/timestamp evidence; the platform purchases no leads)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Sources split on 2026-03-04 vs 03-05 as the exact effective day (180-day count from 2025-09-05) - immaterial, months past either way. Compliance posture is structural: all lead acquisition is first-party/organic, so HPPA binds us only if we ever start buying leads - re-check this entry before any paid-lead initiative. GAO report on text-based trigger-lead solicitations due 2026-09."
     }
   ]
 }

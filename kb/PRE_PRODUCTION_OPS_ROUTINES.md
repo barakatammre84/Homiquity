@@ -17,7 +17,7 @@
 | "Verify AAN routes via emailService.ts" | It now does at both seams: staff status→denied fires the neutral email (`server/routes/lending.ts`), and **AAN generation itself** now also fires it (`server/routes/compliance.ts`, added 2026-07-04) so ECOA delivery never depends on a separate status flip. |
 | "Flip the environment variable... that pauses all new applications" | **Did not exist — built 2026-07-04** (roadmap #27): `INTAKE_PAUSED=true`, see Routine 3. |
 | "Review rates from `rateService.syncBestExecutionRates()` against origination fees" | The function is real (`server/services/rateService.ts`, admin refresh route) but current rate sheets are the **`1.0-demo` seed** — margin math on demo sheets is rehearsal, not reconciliation. It becomes real when a genuine wholesale sheet is uploaded (staff rate-sheet flow) or F11 PPE lands. |
-| "2026 HBPA bans trigger-lead buying" | Plausible and consistent with our design (we never buy trigger leads; `POST /api/leads` already requires a TrustedForm cert URL + captures consent IP/UA/timestamp), but the statute citation and effective date are **unverified** — confirm via F10 regulatory channels before adding a `regulatory-ledger.json` entry. |
+| "2026 HBPA bans trigger-lead buying" | **Verified 2026-07-04:** real and in force — Homebuyers Privacy Protection Act, **Pub. L. 119-36** (H.R. 2808), signed 2025-09-05, amending FCRA §604(c) (15 U.S.C. §1681b(c)), effective ~2026-03-04 (180 days after enactment). CRAs may furnish mortgage trigger leads only to a party with documented consumer opt-in, the current originator, the current servicer, or a depository/CU holding the consumer's account. Ledgered (`hppa-trigger-leads`). Our posture is structurally compliant: all lead acquisition is first-party (`POST /api/leads` requires TrustedForm cert + consent IP/UA/timestamp); re-check the ledger entry before any paid-lead initiative. |
 
 ---
 
@@ -61,7 +61,7 @@ Intentionally try to break the system daily.
 ## Routine 4 — Evening: Unit Economics & Go-To-Market Sync (strategy)
 
 1. **Margin reconciliation:** review best-execution output (staff → `POST /api/admin/mortgage-rates/refresh`, or the LoanOptions LLPA breakdown) against planned origination/take-rate. ⚠️ Meaningful only against a **real** wholesale sheet — the `1.0-demo` seed makes this a rehearsal of the workflow, not a P&L check. Becomes real with the staff rate-sheet upload of an actual lender matrix, fully real with F11 (PPE).
-2. **First-party lead review:** review the organic waitlist/inbound funnel (staff `GET /api/leads`). Our posture already assumes no purchased trigger leads: TrustedForm cert required, consent IP/UA/timestamp captured, quiet-hours + SMS opt-out guards in front of any outbound (roadmap #24/#25). Action item: verify the HBPA citation/effective date via F10 channels, then ledger it.
+2. **First-party lead review:** review the organic waitlist/inbound funnel (staff `GET /api/leads`). Our posture already assumes no purchased trigger leads: TrustedForm cert required, consent IP/UA/timestamp captured, quiet-hours + SMS opt-out guards in front of any outbound (roadmap #24/#25). HPPA verified + ledgered 2026-07-04 (`hppa-trigger-leads`: Pub. L. 119-36, FCRA §604(c), in force since ~2026-03-04) — the daily check is now simply that no lead source is a purchased trigger lead.
 3. **Consent-language audit:** any new landing page or funnel copy must keep opt-in language strict (see the Reg Z trigger-term discipline from the landing-page research and `smsCompliance`/`quietHours` gates).
 
 ---
@@ -72,7 +72,7 @@ Intentionally try to break the system daily.
 |---|---|
 | Medical-collections handling: ~~verify rule~~ **verified 2026-07-04** (no federal rule; Fannie B3-5.3-09 + FHA 4000.1 carve-outs ledgered) → build ships with F3 credit adapter | CTO_ROADMAP #28 |
 | Reg B disparate-impact amendment (eff. 2026-07-21): keep four-fifths monitoring as internal risk mgmt; audit any copy framing it as a Reg B requirement | regulatory-ledger `reg-b-2026-disparate-impact` |
-| HBPA trigger-lead ban: verify citation/effective date → ledger entry | Routine 4.2 / F10 |
+| HBPA trigger-lead ban: ~~verify citation~~ **verified + ledgered 2026-07-04** (Pub. L. 119-36; in force); binds only if we ever buy leads | regulatory-ledger `hppa-trigger-leads` |
 | Real vendor portals join the morning sweep | F3–F5 |
 | Lender sandbox MISMO uploads | F1 + per-lender credentialing |
 | Margin reconciliation on real sheets | staff rate-sheet upload / F11 |
