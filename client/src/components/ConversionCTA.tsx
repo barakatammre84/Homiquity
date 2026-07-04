@@ -29,12 +29,12 @@ export function ConversionCTA({ context, purchasePrice, state, propertyType }: C
   const contextMessages: Record<string, { heading: string; subtext: string; coachPrompt: string }> = {
     calculator: {
       heading: "Start your pre-approval",
-      subtext: "Get a verified pre-approval letter in about 3 minutes.",
+      subtext: "Get a pre-approval letter in about 3 minutes.",
       coachPrompt: "Have questions about your results? Chat with our AI Coach first.",
     },
     rates: {
       heading: "Like what you see?",
-      subtext: "Start a pre-approval to lock in today's rates. Takes about 3 minutes.",
+      subtext: "Start a pre-approval to see your personalized rate. Takes about 3 minutes.",
       coachPrompt: "Have questions about rates? Our AI Coach can help.",
     },
     article: {

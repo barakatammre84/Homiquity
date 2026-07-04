@@ -23,6 +23,7 @@ import { buildBorrowerGraph, getPropertyAffordability } from "../services/borrow
 import { pickTableFields, sanitizePersonalInfoBody, URLA_TABLES } from "./urlaValidation";
 import { stripEncryptedFields } from "../services/piiVault";
 import { sendNotificationEmail } from "../services/emailService";
+import { evaluateTridTrigger } from "../services/trid";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -433,6 +434,20 @@ export function registerBorrowerRoutes(
       }
       const data = { ...sanitized.data, applicationId };
       const result = await storage.upsertUrlaPersonalInfo(data as any);
+
+      // TRID §1026.2(a)(3): the SSN often arrives here as the 6th piece of
+      // application information — evaluate the Loan Estimate trigger.
+      try {
+        const trid = await evaluateTridTrigger(applicationId);
+        if (trid.justTriggered) {
+          logAudit(req, "trid.application_triggered", "loan_application", applicationId, {
+            leDueDate: trid.leDueDate?.toISOString(),
+          });
+        }
+      } catch (tridErr) {
+        console.error("[TRID] Trigger evaluation failed (non-fatal):", tridErr);
+      }
+
       res.json(stripEncryptedFields(result));
     } catch (error) {
       if (error instanceof InvalidSsnError) {

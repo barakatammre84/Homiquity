@@ -37,6 +37,7 @@ import { COMPANY_CONFIG } from "../config/company";
 import { assertVerifiedForDecisioning, isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { assertStageRequirements } from "@shared/stageRequirements";
 import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
+import { evaluateTridTrigger, tridHardStopError } from "../services/trid";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -46,6 +47,21 @@ const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().
 // derived from the same base schema the funnel validates with client-side — the
 // server rejects exactly what the client rejects, and "not_sure" credit maps to
 // the named CREDIT_SCORE_UNKNOWN_DEFAULT instead of a silent clamp.
+
+// Payment estimates on pre-approval letters use the current advertised
+// 30-year fixed rate — a figure on a borrower-facing document must be
+// reproducible from live pricing, never a hardcoded constant. Falls back to
+// a conservative rate when no advertised rate is synced.
+async function currentAdvertised30YrRate(storage: IStorage): Promise<number> {
+  try {
+    const advertised = await storage.getMortgageRatesByProgram("prog-30yr-fixed");
+    const active = advertised.find((r) => r.isActive && parseFloat(r.rate) > 0);
+    if (active) return parseFloat(active.rate) / 100;
+  } catch (rateErr) {
+    console.error("[Letter] Could not load advertised rate, using fallback:", rateErr);
+  }
+  return 0.07;
+}
 
 export function registerLendingRoutes(
   app: Express,
@@ -471,6 +487,20 @@ export function registerLendingRoutes(
 
       const application = await storage.createLoanApplication(applicationData);
       logAudit(req, "loan_application.created", "loan_application", application.id);
+
+      // TRID §1026.2(a)(3): intake may have just supplied the 6th piece of
+      // application information — evaluate the Loan Estimate trigger.
+      // Non-fatal: a trigger-bookkeeping failure must not lose the application.
+      try {
+        const trid = await evaluateTridTrigger(application.id);
+        if (trid.justTriggered) {
+          logAudit(req, "trid.application_triggered", "loan_application", application.id, {
+            leDueDate: trid.leDueDate?.toISOString(),
+          });
+        }
+      } catch (tridErr) {
+        console.error("[TRID] Trigger evaluation failed (non-fatal):", tridErr);
+      }
 
       // Persist the funnel's FCRA soft-pull acknowledgment as ledger evidence
       // (canonical disclosure text + IP + user agent). Non-fatal: a consent
@@ -1232,6 +1262,20 @@ export function registerLendingRoutes(
       }
 
       const updated = await storage.updateLoanApplication(id, updateData);
+
+      // TRID §1026.2(a)(3): this PATCH can supply the property address or
+      // another of the six items — evaluate the Loan Estimate trigger.
+      try {
+        const trid = await evaluateTridTrigger(id);
+        if (trid.justTriggered) {
+          logAudit(req, "trid.application_triggered", "loan_application", id, {
+            leDueDate: trid.leDueDate?.toISOString(),
+          });
+        }
+      } catch (tridErr) {
+        console.error("[TRID] Trigger evaluation failed (non-fatal):", tridErr);
+      }
+
       res.json(updated);
     } catch (error) {
       console.error("Update application error:", error);
@@ -1334,6 +1378,38 @@ export function registerLendingRoutes(
         return res.status(422).json({
           error: guardErr instanceof Error ? guardErr.message : "A loan amount is required at this stage",
         });
+      }
+
+      // TRID hard stop (Reg Z §1026.19(e)(1)(iii)): once the six pieces of
+      // application information are on file, the file may not move forward
+      // past the Loan Estimate due date until the LE is issued. Exit
+      // dispositions (denied/withdrawn/suspended) are never blocked.
+      const tridBlock = tridHardStopError(application, status);
+      if (tridBlock) {
+        return res.status(422).json({ error: tridBlock });
+      }
+
+      // ECOA/Reg B §1002.9 + FCRA §615: a denial must carry an adverse-action
+      // notice. The shared chokepoint generates it BEFORE the status flips —
+      // if it can't, the denial does not proceed. (Same guard runs on the
+      // underwriting advance-stage denial path.)
+      if (status === "denied") {
+        const aa = await creditService.ensureAdverseActionForDenial({
+          applicationId: id,
+          userId: application.userId,
+          denialReasons,
+          creditScoreUsed: application.creditScore,
+          generatedBy: user.id,
+        });
+        if (!aa.ok) {
+          return res.status(422).json({ error: aa.error });
+        }
+        if (aa.created) {
+          logAudit(req, "adverse_action.generated", "loan_application", id, {
+            adverseActionId: aa.adverseActionId,
+            trigger: "status_denied",
+          });
+        }
       }
 
       const previousStatus = application.status;
@@ -1594,7 +1670,7 @@ export function registerLendingRoutes(
       const annualIncome = parseFloat(application.annualIncome || "0");
       const monthlyDebts = parseFloat(application.monthlyDebts || "0");
       const loanAmountNum = parseFloat(loanAmount) || 0;
-      const rate = 0.065;
+      const rate = await currentAdvertised30YrRate(storage);
       const months = 360;
       const monthlyRate = rate / 12;
       const monthlyPayment = loanAmountNum > 0
@@ -1842,7 +1918,7 @@ export function registerLendingRoutes(
       const annualIncome = parseFloat(application.annualIncome || "0");
       const monthlyDebts = parseFloat(application.monthlyDebts || "0");
       const loanAmountNum = parseFloat(loanAmount) || 0;
-      const rate = 0.065;
+      const rate = await currentAdvertised30YrRate(storage);
       const months = 360;
       const monthlyRate = rate / 12;
       const monthlyPayment = loanAmountNum > 0

@@ -3,6 +3,7 @@ import { mortgageRates } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { storage } from "../storage";
 import { computeOffers, type BorrowerPricingProfile, type ComputedOffer } from "./pricingAdapter";
+import { advertisedAPR } from "./apr";
 
 const RAPIDAPI_HOSTS = [
   "realty-in-us.p.rapidapi.com",
@@ -95,7 +96,13 @@ export async function syncRatesToDatabase(rates: ApiRate[]): Promise<number> {
     if (!programId) continue;
 
     const ratePercent = (rate.rate * 100).toFixed(3);
-    const aprEstimate = ((rate.rate + 0.002) * 100).toFixed(3);
+    // Actuarial APR from the representative fee model (services/apr.ts) at
+    // the advertised loan amount — never a flat spread over the note rate.
+    const surveyLoanAmount = 350000;
+    const termMonths = (rate.term || 30) * 12;
+    const aprEstimate = advertisedAPR(surveyLoanAmount, rate.rate * 100, termMonths, {
+      isFHA: rate.loan_id === "thirty_year_fha",
+    }).toFixed(3);
 
     const existing = await db
       .select()
@@ -200,10 +207,13 @@ function programIdForOffer(offer: ComputedOffer): string | null {
   return null; // jumbo & everything else has no advertised program yet
 }
 
-// APR display estimate over the note rate: FHA carries annual MIP; others get
-// a fee-driven spread (same order of magnitude the survey sync uses).
-function aprEstimateFor(programId: string, rate: number): number {
-  return programId === "prog-30yr-fha" ? rate + 0.45 : rate + 0.2;
+// Advertised APR: actuarial solve (services/apr.ts) over the marketing
+// profile's loan amount and the representative fee model. FHA includes
+// upfront + annual MIP in the finance-charge stream.
+function aprFor(programId: string, ratePct: number, termMonths: number): number {
+  return advertisedAPR(MARKETING_PROFILE.loanAmount, ratePct, termMonths, {
+    isFHA: programId === "prog-30yr-fha",
+  });
 }
 
 export async function syncBestExecutionRates(): Promise<{ synced: number; programs: string[] }> {
@@ -233,7 +243,7 @@ export async function syncBestExecutionRates(): Promise<{ synced: number; progra
   const now = new Date();
   for (const [programId, offer] of best) {
     const rate = offer.adjustedRate.toFixed(3);
-    const apr = aprEstimateFor(programId, offer.adjustedRate).toFixed(3);
+    const apr = aprFor(programId, offer.adjustedRate, offer.loanTerm || 360).toFixed(3);
     const row = {
       rate,
       apr,

@@ -265,6 +265,11 @@ export const loanApplications = pgTable("loan_applications", {
   closingDate: varchar("closing_date", { length: 10 }),
   leIssuedDate: varchar("le_issued_date", { length: 10 }),
   cdIssuedDate: varchar("cd_issued_date", { length: 10 }),
+  // Set the moment the 6th piece of application information (Reg Z
+  // §1026.2(a)(3): name, income, SSN, property address, estimated value,
+  // loan amount) is on file — this timestamp anchors the 3-business-day
+  // Loan Estimate clock. Written only by server/services/trid.ts.
+  tridTriggeredAt: timestamp("trid_triggered_at"),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),

@@ -289,7 +289,7 @@ export default function Landing() {
                   <Shield className="h-4 w-4 text-primary" />
                 </div>
                 <p className="text-sm font-semibold">Bank-Grade Security</p>
-                <p className="mt-1 text-xs text-muted-foreground">256-bit encryption. Your data is never sold or shared.</p>
+                <p className="mt-1 text-xs text-muted-foreground">256-bit encryption. Your data is never sold, and it's shared only as needed to process your loan.</p>
               </CardContent>
             </Card>
           </div>
@@ -405,8 +405,17 @@ function RatesTeaser() {
                 <Card key={rate.id} className="text-center" data-testid={`card-rate-teaser-${rate.id}`}>
                   <CardContent className="p-6">
                     <p className="text-sm font-medium text-muted-foreground" data-testid={`text-rate-name-${rate.id}`}>{rate.programName}</p>
-                    <p className="mt-2 text-4xl font-bold text-primary" data-testid={`text-rate-value-${rate.id}`}>{rate.interestRate}%</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{rate.apr}% APR</p>
+                    {/* Reg Z §1026.24(c): note rate never more conspicuous than APR. */}
+                    <div className="mt-2 flex items-baseline justify-center gap-4">
+                      <div>
+                        <p className="text-2xl font-bold text-primary" data-testid={`text-rate-value-${rate.id}`}>{rate.interestRate}%</p>
+                        <p className="text-xs text-muted-foreground">Rate</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-primary" data-testid={`text-rate-apr-${rate.id}`}>{rate.apr}%</p>
+                        <p className="text-xs text-muted-foreground">APR</p>
+                      </div>
+                    </div>
                     <p className="mt-3 text-xs text-muted-foreground">{rate.loanType}</p>
                   </CardContent>
                 </Card>
