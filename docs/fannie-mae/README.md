@@ -43,8 +43,26 @@ names, enumerations, edit codes, and Special Feature Codes are never invented.
 - `URLA_2020_Unmarried_Numbered 04142020 Secured.pdf` — unmarried addendum
 - `URLA Rendering Design Options updated 6-29-21.pdf` — rendering/design guidance
 
+### EarlyCheck
+- `EarlyCheck ULAD Edit Changes 06-30-20.xlsx` — EarlyCheck edit changes from the ULAD
+  rollout; the "MISMO 3.4" tab lists edits applicable to MISMO 3.0/3.4 files
+  (144/1700 mortgage funder name, 1209/1224 project valid values)
+
 ### Other
 - `Wire Instruction Reference ID_final_05202025.pdf`
+
+## Where these documents are implemented
+
+| Document | Code |
+|---|---|
+| QM Edits Job Aid (2026) — threshold tables | `shared/fannieMae/qmThresholds.ts` |
+| QM Edits Job Aid + UCD Phase 3/3a/4 job aids + EarlyCheck workbook — edits | `shared/fannieMae/loanDeliveryEdits.ts` |
+| Special Feature Codes (05-06-26) | `shared/fannieMae/specialFeatureCodes.ts` |
+| Combined pre-delivery workflow | `server/services/loanDeliveryReadiness.ts` |
+
+When Fannie Mae publishes new threshold years or SFC editions, update the data in those
+modules from the replacement document — never from memory — and update the pinned values
+in `tests/qmThresholds.test.ts` / `tests/specialFeatureCodes.test.ts` in the same commit.
 
 ## Maintenance
 

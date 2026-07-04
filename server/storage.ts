@@ -95,6 +95,9 @@ import {
   type InsertUrlaPropertyInfo,
   type BorrowerDeclarations,
   type InsertBorrowerDeclarations,
+  loanDeliveryData,
+  type LoanDeliveryData,
+  type InsertLoanDeliveryData,
   type Task,
   type InsertTask,
   type TaskDocument,
@@ -423,6 +426,10 @@ export interface IStorage {
     realEstateOwned: RealEstateOwned[];
     hmdaDemographics: HmdaDemographics[];
   }>;
+
+  // GSE loan delivery data (ULDD / UCD closing-stage datapoints)
+  getLoanDeliveryData(applicationId: string): Promise<LoanDeliveryData | undefined>;
+  upsertLoanDeliveryData(data: InsertLoanDeliveryData): Promise<LoanDeliveryData>;
 
   getRealEstateOwnedByApplication(applicationId: string): Promise<RealEstateOwned[]>;
   getHmdaDemographicsByApplication(applicationId: string): Promise<HmdaDemographics[]>;
@@ -1669,6 +1676,32 @@ export class DatabaseStorage implements IStorage {
       return updated;
     }
     const [created] = await db.insert(urlaPropertyInfo).values(cleanData).returning();
+    return created;
+  }
+
+  // GSE loan delivery data (ULDD / UCD closing-stage datapoints)
+  async getLoanDeliveryData(applicationId: string): Promise<LoanDeliveryData | undefined> {
+    const [row] = await db
+      .select()
+      .from(loanDeliveryData)
+      .where(eq(loanDeliveryData.applicationId, applicationId))
+      .limit(1);
+    return row;
+  }
+
+  async upsertLoanDeliveryData(data: InsertLoanDeliveryData): Promise<LoanDeliveryData> {
+    const existing = await this.getLoanDeliveryData(data.applicationId);
+    const { createdAt, updatedAt, id, ...cleanData } = data as any;
+
+    if (existing) {
+      const [updated] = await db
+        .update(loanDeliveryData)
+        .set({ ...cleanData, updatedAt: new Date() })
+        .where(eq(loanDeliveryData.applicationId, data.applicationId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(loanDeliveryData).values(cleanData).returning();
     return created;
   }
 

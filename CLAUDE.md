@@ -29,6 +29,10 @@ Where this code lives:
 | MISMO 3.4 reference-model types (ULDD Phase 5, eff. 2025-07-28) | `shared/mismo.ts` |
 | MISMO 3.4 XML generation for GSE delivery | `server/mismo.ts` |
 | URLA section completeness scoring + GSE gating (sections 1a, 4, 5) | `server/services/mismoValidation.ts` |
+| QM points-and-fees / APR-APOR spread thresholds (note-date tables) | `shared/fannieMae/qmThresholds.ts` |
+| Special Feature Codes catalog + derivation + set validation | `shared/fannieMae/specialFeatureCodes.ts` |
+| Loan Delivery / UCD / EarlyCheck pre-delivery edit mirror | `shared/fannieMae/loanDeliveryEdits.ts` |
+| Delivery-readiness workflow + `loan_delivery_data` capture | `server/services/loanDeliveryReadiness.ts`, `shared/schema/delivery.ts` |
 | AUS submission (DU today; LPA leg not yet built) | `server/services/ausSubmission.ts`, `server/routes/aus.ts` |
 | Lending / underwriting routes | `server/routes/lending.ts`, `server/routes/underwriting.ts` |
 

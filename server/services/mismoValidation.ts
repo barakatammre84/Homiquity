@@ -1,5 +1,6 @@
 import { storage } from "../storage";
 import { addBusinessDays, subtractBusinessDays } from "./businessDays";
+import { evaluateCoveredPointsAndFees } from "@shared/fannieMae/qmThresholds";
 import type {
   LoanApplication,
   UrlaPersonalInfo,
@@ -420,13 +421,30 @@ function evaluatePointsAndFees(application: LoanApplication): {
     return { qmStatus: "Unknown", compliant: true, issue: null };
   }
 
-  // ATR/QM general 3% cap for loans >= $100,000 (Reg Z 1026.43(e)(3)).
-  const cap = loanAmount * 0.03;
-  if (pointsAndFees > cap) {
+  // Reg Z 1026.43(e)(2)(iii) tiered caps (8% / $ / 5% / $ / 3% by loan
+  // amount), per the Loan Delivery QM Edits Job Aid. Thresholds are selected
+  // by note-date year; pre-closing there is no note date yet, so the closing
+  // date (when scheduled) or today's date stands in as the expected note
+  // year. The delivery-readiness edits re-check against the actual note date.
+  const estimatedNoteDate = parseDate(application.closingDate) ?? new Date();
+  const evaluation = evaluateCoveredPointsAndFees(
+    estimatedNoteDate,
+    loanAmount,
+    // Application-stage estimate: the Regulation Z Total Loan Amount (note
+    // amount minus finance charges) is not computed until closing, so the
+    // loan amount is the best available stand-in and errs conservative-high.
+    loanAmount,
+    pointsAndFees,
+  );
+
+  if (!evaluation.evaluated) {
+    return { qmStatus: "Unknown", compliant: true, issue: null };
+  }
+  if (!evaluation.compliant) {
     return {
       qmStatus: "Non-QM",
       compliant: false,
-      issue: `Points and fees ($${pointsAndFees.toFixed(2)}) exceed the 3% QM cap ($${cap.toFixed(2)}) for the loan amount`,
+      issue: `Points and fees ($${pointsAndFees.toFixed(2)}) exceed the QM cap ($${evaluation.maxAllowableAmount?.toFixed(2)}; ${evaluation.tierDescription})`,
     };
   }
   return { qmStatus: "QM", compliant: true, issue: null };

@@ -809,6 +809,71 @@ export function registerUnderwritingRoutes(
     }
   });
 
+  // Fannie Mae delivery readiness: URLA gating + Loan Delivery / UCD /
+  // EarlyCheck edit mirror + Special Feature Code derivation. Internal staff
+  // only — this is a delivery-ops view, not a partner/borrower surface.
+  app.get(
+    "/api/loan-applications/:id/delivery-readiness",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { evaluateDeliveryReadiness } = await import("../services/loanDeliveryReadiness");
+        const report = await evaluateDeliveryReadiness(id);
+        res.json(report);
+      } catch (error) {
+        console.error("Delivery readiness error:", error);
+        res.status(500).json({ error: "Failed to evaluate delivery readiness" });
+      }
+    },
+  );
+
+  // Capture/update the closing-stage delivery data (Regulation Z / QM
+  // datapoints, UCD Phase 3 closing-cost containers, SFC attributes) the
+  // delivery-readiness edits evaluate. Internal staff only.
+  app.put(
+    "/api/loan-applications/:id/delivery-data",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { insertLoanDeliveryDataSchema } = await import("@shared/schema");
+        const parsed = insertLoanDeliveryDataSchema
+          .partial()
+          .omit({ applicationId: true })
+          .safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ error: "Invalid delivery data", details: parsed.error.flatten() });
+        }
+
+        const saved = await storage.upsertLoanDeliveryData({
+          ...parsed.data,
+          applicationId: id,
+        });
+
+        const { logAudit } = await import("../auditLog");
+        logAudit(req, "gse.delivery_data_updated", "loan_application", id, {
+          fields: Object.keys(parsed.data),
+        });
+
+        res.json(saved);
+      } catch (error) {
+        console.error("Delivery data update error:", error);
+        res.status(500).json({ error: "Failed to save delivery data" });
+      }
+    },
+  );
+
   app.get("/api/loan-applications/:id/loan-estimate", isAuthenticated, requireConsent("e_disclosure"), async (req, res) => {
     try {
       const { id } = req.params;
