@@ -5,6 +5,7 @@ import { logAudit } from "../auditLog";
 import { z } from "zod";
 import type { InsertLead } from "@shared/schema";
 import { intakePausedGate } from "../services/maintenanceMode";
+import { notifyNewLead } from "../services/leadNotifications";
 
 // Which staff work leads: the sales funnel (admin + loan officers + assistants).
 // Processors/underwriters/closers act post-application, so they're excluded here.
@@ -126,6 +127,14 @@ export function registerLeadRoutes(app: Express, storage: IStorage) {
       }
 
       logAudit(req, "lead.created", "lead", lead.id, { source: lead.source });
+
+      // Speed-to-lead (G-A): desk notification + borrower acknowledgment.
+      // Fire-and-forget — a notification failure must never fail the intake.
+      // Duplicates return early above, so this fires once per lead.
+      notifyNewLead(storage, lead).catch((err) =>
+        console.error("[leads] speed-to-lead notification failed:", err),
+      );
+
       // Echo back only non-PII identifiers to the (unauthenticated) caller.
       res.status(201).json({ lead: { id: lead.id, status: lead.status } });
     } catch (error) {
