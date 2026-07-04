@@ -63,7 +63,25 @@ function classifyAsset(accountType: string): AssetProfile["type"] {
 
 function toNumber(v: unknown): number {
   if (v === null || v === undefined) return NaN;
-  return parseFloat(String(v).replace(/[,$]/g, ""));
+  let s = String(v).trim().replace(/[,$\s]/g, "");
+  // Accounting/tax-form negatives are parenthesized, e.g. a K-1 loss of
+  // "(21,400)". parseFloat would read this as NaN (then get zeroed by safe),
+  // silently deleting the loss from qualifying income — so normalize it to a
+  // real negative before parsing.
+  let negative = false;
+  if (/^\(.*\)$/.test(s)) {
+    negative = true;
+    s = s.slice(1, -1);
+  }
+  const n = parseFloat(s);
+  if (isNaN(n)) return NaN;
+  return negative ? -n : n;
+}
+
+/** True when a value is present and parses to a real number (incl. negatives). */
+function isPresentNumber(v: unknown): boolean {
+  if (v === null || v === undefined || String(v).trim() === "") return false;
+  return !isNaN(toNumber(v));
 }
 
 function safe(v: unknown): number {
@@ -123,22 +141,31 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
   const borrowerSeqs = new Set<number>();
 
   // Income: base vs variable (overtime/bonus/commission/other), summed across all borrowers.
+  // A business LOSS (negative K-1) must REDUCE qualifying income, not be dropped.
   let base = 0;
   let variable = 0;
+  let sawIncomeLineItem = false;
   for (const e of employment) {
     borrowerSeqs.add(e.borrowerSequenceNumber ?? 1);
-    const b = safe(e.baseIncome);
-    const varComponents = safe(e.overtimeIncome) + safe(e.bonusIncome) + safe(e.commissionIncome) + safe(e.otherIncome);
-    if (b + varComponents > 0) {
-      base += b;
-      variable += varComponents;
-    } else {
-      // Only a rolled-up total was captured for this job.
+    const itemized = [e.baseIncome, e.overtimeIncome, e.bonusIncome, e.commissionIncome, e.otherIncome];
+    if (itemized.some(isPresentNumber)) {
+      // Use the itemized fields whenever any is present — including a net-negative
+      // total. The old `base + variable > 0` guard treated a loss as "no data"
+      // and fell through to the rolled-up total, deleting the loss.
+      base += safe(e.baseIncome);
+      variable += safe(e.overtimeIncome) + safe(e.bonusIncome) + safe(e.commissionIncome) + safe(e.otherIncome);
+      sawIncomeLineItem = true;
+    } else if (isPresentNumber(e.totalMonthlyIncome)) {
+      // Only a rolled-up total was captured for this job (may itself be a loss).
       base += safe(e.totalMonthlyIncome);
+      sawIncomeLineItem = true;
     }
   }
   for (const o of otherIncome) {
-    variable += safe(o.monthlyAmount);
+    if (isPresentNumber(o.monthlyAmount)) {
+      variable += safe(o.monthlyAmount);
+      sawIncomeLineItem = true;
+    }
   }
 
   // Debts: monthly payments not being paid off, summed across all borrowers.
@@ -149,7 +176,9 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     monthlyDebts += safe(l.monthlyPayment);
   }
 
-  const hasUrlaIncome = employment.length > 0 && base + variable > 0;
+  // Fall back to the summary ONLY when no usable line item exists — never to
+  // launder a computed net loss back into the self-reported figure.
+  const hasUrlaIncome = sawIncomeLineItem;
   const hasUrlaLiabilities = liabilities.length > 0;
 
   // Fall back to the application-level summary when line items are absent.
@@ -189,7 +218,13 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   const purchasePrice = toNumber(app.purchasePrice);
   const downPayment = toNumber(app.downPayment);
   const missing: string[] = [];
-  if (fin.totalMonthlyIncome <= 0) missing.push("Income (no employment or income sources on file)");
+  if (fin.totalMonthlyIncome <= 0) {
+    missing.push(
+      fin.incomeBasis === "urla_line_items"
+        ? "Net qualifying income is zero or negative after business losses — a self-employed income review is required before a decision"
+        : "Income (no employment or income sources on file)",
+    );
+  }
   if (!app.creditScore) missing.push("Credit score");
   if (!purchasePrice || purchasePrice <= 0) missing.push("Purchase price");
   if (isNaN(downPayment) || downPayment < 0) missing.push("Down payment");
@@ -213,6 +248,11 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: describeEngineGap(err), metrics: null, resolvedPolicy: null, ...base };
   }
 
+  // Subject-property occupancy and unit count drive the agency max-LTV
+  // eligibility caps; pull them from the URLA property record when captured so a
+  // multi-unit or investment property is not decisioned as an owner-occupied SFR.
+  const propertyInfo = await storage.getUrlaPropertyInfo(applicationId);
+
   // Run the deterministic engine on the aggregated, multi-borrower figures.
   const input: UnderwritingInput = {
     isVeteran: app.isVeteran ?? false,
@@ -226,21 +266,46 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     proposedPiti: monthlyPiti,
     assets: fin.assets,
     subjectPropertyState: app.propertyState ?? undefined,
+    occupancyType: propertyInfo?.occupancyType ?? undefined,
+    numberOfUnits: propertyInfo?.numberOfUnits ?? undefined,
+    // Declared property type, reconciled against the declared unit count. The
+    // OBSERVED (vendor-lookup) descriptor is not yet wired — capturing it at
+    // intake is the remaining piece to catch a consistent misstatement.
+    propertyType: app.propertyType ?? undefined,
   };
 
   let result;
   try {
     result = await consolidatedUnderwritingEngine.evaluate(input);
   } catch (err) {
-    // invalid values — surface as a clean "need more info" gap rather than a 500
-    // or a raw CRITICAL_* operational message.
+    // A borrower profile that fell outside the automated pricing/eligibility
+    // matrices (an uncovered matrix cell — e.g. a FICO above the score grid, an
+    // unseeded VA family size) is a DECISION, not a documentation gap: route it
+    // to a human as MANUAL_REVIEW so it lands in the queue with an auditable
+    // reason instead of looping forever asking for documents that would never
+    // resolve it. Missing-input errors still surface as NEEDS_MORE_INFO via
+    // describeEngineGap (which already sanitizes the raw CRITICAL_* text).
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/fell outside permitted compliance intervals/i.test(msg)) {
+      return {
+        status: "DECISION_READY",
+        decision: "MANUAL_REVIEW",
+        reasons: ["This loan profile is outside our automated pricing coverage and needs a manual review by your loan team."],
+        missingItems: [],
+        metrics: null,
+        resolvedPolicy: null,
+        ...base,
+      };
+    }
     return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: describeEngineGap(err), metrics: null, resolvedPolicy: null, ...base };
   }
 
   return {
     status: "DECISION_READY",
     decision: result.decision,
-    reasons: result.rejectionReasons,
+    // Rejections and review reasons both explain the outcome to the borrower/LO;
+    // the decision field distinguishes a decline from a "needs a human" review.
+    reasons: [...result.rejectionReasons, ...result.reviewReasons],
     missingItems: [],
     resolvedPolicy: result.resolvedPolicy,
     metrics: {

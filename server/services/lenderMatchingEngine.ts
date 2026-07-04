@@ -144,15 +144,30 @@ function evaluateProduct(graph: BorrowerGraph, product: LenderProduct, loanAmoun
     });
   }
 
-  if (product.occupancyTypes && product.occupancyTypes.length > 0 && activeApp?.propertyType) {
-    const passed = product.occupancyTypes.includes(activeApp.propertyType);
+  // Property-type eligibility. This block previously compared the product's
+  // OCCUPANCY list against the application's PROPERTY TYPE — a category error
+  // (e.g. ["PRIMARY_RESIDENCE"].includes("single_family")) that failed for every
+  // legitimate file and, because it was the only conditional-severity check,
+  // silently pinned every product with an occupancy constraint to at best
+  // "conditionally_eligible". Compare the product's propertyTypes against the
+  // declared property type, case-normalized (product values are UPPER_SNAKE,
+  // applications are lower_snake).
+  //
+  // Occupancy-based gating is intentionally NOT done here: the loan application
+  // carries no occupancy on the borrower graph (it lives on urla_property_info),
+  // so a correct occupancy check needs that plumbed into the graph first —
+  // deferred to a follow-up rather than faked against the wrong field.
+  if (product.propertyTypes && product.propertyTypes.length > 0 && activeApp?.propertyType) {
+    const declared = activeApp.propertyType.toUpperCase();
+    const allowed = product.propertyTypes.map((p) => p.toUpperCase());
+    const passed = allowed.includes(declared);
     evaluations.push({
-      factor: "occupancy_type",
+      factor: "property_type",
       passed,
       detail: passed
         ? `Property type ${activeApp.propertyType} is eligible`
         : `Property type ${activeApp.propertyType} not eligible for this product`,
-      severity: passed ? "info" : "conditional",
+      severity: passed ? "info" : "disqualifying",
     });
   }
 
