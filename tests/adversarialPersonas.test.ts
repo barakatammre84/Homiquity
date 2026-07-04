@@ -441,15 +441,16 @@ describe("Persona 2 — Dana Okafor (multi-unit filed as SFR primary)", () => {
     expect(d.metrics!.ltv).toBe(80);
   });
 
-  it.fails("SPEC: lender matching must gate occupancy on an occupancy field, not propertyType", () => {
+  it("FIXED: lender matching enforces property type via product.propertyTypes, not the occupancy miswiring", () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, "../server/services/lenderMatchingEngine.ts"),
       "utf-8",
     );
-    // The one occupancy check in the codebase compares product.occupancyTypes
-    // ("PRIMARY_RESIDENCE") against activeApp.propertyType ("single_family"):
-    // always false for legitimate files, validates occupancy for no one.
+    // The category-error comparison (occupancy list vs property type) is gone...
     expect(src).not.toMatch(/occupancyTypes\.includes\(activeApp\.propertyType\)/);
+    // ...replaced by a real property-type eligibility check.
+    expect(src).toMatch(/product\.propertyTypes/);
+    expect(src).toMatch(/factor:\s*["']property_type["']/);
   });
 });
 
