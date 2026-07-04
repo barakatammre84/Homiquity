@@ -1,5 +1,10 @@
 import crypto from "crypto";
 import { lookupResolver, type LookupQuery } from "./services/lookupResolver";
+import {
+  RESIDUAL_TAX_RATE,
+  VA_EXTRA_MEMBER_FAMILY_CAP,
+  VA_RESIDUAL_REDUCTION_FACTOR,
+} from "./services/underwritingNuance";
 
 /**
  * Classifies why an underwriting evaluation could not complete, so the caller
@@ -434,8 +439,11 @@ export class ConsolidatedUnderwritingEngine {
       // VA Square-Foot Utility Rule
       const estimatedUtilityCosts = input.homeSquareFootage * 0.14;
 
-      // Deduct estimated taxes, shelter costs, and utilities to isolate residual take-home pay
-      const estimatedTaxesWithholding = combinedGrossMonthlyIncome * 0.18; // Standard 18% tax deduction model
+      // Deduct estimated taxes, shelter costs, and utilities to isolate residual take-home pay.
+      // Platform estimation model shared with the cited reference module (26-7 Ch. 4 Items 32–34
+      // prescribe IRS/state tax-table estimates on documented income; a single fixed rate stands
+      // in until real income documents flow) — never fork this number from underwritingNuance.
+      const estimatedTaxesWithholding = combinedGrossMonthlyIncome * RESIDUAL_TAX_RATE;
 
       actualResidualIncome =
         combinedGrossMonthlyIncome -
@@ -460,13 +468,21 @@ export class ConsolidatedUnderwritingEngine {
         "VA residual-income requirement",
       );
       if (familySize > 5) {
+        // The per-member addition applies only "up to a family of seven" — the
+        // eighth person and beyond are not considered (26-7 Ch. 4, Topic 9, Item 43).
+        const countableMembers = Math.min(familySize, VA_EXTRA_MEMBER_FAMILY_CAP);
         const extraPerMember = await this.resolver.getPolicyScalar("VA_RESIDUAL_EXTRA_MEMBER");
-        requiredResidualIncome += (familySize - 5) * extraPerMember;
+        requiredResidualIncome += (countableMembers - 5) * extraPerMember;
       }
 
-      // Implement Active-Duty Commissary Facility Discount
-      if (input.isActiveDuty && input.hasExchangeAccess) {
-        requiredResidualIncome = requiredResidualIncome * 0.95;
+      // "Reducing the Residual Income Figures" (26-7 Ch. 4, Topic 9, Item 43): reduce the
+      // table figure by 5% if the borrower is an active-duty OR retired serviceperson, OR
+      // there is a clear indication of continued military-facility benefits near the
+      // property. The conditions are DISJUNCTIVE per the handbook (a prior && gate
+      // under-applied the reduction); the retired-serviceperson / facility-benefits signal
+      // routes through hasExchangeAccess until intake carries a dedicated field.
+      if (input.isActiveDuty || input.hasExchangeAccess) {
+        requiredResidualIncome = requiredResidualIncome * VA_RESIDUAL_REDUCTION_FACTOR;
       }
 
       // Implement the 20% Cushion Rule for High DTI profiles

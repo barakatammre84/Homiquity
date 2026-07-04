@@ -187,9 +187,25 @@ export const VA_RESIDUAL_MATRIX: Record<VaRegion, Record<number, number>> = {
 };
 
 const VA_EXTRA_MEMBER_ADDITION = 80;
+/**
+ * The +$80/member addition applies only "up to a family of seven" — the
+ * handbook's own example (family of 8, Georgia, $150k) yields $1,199 and
+ * states "The eighth person will not be considered." (26-7 Ch. 4, Topic 9,
+ * Item 43, verified against the official text 2026-07-04.)
+ */
+export const VA_EXTRA_MEMBER_FAMILY_CAP = 7;
 export const VA_UTILITY_RATE_PER_SQFT = 0.14;
 export const VA_DTI_CUSHION_TRIGGER = 0.41;
 export const VA_CUSHION_MULTIPLIER = 1.2;
+/**
+ * "Reducing the Residual Income Figures" (26-7 Ch. 4, Topic 9, Item 43):
+ * reduce the table figure by 5% if the borrower is an active-duty OR retired
+ * serviceperson, OR there is a clear indication the borrower will receive the
+ * benefits of military-based facilities near the property (Guard/Reserve
+ * retirees, 100%-disabled Veterans and their family members, Medal of Honor
+ * recipients). The conditions are DISJUNCTIVE — any one qualifies.
+ */
+export const VA_RESIDUAL_REDUCTION_FACTOR = 0.95;
 
 const STATE_TO_VA_REGION: Record<string, VaRegion> = {
   CT: "northeast", MA: "northeast", ME: "northeast", NH: "northeast", NJ: "northeast",
@@ -212,21 +228,31 @@ export function vaResidualBaseline(region: VaRegion, familySize: number): number
   const table = VA_RESIDUAL_MATRIX[region];
   const clamped = Math.max(1, Math.round(familySize));
   if (clamped <= 5) return table[clamped];
-  return table[5] + (clamped - 5) * VA_EXTRA_MEMBER_ADDITION;
+  // Members beyond a family of seven are not considered (Ch. 4 Item 43).
+  const countable = Math.min(clamped, VA_EXTRA_MEMBER_FAMILY_CAP);
+  return table[5] + (countable - 5) * VA_EXTRA_MEMBER_ADDITION;
 }
 
 export interface VaResidualResult {
   residualIncome: number;
   baseline: number;
-  /** Baseline ×1.2 when DTI > 41%; equal to baseline otherwise. */
+  /** Baseline (×0.95 when the Item 43 reduction applies) ×1.2 when DTI > 41%. */
   requiredResidual: number;
   utilityDeduction: number;
   cushionApplied: boolean;
+  reductionApplied: boolean;
   passes: boolean;
 }
 
-/** Rough federal+FICA effective-tax estimate for residual purposes (~22%). */
-const RESIDUAL_TAX_RATE = 0.22;
+/**
+ * Platform ESTIMATION model, not a VA figure: 26-7 Ch. 4 Items 32–34 prescribe
+ * estimated Federal/state income tax and Social Security from IRS/state tax
+ * tables on the borrower's documented income. Until real income documents flow
+ * (F3 credit / F5 VOIE vendors), a fixed federal+FICA effective rate of ~22%
+ * stands in — the single shared constant for BOTH the reference module and the
+ * live engine (underwritingEngine.ts imports it; never fork this number).
+ */
+export const RESIDUAL_TAX_RATE = 0.22;
 
 export function computeVaResidualIncome(input: {
   grossMonthlyIncome: number;
@@ -236,6 +262,12 @@ export function computeVaResidualIncome(input: {
   state: string | null | undefined;
   familySize: number;
   dti: number;
+  /**
+   * Item 43 "Reducing the Residual Income Figures": true when the borrower is
+   * an active-duty or retired serviceperson, OR there is a clear indication of
+   * continued military-facility benefits near the property (disjunctive).
+   */
+  qualifiesForResidualReduction?: boolean;
 }): VaResidualResult {
   const utilityDeduction = input.homeSquareFeet * VA_UTILITY_RATE_PER_SQFT;
   const estimatedTaxes = input.grossMonthlyIncome * RESIDUAL_TAX_RATE;
@@ -244,8 +276,12 @@ export function computeVaResidualIncome(input: {
 
   const region = vaRegionForState(input.state);
   const baseline = vaResidualBaseline(region, input.familySize);
+  const reductionApplied = input.qualifiesForResidualReduction === true;
+  // The 5% reduction lowers the table figure itself; the >41%-DTI cushion then
+  // applies to that (possibly reduced) guideline figure.
+  const guideline = reductionApplied ? baseline * VA_RESIDUAL_REDUCTION_FACTOR : baseline;
   const cushionApplied = input.dti > VA_DTI_CUSHION_TRIGGER;
-  const requiredResidual = cushionApplied ? baseline * VA_CUSHION_MULTIPLIER : baseline;
+  const requiredResidual = cushionApplied ? guideline * VA_CUSHION_MULTIPLIER : guideline;
 
   return {
     residualIncome: Number(residualIncome.toFixed(2)),
@@ -253,6 +289,7 @@ export function computeVaResidualIncome(input: {
     requiredResidual: Number(requiredResidual.toFixed(2)),
     utilityDeduction: Number(utilityDeduction.toFixed(2)),
     cushionApplied,
+    reductionApplied,
     passes: residualIncome >= requiredResidual,
   };
 }

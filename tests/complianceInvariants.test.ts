@@ -101,6 +101,35 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
     const source = read("server/services/underwritingNuance.ts");
     expect(source).toMatch(/VA_UTILITY_RATE_PER_SQFT\s*=\s*0\.14/);
   });
+
+  // 2026-07-04 (roadmap #29): the live engine carried its own inline VA residual
+  // math (uncited 18% tax rate, &&-gated 5% reduction, uncapped family addition)
+  // that drifted from the cited reference module — and these citation checks only
+  // read underwritingNuance.ts, so the drift was invisible. The engine must now
+  // share the cited constants; duplicated regulated math is itself a violation.
+  it("the live engine shares the cited VA residual constants — no forked regulated math", () => {
+    const engine = read("server/underwritingEngine.ts");
+    expect(engine).toContain("RESIDUAL_TAX_RATE");
+    expect(engine).toContain("VA_RESIDUAL_REDUCTION_FACTOR");
+    expect(engine).toContain("VA_EXTRA_MEMBER_FAMILY_CAP");
+    // The retired inline literals must not reappear:
+    expect(engine).not.toMatch(/\*\s*0\.18\b/);
+    expect(engine).not.toMatch(/\*\s*0\.95\b/);
+  });
+
+  it("the VA residual reduction stays 5% and DISJUNCTIVE (26-7 Ch. 4, Topic 9, Item 43)", () => {
+    const source = read("server/services/underwritingNuance.ts");
+    expect(source).toMatch(/VA_RESIDUAL_REDUCTION_FACTOR\s*=\s*0\.95/);
+    const engine = read("server/underwritingEngine.ts");
+    expect(engine).toMatch(/input\.isActiveDuty\s*\|\|\s*input\.hasExchangeAccess/);
+  });
+
+  it("the extra-member addition caps at a family of seven (26-7 Ch. 4, Topic 9, Item 43)", () => {
+    const source = read("server/services/underwritingNuance.ts");
+    expect(source).toMatch(/VA_EXTRA_MEMBER_FAMILY_CAP\s*=\s*7/);
+    const engine = read("server/underwritingEngine.ts");
+    expect(engine).toContain("Math.min(familySize, VA_EXTRA_MEMBER_FAMILY_CAP)");
+  });
 });
 
 describe("Reg B: the intake decision path is fully deterministic", () => {
