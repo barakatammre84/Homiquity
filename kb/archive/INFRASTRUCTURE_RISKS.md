@@ -1,5 +1,14 @@
 # Infrastructure Readiness Report
 
+> **⛔ ARCHIVED 2026-07-04 — findings resolved or obsolete (Replit era). Do not act on this document.**
+> Verified against code 2026-07-04: Risk 1/2 are fixed — `server/services/encryptionService.ts`
+> now **refuses to start in production** without a dedicated `CREDIT_ENCRYPTION_KEY`, and SSNs
+> flow through `ssnVault.ts`; Risk 3's `server/replit_integrations/` path no longer exists
+> (auth is scrypt password auth in `server/auth.ts`); schema changes ship as versioned
+> migrations, not `db:push`. Current security posture: [threat_model.md](../../threat_model.md)
+> and [kb/app-guide/06-auth-security-secrets.md](../app-guide/06-auth-security-secrets.md).
+> Retained for history only.
+
 Generated: February 16, 2026
 Runtime: Node.js v20.20.0 | Express.js | PostgreSQL (Neon) | Replit Deployment
 
