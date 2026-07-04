@@ -1068,7 +1068,7 @@ export default function BorrowerFile() {
                           <div className="space-y-4">
                             {creditData.latestPull.isSimulated && (
                               <div
-                                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                                className="rounded-md border bg-warning-subtle px-3 py-2 text-xs font-medium text-warning-subtle-foreground"
                                 data-testid="badge-simulated-pull"
                               >
                                 Simulated credit data — no live bureau pull. Not for a binding decision.
