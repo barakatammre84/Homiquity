@@ -137,12 +137,11 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        // Precision skeleton: field-level loading pulse between the hairline
-        // and the canvas (var-driven so it follows the active canvas tokens)
-        // instead of a generic gray spinner.
+        // Precision skeleton: field-level loading pulse between ramp stops
+        // (frost -> paper) instead of a generic gray spinner.
         "skeleton-precision": {
-          "0%, 100%": { backgroundColor: "hsl(var(--border))" },
-          "50%": { backgroundColor: "hsl(var(--background))" },
+          "0%, 100%": { backgroundColor: "#D0DDF0" },
+          "50%": { backgroundColor: "#F2F6FC" },
         },
       },
       animation: {

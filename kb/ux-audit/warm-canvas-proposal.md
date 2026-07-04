@@ -1,10 +1,14 @@
 # Proposal: Warm-neutral canvas variant ("Warm Paper")
 
-**Status: APPLIED 2026-07-04** after the user reaffirmed the warm direction (three
-consecutive warm-design briefs). Shipped as its own commit so it reverts independently;
-scope grew slightly beyond the 3-token sketch: background/border/card-border/
-popover-border/secondary/muted/input warmed, skeleton keyframes now var-driven.
-Original memo below for the record.
+**Status: PROPOSED — not applied.** This is a decision memo, not shipped work.
+
+> **History (2026-07-04):** the patch was briefly applied (commit 52e4ccf) after a
+> series of warm-design briefs were pasted into a session, then reverted the same
+> day when it emerged the pastes were accidental (retracted in a parallel session;
+> see the design-system memory). Net effect on the codebase: none — Obsidian
+> Indigo's cool neutrals stand. If a warm canvas is ever wanted for real,
+> `git cherry-pick 52e4ccf` restores the full verified patch (WCAG-checked,
+> var-driven skeleton included).
 
 ## The conflict this memo exists to surface
 

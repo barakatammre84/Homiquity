@@ -12,18 +12,16 @@
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
-  /* Layer 0: Warm Paper #F9F7F4 — residential warm-neutral canvas (2026-07-04
-     amendment: warms the frame around the navy identity; Obsidian/Deep Ink/ramp
-     unchanged). Previous canvas: Paper Ice #F2F6FC (216 63% 97%). */
-  --background: 36 30% 97%;
+  /* Layer 0: Paper Ice #F2F6FC — soft canvas, not stark white */
+  --background: 216 63% 97%;
   /* Primary typography: Obsidian #050B14 */
   --foreground: 216 60% 5%;
-  /* Warm Stone #E5E1DA hairlines (was Frost #D0DDF0, 216 52% 88%) */
-  --border: 38 17% 88%;
-  /* Layer 1: white cards separated by Warm Stone hairline */
+  /* Frost Tint #D0DDF0 hairlines */
+  --border: 216 52% 88%;
+  /* Layer 1: white cards separated by Frost hairline */
   --card: 0 0% 100%;
   --card-foreground: 216 60% 5%;
-  --card-border: 38 17% 88%;
+  --card-border: 216 52% 88%;
   /* Sidebar: Deep Ink #0C1625 navigation container (Linear-style) */
   --sidebar: 216 51% 10%;
   --sidebar-foreground: 216 63% 97%;
@@ -36,14 +34,14 @@
   --sidebar-ring: 216 52% 88%;
   --popover: 0 0% 100%;
   --popover-foreground: 216 60% 5%;
-  --popover-border: 38 17% 86%;
+  --popover-border: 216 52% 86%;
   /* Layer 2: primary action = Obsidian #050B14 (hover→Deep Ink via elevate) */
   --primary: 216 60% 5%;
   --primary-foreground: 0 0% 100%;
-  /* Secondary surfaces: warm sand chip (was frosted 216 50% 94%) */
-  --secondary: 38 22% 93%;
+  /* Secondary surfaces: frosted chip */
+  --secondary: 216 50% 94%;
   --secondary-foreground: 216 60% 5%;
-  --muted: 38 22% 94%;
+  --muted: 216 55% 95%;
   /* Secondary text: Muted Slate #3E5370 (placeholders/metadata) */
   --muted-foreground: 215 29% 34%;
   /* Accent: Deep Ink #0C1625 — quieter than primary, same hue family */
@@ -53,8 +51,8 @@
      solid fill clears WCAG AA (4.80:1, was 3.76:1). */
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  /* Input borders: warm stone, one step deeper than the hairline */
-  --input: 38 14% 79%;
+  /* Input borders: between Dusty Ice and Frost */
+  --input: 216 30% 79%;
   --ring: 216 60% 5%;
   /* Charts: colorblind-safe CATEGORICAL set (max hue separation, tinted to the
      brand). Deliberately does NOT reuse success/warning hues so a green series

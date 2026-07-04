@@ -18,9 +18,8 @@ financial utility, not consumer neobank."
 **Value ramp** (`precision.*` in Tailwind, CSS vars in `index.css`):
 `950 #050B14` Obsidian (primary type & actions) · `900 #0C1625` Deep Ink
 (nav/sidebars) · `700 #1D2D44` Steel Blue · `500 #3E5370` Muted Slate (secondary
-text) · `300 #889DBE` Dusty Ice · `100 #D0DDF0` Frost Tint · `50 #F2F6FC` Paper Ice.
-Ramp stops 100/50 are identity accents only — since the 2026-07-04 Warm Paper
-amendment they are no longer the canvas/hairline surfaces (see Layers).
+text) · `300 #889DBE` Dusty Ice · `100 #D0DDF0` Frost Tint (hairlines) ·
+`50 #F2F6FC` Paper Ice (canvas).
 
 **Core principles**
 1. **Hierarchy through VALUE, not hue.** Depth comes from the monochromatic ramp.
@@ -30,12 +29,8 @@ amendment they are no longer the canvas/hairline surfaces (see Layers).
 ## Color system
 
 ### Layers
-- **Layer 0** `bg-background` — **Warm Paper #F9F7F4** canvas (warm-neutral,
-  2026-07-04 amendment: the navy identity stays, the frame around it warms —
-  "residential shelter, not clinical lab"). Secondary/muted chips follow in the
-  same sand family.
-- **Layer 1** — white cards + 1px **Warm Stone #E5E1DA** hairline
-  (`border-card-border`), **no default shadow**.
+- **Layer 0** `bg-background` — Paper Ice canvas (soft, not stark white).
+- **Layer 1** — white cards + 1px Frost hairline (`border-card-border`), **no default shadow**.
 - **Layer 2** — Obsidian primary actions (`bg-primary`), hover deepens via the elevate system.
 - **Sidebar** — Deep Ink dark nav container.
 
@@ -86,7 +81,7 @@ hues. For a single ordered metric, use the navy value ramp instead.
   to no shadow + hairline**; reach for shadow only for true overlays (popover/toast).
 - **Motion:** `transition-all duration-150 ease-in-out` on interactive atoms;
   the elevate system (`hover-elevate`/`active-elevate-2`) supplies hover/active
-  tints. Loading = `<Skeleton>` (`animate-skeleton-precision`, hairline→canvas via CSS vars), never spinners.
+  tints. Loading = `<Skeleton>` (`animate-skeleton-precision`, Frost→Paper), never spinners.
 
 ## Components (`components/ui/*`)
 - **Button** — variants `default, destructive, outline, secondary, ghost, link`;
