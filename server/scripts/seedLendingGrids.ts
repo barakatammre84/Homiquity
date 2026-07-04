@@ -34,16 +34,21 @@ export async function seed() {
 
   // ==========================================
   // SEED: Policy Scalars (Hardcoded values moved to database)
+  // Every scalar here is cited in kb/regulatory-ledger.json (roadmap #30) —
+  // agency-sourced values carry the Selling Guide/FHFA entry, deliberately
+  // conservative platform overlays carry a PLATFORM POLICY entry. Never change
+  // a value without updating its ledger entry; changes to regulated math route
+  // through the guardian/scenario lane.
   // ==========================================
   const scalarMap = [
-    { code: "CONVENTIONAL_DTI_CAP", value: 43.0, desc: "Baseline DTI ratio ceiling for standard approvals" },
-    { code: "CONVENTIONAL_STRETCH_DTI", value: 50.0, desc: "System hard stretch limit for manual/compensating underwriting" },
-    { code: "CONVENTIONAL_LTV_CAP", value: 95.0, desc: "Maximum allowable loan-to-value ceiling for conventional conforming loans" },
-    { code: "CONVENTIONAL_FICO_FLOOR", value: 620.0, desc: "Minimum representative credit score for conventional conforming eligibility" },
-    { code: "CONFORMING_LOAN_LIMIT", value: CONFORMING_LOAN_LIMIT_2026, desc: "FHFA conforming loan limit, one-unit baseline; loans above route to jumbo" },
+    { code: "CONVENTIONAL_DTI_CAP", value: 43.0, desc: "Baseline DTI ceiling for standard approvals — PLATFORM POLICY, conservative vs DU 50%/manual 45% (ledger: platform-conv-dti-cap-43)" },
+    { code: "CONVENTIONAL_STRETCH_DTI", value: 50.0, desc: "DU maximum DTI per Selling Guide B3-6-02 (ledger: fnma-b3-6-02-du-max-dti)" },
+    { code: "CONVENTIONAL_LTV_CAP", value: 95.0, desc: "Max LTV — PLATFORM POLICY; 95.01-97% programs deliberately not offered (ledger: platform-conv-ltv-cap-95)" },
+    { code: "CONVENTIONAL_FICO_FLOOR", value: 620.0, desc: "Minimum representative credit score, fixed-rate, per Selling Guide B3-5.1-01 (ledger: fnma-b3-5-1-01-min-credit-score)" },
+    { code: "CONFORMING_LOAN_LIMIT", value: CONFORMING_LOAN_LIMIT_2026, desc: "FHFA 2026 conforming loan limit, one-unit baseline; loans above route to jumbo (ledger: fhfa-conforming-loan-limit-2026)" },
     { code: "VA_RESIDUAL_EXTRA_MEMBER", value: 80.0, desc: "VA residual income addition per family member beyond 5 (Pamphlet 26-7 Table 4-2)" },
-    { code: "HAIRCUT_STOCK_INVESTMENT", value: 60.0, desc: "Liquid valuation haircut for general stock assets" },
-    { code: "HAIRCUT_RETIREMENT", value: 70.0, desc: "Volatile valuation haircut for retirement portfolios (counts at 70% value)" },
+    { code: "HAIRCUT_STOCK_INVESTMENT", value: 60.0, desc: "Stock asset haircut — PLATFORM POLICY overlay; Fannie B3-4.3-01 requires NO haircut (ledger: platform-haircut-stock-60)" },
+    { code: "HAIRCUT_RETIREMENT", value: 70.0, desc: "Retirement asset haircut — PLATFORM POLICY overlay, B3-4.3-03 mapping pending (ledger: platform-haircut-retirement-70)" },
   ];
 
   for (const s of scalarMap) {

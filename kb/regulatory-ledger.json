@@ -209,6 +209,138 @@
       "lastVerified": "2026-07-04",
       "reviewIntervalDays": 180,
       "notes": "Sources split on 2026-03-04 vs 03-05 as the exact effective day (180-day count from 2025-09-05) - immaterial, months past either way. Compliance posture is structural: all lead acquisition is first-party/organic, so HPPA binds us only if we ever start buying leads - re-check this entry before any paid-lead initiative. GAO report on text-based trigger-lead solicitations due 2026-09."
+    },
+    {
+      "id": "fnma-b3-6-02-du-max-dti",
+      "rule": "Maximum allowable DTI for DU-underwritten conventional loans",
+      "value": "50",
+      "citation": "Fannie Mae Selling Guide B3-6-02 (Debt-to-Income Ratios): 'For loan casefiles underwritten through DU, the maximum allowable DTI ratio is 50%.' Manual underwriting max is 36%, extendable to 45% with Eligibility Matrix credit/reserve requirements.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-6-02/debt-income-ratios",
+      "codeRef": "server/scripts/seedLendingGrids.ts CONVENTIONAL_STRETCH_DTI (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Verified against the live Selling Guide page 2026-07-04. Our scalar equals the DU ceiling exactly; any value change routes through the guardian/scenario lane."
+    },
+    {
+      "id": "platform-conv-dti-cap-43",
+      "rule": "Baseline DTI ceiling for standard conventional approvals (below-stretch lane)",
+      "value": "43",
+      "citation": "PLATFORM POLICY - deliberately conservative baseline. Not an agency figure: Selling Guide B3-6-02 (verified 2026-07-04) allows 50% via DU and 36/45% manual; the pre-2021 ATR/QM 43% appendix-Q threshold this echoes was replaced by the price-based General QM rule.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-6-02/debt-income-ratios",
+      "codeRef": "server/scripts/seedLendingGrids.ts CONVENTIONAL_DTI_CAP (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Conservative-only overlay: files between 43 and 50 DTI route to the stretch/compensating-factors lane rather than auto-pass, which can never approve something the guide would deny. Relaxing it is a business decision via the guardian/scenario lane."
+    },
+    {
+      "id": "fnma-b3-5-1-01-min-credit-score",
+      "rule": "Minimum representative credit score for conventional conforming eligibility",
+      "value": "620",
+      "citation": "Fannie Mae Selling Guide B3-5.1-01 (General Requirements, Credit Scores): minimum 620 for fixed-rate loans, 640 for ARMs, manually underwritten; DU casefiles have no fixed floor (DU assesses risk factors).",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-5.1-01/general-requirements-credit-scores",
+      "codeRef": "server/scripts/seedLendingGrids.ts CONVENTIONAL_FICO_FLOOR (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Verified against the live Selling Guide page 2026-07-04. Platform applies 620 across the board: exact match for fixed-rate; conservative for DU casefiles (which have no published floor). If ARM products are ever offered, the floor for ARMs is 640 - revisit then."
+    },
+    {
+      "id": "platform-conv-ltv-cap-95",
+      "rule": "Maximum LTV for conventional conforming loans",
+      "value": "95",
+      "citation": "PLATFORM POLICY - conservative overlay. Selling Guide B2-1.2-01 (verified 2026-07-04) defers numeric LTV maximums to the Eligibility Matrix; standard 1-unit principal-residence max is 95%, with 95.01-97% available only under specific programs the platform deliberately does not offer yet.",
+      "sourceUrl": "https://singlefamily.fanniemae.com/media/document/pdf/eligibility-matrix",
+      "codeRef": "server/scripts/seedLendingGrids.ts CONVENTIONAL_LTV_CAP (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Eligibility Matrix PDF is bot-protected (HTTP 403 on 2026-07-04) - the 95/97 split needs a HUMAN verification pass against the downloaded matrix; B2-1.2-01 page itself was fetched and confirms the matrix is the numeric authority. Offering 97% LTV products later is a business decision via the guardian/scenario lane."
+    },
+    {
+      "id": "platform-haircut-stock-60",
+      "rule": "Valuation haircut applied to stock/investment assets in pre-underwriting capacity checks",
+      "value": "60% of statement value",
+      "citation": "PLATFORM POLICY - strictly-conservative overlay. VERIFIED AGENCY BASELINE (B3-4.3-01, fetched 2026-07-04): Fannie requires NO percentage haircut - most-recent-statement value is used, and for reserves '100% of the value of the assets may be considered'.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-4.3-01/stocks-stock-options-bonds-and-mutual-funds",
+      "codeRef": "server/scripts/seedLendingGrids.ts HAIRCUT_STOCK_INVESTMENT (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Counting only 60% of the asset is stricter than the guide, so it can never approve a file the guide would deny - it CAN under-state buying power. Revisit with F3/F4 real asset verification: market-volatility haircuts are a legitimate platform risk choice but should be an explicit product decision, not an assumed agency rule."
+    },
+    {
+      "id": "platform-haircut-retirement-70",
+      "rule": "Valuation haircut applied to retirement assets in pre-underwriting capacity checks",
+      "value": "70% of statement value",
+      "citation": "PLATFORM POLICY - conservative overlay approximating access costs (penalties/taxes) on retirement funds. Formal mapping to Selling Guide B3-4.3-03 (retirement accounts) pending human verification.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-4.3-03/retirement-accounts",
+      "codeRef": "server/scripts/seedLendingGrids.ts HAIRCUT_RETIREMENT (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Same conservative-only property as platform-haircut-stock-60. Verify B3-4.3-03's current documentation/accessibility conditions on the next pass and decide whether the 70% overlay stays as product policy."
+    },
+    {
+      "id": "fhfa-conforming-loan-limit-2026",
+      "rule": "FHFA conforming loan limit, one-unit baseline (loans above route to jumbo)",
+      "value": "806500",
+      "citation": "FHFA 2026 conforming loan limit values, one-unit baseline (contiguous US). Documented inline in shared/lendingLimits.ts as the FHFA 2026 figure.",
+      "sourceUrl": "https://www.fhfa.gov/data/conforming-loan-limit-cll-values",
+      "codeRef": "shared/lendingLimits.ts CONFORMING_LOAN_LIMIT_2026; server/scripts/seedLendingGrids.ts CONFORMING_LOAN_LIMIT scalar; jumbo boundary BRC-J30 (min 806500.01)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "FHFA publishes new limits each November for the following year - the 2027 update is a seed + BRC-J30 boundary change, and prod/dev reseeds must move together (seedMarketPricing is skip-if-exists)."
+    },
+    {
+      "id": "platform-new-tradeline-window-90d",
+      "rule": "Window for flagging recently opened tradelines as sleeper debt in liability adjustment",
+      "value": "90 days",
+      "citation": "PLATFORM POLICY - conservative detection window. Selling Guide B3-6-05 requires ALL monthly debts including recently opened accounts in the DTI; it does not publish a fixed recency window. The 90-day flag window is the platform's own sleeper-debt detection heuristic (roadmap #32 resolution, 2026-07-04).",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-6-05/monthly-debt-obligations",
+      "codeRef": "server/services/underwritingNuance.ts NEW_TRADELINE_WINDOW_DAYS (adjustLiabilities)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "The flagged lines' payments are already included in adjustedMonthlyDebt either way - the window only controls the newTradelines advisory surface, so it is detection metadata, not a qualification rule. Same pattern as platform-reserves-2-months."
+    },
+    {
+      "id": "trid-le-3-business-days",
+      "rule": "Loan Estimate must be delivered or placed in the mail within 3 business days of receiving the application",
+      "value": "3 business days",
+      "citation": "12 CFR 1026.19(e)(1)(iii): 'delivered not later than three business days after the creditor receives the consumer's application' (verified live 2026-07-04)",
+      "sourceUrl": "https://www.law.cornell.edu/cfr/text/12/1026.19",
+      "codeRef": "server/services/trid.ts getTridStatus/evaluateTridTrigger + server/services/businessDays.ts addBusinessDays; hard stop tridHardStopError blocks status advancement past an overdue LE",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Overdue = end of the due calendar day without leIssuedDate. LO notified + deal activity recorded at trigger. Covered by tests/trid.test.ts."
+    },
+    {
+      "id": "trid-application-six-pieces",
+      "rule": "A TRID 'application' exists when the creditor has the six pieces of information: name, income, SSN, property address, estimated property value, loan amount sought",
+      "value": "6 items",
+      "citation": "12 CFR 1026.2(a)(3): 'the submission of the consumer's name, the consumer's income, the consumer's social security number to obtain a credit report, the property address, an estimate of the value of the property, and the mortgage loan amount sought' (verified live 2026-07-04)",
+      "sourceUrl": "https://www.law.cornell.edu/cfr/text/12/1026.2",
+      "codeRef": "server/services/trid.ts assessSixPieces (sole writer of loanApplications.tridTriggeredAt)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Name treated as satisfied at account creation (under-counting starts the clock late = violation; over-counting starts early = conservative). Loan amount derived from preApprovalAmount or purchasePrice minus downPayment."
+    },
+    {
+      "id": "trid-business-day-definition",
+      "rule": "Two-tier 'business day' definition: general (days the creditor's offices are open) for the LE-after-application clock; precise (all calendar days except Sundays and 5 USC 6103(a) federal holidays) for the enumerated waiting periods",
+      "value": "general vs precise per 1026.2(a)(6)",
+      "citation": "12 CFR 1026.2(a)(6), incl. the enumerated precise-definition sections (1026.19(e)(1)(iii)(B), (e)(4)(ii), (f)(1)(ii), rescission, etc.) (verified live 2026-07-04)",
+      "sourceUrl": "https://www.law.cornell.edu/cfr/text/12/1026.2",
+      "codeRef": "server/services/businessDays.ts (excludes Saturdays, Sundays, observed federal holidays for ALL counts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "PLATFORM CONVENTION: one calendar (Mon-Fri minus observed holidays) for both tiers. For the LE clock that reflects a brokerage not open Saturdays (general definition); for precise-definition waiting periods the reg COUNTS Saturdays, so excluding them delays earliest-consummation/receipt math — conservative in both directions, never permissive. 5 USC 6103(a) includes Juneteenth — VERIFIED present in businessDays.ts's holiday list (with Sat→Fri/Sun→Mon observance) 2026-07-04."
+    },
+    {
+      "id": "trid-waiting-periods",
+      "rule": "Consummation waiting periods: on/after the 7th business day after LE delivery/mailing; revised LE within 3 business days of changed-circumstance info and received no later than 4 business days before consummation; CD received no later than 3 business days before consummation",
+      "value": "7 / 3 / 4 / 3 business days",
+      "citation": "12 CFR 1026.19(e)(1)(iii)(B), (e)(4)(i), (e)(4)(ii), (f)(1)(ii) (verified live 2026-07-04: CFPB interactive reg + Cornell LII)",
+      "sourceUrl": "https://www.law.cornell.edu/cfr/text/12/1026.19",
+      "codeRef": "server/services/businessDays.ts (documented in header); scheduling NOT yet implemented",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Implementation deliberately deferred with triggers: revised-LE windows bind when changed-circumstance repricing ships; CD/consummation scheduling binds when closings are coordinated through the platform. Recorded so the freshness loop keeps the values verified before those features start."
     }
   ]
 }
