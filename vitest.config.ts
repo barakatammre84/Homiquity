@@ -11,6 +11,7 @@ export default defineConfig({
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
     include: [
+      "tests/accessControl.test.ts",
       "tests/encryptionRotation.test.ts",
       "tests/fairLendingAnalysis.test.ts",
       "tests/lookupResolver.test.ts",

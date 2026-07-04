@@ -19,7 +19,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { getPresenceColor } from "@/lib/formatters";
-import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
+import { isStaffRole, isInternalStaffRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
 import { useShellBadges } from "@/hooks/useShellBadges";
 import {
   LayoutDashboard,
@@ -137,6 +137,21 @@ const staffNavigation: NavSection[] = [
   },
 ];
 
+// External partners (broker, lender) get a partner-only nav — the internal
+// operations links (Task/Policy Operations, Pricing Matrices) don't apply to them.
+const partnerNavigation: NavSection[] = [
+  {
+    section: "Partner",
+    items: [
+      { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
+      { title: "Client Pipeline", href: "/agent-pipeline", icon: ClipboardList, testId: "link-agent-pipeline" },
+      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
+      { title: "Co-Branding", href: "/co-branding", icon: Palette, testId: "link-co-branding" },
+      { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
+    ],
+  },
+];
+
 const adminNavigation: NavSection[] = [
   {
     section: "Administration",
@@ -174,14 +189,17 @@ export function AppSidebar() {
 
   const userRole = user?.role || "";
   const isStaff = isStaffRole(userRole);
+  const isInternalStaff = isInternalStaffRole(userRole);
   const isAdmin = userRole === "admin";
   const isAspiringOwner = userRole === "aspiring_owner";
 
   const pendingTaskCount = isStaff ? 0 : badges.pendingTasks;
 
   let navigation: NavSection[];
-  if (isStaff) {
+  if (isInternalStaff) {
     navigation = staffNavigation;
+  } else if (isStaff) {
+    navigation = partnerNavigation;
   } else if (isAspiringOwner) {
     navigation = aspiringOwnerNavigation;
   } else {

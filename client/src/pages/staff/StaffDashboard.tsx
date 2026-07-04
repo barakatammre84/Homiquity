@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { StaffSignalsPanel } from "@/components/StaffSignalsPanel";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { isStaffRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
+import { isStaffRole, isInternalStaffRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
 import IntelligenceTab from "./IntelligenceTab";
 import type { Task, LoanApplication, User } from "@shared/schema";
 import {
@@ -365,7 +365,15 @@ export default function StaffDashboard() {
   const [complianceDetailApp, setComplianceDetailApp] = useState<string | null>(null);
 
   const isStaff = isStaffRole(user?.role || "");
+  // Internal staff (admin, lo, loa, processor, underwriter, closer) only — external
+  // partner roles (broker, lender) must NOT hit the platform-wide staff endpoints,
+  // which are gated to internal staff on the server.
+  const isInternalStaff = isInternalStaffRole(user?.role || "");
   const userRole = user?.role || "";
+  // Admins see every application platform-wide; every other internal-staff role is
+  // scoped to their deal-team files (see GET /api/staff/applications). Labels below
+  // are role-aware so the UI never implies broader visibility than the data allows.
+  const isAdmin = userRole === "admin";
   const ownerRole = userRole.toUpperCase();
 
   const [activeTab, setActiveTab] = useState(() => getRoleDefaultTab(userRole));
@@ -399,39 +407,39 @@ export default function StaffDashboard() {
   });
 
   const { data: applicationsData, isLoading: applicationsLoading } = useQuery<LoanApplication[]>({
-    queryKey: ["/api/admin/applications"],
-    enabled: !authLoading && !!user && isStaff,
+    queryKey: ["/api/staff/applications"],
+    enabled: !authLoading && !!user && isInternalStaff,
   });
 
   const { data: usersData } = useQuery<User[]>({
-    queryKey: ["/api/admin/users"],
-    enabled: !authLoading && !!user && isStaff,
+    queryKey: ["/api/staff/users"],
+    enabled: !authLoading && !!user && isInternalStaff,
   });
 
   const { data: queueTasks, isLoading: queueLoading } = useQuery<QueueTask[]>({
     queryKey: ["/api/task-engine/tasks/by-role", ownerRole],
-    enabled: !authLoading && !!user && isStaff && !!ownerRole,
+    enabled: !authLoading && !!user && isInternalStaff && !!ownerRole,
   });
 
   const { data: pipelineData, isLoading: pipelineLoading } = useQuery<QueueData>({
     queryKey: ["/api/pipeline/queue"],
-    enabled: !authLoading && !!user && isStaff,
+    enabled: !authLoading && !!user && isInternalStaff,
     refetchInterval: 30000,
   });
 
   const { data: complianceData } = useQuery<ComplianceData>({
     queryKey: ["/api/compliance/dashboard"],
-    enabled: !authLoading && !!user && isStaff,
+    enabled: !authLoading && !!user && isInternalStaff,
   });
 
   const { data: retentionReport, isLoading: retentionLoading, refetch: refetchRetention } = useQuery<RetentionReport>({
     queryKey: ["/api/credit/retention-report"],
-    enabled: !authLoading && !!user && isStaff,
+    enabled: !authLoading && !!user && isInternalStaff,
   });
 
   const { data: retentionPoliciesData } = useQuery<{ policies: Record<string, RetentionPolicy> }>({
     queryKey: ["/api/credit/retention-policies"],
-    enabled: !authLoading && !!user && isStaff,
+    enabled: !authLoading && !!user && isInternalStaff,
   });
 
   const createTaskMutation = useMutation({
@@ -555,6 +563,32 @@ export default function StaffDashboard() {
             <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
             <p className="text-muted-foreground">You do not have permission to access the staff dashboard.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // External partners (broker, lender) pass the page guard but the operations
+  // dashboard is internal-staff only. Brokers are routed to /broker-dashboard;
+  // lender is a deferred persona with no product surface yet — show a neutral
+  // partner landing instead of an empty internal shell.
+  if (!isInternalStaff) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Partner workspace</h2>
+            <p className="text-muted-foreground mb-6">
+              Your partner workspace is being set up. The operations dashboard is
+              reserved for internal staff.
+            </p>
+            {userRole === "broker" && (
+              <Button onClick={() => navigate("/broker-dashboard")} data-testid="button-go-broker-dashboard">
+                Go to Broker Dashboard
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1184,14 +1218,18 @@ export default function StaffDashboard() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>All Applications</CardTitle>
-                  <CardDescription>View borrower applications and assign tasks</CardDescription>
+                  <CardTitle>{isAdmin ? "All Applications" : "Team Applications"}</CardTitle>
+                  <CardDescription>
+                    {isAdmin
+                      ? "View every borrower application and assign tasks"
+                      : "View your deal-team applications and assign tasks"}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {applications.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <UserIcon className="mx-auto h-12 w-12 mb-4" />
-                      <p>No applications found</p>
+                      <p>{isAdmin ? "No applications found" : "No applications assigned to your team"}</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
