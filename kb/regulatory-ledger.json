@@ -275,6 +275,50 @@
       "lastVerified": "2026-07-04",
       "reviewIntervalDays": 180,
       "notes": "The flagged lines' payments are already included in adjustedMonthlyDebt either way - the window only controls the newTradelines advisory surface, so it is detection metadata, not a qualification rule. Same pattern as platform-reserves-2-months."
+    },
+    {
+      "id": "trid-le-3-business-days",
+      "rule": "Loan Estimate must be delivered or placed in the mail within 3 business days of receiving the application",
+      "value": "3 business days",
+      "citation": "12 CFR 1026.19(e)(1)(iii): 'delivered not later than three business days after the creditor receives the consumer's application' (verified live 2026-07-04)",
+      "sourceUrl": "https://www.law.cornell.edu/cfr/text/12/1026.19",
+      "codeRef": "server/services/trid.ts getTridStatus/evaluateTridTrigger + server/services/businessDays.ts addBusinessDays; hard stop tridHardStopError blocks status advancement past an overdue LE",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Overdue = end of the due calendar day without leIssuedDate. LO notified + deal activity recorded at trigger. Covered by tests/trid.test.ts."
+    },
+    {
+      "id": "trid-application-six-pieces",
+      "rule": "A TRID 'application' exists when the creditor has the six pieces of information: name, income, SSN, property address, estimated property value, loan amount sought",
+      "value": "6 items",
+      "citation": "12 CFR 1026.2(a)(3): 'the submission of the consumer's name, the consumer's income, the consumer's social security number to obtain a credit report, the property address, an estimate of the value of the property, and the mortgage loan amount sought' (verified live 2026-07-04)",
+      "sourceUrl": "https://www.law.cornell.edu/cfr/text/12/1026.2",
+      "codeRef": "server/services/trid.ts assessSixPieces (sole writer of loanApplications.tridTriggeredAt)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Name treated as satisfied at account creation (under-counting starts the clock late = violation; over-counting starts early = conservative). Loan amount derived from preApprovalAmount or purchasePrice minus downPayment."
+    },
+    {
+      "id": "trid-business-day-definition",
+      "rule": "Two-tier 'business day' definition: general (days the creditor's offices are open) for the LE-after-application clock; precise (all calendar days except Sundays and 5 USC 6103(a) federal holidays) for the enumerated waiting periods",
+      "value": "general vs precise per 1026.2(a)(6)",
+      "citation": "12 CFR 1026.2(a)(6), incl. the enumerated precise-definition sections (1026.19(e)(1)(iii)(B), (e)(4)(ii), (f)(1)(ii), rescission, etc.) (verified live 2026-07-04)",
+      "sourceUrl": "https://www.law.cornell.edu/cfr/text/12/1026.2",
+      "codeRef": "server/services/businessDays.ts (excludes Saturdays, Sundays, observed federal holidays for ALL counts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "PLATFORM CONVENTION: one calendar (Mon-Fri minus observed holidays) for both tiers. For the LE clock that reflects a brokerage not open Saturdays (general definition); for precise-definition waiting periods the reg COUNTS Saturdays, so excluding them delays earliest-consummation/receipt math — conservative in both directions, never permissive. 5 USC 6103(a) includes Juneteenth — VERIFIED present in businessDays.ts's holiday list (with Sat→Fri/Sun→Mon observance) 2026-07-04."
+    },
+    {
+      "id": "trid-waiting-periods",
+      "rule": "Consummation waiting periods: on/after the 7th business day after LE delivery/mailing; revised LE within 3 business days of changed-circumstance info and received no later than 4 business days before consummation; CD received no later than 3 business days before consummation",
+      "value": "7 / 3 / 4 / 3 business days",
+      "citation": "12 CFR 1026.19(e)(1)(iii)(B), (e)(4)(i), (e)(4)(ii), (f)(1)(ii) (verified live 2026-07-04: CFPB interactive reg + Cornell LII)",
+      "sourceUrl": "https://www.law.cornell.edu/cfr/text/12/1026.19",
+      "codeRef": "server/services/businessDays.ts (documented in header); scheduling NOT yet implemented",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Implementation deliberately deferred with triggers: revised-LE windows bind when changed-circumstance repricing ships; CD/consummation scheduling binds when closings are coordinated through the platform. Recorded so the freshness loop keeps the values verified before those features start."
     }
   ]
 }
