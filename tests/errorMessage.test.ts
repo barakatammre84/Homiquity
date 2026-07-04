@@ -48,4 +48,20 @@ describe("friendlyApiError", () => {
   it("accepts a plain string error", () => {
     expect(friendlyApiError("just a string")).toBe("just a string");
   });
+
+  // A 503 with our JSON envelope is a deliberate maintenance response
+  // (INTAKE_PAUSED kill switch) — its message is written for the borrower.
+  it("surfaces a deliberate 503 maintenance envelope", () => {
+    const err = new Error(
+      '503: {"error":"We\'re briefly paused for scheduled maintenance.","code":"INTAKE_PAUSED"}',
+    );
+    expect(friendlyApiError(err, "fallback")).toBe(
+      "We're briefly paused for scheduled maintenance.",
+    );
+  });
+
+  it("still hides a 503 without a JSON envelope (proxy/platform outage)", () => {
+    expect(friendlyApiError(new Error("503: Service Unavailable"), "fallback")).toBe("fallback");
+    expect(friendlyApiError(new Error("503: <html>gateway</html>"), "fallback")).toBe("fallback");
+  });
 });

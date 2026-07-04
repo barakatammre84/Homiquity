@@ -24,10 +24,16 @@ export function friendlyApiError(
   const body = (match ? match[2] : raw).trim();
 
   let message = body;
+  let fromEnvelope = false;
   try {
     const parsed = JSON.parse(body);
-    if (parsed && typeof parsed.error === "string") message = parsed.error;
-    else if (parsed && typeof parsed.message === "string") message = parsed.message;
+    if (parsed && typeof parsed.error === "string") {
+      message = parsed.error;
+      fromEnvelope = true;
+    } else if (parsed && typeof parsed.message === "string") {
+      message = parsed.message;
+      fromEnvelope = true;
+    }
   } catch {
     // Body wasn't JSON — treat it as a plain string message.
   }
@@ -38,8 +44,11 @@ export function friendlyApiError(
   if (!message || message.startsWith("<") || message === "[object Object]") {
     return fallback;
   }
-  // Server faults shouldn't leak internal detail to the borrower.
-  if (status !== undefined && status >= 500) return fallback;
+  // Server faults shouldn't leak internal detail to the borrower — except a
+  // 503 carrying our own JSON envelope, which is a deliberate maintenance
+  // response whose message is written for the borrower (e.g. INTAKE_PAUSED).
+  const deliberate503 = status === 503 && fromEnvelope;
+  if (status !== undefined && status >= 500 && !deliberate503) return fallback;
 
   return message;
 }

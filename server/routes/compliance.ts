@@ -5,6 +5,7 @@ import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
 import { z } from "zod";
 import * as creditService from "../services/creditService";
 import { encryptToken } from "../services/piiVault";
+import { sendNotificationEmail } from "../services/emailService";
 
 export function registerComplianceRoutes(
   app: Express,
@@ -885,6 +886,9 @@ export function registerComplianceRoutes(
       });
 
       // Notify the borrower so they can read the notice they're entitled to.
+      // The email uses the deliberately neutral template (it never states or
+      // characterizes the decision) and fires here so ECOA notice delivery
+      // never depends on staff separately flipping the application status.
       try {
         await storage.createNotification({
           userId: application.userId,
@@ -895,6 +899,14 @@ export function registerComplianceRoutes(
           entityId: req.params.id,
           status: "unread",
         });
+        const borrower = await storage.getUser(application.userId);
+        if (borrower?.email) {
+          sendNotificationEmail({
+            type: "application_denied",
+            recipientEmail: borrower.email,
+            data: { borrowerName: borrower.firstName || "Borrower" },
+          });
+        }
       } catch (notifyErr) {
         console.error("Adverse-action borrower notification failed (non-fatal):", notifyErr);
       }

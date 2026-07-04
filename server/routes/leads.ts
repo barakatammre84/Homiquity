@@ -4,6 +4,7 @@ import { requireRole } from "../auth";
 import { logAudit } from "../auditLog";
 import { z } from "zod";
 import type { InsertLead } from "@shared/schema";
+import { intakePausedGate } from "../services/maintenanceMode";
 
 // Which staff work leads: the sales funnel (admin + loan officers + assistants).
 // Processors/underwriters/closers act post-application, so they're excluded here.
@@ -60,7 +61,7 @@ const listQuerySchema = z.object({
 export function registerLeadRoutes(app: Express, storage: IStorage) {
   // Public, unauthenticated intake for landing pages and aggregator webhooks.
   // Rate-limited in app.ts (leadsLimiter).
-  app.post("/api/leads", async (req, res) => {
+  app.post("/api/leads", intakePausedGate, async (req, res) => {
     try {
       const parsed = leadIntakeSchema.safeParse(req.body);
       if (!parsed.success) {

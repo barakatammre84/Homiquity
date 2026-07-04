@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { storage } from "../storage";
 import { computeOffers, type BorrowerPricingProfile, type ComputedOffer } from "./pricingAdapter";
 import { advertisedAPR } from "./apr";
+import { isIntakePaused } from "./maintenanceMode";
 
 const RAPIDAPI_HOSTS = [
   "realty-in-us.p.rapidapi.com",
@@ -54,6 +55,12 @@ const LOAN_ID_TO_PROGRAM: Record<string, string> = {
 };
 
 export async function fetchLiveRatesFromApi(): Promise<ApiRate[] | null> {
+  // Kill switch: while intake is paused, no calls leave for pricing vendors —
+  // callers fall back to the simulated survey exactly as if no key were set.
+  if (isIntakePaused()) {
+    console.log("INTAKE_PAUSED set, skipping live rate vendor fetch");
+    return null;
+  }
   const apiKey = process.env.RAPIDAPI_KEY;
   if (!apiKey) {
     console.log("RAPIDAPI_KEY not set, skipping live rate fetch");
