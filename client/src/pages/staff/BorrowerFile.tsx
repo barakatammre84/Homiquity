@@ -55,7 +55,7 @@ import {
   Users,
 } from "lucide-react";
 import { format } from "date-fns";
-import { isStaffRole } from "@shared/roles";
+import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { LoanApplication, Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
 
@@ -209,7 +209,7 @@ export default function BorrowerFile() {
         const body = await res.json().catch(() => null);
         throw new Error(
           res.status === 403
-            ? "You must be an active deal-team member on this application to export it."
+            ? "MISMO export is restricted to internal staff with access to this application."
             : body?.error || "Failed to generate the MISMO file.",
         );
       }
@@ -407,16 +407,20 @@ export default function BorrowerFile() {
               {flag.code.replace(/_/g, " ")}
             </Badge>
           ))}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportMismo}
-            disabled={exportingMismo}
-            data-testid="button-export-mismo"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            {exportingMismo ? "Exporting…" : "Export MISMO"}
-          </Button>
+          {/* GSE delivery is internal-staff-only; the server route rejects
+              broker/lender, so don't offer them a button that can only 403. */}
+          {isInternalStaffRole(user?.role || "") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportMismo}
+              disabled={exportingMismo}
+              data-testid="button-export-mismo"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {exportingMismo ? "Exporting…" : "Export MISMO"}
+            </Button>
+          )}
           <Button size="sm" data-testid="button-generate-le">
             <FileText className="mr-2 h-4 w-4" />
             Generate LE

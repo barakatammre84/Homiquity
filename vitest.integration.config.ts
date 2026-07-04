@@ -18,6 +18,7 @@ export default defineConfig({
       "tests/leads.test.ts",
       "tests/lookupMatrixCoverageGap.test.ts",
       "tests/lookupMatrixLifecycle.test.ts",
+      "tests/mismoExportAccess.test.ts",
       "tests/pricingUnderwriting.test.ts",
     ],
   },
