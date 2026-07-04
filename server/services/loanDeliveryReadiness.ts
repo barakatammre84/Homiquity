@@ -22,6 +22,7 @@ import {
   type LenderCreditsItem,
   type EscrowItemEntry,
   type PrepaidItemEntry,
+  type FeeItemEntry,
 } from "@shared/fannieMae/loanDeliveryEdits";
 import {
   deriveSpecialFeatureCodes,
@@ -85,15 +86,35 @@ function computeOriginalLoanAmount(application: LoanApplication, delivery: LoanD
  * application fields that already carry the same facts. Fields with no stored
  * source stay undefined so the engine reports them honestly.
  */
+export interface DeliveryDatasetContext {
+  /** Count of mortgaged REO properties (excluding the subject), when known. */
+  mortgagedReoCount?: number;
+  /** URLA occupancy type (urla_property_info.occupancy_type), when loaded. */
+  occupancyType?: string | null;
+}
+
+function mapPropertyUsage(occupancy: string | null | undefined): string | undefined {
+  const mapping: Record<string, string> = {
+    primary_residence: "PrimaryResidence",
+    primary: "PrimaryResidence",
+    second_home: "SecondHome",
+    secondary: "SecondHome",
+    investment: "Investment",
+    investment_property: "Investment",
+  };
+  return mapping[occupancy?.toLowerCase() || ""];
+}
+
 export function buildDeliveryDataset(
   application: LoanApplication,
   delivery: LoanDeliveryData | undefined,
   combinedSfcs: string[],
+  context: DeliveryDatasetContext = {},
 ): LoanDeliveryDataset {
   const isArm = (application.amortizationType || "").toLowerCase() === "adjustable";
+  const propertyType = (application.propertyType || "").toLowerCase();
   const manufactured =
-    delivery?.manufacturedHome ??
-    ((application.propertyType || "").toLowerCase().includes("manufactured") || undefined);
+    delivery?.manufacturedHome ?? (propertyType.includes("manufactured") || undefined);
 
   return {
     noteDate: delivery?.noteDate ?? undefined,
@@ -126,6 +147,28 @@ export function buildDeliveryDataset(
     lenderCredits: delivery ? ((delivery.lenderCredits as LenderCreditsItem | null) ?? null) : undefined,
     escrowItems: delivery ? ((delivery.escrowItems as EscrowItemEntry[] | null) ?? []) : undefined,
     prepaidItems: delivery ? ((delivery.prepaidItems as PrepaidItemEntry[] | null) ?? []) : undefined,
+    fees: delivery?.fees !== undefined && delivery?.fees !== null
+      ? (delivery.fees as FeeItemEntry[])
+      : undefined,
+
+    projectClassificationIdentifier: delivery?.projectClassificationIdentifier ?? undefined,
+    applicationReceivedDate:
+      delivery?.applicationReceivedDate
+      ?? (application.tridTriggeredAt
+        ? new Date(application.tridTriggeredAt as unknown as string).toISOString().slice(0, 10)
+        : undefined),
+    isCondominium: propertyType.includes("condo") || undefined,
+    isCooperative: propertyType.includes("co-op") || propertyType.includes("coop") || undefined,
+    hasMortgageInsurance: delivery?.hasMortgageInsurance ?? undefined,
+    subordinateFinancingExists: delivery?.subordinateFinancingExists ?? undefined,
+    propertyUsageType: delivery?.propertyUsageType ?? mapPropertyUsage(context.occupancyType),
+    // Mortgaged-property count = subject (1) + REO properties carrying a
+    // mortgage. Only computed when REO data was loaded; a staff-entered
+    // value on the delivery row wins.
+    financedPropertiesCount:
+      delivery?.financedPropertiesCount
+      ?? (context.mortgagedReoCount !== undefined ? context.mortgagedReoCount + 1 : undefined),
+    purchasePriceAmount: num(application.purchasePrice) ?? undefined,
 
     mortgageFunderFullName: delivery?.mortgageFunderFullName ?? undefined,
     specialFeatureCodes: combinedSfcs,
@@ -170,8 +213,18 @@ export async function evaluateDeliveryReadiness(applicationId: string): Promise<
   const combined = Array.from(new Set([...derived.map(d => d.code), ...manual])).sort();
   const sfcValidation = validateSfcSet(combined);
 
-  // 3. Loan Delivery / UCD / EarlyCheck edits.
-  const dataset = buildDeliveryDataset(application, delivery, combined);
+  // 3. Loan Delivery / UCD / EarlyCheck edits. REO rows feed the
+  // mortgaged-property count (edit 6439); URLA property info feeds the
+  // occupancy-based usage type (edits 6159/6439).
+  const [reo, propertyInfo] = await Promise.all([
+    storage.getRealEstateOwnedByApplication(applicationId),
+    storage.getUrlaPropertyInfo(applicationId),
+  ]);
+  const mortgagedReoCount = reo.filter(p => Number(p.mortgageBalance || 0) > 0).length;
+  const dataset = buildDeliveryDataset(application, delivery, combined, {
+    mortgagedReoCount,
+    occupancyType: propertyInfo?.occupancyType ?? null,
+  });
   const edits = evaluateLoanDeliveryEdits(dataset);
 
   const deliveryDataCaptured = !!delivery;

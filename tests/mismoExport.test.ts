@@ -131,3 +131,44 @@ describe("dangling xlink relationships removed (Fix 7)", () => {
     expect(xml).not.toContain("RelationshipType");
   });
 });
+
+// ---------------------------------------------------------------------------
+// ULDD delivery shape (Implementation Guide for Loan Delivery Data):
+//   - Table 5: the subject loan is delivered as AtClosing + Current LOAN
+//     containers, each stamped with LOAN_STATE.
+//   - Table 4: Fannie Mae does not support the ASSET container in delivery
+//     files, so purpose:"loanDelivery" omits it.
+// ---------------------------------------------------------------------------
+describe("loan-delivery purpose (ULDD Implementation Guide)", () => {
+  const dtoWithAssets = () =>
+    baseDto({ assets: [{ accountType: "checking", cashOrMarketValue: "5000" } as any] });
+
+  it("emits AtClosing and Current LOAN containers with LOAN_STATE", () => {
+    const xml = generateMISMO34XML(dtoWithAssets(), {
+      purpose: "loanDelivery",
+      noteDate: "2026-03-15",
+    });
+    expect(xml).toContain("<LoanStateType>AtClosing</LoanStateType>");
+    expect(xml).toContain("<LoanStateDate>2026-03-15</LoanStateDate>");
+    expect(xml).toContain("<LoanStateType>Current</LoanStateType>");
+    expect((xml.match(/<LOAN>/g) || []).length).toBe(2);
+  });
+
+  it("omits the unsupported ASSET container for delivery files", () => {
+    const xml = generateMISMO34XML(dtoWithAssets(), { purpose: "loanDelivery" });
+    expect(xml).not.toContain("<ASSETS>");
+  });
+
+  it("omits the AtClosing LoanStateDate when the note date is unknown", () => {
+    const xml = generateMISMO34XML(dtoWithAssets(), { purpose: "loanDelivery" });
+    const atClosing = xml.slice(0, xml.indexOf("<LoanStateType>Current</LoanStateType>"));
+    expect(atClosing).toContain("<LoanStateType>AtClosing</LoanStateType>");
+  });
+
+  it("default (underwriting) output keeps the single-LOAN shape with assets", () => {
+    const xml = generateMISMO34XML(dtoWithAssets());
+    expect(xml).toContain("<ASSETS>");
+    expect(xml).not.toContain("LOAN_STATE");
+    expect((xml.match(/<LOAN>/g) || []).length).toBe(1);
+  });
+});

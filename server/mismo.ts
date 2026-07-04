@@ -559,9 +559,31 @@ function buildPartyNode(dto: MISMOLoanDTO): XMLNode {
   return { tag: "PARTY", children: partyChildren };
 }
 
-function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string): XMLNode {
+/**
+ * Loan-state stamp for a LOAN container. Per the ULDD Implementation Guide
+ * (Table 5, Subject Loan State), a loan delivery file carries the subject
+ * loan as multiple LOAN containers: AtClosing (LoanStateDate = note date)
+ * and Current (LoanStateDate = extraction date) — plus AtModification for
+ * modified loans, which we do not originate.
+ */
+export interface LoanStateStamp {
+  loanStateType: "AtClosing" | "Current" | "AtModification";
+  /** YYYY-MM-DD; omitted when the date is not yet known. */
+  loanStateDate?: string;
+}
+
+function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string, loanState?: LoanStateStamp): XMLNode {
   const { application, loanOptions } = dto;
   const loanChildren: XMLNode[] = [];
+
+  if (loanState) {
+    const stateChildren: XMLNode[] = [];
+    if (loanState.loanStateDate) {
+      stateChildren.push({ tag: "LoanStateDate", text: loanState.loanStateDate });
+    }
+    stateChildren.push({ tag: "LoanStateType", text: loanState.loanStateType });
+    loanChildren.push({ tag: "LOAN_STATE", children: stateChildren });
+  }
 
   const loanIdentifiers: XMLNode[] = [
     {
@@ -910,6 +932,17 @@ export interface MISMOGenerationOptions {
   includeAboutVersions?: boolean;
   mersOrgId?: string;
   generateMersMin?: boolean;
+  /**
+   * "loanDelivery" produces the ULDD delivery shape per the ULDD
+   * Implementation Guide: the subject loan is emitted as AtClosing + Current
+   * LOAN containers (Table 5), and the ASSET container is omitted because
+   * Fannie Mae does not support it in delivery files (Table 4). The default
+   * ("underwriting") keeps the single-LOAN shape with assets for AUS-style
+   * consumers.
+   */
+  purpose?: "underwriting" | "loanDelivery";
+  /** Note date (YYYY-MM-DD) for the AtClosing loan state, when known. */
+  noteDate?: string;
 }
 
 export function generateMISMO34XML(
@@ -920,6 +953,8 @@ export function generateMISMO34XML(
     includeAboutVersions = true,
     mersOrgId = COMPANY_CONFIG.mersOrgId,
     generateMersMin = true,
+    purpose = "underwriting",
+    noteDate,
   } = options;
 
   let mersMin: string | undefined;
@@ -941,19 +976,40 @@ export function generateMISMO34XML(
     dealChildren.push(collateralNode);
   }
 
-  dealChildren.push({
-    tag: "LOANS",
-    children: [buildLoanNode(dto, mersMin)],
-  });
+  if (purpose === "loanDelivery") {
+    // ULDD Implementation Guide Table 5: every subject loan is delivered
+    // with an AtClosing LOAN container (LoanStateDate = note date) and a
+    // Current LOAN container (LoanStateDate = data-extraction date).
+    dealChildren.push({
+      tag: "LOANS",
+      children: [
+        buildLoanNode(dto, mersMin, { loanStateType: "AtClosing", loanStateDate: noteDate }),
+        buildLoanNode(dto, mersMin, {
+          loanStateType: "Current",
+          loanStateDate: new Date().toISOString().slice(0, 10),
+        }),
+      ],
+    });
+  } else {
+    dealChildren.push({
+      tag: "LOANS",
+      children: [buildLoanNode(dto, mersMin)],
+    });
+  }
 
   dealChildren.push({
     tag: "PARTIES",
     children: [buildPartyNode(dto)],
   });
 
-  const assetsNode = buildAssetsNode(dto);
-  if (assetsNode) {
-    dealChildren.push(assetsNode);
+  // The ULDD Implementation Guide (Table 4) states Fannie Mae does not
+  // support the ASSET container in delivery files — it is emitted only for
+  // underwriting-style consumers.
+  if (purpose !== "loanDelivery") {
+    const assetsNode = buildAssetsNode(dto);
+    if (assetsNode) {
+      dealChildren.push(assetsNode);
+    }
   }
 
   const liabilitiesNode = buildLiabilitiesNode(dto);

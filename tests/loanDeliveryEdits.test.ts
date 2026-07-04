@@ -55,6 +55,9 @@ function cleanDataset(overrides: Partial<LoanDeliveryDataset> = {}): LoanDeliver
     ],
     mortgageFunderFullName: "Homiquity Lending LLC",
     specialFeatureCodes: ["127"],
+    // EarlyCheck edit 89: project classification is required for conventional
+    // loans; "G" = not in a project.
+    projectClassificationIdentifier: "G",
     ...overrides,
   };
 }
@@ -359,6 +362,177 @@ describe("honest gating for uncaptured containers", () => {
     expect(fatalSet).not.toContain("3603");
     expect(fatalSet).not.toContain("3587");
     expect(result.notEvaluated.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("UCD Phase 3: general fee containers (Guide Fees / Taxes job aids)", () => {
+  it("reports fees as notEvaluated when never captured", () => {
+    const result = evaluateLoanDeliveryEdits(cleanDataset({ fees: undefined }));
+    expect(result.notEvaluated.some(n => n.editId === "P3-FEES")).toBe(true);
+  });
+
+  it("3561: section type required for every fee", () => {
+    const ids = fatalIds(cleanDataset({
+      fees: [{ feeType: "ApplicationFee", actualPaymentAmount: 300, feePaidToType: "Lender", feePaymentPaidByType: "Buyer" }],
+    }));
+    expect(ids).toContain("3561");
+  });
+
+  it("P3-FEE-COMPONENTS: incomplete FEE containers are fatal", () => {
+    const ids = fatalIds(cleanDataset({
+      fees: [{ feeType: "ApplicationFee", integratedDisclosureSectionType: "OriginationCharges" }],
+    }));
+    expect(ids).toContain("P3-FEE-COMPONENTS");
+  });
+
+  it("fee-type-vs-section: fatal in A and E, warning in B/C/H", () => {
+    // RecordingFeeForDeed is an E-section type — invalid in section A.
+    const inA = evaluateLoanDeliveryEdits(cleanDataset({
+      fees: [{ feeType: "HomeWarrantyFee", integratedDisclosureSectionType: "OriginationCharges", actualPaymentAmount: 100, feePaidToType: "Lender", feePaymentPaidByType: "Buyer" }],
+    }));
+    expect(inA.fatal.some(f => f.editId === "P3-FEETYPE-A")).toBe(true);
+
+    const inE = fatalIds(cleanDataset({
+      fees: [{ feeType: "ApplicationFee", integratedDisclosureSectionType: "TaxesAndOtherGovernmentFees", actualPaymentAmount: 100, feePaidToType: "Lender", feePaymentPaidByType: "Buyer" }],
+    }));
+    expect(inE).toContain("3590");
+
+    const inB = evaluateLoanDeliveryEdits(cleanDataset({
+      fees: [{ feeType: "RealEstateCommissionBuyersBroker", integratedDisclosureSectionType: "ServicesBorrowerDidNotShopFor", actualPaymentAmount: 100, feePaidToType: "Broker", feePaymentPaidByType: "Buyer" }],
+    }));
+    expect(inB.warnings.some(w => w.editId === "P3-FEETYPE-SECTION")).toBe(true);
+    expect(inB.fatal.some(f => f.editId === "P3-FEETYPE-SECTION")).toBe(false);
+  });
+
+  it("3568: deed/mortgage recording fees require Fee Actual Total Amount", () => {
+    const ids = fatalIds(cleanDataset({
+      fees: [{ feeType: "RecordingFeeForDeed", integratedDisclosureSectionType: "TaxesAndOtherGovernmentFees" }],
+    }));
+    expect(ids).toContain("3568");
+  });
+
+  it("3605: RecordingFeeTotal required when itemized recording fees are non-zero", () => {
+    const ids = fatalIds(cleanDataset({
+      fees: [{ feeType: "RecordingFeeForDeed", integratedDisclosureSectionType: "TaxesAndOtherGovernmentFees", actualTotalAmount: 40 }],
+    }));
+    expect(ids).toContain("3605");
+
+    const ok = fatalIds(cleanDataset({
+      fees: [
+        { feeType: "RecordingFeeForDeed", integratedDisclosureSectionType: "TaxesAndOtherGovernmentFees", actualTotalAmount: 40 },
+        { feeType: "RecordingFeeTotal", integratedDisclosureSectionType: "TaxesAndOtherGovernmentFees", actualPaymentAmount: 40, feePaymentPaidByType: "Buyer" },
+      ],
+    }));
+    expect(ok).not.toContain("3605");
+  });
+
+  it("3574: E-section fees other than deed/mortgage recording require the payment amount", () => {
+    const ids = fatalIds(cleanDataset({
+      fees: [{ feeType: "RecordingFeeTotal", integratedDisclosureSectionType: "TaxesAndOtherGovernmentFees", feePaymentPaidByType: "Buyer" }],
+    }));
+    expect(ids).toContain("3574");
+  });
+
+  it("3606/3607/3609 are warnings", () => {
+    const result = evaluateLoanDeliveryEdits(cleanDataset({
+      fees: [
+        // Non-recording fee carrying FeeActualTotalAmount in section E → 3606.
+        { feeType: "TransferTaxTotal", integratedDisclosureSectionType: "TaxesAndOtherGovernmentFees", actualTotalAmount: 100, actualPaymentAmount: 100, feePaidToType: "Investor", feePaymentPaidByType: "Buyer" },
+        // RecordingFeeTotal outside section E → 3607.
+        { feeType: "RecordingFeeTotal", integratedDisclosureSectionType: "OriginationCharges", actualPaymentAmount: 40, feePaymentPaidByType: "Buyer" },
+        // Second RecordingFeeTotal → 3609.
+        { feeType: "RecordingFeeTotal", integratedDisclosureSectionType: "TaxesAndOtherGovernmentFees", actualPaymentAmount: 40, feePaymentPaidByType: "Buyer" },
+      ],
+    }));
+    const warnIds = result.warnings.map(w => w.editId);
+    expect(warnIds).toContain("3606");
+    expect(warnIds).toContain("3607");
+    expect(warnIds).toContain("3609");
+  });
+});
+
+describe("UCD enumeration validation for escrow and prepaid item types", () => {
+  it("3638: escrow item type must be a UCD-supported enumeration", () => {
+    const ids = fatalIds(cleanDataset({
+      escrowItems: [{
+        escrowItemType: "NotARealEscrowType",
+        escrowMonthlyPaymentAmount: 100,
+        escrowItemActualPaymentAmount: 300,
+        feePaidToType: "InsuranceCompany",
+      }],
+    }));
+    expect(ids).toContain("3638");
+  });
+
+  it("3627: prepaid item type must be a UCD-supported enumeration", () => {
+    const ids = fatalIds(cleanDataset({
+      prepaidItems: [
+        { prepaidItemType: "PrepaidInterest", prepaidItemActualPaymentAmount: 850, feePaidToType: "Lender" },
+        { prepaidItemType: "NotARealPrepaidType", prepaidItemActualPaymentAmount: 100, feePaidToType: "Lender" },
+      ],
+    }));
+    expect(ids).toContain("3627");
+  });
+});
+
+describe("EarlyCheck origination-file edits", () => {
+  it("89: conventional loans require a project classification", () => {
+    expect(fatalIds(cleanDataset({ projectClassificationIdentifier: undefined }))).toContain("89");
+    expect(fatalIds(cleanDataset())).not.toContain("89"); // "G" provided
+  });
+
+  it("1210: project classification must be a valid SID 42 value", () => {
+    expect(fatalIds(cleanDataset({ projectClassificationIdentifier: "Z" }))).toContain("1210");
+  });
+
+  it("1210: value Q is only valid for applications received before 2026-08-03", () => {
+    const before = fatalIds(cleanDataset({
+      projectClassificationIdentifier: "Q",
+      applicationReceivedDate: "2026-08-02",
+    }));
+    expect(before).not.toContain("1210");
+    const onOrAfter = fatalIds(cleanDataset({
+      projectClassificationIdentifier: "Q",
+      applicationReceivedDate: "2026-08-03",
+    }));
+    expect(onOrAfter).toContain("1210");
+  });
+
+  it("92: FHA condominiums must use project classification U", () => {
+    const ids = fatalIds(cleanDataset({
+      mortgageType: "FHA",
+      isCondominium: true,
+      projectClassificationIdentifier: "T",
+    }));
+    expect(ids).toContain("92");
+    const ok = fatalIds(cleanDataset({
+      mortgageType: "FHA",
+      isCondominium: true,
+      projectClassificationIdentifier: "U",
+    }));
+    expect(ok).not.toContain("92");
+  });
+
+  it("1829: no mortgage insurer on FHA/VA/RD loans", () => {
+    expect(fatalIds(cleanDataset({ mortgageType: "VA", hasMortgageInsurance: true }))).toContain("1829");
+    expect(fatalIds(cleanDataset({ hasMortgageInsurance: true }))).not.toContain("1829"); // conventional
+  });
+
+  it("6095: no purchase price on second-lien mortgages", () => {
+    const ids = fatalIds(cleanDataset({ lienPriorityType: "SecondLien", purchasePriceAmount: 500_000 }));
+    expect(ids).toContain("6095");
+  });
+
+  it("6158/6159: cooperative restrictions", () => {
+    expect(fatalIds(cleanDataset({ isCooperative: true, subordinateFinancingExists: true }))).toContain("6158");
+    expect(fatalIds(cleanDataset({ isCooperative: true, propertyUsageType: "Investment" }))).toContain("6159");
+  });
+
+  it("6439: at most six mortgaged properties for second home / investment loans", () => {
+    expect(fatalIds(cleanDataset({ propertyUsageType: "Investment", financedPropertiesCount: 7 }))).toContain("6439");
+    expect(fatalIds(cleanDataset({ propertyUsageType: "Investment", financedPropertiesCount: 6 }))).not.toContain("6439");
+    // Primary residences are not subject to the six-property limit edit.
+    expect(fatalIds(cleanDataset({ propertyUsageType: "PrimaryResidence", financedPropertiesCount: 9 }))).not.toContain("6439");
   });
 });
 

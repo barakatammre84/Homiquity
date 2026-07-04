@@ -13,8 +13,18 @@
  *  - "UCD Phase 3 Critical Edits Job Aid -Prepaids.pdf" (3587/3594/3596/
  *    3627/3629).
  *  - "UCDPhase 4 Job Aid LPQIRP April 2026.pdf" (3674/4675).
- *  - attached_assets EarlyCheck ULAD Edit Changes workbook, "MISMO 3.4" tab
- *    (144/1700 — Mortgage Funder Full Name).
+ *  - "UCD Joint GSE Job Aid Guide Fees updated 09-06-23.pdf" (general FEE
+ *    container completeness; fee-type-vs-section enforcement — fatal for
+ *    sections A and E, warning for B/C/H; enumerations in
+ *    ucdFeeEnumerations.ts).
+ *  - "UCD Job Aid Taxes and Other Government Fees updated 09-06-23.pdf"
+ *    (recording fee edits 3561/3568/3574/3590/3605/3606/3607/3609).
+ *  - "EarlyCheck ULAD Edit Changes 06-30-20.xlsx": "MISMO 3.4" tab (144/1700
+ *    — Mortgage Funder Full Name) and "Origination Files" tab
+ *    (89/92/1210/1829/6095/6158/6159/6439). Project classification valid
+ *    values (E F G P Q R S T U V 1 2) per the ULDD Phase 5 (5.2.0) release
+ *    notes, SID 42 — including "Q only for Application Received Date prior
+ *    to August 3, 2026".
  *
  * This is a deterministic mirror, not the authority: Fannie Mae's systems run
  * hundreds more edits. Anything we cannot evaluate from local data is
@@ -31,6 +41,13 @@ import {
   resolveQmThresholds,
 } from "./qmThresholds";
 import { validateSfcSet } from "./specialFeatureCodes";
+import {
+  isFeeTypeValidForSection,
+  isPrepaidItemTypeValid,
+  isEscrowItemTypeValid,
+  FATAL_FEE_TYPE_SECTIONS,
+  type IntegratedDisclosureSection,
+} from "./ucdFeeEnumerations";
 
 // ---------------------------------------------------------------------------
 // Dataset — what the engine evaluates
@@ -69,6 +86,20 @@ export interface PrepaidItemEntry {
   prepaidItemPaidByType?: string | null;
   feePaidToType?: string | null;
   feePaidToTypeOtherDescription?: string | null;
+}
+
+/** A general FEE container (CD sections A/B/C/E/H). */
+export interface FeeItemEntry {
+  feeType?: string | null;
+  feeTypeOtherDescription?: string | null;
+  integratedDisclosureSectionType?: IntegratedDisclosureSection | string | null;
+  feePaidToType?: string | null;
+  feePaidToTypeOtherDescription?: string | null;
+  /** FeeActualPaymentAmount — required for all fees except deed/mortgage recording fees. */
+  actualPaymentAmount?: number | null;
+  /** FeeActualTotalAmount — used ONLY by RecordingFeeForDeed / RecordingFeeForMortgage. */
+  actualTotalAmount?: number | null;
+  feePaymentPaidByType?: string | null;
 }
 
 /**
@@ -114,6 +145,23 @@ export interface LoanDeliveryDataset {
   lenderCredits?: LenderCreditsItem | null;
   escrowItems?: EscrowItemEntry[];
   prepaidItems?: PrepaidItemEntry[];
+  /** General closing-cost FEE containers (sections A/B/C/E/H). */
+  fees?: FeeItemEntry[];
+
+  // --- Property / project (EarlyCheck origination edits) ---
+  /** ULDD SID 42 Project Classification Identifier (E F G P Q R S T U V 1 2). */
+  projectClassificationIdentifier?: string | null;
+  /** ISO date; SID 42 value "Q" only for applications received before 2026-08-03. */
+  applicationReceivedDate?: string | null;
+  isCondominium?: boolean;
+  isCooperative?: boolean;
+  hasMortgageInsurance?: boolean;
+  subordinateFinancingExists?: boolean;
+  /** MISMO PropertyUsageType: PrimaryResidence | SecondHome | Investment. */
+  propertyUsageType?: string | null;
+  /** Count of mortgaged properties including the subject. */
+  financedPropertiesCount?: number | null;
+  purchasePriceAmount?: number | null;
 
   // --- Investor (EarlyCheck MISMO 3.4 tab) ---
   mortgageFunderFullName?: string | null;
@@ -403,6 +451,8 @@ export function evaluateLoanDeliveryEdits(data: LoanDeliveryDataset): LoanDelive
         fail("3638", "UCD", `${label}: Escrow Item Type is required and must be a valid enumeration.`, ["EscrowItemType"]);
       } else if (item.escrowItemType === "Other" && !has(item.escrowItemTypeOtherDescription)) {
         fail("3638", "UCD", `${label}: when Escrow Item Type equals Other, the Escrow Item Type Other Description is required.`, ["EscrowItemTypeOtherDescription"]);
+      } else if (!isEscrowItemTypeValid(item.escrowItemType as string)) {
+        fail("3638", "UCD", `${label}: Escrow Item Type "${item.escrowItemType}" is not a UCD-supported enumeration for Initial Escrow Payment At Closing.`, ["EscrowItemType"]);
       }
       if (!has(item.feePaidToType)) {
         fail("3640", "UCD", `${label}: Fee Paid To Type is required for Initial Escrow Payment At Closing items.`, ["FeePaidToType"]);
@@ -434,6 +484,8 @@ export function evaluateLoanDeliveryEdits(data: LoanDeliveryDataset): LoanDelive
         fail("3627", "UCD", `${label}: Prepaid Item Type is required and must be a valid enumeration.`, ["PrepaidItemType"]);
       } else if (item.prepaidItemType === "Other" && !has(item.prepaidItemTypeOtherDescription)) {
         fail("3627", "UCD", `${label}: when Prepaid Item Type equals Other, the Prepaid Item Type Other Description is required.`, ["PrepaidItemTypeOtherDescription"]);
+      } else if (!isPrepaidItemTypeValid(item.prepaidItemType as string)) {
+        fail("3627", "UCD", `${label}: Prepaid Item Type "${item.prepaidItemType}" is not a UCD-supported enumeration for Prepaids.`, ["PrepaidItemType"]);
       }
       const isPrepaidInterest = item.prepaidItemType === "PrepaidInterest";
       if (!has(item.feePaidToType)) {
@@ -449,6 +501,145 @@ export function evaluateLoanDeliveryEdits(data: LoanDeliveryDataset): LoanDelive
         fail("3596", "UCD", `${label}: Prepaid Item Actual Payment Amount is required.`, ["PrepaidItemActualPaymentAmount"]);
       }
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // UCD Phase 3 critical edits: general FEE containers (sections A/B/C/E/H)
+  // -------------------------------------------------------------------------
+  if (data.fees === undefined) {
+    skip("P3-FEES", "UCD", "General closing-cost fee data not captured yet");
+  } else {
+    const RECORDING_ITEMIZED = ["RecordingFeeForDeed", "RecordingFeeForMortgage"];
+    data.fees.forEach((fee, i) => {
+      const label = `Fee #${i + 1}${fee.feeType ? ` (${fee.feeType})` : ""}`;
+      const section = fee.integratedDisclosureSectionType as IntegratedDisclosureSection | null | undefined;
+
+      if (!has(section)) {
+        fail("3561", "UCD", `${label}: Integrated Disclosure Section Type is required for all fees.`, ["IntegratedDisclosureSectionType"]);
+      }
+      if (!has(fee.feeType)) {
+        fail("P3-FEE-COMPONENTS", "UCD", `${label}: Fee Type is required for every FEE container.`, ["FeeType"]);
+        return;
+      }
+      const feeType = fee.feeType as string;
+      if (feeType === "Other" && !has(fee.feeTypeOtherDescription)) {
+        fail("P3-FEE-COMPONENTS", "UCD", `${label}: when Fee Type equals Other, the Fee Type Other Description is required.`, ["FeeTypeOtherDescription"]);
+      }
+
+      // Fee-type-vs-section enforcement: fatal for A and E, warning for B/C/H.
+      if (has(section)) {
+        const valid = isFeeTypeValidForSection(feeType, section as IntegratedDisclosureSection);
+        if (valid === false) {
+          if (section === "TaxesAndOtherGovernmentFees") {
+            fail("3590", "UCD", `${label}: Fee Type for Taxes and Other Government Fees must be a valid enumeration.`, ["FeeType", "IntegratedDisclosureSectionType"]);
+          } else if (FATAL_FEE_TYPE_SECTIONS.includes(section as IntegratedDisclosureSection)) {
+            fail("P3-FEETYPE-A", "UCD", `${label}: Fee Type "${feeType}" is not a UCD-supported enumeration for Origination Charges.`, ["FeeType", "IntegratedDisclosureSectionType"]);
+          } else {
+            warn("P3-FEETYPE-SECTION", "UCD", `${label}: Fee Type "${feeType}" is not a UCD-supported enumeration for section ${section}.`, ["FeeType", "IntegratedDisclosureSectionType"]);
+          }
+        }
+      }
+
+      if (RECORDING_ITEMIZED.includes(feeType)) {
+        // Deed/mortgage recording fees are the only fees delivered with
+        // FeeActualTotalAmount and need no paid-to/paid-by allocation.
+        if (!has(fee.actualTotalAmount)) {
+          fail("3568", "UCD", `${label}: Fee Actual Total Amount is required when a Fee Type of Recording Fee for Deed or Recording Fee for Mortgage is provided.`, ["FeeActualTotalAmount"]);
+        }
+        return;
+      }
+
+      // Any other fee carrying FeeActualTotalAmount in section E is suspect.
+      if (has(fee.actualTotalAmount) && section === "TaxesAndOtherGovernmentFees") {
+        warn("3606", "UCD", `${label}: Fee Types of 'RecordingFeeForDeed' and 'RecordingFeeForMortgage' are the only enumerations expected with Fee Actual Total Amount in the Taxes and Other Government Fees section.`, ["FeeActualTotalAmount", "FeeType"]);
+      }
+
+      if (!has(fee.actualPaymentAmount)) {
+        const editId = section === "TaxesAndOtherGovernmentFees" ? "3574" : "P3-FEE-COMPONENTS";
+        fail(editId, "UCD", `${label}: Fee Actual Payment Amount is required.`, ["FeeActualPaymentAmount"]);
+      }
+      // RecordingFeeTotal needs no Fee Paid To Type (Taxes job aid);
+      // every other fee's FEE_DETAIL requires it.
+      if (feeType !== "RecordingFeeTotal") {
+        if (!has(fee.feePaidToType)) {
+          fail("P3-FEE-COMPONENTS", "UCD", `${label}: Fee Paid To Type is required.`, ["FeePaidToType"]);
+        } else if (fee.feePaidToType === "Other" && !has(fee.feePaidToTypeOtherDescription)) {
+          fail("P3-FEE-COMPONENTS", "UCD", `${label}: when Fee Paid To Type equals Other, the Fee Paid To Type Other Description is required.`, ["FeePaidToTypeOtherDescription"]);
+        }
+      }
+      if (!has(fee.feePaymentPaidByType)) {
+        fail("P3-FEE-COMPONENTS", "UCD", `${label}: Fee Paid By Type is required.`, ["FeePaymentPaidByType"]);
+      }
+      if (feeType === "RecordingFeeTotal" && has(section) && section !== "TaxesAndOtherGovernmentFees") {
+        warn("3607", "UCD", `${label}: the Integrated Disclosure Section Type should be Taxes and Other Government Fees when the Fee Type is 'RecordingFeeTotal'.`, ["IntegratedDisclosureSectionType"]);
+      }
+    });
+
+    // Cross-item recording-fee rules.
+    const recordingItemized = data.fees.filter(f => RECORDING_ITEMIZED.includes(f.feeType ?? ""));
+    const recordingTotals = data.fees.filter(f => f.feeType === "RecordingFeeTotal");
+    const itemizedSum = recordingItemized.reduce((sum, f) => sum + (f.actualTotalAmount ?? 0), 0);
+    if (recordingItemized.length > 0 && itemizedSum !== 0 && recordingTotals.length === 0) {
+      fail("3605", "UCD", "Recording Fee Total must be provided when Recording Fee for Deed or Recording Fee for Mortgage exists and Fee Actual Total Amount does not equal $0.", ["FeeType=RecordingFeeTotal"]);
+    }
+    if (recordingTotals.length > 1) {
+      warn("3609", "UCD", "The submission should not have more than one occurrence of a Fee Type equal to 'RecordingFeeTotal'.", ["FeeType=RecordingFeeTotal"]);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // EarlyCheck origination-file edits (project / MI / lien / property)
+  // -------------------------------------------------------------------------
+  const VALID_PROJECT_CLASSIFICATIONS = ["E", "F", "G", "P", "Q", "R", "S", "T", "U", "V", "1", "2"];
+  const mortgageType = data.mortgageType ?? null;
+  const projectClassification = data.projectClassificationIdentifier;
+
+  if (has(projectClassification)) {
+    if (!VALID_PROJECT_CLASSIFICATIONS.includes(projectClassification as string)) {
+      fail("1210", "EarlyCheck", `The project classification (${projectClassification}) is not valid.`, ["ProjectClassificationIdentifier"]);
+    } else if (
+      projectClassification === "Q" &&
+      has(data.applicationReceivedDate) &&
+      (data.applicationReceivedDate as string) >= "2026-08-03"
+    ) {
+      fail("1210", "EarlyCheck", "Project Type Q is only permitted for loans with an Application Received Date prior to August 3, 2026 (ULDD Phase 5.2.0, SID 42).", ["ProjectClassificationIdentifier", "ApplicationReceivedDate"]);
+    }
+  } else if (mortgageType === "Conventional") {
+    fail("89", "EarlyCheck", "A project classification must be provided for conventional loans.", ["ProjectClassificationIdentifier"]);
+  }
+
+  if (
+    mortgageType === "FHA" &&
+    data.isCondominium === true &&
+    has(projectClassification) &&
+    projectClassification !== "U"
+  ) {
+    fail("92", "EarlyCheck", "The provided project classification type must be U for FHA-financed condominiums.", ["ProjectClassificationIdentifier"]);
+  }
+
+  if ((mortgageType === "FHA" || mortgageType === "VA" || mortgageType === "USDA") && data.hasMortgageInsurance === true) {
+    fail("1829", "EarlyCheck", "A mortgage insurer should not be associated with this loan, because this is an FHA, VA, or Rural Development loan.", ["MICompany", "MortgageType"]);
+  }
+
+  if (data.lienPriorityType === "SecondLien" && data.purchasePriceAmount != null) {
+    fail("6095", "EarlyCheck", "A purchase price should not be provided for second lien mortgages.", ["PurchasePriceAmount", "LienPriorityType"]);
+  }
+
+  if (data.isCooperative === true) {
+    if (data.subordinateFinancingExists === true) {
+      fail("6158", "EarlyCheck", "Subordinate financing is not allowed on loans secured by cooperatives.", ["SubordinateFinancing"]);
+    }
+    if (data.propertyUsageType === "Investment") {
+      fail("6159", "EarlyCheck", "Investment property loans secured by cooperative properties are not eligible for delivery to Fannie Mae.", ["PropertyUsageType"]);
+    }
+  }
+
+  if (
+    (data.propertyUsageType === "SecondHome" || data.propertyUsageType === "Investment") &&
+    data.financedPropertiesCount != null &&
+    data.financedPropertiesCount > 6
+  ) {
+    fail("6439", "EarlyCheck", "The number of mortgaged properties must be less than or equal to six for second home and investment property loans.", ["FinancedPropertiesCount", "PropertyUsageType"]);
   }
 
   // -------------------------------------------------------------------------

@@ -59,6 +59,9 @@ export const loanDeliveryData = pgTable(
     qmShortResetArmAprPercent: decimal("qm_short_reset_arm_apr_percent", { precision: 7, scale: 4 }),
 
     // UCD Phase 3 closing-cost containers.
+    // fees: FeeItemEntry[] — general FEE containers for CD sections A/B/C/E/H
+    // (see shared/fannieMae/loanDeliveryEdits.ts)
+    fees: jsonb("fees"),
     // discountPoints: { feeTotalPercent, feePaidToType, feePaidToTypeOtherDescription,
     //                   actualPaymentAmount, feePaymentPaidByType } | null (null = fee line absent)
     discountPoints: jsonb("discount_points"),
@@ -69,6 +72,14 @@ export const loanDeliveryData = pgTable(
     escrowItems: jsonb("escrow_items"),
     // prepaidItems: PrepaidItemEntry[]
     prepaidItems: jsonb("prepaid_items"),
+
+    // Property / project (EarlyCheck origination edits; ULDD SID 42)
+    projectClassificationIdentifier: varchar("project_classification_identifier", { length: 2 }),
+    applicationReceivedDate: varchar("application_received_date", { length: 10 }), // YYYY-MM-DD
+    subordinateFinancingExists: boolean("subordinate_financing_exists"),
+    hasMortgageInsurance: boolean("has_mortgage_insurance"),
+    financedPropertiesCount: integer("financed_properties_count"),
+    propertyUsageType: varchar("property_usage_type", { length: 30 }), // PrimaryResidence | SecondHome | Investment
 
     // Investor (EarlyCheck MISMO 3.4 edits 144/1700)
     mortgageFunderFullName: varchar("mortgage_funder_full_name", { length: 255 }),

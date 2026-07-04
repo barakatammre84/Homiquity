@@ -57,8 +57,19 @@ names, enumerations, edit codes, and Special Feature Codes are never invented.
 |---|---|
 | QM Edits Job Aid (2026) — threshold tables | `shared/fannieMae/qmThresholds.ts` |
 | QM Edits Job Aid + UCD Phase 3/3a/4 job aids + EarlyCheck workbook — edits | `shared/fannieMae/loanDeliveryEdits.ts` |
+| Guide Fees job aid appendix — fee/prepaid/escrow enumerations by CD section | `shared/fannieMae/ucdFeeEnumerations.ts` |
+| Taxes & Other Government Fees job aid — recording fee / transfer tax edits | `shared/fannieMae/loanDeliveryEdits.ts` |
 | Special Feature Codes (05-06-26) | `shared/fannieMae/specialFeatureCodes.ts` |
+| ULDD Implementation Guide — delivery LOAN states (Table 5), no ASSET container (Table 4) | `server/mismo.ts` (`purpose: "loanDelivery"`) |
 | Combined pre-delivery workflow | `server/services/loanDeliveryReadiness.ts` |
+
+Reviewed with no code impact: the **Loan Delivery Edit Dashboard** job aid (Fannie Mae
+Connect navigation), **ULDD Phase 5 Resources** (link index), **URLA Rendering Design
+Options** (form-rendering guidance; URLA UI already built), the **Numbered Closing
+Disclosure** (CD field-numbering reference), and the **Wire Instruction Reference
+Identifier** job aid (SID 398.3 applies to standard MBS pools only — Homiquity delivers
+whole loans today; revisit if MBS execution is added. Mismatched wire nicknames fire
+fatal edit 2022 in Loan Delivery).
 
 When Fannie Mae publishes new threshold years or SFC editions, update the data in those
 modules from the replacement document — never from memory — and update the pinned values
