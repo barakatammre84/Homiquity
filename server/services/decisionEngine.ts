@@ -268,6 +268,10 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     subjectPropertyState: app.propertyState ?? undefined,
     occupancyType: propertyInfo?.occupancyType ?? undefined,
     numberOfUnits: propertyInfo?.numberOfUnits ?? undefined,
+    // Declared property type, reconciled against the declared unit count. The
+    // OBSERVED (vendor-lookup) descriptor is not yet wired — capturing it at
+    // intake is the remaining piece to catch a consistent misstatement.
+    propertyType: app.propertyType ?? undefined,
   };
 
   let result;
@@ -299,7 +303,9 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   return {
     status: "DECISION_READY",
     decision: result.decision,
-    reasons: result.rejectionReasons,
+    // Rejections and review reasons both explain the outcome to the borrower/LO;
+    // the decision field distinguishes a decline from a "needs a human" review.
+    reasons: [...result.rejectionReasons, ...result.reviewReasons],
     missingItems: [],
     resolvedPolicy: result.resolvedPolicy,
     metrics: {

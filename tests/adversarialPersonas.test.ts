@@ -4,6 +4,7 @@ import path from "path";
 import {
   ConsolidatedUnderwritingEngine,
   consolidatedUnderwritingEngine,
+  reconcileSubjectProperty,
   type UnderwritingInput,
 } from "../server/underwritingEngine";
 import { LookupResolverService, type ValueResolver } from "../server/services/lookupResolver";
@@ -384,12 +385,39 @@ describe("Persona 2 — Dana Okafor (multi-unit filed as SFR primary)", () => {
     expect(result.resolvedPmiMonthlyPremium).toBe(0);
   });
 
-  it("DEFAULT: a consistent misstatement (SFR/1-unit that is really a 4-plex) still approves without more data", async () => {
-    // Same financials, occupancy omitted: defaults to 1-unit primary (95% cap),
-    // so 90% approves. Catching a MISREPRESENTED type needs the reconciliation
-    // layer (declared-vs-observed), which lands in the next commit.
+  it("DEFAULT: a consistent misstatement (SFR/1-unit that is really a 4-plex) still approves without the observed descriptor", async () => {
+    // Same financials, nothing declared that betrays the property: defaults to
+    // 1-unit primary (95% cap), so 90% approves. #3c catches INCONSISTENT
+    // declarations and (when supplied) an OBSERVED mismatch; catching a fully
+    // consistent lie needs the address/AVM lookup captured at intake — still to
+    // be wired.
     const result = await makeEngine().evaluate(baseConventionalInput(fourPlexFinancials));
     expect(result.decision).toBe("APPROVED");
+  });
+
+  it("FIXED(#3c): a declared single_family with 4 units is internally inconsistent -> MANUAL_REVIEW", async () => {
+    // Low LTV so the occupancy cap does not reject first; the reconciliation is
+    // the operative signal.
+    const result = await makeEngine().evaluate(
+      baseConventionalInput({ propertyType: "single_family", numberOfUnits: 4, originalLoanAmount: 500_000 }),
+    );
+    expect(result.decision).toBe("MANUAL_REVIEW");
+    expect(result.rejectionReasons).toHaveLength(0);
+    expect(result.reviewReasons.join(" ")).toMatch(/inconsistent with the declared unit count/);
+  });
+
+  it("FIXED(#3c): a declared SFR/1-unit that the lookup reports as a 4-unit multi-family -> MANUAL_REVIEW", async () => {
+    const result = await makeEngine().evaluate(
+      baseConventionalInput({
+        propertyType: "single_family",
+        numberOfUnits: 1,
+        observedPropertyType: "multi_family",
+        observedNumberOfUnits: 4,
+        originalLoanAmount: 500_000,
+      }),
+    );
+    expect(result.decision).toBe("MANUAL_REVIEW");
+    expect(result.reviewReasons.join(" ")).toMatch(/looked-up/);
   });
 
   it("FIXED(#3b): the orchestrator pulls occupancy/units from URLA property info and declines the mismatch", async () => {
@@ -422,6 +450,52 @@ describe("Persona 2 — Dana Okafor (multi-unit filed as SFR primary)", () => {
     // ("PRIMARY_RESIDENCE") against activeApp.propertyType ("single_family"):
     // always false for legitimate files, validates occupancy for no one.
     expect(src).not.toMatch(/occupancyTypes\.includes\(activeApp\.propertyType\)/);
+  });
+});
+
+// ===========================================================================
+// #3c — subject-property reconciliation primitive (pure function).
+// ===========================================================================
+describe("reconcileSubjectProperty", () => {
+  it("passes consistent declarations", () => {
+    expect(reconcileSubjectProperty({ propertyType: "single_family", numberOfUnits: 1 })).toHaveLength(0);
+    expect(reconcileSubjectProperty({ propertyType: "condo", numberOfUnits: 1 })).toHaveLength(0);
+    expect(reconcileSubjectProperty({ propertyType: "multi_family", numberOfUnits: 3 })).toHaveLength(0);
+  });
+
+  it("flags a 1-unit type declared with multiple units", () => {
+    const r = reconcileSubjectProperty({ propertyType: "single_family", numberOfUnits: 4 });
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatch(/inconsistent with the declared unit count/);
+  });
+
+  it("flags a multi-family declared with a single unit", () => {
+    expect(reconcileSubjectProperty({ propertyType: "multi_family", numberOfUnits: 1 })).toHaveLength(1);
+  });
+
+  it("does not check when the property type does not constrain units", () => {
+    expect(reconcileSubjectProperty({ propertyType: "other", numberOfUnits: 4 })).toHaveLength(0);
+    expect(reconcileSubjectProperty({ numberOfUnits: 4 })).toHaveLength(0);
+  });
+
+  it("flags an observed type or unit count that diverges from the declaration", () => {
+    expect(
+      reconcileSubjectProperty({ propertyType: "single_family", numberOfUnits: 1, observedPropertyType: "multi_family" }).join(" "),
+    ).toMatch(/looked-up property type/);
+    expect(
+      reconcileSubjectProperty({ propertyType: "single_family", numberOfUnits: 1, observedNumberOfUnits: 4 }).join(" "),
+    ).toMatch(/looked-up unit count/);
+  });
+
+  it("passes when the observed descriptor matches the declaration (a consistent file, honest or not)", () => {
+    expect(
+      reconcileSubjectProperty({
+        propertyType: "single_family",
+        numberOfUnits: 1,
+        observedPropertyType: "single_family",
+        observedNumberOfUnits: 1,
+      }),
+    ).toHaveLength(0);
   });
 });
 

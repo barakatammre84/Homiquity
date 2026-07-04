@@ -48,6 +48,76 @@ function normalizeOccupancy(occupancyType: string | null | undefined): {
   return { code: "PRIMARY", label: "primary residence" };
 }
 
+/**
+ * The unit-count range implied by a property type, or null when the type does
+ * not constrain units (unknown / "other"). single_family, condo, townhouse and
+ * manufactured are one-unit dwellings; multi_family is 2-4 units for
+ * conforming residential.
+ */
+function impliedUnitRange(propertyType: string | null | undefined): { min: number; max: number } | null {
+  const t = (propertyType ?? "").toLowerCase().replace(/[\s-]+/g, "_");
+  if (/^(single_family|singlefamily|sfr|condo|condominium|townhouse|townhome|manufactured|pud)$/.test(t)) {
+    return { min: 1, max: 1 };
+  }
+  if (/(multi_family|multifamily|duplex|triplex|fourplex|2_4_unit)/.test(t)) {
+    return { min: 2, max: 4 };
+  }
+  return null;
+}
+
+/**
+ * Reconciles the subject property's declared type/units against (a) their own
+ * internal consistency and (b) an externally OBSERVED type/units when supplied.
+ * Returns human-readable mismatch reasons; an empty array means no discrepancy.
+ * Pure and side-effect free so it can be unit-tested in isolation.
+ *
+ * NOTE: the internal check only catches contradictory DECLARATIONS (e.g.
+ * "single_family" filed with 4 units). Catching a CONSISTENT misstatement
+ * (declared single_family / 1 unit that is really a 4-unit) requires the
+ * observed descriptor — which depends on capturing the address/AVM lookup at
+ * intake (not yet wired), hence the optional observed inputs.
+ */
+export function reconcileSubjectProperty(input: {
+  propertyType?: string;
+  numberOfUnits?: number;
+  observedPropertyType?: string;
+  observedNumberOfUnits?: number;
+}): string[] {
+  const reasons: string[] = [];
+  const declaredUnits =
+    input.numberOfUnits && input.numberOfUnits >= 1 ? Math.floor(input.numberOfUnits) : undefined;
+
+  // (a) Internal: does the declared type's implied unit range contain the
+  // declared unit count?
+  const declaredRange = impliedUnitRange(input.propertyType);
+  if (declaredRange && declaredUnits !== undefined) {
+    if (declaredUnits < declaredRange.min || declaredUnits > declaredRange.max) {
+      reasons.push(
+        `Declared property type "${input.propertyType}" is inconsistent with the declared unit count of ${declaredUnits} — verify the subject property`,
+      );
+    }
+  }
+
+  // (b) Observed vs declared: flag a type family or unit-count divergence.
+  const observedRange = impliedUnitRange(input.observedPropertyType);
+  if (declaredRange && observedRange && declaredRange.max !== observedRange.max) {
+    reasons.push(
+      `Declared property type "${input.propertyType}" conflicts with the looked-up property type "${input.observedPropertyType}" — verify the subject property`,
+    );
+  }
+  const observedUnits =
+    input.observedNumberOfUnits && input.observedNumberOfUnits >= 1
+      ? Math.floor(input.observedNumberOfUnits)
+      : undefined;
+  if (declaredUnits !== undefined && observedUnits !== undefined && declaredUnits !== observedUnits) {
+    reasons.push(
+      `Declared unit count of ${declaredUnits} conflicts with the looked-up unit count of ${observedUnits} — verify the subject property`,
+    );
+  }
+
+  return reasons;
+}
+
 export interface UnderwritingInput {
   isVeteran: boolean;
   isActiveDuty?: boolean;
@@ -74,6 +144,21 @@ export interface UnderwritingInput {
    */
   occupancyType?: string;
   numberOfUnits?: number;
+  /**
+   * Declared subject-property type (single_family / condo / townhouse /
+   * multi_family / manufactured). Used to reconcile against the declared unit
+   * count — a "single_family" filed with 4 units is a contradiction worth a
+   * human look.
+   */
+  propertyType?: string;
+  /**
+   * Property type and unit count as OBSERVED by an external source (e.g. the
+   * address/AVM lookup), when available. Reconciled against the declared values
+   * to surface a possible misrepresentation. Optional and additive: when absent,
+   * only the internal declared-vs-declared consistency check runs.
+   */
+  observedPropertyType?: string;
+  observedNumberOfUnits?: number;
 }
 
 export interface UnderwritingResult {
@@ -88,6 +173,12 @@ export interface UnderwritingResult {
   actualResidualIncome?: number;
   requiredResidualIncome?: number;
   rejectionReasons: string[];
+  /**
+   * Reasons the file routed to MANUAL_REVIEW rather than a clean APPROVED —
+   * jumbo routing, a subject-property mismatch, etc. Distinct from
+   * rejectionReasons: these are "a human must look," not "declined."
+   */
+  reviewReasons: string[];
   /** The resolved thresholds/matrix cells this decision used (reproducibility). */
   resolvedPolicy: ResolvedPolicy;
 }
@@ -108,6 +199,9 @@ export class ConsolidatedUnderwritingEngine {
 
   public async evaluate(input: UnderwritingInput): Promise<UnderwritingResult> {
     const reasons: string[] = [];
+    // MANUAL_REVIEW explanations (jumbo routing, subject-property mismatch) —
+    // kept separate from `reasons`, which drive a REJECTED decision.
+    const reviewReasons: string[] = [];
     const targetLoanType = input.isVeteran ? "VA" : "CONVENTIONAL";
 
     // Step 1: Process dynamic values from Postgres lookup tables
@@ -171,11 +265,6 @@ export class ConsolidatedUnderwritingEngine {
     let actualResidualIncome: number | undefined;
     let requiredResidualIncome: number | undefined;
 
-    // Set when a conventional loan exceeds the conforming limit: not a credit
-    // decline (a jumbo product may fit), so it routes to human review rather
-    // than a rejection or an APPROVED conforming decision it isn't.
-    let exceedsConformingLimit = false;
-
     // Standard Conforming Loan Path
     if (targetLoanType === "CONVENTIONAL") {
       // Eligibility floor: a credit score below the conventional minimum is a
@@ -195,8 +284,22 @@ export class ConsolidatedUnderwritingEngine {
       // Route it to jumbo review (not a decline, not a conforming approval).
       const conformingLimit = await this.resolver.getPolicyScalar("CONFORMING_LOAN_LIMIT");
       if (input.originalLoanAmount > conformingLimit) {
-        exceedsConformingLimit = true;
+        reviewReasons.push(
+          `Loan amount of $${Math.round(input.originalLoanAmount).toLocaleString()} exceeds the conforming limit of $${Math.round(conformingLimit).toLocaleString()} — jumbo product review required`,
+        );
       }
+
+      // Subject-property reconciliation: a declared property type that conflicts
+      // with the declared unit count (or with a looked-up descriptor, when
+      // available) is a potential misrepresentation — route to human review.
+      reviewReasons.push(
+        ...reconcileSubjectProperty({
+          propertyType: input.propertyType,
+          numberOfUnits: input.numberOfUnits,
+          observedPropertyType: input.observedPropertyType,
+          observedNumberOfUnits: input.observedNumberOfUnits,
+        }),
+      );
 
       // Occupancy/units LTV eligibility (Fannie Eligibility Matrix). The agency
       // max LTV depends on both occupancy and unit count — an investment 2-4
@@ -310,8 +413,9 @@ export class ConsolidatedUnderwritingEngine {
 
     if (reasons.length > 0) {
       decision = "REJECTED";
-    } else if (exceedsConformingLimit) {
-      // Above the conforming limit: route to the jumbo desk, not an auto-approve.
+    } else if (reviewReasons.length > 0) {
+      // Jumbo routing or a subject-property mismatch: a human must look, but it
+      // is not a decline.
       decision = "MANUAL_REVIEW";
     } else if (targetLoanType === "CONVENTIONAL" && calculatedDti > dtiCap * 100) {
       // DTI between baseline (43%) and stretch (50%) moves to Manual Review
@@ -342,6 +446,7 @@ export class ConsolidatedUnderwritingEngine {
       actualResidualIncome,
       requiredResidualIncome,
       rejectionReasons: reasons,
+      reviewReasons,
       resolvedPolicy,
     };
   }
