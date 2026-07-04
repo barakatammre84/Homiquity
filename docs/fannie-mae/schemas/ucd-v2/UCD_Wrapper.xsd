@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.mismo.org/residential/2009/schemas" xmlns:ucd="http://www.datamodelextension.org/Schema/ucd" targetNamespace="http://www.mismo.org/residential/2009/schemas" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xsd:import namespace="http://www.datamodelextension.org/Schema/ucd" schemaLocation="UCD.xsd"/>
+	<xsd:redefine schemaLocation="MISMO_3.3.0_B299.xsd">
+		<xsd:complexType name="FEE_DETAIL_EXTENSION">
+			<xsd:complexContent>
+				<xsd:restriction base="FEE_DETAIL_EXTENSION">
+					<xsd:sequence>
+						<xsd:element name="MISMO" type="MISMO_BASE" minOccurs="0"/>
+						<xsd:element name="OTHER" minOccurs="0">
+							<xsd:complexType>
+								<xsd:complexContent>
+									<xsd:restriction base="OTHER_BASE">
+										<xsd:sequence>
+											<xsd:group ref="ucd:grpFEE_DETAIL_EXTENSION"/>
+										</xsd:sequence>
+									</xsd:restriction>
+								</xsd:complexContent>
+							</xsd:complexType>
+						</xsd:element>
+					</xsd:sequence>
+				</xsd:restriction>
+			</xsd:complexContent>
+		</xsd:complexType>
+	</xsd:redefine>
+</xsd:schema>

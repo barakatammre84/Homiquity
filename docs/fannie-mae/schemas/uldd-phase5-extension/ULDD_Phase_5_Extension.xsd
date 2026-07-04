@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2016 (x64) (http://www.altova.com) by Mark Friend (FANNIE MAE) -->
+<!-- Fannie Mae and Freddie Mac ULDD Phase 5 (5.2 Update) Extension File -->
+<xsd:schema xmlns:mismo="http://www.mismo.org/residential/2009/schemas" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:ULDD="http://www.datamodelextension.org/Schema/ULDD" targetNamespace="http://www.datamodelextension.org/Schema/ULDD" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xsd:import namespace="http://www.mismo.org/residential/2009/schemas" schemaLocation="MISMO_3_0.xsd"/>
+	<xsd:element name="OTHER" type="ULDD:OTHER"/>
+	<xsd:element name="CREDIT_SCORE_DETAIL_EXTENSION" type="ULDD:CREDIT_SCORE_DETAIL_EXTENSION"/>
+	<xsd:element name="CREDIT_SCORES_EXTENSION" type="ULDD:CREDIT_SCORES_EXTENSION"/>
+	<xsd:element name="DECLARATION_DETAIL_EXTENSION" type="ULDD:DECLARATION_DETAIL_EXTENSION"/>
+	<xsd:element name="GOVERNMENT_MONITORING_DETAIL_EXTENSION" type="ULDD:GOVERNMENT_MONITORING_DETAIL_EXTENSION"/>
+	<xsd:element name="GOVERNMENT_MONITORING_EXTENSION" type="ULDD:GOVERNMENT_MONITORING_EXTENSION"/>
+	<xsd:element name="HMDA_RACE_EXTENSION" type="ULDD:HMDA_RACE_EXTENSION"/>
+	<xsd:element name="LOAN_DETAIL_EXTENSION" type="ULDD:LOAN_DETAIL_EXTENSION"/>
+	<xsd:element name="LOAN_IDENTIFIER_EXTENSION" type="ULDD:LOAN_IDENTIFIER_EXTENSION"/>
+	<xsd:element name="LOAN_LEVEL_CREDIT_EXTENSION" type="ULDD:LOAN_LEVEL_CREDIT_EXTENSION"/>
+	<xsd:element name="MI_DATA_DETAIL_EXTENSION" type="ULDD:MI_DATA_DETAIL_EXTENSION"/>
+	<xsd:element name="POOL_DETAIL_EXTENSION" type="ULDD:POOL_DETAIL_EXTENSION"/>
+	<xsd:element name="PROJECT_DETAIL_EXTENSION" type="ULDD:PROJECT_DETAIL_EXTENSION"/>
+	<xsd:element name="PROPERTY_EXTENSION" type="ULDD:PROPERTY_EXTENSION"/>
+	<xsd:complexType name="OTHER">
+		<xsd:annotation>
+			<xsd:documentation>Container for all non MISMO extensions</xsd:documentation>
+		</xsd:annotation>
+		<xsd:sequence>
+			<xsd:element ref="ULDD:CREDIT_SCORE_DETAIL_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:CREDIT_SCORES_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:DECLARATION_DETAIL_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:GOVERNMENT_MONITORING_DETAIL_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:GOVERNMENT_MONITORING_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:HMDA_RACE_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:LOAN_DETAIL_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:LOAN_IDENTIFIER_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:LOAN_LEVEL_CREDIT_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:MI_DATA_DETAIL_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:POOL_DETAIL_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:PROJECT_DETAIL_EXTENSION" minOccurs="0"/>
+			<xsd:element ref="ULDD:PROPERTY_EXTENSION" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CREDIT_SCORE_DETAIL_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="CreditScoreCategoryVersionType" type="ULDD:CreditScoreCategoryVersionTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that represents a specific version, release of a Credit Score Category Type.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="CreditScoreCategoryVersionTypeEnumerated">
+		<xsd:annotation>
+			<xsd:documentation>A value from a MISMO prescribed list that represents a specific version, release of a Credit Score Category Type.</xsd:documentation>
+		</xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="FICO10T">
+				<xsd:annotation>
+					<xsd:documentation>A credit score model released in 2020 that was developed by Fair Isaac Corporation. FICO10T represents the financial credit worthiness of an individual by including an assessment of trended credit bureau data.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="FICO4">
+				<xsd:annotation>
+					<xsd:documentation>A credit score model released in 2004 that was developed by Fair Isaac Corporation, representing the financial credit worthiness of an individual.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="Vantage4">
+				<xsd:annotation>
+					<xsd:documentation>A credit score model released in 2017 that was developed by Vantage Score, representing the financial credit worthiness of an individual.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:complexType name="CREDIT_SCORES_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="CREDIT_SCORES_SUMMARY" type="ULDD:CREDIT_SCORES_SUMMARY" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="CREDIT_SCORES_SUMMARY">
+		<xsd:sequence>
+			<xsd:element name="CreditReportIdentifier" type="mismo:MISMOIdentifier" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A reference number assigned by the credit bureau to a specific credit report. This report number is also referenced when a Reissue, Upgrade, or Status Query of an existing report is requested.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="CreditScoreProviderName" type="mismo:MISMOString" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Identifies the name of the company providing the credit score data. This is one of the requirements of the 2003 FACT Act.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MergedCreditReportIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A merged credit report is a combination of in-file credit reports from multiple repositories into a single report.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="DECLARATION_DETAIL_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="PriorPropertyShortSaleCompletedIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>When true, indicates the Borrower has completed a short sale or pre-foreclosure sale where the Lender accepted less than full value for the outstanding mortgage balance within the past seven years.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="GOVERNMENT_MONITORING_DETAIL_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="HMDAEthnicityCollectedBasedOnVisualObservationOrSurnameIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>When true, indicates the ethnicity was collected based on visual observation or surname.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDAEthnicityRefusalIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>When true, indicates the borrower has stated that they do not wish to furnish the HMDA ethnicity information.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDAGenderCollectedBasedOnVisualObservationOrNameIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>When true, indicates the gender was collected based on visual observation or name.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDAGenderRefusalIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>When true, indicates the borrower has stated that they do not wish to furnish the HMDA gender information.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDAGenderType" type="ULDD:HMDAGenderTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that represents the borrower's or interviewer's statement about the borrower's gender.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDARaceCollectedBasedOnVisualObservationOrSurnameIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>When true, indicates the race was collected based on visual observation or surname.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDARaceRefusalIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>When true, indicates the borrower has stated that they do not wish to furnish the HMDA race information.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="HMDAGenderTypeEnumerated">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="ApplicantSelectedBothMaleAndFemale"/>
+			<xsd:enumeration value="Female"/>
+			<xsd:enumeration value="InformationNotProvidedUnknown"/>
+			<xsd:enumeration value="Male"/>
+			<xsd:enumeration value="NotApplicable"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:complexType name="GOVERNMENT_MONITORING_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="HMDA_ETHNICITIES" type="ULDD:HMDA_ETHNICITIES" minOccurs="0"/>
+			<xsd:element name="HMDA_ETHNICITY_ORIGINS" type="ULDD:HMDA_ETHNICITY_ORIGINS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="HMDA_ETHNICITIES">
+		<xsd:sequence>
+			<xsd:element name="HMDA_ETHNICITY" type="ULDD:HMDA_ETHNICITY" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="HMDA_ETHNICITY">
+		<xsd:sequence>
+			<xsd:element name="HMDAEthnicityType" type="mismo:HMDAEthnicityTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that represents the borrower's or interviewer's statement about the borrower's ethnicity as defined in the Home Mortgage Disclosure Act (HMDA).</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="HMDA_ETHNICITY_ORIGINS">
+		<xsd:sequence>
+			<xsd:element name="HMDA_ETHNICITY_ORIGIN" type="ULDD:HMDA_ETHNICITY_ORIGIN" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="HMDA_ETHNICITY_ORIGIN">
+		<xsd:sequence>
+			<xsd:element name="HMDAEthnicityOriginType" type="ULDD:HMDAEthnicityOriginTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that represents the borrower's or interviewer's statement about the borrower's ethnicity origin as defined in the Home Mortgage Disclosure Act (HMDA).</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDAEthnicityOriginTypeOtherDescription" type="mismo:MISMOString" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A free-form text when the value of Other is used for HMDA Ethnicity Origin Type.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="HMDAEthnicityOriginTypeEnumerated">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="Cuban"/>
+			<xsd:enumeration value="Mexican"/>
+			<xsd:enumeration value="Other"/>
+			<xsd:enumeration value="PuertoRican"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:complexType name="HMDA_RACE_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="HMDA_RACE_DESIGNATIONS" type="ULDD:HMDA_RACE_DESIGNATIONS" minOccurs="0"/>
+			<xsd:element name="HMDA_RACE_DETAIL" type="ULDD:HMDA_RACE_DETAIL" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="HMDA_RACE_DETAIL">
+		<xsd:sequence>
+			<xsd:element name="HMDARaceType" type="mismo:HMDARaceTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that represents the borrower's or interviewer's statement about the borrower's race as defined in the Home Mortgage Disclosure Act. Up to 5 Race Types may be included per borrower.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDARaceTypeAdditionalDescription" type="mismo:MISMOString" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A free-form text field used to provide a supplemental comment or remark regarding HMDA Race Type.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="HMDA_RACE_DESIGNATIONS">
+		<xsd:sequence>
+			<xsd:element name="HMDA_RACE_DESIGNATION" type="ULDD:HMDA_RACE_DESIGNATION" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="HMDA_RACE_DESIGNATION">
+		<xsd:sequence>
+			<xsd:element name="HMDARaceDesignationOtherAsianDescription" type="mismo:MISMOString" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A free-form text field used to capture information specific to HMDA Race Designation category of Other Asian.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDARaceDesignationOtherPacificIslanderDescription" type="mismo:MISMOString" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A free-form text field used to capture information specific to HMDA Race Designation category of Other Pacific Islander.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDARaceDesignationType" type="ULDD:HMDARaceDesignationTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that represents the borrower's or interviewer's statement about the borrower's race designation as defined in the Home Mortgage Disclosure Act.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="HMDARaceDesignationTypeOtherDescription" type="mismo:MISMOString" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A free-form text field that specifies the enumeration when the value of Other is used for HMDA Race Designation Type.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="HMDARaceDesignationTypeEnumerated">
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="AsianIndian"/>
+			<xsd:enumeration value="Chinese"/>
+			<xsd:enumeration value="Filipino"/>
+			<xsd:enumeration value="GuamanianOrChamorro"/>
+			<xsd:enumeration value="Japanese"/>
+			<xsd:enumeration value="Korean"/>
+			<xsd:enumeration value="NativeHawaiian"/>
+			<xsd:enumeration value="Other"/>
+			<xsd:enumeration value="OtherAsian"/>
+			<xsd:enumeration value="OtherPacificIslander"/>
+			<xsd:enumeration value="Samoan"/>
+			<xsd:enumeration value="Vietnamese"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:complexType name="LOAN_DETAIL_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="EnergyImprovementAmount" type="mismo:MISMOAmount" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The total dollar amount of energy-related improvements included in the transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="RemoteOnlineNotarizationIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>When true, indicates an online notarial act was performed between a notary public and a principal using audio-visual technology instead of being physically present.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="WireInstructionReferenceIdentifier" type="mismo:MISMOIdentifier" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A unique alphanumeric string representing a reference value for a predefined group of wire instructions.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="LOAN_IDENTIFIER_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="LoanIdentifier" type="ULDD:LoanIdentifier" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The value of the identifier for the specified type. (i.e. UniversalLoan)</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="LoanIdentifierType" type="ULDD:LoanIdentifierTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that specifies the type of loan identifier.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="LoanIdentifierTypeEnumerated">
+		<xsd:annotation>
+			<xsd:documentation>Specifies the type of identifier used for a loan. Includes the ULI</xsd:documentation>
+		</xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="LenderLoan"/>
+			<xsd:enumeration value="UniversalLoan"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:simpleType name="LoanIdentifier">
+		<xsd:annotation>
+			<xsd:documentation>The value of the identifier for the specified type. Includes the ULI</xsd:documentation>
+		</xsd:annotation>
+		<xsd:restriction base="xsd:string"/>
+	</xsd:simpleType>
+	<xsd:complexType name="LOAN_LEVEL_CREDIT_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="LOAN_LEVEL_CREDIT_SCORES" type="ULDD:LOAN_LEVEL_CREDIT_SCORES" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="LOAN_LEVEL_CREDIT_SCORES">
+		<xsd:sequence>
+			<xsd:element name="LOAN_LEVEL_CREDIT_SCORE" type="ULDD:LOAN_LEVEL_CREDIT_SCORE" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="LOAN_LEVEL_CREDIT_SCORE">
+		<xsd:sequence>
+			<xsd:element name="CreditScoreCategoryVersionType" type="ULDD:CreditScoreCategoryVersionTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that represents a specific version, release of a Credit Score Category Type.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="CreditScoreImpairmentType" type="mismo:CreditScoreImpairmentTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Identifies a characteristic of the Credit Score that impairs its effectiveness as an indicator of credit risk.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="LoanLevelCreditScoreSelectionMethodType" type="mismo:LoanLevelCreditScoreSelectionMethodTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Specifies the method used to select the Loan Level Credit Score across all borrowers.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="LoanLevelCreditScoreSelectionMethodTypeOtherDescription" type="mismo:MISMOString" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A free-form text field used to collect additional information when Other is selected for the Loan Credit Score Selection Method Type.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="LoanLevelCreditScoreValue" type="mismo:MISMOValue" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The one credit score value that represents the overall credit risk on the loan. This value is determined using credit score values for each qualifying borrower.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="MI_DATA_DETAIL_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="MIInterestRateAdjustmentPercent" type="mismo:MISMOPercent" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The percentage of the mortgage interest rate allocated to fund mortgage insurance premiums.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="MIPremiumPlanType" type="ULDD:MIPremiumPlanTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that specifies the timing of up-front and recurring MI Premium payments.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="MIPremiumPlanTypeEnumerated">
+		<xsd:annotation>
+			<xsd:documentation>A value from a MISMO prescribed list that specifies the timing of up-front and recurring MI Premium payments.</xsd:documentation>
+		</xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="Annual">
+				<xsd:annotation>
+					<xsd:documentation>A premium plan where the yearly premium is collected up-front and remitted to the mortgage insurer. Recurring premiums equaling 1/12th of the yearly premium are collected on a monthly basis and remitted to the mortgage insurer annually.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="Monthly">
+				<xsd:annotation>
+					<xsd:documentation>A premium plan where no premium or one month of premium is collected upfront in addition to recurring premiums are paid by the borrower and remitted to the mortgage insurer on a monthly basis.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="Single">
+				<xsd:annotation>
+					<xsd:documentation>A premium plan where a single payment is made up-front and remitted to the mortgage insurer. There are no recurring premium payments.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="Split">
+				<xsd:annotation>
+					<xsd:documentation>A premium plan where in exchange for an up-front premium payment, lower recurring premiums are paid by the borrower and remitted to the mortgage insurer on a monthly basis.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<xsd:complexType name="POOL_DETAIL_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="GovernmentBondFinanceIndicator" type="mismo:MISMOIndicator" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Indicates that the pool is to back securities for use as collateral for a state or local housing bond financing program (BFP).</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="LenderPoolTargetFundingDate" type="mismo:MISMODate" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The date the lender selects to have its pool purchase funded. By selecting this date, the lender manages when the funds are to be wired.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PROJECT_DETAIL_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="FNMCondominiumProjectManagerCertificationIdentifier" type="mismo:MISMOIdentifier" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The unique identifier assigned by Fannie Mae's Condo Projet Manager (CPM) system verifying certification of the condominium project identifier as part of Fannie Mae’s Condo Project Manager (CPM) system.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="FNMCondominiumProjectManagerPhaseIdentifier" type="mismo:MISMOIdentifier" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The unique identifier assigned by Fannie Mae's Condo Projet Manager (CPM) system indicting the phase of the condominium project identifier as part of Fannie Mae’s Condo Project Manager (CPM) system.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="FRECondoProjectAdvisorProjectAssessmentRequestIdentifier" type="mismo:MISMOIdentifier" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The unique identifier for a condominium project assessment assigned by Freddie Mac's Condo Project Advisor.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="FRECondoProjectAdvisorProjectWaiverRequestIdentifier" type="mismo:MISMOIdentifier" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The unique identifier for a Project Waiver Request (PWR) assigned by Freddie Mac's Condo Project Advisor.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="PROPERTY_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="DEED_RESTRICTION" type="ULDD:DEED_RESTRICTION" minOccurs="0"/>
+			<xsd:element name="ENERGY_IMPROVEMENT" type="ULDD:ENERGY_IMPROVEMENT" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="DEED_RESTRICTION">
+		<xsd:sequence>
+			<xsd:element name="DeedRestrictionTermMonthsCount" type="mismo:MISMOCount" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>Length of period in which the resale restrictions may remain in place on the property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="ENERGY_IMPROVEMENT">
+		<xsd:sequence>
+			<xsd:element name="ENERGY_IMPROVEMENT_ITEMS" type="ULDD:ENERGY_IMPROVEMENT_ITEMS" minOccurs="0"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="ENERGY_IMPROVEMENT_ITEMS">
+		<xsd:sequence>
+			<xsd:element name="ENERGY_IMPROVEMENT_ITEM" type="ULDD:ENERGY_IMPROVEMENT_ITEM" minOccurs="0" maxOccurs="unbounded"/>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:complexType name="ENERGY_IMPROVEMENT_ITEM">
+		<xsd:sequence>
+			<xsd:element name="RenewableEnergyComponentType" type="ULDD:RenewableEnergyComponentTypeEnumerated" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A value from a MISMO prescribed list that specifies the type of renewable energy component present on the site.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+	</xsd:complexType>
+	<xsd:simpleType name="RenewableEnergyComponentTypeEnumerated">
+		<xsd:annotation>
+			<xsd:documentation>Specifies the type of renewable energy component present on the site.</xsd:documentation>
+		</xsd:annotation>
+		<xsd:restriction base="xsd:string">
+			<xsd:enumeration value="Geothermal">
+				<xsd:annotation>
+					<xsd:documentation>A device or system used to extract energy derived from the earth.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="OtherEnergyComponent">
+				<xsd:annotation>
+					<xsd:documentation>Other Energy Component Type</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="Solar">
+				<xsd:annotation>
+					<xsd:documentation>A device or system used to extract energy derived from the sun.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="WindTurbine">
+				<xsd:annotation>
+					<xsd:documentation>A device or system used to extract energy derived from the wind.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+</xsd:schema>
