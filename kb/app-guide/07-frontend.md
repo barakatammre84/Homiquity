@@ -17,7 +17,7 @@ and every route — 160+ `<Route>`s).
 
 | Directory | Pages | Audience / purpose |
 |-----------|------:|--------------------|
-| `public/` | 10 | Logged-out: landing, affordability check ("Can I Afford This Home?"), find-an-agent, auth pages |
+| `public/` | 14 | Logged-out: landing, persona landing pages (`/refinance` — savings calculator; `/va-loans` — military pre-screen → `/apply?type=va`; `/self-employed` — income-shape pre-screen → `/apply?type=self-employed`; `/first-time-buyer` — rent-reframe calculator → `/apply?type=first-time`; all wordmark-only, no global nav), affordability check ("Can I Afford This Home?"), find-an-agent, auth pages |
 | `borrower/` | 15 | The borrower portal: dashboard, conversational pre-approval, URLA form, documents, letters, predictions |
 | `staff/` | 8 | Staff Dashboard (unified command center: pipeline, tasks, compliance, intelligence), LO Command Center (`/lo-command-center`: deal-team-scoped pipeline with the green/yellow/red File Health light and one-click MISMO export), loan pipeline, document review |
 | `admin/` | 5 | Admin panel: users, policy ops, system config |

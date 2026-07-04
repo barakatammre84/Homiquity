@@ -32,7 +32,7 @@ const AUDIENCE_PATHS = [
     title: "First-Time Buyers",
     description: "Not sure where to start? We'll walk you through it step by step.",
     cta: "See Where You Stand",
-    href: "/ai-coach",
+    href: "/first-time-buyer",
   },
   {
     id: "homeowners",
@@ -40,7 +40,7 @@ const AUDIENCE_PATHS = [
     title: "Current Homeowners",
     description: "See if refinancing could lower your payment or unlock your equity.",
     cta: "Check Refinance Options",
-    href: "/apply?type=refinance",
+    href: "/refinance",
   },
   {
     id: "move-up",
@@ -55,8 +55,8 @@ const AUDIENCE_PATHS = [
     icon: Briefcase,
     title: "Complex Income",
     description: "Self-employed, multiple properties, or non-traditional income? We handle it.",
-    cta: "Get Pre-Approved",
-    href: "/apply",
+    cta: "See How We Handle It",
+    href: "/self-employed",
   },
   {
     id: "veterans",
@@ -64,7 +64,7 @@ const AUDIENCE_PATHS = [
     title: "Veterans & Military",
     description: "VA loans with no down payment. Built by a fellow veteran.",
     cta: "Explore VA Loans",
-    href: "/apply?type=va",
+    href: "/va-loans",
   },
   {
     id: "investors",

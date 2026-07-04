@@ -561,7 +561,10 @@ function PreApprovalFunnel() {
     mode: "onChange",
     defaultValues: {
       annualIncome: "",
-      employmentType: "employed",
+      // /self-employed pre-screens income shape; honor it so those borrowers
+      // land with the right employment type preselected (still editable at
+      // its step — the route recomputes if they change it).
+      employmentType: urlType === "self-employed" ? "self_employed" : "employed",
       employmentYears: "",
       monthlyDebts: "",
       creditScore: "",
@@ -569,8 +572,10 @@ function PreApprovalFunnel() {
       propertyType: (urlPropertyType as any) || "single_family",
       purchasePrice: urlPrice || "",
       downPayment: "",
-      isVeteran: false,
-      isFirstTimeBuyer: false,
+      // /va-loans and /first-time-buyer pre-screen these; honor them so
+      // borrowers aren't asked twice (checkboxes stay editable at their step).
+      isVeteran: urlType === "va",
+      isFirstTimeBuyer: urlType === "first-time",
       propertyState: urlState || "",
       hasAdditionalIncome: false,
       incomeSources: [],

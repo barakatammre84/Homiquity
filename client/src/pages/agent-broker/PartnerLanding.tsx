@@ -102,7 +102,7 @@ export default function PartnerLanding() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="text-base border-white/30 text-white backdrop-blur-sm bg-white/10" asChild data-testid="button-learn">
-              <Link href="/first-time-buyer">
+              <Link href="/learn/first-time-buyer">
                 First-Time Buyer Guide
               </Link>
             </Button>
