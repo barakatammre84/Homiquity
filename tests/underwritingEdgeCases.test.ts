@@ -28,7 +28,7 @@ vi.mock("../server/services/lookupResolver", () => ({
 }));
 
 import { calculateDTI } from "../server/underwriting";
-import { ConsolidatedUnderwritingEngine, type UnderwritingInput } from "../server/underwritingEngine";
+import { ConsolidatedUnderwritingEngine, UnderwritingError, type UnderwritingInput } from "../server/underwritingEngine";
 
 describe("calculateDTI edge cases", () => {
   it("fails on zero qualifying income (no silent 0% pass)", async () => {
@@ -69,16 +69,29 @@ describe("ConsolidatedUnderwritingEngine value guards", () => {
     assets: [],
   };
 
-  it("throws when the loan amount is zero (down payment >= price)", async () => {
-    await expect(
-      engine.evaluate({ ...baseInput, originalLoanAmount: 0 }),
-    ).rejects.toThrow(/Loan amount must be greater than zero/i);
+  it("throws a typed INPUT_INVALID when the loan amount is zero (down payment >= price)", async () => {
+    // Must be an UnderwritingError, not a bare Error: the orchestrator's
+    // engine-catch rethrows untyped errors as system faults (500), so a raw
+    // throw here would turn a borrower input problem into a server error for
+    // any direct engine caller.
+    const err = await engine.evaluate({ ...baseInput, originalLoanAmount: 0 }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(UnderwritingError);
+    expect((err as UnderwritingError).kind).toBe("INPUT_INVALID");
+    expect((err as UnderwritingError).message).toMatch(/Loan amount must be greater than zero/i);
+    expect((err as UnderwritingError).publicMessage).toMatch(/down payment must be less than the purchase price/i);
   });
 
-  it("throws when the loan amount is negative", async () => {
-    await expect(
-      engine.evaluate({ ...baseInput, originalLoanAmount: -100 }),
-    ).rejects.toThrow(/Loan amount must be greater than zero/i);
+  it("throws a typed INPUT_INVALID when the loan amount is negative", async () => {
+    const err = await engine.evaluate({ ...baseInput, originalLoanAmount: -100 }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(UnderwritingError);
+    expect((err as UnderwritingError).kind).toBe("INPUT_INVALID");
+    expect((err as UnderwritingError).message).toMatch(/Loan amount must be greater than zero/i);
   });
 
   it("still approves a well-qualified conventional file", async () => {

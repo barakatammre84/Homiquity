@@ -262,7 +262,11 @@ export class ConsolidatedUnderwritingEngine {
     // sub-zero LTV that silently clears the ceiling, skips MI, and drives a
     // negative LLPA fee — an "approval" on nonsensical inputs. Reject it.
     if (input.originalLoanAmount <= 0) {
-      throw new Error("CRITICAL VALUE INPUT ERROR: Loan amount must be greater than zero.");
+      throw new UnderwritingError(
+        "INPUT_INVALID",
+        "CRITICAL VALUE INPUT ERROR: Loan amount must be greater than zero.",
+        "Down payment must be less than the purchase price.",
+      );
     }
     const rawLtvFraction = (input.originalLoanAmount / propertyBasisValue) * 100;
 

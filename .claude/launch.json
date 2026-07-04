@@ -4,8 +4,11 @@
     {
       "name": "homiquity-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 5001,
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5002,
       "autoPort": true
     }
   ]
