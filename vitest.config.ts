@@ -42,6 +42,7 @@ export default defineConfig({
       "tests/mismoExport.test.ts",
       "tests/quietHours.test.ts",
       "tests/mcpAudit.test.ts",
+      "tests/mcpAgentIdentity.test.ts",
       "tests/smsCompliance.test.ts",
       "tests/errorMonitoring.test.ts",
       "tests/auditReanchor.test.ts",

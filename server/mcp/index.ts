@@ -20,10 +20,14 @@ import {
 } from "@shared/schema";
 import { calculateLLPA } from "../pricing";
 import {
-  DEFAULT_AGENT_CALLER_IDENTITY,
   logAgentToolInvocation,
   recordExternalSoftPull,
 } from "../services/creditService";
+import {
+  assertDeploymentAllowed,
+  resolveAgentIdentity,
+  type AgentIdentity,
+} from "./identity";
 import { fetchAvm, softPullCredit, withTimeout } from "./vendors";
 
 /**
@@ -42,13 +46,41 @@ import { fetchAvm, softPullCredit, withTimeout } from "./vendors";
  * and each terminal outcome additionally writes an mcp_tool_invocation entry
  * carrying the tool name, an SHA-256 hash of the arguments, and a result
  * summary.
+ *
+ * AG-2 (AI governance): the deployment authenticates WHICH agent it serves —
+ * MCP_AGENT_ID + MCP_AGENT_TOKEN validated against the env-scoped
+ * MCP_AGENT_REGISTRY (see ./identity). The resolved identity (agent, operator,
+ * authenticated flag, plus the client's self-reported initialize info) is
+ * stamped onto every audit entry and persisted row. Production, or
+ * MCP_REQUIRE_AGENT_IDENTITY=true, refuses to serve without a valid handshake.
  */
 
 const server = new McpServer({ name: "homiquity", version: "1.0.0" });
 
-// AG-2 seam: identifies the transport until per-agent identity lands. A
-// deployment can already name its agent via MCP_CALLER_IDENTITY.
-const CALLER_IDENTITY = process.env.MCP_CALLER_IDENTITY ?? DEFAULT_AGENT_CALLER_IDENTITY;
+// AG-2: resolve and enforce the agent identity BEFORE any tool can run. A
+// failed handshake or an unauthenticated agent under enforcement is a startup
+// configuration error (like a missing DATABASE_URL), not a tool error.
+let AGENT: AgentIdentity;
+try {
+  AGENT = resolveAgentIdentity(process.env);
+  assertDeploymentAllowed(AGENT, process.env);
+} catch (err) {
+  console.error(`[homiquity-mcp] ${err instanceof Error ? err.message : String(err)}`);
+  process.exit(1);
+}
+const CALLER_IDENTITY = AGENT.callerIdentity;
+
+/** Identity context stamped into every audit entry's actionDetails. The MCP
+ * client's initialize clientInfo is self-reported — recorded, not trusted. */
+function agentContext(): Record<string, unknown> {
+  const client = server.server.getClientVersion();
+  return {
+    agentId: AGENT.agentId,
+    operator: AGENT.operator,
+    authenticated: AGENT.authenticated,
+    ...(client ? { client: { name: client.name, version: client.version } } : {}),
+  };
+}
 
 function ok(payload: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }] };
@@ -88,6 +120,7 @@ async function auditInvocation(entry: {
       consentId: entry.consentId,
       creditPullId: entry.creditPullId,
       callerIdentity: CALLER_IDENTITY,
+      agentContext: agentContext(),
     });
   } catch (err) {
     console.error(`[homiquity-mcp] audit write failed (${entry.toolName}):`, err);
@@ -255,6 +288,7 @@ server.registerTool(
         expiresAt,
         vendor: pull,
         callerIdentity: CALLER_IDENTITY,
+        agentContext: agentContext(),
       });
 
       await auditInvocation({
@@ -477,6 +511,7 @@ server.registerTool(
             avmConfidence: avm.confidence.toFixed(4),
             avmProvider: avm.provider,
             avmAsOf: new Date(avm.asOf),
+            avmAgentIdentity: CALLER_IDENTITY,
           })
           .where(eq(properties.id, property.id));
       }
