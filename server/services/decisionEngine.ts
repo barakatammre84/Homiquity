@@ -84,11 +84,14 @@ function safe(v: unknown): number {
 }
 
 /**
- * Translate a deterministic-engine or pricing exception into borrower/staff-facing
- * "missing info" labels. The engine throws operational CRITICAL_* messages for
- * absent or invalid inputs; surfacing those verbatim leaks internal jargon into
- * the decision UI. Order matters — the specific loan-amount case is checked
- * before the generic VALUE INPUT case.
+ * Translate a PRICING exception (generateLoanEstimate) into borrower/staff-facing
+ * "missing info" labels — surfacing raw messages verbatim would leak internal
+ * jargon into the decision UI. Order matters — the specific loan-amount case is
+ * checked before the generic VALUE INPUT case.
+ *
+ * NOTE: the underwriting engine itself no longer needs this — every engine
+ * throw is a typed UnderwritingError carrying its own borrower-safe
+ * publicMessage; this mapper only serves the pricing catch below.
  */
 function describeEngineGap(err: unknown): string[] {
   const msg = err instanceof Error ? err.message : String(err);
