@@ -71,6 +71,25 @@ function safe(v: unknown): number {
   return isNaN(n) ? 0 : n;
 }
 
+/**
+ * Translate a deterministic-engine or pricing exception into borrower/staff-facing
+ * "missing info" labels. The engine throws operational CRITICAL_* messages for
+ * absent or invalid inputs; surfacing those verbatim leaks internal jargon into
+ * the decision UI. Order matters — the specific loan-amount case is checked
+ * before the generic VALUE INPUT case.
+ */
+function describeEngineGap(err: unknown): string[] {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/VA PROTOCOL/i.test(msg)) return ["Household size", "Home square footage"];
+  if (/INCOME INPUT/i.test(msg)) return ["Qualifying income"];
+  if (/Loan amount must be greater than zero/i.test(msg)) {
+    return ["Down payment must be less than the purchase price"];
+  }
+  if (/VALUE INPUT/i.test(msg)) return ["Property value"];
+  if (/unrecognized state/i.test(msg)) return ["Valid property state"];
+  return ["Additional information required to complete the decision"];
+}
+
 interface AggregatedFinancials {
   baseMonthlyIncome: number;
   variableMonthlyIncome: number;
@@ -174,6 +193,11 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   if (!app.creditScore) missing.push("Credit score");
   if (!purchasePrice || purchasePrice <= 0) missing.push("Purchase price");
   if (isNaN(downPayment) || downPayment < 0) missing.push("Down payment");
+  // A down payment at or above the price leaves a zero/negative loan amount,
+  // which the engine would otherwise "approve" (LTV <= 0 clears every ceiling).
+  if (!isNaN(downPayment) && purchasePrice > 0 && downPayment >= purchasePrice) {
+    missing.push("Down payment must be less than the purchase price");
+  }
   if (!app.propertyState) missing.push("Property state");
 
   if (missing.length > 0) {
@@ -186,8 +210,7 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     const le = await generateLoanEstimate(applicationId);
     monthlyPiti = le.projectedPayments.years1Through5.estimatedTotal;
   } catch (err) {
-    const detail = err instanceof Error ? err.message : "unable to price loan";
-    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: [detail], metrics: null, resolvedPolicy: null, ...base };
+    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: describeEngineGap(err), metrics: null, resolvedPolicy: null, ...base };
   }
 
   // Run the deterministic engine on the aggregated, multi-borrower figures.
@@ -209,10 +232,9 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   try {
     result = await consolidatedUnderwritingEngine.evaluate(input);
   } catch (err) {
-    // The engine throws for missing VA inputs (family size / square footage) or
-    // invalid values — surface as a "need more info" gap rather than a 500.
-    const detail = err instanceof Error ? err.message : "additional information required";
-    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: [detail], metrics: null, resolvedPolicy: null, ...base };
+    // invalid values — surface as a clean "need more info" gap rather than a 500
+    // or a raw CRITICAL_* operational message.
+    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: describeEngineGap(err), metrics: null, resolvedPolicy: null, ...base };
   }
 
   return {
