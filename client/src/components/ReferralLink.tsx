@@ -101,7 +101,7 @@ export default function ReferralLink() {
           />
           <Button
             variant="outline"
-            size="icon"
+            size="icon" aria-label="Copy link"
             onClick={copyToClipboard}
             data-testid="button-copy-link"
           >

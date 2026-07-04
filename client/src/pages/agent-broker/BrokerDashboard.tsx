@@ -114,10 +114,10 @@ export default function BrokerDashboard() {
 
   const getColorClasses = (color: string) => {
     const colors: Record<string, { bg: string; icon: string }> = {
-      blue: { bg: "bg-blue-100 dark:bg-blue-900/30", icon: "text-blue-600 dark:text-blue-400" },
-      amber: { bg: "bg-amber-100 dark:bg-amber-900/30", icon: "text-amber-600 dark:text-amber-400" },
-      emerald: { bg: "bg-emerald-100 dark:bg-emerald-900/30", icon: "text-emerald-600 dark:text-emerald-400" },
-      purple: { bg: "bg-purple-100 dark:bg-purple-900/30", icon: "text-purple-600 dark:text-purple-400" },
+      blue: { bg: "bg-info-subtle", icon: "text-info" },
+      amber: { bg: "bg-warning-subtle", icon: "text-warning-subtle-foreground" },
+      emerald: { bg: "bg-success-subtle", icon: "text-success-subtle-foreground" },
+      purple: { bg: "bg-secondary", icon: "text-primary" },
     };
     return colors[color] || colors.blue;
   };
@@ -125,13 +125,13 @@ export default function BrokerDashboard() {
   const getCommissionStatusColor = (status: string) => {
     switch (status) {
       case "paid":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+        return "bg-success-subtle text-success-subtle-foreground";
       case "approved":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+        return "bg-info-subtle text-info";
       case "pending":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+        return "bg-warning-subtle text-warning-subtle-foreground";
       case "cancelled":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+        return "bg-destructive-subtle text-destructive";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -317,7 +317,7 @@ export default function BrokerDashboard() {
                           <TableCell>
                             {(Number(commission.commissionRate) * 100).toFixed(2)}%
                           </TableCell>
-                          <TableCell className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          <TableCell className="font-semibold text-success-subtle-foreground">
                             {formatCurrency(commission.commissionAmount)}
                           </TableCell>
                           <TableCell>

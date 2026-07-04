@@ -188,7 +188,7 @@ export default function ReferralLanding() {
 
           {applied ? (
             <div className="text-center space-y-4">
-              <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
+              <div className="flex items-center justify-center gap-2 text-success-subtle-foreground">
                 <CheckCircle className="h-5 w-5" />
                 <span>Successfully connected</span>
               </div>

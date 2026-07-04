@@ -83,19 +83,22 @@ interface User {
   createdAt: string | null;
 }
 
-const ROLE_CONFIG: Record<string, { label: string; icon: typeof Shield; color: string }> = {
+// Role is a CATEGORY, not a status — a 9-colour rainbow is colourblind-hostile
+// and off-system. The icon + label carry identity; colour encodes the one axis
+// that matters operationally (internal staff vs external client) via tokens.
+const ROLE_CONFIG: Record<string, { label: string; icon: typeof Shield }> = {
   // Staff roles
-  admin: { label: "Tech/Ops Lead", icon: Wrench, color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
-  lo: { label: "Loan Officer", icon: UserCheck, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  loa: { label: "LOA", icon: Briefcase, color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200" },
-  processor: { label: "Processor", icon: FileCheck, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-  underwriter: { label: "Underwriter", icon: ClipboardCheck, color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-  closer: { label: "Closer/Funder", icon: Banknote, color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
-  broker: { label: "Broker", icon: Briefcase, color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
-  lender: { label: "Lender", icon: Building2, color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200" },
+  admin: { label: "Tech/Ops Lead", icon: Wrench },
+  lo: { label: "Loan Officer", icon: UserCheck },
+  loa: { label: "LOA", icon: Briefcase },
+  processor: { label: "Processor", icon: FileCheck },
+  underwriter: { label: "Underwriter", icon: ClipboardCheck },
+  closer: { label: "Closer/Funder", icon: Banknote },
+  broker: { label: "Broker", icon: Briefcase },
+  lender: { label: "Lender", icon: Building2 },
   // Client roles
-  aspiring_owner: { label: "Aspiring Owner", icon: Star, color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
-  active_buyer: { label: "Active Buyer", icon: Home, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
+  aspiring_owner: { label: "Aspiring Owner", icon: Star },
+  active_buyer: { label: "Active Buyer", icon: Home },
 };
 
 const ROLES = ALL_ROLES;
@@ -273,8 +276,8 @@ export default function AdminUsers() {
         <Card data-testid="card-stat-admins">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900">
-                <Wrench className="h-5 w-5 text-red-600 dark:text-red-300" />
+              <div className="p-2 rounded-lg bg-destructive-subtle">
+                <Wrench className="h-5 w-5 text-destructive" />
               </div>
               <div>
                 <p className="text-2xl font-bold" data-testid="text-admin-count">{userStats.admins}</p>
@@ -286,8 +289,8 @@ export default function AdminUsers() {
         <Card data-testid="card-stat-staff">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                <UserCheck className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+              <div className="p-2 rounded-lg bg-info-subtle">
+                <UserCheck className="h-5 w-5 text-info" />
               </div>
               <div>
                 <p className="text-2xl font-bold" data-testid="text-staff-count">{userStats.totalStaff}</p>
@@ -299,8 +302,8 @@ export default function AdminUsers() {
         <Card data-testid="card-stat-clients">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
-                <Home className="h-5 w-5 text-green-600 dark:text-green-300" />
+              <div className="p-2 rounded-lg bg-success-subtle">
+                <Home className="h-5 w-5 text-success-subtle-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-bold" data-testid="text-client-count">{userStats.totalClients}</p>
@@ -450,7 +453,7 @@ export default function AdminUsers() {
                         {user.email || "No email"}
                       </TableCell>
                       <TableCell>
-                        <Badge className={roleConfig.color}>
+                        <Badge variant={isStaffRole(user.role) ? "info" : "secondary"}>
                           <RoleIcon className="h-3 w-3 mr-1" />
                           {roleConfig.label}
                         </Badge>
@@ -465,7 +468,7 @@ export default function AdminUsers() {
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="icon" aria-label="More options"
                               data-testid={`button-actions-${user.id}`}
                             >
                               <MoreHorizontal className="h-4 w-4" />
@@ -559,11 +562,11 @@ export default function AdminUsers() {
                       </TableCell>
                       <TableCell>
                         {isUsed ? (
-                          <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">Used</Badge>
+                          <Badge variant="success">Used</Badge>
                         ) : isExpired ? (
                           <Badge variant="destructive">Expired</Badge>
                         ) : (
-                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Active</Badge>
+                          <Badge variant="info">Active</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
@@ -573,11 +576,11 @@ export default function AdminUsers() {
                         {!isUsed && !isExpired && (
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon" aria-label="Copy"
                             onClick={() => copyToClipboard(invite.code)}
                             data-testid={`button-copy-invite-${invite.id}`}
                           >
-                            {copiedCode === invite.code ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                            {copiedCode === invite.code ? <Check className="h-4 w-4 text-success-subtle-foreground" /> : <Copy className="h-4 w-4" />}
                           </Button>
                         )}
                       </TableCell>
@@ -610,7 +613,7 @@ export default function AdminUsers() {
                 <code className="px-4 py-2 rounded-lg bg-muted text-lg font-mono font-bold tracking-widest" data-testid="text-new-invite-code">
                   {copiedCode}
                 </code>
-                <Button variant="ghost" size="icon" onClick={() => copyToClipboard(copiedCode)} data-testid="button-copy-new-code">
+                <Button variant="ghost" size="icon" aria-label="Copy" onClick={() => copyToClipboard(copiedCode)} data-testid="button-copy-new-code">
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>

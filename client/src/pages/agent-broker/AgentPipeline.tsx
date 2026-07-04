@@ -44,31 +44,31 @@ const PIPELINE_STAGES = [
 const STAGE_CONFIG: Record<string, { label: string; className: string }> = {
   application: {
     label: "Application",
-    className: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+    className: "bg-info/10 text-info",
   },
   processing: {
     label: "Processing",
-    className: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    className: "bg-warning/10 text-warning-subtle-foreground",
   },
   underwriting: {
     label: "Underwriting",
-    className: "bg-purple-500/10 text-purple-700 dark:text-purple-300",
+    className: "bg-primary/10 text-primary",
   },
   conditional: {
     label: "Conditional",
-    className: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
+    className: "bg-warning/10 text-warning-subtle-foreground",
   },
   clear_to_close: {
     label: "Clear to Close",
-    className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    className: "bg-success/10 text-success-subtle-foreground",
   },
   closing: {
     label: "Closing",
-    className: "bg-green-500/10 text-green-700 dark:text-green-300",
+    className: "bg-success/10 text-success-subtle-foreground",
   },
   funded: {
     label: "Funded",
-    className: "bg-green-700/10 text-green-800 dark:text-green-200",
+    className: "bg-success/10 text-success-subtle-foreground",
   },
 };
 

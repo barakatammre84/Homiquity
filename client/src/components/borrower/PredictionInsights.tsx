@@ -78,7 +78,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
   if (!prediction) return null;
 
   const likelihoodPct = Math.round(prediction.likelihoodToClose * 100);
-  const statusColor = likelihoodPct >= 70 ? "text-emerald-600" : likelihoodPct >= 40 ? "text-yellow-600" : "text-red-500";
+  const statusColor = likelihoodPct >= 70 ? "text-success-subtle-foreground" : likelihoodPct >= 40 ? "text-warning-subtle-foreground" : "text-destructive";
   const statusLabel = likelihoodPct >= 70 ? "Strong" : likelihoodPct >= 40 ? "Moderate" : "Needs Attention";
 
   return (
@@ -102,7 +102,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
           <div className="space-y-1" data-testid="metric-timeline">
             <p className="text-xs text-muted-foreground">Est. Timeline</p>
             <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4 text-blue-500" />
+              <Clock className="h-4 w-4 text-info" />
               <span className="text-lg font-bold">{prediction.estimatedDaysToFund}d</span>
             </div>
             <p className="text-xs text-muted-foreground">to funding</p>
@@ -111,7 +111,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
             <div className="space-y-1" data-testid="metric-credit-percentile">
               <p className="text-xs text-muted-foreground">Credit Standing</p>
               <div className="flex items-center gap-1">
-                <TrendingUp className="h-4 w-4 text-emerald-500" />
+                <TrendingUp className="h-4 w-4 text-success-subtle-foreground" />
                 <span className="text-lg font-bold">{benchmark.percentiles.creditScorePercentile}th</span>
               </div>
               <p className="text-xs text-muted-foreground">percentile</p>
@@ -121,7 +121,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
             <div className="space-y-1" data-testid="metric-docs">
               <p className="text-xs text-muted-foreground">Documents</p>
               <div className="flex items-center gap-1">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground" />
                 <span className="text-lg font-bold">{benchmark.yourMetrics.documentsSubmitted}</span>
               </div>
               <p className="text-xs text-muted-foreground">submitted</p>
@@ -135,7 +135,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
             <div className="flex flex-wrap gap-1.5">
               {prediction.positiveFactors.slice(0, 4).map((f, i) => (
                 <Badge key={i} variant="secondary" className="text-xs">
-                  <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-500" />
+                  <CheckCircle2 className="h-3 w-3 mr-1 text-success-subtle-foreground" />
                   {f}
                 </Badge>
               ))}
@@ -149,7 +149,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
             <div className="flex flex-wrap gap-1.5">
               {prediction.riskFactors.slice(0, 3).map((f, i) => (
                 <Badge key={i} variant="outline" className="text-xs">
-                  <AlertTriangle className="h-3 w-3 mr-1 text-orange-500" />
+                  <AlertTriangle className="h-3 w-3 mr-1 text-warning-subtle-foreground" />
                   {f}
                 </Badge>
               ))}

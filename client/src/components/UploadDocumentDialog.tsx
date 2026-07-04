@@ -31,11 +31,11 @@ import { CheckCircle2, FileText, FileUp, Paperclip, Upload, X } from "lucide-rea
  * Smart inline document upload for the messaging surface.
  *
  * Principles (low friction, zero data loss):
- *  - Shows exactly what the loan still needs (document-checklist endpoint) and
- *    lets the borrower quick-pick an outstanding item in one tap.
- *  - Never blocks an upload: anything not on the list goes up as a classified
- *    "other" document, stamped onto the loan file server-side.
- *  - Duplicates warn gently (server hint) — they are never rejected silently.
+ * - Shows exactly what the loan still needs (document-checklist endpoint) and
+ * lets the borrower quick-pick an outstanding item in one tap.
+ * - Never blocks an upload: anything not on the list goes up as a classified
+ * "other" document, stamped onto the loan file server-side.
+ * - Duplicates warn gently (server hint) — they are never rejected silently.
  */
 
 /** Canonical upload types — aligned with the server checklist vocabulary. */
@@ -315,7 +315,7 @@ export function UploadDocumentDialog({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Close"
                     onClick={() => {
                       setFile(null);
                       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -399,12 +399,12 @@ export function DocumentNeedsSummary({
 
   return (
     <div
-      className="mx-auto mb-2 flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900/50 dark:bg-amber-950/30"
+      className="mx-auto mb-2 flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-border bg-warning-subtle px-3 py-2"
       data-testid="document-needs-summary"
     >
       <div className="flex items-center gap-2 text-sm">
-        <FileText className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-        <span className="text-amber-800 dark:text-amber-200">
+        <FileText className="h-4 w-4 shrink-0 text-warning-subtle-foreground" />
+        <span className="text-warning-subtle-foreground">
           Your loan still needs <strong>{needed} document{needed === 1 ? "" : "s"}</strong>
         </span>
       </div>
@@ -425,7 +425,7 @@ export function DocumentNeedsSummary({
 /** Small inline confirmation for fulfilled requests (used by chat cards). */
 export function UploadedConfirmation({ fileName }: { fileName?: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+    <div className="flex items-center gap-1.5 text-xs text-success-subtle-foreground">
       <CheckCircle2 className="h-3.5 w-3.5" />
       <span>{fileName ? `${fileName} submitted` : "Submitted"}</span>
     </div>

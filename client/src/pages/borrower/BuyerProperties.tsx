@@ -119,7 +119,7 @@ function calculateAffordability(
 function AffordabilityBadge({ status }: { status: "within_guidelines" | "requires_review" | "exceeds_guidelines" }) {
   if (status === "within_guidelines") {
     return (
-      <Badge className="gap-1 bg-green-500/90 text-white hover:bg-green-500">
+      <Badge className="gap-1 bg-success text-success-foreground hover:bg-success">
         <CheckCircle className="h-3 w-3" />
         Within Guidelines
       </Badge>
@@ -127,14 +127,14 @@ function AffordabilityBadge({ status }: { status: "within_guidelines" | "require
   }
   if (status === "requires_review") {
     return (
-      <Badge className="gap-1 bg-yellow-500/90 text-white hover:bg-yellow-500">
+      <Badge className="gap-1 bg-warning text-warning-foreground hover:bg-warning">
         <AlertTriangle className="h-3 w-3" />
         Requires Review
       </Badge>
     );
   }
   return (
-    <Badge className="gap-1 bg-red-500/90 text-white hover:bg-red-500" variant="destructive">
+    <Badge className="gap-1 bg-destructive text-destructive-foreground hover:bg-destructive" variant="destructive">
       <XCircle className="h-3 w-3" />
       Exceeds Guidelines
     </Badge>
@@ -285,9 +285,9 @@ export default function BuyerProperties() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="w-full bg-yellow-500/20 backdrop-blur-sm lg:w-auto">
+              <Card className="w-full bg-warning/20 backdrop-blur-sm lg:w-auto">
                 <CardContent className="flex items-center gap-3 p-4">
-                  <AlertTriangle className="h-6 w-6 text-yellow-300" />
+                  <AlertTriangle className="h-6 w-6 text-warning" />
                   <div>
                     <p className="font-medium text-white">Get Pre-Approved First</p>
                     <p className="text-sm text-white/70">Complete an application to see personalized affordability</p>
@@ -305,27 +305,27 @@ export default function BuyerProperties() {
           {/* Quick Stats - Only show when pre-approved */}
           {hasPreApproval && (
             <div className="mt-8 grid grid-cols-3 gap-4">
-              <Card className="bg-green-500/20 backdrop-blur-sm">
+              <Card className="bg-success/20 backdrop-blur-sm">
                 <CardContent className="flex items-center gap-3 p-4">
-                  <CheckCircle className="h-8 w-8 text-green-300" />
+                  <CheckCircle className="h-8 w-8 text-success" />
                   <div>
                     <p className="text-2xl font-bold text-white">{stats.withinGuidelines}</p>
                     <p className="text-sm text-white/70">Within Guidelines</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-yellow-500/20 backdrop-blur-sm">
+              <Card className="bg-warning/20 backdrop-blur-sm">
                 <CardContent className="flex items-center gap-3 p-4">
-                  <AlertTriangle className="h-8 w-8 text-yellow-300" />
+                  <AlertTriangle className="h-8 w-8 text-warning" />
                   <div>
                     <p className="text-2xl font-bold text-white">{stats.requiresReview}</p>
                     <p className="text-sm text-white/70">Requires Review</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-red-500/20 backdrop-blur-sm">
+              <Card className="bg-destructive/20 backdrop-blur-sm">
                 <CardContent className="flex items-center gap-3 p-4">
-                  <XCircle className="h-8 w-8 text-red-300" />
+                  <XCircle className="h-8 w-8 text-destructive" />
                   <div>
                     <p className="text-2xl font-bold text-white">{stats.exceedsGuidelines}</p>
                     <p className="text-sm text-white/70">Exceeds Guidelines</p>
@@ -459,7 +459,7 @@ export default function BuyerProperties() {
                     {/* Save Button */}
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="icon" aria-label="Save"
                       className="absolute right-3 top-3 bg-white/80 hover:bg-white"
                       onClick={(e) => {
                         e.preventDefault();
@@ -477,7 +477,7 @@ export default function BuyerProperties() {
                         {formatCurrency(parseFloat(property.price))}
                       </p>
                       {hasPreApproval && property.affordability.status === "within_guidelines" && (
-                        <Badge variant="outline" className="text-green-600">
+                        <Badge variant="outline" className="text-success-subtle-foreground">
                           <TrendingUp className="mr-1 h-3 w-3" />
                           Within Guidelines
                         </Badge>
@@ -523,8 +523,8 @@ export default function BuyerProperties() {
                             <span>DTI Impact</span>
                             <span className={
                               property.affordability.dtiWithProperty > 43 
-                                ? "text-yellow-600" 
-                                : "text-green-600"
+                                ? "text-warning-subtle-foreground"
+                                : "text-success-subtle-foreground"
                             }>
                               {property.affordability.dtiWithProperty.toFixed(1)}%
                             </span>

@@ -493,7 +493,7 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
                   </div>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Delete"
                     onClick={() => removeMemberMutation.mutate(member.id)}
                     disabled={removeMemberMutation.isPending}
                     data-testid={`button-remove-${member.id}`}

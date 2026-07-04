@@ -127,8 +127,8 @@ export default function AdminDashboard() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="shadow-lg border-0">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 dark:bg-blue-900/30">
-                <Users className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-info-subtle">
+                <Users className="h-7 w-7 text-info" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Users</p>
@@ -141,8 +141,8 @@ export default function AdminDashboard() {
 
           <Card className="shadow-lg border-0">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/30">
-                <FileText className="h-7 w-7 text-purple-600 dark:text-purple-400" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
+                <FileText className="h-7 w-7 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Applications</p>
@@ -155,12 +155,12 @@ export default function AdminDashboard() {
 
           <Card className="shadow-lg border-0">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-                <DollarSign className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-success-subtle">
+                <DollarSign className="h-7 w-7 text-success-subtle-foreground" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Loan Volume</p>
-                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400" data-testid="text-loan-volume">
+                <p className="text-2xl font-bold text-success-subtle-foreground" data-testid="text-loan-volume">
                   {formatCurrency(stats?.totalLoanVolume || "0")}
                 </p>
               </div>
@@ -169,8 +169,8 @@ export default function AdminDashboard() {
 
           <Card className="shadow-lg border-0">
             <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/30">
-                <TrendingUp className="h-7 w-7 text-amber-600 dark:text-amber-400" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-warning-subtle">
+                <TrendingUp className="h-7 w-7 text-warning-subtle-foreground" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Approval Rate</p>

@@ -262,20 +262,20 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
   if (!hasData) return null;
 
   const creditColor = {
-    "760_plus": "text-emerald-600 dark:text-emerald-400",
-    "720_759": "text-emerald-600 dark:text-emerald-400",
-    "680_719": "text-sky-600 dark:text-sky-400",
-    "640_679": "text-amber-600 dark:text-amber-400",
-    "below_640": "text-red-600 dark:text-red-400",
+    "760_plus": "text-success-subtle-foreground",
+    "720_759": "text-success-subtle-foreground",
+    "680_719": "text-info",
+    "640_679": "text-warning-subtle-foreground",
+    "below_640": "text-destructive",
     "unknown": "text-muted-foreground",
   }[eligibility.creditTier] || "text-muted-foreground";
 
   const dtiColor = eligibility.estimatedDTI
     ? eligibility.estimatedDTI <= 36
-      ? "text-emerald-600 dark:text-emerald-400"
+      ? "text-success-subtle-foreground"
       : eligibility.estimatedDTI <= 43
-      ? "text-amber-600 dark:text-amber-400"
-      : "text-red-600 dark:text-red-400"
+      ? "text-warning-subtle-foreground"
+      : "text-destructive"
     : "text-muted-foreground";
 
   const signals: Array<{ icon: React.ElementType; label: string; value: string; color: string; testId: string; termKey?: string }> = [];
@@ -336,7 +336,7 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
       icon: CheckCircle2,
       label: "Eligible Programs",
       value: eligibility.eligibleLoanTypes.map(t => t.toUpperCase()).join(", "),
-      color: "text-emerald-600 dark:text-emerald-400",
+      color: "text-success-subtle-foreground",
       testId: "signal-programs",
     });
   }
@@ -404,7 +404,7 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Areas to Strengthen</p>
               {graph.readiness.outstandingInputs.slice(0, 3).map((gap, i) => (
                 <div key={i} className="flex items-center gap-2" data-testid={`text-gap-${i}`}>
-                  <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                  <AlertCircle className="h-3 w-3 text-warning-subtle-foreground shrink-0" />
                   <span className="text-xs text-muted-foreground">{gap}</span>
                 </div>
               ))}
@@ -502,7 +502,7 @@ function LoanDetails({
       label: "Loan Offers",
       value: `${offerCount} available${rateRange ? ` (${rateRange})` : ""}`,
       href: `/pipeline/${application.id}/offers`,
-      color: "text-emerald-600 dark:text-emerald-400",
+      color: "text-success-subtle-foreground",
       testId: "detail-offers",
     });
   }
@@ -512,7 +512,7 @@ function LoanDetails({
       icon: Calendar,
       label: "Pre-Approval Valid Until",
       value: expirationInfo.label,
-      color: expirationInfo.urgency === "urgent" ? "text-amber-600 dark:text-amber-400" : undefined,
+      color: expirationInfo.urgency === "urgent" ? "text-warning-subtle-foreground" : undefined,
       testId: "detail-expiration",
     });
   }
@@ -836,7 +836,7 @@ export default function Dashboard() {
               </div>
               <JourneyTracker status={activeApplication.status} showEstimates />
               <div className="mt-3 pt-3 border-t flex items-center gap-2 text-[11px] text-muted-foreground/70" data-testid="text-automation-status">
-                <Zap className="h-3 w-3 text-violet-400" />
+                <Zap className="h-3 w-3 text-primary" />
                 <span>Platform is automatically tracking compliance deadlines, verifying documents, and updating your progress</span>
               </div>
             </CardContent>
@@ -997,8 +997,8 @@ function PreQualLetterCard({ applicationId }: { applicationId: string }) {
       <CardContent className="p-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-amber-500">
-              <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-border">
+              <FileText className="h-4 w-4 text-warning-subtle-foreground" />
             </div>
             <div>
               <p className="font-medium text-sm" data-testid="text-prequal-title">

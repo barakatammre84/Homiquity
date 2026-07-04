@@ -1,15 +1,15 @@
 export type SlaStatus = "green" | "amber" | "red";
 
 export const SLA_STATUS_COLORS: Record<SlaStatus, string> = {
-  green: "text-emerald-600 dark:text-emerald-400",
-  amber: "text-amber-600 dark:text-amber-400",
-  red: "text-red-600 dark:text-red-400",
+  green: "text-success-subtle-foreground",
+  amber: "text-warning-subtle-foreground",
+  red: "text-destructive",
 };
 
 export const SLA_DOT_COLORS: Record<SlaStatus, string> = {
-  green: "bg-emerald-500",
-  amber: "bg-amber-500",
-  red: "bg-red-500",
+  green: "bg-success",
+  amber: "bg-warning",
+  red: "bg-destructive",
 };
 
 export const SLA_STATUS_LABELS: Record<SlaStatus, string> = {

@@ -515,7 +515,7 @@ export default function AdminContent() {
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon" aria-label="Edit"
                             onClick={() => openArticleDialog(article)}
                             data-testid={`button-edit-article-${article.id}`}
                           >
@@ -523,7 +523,7 @@ export default function AdminContent() {
                           </Button>
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon" aria-label="Delete"
                             onClick={() => deleteArticleMutation.mutate(article.id)}
                             disabled={deleteArticleMutation.isPending}
                             data-testid={`button-delete-article-${article.id}`}
@@ -586,7 +586,7 @@ export default function AdminContent() {
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon" aria-label="Edit"
                             onClick={() => openFaqDialog(faq)}
                             data-testid={`button-edit-faq-${faq.id}`}
                           >
@@ -594,7 +594,7 @@ export default function AdminContent() {
                           </Button>
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon" aria-label="Delete"
                             onClick={() => deleteFaqMutation.mutate(faq.id)}
                             disabled={deleteFaqMutation.isPending}
                             data-testid={`button-delete-faq-${faq.id}`}
@@ -653,7 +653,7 @@ export default function AdminContent() {
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon" aria-label="Edit"
                             onClick={() => openCategoryDialog(category)}
                             data-testid={`button-edit-category-${category.id}`}
                           >
@@ -661,7 +661,7 @@ export default function AdminContent() {
                           </Button>
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon" aria-label="Delete"
                             onClick={() => deleteCategoryMutation.mutate(category.id)}
                             disabled={deleteCategoryMutation.isPending}
                             data-testid={`button-delete-category-${category.id}`}

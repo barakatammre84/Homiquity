@@ -264,11 +264,11 @@ function FinancialCards({ profile }: { profile: HomeownerProfile }) {
       <Card data-testid="card-equity">
         <CardContent className="py-3">
           <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <TrendingUp className="h-4 w-4 text-success-subtle-foreground" />
             <p className="text-xs text-muted-foreground">Home Equity</p>
           </div>
           <p className="text-lg font-bold text-foreground" data-testid="text-equity">{formatCurrency(equity)}</p>
-          <p className="text-xs text-emerald-600 dark:text-emerald-400" data-testid="text-equity-percent">{equityPercent}%</p>
+          <p className="text-xs text-success-subtle-foreground" data-testid="text-equity-percent">{equityPercent}%</p>
         </CardContent>
       </Card>
       <Card data-testid="card-monthly-payment">
@@ -437,7 +437,7 @@ function RefiAlertsSection({ profileId }: { profileId: string }) {
                     <div className="flex items-center gap-2 flex-wrap mb-2">
                       <span className="text-sm font-medium text-foreground">Rate Comparison</span>
                       {alert.isActionable && (
-                        <Badge variant="default" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" data-testid={`badge-actionable-${alert.id}`}>
+                        <Badge variant="default" className="bg-success/10 text-success-subtle-foreground" data-testid={`badge-actionable-${alert.id}`}>
                           <CheckCircle2 className="h-3 w-3 mr-1" /> Actionable
                         </Badge>
                       )}
@@ -454,7 +454,7 @@ function RefiAlertsSection({ profileId }: { profileId: string }) {
                       {alert.potentialSavingsMonthly && (
                         <div>
                           <p className="text-muted-foreground">Monthly Savings</p>
-                          <p className="font-semibold text-emerald-700 dark:text-emerald-300" data-testid={`text-monthly-savings-${alert.id}`}>
+                          <p className="font-semibold text-success-subtle-foreground" data-testid={`text-monthly-savings-${alert.id}`}>
                             {formatCurrency(alert.potentialSavingsMonthly)}/mo
                           </p>
                         </div>
@@ -462,7 +462,7 @@ function RefiAlertsSection({ profileId }: { profileId: string }) {
                       {alert.potentialSavingsLifetime && (
                         <div>
                           <p className="text-muted-foreground">Lifetime Savings</p>
-                          <p className="font-semibold text-emerald-700 dark:text-emerald-300" data-testid={`text-lifetime-savings-${alert.id}`}>
+                          <p className="font-semibold text-success-subtle-foreground" data-testid={`text-lifetime-savings-${alert.id}`}>
                             {formatCurrency(alert.potentialSavingsLifetime)}
                           </p>
                         </div>

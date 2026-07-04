@@ -176,7 +176,7 @@ export default function LoanEstimate() {
     <>
       <div className="flex items-center justify-between border-b bg-background px-6 py-3">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="icon" aria-label="Copy link" asChild>
             <Link href={`/borrower-file/${id}`}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -224,7 +224,7 @@ export default function LoanEstimate() {
                   <CardContent>
                     <div className="flex items-center gap-2">
                       {le.tridCompliance.withinThreeBusinessDays ? (
-                        <Badge className="bg-green-500">
+                        <Badge className="bg-success">
                           <CheckCircle2 className="mr-1 h-3 w-3" />
                           TRID Compliant
                         </Badge>
@@ -456,7 +456,7 @@ export default function LoanEstimate() {
                           {formatCurrency(le.comparisons.inFiveYears.totalYouWillHavePaid)}
                         </p>
                         <p className="text-xs text-muted-foreground">Total you will have paid</p>
-                        <p className="text-lg font-semibold text-green-600 mt-2">
+                        <p className="text-lg font-semibold text-success-subtle-foreground mt-2">
                           {formatCurrency(le.comparisons.inFiveYears.principalPaidOff)}
                         </p>
                         <p className="text-xs text-muted-foreground">Principal paid off</p>
@@ -485,9 +485,9 @@ export default function LoanEstimate() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+                <Card className="border-border/30 bg-warning-subtle/50">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                    <CardTitle className="flex items-center gap-2 text-warning-subtle-foreground">
                       <Info className="h-5 w-5" />
                       Important Information
                     </CardTitle>

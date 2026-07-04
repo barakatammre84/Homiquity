@@ -246,7 +246,7 @@ export default function AdminRates() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon" aria-label="Copy link" asChild>
               <Link href="/admin" data-testid="button-back-admin">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
@@ -358,7 +358,7 @@ export default function AdminRates() {
                             <div className="flex justify-end gap-2">
                               <Button
                                 variant="ghost"
-                                size="icon"
+                                size="icon" aria-label="Edit"
                                 onClick={() => {
                                   setEditingRate(rate);
                                   setRateDialogOpen(true);
@@ -369,7 +369,7 @@ export default function AdminRates() {
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="icon"
+                                size="icon" aria-label="Delete"
                                 onClick={() => deleteRateMutation.mutate(rate.id)}
                                 disabled={deleteRateMutation.isPending}
                                 data-testid={`button-delete-rate-${rate.id}`}
@@ -476,7 +476,7 @@ export default function AdminRates() {
                             <div className="flex justify-end gap-2">
                               <Button
                                 variant="ghost"
-                                size="icon"
+                                size="icon" aria-label="Edit"
                                 onClick={() => {
                                   setEditingProgram(program);
                                   setProgramDialogOpen(true);
@@ -487,7 +487,7 @@ export default function AdminRates() {
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="icon"
+                                size="icon" aria-label="Delete"
                                 onClick={() => deleteProgramMutation.mutate(program.id)}
                                 disabled={deleteProgramMutation.isPending}
                                 data-testid={`button-delete-program-${program.id}`}

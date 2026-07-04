@@ -124,7 +124,7 @@ export function TrustLayer({ applicationId, status }: TrustLayerProps) {
           )}
 
           <div className="flex items-center gap-2 pt-1 border-t" data-testid="trust-security">
-            <Shield className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <Shield className="h-3.5 w-3.5 text-success-subtle-foreground shrink-0" />
             <p className="text-[11px] text-muted-foreground leading-relaxed" data-testid="text-security-note">
               Your data is encrypted and stored securely. We never share your information without your consent.
             </p>

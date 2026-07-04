@@ -104,10 +104,10 @@ interface CoachUsage {
 }
 
 const TIER_CONFIG: Record<string, { label: string; color: string; icon: typeof Target }> = {
-  ready_now: { label: "Ready Now", color: "bg-emerald-500", icon: CheckCircle2 },
-  almost_ready: { label: "Almost Ready", color: "bg-blue-500", icon: TrendingUp },
-  building: { label: "Building", color: "bg-amber-500", icon: Target },
-  exploring: { label: "Exploring", color: "bg-slate-500", icon: Clock },
+  ready_now: { label: "Ready Now", color: "bg-success", icon: CheckCircle2 },
+  almost_ready: { label: "Almost Ready", color: "bg-info", icon: TrendingUp },
+  building: { label: "Building", color: "bg-warning", icon: Target },
+  exploring: { label: "Exploring", color: "bg-muted", icon: Clock },
 };
 
 const CATEGORY_ICONS: Record<string, typeof Target> = {
@@ -293,7 +293,7 @@ function ActionPlanPanel({
                 data-testid={`action-item-${item.id}`}
               >
                 {item.completed ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground mt-0.5 shrink-0" />
                 ) : (
                   <Circle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 )}
@@ -325,8 +325,8 @@ function ActionPlanPanel({
           </div>
         )}
         {completedCount === plan.length && plan.length > 0 && (
-          <div className="mt-3 p-2 rounded-lg bg-emerald-500/10 text-center">
-            <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <div className="mt-3 p-2 rounded-lg bg-success/10 text-center">
+            <p className="text-xs font-medium text-success-subtle-foreground">
               All action items completed!
             </p>
           </div>
@@ -391,7 +391,7 @@ function ChatMessage({ message }: { message: CoachMessage }) {
   return (
     <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`} data-testid={`chat-message-${message.id}`}>
       <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
-        isUser ? "bg-primary text-primary-foreground" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+        isUser ? "bg-primary text-primary-foreground" : "bg-success/10 text-success-subtle-foreground"
       }`}>
         {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
       </div>
@@ -560,10 +560,10 @@ function InsightsBanner({
       {insights.slice(0, 2).map((insight, i) => (
         <div
           key={i}
-          className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
+          className="flex items-start gap-3 p-3 rounded-lg border border-border/20 bg-warning/5"
           data-testid={`insight-${insight.type}`}
         >
-          <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+          <Lightbulb className="h-4 w-4 text-warning-subtle-foreground mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground">{insight.title}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{insight.description}</p>
@@ -642,8 +642,8 @@ function WelcomeState({ onStart, insights }: { onStart: (msg: string) => void; i
     <div className="flex-1 overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-2xl space-y-8 py-4">
         <div className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
-            <Bot className="h-8 w-8 text-emerald-500" />
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-success/20 to-success/20 flex items-center justify-center">
+            <Bot className="h-8 w-8 text-success-subtle-foreground" />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-foreground sm:text-3xl" data-testid="text-coach-welcome">
@@ -663,8 +663,8 @@ function WelcomeState({ onStart, insights }: { onStart: (msg: string) => void; i
               className="flex flex-col items-center gap-2 rounded-xl border bg-card p-3 text-center"
               data-testid={`value-prop-${vp.text.substring(0, 12).replace(/\s/g, '-').toLowerCase()}`}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
-                <vp.icon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-success/10">
+                <vp.icon className="h-4 w-4 text-success-subtle-foreground" />
               </div>
               <span className="text-xs font-medium text-muted-foreground leading-tight">{vp.text}</span>
             </div>
@@ -677,10 +677,10 @@ function WelcomeState({ onStart, insights }: { onStart: (msg: string) => void; i
             {insights.slice(0, 2).map((insight, i) => (
               <div
                 key={i}
-                className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
+                className="flex items-start gap-3 p-3 rounded-lg border border-border/20 bg-warning/5"
                 data-testid={`welcome-insight-${insight.type}`}
               >
-                <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <Lightbulb className="h-4 w-4 text-warning-subtle-foreground mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">{insight.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{insight.description}</p>
@@ -993,7 +993,7 @@ export default function AICoach() {
   const conversationListContent = (
     <>
       <div className="flex items-center gap-2 mb-4 px-1">
-        <Bot className="h-5 w-5 text-emerald-500" />
+        <Bot className="h-5 w-5 text-success-subtle-foreground" />
         <h2 className="font-semibold text-foreground text-sm">AI Coach</h2>
       </div>
       {loadingConvs ? (
@@ -1026,7 +1026,7 @@ export default function AICoach() {
           <div className="flex items-center gap-2 border-b px-3 py-2">
             <Sheet open={mobileConvOpen} onOpenChange={setMobileConvOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden" data-testid="button-mobile-conversations">
+                <Button variant="ghost" size="icon" aria-label="Conversations" className="lg:hidden" data-testid="button-mobile-conversations">
                   <MessageSquare className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
@@ -1052,7 +1052,7 @@ export default function AICoach() {
             {hasSidePanel && (
               <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="xl:hidden" data-testid="button-mobile-panel">
+                  <Button variant="ghost" size="icon" aria-label="Details panel" className="xl:hidden" data-testid="button-mobile-panel">
                     <Sparkles className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -1084,7 +1084,7 @@ export default function AICoach() {
                 ))}
                 {sendMessage.isPending && (
                   <div className="flex gap-3">
-                    <div className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <div className="shrink-0 h-8 w-8 rounded-full flex items-center justify-center bg-success/10 text-success-subtle-foreground">
                       <Bot className="h-4 w-4" />
                     </div>
                     <div className="bg-muted rounded-xl px-4 py-3 flex items-center gap-2">
@@ -1123,7 +1123,7 @@ export default function AICoach() {
                   data-testid="input-coach-message"
                 />
                 <Button
-                  size="icon"
+                  size="icon" aria-label="Send"
                   onClick={() => handleSend()}
                   disabled={!inputValue.trim() || sendMessage.isPending || !!usage?.isLimited}
                   data-testid="button-send-message"

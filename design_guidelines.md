@@ -1,196 +1,125 @@
-# Design Guidelines: AI-Powered Mortgage Lending Platform
+# Design Guidelines — Homiquity
 
-## Design Approach
-**"Obsidian Indigo" — Monochromatic Precision (Stripe / Linear / Notion register)**
+> **Source of truth is the code, not this file.** Tokens live in
+> [`client/src/index.css`](client/src/index.css) (CSS variables) and
+> [`tailwind.config.ts`](tailwind.config.ts); primitives live in
+> [`client/src/components/ui/`](client/src/components/ui). This doc explains the
+> *rules*; when they disagree with the code, the code wins — fix the doc.
+> The `design-token guard` (`scripts/design-token-guard.cjs`, run by
+> `npm run checkup`) **fails CI on any raw Tailwind palette class**, so the rules
+> below are enforced, not aspirational.
+
+## Design approach — "Obsidian Indigo" (monochromatic precision)
 
 A single desaturated navy-indigo hue (~216°) expanded across a strict value ramp,
-projecting institutional trust: 950 `#050B14` Obsidian (primary type & actions) ·
-900 `#0C1625` Deep Ink (nav/sidebars) · 700 `#1D2D44` Steel Blue · 500 `#3E5370`
-Muted Slate (secondary text) · 300 `#889DBE` Dusty Ice · 100 `#D0DDF0` Frost Tint
-(hairlines) · 50 `#F2F6FC` Paper Ice (canvas). Implemented as CSS variables in
-`client/src/index.css` plus the `precision.*` scale in `tailwind.config.ts`.
+Stripe / Linear / Notion register — institutional trust, "high-performance
+financial utility, not consumer neobank."
 
-**Hierarchy by value progression** — Layer 0: `bg-background` (Paper Ice); Layer 1:
-white cards + 1px Frost hairline, no default shadow; Layer 2: Obsidian primary
-actions. **Semantic pop** — success `#10B981`, warning `#F59E0B`, danger `#EF4444`
-live *outside* the ramp so approvals/alerts leap out of dense pipeline views.
-**Loading** — field-level `animate-skeleton-precision` pulses (Frost→Paper), never
-generic spinners.
+**Value ramp** (`precision.*` in Tailwind, CSS vars in `index.css`):
+`950 #050B14` Obsidian (primary type & actions) · `900 #0C1625` Deep Ink
+(nav/sidebars) · `700 #1D2D44` Steel Blue · `500 #3E5370` Muted Slate (secondary
+text) · `300 #889DBE` Dusty Ice · `100 #D0DDF0` Frost Tint (hairlines) ·
+`50 #F2F6FC` Paper Ice (canvas).
 
-## Core Design Principles
-1. **Radical Transparency**: Every loan detail, rate, and cost visible upfront
-2. **Speed Indicators**: Show progress, time estimates prominently (e.g., "3-minute pre-approval")
-3. **Trust Through Clarity**: Clean layouts, professional typography, no visual clutter
-4. **Data-Driven Design**: Financial comparisons as visual centerpieces
-5. **Hierarchy Through Value, Not Hue**: depth comes from the monochromatic ramp; non-ramp color is reserved for semantic status only
+**Core principles**
+1. **Hierarchy through VALUE, not hue.** Depth comes from the monochromatic ramp.
+2. **Non-ramp color is reserved for semantic status only** (see below).
+3. Radical transparency, speed indicators, trust through clarity, data-as-centerpiece.
 
-## Typography System
+## Color system
 
-**Font Stack**: Geist (primary) with Inter fallback, via Google Fonts CDN
-- **Headings**: Font weight 600-700, tight letter spacing (-0.02em)
-- **Body**: Font weight 400, line height 1.6
-- **Financial Data**: Font weight 500-600, tabular numbers
-- **Micro-copy**: Font weight 400, size 0.875rem
+### Layers
+- **Layer 0** `bg-background` — Paper Ice canvas (soft, not stark white).
+- **Layer 1** — white cards + 1px Frost hairline (`border-card-border`), **no default shadow**.
+- **Layer 2** — Obsidian primary actions (`bg-primary`), hover deepens via the elevate system.
+- **Sidebar** — Deep Ink dark nav container.
 
-**Hierarchy**:
-- Hero Headlines: 3rem (mobile) / 4.5rem (desktop)
-- Section Headers: 2rem / 3rem
-- Card Titles: 1.25rem / 1.5rem
-- Body Text: 1rem
-- Labels/Captions: 0.875rem
-- Financial Figures: 1.5rem-2rem (prominent display)
+### Semantic status (the ONLY non-ramp color)
+Use these tokens or the `<Badge>/<Alert>` variants — **never** raw palette classes
+like `text-emerald-600` / `bg-amber-100` (the guard blocks them, and they fail WCAG AA).
 
-## Layout System
+| Intent | Solid fill | Foreground on fill | Subtle chip (default for text) |
+|---|---|---|---|
+| success | `bg-success` (#10B981) | `text-success-foreground` (Obsidian) | `bg-success-subtle` + `text-success-subtle-foreground` |
+| warning | `bg-warning` (#F59E0B) | `text-warning-foreground` (Obsidian) | `bg-warning-subtle` + `text-warning-subtle-foreground` |
+| info    | `bg-info`               | `text-info-foreground` | `bg-info-subtle` + `text-info` |
+| destructive | `bg-destructive` (red-600) | `text-destructive-foreground` (white) | `bg-destructive-subtle` + `text-destructive` |
 
-**Spacing Primitives**: Tailwind units 2, 4, 6, 8, 12, 16
-- Component padding: p-6 to p-8
-- Section spacing: py-12 (mobile) / py-16 (desktop)
-- Card gaps: gap-4 to gap-6
-- Form field spacing: space-y-4
+**AA rules (enforced by design):**
+- Status color as *text on canvas* is a WCAG fail — use the `*-subtle` pair
+  (dark tint text on pale tint fill, all ≥5.5:1) for badges/labels/inline text.
+- Solid fills carry **dark** foregrounds for success/warning (white-on-emerald
+  was 2.54:1); `destructive` is red-600 so white-on-red clears 4.80:1.
+- On **dark image overlays**, keep icons vivid (`text-warning`/`text-success`),
+  not the dark subtle-foreground (which vanishes).
 
-**Grid Structure**:
-- Max-width containers: max-w-7xl for main content
-- Form sections: max-w-2xl (centered, focused)
-- Dashboard grids: grid-cols-1 md:grid-cols-2 lg:grid-cols-3
-- Loan comparison: grid-cols-1 lg:grid-cols-3 (side-by-side cards)
+### Charts
+`chart-1..5` is a **colorblind-safe categorical** set (navy/teal/amber/indigo/rose)
+for multi-series data-viz — it deliberately does NOT reuse the success/warning
+hues. For a single ordered metric, use the navy value ramp instead.
 
-## Component Library
+## Typography
+- **Fonts:** Geist (primary) → Inter fallback; Source Serif 4 for display/hero;
+  Geist Mono for code/figures. Loaded via `--font-sans/-serif/-mono`.
+- Headings: weight 600–700, tight tracking (−0.02em). Body: 400, line-height 1.6.
+  Financial figures: 500–600, `tabular-nums`.
+- Scale: hero `text-4xl`→`text-6xl`, section `text-2xl`→`text-3xl`, `CardTitle`
+  `text-2xl`, body `text-base`, caption/labels `text-sm`.
+- **Gap:** no shared `<Heading>/<Text>` component yet — heading sizes are chosen
+  ad-hoc. Prefer promoting to a component so the scale is enforced.
 
-### Navigation
-- Sticky top navigation with minimal height (h-16)
-- Logo left, primary actions right (Login/Get Started)
-- Burger menu for mobile, horizontal for desktop
-- Persistent CTA button in nav (e.g., "Get Pre-Approved")
+## Layout & spacing
+- Spacing primitives: Tailwind `2, 4, 6, 8, 12, 16`. Component padding `p-6`–`p-8`;
+  section spacing `py-12`(mobile)/`py-16`(desktop); form field `space-y-4`.
+- Max-width `max-w-7xl` main content; `max-w-2xl` centered forms.
+- Grids: dashboards `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`; comparisons `lg:grid-cols-3`.
 
-### Hero Section
-- Full-width, 85vh viewport height
-- Large hero image: modern home exterior or family in new home (professional photography)
-- Centered content overlay with semi-transparent blur backdrop for text/buttons
-- Headline + sub-headline + dual CTAs ("Get Pre-Approved" primary, "Check Rates" secondary)
-- Trust indicators below CTAs (e.g., "2.3M+ homes financed | Average 21-day closing")
+## Radii, elevation, motion
+- **Radii:** `--radius` .75rem → `rounded-lg` 12px (cards/modals), `rounded-md` 8px
+  (inputs/buttons), `rounded-sm` 4px (chips).
+- **Elevation:** `--shadow-2xs`…`--shadow-2xl` (house-hue tinted). **Cards default
+  to no shadow + hairline**; reach for shadow only for true overlays (popover/toast).
+- **Motion:** `transition-all duration-150 ease-in-out` on interactive atoms;
+  the elevate system (`hover-elevate`/`active-elevate-2`) supplies hover/active
+  tints. Loading = `<Skeleton>` (`animate-skeleton-precision`, Frost→Paper), never spinners.
 
-### Forms (Pre-Approval, Application)
-- Single-column layout, max-w-2xl centered
-- Large touch-friendly inputs (h-12 minimum)
-- Progress indicator at top (step X of Y with visual bar)
-- Inline validation with clear error states
-- Auto-save indicators ("Saved automatically")
-- Primary action button: full-width on mobile, auto-width on desktop
+## Components (`components/ui/*`)
+- **Button** — variants `default, destructive, outline, secondary, ghost, link`;
+  sizes `sm` h-9 · `default` h-11 · `lg` h-12 · `icon` h-11 w-11. Focus ring via
+  `focus-visible:ring-ring`. `size="icon"` **requires an `aria-label`**.
+- **Badge** — `default, secondary, destructive, success, warning, info, outline`.
+- **Alert** — `default, destructive, success, warning, info`.
+- **Card** — `rounded-lg bg-card border border-card-border`, no shadow.
+- All 30 primitives consume tokens. **Gap:** zero Storybook stories / component
+  tests despite ~1,900 `data-testid`s ready for visual-regression.
 
-### Loan Comparison Cards
-- Three-column grid on desktop, stacked on mobile
-- Card structure: Loan type header → Monthly payment (largest text) → Rate/APR → Points → Down payment → Closing costs → Total cost
-- Visual distinction for "Recommended" option (subtle border treatment)
-- "Lock This Rate" CTA button per card
-- Expandable details section for full amortization
+## Iconography
+- **Library: `lucide-react`** (not Heroicons — that's stale). Outline for
+  nav/secondary; size 16px (`[&_svg]:size-4` in buttons) / 20–24px prominent.
+- No emoji or raster glyphs for UI. Icon-only controls **must** have `aria-label`.
 
-### Dashboard Layouts
-**Borrower Dashboard**:
-- Status timeline component showing stages (Application → Documents → Underwriting → Approved)
-- Card grid for: Current loan status, Required documents, Saved properties, Rate watch
-- Document upload area with drag-drop zone
+## Accessibility (WCAG 2.1 AA)
+- **Skip link:** `<SkipLink />` is the first focusable element in every layout;
+  `<main id="main" tabIndex={-1}>` is the target.
+- **Form errors are announced:** shared `FormMessage` renders `role="alert"`;
+  inline field errors use `role="alert"`; `FormControl` sets `aria-invalid` +
+  `aria-describedby`. Toasts (Radix) announce automatically.
+- **Contrast:** all semantic pairs verified AA (see Color system). Focus states
+  are centralized (`focus-visible:ring-ring`), never removed.
+- Labels always visible (no placeholder-only). Touch targets ≥44px (`.touch-target`).
+- **Open follow-ups:** `aria-label` sweep on icon-only controls; landmark/skip-link
+  on bare (layout-less) routes; a `<Heading>` component for ordered headings.
 
-**Broker Portal**:
-- Stats row: Total referrals, Active loans, Commissions earned
-- Table view: Client list with search/filter, loan status badges, action buttons
-- Lead marketplace section with pre-approved buyer cards
+## Responsive & assets
+- Mobile-first; single-column forms; bottom-sheet modals; sticky CTAs;
+  `env(safe-area-inset-bottom)` handled.
+- Images: 16:9 `object-cover` cards; `loading="lazy"` on all non-hero images.
 
-**Admin Dashboard**:
-- KPI metrics row (approval rate, avg processing time, volume)
-- Charts: Loan volume over time, approval funnel
-- Recent activity feed
-
-### Property Search (MLS Integration)
-- Masonry grid layout for property cards (2-3 columns)
-- Property card: Large image → Price (prominent) → Address → Beds/Baths/Sqft → "See Loan Options" CTA
-- Filter sidebar: Price range, location, property type, beds/baths
-- Map view toggle option
-
-### Document Upload
-- Drag-drop zone with clear visual feedback
-- Document type categorization (Income, Assets, Identification)
-- Upload progress indicators
-- Thumbnail previews with file names
-- Security reassurance text ("Bank-level encryption")
-
-### Status Tracking
-- Horizontal stepper on desktop, vertical on mobile
-- Clear visual states: Completed (checkmark), Active (pulse), Pending (outline)
-- Estimated time remaining per stage
-- Notifications area for required actions
-
-## Visual Elements
-
-### Buttons
-- Primary: Rounded corners (rounded-lg), h-12 minimum, px-8
-- Secondary: Outlined variant with same sizing
-- Disabled state: reduced opacity with cursor-not-allowed
-- Button on image overlays: backdrop-blur-sm with semi-transparent background
-
-### Cards
-- Subtle shadow (shadow-sm), rounded corners (rounded-xl)
-- Padding: p-6 to p-8
-- Hover state: slight shadow increase (shadow-md)
-- Clean borders for separation where needed
-
-### Icons
-- **Library**: Heroicons via CDN (outline for nav/secondary, solid for states)
-- Size: 20px (standard), 24px (prominent actions)
-- Placement: Left of button text, above card titles, inline with data labels
-
-### Data Visualization
-- Simple bar charts for loan comparisons
-- Timeline/stepper for process tracking
-- Percentage indicators for loan-to-value, DTI ratios
-- Use HTML/CSS for simple visualizations, Chart.js for complex charts
-
-## Images
-
-### Required Images
-1. **Hero Image**: Professional photo of modern home exterior or happy family at new home entrance - full-width, high-quality
-2. **About Section**: Team photo or modern office workspace - establishes trust
-3. **Property Listings**: MLS property photos - multiple per listing in carousel
-4. **Placeholder States**: Generic home icon for properties without images
-
-### Image Treatment
-- Hero: Full-bleed with gradient overlay for text legibility
-- Property cards: 16:9 aspect ratio, object-cover
-- Lazy loading for all non-critical images
-
-## Accessibility
-- Form labels always visible (no placeholder-only patterns)
-- Focus states: visible outline on all interactive elements
-- ARIA labels for icon-only buttons
-- Keyboard navigation through all workflows
-- Color contrast meeting WCAG AA standards minimum
-
-## Mobile Considerations
-- Touch targets: minimum 44x44px
-- Single-column forms on mobile
-- Collapsible sections for long content
-- Bottom-sheet modals for mobile actions
-- Sticky CTAs for key actions
-
-## Page-Specific Layouts
-
-### Landing Page
-- Hero with image + pre-approval CTA
-- Social proof section (stats, testimonials) - 3-column grid
-- "How It Works" - 4-step visual process
-- Loan comparison preview - showing sample rates
-- Broker partnership CTA section
-- Footer with quick links, contact, trust badges
-
-### Pre-Approval Flow
-- Multi-step form (3-4 steps max)
-- Persistent progress bar
-- Exit-intent save prompt
-- Results page: Approval amount + next steps
-
-### Loan Comparison Page
-- Filter controls at top (loan type, term, down payment slider)
-- 3-column card grid for loan options
-- Sticky "Compare Selected" button
-- Detailed breakdown modal on card click
-
-This comprehensive design creates a professional, efficient, and trustworthy mortgage platform matching Better.com's digital-first approach while supporting all core features including pre-approval, loan comparison, property search, and multi-user dashboards.
+## Governance
+- **Single source of truth:** `index.css` + `tailwind.config.ts` + `components/ui/**`.
+  This doc is narrative, not normative.
+- **Enforcement:** the design-token guard (baseline 0) blocks raw palette colors in CI.
+- **Ownership:** put a CODEOWNER on `components/ui/**` and the token files; any new
+  primitive or token needs review + a changelog entry.
+- **Adding a new status color?** Add a `<Badge>/<Alert>` variant + `*-subtle`
+  tokens (light+dark, AA-verified) — never a one-off palette class in a page.

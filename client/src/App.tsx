@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { PrivateLayout } from "@/components/layouts/PrivateLayout";
+import { BareLayout } from "@/components/layouts/BareLayout";
 import { Loader2 } from "lucide-react";
 
 // Lazy — this modal is the only eager import that pulls framer-motion, so
@@ -172,20 +173,20 @@ function Router() {
       <Switch>
         {/* Public Pages - Anyone can access */}
         <Route path="/" component={Landing} />
-        <Route path="/login" component={Login} />
-        <Route path="/signup" component={Signup} />
-        {!isProduction && <Route path="/test-login" component={TestLogin} />}
-        <Route path="/redeem-invite" component={RedeemInvite} />
-        <Route path="/redeem-invite/:code" component={RedeemInvite} />
-        <Route path="/apply" component={PreApproval} />
+        <Route path="/login"><BareLayout><Login /></BareLayout></Route>
+        <Route path="/signup"><BareLayout><Signup /></BareLayout></Route>
+        {!isProduction && <Route path="/test-login"><BareLayout><TestLogin /></BareLayout></Route>}
+        <Route path="/redeem-invite"><BareLayout><RedeemInvite /></BareLayout></Route>
+        <Route path="/redeem-invite/:code"><BareLayout><RedeemInvite /></BareLayout></Route>
+        <Route path="/apply"><BareLayout><PreApproval /></BareLayout></Route>
         <Route path="/apply/:token">
-          {(params) => <ApplyInvite />}
+          {(params) => <BareLayout><ApplyInvite /></BareLayout>}
         </Route>
         <Route path="/ref/:code">
-          {(params) => <ReferralLanding />}
+          {(params) => <BareLayout><ReferralLanding /></BareLayout>}
         </Route>
         <Route path="/partner/:profileId">
-          {(params) => <PartnerLanding />}
+          {(params) => <BareLayout><PartnerLanding /></BareLayout>}
         </Route>
         <Route path="/find-an-agent">
           <PublicPage><FindAnAgent /></PublicPage>
@@ -206,13 +207,13 @@ function Router() {
           <PublicPage><Glossary /></PublicPage>
         </Route>
         <Route path="/privacy">
-          <Privacy />
+          <BareLayout><Privacy /></BareLayout>
         </Route>
         <Route path="/terms">
-          <Terms />
+          <BareLayout><Terms /></BareLayout>
         </Route>
         <Route path="/disclosures">
-          <Disclosures />
+          <BareLayout><Disclosures /></BareLayout>
         </Route>
         
         {/* Property Pages - Public */}
@@ -267,7 +268,7 @@ function Router() {
         </Route>
 
         {/* Affordability Check - "Can I Afford This Home?" */}
-        <Route path="/afford" component={AffordabilityCheck} />
+        <Route path="/afford"><BareLayout><AffordabilityCheck /></BareLayout></Route>
 
         {/* Private Pages - Any authenticated user (role-aware content) */}
         <Route path="/dashboard">

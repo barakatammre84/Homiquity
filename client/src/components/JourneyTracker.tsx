@@ -86,7 +86,7 @@ export function JourneyTracker({ status, className = "", showEstimates = false }
               {index > 0 && (
                 <div
                   className={`absolute top-4 right-1/2 w-full h-0.5 -z-10 transition-colors duration-500 ${
-                    isCompleted ? "bg-emerald-500" : "bg-border"
+                    isCompleted ? "bg-success" : "bg-border"
                   }`}
                   data-testid={`journey-line-${step.id}`}
                 />
@@ -95,7 +95,7 @@ export function JourneyTracker({ status, className = "", showEstimates = false }
               <div
                 className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-300 ${
                   isCompleted
-                    ? "border-emerald-500 bg-emerald-500 text-white"
+                    ? "border-border bg-success text-success-foreground"
                     : isCurrent
                     ? "border-primary bg-primary text-primary-foreground shadow-md"
                     : "border-border bg-background text-muted-foreground"
@@ -118,7 +118,7 @@ export function JourneyTracker({ status, className = "", showEstimates = false }
                   isCurrent
                     ? "font-semibold text-foreground"
                     : isCompleted
-                    ? "font-medium text-emerald-600 dark:text-emerald-400"
+                    ? "font-medium text-success-subtle-foreground"
                     : "text-muted-foreground"
                 }`}
                 data-testid={`journey-label-${step.id}`}

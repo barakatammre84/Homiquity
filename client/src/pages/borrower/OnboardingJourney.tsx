@@ -273,7 +273,7 @@ function FeedbackForm({ onSubmitted }: { onSubmitted: () => void }) {
             data-testid={`button-rating-${value}`}
           >
             <Star
-              className={`h-6 w-6 ${value <= rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`}
+              className={`h-6 w-6 ${value <= rating ? "fill-warning text-warning-subtle-foreground" : "text-muted-foreground"}`}
             />
           </button>
         ))}
@@ -361,7 +361,7 @@ export default function OnboardingJourney() {
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                className="h-full bg-success rounded-full transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
                 data-testid="progress-bar"
               />
@@ -402,18 +402,18 @@ export default function OnboardingJourney() {
             <div key={step.id} className="flex gap-3" data-testid={`journey-step-${step.id}`}>
               <div className="flex flex-col items-center">
                 <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 ${
-                  step.complete ? "bg-emerald-500 text-white" : step.active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  step.complete ? "bg-success text-success-foreground" : step.active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                 }`}>
                   {step.complete ? <CheckCircle2 className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-0.5 flex-1 min-h-[24px] ${step.complete ? "bg-emerald-500" : "bg-muted"}`} />
+                  <div className={`w-0.5 flex-1 min-h-[24px] ${step.complete ? "bg-success" : "bg-muted"}`} />
                 )}
               </div>
               <div className={`flex-1 pb-4 ${!step.active && !step.complete ? "opacity-50" : ""}`}>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-medium ${step.complete ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
+                    <span className={`text-sm font-medium ${step.complete ? "text-success-subtle-foreground" : "text-foreground"}`}>
                       {step.title}
                     </span>
                     {!step.required && <Badge variant="secondary" className="text-[10px]">Optional</Badge>}
@@ -452,7 +452,7 @@ export default function OnboardingJourney() {
                 { title: "Explore down payment assistance", desc: "Many state and local programs help first-time buyers" },
               ].map((tip, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-foreground">{tip.title}</p>
                     <p className="text-xs text-muted-foreground">{tip.desc}</p>
@@ -511,7 +511,7 @@ export default function OnboardingJourney() {
         <CardContent>
           {feedbackSubmitted ? (
             <div className="text-center py-4" data-testid="feedback-thanks">
-              <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+              <CheckCircle2 className="h-8 w-8 text-success-subtle-foreground mx-auto mb-2" />
               <p className="text-sm font-medium text-foreground">Thank you for your feedback!</p>
             </div>
           ) : (

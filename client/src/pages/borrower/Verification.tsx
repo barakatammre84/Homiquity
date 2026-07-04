@@ -275,7 +275,7 @@ export default function VerificationPage() {
             ) : !configData?.plaidConfigured ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
-                  <AlertCircle className="mb-4 h-12 w-12 text-yellow-500" />
+                  <AlertCircle className="mb-4 h-12 w-12 text-warning-subtle-foreground" />
                   <h3 className="mb-2 text-lg font-semibold">Verification Service Setup Required</h3>
                   <p className="text-center text-muted-foreground mb-4">
                     The automated verification service requires configuration. Please contact support or your loan officer will verify your documents manually.
@@ -300,7 +300,7 @@ export default function VerificationPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {completedCount >= totalRequired ? (
-                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                          <Badge className="bg-success-subtle text-success-subtle-foreground">
                             <CheckCircle2 className="mr-1 h-3 w-3" />
                             All Required Complete
                           </Badge>
@@ -325,7 +325,7 @@ export default function VerificationPage() {
                     return (
                       <Card
                         key={vType.type}
-                        className={isVerified ? "border-green-200 dark:border-green-800" : ""}
+                        className={isVerified ? "border-border" : ""}
                         data-testid={`card-verification-${vType.type}`}
                       >
                         <CardHeader>
@@ -333,11 +333,11 @@ export default function VerificationPage() {
                             <div className="flex items-center gap-3">
                               <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
                                 isVerified 
-                                  ? "bg-green-100 dark:bg-green-900/30" 
+                                  ? "bg-success-subtle" 
                                   : "bg-muted"
                               }`}>
                                 {isVerified ? (
-                                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                  <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground" />
                                 ) : (
                                   <Icon className="h-5 w-5" />
                                 )}
@@ -415,19 +415,19 @@ export default function VerificationPage() {
                   <CardContent>
                     <ul className="space-y-2 text-sm text-muted-foreground">
                       <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground mt-0.5 flex-shrink-0" />
                         <span>Faster loan processing - skip manual document review</span>
                       </li>
                       <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground mt-0.5 flex-shrink-0" />
                         <span>Secure connection through Plaid - we never see your login credentials</span>
                       </li>
                       <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground mt-0.5 flex-shrink-0" />
                         <span>Industry-standard encryption protects your data</span>
                       </li>
                       <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground mt-0.5 flex-shrink-0" />
                         <span>Compliant with GSE (Fannie Mae/Freddie Mac) requirements</span>
                       </li>
                     </ul>

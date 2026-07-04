@@ -140,12 +140,12 @@ export default function Privacy() {
       <Navigation />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(213,52%,18%)] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-blue-400/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-info/10 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-success/10 blur-3xl" />
         
         <div className="relative mx-auto max-w-4xl text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
-            <Shield className="h-4 w-4 text-emerald-400" />
+            <Shield className="h-4 w-4 text-success-subtle-foreground" />
             Your data is protected
           </div>
           <h1 className="text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl" data-testid="text-privacy-title">
@@ -197,7 +197,7 @@ export default function Privacy() {
                     ) : index === 0 ? (
                       <Eye className="h-4 w-4 text-primary" />
                     ) : (
-                      <FileCheck className="h-4 w-4 text-emerald-500" />
+                      <FileCheck className="h-4 w-4 text-success-subtle-foreground" />
                     )}
                     {practice.title}
                   </CardTitle>
@@ -206,7 +206,7 @@ export default function Privacy() {
                   <ul className="space-y-2">
                     {practice.items.map((item, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <CheckCircle2 className={`h-4 w-4 shrink-0 mt-0.5 ${index === 2 ? "text-destructive" : "text-emerald-500"}`} />
+                        <CheckCircle2 className={`h-4 w-4 shrink-0 mt-0.5 ${index === 2 ? "text-destructive" : "text-success-subtle-foreground"}`} />
                         <span>{item}</span>
                       </li>
                     ))}
@@ -229,19 +229,19 @@ export default function Privacy() {
                   <h3 className="font-semibold">You control your data</h3>
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <p className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-500" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-success-subtle-foreground" />
                       <span><strong className="text-foreground">Access:</strong> Request a copy of all personal data we hold about you at any time.</span>
                     </p>
                     <p className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-500" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-success-subtle-foreground" />
                       <span><strong className="text-foreground">Correction:</strong> Ask us to update or correct any inaccurate information.</span>
                     </p>
                     <p className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-500" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-success-subtle-foreground" />
                       <span><strong className="text-foreground">Deletion:</strong> Request deletion of your data after your loan process is complete, subject to legal retention requirements.</span>
                     </p>
                     <p className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-500" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-success-subtle-foreground" />
                       <span><strong className="text-foreground">Portability:</strong> Export your data in a standard format to transfer to another provider.</span>
                     </p>
                   </div>

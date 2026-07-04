@@ -254,7 +254,7 @@ function AgentCard({
           <div className="flex items-center gap-3 mt-2 flex-wrap">
             {rating > 0 && (
               <div className="flex items-center gap-1 text-sm" data-testid={`text-agent-rating-${agent.id}`}>
-                <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+                <Star className="w-3.5 h-3.5 fill-warning text-warning-subtle-foreground" />
                 <span className="font-medium text-foreground">{rating.toFixed(1)}</span>
                 {(agent.totalReviews ?? 0) > 0 && (
                   <span className="text-muted-foreground">({agent.totalReviews} reviews)</span>
@@ -412,7 +412,7 @@ function ReferralRequestDialog({
               animate={{ scale: 1 }}
               transition={{ type: "spring", duration: 0.5 }}
             >
-              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <CheckCircle2 className="w-16 h-16 text-success-subtle-foreground mx-auto mb-4" />
             </motion.div>
             <h3 className="text-xl font-bold text-foreground mb-2" data-testid="text-referral-success">
               {matchResult.status === "matched" ? "You've been matched!" : "Request received!"}

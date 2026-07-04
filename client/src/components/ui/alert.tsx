@@ -11,6 +11,13 @@ const alertVariants = cva(
         default: "bg-background text-foreground",
         destructive:
           "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+        // Semantic banners — subtle tint fill + matching icon/border. AA-safe.
+        success:
+          "border-transparent bg-success-subtle text-success-subtle-foreground [&>svg]:text-success-subtle-foreground",
+        warning:
+          "border-transparent bg-warning-subtle text-warning-subtle-foreground [&>svg]:text-warning-subtle-foreground",
+        info:
+          "border-transparent bg-info-subtle text-info-subtle-foreground [&>svg]:text-info-subtle-foreground",
       },
     },
     defaultVariants: {

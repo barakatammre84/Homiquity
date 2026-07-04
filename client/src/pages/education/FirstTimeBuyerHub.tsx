@@ -107,7 +107,7 @@ const LOAN_PROGRAMS = [
     minCredit: "620",
     pmi: "Required if < 20% down",
     description: "Standard mortgage backed by Fannie Mae or Freddie Mac. Minimum requirements determined during underwriting.",
-    color: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+    color: "bg-info/10 text-info",
   },
   {
     name: "FHA",
@@ -115,7 +115,7 @@ const LOAN_PROGRAMS = [
     minCredit: "580",
     pmi: "Required for life of loan",
     description: "Government-insured loan with lower credit and down payment requirements. Great for first-time buyers.",
-    color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    color: "bg-success/10 text-success-subtle-foreground",
   },
   {
     name: "VA",
@@ -123,7 +123,7 @@ const LOAN_PROGRAMS = [
     minCredit: "580",
     pmi: "No PMI required",
     description: "Exclusive to veterans and active military. Zero down payment with no mortgage insurance.",
-    color: "bg-purple-500/10 text-purple-700 dark:text-purple-300",
+    color: "bg-primary/10 text-primary",
   },
   {
     name: "USDA",
@@ -131,7 +131,7 @@ const LOAN_PROGRAMS = [
     minCredit: "640",
     pmi: "Reduced guarantee fee",
     description: "Zero down payment for eligible rural and suburban areas. Income limits apply.",
-    color: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    color: "bg-warning/10 text-warning-subtle-foreground",
   },
 ];
 
@@ -203,7 +203,7 @@ export default function FirstTimeBuyerHub() {
                   <div className="mt-2 space-y-1">
                     {step.tips.map((tip, i) => (
                       <div key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                        <Lightbulb className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
+                        <Lightbulb className="h-3 w-3 text-warning-subtle-foreground mt-0.5 shrink-0" />
                         <span>{tip}</span>
                       </div>
                     ))}

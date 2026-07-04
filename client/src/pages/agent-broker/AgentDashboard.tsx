@@ -121,7 +121,7 @@ export default function AgentDashboard() {
                       <p className="text-sm text-muted-foreground">Properties Sold</p>
                       <div className="mt-2 text-3xl font-bold">{agent?.propertiesSold || 0}</div>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-green-500 opacity-30" />
+                    <TrendingUp className="h-8 w-8 text-success-subtle-foreground opacity-30" />
                   </div>
                 </CardContent>
               </Card>
@@ -135,7 +135,7 @@ export default function AgentDashboard() {
                         {agent?.averageRating ? parseFloat(String(agent.averageRating)).toFixed(1) : "N/A"}
                       </div>
                     </div>
-                    <DollarSign className="h-8 w-8 text-blue-500 opacity-30" />
+                    <DollarSign className="h-8 w-8 text-info opacity-30" />
                   </div>
                 </CardContent>
               </Card>
@@ -147,7 +147,7 @@ export default function AgentDashboard() {
                       <p className="text-sm text-muted-foreground">Reviews</p>
                       <div className="mt-2 text-3xl font-bold">{agent?.totalReviews || 0}</div>
                     </div>
-                    <Calendar className="h-8 w-8 text-purple-500 opacity-30" />
+                    <Calendar className="h-8 w-8 text-primary opacity-30" />
                   </div>
                 </CardContent>
               </Card>
