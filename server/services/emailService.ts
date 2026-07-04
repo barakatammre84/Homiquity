@@ -178,6 +178,34 @@ function statusBadge(text: string, color: string): string {
 }
 
 export const emailTemplates = {
+  /**
+   * Speed-to-lead acknowledgment (G-A). Compliance rails: NO rate/payment/APR
+   * or cost figures (Reg Z trigger terms) and NO approval/eligibility language
+   * (Reg B / Reg N) — this acknowledges an inquiry, nothing more. Enforced by
+   * tests/leadNotifications.test.ts; keep copy changes inside those rails.
+   */
+  leadReceived(firstName?: string | null): EmailOptions {
+    return {
+      to: "",
+      subject: "We received your inquiry — a loan officer will reach out shortly",
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">Thanks for reaching out</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${firstName || "there"},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          We received your inquiry. A licensed loan officer will contact you shortly
+          to talk through your goals and answer your questions — there's nothing you
+          need to prepare or send yet.
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
+          If you didn't make this request, you can ignore this email and no one will
+          contact you again about it.
+        </p>
+      `, "We received your inquiry and will be in touch shortly"),
+    };
+  },
+
   applicationSubmitted(borrowerName: string, applicationId: string): EmailOptions {
     return {
       to: "",
