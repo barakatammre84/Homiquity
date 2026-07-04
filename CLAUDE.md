@@ -39,6 +39,15 @@ Where this code lives:
 | Wholesale lender submissions (Target-5 catalog + status machine) | `server/services/lenderSubmission.ts`, `shared/wholesaleLenders.ts` |
 | Lending / underwriting routes | `server/routes/lending.ts`, `server/routes/underwriting.ts` |
 
+## NMLS licensing: source of truth
+
+For anything touching NMLS licensing — company/branch/MLO licensure (MU1/MU2/MU3/MU4),
+sponsorship, Temporary Authority, Mortgage Call Reports, surety bonds, license statuses,
+Consumer Access — consult the **NMLS Policy Guidebook** in [`docs/nmls/`](docs/nmls/)
+(chapter/page map in its README). Do not answer NMLS policy questions from memory.
+Hierarchy: state statutes/rules and direct regulator guidance control over the guidebook;
+escalate discrepancies to the user instead of picking an interpretation.
+
 ## Architecture ground rules
 
 Full rules in [DEVELOPER_PLAYBOOK.md](DEVELOPER_PLAYBOOK.md); the non-negotiables:
