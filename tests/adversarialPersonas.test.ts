@@ -381,7 +381,7 @@ describe("Persona 2 — Dana Okafor (multi-unit filed as SFR primary)", () => {
     expect(result.decision).toBe("REJECTED");
     expect(result.rejectionReasons.join(" ")).toMatch(/4-unit investment/);
     expect(result.rejectionReasons.join(" ")).toMatch(/75% maximum/);
-    // Nothing was priced on the rejected file.
+    // Nothing priced on the rejected file.
     expect(result.resolvedPmiMonthlyPremium).toBe(0);
   });
 
@@ -671,15 +671,16 @@ describe("Persona 5 — Reyes family (VA, family of 6, $79,999.50 loan)", () => 
     homeSquareFootage: 2_800,
   };
 
-  it("PARTIAL(#1): VA files still dead-end for now, but with borrower-safe copy instead of a leaked internal error", async () => {
+  it("FIXED(#1+#3): a VA file missing residual inputs asks for them by name with borrower-safe copy", async () => {
     primeOrchestrator(makeApp({ isVeteran: true, annualIncome: "144000" }), { piti: 2200 });
     const d = await runInstantDecision("app-1");
-    // The VA-protocol throw is sanitized by describeEngineGap into borrower-safe
-    // labels ("Household size", "Home square footage"), so the raw "CRITICAL VA
-    // PROTOCOL ERROR" no longer leaks. The dead-end itself needs fix #3 (plumb
-    // family size / square footage from intake).
+    // Fix #1 reclassified the VA-protocol throw as INPUT_INCOMPLETE (no raw
+    // "CRITICAL VA PROTOCOL ERROR" leak); fix #3 plumbs family size / square
+    // footage from intake, so the orchestrator now names the exact missing
+    // inputs up front instead of dead-ending inside the engine.
     expect(d.status).toBe("NEEDS_MORE_INFO");
     expect(JSON.stringify(d)).not.toMatch(/CRITICAL/);
+    expect(d.missingItems.join(" ")).toMatch(/household size/i);
     expect(d.missingItems.join(" ")).toMatch(/square footage/i);
   });
 

@@ -2,11 +2,16 @@ import { storage } from "./storage";
 import type {
   LoanApplication,
   LoanCondition,
+  LoanMilestone,
+  User,
   InsertLoanCondition,
   InsertLoanMilestone,
   Task,
   InsertTask,
 } from "@shared/schema";
+import { loanConditions, loanMilestones, users } from "@shared/schema";
+import { db } from "./db";
+import { inArray, desc } from "drizzle-orm";
 import {
   LOAN_APP_TRANSITIONS,
   isLoanAppStatus,
@@ -671,18 +676,26 @@ export interface PipelineSummary {
   priority: "normal" | "high" | "urgent";
 }
 
-export async function getPipelineSummary(applicationId: string): Promise<PipelineSummary | null> {
-  const application = await storage.getLoanApplication(applicationId);
-  if (!application) return null;
+function resolveBorrowerName(user: User | undefined): string {
+  return user
+    ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email || "Unknown"
+    : "Unknown";
+}
 
-  const milestones = await storage.getLoanMilestones(applicationId);
-  const conditions = await storage.getLoanConditionsByApplication(applicationId);
-
-  const user = await storage.getUser(application.userId);
-  const borrowerName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email || "Unknown" : "Unknown";
-
+/**
+ * Pure assembly of a PipelineSummary from already-fetched rows. Kept separate
+ * from data access so it can be shared by the single-application path
+ * (getPipelineSummary) and the batched path (getPipelineSummaries) without
+ * duplicating the stage/priority logic.
+ */
+function buildPipelineSummary(
+  application: LoanApplication,
+  milestones: LoanMilestone | undefined,
+  conditions: LoanCondition[],
+  borrowerName: string,
+): PipelineSummary {
   const submittedAt = milestones?.submittedAt || application.createdAt;
-  const daysInPipeline = submittedAt 
+  const daysInPipeline = submittedAt
     ? Math.floor((Date.now() - new Date(submittedAt).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
 
@@ -745,7 +758,7 @@ export async function getPipelineSummary(applicationId: string): Promise<Pipelin
   }
 
   return {
-    applicationId,
+    applicationId: application.id,
     borrowerName,
     currentStage,
     daysInPipeline,
@@ -756,4 +769,73 @@ export async function getPipelineSummary(applicationId: string): Promise<Pipelin
     nextAction,
     priority,
   };
+}
+
+export async function getPipelineSummary(applicationId: string): Promise<PipelineSummary | null> {
+  const application = await storage.getLoanApplication(applicationId);
+  if (!application) return null;
+
+  const milestones = await storage.getLoanMilestones(applicationId);
+  const conditions = await storage.getLoanConditionsByApplication(applicationId);
+  const user = await storage.getUser(application.userId);
+
+  return buildPipelineSummary(application, milestones, conditions, resolveBorrowerName(user));
+}
+
+/**
+ * Batched equivalent of mapping getPipelineSummary over a set of applications.
+ * Fetches milestones, conditions, and borrowers in one inArray-batched query
+ * each (three round trips total) instead of the 4×N serial round trips the
+ * per-application path would incur, then assembles every PipelineSummary in
+ * memory. Mirrors the batching pattern used by the /api/dashboard endpoint.
+ */
+export async function getPipelineSummaries(
+  applications: LoanApplication[],
+): Promise<PipelineSummary[]> {
+  if (applications.length === 0) return [];
+
+  const appIds = applications.map(a => a.id);
+  const userIds = Array.from(
+    new Set(applications.map(a => a.userId).filter((id): id is string => !!id)),
+  );
+
+  const [milestoneRows, conditionRows, userRows] = await Promise.all([
+    db.select().from(loanMilestones).where(inArray(loanMilestones.applicationId, appIds)),
+    db
+      .select()
+      .from(loanConditions)
+      .where(inArray(loanConditions.applicationId, appIds))
+      // Match storage.getLoanConditionsByApplication's ordering so per-app
+      // condition slices line up with the single-application path.
+      .orderBy(loanConditions.priority, desc(loanConditions.createdAt)),
+    userIds.length > 0
+      ? db.select().from(users).where(inArray(users.id, userIds))
+      : Promise.resolve([] as User[]),
+  ]);
+
+  // One milestone row per application; keep the first if duplicates exist.
+  const milestoneByApp = new Map<string, LoanMilestone>();
+  for (const m of milestoneRows) {
+    if (!milestoneByApp.has(m.applicationId)) milestoneByApp.set(m.applicationId, m);
+  }
+
+  const conditionsByApp = new Map<string, LoanCondition[]>();
+  for (const c of conditionRows) {
+    const bucket = conditionsByApp.get(c.applicationId);
+    if (bucket) bucket.push(c);
+    else conditionsByApp.set(c.applicationId, [c]);
+  }
+
+  const userById = new Map<string, User>();
+  for (const u of userRows) userById.set(u.id, u);
+
+  return applications.map(app => {
+    const user = app.userId ? userById.get(app.userId) : undefined;
+    return buildPipelineSummary(
+      app,
+      milestoneByApp.get(app.id),
+      conditionsByApp.get(app.id) ?? [],
+      resolveBorrowerName(user),
+    );
+  });
 }

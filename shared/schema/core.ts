@@ -65,9 +65,62 @@ export const users = pgTable("users", {
   // serverless, so this DB-backed counter is the durable control.
   failedLoginAttempts: integer("failed_login_attempts").default(0).notNull(),
   lockoutUntil: timestamp("lockout_until"),
+  // Null until the user confirms ownership of their email via a verification
+  // link. Social-auth users are considered verified by their provider.
+  emailVerifiedAt: timestamp("email_verified_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
+
+// Single-use, expiring tokens for password reset and email verification.
+// We store only a SHA-256 hash of the token — the raw value lives solely in the
+// emailed link, so a database read never yields a usable token. Rows are
+// consumed (usedAt set) on first use and ignored past expiresAt.
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references((): AnyPgColumn => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 30 }).notNull(), // 'password_reset' | 'email_verification'
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("auth_tokens_token_hash_idx").on(table.tokenHash),
+    index("auth_tokens_user_type_idx").on(table.userId, table.type),
+  ],
+);
+
+export type AuthToken = typeof authTokens.$inferSelect;
+export type AuthTokenType = "password_reset" | "email_verification";
+
+// Canonical SMS opt-out ledger, keyed by normalized phone. A STOP keyword flips
+// optedOut=true; START/UNSTOP re-subscribes. This is the source of truth an
+// outbound sender/dialer must check — it persists even when no lead/user row
+// exists for the number yet, so a future contact with that phone is born
+// suppressed. Required before any outbound SMS feature ships (TCPA / CTIA).
+export const smsOptOuts = pgTable(
+  "sms_opt_outs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    // Normalized to digits-only (E.164 national form, e.g. "15551234567").
+    phone: varchar("phone", { length: 40 }).notNull().unique(),
+    optedOut: boolean("opted_out").default(true).notNull(),
+    optedOutAt: timestamp("opted_out_at"),
+    resubscribedAt: timestamp("resubscribed_at"),
+    lastKeyword: varchar("last_keyword", { length: 40 }),
+    source: varchar("source", { length: 40 }).default("sms_webhook").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+  },
+  (table) => [index("sms_opt_outs_phone_idx").on(table.phone)],
+);
+
+export type SmsOptOut = typeof smsOptOuts.$inferSelect;
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;

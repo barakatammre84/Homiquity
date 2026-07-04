@@ -1,4 +1,4 @@
-import "dotenv/config"; // load .env for local development (dev entry only)
+import "./load-env"; // load .env (project-root, cwd-independent) — must stay first
 import fs from "node:fs";
 import path from "node:path";
 import { type Server } from "node:http";

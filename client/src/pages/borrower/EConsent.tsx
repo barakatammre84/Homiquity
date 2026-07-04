@@ -135,7 +135,7 @@ export default function EConsent() {
         <Card data-testid="card-pending-consents">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
+            <Clock className="h-4 w-4 text-warning-subtle-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingConsents.length}</div>
@@ -146,7 +146,7 @@ export default function EConsent() {
         <Card data-testid="card-completed-consents">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="h-4 w-4 text-success-subtle-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{completedConsents.length}</div>
@@ -169,7 +169,7 @@ export default function EConsent() {
       {pendingConsents.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-yellow-500" />
+            <AlertCircle className="h-5 w-5 text-warning-subtle-foreground" />
             Action Required
           </h2>
           
@@ -247,7 +247,7 @@ export default function EConsent() {
       {completedConsents.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
+            <CheckCircle className="h-5 w-5 text-success-subtle-foreground" />
             Completed Consents
           </h2>
           
@@ -261,7 +261,7 @@ export default function EConsent() {
                 <Card key={template.id} className="bg-muted/30" data-testid={`card-completed-${template.consentType}`}>
                   <CardContent className="flex items-center justify-between p-4">
                     <div className="flex items-center gap-3">
-                      <Icon className="h-5 w-5 text-green-500" />
+                      <Icon className="h-5 w-5 text-success-subtle-foreground" />
                       <div>
                         <p className="font-medium">{template.title}</p>
                         <p className="text-xs text-muted-foreground">
@@ -269,7 +269,7 @@ export default function EConsent() {
                         </p>
                       </div>
                     </div>
-                    <Badge className="bg-green-100 text-green-800">
+                    <Badge className="bg-success-subtle text-success-subtle-foreground">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Complete
                     </Badge>
@@ -284,7 +284,7 @@ export default function EConsent() {
       {templates?.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+            <CheckCircle className="h-12 w-12 text-success-subtle-foreground mb-4" />
             <h3 className="text-lg font-semibold">No Consents Required</h3>
             <p className="text-muted-foreground text-center">
               There are no consent forms available at this time.

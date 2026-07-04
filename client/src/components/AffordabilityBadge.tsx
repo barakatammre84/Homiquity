@@ -25,7 +25,7 @@ export function AffordabilityBadge({ price, compact = false }: AffordabilityBadg
   if (data.meetsGuidelines && data.estimatedDTI && data.estimatedDTI <= 43) {
     return (
       <div className="flex flex-wrap gap-1" data-testid="badge-affordability-fits">
-        <Badge variant="secondary" className="text-[10px] gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 no-default-hover-elevate no-default-active-elevate">
+        <Badge variant="secondary" className="text-[10px] gap-1 bg-success-subtle text-success-subtle-foreground no-default-hover-elevate no-default-active-elevate">
           <CheckCircle2 className="h-2.5 w-2.5" />
           Within Guidelines
         </Badge>
@@ -41,7 +41,7 @@ export function AffordabilityBadge({ price, compact = false }: AffordabilityBadg
   if (data.meetsGuidelines) {
     return (
       <div className="flex flex-wrap gap-1" data-testid="badge-affordability-stretch">
-        <Badge variant="secondary" className="text-[10px] gap-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 no-default-hover-elevate no-default-active-elevate">
+        <Badge variant="secondary" className="text-[10px] gap-1 bg-warning-subtle text-warning-subtle-foreground no-default-hover-elevate no-default-active-elevate">
           <TrendingUp className="h-2.5 w-2.5" />
           Requires Review
         </Badge>
@@ -56,7 +56,7 @@ export function AffordabilityBadge({ price, compact = false }: AffordabilityBadg
 
   if (data.additionalSavingsNeeded) {
     return (
-      <Badge variant="secondary" className="text-[10px] gap-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 no-default-hover-elevate no-default-active-elevate" data-testid="badge-affordability-savings">
+      <Badge variant="secondary" className="text-[10px] gap-1 bg-warning-subtle text-warning-subtle-foreground no-default-hover-elevate no-default-active-elevate" data-testid="badge-affordability-savings">
         <AlertTriangle className="h-2.5 w-2.5" />
         {compact ? "Savings Gap" : `Need ${formatCurrency(data.additionalSavingsNeeded)} more`}
       </Badge>
@@ -93,7 +93,7 @@ export function AffordabilityDetail({ price }: AffordabilityDetailProps) {
       {data.estimatedDTI !== null && (
         <div className="flex justify-between">
           <span className="text-muted-foreground">Your DTI on This Home</span>
-          <span className={`font-medium ${data.estimatedDTI <= 43 ? "text-emerald-600 dark:text-emerald-400" : data.estimatedDTI <= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}`}>
+          <span className={`font-medium ${data.estimatedDTI <= 43 ? "text-success-subtle-foreground" : data.estimatedDTI <= 50 ? "text-warning-subtle-foreground" : "text-destructive"}`}>
             {data.estimatedDTI}%
           </span>
         </div>
@@ -105,7 +105,7 @@ export function AffordabilityDetail({ price }: AffordabilityDetailProps) {
       {data.additionalSavingsNeeded && (
         <div className="flex justify-between">
           <span className="text-muted-foreground">Additional Savings Needed</span>
-          <span className="font-medium text-amber-600 dark:text-amber-400">{formatCurrency(data.additionalSavingsNeeded)}</span>
+          <span className="font-medium text-warning-subtle-foreground">{formatCurrency(data.additionalSavingsNeeded)}</span>
         </div>
       )}
       {data.eligibleLoanTypes.length > 0 && (

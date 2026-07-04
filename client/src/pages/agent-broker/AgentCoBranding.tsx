@@ -302,7 +302,7 @@ function BrandingTab({ profile, onSave }: { profile: CoBrandProfile | null; onSa
                 data-testid="input-landing-url"
               />
               <Button
-                size="icon"
+                size="icon" aria-label="Copy"
                 variant="outline"
                 onClick={() => {
                   navigator.clipboard.writeText(`${window.location.origin}/partner/${profile.id}`);
@@ -529,7 +529,7 @@ function DealDeskTab() {
                       <span>{format(new Date(thread.createdAt), "MMM d, yyyy")}</span>
                     </div>
                   </div>
-                  <Button size="icon" variant="ghost" data-testid={`button-view-thread-${thread.id}`}>
+                  <Button size="icon" aria-label="Next" variant="ghost" data-testid={`button-view-thread-${thread.id}`}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

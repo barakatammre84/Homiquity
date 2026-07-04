@@ -168,7 +168,7 @@ function DocumentRequestDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" data-testid="button-request-doc">
+        <Button variant="ghost" size="icon" aria-label="Request document" data-testid="button-request-doc">
           <FileUp className="h-5 w-5" />
         </Button>
       </DialogTrigger>
@@ -246,9 +246,9 @@ function DocumentRequestCard({
       case "pending":
         return <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" />Pending</Badge>;
       case "submitted":
-        return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 gap-1"><Upload className="h-3 w-3" />Submitted</Badge>;
+        return <Badge className="bg-info-subtle text-info gap-1"><Upload className="h-3 w-3" />Submitted</Badge>;
       case "approved":
-        return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 gap-1"><CheckCircle2 className="h-3 w-3" />Approved</Badge>;
+        return <Badge className="bg-success-subtle text-success-subtle-foreground gap-1"><CheckCircle2 className="h-3 w-3" />Approved</Badge>;
       case "rejected":
         return <Badge variant="destructive" className="gap-1"><AlertCircle className="h-3 w-3" />Rejected</Badge>;
       default:
@@ -379,8 +379,8 @@ export default function Messages() {
     : null;
 
   // List entries, role-aware:
-  //  - staff: their conversations (borrower threads), newest first
-  //  - borrower: assigned team (message or not) + any other existing threads
+  // - staff: their conversations (borrower threads), newest first
+  // - borrower: assigned team (message or not) + any other existing threads
   const listEntries: { member: TeamMember; lastMessage?: TeamMessage; unreadCount: number }[] = (() => {
     const fromConversations = conversations
       .filter(c => c.partner)
@@ -550,7 +550,7 @@ export default function Messages() {
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <Link href="/messages">
-              <Button variant="ghost" size="icon" data-testid="button-back">
+              <Button variant="ghost" size="icon" aria-label="Back" data-testid="button-back">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
@@ -702,7 +702,7 @@ export default function Messages() {
             data-testid="input-message"
           />
           <Button 
-            size="icon" 
+            size="icon" aria-label="Send message" 
             onClick={handleSendMessage}
             disabled={!message.trim() || sendMessageMutation.isPending}
             data-testid="button-send"

@@ -1,6 +1,6 @@
-import { users, type User } from "@shared/schema";
+import { users, authTokens, type User, type AuthTokenType } from "@shared/schema";
 import { db } from "../../db";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 
 export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -9,6 +9,12 @@ export interface IAuthStorage {
   createUserWithPassword(userData: { email: string; passwordHash: string; firstName?: string | null; lastName?: string | null }): Promise<User>;
   upsertSocialUser(userData: { email: string; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null; authProvider: string }): Promise<User>;
   setLockoutState(userId: string, state: { failedLoginAttempts: number; lockoutUntil: Date | null }): Promise<void>;
+  // Password + email-verification token lifecycle.
+  createAuthToken(input: { userId: string; type: AuthTokenType; tokenHash: string; expiresAt: Date }): Promise<void>;
+  invalidateAuthTokens(userId: string, type: AuthTokenType): Promise<void>;
+  consumeAuthToken(tokenHash: string, type: AuthTokenType): Promise<{ userId: string } | null>;
+  setPassword(userId: string, passwordHash: string): Promise<void>;
+  markEmailVerified(userId: string): Promise<void>;
 }
 
 class AuthStorage implements IAuthStorage {
@@ -72,6 +78,8 @@ class AuthStorage implements IAuthStorage {
         lastName: userData.lastName ?? null,
         profileImageUrl: userData.profileImageUrl ?? null,
         role: "aspiring_owner",
+        // A federated provider has already proven ownership of the email.
+        emailVerifiedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: users.email,
@@ -93,6 +101,66 @@ class AuthStorage implements IAuthStorage {
         failedLoginAttempts: state.failedLoginAttempts,
         lockoutUntil: state.lockoutUntil,
       })
+      .where(eq(users.id, userId));
+  }
+
+  async createAuthToken(input: { userId: string; type: AuthTokenType; tokenHash: string; expiresAt: Date }): Promise<void> {
+    await db.insert(authTokens).values({
+      userId: input.userId,
+      type: input.type,
+      tokenHash: input.tokenHash,
+      expiresAt: input.expiresAt,
+    });
+  }
+
+  // Retire any outstanding tokens of a type for this user, so issuing a fresh
+  // one (e.g. a second password-reset request) invalidates the earlier link.
+  async invalidateAuthTokens(userId: string, type: AuthTokenType): Promise<void> {
+    await db
+      .update(authTokens)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(authTokens.userId, userId),
+          eq(authTokens.type, type),
+          isNull(authTokens.usedAt),
+        ),
+      );
+  }
+
+  // Atomically redeem a token: the UPDATE only matches a row that is unused and
+  // unexpired, so a replayed link (usedAt already set) returns nothing. The
+  // WHERE also re-checks the hash+type+expiry, making the read-and-consume a
+  // single statement with no TOCTOU window.
+  async consumeAuthToken(tokenHash: string, type: AuthTokenType): Promise<{ userId: string } | null> {
+    const [row] = await db
+      .update(authTokens)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(authTokens.tokenHash, tokenHash),
+          eq(authTokens.type, type),
+          isNull(authTokens.usedAt),
+          gt(authTokens.expiresAt, new Date()),
+        ),
+      )
+      .returning({ userId: authTokens.userId });
+    return row ? { userId: row.userId } : null;
+  }
+
+  async setPassword(userId: string, passwordHash: string): Promise<void> {
+    // Clearing lockout on a successful reset lets a locked-out user back in —
+    // exactly the recovery path the reset flow exists to provide.
+    await db
+      .update(users)
+      .set({ passwordHash, failedLoginAttempts: 0, lockoutUntil: null })
+      .where(eq(users.id, userId));
+  }
+
+  async markEmailVerified(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ emailVerifiedAt: new Date() })
       .where(eq(users.id, userId));
   }
 }

@@ -41,8 +41,8 @@ const DOCUMENT_CATEGORIES = [
     name: "Identity & Compliance",
     description: "Government-issued ID and identity verification",
     icon: User,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 dark:bg-blue-900/20",
+    color: "text-chart-1",
+    bgColor: "bg-chart-1/10",
     documents: [
       { type: "drivers_license", name: "Driver's License", required: true, description: "Valid state-issued driver's license" },
       { type: "passport", name: "Passport", required: false, description: "Valid passport (alternative to driver's license)" },
@@ -54,8 +54,8 @@ const DOCUMENT_CATEGORIES = [
     name: "Income Verification",
     description: "Pay stubs, tax returns, and employment documents",
     icon: DollarSign,
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50 dark:bg-emerald-900/20",
+    color: "text-chart-2",
+    bgColor: "bg-chart-2/10",
     documents: [
       { type: "paystub", name: "Recent Pay Stubs", required: true, description: "Last 30 days of pay stubs" },
       { type: "w2", name: "W-2 Forms", required: true, description: "W-2s from the last 2 years" },
@@ -70,8 +70,8 @@ const DOCUMENT_CATEGORIES = [
     name: "Assets & Savings",
     description: "Bank statements, retirement accounts, and investments",
     icon: Building2,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50 dark:bg-purple-900/20",
+    color: "text-chart-4",
+    bgColor: "bg-chart-4/10",
     documents: [
       { type: "bank_statement_checking", name: "Checking Account Statements", required: true, description: "Last 2 months of statements" },
       { type: "bank_statement_savings", name: "Savings Account Statements", required: true, description: "Last 2 months of statements" },
@@ -86,8 +86,8 @@ const DOCUMENT_CATEGORIES = [
     name: "Current Debts",
     description: "Existing mortgages, loans, and credit obligations",
     icon: CreditCard,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50 dark:bg-amber-900/20",
+    color: "text-chart-3",
+    bgColor: "bg-chart-3/10",
     documents: [
       { type: "mortgage_statement", name: "Mortgage Statement", required: false, description: "Current mortgage payment info (if applicable)" },
       { type: "auto_loan_statement", name: "Auto Loan Statement", required: false, description: "Current auto loan info (if applicable)" },
@@ -100,8 +100,8 @@ const DOCUMENT_CATEGORIES = [
     name: "Property & Transaction",
     description: "Purchase contract, insurance, and property documents",
     icon: Home,
-    color: "text-rose-600",
-    bgColor: "bg-rose-50 dark:bg-rose-900/20",
+    color: "text-chart-5",
+    bgColor: "bg-chart-5/10",
     documents: [
       { type: "purchase_contract", name: "Purchase Contract", required: true, description: "Signed purchase agreement" },
       { type: "earnest_money_receipt", name: "Earnest Money Receipt", required: true, description: "Proof of earnest money deposit" },
@@ -141,11 +141,11 @@ function getUploadNextStep(docType: string): string {
 function getStatusBadge(status: string) {
   switch (status) {
     case "verified":
-      return <Badge className="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400">Verified</Badge>;
+      return <Badge className="bg-success-subtle text-success-subtle-foreground">Verified</Badge>;
     case "rejected":
       return <Badge variant="destructive">Rejected</Badge>;
     case "pending_review":
-      return <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Under Review</Badge>;
+      return <Badge className="bg-warning-subtle text-warning-subtle-foreground">Under Review</Badge>;
     default:
       return <Badge variant="secondary">Uploaded</Badge>;
   }
@@ -254,35 +254,35 @@ export default function Documents() {
     if (isAllCaughtUp) {
       return {
         icon: CheckCircle2,
-        iconColor: "text-emerald-400",
-        bgColor: "bg-emerald-500/20",
-        borderColor: "border-emerald-400/30",
+        iconColor: "text-success-subtle-foreground",
+        bgColor: "bg-success/20",
+        borderColor: "border-border/30",
         title: "You're all caught up!",
         subtitle: "All currently requested documents have been submitted",
         badgeText: "Complete",
-        badgeColor: "bg-emerald-500 text-white",
+        badgeColor: "bg-success text-success-foreground",
       };
     } else if (pendingCount <= 3) {
       return {
         icon: Clock,
-        iconColor: "text-amber-400",
-        bgColor: "bg-amber-500/20",
-        borderColor: "border-amber-400/30",
+        iconColor: "text-warning-subtle-foreground",
+        bgColor: "bg-warning/20",
+        borderColor: "border-border/30",
         title: "Almost there!",
         subtitle: `${pendingCount} document${pendingCount > 1 ? "s" : ""} still needed`,
         badgeText: "Action Needed",
-        badgeColor: "bg-amber-500 text-white",
+        badgeColor: "bg-warning text-warning-foreground",
       };
     } else {
       return {
         icon: AlertCircle,
-        iconColor: "text-rose-400",
-        bgColor: "bg-rose-500/20",
-        borderColor: "border-rose-400/30",
+        iconColor: "text-destructive",
+        bgColor: "bg-destructive/20",
+        borderColor: "border-border/30",
         title: "Documents needed",
         subtitle: `${pendingCount} documents still required`,
         badgeText: "Pending",
-        badgeColor: "bg-rose-500 text-white",
+        badgeColor: "bg-destructive text-destructive-foreground",
       };
     }
   };
@@ -335,12 +335,12 @@ export default function Documents() {
               return { text: "Optional", color: "bg-muted text-muted-foreground" };
             }
             if (allCaughtUp) {
-              return { text: "Complete", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
+              return { text: "Complete", color: "bg-success-subtle text-success-subtle-foreground" };
             }
             if (pendingInCategory === 1) {
-              return { text: "1 needed", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
+              return { text: "1 needed", color: "bg-warning-subtle text-warning-subtle-foreground" };
             }
-            return { text: `${pendingInCategory} needed`, color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
+            return { text: `${pendingInCategory} needed`, color: "bg-warning-subtle text-warning-subtle-foreground" };
           };
 
           const categoryStatus = getCategoryStatus();
@@ -360,7 +360,7 @@ export default function Documents() {
                       <CardTitle className="flex items-center gap-2">
                         {category.name}
                         {allCaughtUp && requiredInCategory.length > 0 && (
-                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                          <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground" />
                         )}
                       </CardTitle>
                       <CardDescription>{category.description}</CardDescription>
@@ -398,18 +398,18 @@ export default function Documents() {
                             key={docType.type}
                             className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
                               hasUpload
-                                ? "bg-emerald-50/50 dark:bg-emerald-900/10"
+                                ? "bg-success-subtle/50"
                                 : docType.required
-                                ? "bg-amber-50/50 dark:bg-amber-900/10"
+                                ? "bg-warning-subtle/50"
                                 : "bg-muted/30"
                             }`}
                             data-testid={`row-doctype-${docType.type}`}
                           >
                             <div className="flex items-center gap-3 flex-1">
                               {hasUpload ? (
-                                <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                                <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground shrink-0" />
                               ) : docType.required ? (
-                                <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+                                <AlertCircle className="h-5 w-5 text-warning-subtle-foreground shrink-0" />
                               ) : (
                                 <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
                               )}
@@ -417,12 +417,12 @@ export default function Documents() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-sm">{docType.name}</span>
                                   {docType.required && !hasUpload && (
-                                    <Badge variant="outline" className="text-xs border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400">
+                                    <Badge variant="outline" className="text-xs border-border text-warning-subtle-foreground">
                                       Required
                                     </Badge>
                                   )}
                                   {docType.required && hasUpload && (
-                                    <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600 dark:border-emerald-700 dark:text-emerald-400">
+                                    <Badge variant="outline" className="text-xs border-border text-success-subtle-foreground">
                                       Complete
                                     </Badge>
                                   )}

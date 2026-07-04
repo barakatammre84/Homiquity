@@ -6,6 +6,12 @@ import { setupSocialAuth } from "./socialAuth";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { isLockedOut, recordFailure, recordSuccess } from "./services/loginLockout";
+import {
+  issuePasswordReset,
+  issueEmailVerification,
+  publicBaseUrl,
+  hashToken,
+} from "./services/accountRecovery";
 
 const scryptAsync = promisify(scrypt);
 
@@ -110,6 +116,11 @@ function setupEmailPasswordAuth(app: Express) {
           if (err) {
             return res.status(500).json({ error: "Registration succeeded but login failed" });
           }
+          // Send the confirm-your-email link. Fire-and-forget: a bounced
+          // verification email must not fail an otherwise-successful signup.
+          issueEmailVerification(user, publicBaseUrl(req)).catch((e) =>
+            console.error("[Auth] verification email error:", e),
+          );
           res.json({
             success: true,
             user: {
@@ -118,6 +129,7 @@ function setupEmailPasswordAuth(app: Express) {
               role: user.role,
               firstName: user.firstName,
               lastName: user.lastName,
+              emailVerified: false,
             },
           });
         }
@@ -205,6 +217,102 @@ function setupEmailPasswordAuth(app: Express) {
         res.json({ success: true });
       });
     });
+  });
+
+  // Step 1 of reset: request a link. The response is ALWAYS the same generic
+  // success, whether or not the email maps to an account — otherwise this becomes
+  // an account-enumeration oracle. Only email/password accounts get a link
+  // (social-auth users have no password to reset).
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const rawEmail = req.body?.email;
+      if (typeof rawEmail !== "string" || !rawEmail.trim()) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      const email = rawEmail.trim().toLowerCase();
+      const user = await authStorage.getUserByEmail(email);
+      if (user && user.passwordHash) {
+        await issuePasswordReset(user, publicBaseUrl(req));
+      }
+      res.json({
+        success: true,
+        message: "If an account exists for that email, a reset link is on its way.",
+      });
+    } catch (error) {
+      console.error("Forgot-password error:", error);
+      // Still respond generically so failures don't leak account existence.
+      res.json({
+        success: true,
+        message: "If an account exists for that email, a reset link is on its way.",
+      });
+    }
+  });
+
+  // Step 2 of reset: redeem the token and set a new password. The token is
+  // single-use and expiring (enforced atomically in consumeAuthToken).
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, password } = req.body ?? {};
+      if (typeof token !== "string" || typeof password !== "string") {
+        return res.status(400).json({ error: "Token and password are required" });
+      }
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+
+      const consumed = await authStorage.consumeAuthToken(hashToken(token), "password_reset");
+      if (!consumed) {
+        return res.status(400).json({ error: "This reset link is invalid or has expired. Request a new one." });
+      }
+
+      const passwordHash = await hashPassword(password);
+      await authStorage.setPassword(consumed.userId, passwordHash);
+      res.json({ success: true, message: "Your password has been reset. You can now sign in." });
+    } catch (error) {
+      console.error("Reset-password error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+  // Confirm an email-verification link. Idempotent from the user's view: an
+  // already-consumed or expired token returns a clear error, a fresh one flips
+  // the account to verified.
+  app.post("/api/auth/verify-email", async (req, res) => {
+    try {
+      const token = req.body?.token;
+      if (typeof token !== "string" || !token) {
+        return res.status(400).json({ error: "Verification token is required" });
+      }
+      const consumed = await authStorage.consumeAuthToken(hashToken(token), "email_verification");
+      if (!consumed) {
+        return res.status(400).json({ error: "This verification link is invalid or has expired." });
+      }
+      await authStorage.markEmailVerified(consumed.userId);
+      res.json({ success: true, message: "Your email is confirmed. Thank you!" });
+    } catch (error) {
+      console.error("Verify-email error:", error);
+      res.status(500).json({ error: "Failed to verify email" });
+    }
+  });
+
+  // Resend the verification email to the signed-in user (e.g. the first one
+  // was lost). No-op success if already verified.
+  app.post("/api/auth/resend-verification", isAuthenticated, async (req, res) => {
+    try {
+      const sessionUser = req.user as Express.User;
+      const user = await authStorage.getUser(sessionUser.id);
+      if (!user || !user.email) {
+        return res.status(400).json({ error: "No email on file for this account" });
+      }
+      if (user.emailVerifiedAt) {
+        return res.json({ success: true, message: "Your email is already verified." });
+      }
+      await issueEmailVerification(user, publicBaseUrl(req));
+      res.json({ success: true, message: "Verification email sent." });
+    } catch (error) {
+      console.error("Resend-verification error:", error);
+      res.status(500).json({ error: "Failed to resend verification email" });
+    }
   });
 }
 

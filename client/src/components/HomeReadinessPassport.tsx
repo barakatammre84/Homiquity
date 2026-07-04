@@ -54,9 +54,9 @@ interface BorrowerGraphData {
 }
 
 const tierLabels: Record<string, { label: string; color: string }> = {
-  ready_now: { label: "Ready to Buy", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  almost_ready: { label: "Almost Ready", color: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400" },
-  building: { label: "Building", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  ready_now: { label: "Ready to Buy", color: "bg-success-subtle text-success-subtle-foreground" },
+  almost_ready: { label: "Almost Ready", color: "bg-info-subtle text-info" },
+  building: { label: "Building", color: "bg-warning-subtle text-warning-subtle-foreground" },
   exploring: { label: "Exploring", color: "bg-muted text-muted-foreground" },
   unknown: { label: "Getting Started", color: "bg-muted text-muted-foreground" },
 };
@@ -65,7 +65,7 @@ function ReadinessRing({ score }: { score: number }) {
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? "stroke-emerald-500" : score >= 50 ? "stroke-sky-500" : score >= 25 ? "stroke-amber-500" : "stroke-muted-foreground";
+  const color = score >= 80 ? "stroke-success" : score >= 50 ? "stroke-info" : score >= 25 ? "stroke-warning" : "stroke-muted-foreground";
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -226,7 +226,7 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
                 <div className="flex items-center gap-1.5 text-xs">
                   <Percent className="h-3 w-3 text-muted-foreground" />
                   <span className="text-muted-foreground">Current DTI:</span>
-                  <span className={`font-medium ${eligibility.estimatedDTI <= 43 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                  <span className={`font-medium ${eligibility.estimatedDTI <= 43 ? "text-success-subtle-foreground" : "text-warning-subtle-foreground"}`}>
                     {eligibility.estimatedDTI}%
                   </span>
                 </div>
@@ -242,9 +242,9 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
                   return (
                     <div key={item.testId} className="flex items-center justify-between gap-3 flex-wrap" data-testid={item.testId}>
                       <div className="flex items-center gap-2.5">
-                        <div className={`flex h-6 w-6 items-center justify-center rounded-full ${item.verified ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-muted"}`}>
+                        <div className={`flex h-6 w-6 items-center justify-center rounded-full ${item.verified ? "bg-success-subtle" : "bg-muted"}`}>
                           {item.verified ? (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-success-subtle-foreground" />
                           ) : (
                             <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                           )}
@@ -277,7 +277,7 @@ export function HomeReadinessPassport({ compact = false }: { compact?: boolean }
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Areas to Strengthen</p>
                   {graph.readiness.outstandingInputs.slice(0, 3).map((gap, i) => (
                     <div key={i} className="flex items-center gap-2 mt-1.5" data-testid={`text-passport-gap-${i}`}>
-                      <AlertCircle className="h-3 w-3 text-amber-500 shrink-0" />
+                      <AlertCircle className="h-3 w-3 text-warning-subtle-foreground shrink-0" />
                       <span className="text-xs text-muted-foreground">{gap}</span>
                     </div>
                   ))}

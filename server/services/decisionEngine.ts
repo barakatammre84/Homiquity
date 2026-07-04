@@ -1,7 +1,7 @@
 import { eq, desc } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
-import { consolidatedUnderwritingEngine, type UnderwritingInput, type AssetProfile, type ResolvedPolicy } from "../underwritingEngine";
+import { consolidatedUnderwritingEngine, UnderwritingError, type UnderwritingInput, type AssetProfile, type ResolvedPolicy } from "../underwritingEngine";
 import { generateLoanEstimate } from "./loanEstimate";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { decisionSnapshots, type LoanApplication } from "@shared/schema";
@@ -78,12 +78,6 @@ function toNumber(v: unknown): number {
   return negative ? -n : n;
 }
 
-/** True when a value is present and parses to a real number (incl. negatives). */
-function isPresentNumber(v: unknown): boolean {
-  if (v === null || v === undefined || String(v).trim() === "") return false;
-  return !isNaN(toNumber(v));
-}
-
 function safe(v: unknown): number {
   const n = toNumber(v);
   return isNaN(n) ? 0 : n;
@@ -106,6 +100,12 @@ function describeEngineGap(err: unknown): string[] {
   if (/VALUE INPUT/i.test(msg)) return ["Property value"];
   if (/unrecognized state/i.test(msg)) return ["Valid property state"];
   return ["Additional information required to complete the decision"];
+}
+
+/** True when a value is present and parses to a real number (incl. negatives). */
+function isPresentNumber(v: unknown): boolean {
+  if (v === null || v === undefined || String(v).trim() === "") return false;
+  return !isNaN(toNumber(v));
 }
 
 interface AggregatedFinancials {
@@ -141,22 +141,22 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
   const borrowerSeqs = new Set<number>();
 
   // Income: base vs variable (overtime/bonus/commission/other), summed across all borrowers.
-  // A business LOSS (negative K-1) must REDUCE qualifying income, not be dropped.
   let base = 0;
   let variable = 0;
   let sawIncomeLineItem = false;
   for (const e of employment) {
     borrowerSeqs.add(e.borrowerSequenceNumber ?? 1);
     const itemized = [e.baseIncome, e.overtimeIncome, e.bonusIncome, e.commissionIncome, e.otherIncome];
+    // Use itemized fields whenever ANY is present — including when they net to a
+    // loss. The prior `> 0` guard treated a net-negative K-1 as "no itemized
+    // data" and fell through to the rolled-up total (usually 0), deleting the
+    // business loss from qualifying income.
     if (itemized.some(isPresentNumber)) {
-      // Use the itemized fields whenever any is present — including a net-negative
-      // total. The old `base + variable > 0` guard treated a loss as "no data"
-      // and fell through to the rolled-up total, deleting the loss.
       base += safe(e.baseIncome);
       variable += safe(e.overtimeIncome) + safe(e.bonusIncome) + safe(e.commissionIncome) + safe(e.otherIncome);
       sawIncomeLineItem = true;
     } else if (isPresentNumber(e.totalMonthlyIncome)) {
-      // Only a rolled-up total was captured for this job (may itself be a loss).
+      // Only a rolled-up total was captured for this job (which may be a loss).
       base += safe(e.totalMonthlyIncome);
       sawIncomeLineItem = true;
     }
@@ -176,12 +176,12 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     monthlyDebts += safe(l.monthlyPayment);
   }
 
-  // Fall back to the summary ONLY when no usable line item exists — never to
-  // launder a computed net loss back into the self-reported figure.
+  // Fall back to the app-summary income ONLY when no usable line item was
+  // captured at all. A net loss IS usable data — falling back on a negative
+  // total would launder a loss back into the self-reported summary figure.
   const hasUrlaIncome = sawIncomeLineItem;
   const hasUrlaLiabilities = liabilities.length > 0;
 
-  // Fall back to the application-level summary when line items are absent.
   if (!hasUrlaIncome) {
     const annual = safe(app.annualIncome);
     base = annual / 12;
@@ -221,7 +221,7 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
   if (fin.totalMonthlyIncome <= 0) {
     missing.push(
       fin.incomeBasis === "urla_line_items"
-        ? "Net qualifying income is zero or negative after business losses — a self-employed income review is required before a decision"
+        ? "Net qualifying income is zero or negative after business losses — a self-employed income review is required before a decision."
         : "Income (no employment or income sources on file)",
     );
   }
@@ -234,6 +234,12 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     missing.push("Down payment must be less than the purchase price");
   }
   if (!app.propertyState) missing.push("Property state");
+  // VA path: the residual-income evaluation needs both of these — surface them
+  // as named gaps here instead of letting the engine throw its protocol error.
+  if (app.isVeteran) {
+    if (!app.householdFamilySize) missing.push("Household size (required for VA residual income)");
+    if (!app.homeSquareFootage) missing.push("Home square footage (required for VA residual income)");
+  }
 
   if (missing.length > 0) {
     return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: missing, metrics: null, resolvedPolicy: null, ...base };
@@ -272,32 +278,33 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     // OBSERVED (vendor-lookup) descriptor is not yet wired — capturing it at
     // intake is the remaining piece to catch a consistent misstatement.
     propertyType: app.propertyType ?? undefined,
+    householdFamilySize: app.householdFamilySize ?? undefined,
+    homeSquareFootage: app.homeSquareFootage ?? undefined,
   };
 
   let result;
   try {
     result = await consolidatedUnderwritingEngine.evaluate(input);
   } catch (err) {
-    // A borrower profile that fell outside the automated pricing/eligibility
-    // matrices (an uncovered matrix cell — e.g. a FICO above the score grid, an
-    // unseeded VA family size) is a DECISION, not a documentation gap: route it
-    // to a human as MANUAL_REVIEW so it lands in the queue with an auditable
-    // reason instead of looping forever asking for documents that would never
-    // resolve it. Missing-input errors still surface as NEEDS_MORE_INFO via
-    // describeEngineGap (which already sanitizes the raw CRITICAL_* text).
-    const msg = err instanceof Error ? err.message : String(err);
-    if (/fell outside permitted compliance intervals/i.test(msg)) {
-      return {
-        status: "DECISION_READY",
-        decision: "MANUAL_REVIEW",
-        reasons: ["This loan profile is outside our automated pricing coverage and needs a manual review by your loan team."],
-        missingItems: [],
-        metrics: null,
-        resolvedPolicy: null,
-        ...base,
-      };
+    if (err instanceof UnderwritingError) {
+      // A genuinely missing/unusable input is the only case that should loop
+      // back for more information — and only with a borrower-safe message, never
+      // the raw internal detail.
+      if (err.kind === "INPUT_INCOMPLETE" || err.kind === "INPUT_INVALID") {
+        return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: [err.publicMessage], metrics: null, resolvedPolicy: null, ...base };
+      }
+      // A profile outside the automated pricing/eligibility matrices is a
+      // DECISION, not a documentation gap: route it to a human as MANUAL_REVIEW
+      // so it lands in the queue with an auditable reason instead of crashing or
+      // looping forever asking for documents that would never resolve it.
+      if (err.kind === "POLICY_OUT_OF_BAND") {
+        return { status: "DECISION_READY", decision: "MANUAL_REVIEW", reasons: [err.publicMessage], missingItems: [], metrics: null, resolvedPolicy: null, ...base };
+      }
     }
-    return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: describeEngineGap(err), metrics: null, resolvedPolicy: null, ...base };
+    // Anything else (e.g. a missing policy matrix) is a system fault, not an
+    // underwriting outcome — let it surface as a real error rather than masking
+    // it as "needs more info".
+    throw err;
   }
 
   return {

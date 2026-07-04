@@ -93,7 +93,14 @@ export default function Login() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link href="/forgot-password">
+                    <span className="text-xs text-primary font-medium cursor-pointer" data-testid="link-forgot-password">
+                      Forgot password?
+                    </span>
+                  </Link>
+                </div>
                 <div className="relative">
                   <Input
                     id="password"
@@ -108,7 +115,7 @@ export default function Login() {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Toggle password visibility"
                     className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowPassword(!showPassword)}
                     tabIndex={-1}

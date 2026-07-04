@@ -535,17 +535,17 @@ export default function GapCalculator() {
       </div>
 
       {analysis?.overall.goalsComplete && (
-        <Card className="border-green-500 bg-green-50 dark:bg-green-950/20">
+        <Card className="border-border bg-success-subtle">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-green-100 dark:bg-green-900">
-                <CheckCircle2 className="h-8 w-8 text-green-600" />
+              <div className="p-3 rounded-full bg-success-subtle">
+                <CheckCircle2 className="h-8 w-8 text-success-subtle-foreground" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg text-green-800 dark:text-green-200">
+                <h3 className="font-semibold text-lg text-success-subtle-foreground">
                   Goals Complete
                 </h3>
-                <p className="text-green-700 dark:text-green-300">
+                <p className="text-success-subtle-foreground">
                   Your credit and savings goals have been met. You can now proceed with your mortgage application.
                 </p>
               </div>
@@ -667,14 +667,14 @@ export default function GapCalculator() {
                 >
                   <div className={`p-2 rounded-full ${
                     rec.priority === "high" 
-                      ? "bg-red-100 dark:bg-red-900" 
+                      ? "bg-destructive-subtle" 
                       : rec.priority === "medium"
-                      ? "bg-yellow-100 dark:bg-yellow-900"
-                      : "bg-blue-100 dark:bg-blue-900"
+                      ? "bg-warning-subtle"
+                      : "bg-info-subtle"
                   }`}>
-                    {rec.priority === "high" && <AlertCircle className="h-4 w-4 text-red-600" />}
-                    {rec.priority === "medium" && <TrendingUp className="h-4 w-4 text-yellow-600" />}
-                    {rec.priority === "low" && <Sparkles className="h-4 w-4 text-blue-600" />}
+                    {rec.priority === "high" && <AlertCircle className="h-4 w-4 text-destructive" />}
+                    {rec.priority === "medium" && <TrendingUp className="h-4 w-4 text-warning-subtle-foreground" />}
+                    {rec.priority === "low" && <Sparkles className="h-4 w-4 text-info" />}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -693,7 +693,7 @@ export default function GapCalculator() {
 
               {(!recommendations?.recommendations || recommendations.recommendations.length === 0) && (
                 <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                  <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-success-subtle-foreground" />
                   <p>Your credit is in great shape! Keep up the good work.</p>
                 </div>
               )}
@@ -814,7 +814,7 @@ export default function GapCalculator() {
                         {tx.description || new Date(tx.createdAt!).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className="font-medium text-green-600">
+                    <span className="font-medium text-success-subtle-foreground">
                       +${parseFloat(tx.amount).toLocaleString()}
                     </span>
                   </div>
@@ -911,10 +911,10 @@ export default function GapCalculator() {
                 {goalData?.milestones.map((milestone) => (
                   <div 
                     key={milestone.id}
-                    className="flex items-start gap-4 p-4 rounded-lg border bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20"
+                    className="flex items-start gap-4 p-4 rounded-lg border bg-gradient-to-r from-warning-subtle to-warning-subtle"
                   >
-                    <div className="p-2 rounded-full bg-yellow-100 dark:bg-yellow-900">
-                      <Trophy className="h-5 w-5 text-yellow-600" />
+                    <div className="p-2 rounded-full bg-warning-subtle">
+                      <Trophy className="h-5 w-5 text-warning-subtle-foreground" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-medium">{milestone.title}</h4>
@@ -995,14 +995,14 @@ function RoadmapPhase({
   return (
     <div className={`relative pl-8 pb-6 border-l-2 last:border-l-0 last:pb-0 ${
       isComplete 
-        ? "border-green-500" 
+        ? "border-border" 
         : isActive 
         ? "border-primary" 
         : "border-muted"
     }`}>
       <div className={`absolute -left-2.5 top-0 w-5 h-5 rounded-full ${
         isComplete 
-          ? "bg-green-500" 
+          ? "bg-success" 
           : isActive 
           ? "bg-primary" 
           : "bg-muted"
@@ -1016,7 +1016,7 @@ function RoadmapPhase({
           {tasks.map((task, i) => (
             <div key={i} className="flex items-center gap-2 text-sm">
               {task.done ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground" />
               ) : (
                 <div className="h-4 w-4 rounded-full border-2 border-muted" />
               )}

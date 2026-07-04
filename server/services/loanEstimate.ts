@@ -194,33 +194,48 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   const ltv = (loanAmount / purchasePrice) * 100;
   const isVeteran = application.isVeteran || false;
   const loanType = application.preferredLoanType || "conventional";
-  
+  // VA pricing path: veterans route to VA underwriting (see underwritingEngine),
+  // so price them as VA even when preferredLoanType was never set at intake.
+  const isVaLoan = isVeteran || loanType === "va";
+
   let baseRate = 6.875;
-  if (loanType === "va") baseRate = 6.250;
+  if (isVaLoan) baseRate = 6.250;
   else if (loanType === "fha") baseRate = 6.500;
-  
+
   if (creditScore >= 780) baseRate -= 0.25;
   else if (creditScore >= 760) baseRate -= 0.125;
   else if (creditScore < 680) baseRate += 0.375;
   else if (creditScore < 700) baseRate += 0.25;
-  
+
   const propertyType = (application.propertyType || "single_family") as "single_family" | "condo" | "townhouse" | "multi_family";
-  
-  const llpaResult = await calculateLLPA(
-    loanAmount,
-    creditScore,
-    ltv,
-    propertyType,
-    "primary_residence",
-    application.isFirstTimeBuyer || false
-  );
-  
+
+  // Fannie Mae LLPAs and private MI do not apply to VA loans — VA guarantees
+  // the loan (funding fee instead) and allows up to 100% LTV, which the
+  // FANNIE_LLPA matrix has no band for. Price VA at its base-rate model.
+  const llpaResult = isVaLoan
+    ? {
+        baseLLPA: 0,
+        propertyTypeAdjustment: 0,
+        condoAdjustment: 0,
+        fthbWaiver: 0,
+        totalLLPA: 0,
+        pricing: { loanAmount, lLPAFeeAmount: 0, pmiAnnualRate: 0, pmiMonthlyPayment: 0 },
+      }
+    : await calculateLLPA(
+        loanAmount,
+        creditScore,
+        ltv,
+        propertyType,
+        "primary_residence",
+        application.isFirstTimeBuyer || false
+      );
+
   baseRate += llpaResult.totalLLPA * 0.125;
   const interestRate = Math.round(baseRate * 1000) / 1000;
-  
+
   const termMonths = 360;
   const monthlyPandI = calculateMonthlyPayment(loanAmount, interestRate, termMonths);
-  const monthlyPMI = calculatePMI(loanAmount, purchasePrice, creditScore);
+  const monthlyPMI = isVaLoan ? 0 : calculatePMI(loanAmount, purchasePrice, creditScore);
   
   const annualPropertyTax = purchasePrice * 0.012;
   const monthlyPropertyTax = annualPropertyTax / 12;

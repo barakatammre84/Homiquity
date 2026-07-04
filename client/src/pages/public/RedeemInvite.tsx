@@ -90,7 +90,7 @@ export default function RedeemInvite() {
         <CardContent className="space-y-4">
           {redeemed ? (
             <div className="text-center py-4 space-y-3">
-              <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
+              <CheckCircle2 className="h-12 w-12 text-success-subtle-foreground mx-auto" />
               <h3 className="text-lg font-semibold" data-testid="text-redeem-success">Role Activated</h3>
               <p className="text-muted-foreground">
                 Your account has been upgraded to{" "}
@@ -124,10 +124,10 @@ export default function RedeemInvite() {
               )}
 
               {validation && (
-                <div className={`flex items-start gap-3 p-3 rounded-lg ${validation.valid ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-destructive/10"}`}>
+                <div className={`flex items-start gap-3 p-3 rounded-lg ${validation.valid ? "bg-success-subtle" : "bg-destructive/10"}`}>
                   {validation.valid ? (
                     <>
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                      <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground mt-0.5 shrink-0" />
                       <div>
                         <p className="text-sm font-medium" data-testid="text-valid-invite">Valid invite code</p>
                         <p className="text-xs text-muted-foreground">

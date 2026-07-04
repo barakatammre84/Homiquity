@@ -1,5 +1,43 @@
 import crypto from "crypto";
-import { lookupResolver } from "./services/lookupResolver";
+import { lookupResolver, type LookupQuery } from "./services/lookupResolver";
+
+/**
+ * Classifies why an underwriting evaluation could not complete, so the caller
+ * can turn a thrown error into the *right* outcome instead of masking every
+ * failure as "needs more info":
+ *
+ *  - INPUT_INCOMPLETE : a required input was not supplied (e.g. VA family size).
+ *                       Genuinely resolvable by collecting more information.
+ *  - INPUT_INVALID    : an input was supplied but is not usable (non-positive
+ *                       valuation/income, unrecognized state). A data problem.
+ *  - POLICY_OUT_OF_BAND : the borrower's coordinates fell outside the automated
+ *                       pricing/eligibility matrices (e.g. sub-floor FICO,
+ *                       uncovered family size). NOT a gap in the borrower's
+ *                       file — it is a decision the automated path cannot make,
+ *                       so it must route to a human, never loop for documents.
+ *
+ * `publicMessage` is a borrower-safe explanation; `message` keeps the internal
+ * audit detail. Missing/expired *policy scalar* matrices are a system
+ * misconfiguration, not an underwriting condition — those still throw a plain
+ * Error so they surface as a real 500 rather than a borrower-facing outcome.
+ */
+export type UnderwritingErrorKind =
+  | "INPUT_INCOMPLETE"
+  | "INPUT_INVALID"
+  | "POLICY_OUT_OF_BAND";
+
+export class UnderwritingError extends Error {
+  constructor(
+    public readonly kind: UnderwritingErrorKind,
+    /** Internal, audit-grade detail. */
+    message: string,
+    /** Borrower-safe explanation surfaced by the orchestrator. */
+    public readonly publicMessage: string,
+  ) {
+    super(message);
+    this.name = "UnderwritingError";
+  }
+}
 
 /**
  * The policy thresholds and matrix cells the engine actually resolved for a
@@ -173,14 +211,14 @@ export interface UnderwritingResult {
   actualResidualIncome?: number;
   requiredResidualIncome?: number;
   rejectionReasons: string[];
+  /** The resolved thresholds/matrix cells this decision used (reproducibility). */
+  resolvedPolicy: ResolvedPolicy;
   /**
    * Reasons the file routed to MANUAL_REVIEW rather than a clean APPROVED —
    * jumbo routing, a subject-property mismatch, etc. Distinct from
    * rejectionReasons: these are "a human must look," not "declined."
    */
   reviewReasons: string[];
-  /** The resolved thresholds/matrix cells this decision used (reproducibility). */
-  resolvedPolicy: ResolvedPolicy;
 }
 
 /**
@@ -214,7 +252,11 @@ export class ConsolidatedUnderwritingEngine {
     // Step 2: Calculate Loan-to-Value (LTV)
     const propertyBasisValue = Math.min(input.contractSalesPrice, input.appraisalValue);
     if (propertyBasisValue <= 0) {
-      throw new Error("CRITICAL VALUE INPUT ERROR: Property valuation basis must be greater than zero.");
+      throw new UnderwritingError(
+        "INPUT_INVALID",
+        "CRITICAL VALUE INPUT ERROR: Property valuation basis must be greater than zero.",
+        "We need a valid purchase price and property value to evaluate this loan.",
+      );
     }
     // A non-positive loan amount (e.g. down payment >= price) would produce a
     // sub-zero LTV that silently clears the ceiling, skips MI, and drives a
@@ -230,8 +272,10 @@ export class ConsolidatedUnderwritingEngine {
     // Round up to the nearest whole percentage point for matrix lookups
     const lookupLtv = Math.ceil(calculatedLtv);
 
-    // Step 3: Enforce maximum LTV ceiling
-    if (calculatedLtv > ltvCap) {
+    // Step 3: Enforce the conventional maximum LTV ceiling. The scalar is
+    // CONVENTIONAL_LTV_CAP by definition — VA loans are guaranteed to 100% LTV
+    // ($0 down), so the cap must not reject the VA path.
+    if (targetLoanType === "CONVENTIONAL" && calculatedLtv > ltvCap) {
       reasons.push(`Calculated LTV of ${calculatedLtv.toFixed(2)}% exceeds policy ceiling of ${ltvCap}%`);
     }
 
@@ -250,7 +294,11 @@ export class ConsolidatedUnderwritingEngine {
     // Step 5: Process standard Debt-to-Income (DTI)
     const combinedGrossMonthlyIncome = input.baseMonthlyIncome + input.bonusMonthlyIncome;
     if (combinedGrossMonthlyIncome <= 0) {
-      throw new Error("CRITICAL INCOME INPUT ERROR: Consolidated gross qualifying income must be greater than zero.");
+      throw new UnderwritingError(
+        "INPUT_INVALID",
+        "CRITICAL INCOME INPUT ERROR: Consolidated gross qualifying income must be greater than zero.",
+        "We need verifiable qualifying income to evaluate this loan.",
+      );
     }
     const combinedMonthlyLiabilities = input.existingMonthlyDebts + input.proposedPiti;
     const calculatedDti = (combinedMonthlyLiabilities / combinedGrossMonthlyIncome) * 100;
@@ -270,8 +318,8 @@ export class ConsolidatedUnderwritingEngine {
       // Eligibility floor: a credit score below the conventional minimum is a
       // decline, not a pricing gap. Enforce it BEFORE any matrix lookup — the
       // PMI grid's lowest band starts at the floor, so an ineligible score would
-      // otherwise miss a cell and surface as a generic out-of-band gap instead
-      // of a specific, adverse-action-grade credit rejection.
+      // otherwise miss a cell and surface as a generic out-of-band review
+      // instead of a specific, adverse-action-grade credit rejection.
       const conventionalFicoFloor = await this.resolver.getPolicyScalar("CONVENTIONAL_FICO_FLOOR");
       if (input.representativeFico < conventionalFicoFloor) {
         reasons.push(
@@ -281,7 +329,8 @@ export class ConsolidatedUnderwritingEngine {
 
       // Conforming loan-limit awareness: this engine prices the conforming
       // product, so a loan above the limit cannot be decisioned as conforming.
-      // Route it to jumbo review (not a decline, not a conforming approval).
+      // Route it to jumbo review (not a decline) instead of silently approving
+      // it on the conforming grids.
       const conformingLimit = await this.resolver.getPolicyScalar("CONFORMING_LOAN_LIMIT");
       if (input.originalLoanAmount > conformingLimit) {
         reviewReasons.push(
@@ -306,15 +355,13 @@ export class ConsolidatedUnderwritingEngine {
       // unit is capped far below an owner-occupied SFR — so enforce the specific
       // cap here. Absent data defaults to a 1-unit primary residence, matching
       // the prior single-family behavior. An unseeded combination (e.g. a 2-unit
-      // second home, or 5+ units) misses its matrix cell, which the orchestrator
-      // routes to human review as out-of-band.
+      // second home, or 5+ units) is out of band -> human review.
       const occupancy = normalizeOccupancy(input.occupancyType);
       const units = input.numberOfUnits && input.numberOfUnits >= 1 ? Math.floor(input.numberOfUnits) : 1;
-      const occupancyMaxLtv = await this.resolver.resolveMatrixValue({
-        matrixCode: "CONVENTIONAL_MAX_LTV",
-        dim1Value: units,
-        dim3Identifier: occupancy.code,
-      });
+      const occupancyMaxLtv = await this.resolveOrOutOfBand(
+        { matrixCode: "CONVENTIONAL_MAX_LTV", dim1Value: units, dim3Identifier: occupancy.code },
+        "occupancy/units LTV eligibility",
+      );
       if (calculatedLtv > occupancyMaxLtv) {
         reasons.push(
           `Calculated LTV of ${calculatedLtv.toFixed(2)}% exceeds the ${occupancyMaxLtv}% maximum for a ${units}-unit ${occupancy.label} property`,
@@ -335,21 +382,27 @@ export class ConsolidatedUnderwritingEngine {
       if (reasons.length === 0) {
         // Query standard Monthly BPMI rate matrix if LTV > 80%
         if (calculatedLtv > 80.0) {
-          const pmiRate = await this.resolver.resolveMatrixValue({
-            matrixCode: "CONVENTIONAL_PMI",
-            dim1Value: input.representativeFico,
-            dim2Value: calculatedLtv,
-          });
+          const pmiRate = await this.resolveOrOutOfBand(
+            {
+              matrixCode: "CONVENTIONAL_PMI",
+              dim1Value: input.representativeFico,
+              dim2Value: calculatedLtv,
+            },
+            "mortgage-insurance pricing",
+          );
           resolvedPmiRatePct = pmiRate;
           resolvedPmiMonthlyPremium = (input.originalLoanAmount * (pmiRate / 100)) / 12;
         }
 
         // Query dynamic Fannie Mae LLPA Matrix
-        const llpaAdjustmentRate = await this.resolver.resolveMatrixValue({
-          matrixCode: "FANNIE_LLPA",
-          dim1Value: input.representativeFico,
-          dim2Value: lookupLtv,
-        });
+        const llpaAdjustmentRate = await this.resolveOrOutOfBand(
+          {
+            matrixCode: "FANNIE_LLPA",
+            dim1Value: input.representativeFico,
+            dim2Value: lookupLtv,
+          },
+          "risk-based pricing",
+        );
         resolvedLlpaRatePct = llpaAdjustmentRate;
         resolvedLlpafUpfrontFee = input.originalLoanAmount * (llpaAdjustmentRate / 100);
       }
@@ -357,8 +410,10 @@ export class ConsolidatedUnderwritingEngine {
       // VA Veteran Loan Path
     } else {
       if (!input.subjectPropertyState || !input.householdFamilySize || !input.homeSquareFootage) {
-        throw new Error(
+        throw new UnderwritingError(
+          "INPUT_INCOMPLETE",
           "CRITICAL VA PROTOCOL ERROR: Properties state, family size, and home square footage are required for military residual evaluations.",
+          "To evaluate a VA loan we need the subject property state, household size, and home square footage.",
         );
       }
 
@@ -379,12 +434,15 @@ export class ConsolidatedUnderwritingEngine {
         estimatedUtilityCosts;
 
       // Select dynamic minimum residual threshold matching regional guidelines
-      requiredResidualIncome = await this.resolver.resolveMatrixValue({
-        matrixCode: "VA_RESIDUAL",
-        dim1Value: input.householdFamilySize,
-        dim2Value: input.originalLoanAmount,
-        dim3Identifier: vaRegion,
-      });
+      requiredResidualIncome = await this.resolveOrOutOfBand(
+        {
+          matrixCode: "VA_RESIDUAL",
+          dim1Value: input.householdFamilySize,
+          dim2Value: input.originalLoanAmount,
+          dim3Identifier: vaRegion,
+        },
+        "VA residual-income requirement",
+      );
 
       // Implement Active-Duty Commissary Facility Discount
       if (input.isActiveDuty && input.hasExchangeAccess) {
@@ -446,8 +504,8 @@ export class ConsolidatedUnderwritingEngine {
       actualResidualIncome,
       requiredResidualIncome,
       rejectionReasons: reasons,
-      reviewReasons,
       resolvedPolicy,
+      reviewReasons,
     };
   }
 
@@ -469,9 +527,36 @@ export class ConsolidatedUnderwritingEngine {
     if (regions.SOUTH.includes(st)) return "SOUTH";
     if (regions.WEST.includes(st)) return "WEST";
 
-    throw new Error(
+    throw new UnderwritingError(
+      "INPUT_INVALID",
       `CRITICAL COMPLIANCE ERROR: Received unrecognized state parameter [${state}]. Unable to resolve geographic region mapping.`,
+      "We could not recognize the subject property state. Please provide a valid two-letter state code.",
     );
+  }
+
+  /**
+   * Resolves a borrower-coordinate matrix value, converting a "no cell matches"
+   * miss into a POLICY_OUT_OF_BAND {@link UnderwritingError}. A missing/expired
+   * *matrix* (system misconfiguration) is re-thrown unchanged so it surfaces as
+   * a real error, not an underwriting outcome.
+   */
+  private async resolveOrOutOfBand(query: LookupQuery, priceable: string): Promise<number> {
+    try {
+      return await this.resolver.resolveMatrixValue(query);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // The resolver distinguishes a coordinate miss ("...fell outside permitted
+      // compliance intervals...") from a missing matrix. Only the former is an
+      // out-of-band borrower profile; the latter is an infrastructure fault.
+      if (message.includes("fell outside permitted compliance intervals")) {
+        throw new UnderwritingError(
+          "POLICY_OUT_OF_BAND",
+          message,
+          "This loan profile is outside our automated pricing coverage and needs a manual review by your loan team.",
+        );
+      }
+      throw err;
+    }
   }
 }
 

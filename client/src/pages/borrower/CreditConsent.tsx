@@ -239,20 +239,20 @@ export default function CreditConsent() {
       </div>
 
       {hasActiveConsent && (
-        <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
+        <Card className="border-border bg-success-subtle">
           <CardContent className="py-6">
             <div className="flex items-start gap-4">
-              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400 mt-0.5" />
+              <CheckCircle2 className="h-6 w-6 text-success-subtle-foreground mt-0.5" />
               <div className="flex-1">
-                <h3 className="font-semibold text-green-800 dark:text-green-200" data-testid="text-consent-active">
+                <h3 className="font-semibold text-success-subtle-foreground" data-testid="text-consent-active">
                   Consent Already Provided
                 </h3>
-                <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                <p className="text-sm text-success-subtle-foreground mt-1">
                   {consent?.borrowerFullName} authorized a credit check on{" "}
                   {consent?.consentTimestamp && format(new Date(consent.consentTimestamp), "MMMM d, yyyy 'at' h:mm a")}
                 </p>
                 {latestPull && (
-                  <div className="mt-4 p-4 bg-white dark:bg-green-900 rounded-lg">
+                  <div className="mt-4 p-4 bg-white rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <CreditCard className="h-4 w-4" />
                       <span className="font-medium">Credit Report Summary</span>
@@ -293,9 +293,9 @@ export default function CreditConsent() {
       {!hasActiveConsent && (
         <>
           {draftData?.draft && (
-            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
-              <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <AlertDescription className="text-blue-800 dark:text-blue-200">
+            <Alert className="border-border bg-info-subtle">
+              <RefreshCw className="h-4 w-4 text-info" />
+              <AlertDescription className="text-info">
                 <strong>Resume Progress:</strong> You have a saved draft from{" "}
                 {draftData.draft.lastSavedAt && formatDistanceToNow(new Date(draftData.draft.lastSavedAt), { addSuffix: true })}.
                 Your progress has been restored automatically.

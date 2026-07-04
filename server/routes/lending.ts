@@ -481,6 +481,9 @@ export function registerLendingRoutes(
         isVeteran: formData.isVeteran,
         isFirstTimeBuyer: formData.isFirstTimeBuyer,
         propertyState: formData.propertyState,
+        // Schema-validated numeric strings → integer columns.
+        householdFamilySize: formData.householdFamilySize ? parseInt(formData.householdFamilySize) : null,
+        homeSquareFootage: formData.homeSquareFootage ? parseInt(formData.homeSquareFootage) : null,
         incomeSources: formData.incomeSources || null,
         referringBrokerId,
       };

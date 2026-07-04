@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { PrivateLayout } from "@/components/layouts/PrivateLayout";
+import { BareLayout } from "@/components/layouts/BareLayout";
 import { Loader2 } from "lucide-react";
 
 // Lazy — this modal is the only eager import that pulls framer-motion, so
@@ -47,6 +48,9 @@ const TestLogin = lazy(() => import("@/pages/public/TestLogin"));
 const RedeemInvite = lazy(() => import("@/pages/public/RedeemInvite"));
 const Login = lazy(() => import("@/pages/public/Login"));
 const Signup = lazy(() => import("@/pages/public/Signup"));
+const ForgotPassword = lazy(() => import("@/pages/public/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/public/ResetPassword"));
+const VerifyEmail = lazy(() => import("@/pages/public/VerifyEmail"));
 const AffordabilityCheck = lazy(() => import("@/pages/public/AffordabilityCheck"));
 
 const PreApproval = lazy(() => import("@/pages/lending/PreApproval"));
@@ -63,6 +67,7 @@ const TaskDetail = lazy(() => import("@/pages/borrower/TaskDetail"));
 const Messages = lazy(() => import("@/pages/borrower/Messages"));
 const URLAForm = lazy(() => import("@/pages/borrower/URLAForm"));
 const CreditConsent = lazy(() => import("@/pages/borrower/CreditConsent"));
+const AdverseActionNotice = lazy(() => import("@/pages/borrower/AdverseActionNotice"));
 const Verification = lazy(() => import("@/pages/borrower/Verification"));
 const IdentityVerification = lazy(() => import("@/pages/borrower/IdentityVerification"));
 const OnboardingJourney = lazy(() => import("@/pages/borrower/OnboardingJourney"));
@@ -172,20 +177,23 @@ function Router() {
       <Switch>
         {/* Public Pages - Anyone can access */}
         <Route path="/" component={Landing} />
-        <Route path="/login" component={Login} />
-        <Route path="/signup" component={Signup} />
-        {!isProduction && <Route path="/test-login" component={TestLogin} />}
-        <Route path="/redeem-invite" component={RedeemInvite} />
-        <Route path="/redeem-invite/:code" component={RedeemInvite} />
-        <Route path="/apply" component={PreApproval} />
+        <Route path="/login"><BareLayout><Login /></BareLayout></Route>
+        <Route path="/signup"><BareLayout><Signup /></BareLayout></Route>
+        <Route path="/forgot-password"><BareLayout><ForgotPassword /></BareLayout></Route>
+        <Route path="/reset-password"><BareLayout><ResetPassword /></BareLayout></Route>
+        <Route path="/verify-email"><BareLayout><VerifyEmail /></BareLayout></Route>
+        {!isProduction && <Route path="/test-login"><BareLayout><TestLogin /></BareLayout></Route>}
+        <Route path="/redeem-invite"><BareLayout><RedeemInvite /></BareLayout></Route>
+        <Route path="/redeem-invite/:code"><BareLayout><RedeemInvite /></BareLayout></Route>
+        <Route path="/apply"><BareLayout><PreApproval /></BareLayout></Route>
         <Route path="/apply/:token">
-          {(params) => <ApplyInvite />}
+          {(params) => <BareLayout><ApplyInvite /></BareLayout>}
         </Route>
         <Route path="/ref/:code">
-          {(params) => <ReferralLanding />}
+          {(params) => <BareLayout><ReferralLanding /></BareLayout>}
         </Route>
         <Route path="/partner/:profileId">
-          {(params) => <PartnerLanding />}
+          {(params) => <BareLayout><PartnerLanding /></BareLayout>}
         </Route>
         <Route path="/find-an-agent">
           <PublicPage><FindAnAgent /></PublicPage>
@@ -206,13 +214,13 @@ function Router() {
           <PublicPage><Glossary /></PublicPage>
         </Route>
         <Route path="/privacy">
-          <Privacy />
+          <BareLayout><Privacy /></BareLayout>
         </Route>
         <Route path="/terms">
-          <Terms />
+          <BareLayout><Terms /></BareLayout>
         </Route>
         <Route path="/disclosures">
-          <Disclosures />
+          <BareLayout><Disclosures /></BareLayout>
         </Route>
         
         {/* Property Pages - Public */}
@@ -267,7 +275,7 @@ function Router() {
         </Route>
 
         {/* Affordability Check - "Can I Afford This Home?" */}
-        <Route path="/afford" component={AffordabilityCheck} />
+        <Route path="/afford"><BareLayout><AffordabilityCheck /></BareLayout></Route>
 
         {/* Private Pages - Any authenticated user (role-aware content) */}
         <Route path="/dashboard">
@@ -313,6 +321,9 @@ function Router() {
         </Route>
         <Route path="/credit-consent/:id">
           {(params) => <BorrowerPage><CreditConsent /></BorrowerPage>}
+        </Route>
+        <Route path="/adverse-action/:id">
+          {(params) => <BorrowerPage><AdverseActionNotice /></BorrowerPage>}
         </Route>
         <Route path="/hmda/:id">
           {(params) => <BorrowerPage><HmdaDemographics /></BorrowerPage>}

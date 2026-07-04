@@ -198,7 +198,7 @@ function MarketPricingSection({ market }: { market: MarketOffersResponse }) {
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold">Live Market Pricing</h2>
             {market.indicative && (
-              <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-300">
+              <Badge variant="outline" className="border-border text-warning-subtle-foreground">
                 Indicative
               </Badge>
             )}
@@ -418,9 +418,9 @@ export default function LoanOptions() {
           <div className="text-center">
             {awaitingDecision ? (
               <>
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 dark:bg-amber-900/30">
-                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-warning-subtle px-4 py-1.5">
+                  <Clock className="h-4 w-4 text-warning-subtle-foreground" />
+                  <span className="text-sm font-medium text-warning-subtle-foreground">
                     Under Review
                   </span>
                 </div>
@@ -434,9 +434,9 @@ export default function LoanOptions() {
               </>
             ) : (
               <>
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-green-100 px-4 py-1.5 dark:bg-green-900/30">
-                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-success-subtle px-4 py-1.5">
+                  <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground" />
+                  <span className="text-sm font-medium text-success-subtle-foreground">
                     Pre-Approved
                   </span>
                 </div>
@@ -590,8 +590,8 @@ export default function LoanOptions() {
                   </div>
 
                   {option.pmi && parseFloat(option.pmi) > 0 && (
-                    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-900 dark:bg-yellow-900/20">
-                      <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                    <div className="rounded-lg border border-border bg-warning-subtle p-3">
+                      <p className="text-xs text-warning-subtle-foreground">
                         Includes ${option.pmi}/mo PMI until 20% equity
                       </p>
                     </div>

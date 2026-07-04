@@ -515,7 +515,7 @@ export default function Tasks() {
                   {selectedFile.name}
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="icon" aria-label="Close"
                     className="h-6 w-6"
                     onClick={() => setSelectedFile(null)}
                   >

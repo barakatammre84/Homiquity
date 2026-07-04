@@ -413,14 +413,14 @@ export default function Properties() {
               <div className="flex gap-2">
                 <Button
                   variant={viewMode === "grid" ? "default" : "outline"}
-                  size="icon"
+                  size="icon" aria-label="Grid view"
                   onClick={() => setViewMode("grid")}
                 >
                   <Grid className="h-4 w-4" />
                 </Button>
                 <Button
                   variant={viewMode === "list" ? "default" : "outline"}
-                  size="icon"
+                  size="icon" aria-label="List view"
                   onClick={() => setViewMode("list")}
                 >
                   <List className="h-4 w-4" />
@@ -595,7 +595,7 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
                     <span className="text-sm">{property.address}, {property.city}, {property.state}</span>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" aria-label="Save">
                   <Heart className="h-5 w-5" />
                 </Button>
               </div>
@@ -649,7 +649,7 @@ function PropertyCard({ property, viewMode }: { property: Property; viewMode: "g
         </Badge>
         <Button
           variant="ghost"
-          size="icon"
+          size="icon" aria-label="Save"
           className="absolute right-3 top-3 bg-white/80"
         >
           <Heart className="h-5 w-5" />

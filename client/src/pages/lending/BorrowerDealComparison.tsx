@@ -177,10 +177,10 @@ const mockOffers: LenderOffer[] = [
 ];
 
 const labelConfig: Record<string, { text: string; icon: typeof DollarSign; color: string }> = {
-  LOWEST_PAYMENT: { text: "Lowest Monthly Payment", icon: DollarSign, color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
-  LOWEST_TOTAL_COST: { text: "Lowest Total Cost (5 yrs)", icon: TrendingDown, color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  BEST_SHORT_TERM: { text: "Best Short-Term Option", icon: Zap, color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-  FASTEST_CLOSE: { text: "Fastest Closing", icon: Clock, color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
+  LOWEST_PAYMENT: { text: "Lowest Monthly Payment", icon: DollarSign, color: "bg-success-subtle text-success-subtle-foreground" },
+  LOWEST_TOTAL_COST: { text: "Lowest Total Cost (5 yrs)", icon: TrendingDown, color: "bg-info-subtle text-info" },
+  BEST_SHORT_TERM: { text: "Best Short-Term Option", icon: Zap, color: "bg-secondary text-primary" },
+  FASTEST_CLOSE: { text: "Fastest Closing", icon: Clock, color: "bg-warning-subtle text-warning-subtle-foreground" },
 };
 
 function formatRate(rate: number): string {
@@ -322,7 +322,7 @@ export default function BorrowerDealComparison() {
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" data-testid="button-info-tooltip">
+                <Button variant="ghost" size="icon" aria-label="More information" data-testid="button-info-tooltip">
                   <Info className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
@@ -611,7 +611,7 @@ export default function BorrowerDealComparison() {
                           <ul className="text-sm text-muted-foreground space-y-1">
                             {offer.conditions.map((condition, idx) => (
                               <li key={idx} className="flex items-center gap-2">
-                                <Check className="h-3 w-3 text-green-500" />
+                                <Check className="h-3 w-3 text-success-subtle-foreground" />
                                 {condition}
                               </li>
                             ))}

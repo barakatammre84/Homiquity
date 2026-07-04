@@ -884,6 +884,21 @@ export function registerComplianceRoutes(
         generatedBy: user.id,
       });
 
+      // Notify the borrower so they can read the notice they're entitled to.
+      try {
+        await storage.createNotification({
+          userId: application.userId,
+          type: "adverse_action",
+          title: "Important notice about your application",
+          body: "A required disclosure about a decision on your application is now available to view.",
+          entityType: "loan_application",
+          entityId: req.params.id,
+          status: "unread",
+        });
+      } catch (notifyErr) {
+        console.error("Adverse-action borrower notification failed (non-fatal):", notifyErr);
+      }
+
       res.status(201).json({ adverseAction });
     } catch (error) {
       console.error("Generate adverse action error:", error);

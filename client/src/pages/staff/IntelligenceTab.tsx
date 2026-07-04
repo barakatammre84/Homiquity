@@ -104,7 +104,7 @@ export default function IntelligenceTab() {
         <Card data-testid="kpi-automation-rate">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
+              <Zap className="h-4 w-4 text-warning-subtle-foreground" />
               <p className="text-sm text-muted-foreground">Automation Rate</p>
             </div>
             <p className="text-2xl font-bold">{automationRate.toFixed(0)}%</p>
@@ -114,7 +114,7 @@ export default function IntelligenceTab() {
         <Card data-testid="kpi-conversion-rate">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4 text-emerald-500" />
+              <Target className="h-4 w-4 text-success-subtle-foreground" />
               <p className="text-sm text-muted-foreground">Pipeline Conversion</p>
             </div>
             <p className="text-2xl font-bold">{overallConversionRate.toFixed(1)}%</p>
@@ -124,7 +124,7 @@ export default function IntelligenceTab() {
         <Card data-testid="kpi-doc-confidence">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Brain className="h-4 w-4 text-blue-500" />
+              <Brain className="h-4 w-4 text-info" />
               <p className="text-sm text-muted-foreground">Doc Intelligence</p>
             </div>
             <p className="text-2xl font-bold">{(avgDocConfidence * 100).toFixed(0)}%</p>
@@ -134,7 +134,7 @@ export default function IntelligenceTab() {
         <Card data-testid="kpi-pending-reviews">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <FileCheck className="h-4 w-4 text-orange-500" />
+              <FileCheck className="h-4 w-4 text-warning-subtle-foreground" />
               <p className="text-sm text-muted-foreground">Needs Review</p>
             </div>
             <p className="text-2xl font-bold">{pendingReviews}</p>
@@ -240,7 +240,7 @@ export default function IntelligenceTab() {
                             {doc.humanReviewedCount} reviewed
                           </span>
                           {doc.needsReviewCount > 0 && (
-                            <span className="flex items-center gap-1 text-orange-500">
+                            <span className="flex items-center gap-1 text-warning-subtle-foreground">
                               <AlertTriangle className="h-3 w-3" />
                               {doc.needsReviewCount} need review
                             </span>
@@ -354,8 +354,8 @@ export default function IntelligenceTab() {
                         <tr key={seg.segment} className="border-b last:border-0" data-testid={`segment-row-${seg.segment}`}>
                           <td className="py-2 font-medium">{seg.segment}</td>
                           <td className="text-right py-2">{seg.totalLoans}</td>
-                          <td className="text-right py-2 text-emerald-600">{seg.funded}</td>
-                          <td className="text-right py-2 text-red-500">{seg.denied}</td>
+                          <td className="text-right py-2 text-success-subtle-foreground">{seg.funded}</td>
+                          <td className="text-right py-2 text-destructive">{seg.denied}</td>
                           <td className="text-right py-2">
                             <Badge variant={seg.conversionRate > 0.5 ? "default" : "secondary"}>
                               {(seg.conversionRate * 100).toFixed(0)}%

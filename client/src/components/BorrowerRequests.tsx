@@ -90,8 +90,8 @@ export function BorrowerRequests({ applicationId, "data-testid": testId }: Borro
     <Card className="shadow-md" data-testid={testId || "card-what-we-need"}>
       <CardHeader className="pb-3 border-b">
         <CardTitle className="text-sm font-semibold flex items-center gap-2 flex-wrap">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/15">
-            <FileText className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-warning/15">
+            <FileText className="h-3 w-3 text-warning-subtle-foreground" />
           </div>
           What We Need From You
           <Badge variant="secondary" className="text-[10px] ml-auto">{pendingTasks.length}</Badge>
@@ -111,10 +111,10 @@ export function BorrowerRequests({ applicationId, "data-testid": testId }: Borro
             >
               <div className="flex items-center gap-3 min-w-0 flex-wrap">
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 ${
-                  isUrgent ? "border-amber-500 text-amber-600 dark:text-amber-400" : "border-primary/50 text-primary"
+                  isUrgent ? "border-border text-warning-subtle-foreground" : "border-primary/50 text-primary"
                 }`}>
                   {isUrgent ? (
-                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <Clock className="h-4 w-4 text-warning-subtle-foreground" />
                   ) : (
                     <Upload className="h-4 w-4 text-primary" />
                   )}
@@ -125,7 +125,7 @@ export function BorrowerRequests({ applicationId, "data-testid": testId }: Borro
                   </p>
                   {dueText && (
                     <p className={`text-xs ${
-                      isUrgent ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                      isUrgent ? "text-warning-subtle-foreground" : "text-muted-foreground"
                     }`} data-testid={`text-request-due-${task.id}`}>
                       {dueText}
                     </p>

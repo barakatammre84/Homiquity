@@ -54,14 +54,14 @@ function getCheckStatusIcon(status: string) {
     case "cleared":
     case "passed":
     case "verified":
-      return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+      return <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground" />;
     case "in_progress":
     case "pending":
-      return <Clock className="h-4 w-4 text-amber-500" />;
+      return <Clock className="h-4 w-4 text-warning-subtle-foreground" />;
     case "flagged":
-      return <AlertTriangle className="h-4 w-4 text-amber-600" />;
+      return <AlertTriangle className="h-4 w-4 text-warning-subtle-foreground" />;
     case "failed":
-      return <XCircle className="h-4 w-4 text-red-500" />;
+      return <XCircle className="h-4 w-4 text-destructive" />;
     default:
       return <CircleDot className="h-4 w-4 text-muted-foreground" />;
   }
@@ -143,7 +143,7 @@ function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: Onboardi
   if (kbaStatus?.status === "passed" || result?.passed) {
     return (
       <div className="text-center py-6" data-testid="kba-passed">
-        <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
+        <CheckCircle2 className="h-12 w-12 text-success-subtle-foreground mx-auto mb-3" />
         <p className="font-semibold text-foreground">Identity Verified</p>
         <p className="text-sm text-muted-foreground mt-1">Your identity has been confirmed through knowledge-based authentication.</p>
       </div>
@@ -153,7 +153,7 @@ function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: Onboardi
   if (result && !result.passed) {
     return (
       <div className="text-center py-6" data-testid="kba-failed">
-        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
+        <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-3" />
         <p className="font-semibold text-foreground">Verification Unsuccessful</p>
         <p className="text-sm text-muted-foreground mt-1">
           You answered {result.score} of {result.totalQuestions} correctly. {(result.remainingAttempts ?? 0) > 0 ? `You have ${result.remainingAttempts} attempt(s) remaining.` : "Maximum attempts reached."}
@@ -208,7 +208,7 @@ function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: Onboardi
             <div
               key={idx}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
-                idx < currentIndex ? "bg-emerald-500" : idx === currentIndex ? "bg-primary" : "bg-muted"
+                idx < currentIndex ? "bg-success" : idx === currentIndex ? "bg-primary" : "bg-muted"
               }`}
             />
           ))}
@@ -225,7 +225,7 @@ function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: Onboardi
         Answer 5 security questions based on your public records to confirm your identity. You need 4 correct answers to pass.
       </p>
       {kbaStatus && kbaStatus.attemptNumber > 1 && (
-        <p className="text-xs text-amber-600 mb-3">Attempt {kbaStatus.attemptNumber} of {kbaStatus.maxAttempts}</p>
+        <p className="text-xs text-warning-subtle-foreground mb-3">Attempt {kbaStatus.attemptNumber} of {kbaStatus.maxAttempts}</p>
       )}
       <Button onClick={() => startMutation.mutate()} disabled={startMutation.isPending} data-testid="button-kba-start">
         {startMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
@@ -262,10 +262,10 @@ function KYCAMLStatus({ kyc, applicationId }: { kyc: KycStatus | null; applicati
   return (
     <div data-testid="kyc-status-panel">
       {allCleared && (
-        <div className="flex items-center gap-2 mb-4 p-3 bg-emerald-500/10 rounded-md" data-testid="kyc-cleared-banner">
-          <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+        <div className="flex items-center gap-2 mb-4 p-3 bg-success/10 rounded-md" data-testid="kyc-cleared-banner">
+          <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground shrink-0" />
           <div>
-            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">All Compliance Checks Passed</p>
+            <p className="text-sm font-medium text-success-subtle-foreground">All Compliance Checks Passed</p>
             <p className="text-xs text-muted-foreground">Risk Score: {kyc.riskScore}/100 (Low Risk)</p>
           </div>
         </div>
@@ -363,8 +363,8 @@ export default function IdentityVerification() {
           <div className="flex gap-2">
             {steps.map((step) => (
               <div key={step.id} className="flex-1" data-testid={`step-indicator-${step.id}`}>
-                <div className={`h-2 rounded-full ${step.complete ? "bg-emerald-500" : "bg-muted"}`} />
-                <p className={`text-xs mt-1.5 ${step.complete ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-muted-foreground"}`}>
+                <div className={`h-2 rounded-full ${step.complete ? "bg-success" : "bg-muted"}`} />
+                <p className={`text-xs mt-1.5 ${step.complete ? "text-success-subtle-foreground font-medium" : "text-muted-foreground"}`}>
                   {step.label}
                 </p>
               </div>
@@ -424,7 +424,7 @@ export default function IdentityVerification() {
           <CardContent>
             {docsVerified ? (
               <div className="text-center py-6" data-testid="docs-verified">
-                <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
+                <CheckCircle2 className="h-12 w-12 text-success-subtle-foreground mx-auto mb-3" />
                 <p className="font-semibold text-foreground">Documents Verified</p>
                 <p className="text-sm text-muted-foreground mt-1">Your identity documents have been verified.</p>
               </div>

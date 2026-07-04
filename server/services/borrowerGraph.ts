@@ -20,10 +20,10 @@ import {
   intentEvents,
 } from "@shared/schema";
 import type { User, LoanApplication, BorrowerProfile, RealEstateOwned } from "@shared/schema";
+import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 import { eq, desc, sql, and, gte, count, isNotNull } from "drizzle-orm";
 import { computeNextAction } from "./nextAction";
 import { isTerminalLoanAppStatus } from "@shared/schema";
-import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 
 export interface IncomeSource {
   source: "document" | "application" | "coach" | "goal";

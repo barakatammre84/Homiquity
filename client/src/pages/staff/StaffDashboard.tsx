@@ -243,10 +243,10 @@ function getStatusBadge(status: string) {
 
 function getPriorityBadge(priority: string) {
   const config: Record<string, { className: string; label: string }> = {
-    low: { className: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300", label: "Low" },
-    normal: { className: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300", label: "Normal" },
-    high: { className: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300", label: "High" },
-    urgent: { className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300", label: "Urgent" },
+    low: { className: "bg-muted text-muted-foreground", label: "Low" },
+    normal: { className: "bg-info-subtle text-info", label: "Normal" },
+    high: { className: "bg-warning-subtle text-warning-subtle-foreground", label: "High" },
+    urgent: { className: "bg-destructive-subtle text-destructive", label: "Urgent" },
   };
   const p = config[priority] || config.normal;
   return <Badge className={p.className}>{p.label}</Badge>;
@@ -260,7 +260,7 @@ function AutomationBadge({ source }: { source?: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant="outline" className="gap-1 text-xs bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800" data-testid="badge-automation">
+        <Badge variant="outline" className="gap-1 text-xs bg-secondary text-primary border-border" data-testid="badge-automation">
           <Icon className="h-3 w-3" />
           Automated
         </Badge>
@@ -303,17 +303,17 @@ function ComplianceChecklistInline({ stage, completionPct }: { stage: string; co
             key={item.id}
             className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-xs ${
               item.isOverdue
-                ? "bg-red-50 dark:bg-red-900/20"
+                ? "bg-destructive-subtle"
                 : item.isCurrentStage && !item.isComplete
-                  ? "bg-amber-50 dark:bg-amber-900/20"
+                  ? "bg-warning-subtle"
                   : ""
             }`}
             data-testid={`compliance-item-${item.id}`}
           >
             {item.isComplete ? (
-              <CircleCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              <CircleCheck className="h-3.5 w-3.5 text-success-subtle-foreground shrink-0" />
             ) : item.isOverdue ? (
-              <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+              <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
             ) : (
               <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
             )}
@@ -766,8 +766,8 @@ export default function StaffDashboard() {
           <Card data-testid="card-kpi-queue">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                  <Inbox className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning-subtle">
+                  <Inbox className="h-5 w-5 text-warning-subtle-foreground" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold" data-testid="text-queue-count">{sortedQueueTasks.length}</p>
@@ -775,7 +775,7 @@ export default function StaffDashboard() {
                 </div>
               </div>
               {queueBreached > 0 && (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-2">{queueBreached} SLA breached</p>
+                <p className="text-xs text-destructive mt-2">{queueBreached} SLA breached</p>
               )}
             </CardContent>
           </Card>
@@ -783,8 +783,8 @@ export default function StaffDashboard() {
           <Card data-testid="card-kpi-review">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                  <Eye className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info-subtle">
+                  <Eye className="h-5 w-5 text-info" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold" data-testid="text-review-count">{submittedTasks.length}</p>
@@ -797,8 +797,8 @@ export default function StaffDashboard() {
           <Card data-testid="card-kpi-compliance">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                  <Shield className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success-subtle">
+                  <Shield className="h-5 w-5 text-success-subtle-foreground" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold" data-testid="text-compliance-score">{complianceScore}%</p>
@@ -806,7 +806,7 @@ export default function StaffDashboard() {
                 </div>
               </div>
               {(complianceData?.needsAttention || 0) > 0 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">{complianceData?.needsAttention} need attention</p>
+                <p className="text-xs text-warning-subtle-foreground mt-2">{complianceData?.needsAttention} need attention</p>
               )}
             </CardContent>
           </Card>
@@ -814,8 +814,8 @@ export default function StaffDashboard() {
           <Card data-testid="card-kpi-automated">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30">
-                  <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+                  <Sparkles className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold" data-testid="text-automated-count">{automatedTasks.length}</p>
@@ -928,7 +928,7 @@ export default function StaffDashboard() {
                           <CardContent className="p-4">
                             <div className="flex flex-wrap items-start gap-4">
                               <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${
-                                item.priority === "urgent" ? "bg-red-500" : item.priority === "high" ? "bg-orange-500" : "bg-blue-500"
+                                item.priority === "urgent" ? "bg-destructive" : item.priority === "high" ? "bg-warning" : "bg-info"
                               }`} />
 
                               <div className="flex-1 min-w-0">
@@ -940,7 +940,7 @@ export default function StaffDashboard() {
                                   </Link>
                                   <Badge variant="outline">{formatStageLabel(item.currentStage)}</Badge>
                                   {compApp?.gseReady && (
-                                    <Badge variant="secondary" className="gap-1 text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" data-testid={`badge-gse-${item.applicationId}`}>
+                                    <Badge variant="secondary" className="gap-1 text-xs bg-success-subtle text-success-subtle-foreground" data-testid={`badge-gse-${item.applicationId}`}>
                                       <CheckCircle2 className="h-3 w-3" />
                                       GSE Ready
                                     </Badge>
@@ -958,7 +958,7 @@ export default function StaffDashboard() {
                                     </Badge>
                                   )}
                                   {compApp?.qmStatus === "QM" && (
-                                    <Badge variant="secondary" className="gap-1 text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" data-testid={`badge-qm-${item.applicationId}`}>
+                                    <Badge variant="secondary" className="gap-1 text-xs bg-info-subtle text-info" data-testid={`badge-qm-${item.applicationId}`}>
                                       <Scale className="h-3 w-3" />
                                       QM
                                     </Badge>
@@ -1077,7 +1077,7 @@ export default function StaffDashboard() {
                     {automatedTasks.length > 0 && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge variant="outline" className="gap-1 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800" data-testid="badge-auto-tasks-count">
+                          <Badge variant="outline" className="gap-1 bg-secondary text-primary border-border" data-testid="badge-auto-tasks-count">
                             <Sparkles className="h-3 w-3" />
                             {automatedTasks.length} automated
                           </Badge>
@@ -1142,7 +1142,7 @@ export default function StaffDashboard() {
                             {task.status === "OPEN" ? "Open" : task.status === "IN_PROGRESS" ? "In Progress" : task.status}
                           </Badge>
                           <Button
-                            size="icon"
+                            size="icon" aria-label="View"
                             variant="ghost"
                             onClick={(e) => { e.stopPropagation(); navigate(`/borrower-file/${task.applicationId}`); }}
                             data-testid={`button-view-file-${task.id}`}
@@ -1169,19 +1169,20 @@ export default function StaffDashboard() {
                   {submittedTasks.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
-                      <p>No tasks awaiting review</p>
+                      <p className="font-medium">Nothing awaiting review</p>
+                      <p className="text-sm mt-1">When a borrower submits a requested document, it lands here for your review.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {submittedTasks.map(task => (
                         <div
                           key={task.id}
-                          className="flex items-center justify-between gap-4 rounded-lg border p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                          className="flex items-center justify-between gap-4 rounded-lg border p-4 bg-info-subtle border-border"
                           data-testid={`review-task-${task.id}`}
                         >
                           <div className="flex items-center gap-4">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-800">
-                              <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info-subtle">
+                              <Upload className="h-5 w-5 text-info" />
                             </div>
                             <div>
                               <p className="font-medium">{task.title}</p>
@@ -1229,7 +1230,8 @@ export default function StaffDashboard() {
                   {applications.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <UserIcon className="mx-auto h-12 w-12 mb-4" />
-                      <p>{isAdmin ? "No applications found" : "No applications assigned to your team"}</p>
+                      <p className="font-medium">{isAdmin ? "No applications yet" : "No applications assigned to your team"}</p>
+                      <p className="text-sm mt-1">Applications assigned to your deal team will appear here as borrowers apply.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1283,9 +1285,9 @@ export default function StaffDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">GSE Ready</p>
-                        <p className="text-2xl font-bold text-emerald-600" data-testid="text-gse-ready">{complianceData?.gseReady || 0}</p>
+                        <p className="text-2xl font-bold text-success-subtle-foreground" data-testid="text-gse-ready">{complianceData?.gseReady || 0}</p>
                       </div>
-                      <CheckCircle2 className="h-8 w-8 text-emerald-500/30" />
+                      <CheckCircle2 className="h-8 w-8 text-success-subtle-foreground/30" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Ready for Fannie/Freddie</p>
                   </CardContent>
@@ -1295,9 +1297,9 @@ export default function StaffDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">ULDD Compliant</p>
-                        <p className="text-2xl font-bold text-blue-600" data-testid="text-uldd-compliant">{complianceData?.ulddCompliant || 0}</p>
+                        <p className="text-2xl font-bold text-info" data-testid="text-uldd-compliant">{complianceData?.ulddCompliant || 0}</p>
                       </div>
-                      <FileCheck className="h-8 w-8 text-blue-500/30" />
+                      <FileCheck className="h-8 w-8 text-info/30" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Minimum data met</p>
                   </CardContent>
@@ -1307,9 +1309,9 @@ export default function StaffDashboard() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Needs Attention</p>
-                        <p className="text-2xl font-bold text-amber-600" data-testid="text-needs-attention">{complianceData?.needsAttention || 0}</p>
+                        <p className="text-2xl font-bold text-warning-subtle-foreground" data-testid="text-needs-attention">{complianceData?.needsAttention || 0}</p>
                       </div>
-                      <AlertTriangle className="h-8 w-8 text-amber-500/30" />
+                      <AlertTriangle className="h-8 w-8 text-warning-subtle-foreground/30" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Missing critical data</p>
                   </CardContent>
@@ -1361,7 +1363,7 @@ export default function StaffDashboard() {
                                 </Badge>
                               )}
                               {app.qmStatus === "QM" && (
-                                <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" data-testid={`badge-qm-${app.applicationId}`}>
+                                <Badge variant="secondary" className="gap-1 bg-info-subtle text-info" data-testid={`badge-qm-${app.applicationId}`}>
                                   <Scale className="h-3 w-3" />
                                   QM
                                 </Badge>
@@ -1448,27 +1450,27 @@ export default function StaffDashboard() {
                         <div className="rounded-lg border p-3">
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-sm text-muted-foreground">Archive Eligible</p>
-                            <Archive className="h-4 w-4 text-amber-500" />
+                            <Archive className="h-4 w-4 text-warning-subtle-foreground" />
                           </div>
-                          <p className="text-2xl font-bold text-amber-600" data-testid="text-archive-eligible">
+                          <p className="text-2xl font-bold text-warning-subtle-foreground" data-testid="text-archive-eligible">
                             {Object.values(retentionReport?.archiveEligibleCounts || {}).reduce((a, b) => a + b, 0)}
                           </p>
                         </div>
                         <div className="rounded-lg border p-3">
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-sm text-muted-foreground">Retention Review</p>
-                            <Clock className="h-4 w-4 text-blue-500" />
+                            <Clock className="h-4 w-4 text-info" />
                           </div>
-                          <p className="text-2xl font-bold text-blue-600" data-testid="text-retention-review">
+                          <p className="text-2xl font-bold text-info" data-testid="text-retention-review">
                             {Object.values(retentionReport?.retentionReviewCounts || {}).reduce((a, b) => a + b, 0)}
                           </p>
                         </div>
                         <div className="rounded-lg border p-3">
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-sm text-muted-foreground">Delete Eligible</p>
-                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                            <AlertTriangle className="h-4 w-4 text-destructive" />
                           </div>
-                          <p className="text-2xl font-bold text-red-600" data-testid="text-delete-eligible">
+                          <p className="text-2xl font-bold text-destructive" data-testid="text-delete-eligible">
                             {Object.values(retentionReport?.deleteEligibleCounts || {}).reduce((a, b) => a + b, 0)}
                           </p>
                         </div>
@@ -1483,9 +1485,9 @@ export default function StaffDashboard() {
                               data-testid={`alert-recommendation-${idx}`}
                             >
                               {rec.includes("No action") ? (
-                                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                                <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground mt-0.5 flex-shrink-0" />
                               ) : (
-                                <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                                <AlertTriangle className="h-5 w-5 text-warning-subtle-foreground mt-0.5 flex-shrink-0" />
                               )}
                               <span className="text-sm">{rec}</span>
                             </div>
@@ -1558,21 +1560,21 @@ export default function StaffDashboard() {
                   <div className="grid gap-4 md:grid-cols-3 mb-6">
                     <div className="p-4 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-2 mb-2">
-                        <Shield className="h-5 w-5 text-green-500" />
+                        <Shield className="h-5 w-5 text-success-subtle-foreground" />
                         <span className="font-medium text-sm">Hash Chain Verified</span>
                       </div>
                       <p className="text-xs text-muted-foreground">All audit entries are cryptographically linked</p>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-2 mb-2">
-                        <FileCheck className="h-5 w-5 text-blue-500" />
+                        <FileCheck className="h-5 w-5 text-info" />
                         <span className="font-medium text-sm">Export Ready</span>
                       </div>
                       <p className="text-xs text-muted-foreground">CSV and JSON formats for regulatory exams</p>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-2 mb-2">
-                        <Clock className="h-5 w-5 text-amber-500" />
+                        <Clock className="h-5 w-5 text-warning-subtle-foreground" />
                         <span className="font-medium text-sm">7-Year Retention</span>
                       </div>
                       <p className="text-xs text-muted-foreground">FCRA compliant data retention</p>
@@ -1587,7 +1589,7 @@ export default function StaffDashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-violet-500" />
+                    <Zap className="h-5 w-5 text-primary" />
                     Automation Activity
                   </CardTitle>
                   <CardDescription>Tasks and checks handled automatically by the platform</CardDescription>
@@ -1595,44 +1597,44 @@ export default function StaffDashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-start gap-3 rounded-lg border p-3">
-                      <ScanLine className="h-5 w-5 text-violet-500 mt-0.5" />
+                      <ScanLine className="h-5 w-5 text-primary mt-0.5" />
                       <div>
                         <p className="font-medium text-sm">Document Classification</p>
                         <p className="text-xs text-muted-foreground">
                           Incoming documents are automatically classified (W-2, pay stub, bank statement) using AI. Up to 40% of manual document processing is eliminated.
                         </p>
                       </div>
-                      <Badge variant="outline" className="shrink-0 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Active</Badge>
+                      <Badge variant="outline" className="shrink-0 bg-secondary text-primary">Active</Badge>
                     </div>
                     <div className="flex items-start gap-3 rounded-lg border p-3">
-                      <Brain className="h-5 w-5 text-violet-500 mt-0.5" />
+                      <Brain className="h-5 w-5 text-primary mt-0.5" />
                       <div>
                         <p className="font-medium text-sm">Income Verification</p>
                         <p className="text-xs text-muted-foreground">
                           AI extracts income data from uploaded documents, cross-references with application data, and flags discrepancies automatically.
                         </p>
                       </div>
-                      <Badge variant="outline" className="shrink-0 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Active</Badge>
+                      <Badge variant="outline" className="shrink-0 bg-secondary text-primary">Active</Badge>
                     </div>
                     <div className="flex items-start gap-3 rounded-lg border p-3">
-                      <Zap className="h-5 w-5 text-violet-500 mt-0.5" />
+                      <Zap className="h-5 w-5 text-primary mt-0.5" />
                       <div>
                         <p className="font-medium text-sm">Compliance Rule Engine</p>
                         <p className="text-xs text-muted-foreground">
                           TRID timelines, disclosure deadlines, and regulatory checklists are auto-tracked. Tasks are auto-generated when deadlines approach.
                         </p>
                       </div>
-                      <Badge variant="outline" className="shrink-0 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Active</Badge>
+                      <Badge variant="outline" className="shrink-0 bg-secondary text-primary">Active</Badge>
                     </div>
                     <div className="flex items-start gap-3 rounded-lg border p-3">
-                      <Bot className="h-5 w-5 text-violet-500 mt-0.5" />
+                      <Bot className="h-5 w-5 text-primary mt-0.5" />
                       <div>
                         <p className="font-medium text-sm">Form Pre-fill</p>
                         <p className="text-xs text-muted-foreground">
                           Borrower data from verified documents automatically pre-fills application fields, reducing data entry and errors across the lifecycle.
                         </p>
                       </div>
-                      <Badge variant="outline" className="shrink-0 bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Active</Badge>
+                      <Badge variant="outline" className="shrink-0 bg-secondary text-primary">Active</Badge>
                     </div>
                   </div>
                 </CardContent>

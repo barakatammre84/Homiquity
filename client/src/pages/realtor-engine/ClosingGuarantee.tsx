@@ -58,10 +58,10 @@ const GUARANTEE_ICONS: Record<string, typeof Shield> = {
 
 function GuaranteeTypeBadge({ type }: { type: string }) {
   const styles: Record<string, string> = {
-    underwriting_24h: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-    appraisal_48h: "bg-purple-500/10 text-purple-700 dark:text-purple-300",
-    closing_10day: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    communication_daily: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    underwriting_24h: "bg-info/10 text-info",
+    appraisal_48h: "bg-primary/10 text-primary",
+    closing_10day: "bg-success/10 text-success-subtle-foreground",
+    communication_daily: "bg-warning/10 text-warning-subtle-foreground",
   };
   return (
     <Badge variant="secondary" className={styles[type] || ""} data-testid={`badge-type-${type}`}>
@@ -80,9 +80,9 @@ function StatusBadge({ status }: { status: string }) {
   const c = config[status] || { label: status, variant: "secondary" as const };
 
   const statusStyles: Record<string, string> = {
-    active: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-    at_risk: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-    met: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    active: "bg-info/10 text-info",
+    at_risk: "bg-warning/10 text-warning-subtle-foreground",
+    met: "bg-success/10 text-success-subtle-foreground",
     missed: "",
   };
 
@@ -173,8 +173,8 @@ function GuaranteeCard({ guarantee }: { guarantee: ClosingGuarantee }) {
 
               {guarantee.status === "active" && (
                 <div className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300" data-testid={`text-countdown-${guarantee.id}`}>
+                  <Clock className="h-3.5 w-3.5 text-info shrink-0" />
+                  <span className="text-sm font-medium text-info" data-testid={`text-countdown-${guarantee.id}`}>
                     {remaining}
                   </span>
                 </div>
@@ -182,8 +182,8 @@ function GuaranteeCard({ guarantee }: { guarantee: ClosingGuarantee }) {
 
               {guarantee.isAtRisk && guarantee.riskReason && (
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span className="text-sm text-amber-700 dark:text-amber-300" data-testid={`text-risk-reason-${guarantee.id}`}>
+                  <AlertTriangle className="h-3.5 w-3.5 text-warning-subtle-foreground shrink-0" />
+                  <span className="text-sm text-warning-subtle-foreground" data-testid={`text-risk-reason-${guarantee.id}`}>
                     {guarantee.riskReason}
                   </span>
                 </div>
@@ -191,8 +191,8 @@ function GuaranteeCard({ guarantee }: { guarantee: ClosingGuarantee }) {
 
               {guarantee.isMet && guarantee.actualDate && (
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="text-sm text-emerald-700 dark:text-emerald-300" data-testid={`text-actual-date-${guarantee.id}`}>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-success-subtle-foreground shrink-0" />
+                  <span className="text-sm text-success-subtle-foreground" data-testid={`text-actual-date-${guarantee.id}`}>
                     Completed: {format(new Date(guarantee.actualDate), "MMM d, yyyy h:mm a")}
                   </span>
                 </div>
@@ -351,28 +351,28 @@ export default function ClosingGuarantee() {
       <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-4">
         <Card data-testid="stat-active">
           <CardContent className="py-3 text-center">
-            <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
+            <Clock className="h-5 w-5 text-info mx-auto mb-1" />
             <p className="text-2xl font-bold text-foreground" data-testid="text-active-count">{activeCount}</p>
             <p className="text-xs text-muted-foreground">Active</p>
           </CardContent>
         </Card>
         <Card data-testid="stat-on-track">
           <CardContent className="py-3 text-center">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
+            <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground mx-auto mb-1" />
             <p className="text-2xl font-bold text-foreground" data-testid="text-on-track-count">{onTrackCount}</p>
             <p className="text-xs text-muted-foreground">On Track</p>
           </CardContent>
         </Card>
         <Card data-testid="stat-at-risk">
           <CardContent className="py-3 text-center">
-            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mx-auto mb-1" />
+            <AlertTriangle className="h-5 w-5 text-warning-subtle-foreground mx-auto mb-1" />
             <p className="text-2xl font-bold text-foreground" data-testid="text-at-risk-count">{atRiskCount}</p>
             <p className="text-xs text-muted-foreground">At Risk</p>
           </CardContent>
         </Card>
         <Card data-testid="stat-met">
           <CardContent className="py-3 text-center">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
+            <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground mx-auto mb-1" />
             <p className="text-2xl font-bold text-foreground" data-testid="text-met-count">{metCount}</p>
             <p className="text-xs text-muted-foreground">Met</p>
           </CardContent>

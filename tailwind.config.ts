@@ -50,6 +50,29 @@ export default {
           DEFAULT: "hsl(var(--destructive) / <alpha-value>)",
           foreground: "hsl(var(--destructive-foreground) / <alpha-value>)",
           border: "var(--destructive-border)",
+          subtle: "hsl(var(--destructive-subtle) / <alpha-value>)",
+          "subtle-foreground": "hsl(var(--destructive-subtle-foreground) / <alpha-value>)",
+        },
+        // Semantic pops — the bridge from the CSS vars to utilities. Use these
+        // (or the <Badge>/<Alert> variants) instead of raw text-emerald-600 /
+        // bg-amber-100 etc. The *-subtle pair is the AA-safe status-chip surface.
+        success: {
+          DEFAULT: "hsl(var(--success) / <alpha-value>)",
+          foreground: "hsl(var(--success-foreground) / <alpha-value>)",
+          subtle: "hsl(var(--success-subtle) / <alpha-value>)",
+          "subtle-foreground": "hsl(var(--success-subtle-foreground) / <alpha-value>)",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning) / <alpha-value>)",
+          foreground: "hsl(var(--warning-foreground) / <alpha-value>)",
+          subtle: "hsl(var(--warning-subtle) / <alpha-value>)",
+          "subtle-foreground": "hsl(var(--warning-subtle-foreground) / <alpha-value>)",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info) / <alpha-value>)",
+          foreground: "hsl(var(--info-foreground) / <alpha-value>)",
+          subtle: "hsl(var(--info-subtle) / <alpha-value>)",
+          "subtle-foreground": "hsl(var(--info-subtle-foreground) / <alpha-value>)",
         },
         ring: "hsl(var(--ring) / <alpha-value>)",
         chart: {

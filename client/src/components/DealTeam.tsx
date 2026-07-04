@@ -67,19 +67,6 @@ const roleLabels: Record<string, string> = {
   escrow_officer: "Escrow Officer",
 };
 
-const roleColors: Record<string, string> = {
-  loan_officer: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  loan_processor: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  underwriter: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  closer: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  real_estate_agent: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
-  title_agent: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
-  appraiser: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
-  insurance_agent: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
-  attorney: "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200",
-  escrow_officer: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
-};
-
 interface DealTeamProps {
   applicationId: string;
   compact?: boolean;

@@ -119,7 +119,7 @@ export default function FAQ() {
           {!searchQuery && !selectedCategory && popularFaqs.length > 0 && (
             <section className="mb-10">
               <div className="mb-4 flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500" />
+                <Star className="h-5 w-5 text-warning-subtle-foreground" />
                 <h2 className="text-lg font-semibold">Popular Questions</h2>
               </div>
               <Card>

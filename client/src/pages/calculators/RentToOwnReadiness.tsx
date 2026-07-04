@@ -198,11 +198,11 @@ export default function RentToOwnReadiness() {
 
   const paymentBreakdown = primary
     ? [
-        { label: "Principal & Interest", value: primary.monthlyPI, color: "bg-blue-500" },
-        { label: "Property Tax", value: primary.monthlyTax, color: "bg-emerald-500" },
-        { label: "Insurance", value: primary.monthlyInsurance, color: "bg-amber-500" },
-        { label: "PMI", value: primary.monthlyPMI, color: "bg-orange-500" },
-        { label: "HOA", value: primary.hoaMonthly, color: "bg-purple-500" },
+        { label: "Principal & Interest", value: primary.monthlyPI, color: "bg-chart-1" },
+        { label: "Property Tax", value: primary.monthlyTax, color: "bg-chart-2" },
+        { label: "Insurance", value: primary.monthlyInsurance, color: "bg-chart-3" },
+        { label: "PMI", value: primary.monthlyPMI, color: "bg-chart-4" },
+        { label: "HOA", value: primary.hoaMonthly, color: "bg-chart-5" },
       ].filter((item) => item.value > 0)
     : [];
 
@@ -764,15 +764,15 @@ export default function RentToOwnReadiness() {
                 </div>
 
                 {hasDownPayment ? (
-                  <div className="flex items-start gap-2 rounded-lg bg-green-50 p-3 dark:bg-green-950/30">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
+                  <div className="flex items-start gap-2 rounded-lg bg-success-subtle p-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success-subtle-foreground" />
                     <p className="text-sm">
                       You have enough saved for the down payment on a {formatCurrency(primary.homePrice)} home.
                     </p>
                   </div>
                 ) : (
-                  <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 dark:bg-amber-950/30">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div className="flex items-start gap-2 rounded-lg bg-warning-subtle p-3">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-subtle-foreground" />
                     <p className="text-sm" data-testid="text-down-gap">
                       You're {formatCurrency(downPaymentGap)} short of the down payment for this price.
                     </p>
@@ -788,7 +788,7 @@ export default function RentToOwnReadiness() {
                         <Icon
                           className={`mt-0.5 h-4 w-4 shrink-0 ${
                             step.tone === "good"
-                              ? "text-green-600 dark:text-green-400"
+                              ? "text-success-subtle-foreground"
                               : "text-muted-foreground"
                           }`}
                         />

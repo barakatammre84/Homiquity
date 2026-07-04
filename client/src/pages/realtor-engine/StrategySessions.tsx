@@ -63,9 +63,9 @@ function StatusBadge({ status }: { status: string }) {
   const variant = status === "completed" ? "default" : status === "cancelled" ? "secondary" : "outline";
   const className =
     status === "scheduled"
-      ? "border-blue-500/50 text-blue-600 dark:text-blue-400"
+      ? "border-border/50 text-info"
       : status === "completed"
-        ? "bg-green-600 dark:bg-green-700 text-white border-green-600 dark:border-green-700"
+        ? "bg-success text-success-foreground border-border"
         : "";
   return (
     <Badge variant={variant} className={className} data-testid={`badge-status-${status}`}>
@@ -391,8 +391,8 @@ export default function StrategySessions() {
         <Card data-testid="card-stat-upcoming">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-500/10">
-                <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-info/10">
+                <Calendar className="h-4 w-4 text-info" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground" data-testid="text-upcoming-count">
@@ -406,8 +406,8 @@ export default function StrategySessions() {
         <Card data-testid="card-stat-completed">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-green-500/10">
-                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-success/10">
+                <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground" data-testid="text-completed-count">
@@ -421,8 +421,8 @@ export default function StrategySessions() {
         <Card data-testid="card-stat-next">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-purple-500/10">
-                <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
+                <Clock className="h-4 w-4 text-primary" />
               </div>
               <div>
                 <p className="text-sm font-bold text-foreground" data-testid="text-next-session">
