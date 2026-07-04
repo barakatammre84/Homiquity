@@ -1,31 +1,6 @@
 import multer from "multer";
-import path from "path";
-import fs from "fs";
-import os from "os";
 import type { Request, Response, NextFunction } from "express";
 import { MAX_UPLOAD_BYTES } from "@shared/uploads";
-
-// Multer staging dir. Serverless filesystems (Vercel: /var/task) are read-only
-// except the OS temp dir, so an eager mkdir at import time crashes the whole
-// app at boot there. Create lazily on first upload instead, preferring ./uploads
-// on persistent hosts and falling back to the temp dir when cwd isn't writable.
-let resolvedUploadDir: string | null = null;
-function ensureUploadDir(): string {
-  if (resolvedUploadDir) return resolvedUploadDir;
-  const candidates = process.env.VERCEL
-    ? [path.join(os.tmpdir(), "uploads")]
-    : [path.join(process.cwd(), "uploads"), path.join(os.tmpdir(), "uploads")];
-  for (const dir of candidates) {
-    try {
-      fs.mkdirSync(dir, { recursive: true });
-      resolvedUploadDir = dir;
-      return dir;
-    } catch {
-      // read-only location — try the next candidate
-    }
-  }
-  throw new Error("No writable upload directory available");
-}
 
 export const allowedUploadTypes = [
   "application/pdf",
@@ -36,27 +11,22 @@ export const allowedUploadTypes = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
+// Memory-only multer, kept for exactly one consumer: the public lease
+// extractor (/api/calculators/extract-lease), which processes the file within
+// the request and persists nothing. Every PERSISTED document goes through the
+// presigned-URL flow (/api/uploads/request-url → direct PUT to object storage
+// → JSON registration on /api/documents/upload) — there is deliberately no
+// disk storage here, because serverless disk (Vercel) is ephemeral and files
+// written to it vanish on redeploy.
 export const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      try {
-        cb(null, ensureUploadDir());
-      } catch (err) {
-        cb(err as Error, "");
-      }
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      cb(null, uniqueSuffix + path.extname(file.originalname));
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: MAX_UPLOAD_BYTES,
   },
   fileFilter: (req, file, cb) => {
     // First line of defense: client-supplied MIME type. This is spoofable, so
-    // verifyFileSignature (below) must run after the upload completes to confirm
-    // the file's actual magic bytes match an allowed type.
+    // verifyFileSignature (below) must run after multer to confirm the file's
+    // actual magic bytes match an allowed type.
     if (allowedUploadTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -77,16 +47,16 @@ const FILE_SIGNATURES: { mime: string; bytes: number[] }[] = [
   { mime: "docx", bytes: [0x50, 0x4b, 0x07, 0x08] },
 ];
 
-function matchesKnownSignature(buf: Buffer): boolean {
+export function matchesKnownSignature(buf: Buffer): boolean {
   return FILE_SIGNATURES.some(({ bytes }) =>
     bytes.every((b, i) => buf[i] === b),
   );
 }
 
 /**
- * Express middleware that runs after multer has written the upload to disk. It
- * reads the file header and rejects anything whose real magic bytes don't match
- * an allowed type, deleting the spoofed file before it can be processed.
+ * Express middleware that runs after multer has buffered the upload in memory.
+ * It checks the buffer's magic bytes and rejects anything whose real content
+ * doesn't match an allowed type, regardless of the declared Content-Type.
  */
 export function verifyFileSignature(
   req: Request,
@@ -97,19 +67,8 @@ export function verifyFileSignature(
   if (!file) {
     return next();
   }
-  try {
-    const fd = fs.openSync(file.path, "r");
-    const header = Buffer.alloc(8);
-    fs.readSync(fd, header, 0, 8, 0);
-    fs.closeSync(fd);
-
-    if (!matchesKnownSignature(header)) {
-      fs.unlink(file.path, () => {});
-      return res.status(400).json({ error: "Invalid or unsupported file content" });
-    }
-    next();
-  } catch (err) {
-    if (file.path) fs.unlink(file.path, () => {});
-    return res.status(400).json({ error: "Could not validate uploaded file" });
+  if (!file.buffer || !matchesKnownSignature(file.buffer)) {
+    return res.status(400).json({ error: "Invalid or unsupported file content" });
   }
+  next();
 }

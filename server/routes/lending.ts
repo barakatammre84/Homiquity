@@ -28,7 +28,8 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
-import { upload, verifyFileSignature, allowedUploadTypes } from "./utils";
+import { allowedUploadTypes } from "./utils";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
 import { logAudit } from "../auditLog";
 import { hasBorrowerConsent } from "../consentGate";
 import * as creditService from "../services/creditService";
@@ -984,100 +985,84 @@ export function registerLendingRoutes(
     }
   });
 
-  // Two ingestion modes, one registration path:
-  //  - multipart: the file travels through the server (multer + magic-byte check)
-  //  - JSON: the file already went browser → object storage via a signed URL
-  //    (the flow Documents/Tasks/Messages use); the body registers its metadata.
+  // One ingestion mode, one registration path: the file goes browser → object
+  // storage via a presigned URL (/api/uploads/request-url), then this endpoint
+  // registers its metadata. The old multipart leg (multer → serverless disk)
+  // was removed — files written to Vercel's disk vanish on redeploy (roadmap #1).
   // Every accepted upload becomes a document record — unsolicited files are
   // stamped onto the borrower's latest application instead of being lost.
   const uploadRegistrationSchema = z.object({
     objectPath: z.string().regex(/^\/objects\/[^\s]+$/, "objectPath must be a normalized /objects/ path"),
     fileName: z.string().min(1).max(255),
-    fileSize: z.number().int().positive().max(25 * 1024 * 1024, "File exceeds the 25MB limit"),
+    fileSize: z.number().int().positive().max(MAX_UPLOAD_BYTES, `File exceeds the ${MAX_UPLOAD_LABEL} limit`),
     mimeType: z.string().refine((m) => allowedUploadTypes.includes(m), "Unsupported file type"),
     documentType: z.string().max(50).optional(),
     applicationId: z.string().optional(),
     description: z.string().max(500).optional(),
   });
 
-  const multerIfMultipart = (req: any, res: any, next: any) => {
+  const rejectMultipart = (req: any, res: any, next: any) => {
     if (!req.is("multipart/form-data")) return next();
-    upload.single("file")(req, res, (err: unknown) => {
-      if (err) return res.status(400).json({ error: err instanceof Error ? err.message : "Upload failed" });
-      verifyFileSignature(req, res, next);
+    return res.status(400).json({
+      error:
+        "Multipart uploads are not supported. Request a presigned URL from POST /api/uploads/request-url, PUT the file there, then register it here as JSON.",
     });
   };
 
-  app.post("/api/documents/upload", isAuthenticated, multerIfMultipart, async (req, res) => {
+  app.post("/api/documents/upload", isAuthenticated, rejectMultipart, async (req, res) => {
     try {
       const user = req.user as User;
       const userId = user.id;
 
-      let fileMeta: { fileName: string; fileSize: number; mimeType: string; storagePath: string };
-      let documentType: string;
-      let requestedApplicationId: string | undefined;
-      let description: string | undefined;
-
-      if (req.file) {
-        fileMeta = {
-          fileName: req.file.originalname,
-          fileSize: req.file.size,
-          mimeType: req.file.mimetype,
-          storagePath: req.file.path,
-        };
-        documentType = (req.body.documentType as string) || "other";
-        requestedApplicationId = req.body.applicationId as string | undefined;
-      } else {
-        const parsed = uploadRegistrationSchema.safeParse(req.body);
-        if (!parsed.success) {
-          return res.status(400).json({
-            error: "No file uploaded",
-            details: parsed.error.flatten().fieldErrors,
-            acceptedTypes: allowedUploadTypes,
-          });
-        }
-        // Object-level authorization + content verification (P0). The client
-        // supplies the storage path, so before we trust it: confirm the object
-        // exists, that this user owns it (not someone else's object — IDOR),
-        // and that its REAL content-type/size match the allow-list rather than
-        // the client-declared MIME (magic-byte parity for the JSON path).
-        const { ObjectStorageService } = await import("../integrations/object_storage/objectStorage");
-        const objectStorage = new ObjectStorageService();
-        const verification = await objectStorage.verifyAndClaimObject(parsed.data.objectPath, userId);
-        if (verification.configured && !verification.ok) {
-          return res.status(403).json({ error: verification.reason });
-        }
-        if (verification.configured && verification.ok) {
-          if (verification.contentType && !allowedUploadTypes.includes(verification.contentType)) {
-            return res.status(400).json({ error: "Unsupported file type", acceptedTypes: allowedUploadTypes });
-          }
-          if (verification.size !== undefined && verification.size > 25 * 1024 * 1024) {
-            return res.status(400).json({ error: "File exceeds the 25MB limit" });
-          }
-        } else if (process.env.NODE_ENV === "production") {
-          // Storage misconfigured in prod: fail CLOSED rather than trust the
-          // client's path blindly.
-          return res.status(503).json({ error: "Uploads are temporarily unavailable" });
-        }
-
-        fileMeta = {
-          fileName: parsed.data.fileName,
-          // Prefer storage-verified size/type when available; fall back to the
-          // client values in unconfigured dev.
-          fileSize:
-            verification.configured && verification.ok && verification.size !== undefined
-              ? verification.size
-              : parsed.data.fileSize,
-          mimeType:
-            verification.configured && verification.ok && verification.contentType
-              ? verification.contentType
-              : parsed.data.mimeType,
-          storagePath: parsed.data.objectPath,
-        };
-        documentType = parsed.data.documentType || "other";
-        requestedApplicationId = parsed.data.applicationId;
-        description = parsed.data.description;
+      const parsed = uploadRegistrationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "No file uploaded",
+          details: parsed.error.flatten().fieldErrors,
+          acceptedTypes: allowedUploadTypes,
+        });
       }
+      // Object-level authorization + content verification (P0). The client
+      // supplies the storage path, so before we trust it: confirm the object
+      // exists, that this user owns it (not someone else's object — IDOR),
+      // and that its REAL content-type/size match the allow-list rather than
+      // the client-declared MIME (magic-byte parity for the JSON path).
+      const { ObjectStorageService } = await import("../integrations/object_storage/objectStorage");
+      const objectStorage = new ObjectStorageService();
+      const verification = await objectStorage.verifyAndClaimObject(parsed.data.objectPath, userId);
+      if (verification.configured && !verification.ok) {
+        return res.status(403).json({ error: verification.reason });
+      }
+      if (verification.configured && verification.ok) {
+        if (verification.contentType && !allowedUploadTypes.includes(verification.contentType)) {
+          return res.status(400).json({ error: "Unsupported file type", acceptedTypes: allowedUploadTypes });
+        }
+        if (verification.size !== undefined && verification.size > MAX_UPLOAD_BYTES) {
+          return res.status(400).json({ error: `File exceeds the ${MAX_UPLOAD_LABEL} limit` });
+        }
+      } else if (process.env.NODE_ENV === "production") {
+        // Storage misconfigured in prod: fail CLOSED rather than trust the
+        // client's path blindly.
+        return res.status(503).json({ error: "Uploads are temporarily unavailable" });
+      }
+
+      const fileMeta = {
+        fileName: parsed.data.fileName,
+        // Prefer storage-verified size/type when available; fall back to the
+        // client values in unconfigured dev.
+        fileSize:
+          verification.configured && verification.ok && verification.size !== undefined
+            ? verification.size
+            : parsed.data.fileSize,
+        mimeType:
+          verification.configured && verification.ok && verification.contentType
+            ? verification.contentType
+            : parsed.data.mimeType,
+        storagePath: parsed.data.objectPath,
+      };
+      const documentType = parsed.data.documentType || "other";
+      const requestedApplicationId = parsed.data.applicationId;
+      const description = parsed.data.description;
 
       if (requestedApplicationId) {
         const application = await storage.getLoanApplicationWithAccess(requestedApplicationId, userId, user.role);

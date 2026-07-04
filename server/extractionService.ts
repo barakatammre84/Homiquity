@@ -117,9 +117,15 @@ export type ExtractedDocumentData =
   | ExtractedBankStatementData
   | ExtractedLeaseData;
 
-async function fileToBase64(filePath: string): Promise<string> {
-  if (filePath.startsWith("/objects/")) {
-    const objectFile = await objectStorageService.getObjectEntityFile(filePath);
+// Accepts an in-memory Buffer (transient uploads that never persist, e.g. the
+// public lease extractor), a normalized /objects/ path (object storage — the
+// presigned-upload flow), or a legacy filesystem path.
+async function fileToBase64(source: string | Buffer): Promise<string> {
+  if (Buffer.isBuffer(source)) {
+    return source.toString("base64");
+  }
+  if (source.startsWith("/objects/")) {
+    const objectFile = await objectStorageService.getObjectEntityFile(source);
     const chunks: Buffer[] = [];
     const stream = objectFile.createReadStream();
     return new Promise((resolve, reject) => {
@@ -128,13 +134,14 @@ async function fileToBase64(filePath: string): Promise<string> {
       stream.on("error", reject);
     });
   }
-  const fileBuffer = fs.readFileSync(filePath);
+  const fileBuffer = fs.readFileSync(source);
   return fileBuffer.toString("base64");
 }
 
-function getMimeType(filePath: string, storedMimeType?: string): string {
+function getMimeType(source: string | Buffer, storedMimeType?: string): string {
   if (storedMimeType) return storedMimeType;
-  const ext = path.extname(filePath).toLowerCase();
+  if (Buffer.isBuffer(source)) return "application/octet-stream";
+  const ext = path.extname(source).toLowerCase();
   const mimeTypes: Record<string, string> = {
     ".pdf": "application/pdf",
     ".jpg": "image/jpeg",
@@ -641,7 +648,7 @@ Limit transactions array to first 10 most significant transactions.`;
  * Degrades gracefully (low confidence) when Gemini is unavailable or parsing fails.
  */
 export async function extractLeaseData(
-  filePath: string,
+  source: string | Buffer,
   storedMimeType?: string
 ): Promise<ExtractedLeaseData> {
   if (!genAI) {
@@ -653,8 +660,8 @@ export async function extractLeaseData(
   }
 
   try {
-    const base64 = await fileToBase64(filePath);
-    const mimeType = getMimeType(filePath, storedMimeType);
+    const base64 = await fileToBase64(source);
+    const mimeType = getMimeType(source, storedMimeType);
 
     const prompt = `You are a residential lease analysis specialist. Extract key terms from this lease agreement.
 
