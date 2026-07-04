@@ -2,6 +2,7 @@
 
 **Status:** DRAFT for institutional compliance reporting — prepared 2026-07-03 as part of the production-readiness security & governance audit.
 **Frameworks referenced:** Fannie Mae AI/ML lender guidance, FHFA AB 2022-02 (Artificial Intelligence/Machine Learning Risk Management), SR 11-7 (Model Risk Management), NIST AI RMF 1.0, ECOA/Reg B, FCRA.
+**Governing policy:** [AI_GOVERNANCE_POLICY.md](AI_GOVERNANCE_POLICY.md) (adopted 2026-07-04) — this document is the model inventory and control evidence under that policy; the policy controls on conflict.
 
 ---
 
@@ -14,6 +15,7 @@
 | M-3 | Instant Decision Orchestrator | Deterministic composition layer | Aggregates URLA line items, prices loan, invokes M-2, tags provenance | Orchestration; persists immutable decision snapshots | `server/services/decisionEngine.ts` |
 | M-4 | Credit pipeline (simulated vendor) | Simulation (`Math.random`) pending bureau contracts | Tri-merge scores + liability lines | Feeds `representativeScore` into M-2 | `server/services/creditService.ts` |
 | M-5 | Predictive/coaching engines | Heuristic scoring | Borrower nudges, readiness | **Non-decisioning** (education/UX only) | `server/services/predictiveEngine.ts`, `coachingService.ts` |
+| M-6 | MCP tool surface (stdio) | Deterministic tools exposed to external LLM agents | Soft credit pull, best-execution pricing, AVM lookup callable by AI agents | Tools are deterministic; the **consuming LLM agent** is the AI system — in LL-2026-04 scope; advisory only, consent-gated (FCRA), simulation-flagged | `server/mcp/index.ts`, `server/mcp/vendors.ts` |
 
 **Architectural control (key claim for examiners):** credit decisioning is intentionally **AI-free**. The LLM (M-1) sits outside the approval path; M-2 is deterministic and matrix-driven, which supports Fair Lending / Reg B consistency and full explainability of adverse outcomes.
 
