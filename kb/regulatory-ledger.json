@@ -187,6 +187,94 @@
       "lastVerified": "2026-07-04",
       "reviewIntervalDays": 180,
       "notes": "Sources split on 2026-03-04 vs 03-05 as the exact effective day (180-day count from 2025-09-05) - immaterial, months past either way. Compliance posture is structural: all lead acquisition is first-party/organic, so HPPA binds us only if we ever start buying leads - re-check this entry before any paid-lead initiative. GAO report on text-based trigger-lead solicitations due 2026-09."
+    },
+    {
+      "id": "fnma-b3-6-02-du-max-dti",
+      "rule": "Maximum allowable DTI for DU-underwritten conventional loans",
+      "value": "50",
+      "citation": "Fannie Mae Selling Guide B3-6-02 (Debt-to-Income Ratios): 'For loan casefiles underwritten through DU, the maximum allowable DTI ratio is 50%.' Manual underwriting max is 36%, extendable to 45% with Eligibility Matrix credit/reserve requirements.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-6-02/debt-income-ratios",
+      "codeRef": "server/scripts/seedLendingGrids.ts CONVENTIONAL_STRETCH_DTI (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Verified against the live Selling Guide page 2026-07-04. Our scalar equals the DU ceiling exactly; any value change routes through the guardian/scenario lane."
+    },
+    {
+      "id": "platform-conv-dti-cap-43",
+      "rule": "Baseline DTI ceiling for standard conventional approvals (below-stretch lane)",
+      "value": "43",
+      "citation": "PLATFORM POLICY - deliberately conservative baseline. Not an agency figure: Selling Guide B3-6-02 (verified 2026-07-04) allows 50% via DU and 36/45% manual; the pre-2021 ATR/QM 43% appendix-Q threshold this echoes was replaced by the price-based General QM rule.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-6-02/debt-income-ratios",
+      "codeRef": "server/scripts/seedLendingGrids.ts CONVENTIONAL_DTI_CAP (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Conservative-only overlay: files between 43 and 50 DTI route to the stretch/compensating-factors lane rather than auto-pass, which can never approve something the guide would deny. Relaxing it is a business decision via the guardian/scenario lane."
+    },
+    {
+      "id": "fnma-b3-5-1-01-min-credit-score",
+      "rule": "Minimum representative credit score for conventional conforming eligibility",
+      "value": "620",
+      "citation": "Fannie Mae Selling Guide B3-5.1-01 (General Requirements, Credit Scores): minimum 620 for fixed-rate loans, 640 for ARMs, manually underwritten; DU casefiles have no fixed floor (DU assesses risk factors).",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-5.1-01/general-requirements-credit-scores",
+      "codeRef": "server/scripts/seedLendingGrids.ts CONVENTIONAL_FICO_FLOOR (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Verified against the live Selling Guide page 2026-07-04. Platform applies 620 across the board: exact match for fixed-rate; conservative for DU casefiles (which have no published floor). If ARM products are ever offered, the floor for ARMs is 640 - revisit then."
+    },
+    {
+      "id": "platform-conv-ltv-cap-95",
+      "rule": "Maximum LTV for conventional conforming loans",
+      "value": "95",
+      "citation": "PLATFORM POLICY - conservative overlay. Selling Guide B2-1.2-01 (verified 2026-07-04) defers numeric LTV maximums to the Eligibility Matrix; standard 1-unit principal-residence max is 95%, with 95.01-97% available only under specific programs the platform deliberately does not offer yet.",
+      "sourceUrl": "https://singlefamily.fanniemae.com/media/document/pdf/eligibility-matrix",
+      "codeRef": "server/scripts/seedLendingGrids.ts CONVENTIONAL_LTV_CAP (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 90,
+      "notes": "Eligibility Matrix PDF is bot-protected (HTTP 403 on 2026-07-04) - the 95/97 split needs a HUMAN verification pass against the downloaded matrix; B2-1.2-01 page itself was fetched and confirms the matrix is the numeric authority. Offering 97% LTV products later is a business decision via the guardian/scenario lane."
+    },
+    {
+      "id": "platform-haircut-stock-60",
+      "rule": "Valuation haircut applied to stock/investment assets in pre-underwriting capacity checks",
+      "value": "60% of statement value",
+      "citation": "PLATFORM POLICY - strictly-conservative overlay. VERIFIED AGENCY BASELINE (B3-4.3-01, fetched 2026-07-04): Fannie requires NO percentage haircut - most-recent-statement value is used, and for reserves '100% of the value of the assets may be considered'.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-4.3-01/stocks-stock-options-bonds-and-mutual-funds",
+      "codeRef": "server/scripts/seedLendingGrids.ts HAIRCUT_STOCK_INVESTMENT (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Counting only 60% of the asset is stricter than the guide, so it can never approve a file the guide would deny - it CAN under-state buying power. Revisit with F3/F4 real asset verification: market-volatility haircuts are a legitimate platform risk choice but should be an explicit product decision, not an assumed agency rule."
+    },
+    {
+      "id": "platform-haircut-retirement-70",
+      "rule": "Valuation haircut applied to retirement assets in pre-underwriting capacity checks",
+      "value": "70% of statement value",
+      "citation": "PLATFORM POLICY - conservative overlay approximating access costs (penalties/taxes) on retirement funds. Formal mapping to Selling Guide B3-4.3-03 (retirement accounts) pending human verification.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-4.3-03/retirement-accounts",
+      "codeRef": "server/scripts/seedLendingGrids.ts HAIRCUT_RETIREMENT (DB policy scalar read by server/underwritingEngine.ts)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "Same conservative-only property as platform-haircut-stock-60. Verify B3-4.3-03's current documentation/accessibility conditions on the next pass and decide whether the 70% overlay stays as product policy."
+    },
+    {
+      "id": "fhfa-conforming-loan-limit-2026",
+      "rule": "FHFA conforming loan limit, one-unit baseline (loans above route to jumbo)",
+      "value": "806500",
+      "citation": "FHFA 2026 conforming loan limit values, one-unit baseline (contiguous US). Documented inline in shared/lendingLimits.ts as the FHFA 2026 figure.",
+      "sourceUrl": "https://www.fhfa.gov/data/conforming-loan-limit-cll-values",
+      "codeRef": "shared/lendingLimits.ts CONFORMING_LOAN_LIMIT_2026; server/scripts/seedLendingGrids.ts CONFORMING_LOAN_LIMIT scalar; jumbo boundary BRC-J30 (min 806500.01)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "FHFA publishes new limits each November for the following year - the 2027 update is a seed + BRC-J30 boundary change, and prod/dev reseeds must move together (seedMarketPricing is skip-if-exists)."
+    },
+    {
+      "id": "platform-new-tradeline-window-90d",
+      "rule": "Window for flagging recently opened tradelines as sleeper debt in liability adjustment",
+      "value": "90 days",
+      "citation": "PLATFORM POLICY - conservative detection window. Selling Guide B3-6-05 requires ALL monthly debts including recently opened accounts in the DTI; it does not publish a fixed recency window. The 90-day flag window is the platform's own sleeper-debt detection heuristic (roadmap #32 resolution, 2026-07-04).",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-6-05/monthly-debt-obligations",
+      "codeRef": "server/services/underwritingNuance.ts NEW_TRADELINE_WINDOW_DAYS (adjustLiabilities)",
+      "lastVerified": "2026-07-04",
+      "reviewIntervalDays": 180,
+      "notes": "The flagged lines' payments are already included in adjustedMonthlyDebt either way - the window only controls the newTradelines advisory surface, so it is detection metadata, not a qualification rule. Same pattern as platform-reserves-2-months."
     }
   ]
 }

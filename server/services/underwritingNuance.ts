@@ -67,8 +67,6 @@ export function incomeDiscrepancyPct(selfReported: number, verifiedSeasoned: num
   return (Math.abs(selfReported - verifiedSeasoned) / verifiedSeasoned) * 100;
 }
 
-export const INCOME_DISCREPANCY_THRESHOLD_PCT = 5;
-
 // ---------------------------------------------------------------------------
 // Scenario 3 — sleeper debt (B3-6-05)
 // ---------------------------------------------------------------------------
@@ -85,6 +83,9 @@ export interface Tradeline {
 }
 
 export const DEFERRED_STUDENT_LOAN_FACTOR = 0.01;
+// PLATFORM POLICY, not an agency figure — B3-6-05 publishes no recency window
+// (ledger: platform-new-tradeline-window-90d). Detection metadata only: the
+// flagged lines' payments are in adjustedMonthlyDebt regardless of the window.
 export const NEW_TRADELINE_WINDOW_DAYS = 90;
 export const STANDARD_DTI_CEILING = 0.43;
 
