@@ -34,7 +34,7 @@ Redesign items follow the house rule: **one route/component per commit, no logic
 | UX-15 | Visible autosave confirmation in funnel | S | 1.5s confirmation on step advance | T1 |
 | UX-16 | Upload→condition match toast ("clears 1 of 3") | S | toast on L4 match; `doc_condition_matched` fires | — |
 | UX-17 | Resume nudge card on dashboard for stalled drafts | M | shows % + time-left from `routeProgress` | T3 |
-| UX-18 | URLA section chunking with time estimates + `urla_section_complete` | L | each section has intro + estimate; drop-off measurable by section | — |
+| UX-18 | ✅ SHIPPED 2026-07-04 — URLA section chunking with time estimates + `urla_section_complete` | L | each section has intro + estimate (7-step wizard, `pages/borrower/urla/`); event fires on Save & continue with step_id/step/total/application_id | — |
 | UX-19 | Human fallback CTA on verification/underwriting screens + `human_fallback_clicked` | S | one-tap message-team on all wait states | — |
 | UX-20 | LoanOptions rate-breakdown presentation experiment | S | T2 configured behind flag | T2 |
 | UX-21 | SLA-risk sort for staff TaskOperations queue | M | queue orders by breach risk from `lib/sla.ts` | — |
