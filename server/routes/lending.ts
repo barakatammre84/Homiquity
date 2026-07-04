@@ -1159,7 +1159,10 @@ export function registerLendingRoutes(
             fileSize: document.fileSize ?? undefined,
           });
           await storage.updateDocument(document.id, {
-            status: !humanReviewRequired ? "verified" : "uploaded",
+            // MR-2: AI confidence never auto-verifies. A doc that clears the
+            // review threshold is staged "verifying" for a human to confirm via
+            // POST /api/documents/:id/verify; the rest stay "uploaded".
+            status: !humanReviewRequired ? "verifying" : "uploaded",
             notes: JSON.stringify({
               extractedAt: new Date().toISOString(),
               extractedFields: extracted.extractedFields,
