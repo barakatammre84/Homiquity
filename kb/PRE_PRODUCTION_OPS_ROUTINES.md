@@ -13,7 +13,7 @@
 |---|---|
 | "MISMO 3.6 XML export" | We generate **MISMO 3.4** (`server/mismo.ts`, `DataVersionIdentifier 3.4.0`) — deliberately: 3.4 is what DU/LPA and the F11 PPE middleware target. Do not chase 3.6 until a counterparty demands it. |
 | "Log into Plaid/Equifax/Experian portals" | No live vendor portals exist yet — credit, Plaid, Truv, AVM are **simulated until contracts** (roadmap F3–F7). Real portals today: **Vercel, SendGrid, Sentry, RapidAPI**. |
-| "July 2026 Reg B rules and the Medical Debt DTI exclusion are explicitly tested" | Reg B invariants are real and strong (33 tests, `tests/complianceInvariants.test.ts`). **Medical-debt exclusion exists nowhere** — not in the engine, tests, or regulatory ledger. Per ledger discipline ("never change a value without a citation") it must be **verified against an official source first**, then implemented → roadmap #28. |
+| "July 2026 Reg B rules and the Medical Debt DTI exclusion are explicitly tested" | **Verified 2026-07-04 (roadmap #28):** the "federal Medical Debt DTI exclusion" **does not exist** — the CFPB Reg V medical-debt rule was vacated 2025-07-11 (no appeal; same ruling held FCRA preempts state reporting bans). The real "July 2026 Reg B rule" is the **disparate-impact amendment eff. 2026-07-21** — unrelated to medical debt; our four-fifths monitoring is retained as internal risk management, never framed as a Reg B requirement. The citable medical carve-outs are *agency* policies, now in `regulatory-ledger.json`: Fannie B3-5.3-09 (medical collections exempt from payoff limits) and FHA 4000.1 (non-medical collections > $2,000 add 5% of balance to DTI; medical excluded). Engine build ships with F3. |
 | "Verify AAN routes via emailService.ts" | It now does at both seams: staff status→denied fires the neutral email (`server/routes/lending.ts`), and **AAN generation itself** now also fires it (`server/routes/compliance.ts`, added 2026-07-04) so ECOA delivery never depends on a separate status flip. |
 | "Flip the environment variable... that pauses all new applications" | **Did not exist — built 2026-07-04** (roadmap #27): `INTAKE_PAUSED=true`, see Routine 3. |
 | "Review rates from `rateService.syncBestExecutionRates()` against origination fees" | The function is real (`server/services/rateService.ts`, admin refresh route) but current rate sheets are the **`1.0-demo` seed** — margin math on demo sheets is rehearsal, not reconciliation. It becomes real when a genuine wholesale sheet is uploaded (staff rate-sheet flow) or F11 PPE lands. |
@@ -30,7 +30,7 @@ Clear the hurdles that can physically prevent launch before doing anything else.
    ```bash
    npx vitest run tests/complianceInvariants.test.ts --config vitest.config.ts
    ```
-   33 tests: AI never in the credit-decision path, intake decisioning fully deterministic, denial cannot outrun its adverse-action notice, ECOA §1002.9 block present. Baseline 2026-07-04: **33/33 green**. ⚠️ Medical-debt exclusion is *not* among them — that's roadmap #28, gated on a verified citation.
+   33 tests: AI never in the credit-decision path, intake decisioning fully deterministic, denial cannot outrun its adverse-action notice, ECOA §1002.9 block present. Baseline 2026-07-04: **33/33 green**. ⚠️ Medical-collections handling is *not* among them — verified 2026-07-04 as agency policy (not a federal rule), engine build ships with F3 (roadmap #28). Note the invariants are unaffected by the 2026-07-21 Reg B disparate-impact amendment — they enforce determinism, not the effects test.
 3. **Adverse Action audit:** generate one test denial (staff → `POST /api/loan-applications/:id/credit/adverse-action`). Verify: the notice renders at `/adverse-action/:id` with reasons + bureau contact + dispute rights; the reason is deterministic (never "AI decision" — enforced by the invariant tests, `AI_GOVERNANCE_POLICY.md`); the borrower got the in-app notification **and** the deliberately neutral email (console-logged until `SENDGRID_API_KEY` is set).
 4. **Regulatory freshness:** `npm run checkup` runs `scripts/regulatory-freshness.cjs` — fails if any `kb/regulatory-ledger.json` entry is overdue for re-verification.
 
@@ -49,7 +49,7 @@ Intentionally try to break the system daily.
 1. **Dirty-data drill** (test borrower through `client/src/pages/lending/PreApproval.tsx` funnel):
    - Junk document upload (the blurry-dog-photo test): `server/services/documentConfidence.ts` must flag low confidence for human review, never silently accept.
    - ⛔ Plaid mid-stream disconnect: partially drillable against the simulation (`server/plaid.ts`); the real webhook-drop drill becomes possible with F4 production keys.
-   - ⚠️ Massive medical collection on the simulated credit report: **currently NOT ignored** — the engine has no medical-debt exclusion (roadmap #28). Until #28 lands, this drill documents the known gap rather than verifying a protection.
+   - ⚠️ Massive medical collection on the simulated credit report: **not currently injectable** — the simulated soft pull has no collection tradelines and the engine has no collections→DTI path (verified 2026-07-04), so today nothing can compute wrongly *and* nothing verifies the protection. The FHA 5%/$2,000/medical-excluded capacity rule and GSE payoff carve-outs (both now in `regulatory-ledger.json`) must ship with the F3 credit adapter (roadmap #28); this drill then flips from documenting a gap to verifying a protection.
 2. **Kill-switch test** (built 2026-07-04, roadmap #27):
    ```bash
    PORT=5002 INTAKE_PAUSED=true npm run dev
@@ -70,7 +70,8 @@ Intentionally try to break the system daily.
 
 | Item | Where tracked |
 |---|---|
-| Medical-debt exclusion: verify rule → implement in engine + ledger + tests | CTO_ROADMAP #28 |
+| Medical-collections handling: ~~verify rule~~ **verified 2026-07-04** (no federal rule; Fannie B3-5.3-09 + FHA 4000.1 carve-outs ledgered) → build ships with F3 credit adapter | CTO_ROADMAP #28 |
+| Reg B disparate-impact amendment (eff. 2026-07-21): keep four-fifths monitoring as internal risk mgmt; audit any copy framing it as a Reg B requirement | regulatory-ledger `reg-b-2026-disparate-impact` |
 | HBPA trigger-lead ban: verify citation/effective date → ledger entry | Routine 4.2 / F10 |
 | Real vendor portals join the morning sweep | F3–F5 |
 | Lender sandbox MISMO uploads | F1 + per-lender credentialing |
