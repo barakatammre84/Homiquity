@@ -135,6 +135,27 @@ const EMPLOYMENT_RULES: Record<string, DocumentRequirement[]> = {
       conditionTitle: "Pension/Retirement Income Verification",
     },
   ],
+  // Borrowers who select "Other" (1099 contractors, trust income, etc.) have no
+  // W-2 to satisfy the "employed" bucket's requirement — without this entry the
+  // lookup below fell through to EMPLOYMENT_RULES["employed"] and silently asked
+  // for a document they cannot produce, stalling the file until an LO noticed.
+  other: [
+    {
+      documentType: "tax_return",
+      yearsRequired: [currentYear - 1, currentYear - 2],
+      description: "Federal tax returns for the past 2 years (documenting 1099, trust, pension, or other non-W-2 income)",
+      priority: "prior_to_approval",
+      conditionCategory: "income",
+      conditionTitle: "2-Year Tax Returns Required (Other Income Type)",
+    },
+    {
+      documentType: "other",
+      description: "Additional income documentation as requested by your loan officer (e.g. 1099s, K-1s, trust or pension statements)",
+      priority: "prior_to_docs",
+      conditionCategory: "income",
+      conditionTitle: "Income Documentation Review Required",
+    },
+  ],
 };
 
 const ASSET_REQUIREMENTS: DocumentRequirement[] = [
