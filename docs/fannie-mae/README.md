@@ -48,6 +48,25 @@ names, enumerations, edit codes, and Special Feature Codes are never invented.
   rollout; the "MISMO 3.4" tab lists edits applicable to MISMO 3.0/3.4 files
   (144/1700 mortgage funder name, 1209/1224 project valid values)
 
+### Machine-validatable schemas & mappings (`schemas/`, added 2026-07-04)
+
+These resolve the earlier gap note that "no ULDD XLSX appendices / schemas were available
+locally" — they now are. They unlock **XSD validation of our MISMO 3.4 export** as a test
+gate (see the roadmap ticket) instead of relying solely on the hand-built validator.
+
+- `schemas/uldd-phase5-extension/` — official ULDD Phase 5 extension files (May 26 2026):
+  `ULDD_Phase_5_Extension.xsd`, `ULDD_Phase_5_Extension_Visual.xlsx`, `MISMO_3_0.xsd`
+  (base MISMO reference model the extension imports), `xlink.xsd`
+- `schemas/ucd-v2/` — UCD v2.0 production schema (07/2025): `UCD.xsd`, `UCD_Wrapper.xsd`,
+  `ReadMe for UCD Production Schema.pdf`
+- `schemas/ucd-v2-samples/` — official UCD v2.0 sample XML files (Purchase/Refi ×
+  Fixed/ARM) + `UCD v2.0 Use Case Matrix 09-29-25.xlsx` — golden files for conformance
+  comparison
+- `schemas/ulad-mapping-document.xlsx` — official ULAD mapping (URLA form fields →
+  MISMO/ULDD data points) — the authority to audit `shared/mismo.ts` field mapping against
+- `schemas/UCD v2.0 Critical_Edits_Matrix_v1.4 as of 4 2 2026.xlsx` — UCD critical edits
+  matrix (v1.4, 2026-04-02)
+
 ### Other
 - `Wire Instruction Reference ID_final_05202025.pdf`
 

@@ -1,0 +1,1125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- UCD v2.0 EXTENSION v1.0 July 10, 2025 -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:ucd="http://www.datamodelextension.org/Schema/ucd" targetNamespace="http://www.datamodelextension.org/Schema/ucd" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xsd:import schemaLocation="MISMODataTypesB299.xsd"/>
+	<xsd:group name="grpFEE_DETAIL_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="FEE_DETAIL_EXTENSION" type="ucd:FEE_DETAIL_EXTENSION"/>
+		</xsd:sequence>
+	</xsd:group>
+	<xsd:complexType name="FEE_DETAIL_EXTENSION">
+		<xsd:sequence>
+			<xsd:element name="FeeItemType" type="ucd:FeeItemEnum" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>The type of fee being charged in the gse: transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+			<xsd:element name="FeeItemTypeOtherDescription" type="MISMOString" minOccurs="0">
+				<xsd:annotation>
+					<xsd:documentation>A free-form text field used to collect additional information when Other is selected for Fee Item Type.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:element>
+		</xsd:sequence>
+		<xsd:attributeGroup ref="AttributeExtension">
+			<xsd:annotation>
+				<xsd:documentation>An implementation of the ability to extend an instance document by using any attribute. To change from Lax to make an redefinition restriction of AttributeExtension attribute group.</xsd:documentation>
+			</xsd:annotation>
+		</xsd:attributeGroup>
+	</xsd:complexType>
+	<xsd:complexType name="FeeItemEnum">
+		<xsd:annotation>
+			<xsd:documentation>List of valid Fees on a Closing Disclosure transaction.</xsd:documentation>
+		</xsd:annotation>
+		<xsd:simpleContent>
+			<xsd:extension base="ucd:FeeItemBase">
+				<xsd:attributeGroup ref="AttributeExtension">
+					<xsd:annotation>
+						<xsd:documentation>An implementation of the ability to extend an instance document by using any attribute. To change from Lax to make an redefinition restriction of AttributeExtension attribute group.</xsd:documentation>
+					</xsd:annotation>
+				</xsd:attributeGroup>
+			</xsd:extension>
+		</xsd:simpleContent>
+	</xsd:complexType>
+	<xsd:simpleType name="FeeItemBase">
+		<xsd:annotation>
+			<xsd:documentation>List of valid Fees on a Closing Disclosure transaction.</xsd:documentation>
+		</xsd:annotation>
+		<xsd:restriction base="MISMOEnum_Base">
+			<xsd:enumeration value="203KArchitecturalAndEngineeringFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by an architect, engineer, or consultant to create specifications, design and prepare plans needed for rehabilitation projects under the FHA 203(k) program. The fee can be financed with the standard 203(k) program.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="203KConsultantFee">
+				<xsd:annotation>
+					<xsd:documentation>'Fee charged by a 203(k) Roster Consultant to inspect the property in its As-Is condition, prepare the architectural exhibits, Work Write-up and Cost Estimate for each work item listed on the proposal.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="203KDiscountOnRepairs">
+				<xsd:annotation>
+					<xsd:documentation>A fee specific to FHA 203K loans. Discount points charged by the lender and calculated as a percentage of the following repair cost and fee items combined: total costs of repairs; contingency reserves on repair cost; inspection fees; title update fees; mortgage payment escrowed, if applicable; architectural and engineering fees; consultant fees; and permits.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="203KInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for inspection of the repairs/improvements listed on each draw request on a 203(k) loan, before the mortgagee can release funds to pay for the completed work items on the subject property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="203KPermits">
+				<xsd:annotation>
+					<xsd:documentation>The fee charged by a municipality to grant authorization and issue permit(s) to perform the alteration/repair/improvement work item(s) proposed on the 203(k) Work Write-up.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="203KSupplementalOriginationFee">
+				<xsd:annotation>
+					<xsd:documentation>The portion of the borrower-paid origination fee that can be financed on a 203(k) purchase transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="203KTitleUpdate">
+				<xsd:annotation>
+					<xsd:documentation>The fee charged by a title company to update the title policy in order to protect the validity of the mortgage lien position for a 203(k) loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AdministrationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged for administrative costs in setting up, maintaining and closing the mortgage.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ApplicationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to broker or lender to receive loan application for mortgage financing.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AppraisalDeskReviewFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for a professional review of an appraisal, performed in an office setting without visual inspection of the actual premises of the subject property or the comparable properties cited in the appraisal report.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AppraisalFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to an appraiser for preparation of an independent, impartial, and objective opinion of value of the subject property, expressed in numerical and descriptive terms.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AppraisalFieldReviewFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged for performing an appraisal review in the field – actually inspecting the property and comparable properties.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AppraisalFinalInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to complete final inspection ensuring the subject property was constructed or renovated according to plans or contractual agreement for purposes of verifying appraised value</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AppraisalManagementCompanyFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to an external third party company to facilitate the ordering, tracking, quality control and delivery of the valuation services.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AppraisalSecondFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to complete a second, impartial and objective, opinion of value of the subject property as needed on a loan transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ARMConversionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee or cost associated with converting a loan from an adjustable rate to a fixed rate mortgage.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AsbestosInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for an inspection and/or testing for the presence of asbestos within a building.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AssignmentFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged to cover the costs associated with the preparation of the assignment of the loan to another lender, servicer, or purchaser.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AttorneyBuyersFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for services provided by the buyer's attorney to examine all documents and protect the buyer's interest throughout the transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AttorneyDocumentPreparationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to an attorney for preparation of documents for the loan closing, deed transfer and other documents needed to perfect the mortgage lien and complete ownership transfer of the subject property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AttorneyDocumentReviewFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to attorney for reviewing documents.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AssumptionFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for processing, approving and facilitating the assumption of an existing mortgage secured by the subject property to new borrower(s).</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AttorneyFee">
+				<xsd:annotation>
+					<xsd:documentation>Fees for services provided by attorney or law firm required for the residential mortgage loan transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AttorneyOpinionLetter">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for a written statement from a qualified real estate attorney that provides an opinion on the status of a property's title. It includes a detailed analysis of the title records and any potential issues or defects, and a conclusion as to whether the title is good, clear, record and marketable.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AttorneySellersFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for services provided by the seller's attorney to examine all documents and protect the seller's interest throughout the transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AttorneyTitleFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for services provided by a title company attorney if required for the residential mortgage loan transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AutomatedUnderwritingFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for use of an automated underwriting tool or system that assists the mortgage broker, correspondent lender, lender or lender's agent in making a decision to approve, deny or counteroffer a loan application submitted by the borrower(s).</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="AVMFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for preparation of an automated estimate of value of the subject property, expressed in numerical and possibly descriptive terms.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="BankruptcyMonitoringFee">
+				<xsd:annotation>
+					<xsd:documentation>Monitoring or Proof of Claim Fee charged as a result of a bankruptcy filing by the Borrower.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="BondFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to a state or local housing agency to participate in a special lending program.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="BondReviewFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for a loan review for evidence of compliance with the bond underwriting requirements relating to a federal, state, or local agency to qualify for a special lending program.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="BuilderAdministrationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged for coordination of closing information between the builders office and the lender typically documented in the sales contract.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CEMAFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged to originate a NY CEMA loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CEMAProcessingFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee paid to the creditor on every CEMA transaction to prepare the Consolidated, Extension and Modification Agreement.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CertificationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged to prepare and submit to the Homeowner's, Condominium, or Co-Op Association Certification for the property securing the loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CommitmentFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee for a lender's promise to loan money at a specified date in the future. The Lender may or may not expect to fund the commitment.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ComplianceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to comply with all rules and regulations related to mortgages as set out by federal and state governments and financial institutions.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CondominiumAssociationDues">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable to condominium association in which the subject property is located, which is intended to pay electricity bills for street lights, landscaping, and insurance, maintenance and repairs to community facilities like clubhouses, pools, and exercise rooms and may also cover the salaries of condominium association employees and/or third party management fees.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CondominiumAssociationEstoppelFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by the condominium for preparing and delivering a certificate which ensures that all accrued assessments and fees are current.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CondominiumAssociationSpecialAssessment">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable to condominium association in which the subject property is located for capital improvements, repairs, utility service upgrades, etc. that are assessed in addition to the regularly occurring condominium dues.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CondominiumHOADocumentsFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee paid to a third party to obtain Condominium HOA documents such as financials and the Declaration of Covenants, Conditions and Restrictions (CCRs).</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CondominiumPUDTransferFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to prepare the documentation and record the property change in ownership.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CondominiumServiceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to cover the costs of the condominium questionnaire, copies of legal documents or other administrative tasks performed by the association or management company. A fee that is not a special assessment fee or dues.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ConstructionHandlingFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee for handling the staged disbursement(s) of construction loan proceeds.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ConstructionInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee for an inspection of the repairs or improvements related to a construction loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CooperativeAssociationDues">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable to cooperative in which the subject property is located, which is intended to pay common utilities, landscaping, and insurance, maintenance and repairs to cooperative facilities and may also cover the salaries of cooperative employees and/or third party management fees.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CooperativeAssociationSpecialAssessment">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable to cooperative association by the unit owners which is in addition to the regularly occurring maintenance fees for a specific project or outstanding debt that was not part of the annual budget/assessment. The special assessment is against all unit owners and requires them to pay their fractional interest of the money being requested. The payment of the special assessment is divided by each unit owner's interest. The amount may be requested immediately from each unit owner or may be broken into installments depending on how they have decided to handle it.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CooperativeEstoppelFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by the cooperative for preparing and delivering a certificate which ensures that all accrued assessments and fees are current.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CooperativeServiceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to cover the costs of the cooperative questionnaire, copies of legal documents or other administrative tasks performed by the cooperation or management company. A fee that is not a special assessment fee or dues.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CooperativeTransferFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to prepare the documentation and record the property change in ownership with the cooperative association.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CopyOrFaxFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for copies of documents and/or costs of faxes sent and/or received in conjunction with the loan application, loan processing or loan closing.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CourierFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for delivery of loan application, loan processing and/or loan closing documents.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CreditDisabilityInsurancePremium">
+				<xsd:annotation>
+					<xsd:documentation>Premium for insurance in which the lender is the beneficiary and proceeds payoff the unpaid principal balance in the event of the borrower's permanent disability and/or pay recurring mortgage payment during borrower's temporary disability.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CreditLifeInsurancePremium">
+				<xsd:annotation>
+					<xsd:documentation>Premium for insurance in which the lender is the beneficiary and proceeds payoff the unpaid principal balance in the event of the borrower's death.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CreditPropertyInsurancePremium">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable for insurance that provides coverage from actions such as fire or theft of any personal property used to secure the loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CreditReportFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for the credit report(s) used in assessing credit risk.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="CreditUnemploymentInsurancePremium">
+				<xsd:annotation>
+					<xsd:documentation>Premium for insurance in which the lender is the beneficiary and proceeds pay recurring mortgage payment during borrower's temporary unemployment.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="DebtCancellationInsurancePremium">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable for insurance that provides for cancellation of some or all of the mortgage debt upon certain events, such as death or disability of the borrower(s).</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="DebtSuspensionInsurancePremium">
+				<xsd:annotation>
+					<xsd:documentation>A fee for a policy that would suspend or make payments if a qualifying event under the policy occurs, such as a temporary disability or job loss by the insured.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="DeedPreparationFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for creation, review and generation of the documents necessary to prepare the deed for execution at closing.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="DisasterInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for a report that documents the condition of the property after a localized disaster.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="DiscretionaryInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for inspections elected by the borrower. This does not include any inspections required by the lender or appraiser.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="DocumentaryStampFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee or tax placed on documents used for the legal transfer of ownership of assets or real property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="DocumentPreparationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee required by the lender, title company and/or settlement agent for preparation of closing documents.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="DryWallInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee that pertains to the inspection of the drywall within a building.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ElectricalInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee that pertains to the inspection of the electrical system within a building.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ElectronicDocumentDeliveryFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for transmitting or receiving documents in conjunction with loan application, loan processing and/or loan closing by electronic means.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="EnvironmentalInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee that pertains to the inspection of the environmental aspects within a building.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ERecordingFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for the service to electronically register or record documents. This is separate from recording fees.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="EscrowHoldbackFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to administer the disbursement of funds held in escrow for incomplete items on new construction or when repairs need to be made post-closing.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="EscrowServiceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee to disburse the funds for a loan or for an outside escrow company to disburse the funds for a loan in the case the title provider does not disburse the loan funds.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="EscrowSetUpFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to establish an escrow or impound account.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="EscrowWaiverFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee imposed for waiving the requirement for an escrow account to be established which would, had it been established, been held in reserve to pay periodic payments for homeowners insurance, property taxes and other recurring costs.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="FilingFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid when submitting a document to the clerk of a court for the court's immediate consideration and for storage in the court's files.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="FloodCertification">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to obtain a certificate that verifies the flood zone, or special flood hazard area, status of a structure on a given property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="FloodMonitoringFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee paid to monitor changes to flood zone maps to make sure that the subject property is not located in a flood zone in the future due to government remapping.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="FoundationInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee that pertains to the inspection of the foundation of a building.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HeatingCoolingInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for an inspection of the adequacy and safety of the heating and cooling systems for the subject property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HighCostMortgageCounselingFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by a counselor or counseling organization for providing counseling regarding high-cost mortgages.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HomeInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for inspection of the subject property by a professional (other than an appraiser) for an examination of the mechanical systems and the condition of the property. Items inspected may include but are not limited to electrical, plumbing, sewage disposal, HVAC systems, or the roof.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HomeownersAssociationDues">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable by homeowners to homeowners or neighborhood association within which the subject property is located, which is intended to pay for the daily operation of the association and may include but is not limited to items such as electricity bills for street lights, landscaping, and maintenance and repairs to community facilities like clubhouses, pools, and exercise rooms and may also cover insurance on community assets, the salaries of HOA employees or third party management fees.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HomeownersAssociationEstoppelFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by the homeowner's association for preparing and delivering a certificate which ensures that all accrued assessments and fees are current.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HomeownersAssociationServiceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to cover the costs of the association questionnaire, copies of legal documents or other administrative tasks performed by the association or management company. A fee that is not a special assessment fee or dues.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HomeownersAssociationSpecialAssessment">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable by homeowners to homeowners or neighborhood association in which the subject property is located for items such as capital improvements, utility service upgrades, etc., that may be assessed in addition to the regularly occurring association dues.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HomeownersAssociationTransferFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to prepare the documentation and record the property change in ownership with the homeowner's association.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HomeownershipCounselingFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee paid for pre-purchase counseling services related to homeownership.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HomeownershipEducationFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee paid for pre-purchase workshops related to homeownership.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="HomeWarrantyFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for issuance of a warranty covering major systems within the subject property, usually (but not always) including the structure, electrical, plumbing, sewage disposal, HVAC systems, roof, foundation, permanently installed appliances, drainage and grading, exterior finishes, decks, porches, attics, basements, insulation, smoke and fire detectors, and ventilation systems.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="JurisdictionalOccupancyFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for inspection of the subject property by a city, county or other jurisdictional authority for an examination of the occupancy status of the property.  This may be required for resale by the city or county.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="LeadInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Identifies that the fee type being requested is for testing of the existence of Lead.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="LendersAttorneyFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for services provided by attorney or law firm representing or performing services on behalf of the lender.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="LoanDiscountPoints">
+				<xsd:annotation>
+					<xsd:documentation>A form of pre-paid interest, equaling a percentage of the loan amount, paid to reduce the interest rate on a mortgage for the life of the loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="LoanLevelPriceAdjustment">
+				<xsd:annotation>
+					<xsd:documentation>Loan-level pricing adjustments and/or delivery fees charged by mortgage investor or security issuer that is passed onto the borrower, expressed as a percent of loan amount or flat dollar amount.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="LoanOriginationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged by the lender or broker as compensation for providing origination services associated with the subject loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="LoanOriginatorCompensation">
+				<xsd:annotation>
+					<xsd:documentation>The amount of any compensation of a loan originator paid by the creditor, the borrower, the property seller or any interested party to the loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ManualUnderwritingFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to mortgage broker, correspondent lender, lender or lender's agent to manually review loan processing documents, appraisal and disclosures and make a decision to approve the loan application.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ManufacturedHousingInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for an inspection of a manufactured home.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MasterInsurancePolicyFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by an insurance provider to obtain a copy of the master insurance policy for the PUD or condominium.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MERSRegistrationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged for registering/transferring the loan onto the Mortgage Electronic Registration System.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MIInitialPremium">
+				<xsd:annotation>
+					<xsd:documentation>Amount of the first premium paid to MI. For monthly plans, one months premium; for all other plans, Initial Premium Rate times Base Loan Amount.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MIUpfrontPremium">
+				<xsd:annotation>
+					<xsd:documentation>The dollar amount of MI premium (PMI or FHA) charged to the borrower at time of closing. One time payment made at closing beyond the monthly or annual premiums.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ModificationFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee assessed to execute a modification on an existing loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MoldInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Identifies that the fee type being requested is for testing for the existence of mold. This can be both airborne and surface and will need to identify the number of samples to be taken for each.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MortgageBrokerFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by a mortgage broker for a referral of a borrower to a lender.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MortgageCreditCertificateProgramFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for processing the Mortgage Credit Certificate.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MortgageSurchargeCountyOrParish">
+				<xsd:annotation>
+					<xsd:documentation>Special assessment, surcharge or fee charged by the county or parish in which the subject property is located in conjunction with a mortgage loan, which is levied in addition to regularly assessed property and school taxes.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MortgageSurchargeMunicipal">
+				<xsd:annotation>
+					<xsd:documentation>Special assessment, surcharge or fee charged by the municipality in which the subject property is located in conjunction with a mortgage loan, which is levied in addition to regularly assessed property and school taxes.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MortgageSurchargeState">
+				<xsd:annotation>
+					<xsd:documentation>Special assessment, surcharge or fee charged by the state in which the subject property is located in conjunction with a mortgage loan, which is levied in addition to regularly assessed property and school taxes.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="MunicipalLienCertificateFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged by a municipality to release a lien or injunction after payment of fines for property non-compliance have been completed.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="NaturalHazardDisclosureReportFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to disclose if a property lies within a natural hazard zone such as Special Flood Hazard, Dam Inundation, Very High Fire, Wildland Fire, Earthquake Fault Zone, and Seismic Hazard areas.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="NotaryFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by a registered notary to witness the execution of a document or a set of documents.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="Other">
+				<xsd:annotation>
+					<xsd:documentation/>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="PartialLienReleaseFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee or cost associated with issuing a lien release on a portion of the collateral.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="PayoffRequestFee">
+				<xsd:annotation>
+					<xsd:documentation>In refinances, fee paid to prior lender to prepare and provide a bookkeeping statement of how much is owed on the loan being refinanced.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="PestInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Cost for inspection, testing and preparation of a report describing all infestations, past infestations and visible damage caused by termites, rodents, squirrels and other pests resulting from an inspection of the interior and exterior of the subject property structures by a qualified pest inspector.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="PlumbingInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to conduct an inspection of the plumbing system within a building.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="PowerOfAttorneyPreparationFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to create and review documents necessary to execute a Power of Attorney.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="PowerOfAttorneyRecordingFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee assessed by a government authority to record and index a Power of Attorney as required under State or local law. Recording fees are assessed based on the type of document to be recorded or its physical characteristics, such as the number of pages. Unlike transfer taxes, recording fees are not based on the sales price of the property or loan amount.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="PreclosingVerificationControlFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee to reimburse lender or mortgage broker for performing certain quality control or verification activities and/or using automated fraud detection tools, which may include identity verification, Social Security number or Individual Tax Identification Number validation, employment and/or income validation, Federal Income Tax return validation, etc.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ProcessingFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged by lender, mortgage broker or correspondent lender for processing of loan application.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ProgramGuaranteeFee">
+				<xsd:annotation>
+					<xsd:documentation>A guarantee fee charged in association with a loan's participation in a specific program managed by an investor or municipality.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="PropertyInspectionWaiverFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged for waiving the requirement of a physical inspection of the subject property and preparation of an appraisal.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RadonInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Identifies that the fee type being requested is for testing the level of radon emissions in a residence.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RateLockFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee to establish that the lender and borrower have fixed (locked), for a specific period, certain terms of the loan to be closed at a later date.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RealEstateCommissionBuyersBroker">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable to licensed real estate broker representing the buyers' interests for professional activities related to the purchase of the subject property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RealEstateCommissionSellersBroker">
+				<xsd:annotation>
+					<xsd:documentation>Fee payable to licensed real estate broker representing the sellers' interests for professional activities related to the listing and/or sale of the subject property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecastFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee or cost associated with recalculating a new amortizing payment on a loan after a significant principal reduction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ReconveyanceFee">
+				<xsd:annotation>
+					<xsd:documentation>Fees imposed for preparing and providing documents when a loan is paid in full, whether or not the loan is prepaid, such as a loan payoff statement, a reconveyance document, or another document releasing the creditor's security interest in the dwelling that secures the loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ReconveyanceTrackingFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee to ensure that the trustee prepares reconveyances in a timely manner and files prepared documents with the county recorder.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecordingFeeForAssignment">
+				<xsd:annotation>
+					<xsd:documentation>Fee assessed by a government authority to record and index an assignment as required under State or local law. Recording fees are assessed based on the type of document to be recorded or its physical characteristics, such as the number of pages. Unlike transfer taxes, recording fees are not based on the sales price of the property or loan amount.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecordingFeeForDeed">
+				<xsd:annotation>
+					<xsd:documentation>Fee for recording trust deed, deed of trust, or other security instrument with the appropriate government entity based on the nature of the physical document (typically number of pages) and not based on the sales price or value of the property or loan amount being extended to the borrower.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecordingFeeForMortgage">
+				<xsd:annotation>
+					<xsd:documentation>Fee for recording mortgage with the appropriate government entity based on the nature of the physical document (typically number of pages) and not based on the sales price or value of the property or loan amount being extended to the borrower.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecordingFeeForMunicipalLienCertificate">
+				<xsd:annotation>
+					<xsd:documentation>Fee assessed by a government authority to record and index a municipal lien certificate as required under State or local law. Recording fees are assessed based on the type of document to be recorded or its physical characteristics, such as the number of pages. Unlike transfer taxes, recording fees are not based on the sales price of the property or loan amount.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecordingFeeForOtherDocument">
+				<xsd:annotation>
+					<xsd:documentation>Fee assessed by a government authority to record and index an unspecified document as required under state or local law. Recording fees are assessed based on the type of document to be recorded or its physical characteristics, such as the number of pages. Unlike transfer taxes, recording fees are not based on the sales price of the property or loan amount.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecordingFeeForRelease">
+				<xsd:annotation>
+					<xsd:documentation>Fee assessed by a government authority to record and index a release as required under State or local law. Recording fees are assessed based on the type of document to be recorded or its physical characteristics, such as the number of pages. Unlike transfer taxes, recording fees are not based on the sales price of the property or loan amount.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecordingFeeForSubordination">
+				<xsd:annotation>
+					<xsd:documentation>Fee assessed by a government authority to record and index Subordination Documents as required under State or local law. Recording fees are assessed based on the type of document to be recorded or its physical characteristics, such as the number of pages. Unlike transfer taxes, recording fees are not based on the sales price of the property or loan amount.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecordingFeeTotal">
+				<xsd:annotation>
+					<xsd:documentation>Fee total of all aggregated deed and mortgage taxes and government fees.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RecordingServiceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee to coordinate the recordation of documents. This can be handled via courthouse recording or eRecording and is typically performed by a title company.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RedrawFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to regenerate a set of loan documents.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ReinspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for reinspection of the subject property after completion of construction, repairs or improvements.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="ReleaseServiceFee">
+				<xsd:annotation>
+					<xsd:documentation>A service fee associated with preparing and removing a lien on a property. This is separate from recording fees.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RenovationConsultantFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee for payment of renovation consulting services on the property serving as collateral for a loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RepairsFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for repairs to subject property by a contractor/professional. Items repaired may include but are not limited to electrical, plumbing, sewage disposal, HVAC systems, roof, foundation, permanently installed appliances, drainage and grading, exterior finishes, decks, porches, attics, basements, insulation, smoke and fire detectors, ventilation, flooring, walls, and doors.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="RoofInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Identifies that the fee type being requested is for an detailed inspection of the roof.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="SepticInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Identifies that the fee type being requested is for testing the operation of an installed septic system.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="SettlementFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for settlement service provider to conduct the loan settlement and/or real estate closing transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="SigningAgentFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged for the services of a signing agent who, as an accommodation of the borrower, closes the loan at a specific time or at a location requested by the borrower.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="SmokeDetectorInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Identifies that the fee type being requested is for inspection of Smoke Detectors.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="StateTitleInsuranceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged in certain states in lieu of a tax on the premium for title insurance. This fee may be a fixed amount or may be based on the premium amount. May also include any state specific fees required for the issuance of title insurance.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="StructuralInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to perform an inspection and generate a report as to the structural integrity of a building.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="SubordinationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to a holder of a lien secured by the subject property to subordinate its lien position to the new first lien.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="SurveyFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to a professional surveyor to perform an inspection of the physical boundaries of the land pertaining to the subject property and to prepare a drawing and description of the boundaries, improvements (such as buildings, fences, pools, etc.) and any encroachments and/or easements on the land.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TaxServiceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to engage an entity or individual to monitor and/or manage the payment of property taxes to ensure that the payments are made on time, and to prevent tax liens from occurring.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TaxStampForCityDeed">
+				<xsd:annotation>
+					<xsd:documentation>Fee for a tax stamp to be affixed to a taxable lien to indicate that the appropriate tax has been paid to the city for the deed.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TaxStampForCityMortgage">
+				<xsd:annotation>
+					<xsd:documentation>Fee for a tax stamp to be affixed to a taxable lien to indicate that the appropriate tax has been paid to the city for the mortgage.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TaxStampForCountyDeed">
+				<xsd:annotation>
+					<xsd:documentation>Fee for a tax stamp to be affixed to a taxable lien to indicate that the appropriate tax has been paid to the county for the deed.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TaxStampForCountyMortgage">
+				<xsd:annotation>
+					<xsd:documentation>Fee for a tax stamp to be affixed to a taxable lien to indicate that the appropriate tax has been paid to the county for the mortgage.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TaxStampForStateDeed">
+				<xsd:annotation>
+					<xsd:documentation>Fee for a tax stamp to be affixed to a taxable lien to indicate that the appropriate tax has been paid to the state for the deed.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TaxStampForStateMortgage">
+				<xsd:annotation>
+					<xsd:documentation>Fee for a tax stamp to be affixed to a taxable lien to indicate that the appropriate tax has been paid to the state for the mortgage.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TaxStatusResearchFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee paid to an entity or individual who verifies the status of unpaid property taxes on the subject property and/or provides continuous monitoring of the tax status on behalf of the lender of record.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TechnologyFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to maintain and upgrade digital tools used in the origination and loan closing process.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TemporaryBuydownAdministrationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to lender or lender's agent to administer a temporary buydown.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TemporaryBuydownPoints">
+				<xsd:annotation>
+					<xsd:documentation>A form of pre-paid interest, equaling a percentage of the loan amount, paid to temporarily reduce the interest rate on a mortgage for a specific period of the initial term of the loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleAbstractFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee paid to a title company for conducting a title search and preparing a title abstract on a requested property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleAdministrationFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by the title company for general administrative work not attributable to a specific title service.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleArchiveFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for the storage and retrieval of title and closing documents.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleBorrowerClosingProtectionLetterFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for a statement or document issued by title insurance underwriters that sets forth the responsibility for negligence of an underwriter, fraud and errors in closings performed by the agents of the underwriter and approved attorneys specifically as it relates to the borrower for jurisdictions that require a separate document for the borrower.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleCertificationFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to the research, create and certify a title abstract; a condensed history, taken from public records or documents, of the ownership of a piece of land.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleChainOfTitleFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to obtain a historical record of ownership transfers of the property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleClosingCoordinationFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee to coordinate title/closing services between multiple parties.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleClosingFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to title company for conducting the loan closing on the subject transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleClosingProtectionLetterFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged for a statement or document issued by title insurance underwriters that sets forth the responsibility for negligence of an underwriter, fraud and errors in closings performed by the agents of the underwriter and approved attorneys.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleCommitmentFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee for the preparation and issuance of a title product describing the terms and conditions upon which the title company will issue title policies in the transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleDisbursementFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for verifying incoming funds and releasing payments to all parties involved with the transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleDocumentPreparationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to title company for preparation of documents for the loan closing, deed transfer and other documents needed to perfect the mortgage lien and complete ownership transfer of the subject property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleDocumentStorageFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by the title company to store title service-related documents.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleEndorsementFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to title company for preparation of any necessary endorsements to the title policy/policies issued pertaining to the subject transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleEscrowDepositFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee to establish and maintain an escrow account for payment of items not payable at the time of disbursement or to hold the buyer's down payment.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleExaminationFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee paid to review a title search report or abstract and render an opinion of title on the results.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleFinalPolicyShortFormFee">
+				<xsd:annotation>
+					<xsd:documentation>Identifies that the fee being referenced is related to the completion and issuance of the American Land Title Association (ALTA) Short Form Residential, a condensed version of the standard policy.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleInsuranceBinderFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to title company for preparation of the title binder (title commitment).</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleInsuranceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by a title company to process a request for title insurance. This is a fee in addition to any title insurance premium.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleLendersCoveragePremium">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to title company for issuance of lender's title insurance policy that indemnifies the lender in the event that clear ownership of property is challenged by the discovery of faults in the title.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleLoanTieInFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by a settlement agent to incorporate a lender into an escrow transaction, or to incorporate multiple lenders into a single transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleNotaryFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to the title company for the performance of notary services.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleOwnersCoveragePremium">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to title company for issuance of owner's title insurance policy that indemnifies the owner of real estate in the event that his or her clear ownership of property is challenged by the discovery of faults in the title. (This coverage is optional.)</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitlePayoffProcessingFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to process a request for payoff information and close out the loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleSearchFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee charged to retrieve documents to determine relevant interests related to real property. Examples include search of owners, vesting, liens, mortgages, judgements, tax status, title, etc.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleServicesFeeTotal">
+				<xsd:annotation>
+					<xsd:documentation>The total of fees charged to provide title insurance and other services in a mortgage transaction.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleServicesSalesTax">
+				<xsd:annotation>
+					<xsd:documentation>The amount of any taxes as required by county or state on the fee for title services.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleSubEscrowFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for service provided by the Title company that includes receiving the loan proceeds (from the buyer or borrowers lender) and making the required payoffs of existing loan, liens, judgments and taxes against the property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleSubordinationProcessingFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by settlement provider to process a subordination.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleUnderwritingIssueResolutionFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid to title company for research and resolution of title issues.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TitleUpdateFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for the examination of public records from the date of a previous title search to ascertain changes in the title to property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TransferTax">
+				<xsd:annotation>
+					<xsd:documentation>A fee or tax charged by a state or local government upon the transfer ownership of the real property.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TransferTaxServiceFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for services associated with filing and paying transfer taxes.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="TrustReviewFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for the lender's attorney to review the terms of trust documentation.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="UnderwritingFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged to underwrite a loan application to determine if credit will be extended to the applicant.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="UndisclosedDebtMonitoringFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged for the tracking of changes in the borrower's financial behavior to notify lending institutions of potential fraud or changes to their creditworthiness.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="USDARuralDevelopmentGuaranteeFee">
+				<xsd:annotation>
+					<xsd:documentation>An upfront financing fee the borrower pays at closing for USDA Rural Development loans.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="UtilitiesFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged by a utility provider associated with transfer or hook up of service.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VAFundingFee">
+				<xsd:annotation>
+					<xsd:documentation>In a loan guaranteed by the Department of Veterans’ Affairs (VA), the fee the veteran pays to help defray the costs of the VA home loan program.																																																																																						</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VerificationOfAssetsFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for verification of assets disclosed by the borrower on the loan application.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VerificationOfDepositFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for verification of the deposit made by the borrower as shown on the purchase agreement.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VerificationOfEmploymentFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for verification of employment disclosed by the borrower on the loan application.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VerificationOfIncomeFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for verification of income disclosed by the borrower on the loan application.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VerificationOfMortgageFee">
+				<xsd:annotation>
+					<xsd:documentation>A charge to provide documentation verifying the mortgage balance.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VerificationOfRentFee">
+				<xsd:annotation>
+					<xsd:documentation>A charge to provide documentation verifying the rent.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VerificationOfResidencyStatusFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for verification of residency status disclosed by the borrower on the loan application.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VerificationOfTaxpayerIdentificationFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for verification of Social Security number or Individual Tax Identification number disclosed by the borrower on the loan application.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="VerificationOfTaxReturnFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee paid for verification of financial information reported by the borrower on the tax returns provided in conjunction with the loan application.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="WarehouseFee">
+				<xsd:annotation>
+					<xsd:documentation>A fee charged when the lender must borrow money on a short-term basis.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="WaterTestingFee">
+				<xsd:annotation>
+					<xsd:documentation>Identifies that the fee type being requested is for testing the water quality.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="WellInspectionFee">
+				<xsd:annotation>
+					<xsd:documentation>Identifies that the fee type being requested is for a well inspection.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="WireTransferFee">
+				<xsd:annotation>
+					<xsd:documentation>Fee for wiring funds in connection with the loan.</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+</xsd:schema>
