@@ -9,6 +9,7 @@ import {
 } from "../extractionService";
 import { recordCoarseExtraction } from "../services/documentConfidence";
 import { upload, allowedUploadTypes, verifyFileSignature } from "./utils";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
 import { ObjectStorageService, ObjectNotFoundError } from "../integrations/object_storage";
 import { type User } from "@shared/schema";
 import { logAudit } from "../auditLog";
@@ -68,8 +69,8 @@ export function registerDocumentRoutes(
         return res.status(400).json({ error: "Invalid file type" });
       }
 
-      if (size && size > 10 * 1024 * 1024) {
-        return res.status(400).json({ error: "File too large (max 10MB)" });
+      if (size && size > MAX_UPLOAD_BYTES) {
+        return res.status(400).json({ error: `File too large (max ${MAX_UPLOAD_LABEL})` });
       }
 
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
@@ -281,11 +282,17 @@ export function registerDocumentRoutes(
         const { taskEventEmitter } = await import("../services/taskEventEmitter");
         
         if (extractedData.confidence === "low" || (extractedData.warnings && extractedData.warnings.length > 0)) {
+          // The raw extractor warnings can name the OCR vendor or be otherwise
+          // technical — keep them in the logs, and give the task a plain,
+          // reviewer-facing message.
+          if (extractedData.warnings?.length) {
+            console.warn(`[Documents] OCR warnings for ${id}:`, extractedData.warnings.join(", "));
+          }
           await taskEventEmitter.emitDocumentEvent("DOCUMENT_OCR_ISSUE", {
             applicationId: document.applicationId,
             documentId: id,
             documentType: document.documentType,
-            errorMessage: extractedData.warnings?.join(", ") || "Low confidence extraction",
+            errorMessage: "Some details couldn't be read automatically and need a manual review.",
             triggeredBy: req.user!.id,
           });
         }
@@ -302,11 +309,13 @@ export function registerDocumentRoutes(
       const document = await storage.getDocument(req.params.id);
       if (document?.applicationId) {
         const { taskEventEmitter } = await import("../services/taskEventEmitter");
+        // The real error is already logged above; the task event carries a
+        // plain, reviewer-facing message rather than raw exception text.
         await taskEventEmitter.emitDocumentEvent("DOCUMENT_EXTRACTION_FAILED", {
           applicationId: document.applicationId,
           documentId: req.params.id,
           documentType: document.documentType,
-          errorMessage: error instanceof Error ? error.message : "Unknown extraction error",
+          errorMessage: "We couldn't process this document automatically. Please upload a clear copy, or our team will review it.",
         });
       }
       

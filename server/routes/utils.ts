@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import type { Request, Response, NextFunction } from "express";
+import { MAX_UPLOAD_BYTES } from "@shared/uploads";
 
 // Multer staging dir. Serverless filesystems (Vercel: /var/task) are read-only
 // except the OS temp dir, so an eager mkdir at import time crashes the whole
@@ -50,7 +51,7 @@ export const upload = multer({
     },
   }),
   limits: {
-    fileSize: 10 * 1024 * 1024,
+    fileSize: MAX_UPLOAD_BYTES,
   },
   fileFilter: (req, file, cb) => {
     // First line of defense: client-supplied MIME type. This is spoofable, so
