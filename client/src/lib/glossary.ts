@@ -73,6 +73,51 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     definition:
       "How your loan is paid off over time. Early payments go mostly to interest; later ones go mostly to principal.",
   },
+  rateLock: {
+    label: "rate lock",
+    definition:
+      "Freezes your interest rate for a set window (often 30–60 days) while your loan is finalized, so market moves don't change it. Locks can expire, so timing matters.",
+  },
+  aus: {
+    label: "AUS",
+    definition:
+      "Automated Underwriting System — software (like Fannie Mae's or Freddie Mac's) that gives a fast initial read on your application. A human underwriter still makes the final call.",
+  },
+  loanEstimate: {
+    label: "Loan Estimate",
+    definition:
+      "A standard 3-page form you get within 3 business days of applying. It shows your estimated rate, monthly payment, and closing costs — in the same format from every lender, so you can compare.",
+  },
+  closingDisclosure: {
+    label: "Closing Disclosure",
+    definition:
+      "The final version of your loan terms and costs, delivered at least 3 business days before closing. Compare it to your Loan Estimate and ask about anything that changed.",
+  },
+  appraisal: {
+    label: "appraisal",
+    definition:
+      "An independent professional's estimate of the home's value. Lenders require it to confirm the home is worth what you're borrowing against.",
+  },
+  titleInsurance: {
+    label: "title insurance",
+    definition:
+      "A one-time policy that protects against ownership disputes or old claims on the property — like unpaid liens from a previous owner.",
+  },
+  giftLetter: {
+    label: "gift letter",
+    definition:
+      "A signed note from someone giving you money for your down payment, confirming it's a gift and not a loan you have to repay.",
+  },
+  reserves: {
+    label: "reserves",
+    definition:
+      "Savings left over after closing, measured in months of housing payments. Lenders like to see you could still pay the mortgage if your income paused.",
+  },
+  conditions: {
+    label: "conditions",
+    definition:
+      "Items the underwriter needs before final approval — like an updated pay stub or a letter explaining a deposit. Clearing them quickly keeps your closing on schedule.",
+  },
 };
 
 export function getGlossaryEntry(term: string): GlossaryEntry | undefined {

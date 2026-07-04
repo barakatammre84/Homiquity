@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { BorrowerRequests } from "@/components/BorrowerRequests";
+import { TermTooltip } from "@/components/TermTooltip";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
 import { TrustLayer } from "@/components/TrustLayer";
@@ -277,7 +278,7 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
       : "text-red-600 dark:text-red-400"
     : "text-muted-foreground";
 
-  const signals: Array<{ icon: React.ElementType; label: string; value: string; color: string; testId: string }> = [];
+  const signals: Array<{ icon: React.ElementType; label: string; value: string; color: string; testId: string; termKey?: string }> = [];
 
   if (eligibility.creditScore) {
     signals.push({
@@ -296,6 +297,7 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
       value: `${eligibility.estimatedDTI}%`,
       color: dtiColor,
       testId: "signal-dti",
+      termKey: "dti",
     });
   }
 
@@ -370,7 +372,13 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
               <div key={signal.testId} className="flex items-center justify-between gap-3 flex-wrap" data-testid={signal.testId}>
                 <div className="flex items-center gap-2.5">
                   <signal.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-muted-foreground">{signal.label}</span>
+                  {signal.termKey ? (
+                    <TermTooltip term={signal.termKey} className="text-xs text-muted-foreground">
+                      {signal.label}
+                    </TermTooltip>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{signal.label}</span>
+                  )}
                 </div>
                 <span className={`text-xs font-medium ${signal.color}`}>{signal.value}</span>
               </div>
@@ -379,7 +387,13 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
               <div key={signal.testId} className="flex items-center justify-between gap-3 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200" data-testid={signal.testId}>
                 <div className="flex items-center gap-2.5">
                   <signal.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-muted-foreground">{signal.label}</span>
+                  {signal.termKey ? (
+                    <TermTooltip term={signal.termKey} className="text-xs text-muted-foreground">
+                      {signal.label}
+                    </TermTooltip>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{signal.label}</span>
+                  )}
                 </div>
                 <span className={`text-xs font-medium ${signal.color}`}>{signal.value}</span>
               </div>
