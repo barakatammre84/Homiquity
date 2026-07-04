@@ -177,6 +177,28 @@ export function registerAusRoutes(app: Express) {
             error: "Application is missing purchase price / down payment — cannot build a DU casefile.",
           });
         }
+
+        // Completeness gate: refuse to hand DU a casefile that is missing
+        // required URLA fields (SSN, DOB, citizenship, address, employment,
+        // declarations, HMDA, ARM/ATR-QM…). Catch it here with an actionable
+        // field list rather than letting it fail downstream at the GSE.
+        const { validateMISMOCompleteness } = await import("../services/mismoValidation");
+        const validation = await validateMISMOCompleteness(applicationId);
+        if (validation.gseGatingFailed || validation.criticalErrors.length > 0) {
+          const missingFields = validation.sections
+            .filter(s => s.missingFields.length > 0)
+            .flatMap(s => s.missingFields.map(f => `${s.section}: ${f}`));
+          return res.status(422).json({
+            error:
+              "Application is missing required URLA fields — resolve these before submitting to Fannie Mae DU.",
+            gseReady: validation.gseReady,
+            gseGatingFailed: validation.gseGatingFailed,
+            overallScore: validation.overallScore,
+            criticalErrors: validation.criticalErrors,
+            missingFields,
+          });
+        }
+
         const monthlyIncome = application.annualIncome ? Number(application.annualIncome) / 12 : null;
         const dti =
           monthlyIncome && application.monthlyDebts
