@@ -10,6 +10,19 @@ export function getSession() {
   // expires within 12h). sameSite stays "lax" because OAuth provider redirects must
   // carry the session cookie back to the callback.
   const sessionTtl = 12 * 60 * 60 * 1000; // 12 hours
+
+  // SESSION_SECRET signs the session cookie; a missing or weak value allows
+  // cookie forgery / session hijacking. In production, fail loudly at boot with
+  // an entropy floor rather than relying on express-session's opaque throw.
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (process.env.NODE_ENV === "production" && (!sessionSecret || sessionSecret.length < 32)) {
+    throw new Error(
+      "SESSION_SECRET must be set to a high-entropy value (>= 32 characters) in production. " +
+        "It signs session cookies; a missing or weak secret allows session forgery. " +
+        "Generate one with: openssl rand -base64 48",
+    );
+  }
+
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -18,7 +31,7 @@ export function getSession() {
     tableName: "sessions",
   });
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: sessionSecret!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,

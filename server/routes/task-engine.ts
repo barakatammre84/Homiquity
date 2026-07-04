@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
-import { isStaffRole, isInternalStaffRole } from "@shared/schema";
+import { isStaffRole, isInternalStaffRole, insertTaskSchema } from "@shared/schema";
+import { parseBodyOr400 } from "./validate";
 
 // Internal-only staff roles that have global task access.
 // Partner roles (broker, lender) are scoped to their referred applications only.
@@ -72,12 +73,13 @@ export async function registerTaskEngineRoutes(
         return res.status(403).json({ error: "Access denied to this application" });
       }
 
-      const taskData = {
-        ...req.body,
-        createdByUserId: userId,
-      };
-
-      const task = await storage.createTask(taskData);
+      const data = parseBodyOr400(
+        insertTaskSchema.omit({ createdByUserId: true, verifiedByUserId: true, verifiedAt: true }),
+        req.body,
+        res,
+      );
+      if (data === undefined) return;
+      const task = await storage.createTask({ ...data, createdByUserId: userId });
 
       await storage.createDealActivity({
         applicationId: task.applicationId,
@@ -260,7 +262,15 @@ export async function registerTaskEngineRoutes(
       let updateData: Record<string, unknown>;
 
       if (isInternalStaff) {
-        updateData = { ...req.body };
+        // verifiedByUserId/verifiedAt are server-controlled attestation fields;
+        // omit them from the accepted shape so staff can't forge who verified.
+        const data = parseBodyOr400(
+          insertTaskSchema.omit({ createdByUserId: true, verifiedByUserId: true, verifiedAt: true }).partial(),
+          req.body,
+          res,
+        );
+        if (data === undefined) return;
+        updateData = { ...data };
         if (updateData.verificationStatus) {
           updateData.verifiedByUserId = userId;
           updateData.verifiedAt = new Date();
