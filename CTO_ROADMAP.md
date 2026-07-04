@@ -141,6 +141,14 @@ These wait until licensing and contracts are in motion. Each contract unlocks a 
 - [ ] **F10. Regulatory subscriptions + Fannie Developer Portal** *(your accounts, ~30 min total)*: subscribe to Fannie Selling Guide notifications, Freddie Guide bulletin emails, FHA INFO, and VA lender news (the automated watcher covers Freddie/FHA/VA pages + the Federal Register API, but Fannie's page is bot-protected — email is the only Fannie channel today). Register for the Fannie Mae Developer Portal (public APIs free; business-partner APIs unlock with F6). See kb/REGULATORY_MONITORING.md.
 - [ ] **F9. Real-time messaging transport** — presence dots are decorative today (no WebSocket transport). Wire to something real or remove; low priority.
 
+### Growth — first-100 borrower acquisition (doctrine 2026-07-04, post-HPPA trigger-lead restriction)
+
+Strategy: own borrower intent *before* the credit pull via first-party channels — direct network → agent B2B2C → VA affinity → free-tool lead capture. Phase 2's co-branded agent intake is **mostly built already** (`referralCode` links, ReferralLanding, `co_brand_profiles`, application-invites, broker referral dashboard); its remaining gap is a RESPA §8 review before any agent co-marketing spend. G2/G3 are buildable pre-licensing; G1's public launch waits on state advertising rules + F1.
+
+- [ ] **G1. VA-specific funnel.** Persona-siloed VA purchase + IRRRL landing page and intake. Engine already routes `isVeteran` → VA products (580 FICO / 100% LTV seeded); missing: COE check, VA funding-fee calc (incl. exemptions), residual-income table, IRRRL flow.
+- [ ] **G2. "Approval Strength Score" public tool.** Unauthenticated lead magnet: buyer enters income / down payment / target ZIP, gets an offer-strength readout from the existing readiness + decision engines on self-reported inputs; detailed breakdown gated behind account creation + explicit opt-in through the existing `POST /api/leads` (TrustedForm) API. Guardrails: no Reg Z trigger terms, never present output as an approval/pre-approval (Reg N).
+- [ ] **G3. Acquisition metrics instrumentation.** Pull-through rate (target >70%), time-to-clear (<12 days), B2B referral rate (>30%) — derive from stage timestamps + referral attribution, surface on admin analytics. Phase gates: don't advance an acquisition phase until the prior phase's metrics verify.
+
 ---
 
 ## Done (recent, for context)
