@@ -8,7 +8,7 @@ import {
   type UnderwritingInput,
 } from "../server/underwritingEngine";
 import { LookupResolverService, type ValueResolver } from "../server/services/lookupResolver";
-import { computeMonthsOfReserves } from "../server/services/preUnderwriting";
+import { computeMonthsOfReserves, estimateMonthlyPITI } from "../server/services/preUnderwriting";
 import { detectSignificantDeposits, vaRegionForState } from "../server/services/underwritingNuance";
 import { CONFORMING_LOAN_LIMIT_2026 } from "../shared/lendingLimits";
 
@@ -50,6 +50,7 @@ const GRIDS: Record<string, Cell[]> = {
   CONVENTIONAL_LTV_CAP: [{ value: 95 }],
   CONVENTIONAL_FICO_FLOOR: [{ value: 620 }],
   CONFORMING_LOAN_LIMIT: [{ value: CONFORMING_LOAN_LIMIT_2026 }],
+  VA_RESIDUAL_EXTRA_MEMBER: [{ value: 80 }],
   // Occupancy x units max LTV (Fannie Eligibility Matrix). Second homes are
   // 1-unit only; other combinations are intentionally unseeded (out of band).
   CONVENTIONAL_MAX_LTV: [
@@ -113,8 +114,9 @@ for (const band of LLPA_LTV_BANDS) {
   });
 }
 
-// VA_RESIDUAL — family sizes 1–5 exactly (dim1Min = dim1Max), loan bands
-// [0, 79999] and [80000, 9999999]: both edges are exercised by persona 5.
+// VA_RESIDUAL — family sizes 1–5 exactly (dim1Min = dim1Max; sizes >5 use the
+// size-5 cell + VA_RESIDUAL_EXTRA_MEMBER per member), loan bands
+// [0, 79999.99] and [80000, 9999999] (cent-continuous — mirrors the seed).
 const VA_TABLE: Record<string, number[]> = {
   NORTHEAST: [450, 755, 909, 1025, 1062],
   MIDWEST: [441, 738, 889, 1003, 1039],
@@ -134,7 +136,7 @@ for (const [region, values] of Object.entries(VA_TABLE)) {
 }
 for (const [region, values] of Object.entries(VA_LOW_TABLE)) {
   values.forEach((value, i) => {
-    GRIDS.VA_RESIDUAL.push({ d1Min: i + 1, d1Max: i + 1, d2Min: 0, d2Max: 79999, d3: region, value });
+    GRIDS.VA_RESIDUAL.push({ d1Min: i + 1, d1Max: i + 1, d2Min: 0, d2Max: 79999.99, d3: region, value });
   });
 }
 
@@ -318,16 +320,20 @@ describe("Persona 1 — Marcus Vale (K-1 losses + $2M asset spike)", () => {
     expect(d.metrics!.liquidAssets).toBe(2_050_000);
   });
 
-  it("PIN: the large-deposit detector is blind to positive-convention inflows", () => {
-    // underwritingNuance assumes "negative = inflow". A VOA vendor reporting
-    // deposits as positive amounts disables B3-4.2-02 sourcing entirely.
+  it("FIXED: the $2M unsourced wire is flagged regardless of the vendor's sign convention", () => {
+    // Detection is now magnitude-based: keying off one provider's sign
+    // convention (Plaid-style negative = inflow) silently disabled B3-4.2-04
+    // sourcing for vendors using the opposite convention. A large outflow can
+    // now be flagged too — an accepted false positive for a warning-severity
+    // documentation request.
     const positiveConvention = detectSignificantDeposits(
       [{ amount: 2_000_000, date: "2026-02-11", description: "WIRE IN" }],
       27700,
     );
-    expect(positiveConvention).toHaveLength(0);
+    expect(positiveConvention).toHaveLength(1);
+    expect(positiveConvention[0].amount).toBe(2_000_000);
 
-    // Control: the same wire in the assumed convention IS flagged.
+    // Control: the Plaid-style convention still flags identically.
     const negativeConvention = detectSignificantDeposits(
       [{ amount: -2_000_000, date: "2026-02-11", description: "WIRE IN" }],
       27700,
@@ -335,25 +341,21 @@ describe("Persona 1 — Marcus Vale (K-1 losses + $2M asset spike)", () => {
     expect(negativeConvention).toHaveLength(1);
   });
 
-  it.fails("SPEC: a $2M unsourced wire must be flagged regardless of the vendor's sign convention", () => {
-    const deposits = detectSignificantDeposits(
-      [{ amount: 2_000_000, date: "2026-02-11", description: "WIRE IN" }],
-      27700,
-    );
-    expect(deposits).toHaveLength(1);
-  });
-
-  it.fails("SPEC: instant-decision reserves must match pre-underwriting reserves (net of down payment)", async () => {
+  it("FIXED: instant-decision reserves are post-closing (net of down payment), same basis as pre-underwriting", async () => {
     primeOrchestrator(makeApp({ annualIncome: "600000" }), { urlaAssets: valeAssets, piti: 6200 });
     const d = await runInstantDecision("app-1");
-    // preUnderwriting subtracts the down payment before dividing by PITI; the
-    // instant decision divides the gross balance. Same borrower, two numbers.
+    // (2,050,000 - 180,000) / 6,200 = 301.6 — previously the GROSS balance was
+    // divided (330.6), overstating reserves by the entire down payment.
+    expect(d.metrics!.monthsOfReserves).toBeCloseTo((2_050_000 - 180_000) / 6200, 1);
+    // Method parity: preUnderwriting uses the same assets-minus-down-payment
+    // basis (its PITI legitimately differs — pre-lock 30yr/7% estimate vs the
+    // priced PITI used above).
     const preUw = computeMonthsOfReserves({
       verifiedAssetsTotal: 2_050_000,
       purchasePrice: 900_000,
       downPayment: 180_000,
     })!;
-    expect(d.metrics!.monthsOfReserves).toBeCloseTo(preUw, 0);
+    expect(preUw).toBeCloseTo((2_050_000 - 180_000) / estimateMonthlyPITI(900_000, 180_000), 1);
   });
 });
 
@@ -510,21 +512,20 @@ describe("Persona 3 — Boundary Surgeon (exact 2026 conforming limits)", () => 
   const cliffInput = (loan: number) =>
     baseConventionalInput({ originalLoanAmount: loan, contractSalesPrice: 840_000, appraisalValue: 840_000 });
 
-  it("PIN: LTV truncation lets a true LTV just over 95% pass the cap", async () => {
+  it("FIXED: eligibility compares the TRUE LTV — floor-truncation can no longer smuggle a loan past the cap", async () => {
     const engine = makeEngine();
-    // True LTV 95.0099% floors to 95.00 and PASSES the 95 cap...
-    const under = await engine.evaluate(cliffInput(798_083));
-    expect(under.calculatedLtv).toBe(95);
-    expect(under.decision).toBe("APPROVED");
-    // ...while a slightly larger loan (95.01%) is REJECTED.
-    const over = await engine.evaluate(cliffInput(798_120));
+    // True LTV 95.0099% used to floor to 95.00 and PASS the 95 cap; the
+    // eligibility check now runs on the un-truncated ratio, so it is REJECTED.
+    // (calculatedLtv stays 2dp-truncated for display/pricing consistency.)
+    const over = await engine.evaluate(cliffInput(798_083));
+    expect(over.calculatedLtv).toBe(95);
     expect(over.decision).toBe("REJECTED");
     expect(over.rejectionReasons[0]).toMatch(/exceeds policy ceiling/);
-  });
 
-  it.fails("SPEC: a true LTV above the 95% cap must not auto-approve via floor-truncation", async () => {
-    const result = await makeEngine().evaluate(cliffInput(798_083));
-    expect(result.decision).not.toBe("APPROVED");
+    // Control: exactly 95.0000% sits ON the inclusive cap and still approves.
+    const at = await engine.evaluate(cliffInput(798_000));
+    expect(at.calculatedLtv).toBe(95);
+    expect(at.decision).toBe("APPROVED");
   });
 
   it("PIN: both DTI fences are exclusive — exactly 43.00 auto-approves, exactly 50.00 avoids rejection", async () => {
@@ -578,15 +579,20 @@ describe("Persona 3 — Boundary Surgeon (exact 2026 conforming limits)", () => 
     expect(graphSrc).toMatch(/CONFORMING_LOAN_LIMIT_2026/);
   });
 
-  it.fails("SPEC: no dead zone between conforming max and jumbo min (fractional amounts near $806,500)", () => {
+  it("FIXED: no dead zone between conforming max and jumbo min (cent-continuous at $806,500)", () => {
     const seedSrc = fs.readFileSync(path.resolve(__dirname, "../server/seedMarketPricing.ts"), "utf-8");
     const conformingMax = Number(seedSrc.match(/const CONFORMING_LIMIT = (\d+)/)?.[1]);
-    // Jumbo eligibility is seeded as CONFORMING_LIMIT + 1, leaving the open
-    // interval (806500, 806501) unpriceable by every product in the market.
-    expect(seedSrc).toMatch(/minLoanAmount: CONFORMING_LIMIT \+ 1/);
-    const amount = conformingMax + 0.5;
-    const fallsInGap = amount > conformingMax && amount < conformingMax + 1;
-    expect(fallsInGap).toBe(false);
+    // Jumbo eligibility is now CONFORMING_LIMIT + one cent — "jumbo" means any
+    // amount OVER the limit. The old +1 (whole dollar) left the open interval
+    // (806500, 806501) unpriceable by every product in the market.
+    expect(seedSrc).not.toMatch(/minLoanAmount: CONFORMING_LIMIT \+ 1\b/);
+    expect(seedSrc).toMatch(/minLoanAmount: CONFORMING_LIMIT \+ 0\.01/);
+    const jumboMin = conformingMax + 0.01;
+    // Every cent-granular amount is covered by exactly one side of the boundary.
+    for (const amount of [conformingMax, conformingMax + 0.01, conformingMax + 0.5, conformingMax + 1]) {
+      const covered = amount <= conformingMax || amount >= jumboMin;
+      expect(covered).toBe(true);
+    }
   });
 });
 
@@ -684,33 +690,36 @@ describe("Persona 5 — Reyes family (VA, family of 6, $79,999.50 loan)", () => 
     expect(d.missingItems.join(" ")).toMatch(/square footage/i);
   });
 
-  it.fails("SPEC(#3): VA applications must be able to reach a decision through the instant-decision path", async () => {
-    primeOrchestrator(makeApp({ isVeteran: true, annualIncome: "144000" }), { piti: 2200 });
+  it("FIXED(#3): a VA application with its intake fields collected reaches a decision end-to-end", async () => {
+    // householdFamilySize / homeSquareFootage are now real intake columns
+    // (schema-required for veterans), so a complete VA file flows through the
+    // orchestrator to a decision instead of dead-ending.
+    primeOrchestrator(
+      makeApp({ isVeteran: true, annualIncome: "144000", householdFamilySize: 4, homeSquareFootage: 2800 }),
+      { piti: 2200 },
+    );
     const d = await runInstantDecision("app-1");
     expect(d.status).toBe("DECISION_READY");
+    expect(d.decision).toBe("APPROVED");
   });
 
-  it("PIN: family size 6 falls off the residual matrix (cells cover sizes 1–5 exactly)", async () => {
-    await expect(
-      makeEngine().evaluate({ ...baseConventionalInput(), ...reyesBase, householdFamilySize: 6 } as UnderwritingInput),
-    ).rejects.toThrow(/CRITICAL DECISIONING ERROR.*VA_RESIDUAL/);
-  });
-
-  it.fails("SPEC: families larger than 5 must use the +$80/member rule (Pamphlet 26-7), not crash", async () => {
+  it("FIXED: family size 6 uses the size-5 baseline + $80/member (Pamphlet 26-7), not a matrix crash", async () => {
     const result = await makeEngine().evaluate(
       { ...baseConventionalInput(), ...reyesBase, householdFamilySize: 6 } as UnderwritingInput,
     );
     // SOUTH size-5 baseline 1039 + 80 for the sixth member.
     expect(result.requiredResidualIncome).toBe(1119);
+    expect(result.decision).toBe("APPROVED");
   });
 
-  it("PIN: a $79,999.50 loan falls into the $1 gap between the VA loan-amount bands", async () => {
-    await expect(
-      makeEngine().evaluate({
-        ...baseConventionalInput(), ...reyesBase,
-        householdFamilySize: 3, originalLoanAmount: 79_999.5,
-      } as UnderwritingInput),
-    ).rejects.toThrow(/CRITICAL DECISIONING ERROR.*VA_RESIDUAL/);
+  it("FIXED: a $79,999.50 loan resolves in the low band — the $1 gap between VA loan bands is closed", async () => {
+    const result = await makeEngine().evaluate({
+      ...baseConventionalInput(), ...reyesBase,
+      householdFamilySize: 3, originalLoanAmount: 79_999.5,
+    } as UnderwritingInput);
+    // Low band (< $80k), SOUTH, size 3.
+    expect(result.requiredResidualIncome).toBe(772);
+    expect(result.decision).toBe("APPROVED");
   });
 
   it("CONTROL: the same family qualifies cleanly one band edge higher ($80,000)", async () => {

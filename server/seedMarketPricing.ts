@@ -186,7 +186,10 @@ export async function seedMarketPricing(): Promise<void> {
     // BlueRiver — sharpest conforming rate, tighter box; jumbo coverage
     { rateSheetId: blueriverSheet.id, productCode: "BRC-C30", productName: "Conforming 30-Year Fixed", productType: "CONVENTIONAL", loanTerm: 360, baseRate: "6.5000", eligibilityConstraints: { ...conformingEligibility, minCreditScore: 680, maxLTV: 95 } },
     { rateSheetId: blueriverSheet.id, productCode: "BRC-C15", productName: "Conforming 15-Year Fixed", productType: "CONVENTIONAL", loanTerm: 180, baseRate: "5.7500", eligibilityConstraints: { ...conformingEligibility, minCreditScore: 680, maxLTV: 95 } },
-    { rateSheetId: blueriverSheet.id, productCode: "BRC-J30", productName: "Jumbo 30-Year Fixed", productType: "JUMBO", loanTerm: 360, baseRate: "6.8750", eligibilityConstraints: { minLoanAmount: CONFORMING_LIMIT + 1, maxLoanAmount: 3000000, minCreditScore: 700, maxLTV: 89.99, occupancyTypes: ["PRIMARY_RESIDENCE", "SECOND_HOME"], propertyTypes: ["SINGLE_FAMILY", "CONDO", "TOWNHOUSE"] } },
+    // Jumbo min is CONFORMING_LIMIT + one cent: "jumbo" means any amount OVER
+    // the limit. The previous +1 (whole dollar) left the open interval
+    // (806500, 806501) unpriceable by every product in the market.
+    { rateSheetId: blueriverSheet.id, productCode: "BRC-J30", productName: "Jumbo 30-Year Fixed", productType: "JUMBO", loanTerm: 360, baseRate: "6.8750", eligibilityConstraints: { minLoanAmount: CONFORMING_LIMIT + 0.01, maxLoanAmount: 3000000, minCreditScore: 700, maxLTV: 89.99, occupancyTypes: ["PRIMARY_RESIDENCE", "SECOND_HOME"], propertyTypes: ["SINGLE_FAMILY", "CONDO", "TOWNHOUSE"] } },
     // Atlas — widest credit box, slightly higher rates; ARM option
     { rateSheetId: atlasSheet.id, productCode: "AHF-C30", productName: "Conforming 30-Year Fixed", productType: "CONVENTIONAL", loanTerm: 360, baseRate: "6.7500", eligibilityConstraints: { ...conformingEligibility, minCreditScore: 600, occupancyTypes: ["PRIMARY_RESIDENCE"] } },
     { rateSheetId: atlasSheet.id, productCode: "AHF-F30", productName: "FHA 30-Year Fixed", productType: "FHA", loanTerm: 360, baseRate: "6.3750", eligibilityConstraints: { ...conformingEligibility, minCreditScore: 580, maxLTV: 96.5, occupancyTypes: ["PRIMARY_RESIDENCE"] } },

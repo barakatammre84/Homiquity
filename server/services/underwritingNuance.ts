@@ -279,6 +279,13 @@ export interface SignificantDeposit {
 /**
  * Deposits exceeding 50% of monthly qualifying income must be sourced —
  * they may hide undisclosed loans or unverifiable "mattress cash".
+ *
+ * Detection is deliberately SIGN-AGNOSTIC on the transaction amount: providers
+ * disagree on convention (Plaid-style reports inflows as negative; others use
+ * positive), and keying off one convention silently disabled this rule for the
+ * other. A large OUTFLOW can therefore be flagged too — an acceptable false
+ * positive for a warning-severity documentation request, and far cheaper than
+ * missing an unsourced six-figure wire because a vendor flipped the sign.
  */
 export function detectSignificantDeposits(
   transactions: DepositoryTransaction[] | null | undefined,
@@ -287,7 +294,7 @@ export function detectSignificantDeposits(
   if (!transactions || grossMonthlyIncome <= 0) return [];
   const threshold = grossMonthlyIncome * SIGNIFICANT_DEPOSIT_INCOME_FACTOR;
   return transactions
-    .filter((t) => t.amount < 0 && Math.abs(t.amount) > threshold)
+    .filter((t) => Math.abs(t.amount) > threshold)
     .map((t) => ({
       amount: Math.abs(t.amount),
       date: t.date,

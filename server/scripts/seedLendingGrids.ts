@@ -41,6 +41,7 @@ export async function seed() {
     { code: "CONVENTIONAL_LTV_CAP", value: 95.0, desc: "Maximum allowable loan-to-value ceiling for conventional conforming loans" },
     { code: "CONVENTIONAL_FICO_FLOOR", value: 620.0, desc: "Minimum representative credit score for conventional conforming eligibility" },
     { code: "CONFORMING_LOAN_LIMIT", value: CONFORMING_LOAN_LIMIT_2026, desc: "FHFA conforming loan limit, one-unit baseline; loans above route to jumbo" },
+    { code: "VA_RESIDUAL_EXTRA_MEMBER", value: 80.0, desc: "VA residual income addition per family member beyond 5 (Pamphlet 26-7 Table 4-2)" },
     { code: "HAIRCUT_STOCK_INVESTMENT", value: 60.0, desc: "Liquid valuation haircut for general stock assets" },
     { code: "HAIRCUT_RETIREMENT", value: 70.0, desc: "Volatile valuation haircut for retirement portfolios (counts at 70% value)" },
   ];
@@ -259,30 +260,32 @@ export async function seed() {
     { size: 4, limitMin: 80000, limitMax: 9999999, region: "WEST", value: 1117 },
     { size: 5, limitMin: 80000, limitMax: 9999999, region: "WEST", value: 1158 },
 
-    // Low Loan Amounts: < $80,000
-    { size: 1, limitMin: 0, limitMax: 79999, region: "NORTHEAST", value: 390 },
-    { size: 2, limitMin: 0, limitMax: 79999, region: "NORTHEAST", value: 654 },
-    { size: 3, limitMin: 0, limitMax: 79999, region: "NORTHEAST", value: 788 },
-    { size: 4, limitMin: 0, limitMax: 79999, region: "NORTHEAST", value: 888 },
-    { size: 5, limitMin: 0, limitMax: 79999, region: "NORTHEAST", value: 921 },
+    // Low Loan Amounts: < $80,000. Band max is 79,999.99 (cent granularity) so
+    // fractional amounts like $79,999.50 resolve — an integer max of 79,999
+    // left a $1 gap to the >= $80,000 band that crashed the lookup.
+    { size: 1, limitMin: 0, limitMax: 79999.99, region: "NORTHEAST", value: 390 },
+    { size: 2, limitMin: 0, limitMax: 79999.99, region: "NORTHEAST", value: 654 },
+    { size: 3, limitMin: 0, limitMax: 79999.99, region: "NORTHEAST", value: 788 },
+    { size: 4, limitMin: 0, limitMax: 79999.99, region: "NORTHEAST", value: 888 },
+    { size: 5, limitMin: 0, limitMax: 79999.99, region: "NORTHEAST", value: 921 },
 
-    { size: 1, limitMin: 0, limitMax: 79999, region: "MIDWEST", value: 382 },
-    { size: 2, limitMin: 0, limitMax: 79999, region: "MIDWEST", value: 641 },
-    { size: 3, limitMin: 0, limitMax: 79999, region: "MIDWEST", value: 772 },
-    { size: 4, limitMin: 0, limitMax: 79999, region: "MIDWEST", value: 868 },
-    { size: 5, limitMin: 0, limitMax: 79999, region: "MIDWEST", value: 902 },
+    { size: 1, limitMin: 0, limitMax: 79999.99, region: "MIDWEST", value: 382 },
+    { size: 2, limitMin: 0, limitMax: 79999.99, region: "MIDWEST", value: 641 },
+    { size: 3, limitMin: 0, limitMax: 79999.99, region: "MIDWEST", value: 772 },
+    { size: 4, limitMin: 0, limitMax: 79999.99, region: "MIDWEST", value: 868 },
+    { size: 5, limitMin: 0, limitMax: 79999.99, region: "MIDWEST", value: 902 },
 
-    { size: 1, limitMin: 0, limitMax: 79999, region: "SOUTH", value: 382 },
-    { size: 2, limitMin: 0, limitMax: 79999, region: "SOUTH", value: 641 },
-    { size: 3, limitMin: 0, limitMax: 79999, region: "SOUTH", value: 772 },
-    { size: 4, limitMin: 0, limitMax: 79999, region: "SOUTH", value: 868 },
-    { size: 5, limitMin: 0, limitMax: 79999, region: "SOUTH", value: 902 },
+    { size: 1, limitMin: 0, limitMax: 79999.99, region: "SOUTH", value: 382 },
+    { size: 2, limitMin: 0, limitMax: 79999.99, region: "SOUTH", value: 641 },
+    { size: 3, limitMin: 0, limitMax: 79999.99, region: "SOUTH", value: 772 },
+    { size: 4, limitMin: 0, limitMax: 79999.99, region: "SOUTH", value: 868 },
+    { size: 5, limitMin: 0, limitMax: 79999.99, region: "SOUTH", value: 902 },
 
-    { size: 1, limitMin: 0, limitMax: 79999, region: "WEST", value: 425 },
-    { size: 2, limitMin: 0, limitMax: 79999, region: "WEST", value: 713 },
-    { size: 3, limitMin: 0, limitMax: 79999, region: "WEST", value: 859 },
-    { size: 4, limitMin: 0, limitMax: 79999, region: "WEST", value: 967 },
-    { size: 5, limitMin: 0, limitMax: 79999, region: "WEST", value: 1004 },
+    { size: 1, limitMin: 0, limitMax: 79999.99, region: "WEST", value: 425 },
+    { size: 2, limitMin: 0, limitMax: 79999.99, region: "WEST", value: 713 },
+    { size: 3, limitMin: 0, limitMax: 79999.99, region: "WEST", value: 859 },
+    { size: 4, limitMin: 0, limitMax: 79999.99, region: "WEST", value: 967 },
+    { size: 5, limitMin: 0, limitMax: 79999.99, region: "WEST", value: 1004 },
   ];
 
   for (const def of vaDefinitions) {
