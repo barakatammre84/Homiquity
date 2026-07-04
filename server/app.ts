@@ -10,6 +10,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
 import { registerRoutes } from "./routes";
+import { isRateLimitRelaxed } from "./services/rateLimitPolicy";
 import { captureException, initErrorMonitoring } from "./services/errorMonitoring";
 
 export function log(message: string, source = "express") {
@@ -89,6 +90,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many login attempts, please try again later" },
+  skip: () => isRateLimitRelaxed(),
 });
 
 const uploadLimiter = rateLimit({

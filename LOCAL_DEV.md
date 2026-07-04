@@ -67,9 +67,18 @@ Open http://localhost:5001. Edits hot-reload. (Local convention: **5001** — ma
 AirPlay squats on 5000 and answers with an HTTP 403 that looks like a broken app.
 Worktree test servers use 5002+.)
 
-## 7. Typecheck before committing
+## 7. Typecheck and tests before committing
 ```bash
-npm run check
+npm run check     # TypeScript
+npm test          # unit suite (no DB or server needed)
+```
+Integration tests need a running server. Boot it with `RATE_LIMIT_RELAXED=true` — the
+suite makes ~30 auth calls, which would otherwise trip the auth rate limiter (20 per
+15 min; the flag is ignored in production builds):
+```bash
+RATE_LIMIT_RELAXED=true PORT=5002 npm run dev   # in one terminal
+set -a; source .env; set +a
+TEST_BASE_URL=http://localhost:5002 npm run test:integration
 ```
 
 ## GitHub sync — one-command workflows
