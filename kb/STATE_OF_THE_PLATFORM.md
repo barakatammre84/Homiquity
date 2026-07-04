@@ -1,6 +1,16 @@
 # State of Homiquity — CTO Platform Assessment
 
 **Date:** 2026-07-03 (point-in-time snapshot — update or supersede, don't let it rot)
+
+> **STATUS 2026-07-04 (source-of-truth audit):** much of §3/§4 has since shipped — trust
+> [CTO_ROADMAP.md](../CTO_ROADMAP.md) for current status, this doc for the reasoning.
+> Resolved since writing: §3.4 auth recovery ✓ (roadmap #2), §3.5 email code ✓ (ops env
+> pending, LS-2), §3.7 error monitoring built (DSN pending, LS-2), §3.9 legal-page shells +
+> adverse-action flow ✓ (#26), §4.1 task engine ✓ (#6), §4.2 stage-gated validation ✓ (#7),
+> §4.4 leads API ✓ (#8), §4.5 lifecycle jobs ✓ (#9), §4.8 self-cleaning tests ✓ (#10),
+> §4.9 demo rate sheets ✓ (#11), and the entire §5 palette sweep ✓ (#12–23). Still true:
+> licensing (F1), vendor contracts (F3–F7), uploads (#1 → open PR #44), CI (#5 — workflow
+> authored but stranded off-main; see ASSUMPTIONS.md §2).
 **Audience:** Frontend, Backend/Platform, Data, DevOps, Compliance, AI, QA, Product
 **Production:** https://mortgage-stream.vercel.app (homiquity.com custom domain pending) · **Repo:** single source of truth on `main`, every push deploys
 **How to use this doc:** every numbered item in §3/§4 and every row in §5 is scoped to be a single work prompt/session — name the item, point at the files, state the acceptance check.

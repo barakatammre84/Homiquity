@@ -8,17 +8,22 @@ deploys it. If it breaks, revert.** No approvals.
         │                     │
         ▼            broken?  ▼
   GitHub Actions    Vercel → Deployments → previous one → Promote  (instant)
-  (ci: typecheck,
-   tests, build,
-   lockfile parity)
+  (planned — not
+   on main yet,
+   see below)
 ```
 
-CI (`.github/workflows/ci.yml`) runs on every PR and every push to `main`:
-typecheck, unit tests, production build, and a lockfile-parity check. Today it
-is **non-blocking on main** — a red run emails you but the deploy still goes
-out. To make it a hard gate later: GitHub → Settings → Branches → protect
-`main`, require the `ci` check (this also blocks direct pushes, so `npm run
-save` would move to a PR flow).
+**CI status (corrected 2026-07-04): there is no CI on `main` today** — `.github/`
+does not exist there, so nothing runs on push; all checks are manual (see
+"Optional checks" below). A finished non-blocking workflow (`ci.yml`:
+typecheck, unit tests, build, lockfile parity) is authored and waiting on local
+branch `claude/inspiring-faraday-86b6b2` (commit `4fa08ad`), but the automation
+GitHub token lacks the `workflow` scope, so **a human must push/merge it from a
+normally-authenticated environment** (roadmap #5). Once landed it is
+informational only — a red run marks the commit but the deploy still goes out.
+To make it a hard gate later: GitHub → Settings → Branches → protect `main`,
+require the `ci` check (this also blocks direct pushes, so `npm run save`
+would move to a PR flow).
 
 ## Shipping
 

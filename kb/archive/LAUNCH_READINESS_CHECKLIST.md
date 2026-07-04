@@ -1,5 +1,14 @@
 # Homiquity Launch Readiness Checklist
 
+> **⛔ ARCHIVED 2026-07-04 — factually obsolete (Replit era). Do not act on this document.**
+> It predates the Vercel migration, versioned migrations, password auth, and the launch
+> sprint: it instructs `db:push` against production (now forbidden — see CLAUDE.md),
+> describes Replit Auth/OIDC and Replit-checkpoint rollback (superseded by
+> [ROLLBACK.md](../../ROLLBACK.md)), and its "80% ready" verdict predates the real launch
+> plan. **Current launch readiness lives in the 🚀 Launch sprint section of
+> [CTO_ROADMAP.md](../../CTO_ROADMAP.md)**; the fact/assumption register is
+> [ASSUMPTIONS.md](../../ASSUMPTIONS.md). Retained for history only.
+
 Generated: February 15, 2026
 Application: Homiquity Mortgage Lending Platform
 Codebase: ~37,000 lines (6,410 schema + 11,708 routes + 4,289 storage + 7,881 services + client)

@@ -85,13 +85,16 @@ All underwriting decisions are deterministic, rules-based, and auditable.
 
 ## Technology Stack
 
+*(Corrected 2026-07-04 — the original listed the Replit-era stack.)*
+
 - **Frontend:** React 18, TypeScript, Vite, Wouter, TanStack Query, Shadcn/ui, Tailwind
 - **Backend:** Node.js, Express, TypeScript, Drizzle ORM
-- **Database:** PostgreSQL (Neon serverless)
+- **Database:** PostgreSQL (Neon serverless prod, native Postgres dev) — versioned SQL migrations
 - **AI:** OpenAI (Coach conversations), Google Gemini (document extraction)
-- **Auth:** Replit OIDC + Passport.js, role-based access
-- **Storage:** Replit Object Storage (documents)
-- **Verification:** Plaid (employment, income, assets, identity)
+- **Auth:** Email/password (scrypt) with account lockout + role-based access (`server/auth.ts`)
+- **Deploy:** Vercel serverless — every push to `main` deploys (see CICD.md)
+- **Storage:** Google Cloud Storage via `server/integrations/object_storage/` (presigned uploads)
+- **Verification:** Plaid/Truv adapters — **simulated until real contracts** (see ASSUMPTIONS.md)
 
 ---
 
@@ -120,11 +123,14 @@ A lender can: open the package, see every document organized, click to view each
 
 ---
 
-## Development Rule (Active)
+## Development Rule (updated 2026-07-04)
+
+**The 🚀 Launch sprint section of [CTO_ROADMAP.md](CTO_ROADMAP.md) is the only work queue.**
+The blanket feature freeze below is superseded: sprint items ship even when they are new
+features (landing pages, speed-to-lead), because they are launch-blocking. For anything
+*not* on the sprint, the original gate still applies:
 
 **Nothing new ships unless it improves correctness, compliance, or reliability.**
-
-Feature development is frozen. All work must pass this gate:
 
 | Allowed | Not Allowed |
 |---|---|
