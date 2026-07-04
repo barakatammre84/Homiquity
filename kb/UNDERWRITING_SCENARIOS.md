@@ -107,6 +107,14 @@ from application data, credit tradelines, bank transactions, or public records.
 - Tests: `tests/underwritingNuance.test.ts` (reproduces the source doc: $2,000 rent × 0.75 − $1,200 PITIA = +$300/month; also covers a negative net-offset case and multi-property summation)
 - Verified live: fresh registered borrower, rental income source with $2,000/mo rent + $1,200/mo PITIA → `RENTAL_INCOME_OFFSET` raised with "$1,500/month qualifying... adds $300/month toward your qualifying income", borrower notified
 
+### S-06: Multi-Unit Subject Property Rental Income
+- Status: Implemented 2026-07-04 (commit 083811d)
+- Guideline: Fannie Mae Selling Guide B3-3.1-08 (Rental Income from Subject Property)
+- Engine: `calculateSubjectPropertyRentalOffset` in [underwritingNuance.ts](../server/services/underwritingNuance.ts) → flag `SUBJECT_PROPERTY_RENTAL_OFFSET`
+- Signal source: `urla_property_info.numberOfUnits` + `.occupancyType` + new `.estimatedMarketRent` column (appraisal rent schedule / lease estimate captured on the URLA property step)
+- Tests: `tests/underwritingNuance.test.ts` (reproduces the source doc: $3,000 market rent × 0.75 = $2,250 qualifying; also covers non-primary-occupancy and 1-unit/5+-unit exclusions)
+- Verified live: fresh registered borrower, 3-unit primary-residence purchase ($450,000/$90,000 down) + $3,000/mo estimated market rent → `SUBJECT_PROPERTY_RENTAL_OFFSET` raised with $2,250/month qualifying against the computed $2,863.84 subject PITIA, borrower notified
+
 ### Foundation scenarios (shipped before the registry existed)
 - **Low reserves** (`LOW_RESERVES_WARNING`): post-closing reserves < 2 months PITI from verified assets — auto-condition + outreach. *Threshold is platform policy; formal citation research pending (Fannie reserve requirements, B3-4.1-01, vary by transaction type).*
 - **Complex income** (`COMPLEX_INCOME_CHECK`): self-employed → 2-year tax-return conditions gate clear-to-close
@@ -116,14 +124,6 @@ from application data, credit tradelines, bank transactions, or public records.
 ---
 
 ## Backlog (processed top-down, one per daily run)
-
-### S-06: Multi-Unit Subject Property Rental Income
-Status: Proposed
-Story: The borrower is buying a 2–4 unit property, will occupy one unit, and wants projected rent from the other units to qualify.
-Guideline: Fannie Mae Selling Guide B3-3.1-08 (Rental Income from Subject Property)
-Signal: application propertyType = multi_family + occupancy = primary residence; market rent from appraisal/rent schedule.
-Rule: Qualifying rental income = Gross Monthly Market Rent × 0.75, applied against subject PITIA. Example: market rent $3,000 × 0.75 = $2,250 offset.
-Resolution: "We applied a 25% vacancy/expense factor to the projected market rent ($2,250/month). Please upload the appraisal rent schedule or executed leases to confirm market rent."
 
 ### S-07: Rental Income Conversion (retaining current primary as a rental)
 Status: Proposed

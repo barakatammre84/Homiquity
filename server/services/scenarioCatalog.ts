@@ -143,6 +143,27 @@ export const SCENARIO_CATALOG: ScenarioCatalogEntry[] = [
     engineRef: "server/services/underwritingNuance.ts calculateRentalIncomeOffsets",
   },
   {
+    scenarioId: "S-06",
+    version: "1.0.0",
+    title: "Multi-Unit Subject Property Rental Income",
+    flagCode: "SUBJECT_PROPERTY_RENTAL_OFFSET",
+    status: "implemented",
+    triggers: ["urla_property_info.numberOfUnits between 2-4 with occupancyType = primary_residence and estimatedMarketRent set"],
+    regulations: ["Fannie Mae Selling Guide B3-3.1-08 (Rental Income from Subject Property)"],
+    riskImpact:
+      "Gross market rent on a purchased owner-occupied multi-unit property overstates qualifying income; a 25% vacancy/expense factor must be applied and netted against the subject property's own PITIA.",
+    workflow: {
+      loanOfficerActions: ["Review the qualifying rent and net offset against subject PITIA before finalizing DTI"],
+      borrowerActions: ["Upload the appraisal rent schedule (Form 1025/1007) or executed leases for the non-owner-occupied unit(s)"],
+      automationEngineActions: [
+        "Compute qualifying rental income at 75% of estimated market rent",
+        "Net against the subject property's estimated PITIA",
+        "Raise SUBJECT_PROPERTY_RENTAL_OFFSET naming the qualifying amount and required documents",
+      ],
+    },
+    engineRef: "server/services/underwritingNuance.ts calculateSubjectPropertyRentalOffset",
+  },
+  {
     scenarioId: "F-LOW-RESERVES",
     version: "1.0.0",
     title: "Low post-closing reserves (foundation)",

@@ -34,6 +34,7 @@ import {
   adjustLiabilities,
   assessIncomeSeasoning,
   calculateRentalIncomeOffsets,
+  calculateSubjectPropertyRentalOffset,
   computeDti,
   computeWhatIfPayoff,
   detectSignificantDeposits,
@@ -56,7 +57,8 @@ export type PreUwFlagCode =
   | "INCOME_SEASONING"
   | "VERIFIED_DEBT_DTI"
   | "LARGE_DEPOSIT_SOURCING"
-  | "RENTAL_INCOME_OFFSET";
+  | "RENTAL_INCOME_OFFSET"
+  | "SUBJECT_PROPERTY_RENTAL_OFFSET";
 
 export interface PreUwRequiredDoc {
   documentType: string;
@@ -84,6 +86,12 @@ export interface PreUwInput {
   tradelines?: Tradeline[] | null;
   /** Depository transactions from the latest VOA (B3-4.3-04 sourcing). */
   transactions?: DepositoryTransaction[] | null;
+  /** Subject property details from URLA (B3-3.1-08 multi-unit rental offset). */
+  subjectProperty?: {
+    numberOfUnits: number | null;
+    occupancyType: string | null;
+    estimatedMarketRent: string | number | null;
+  } | null;
 }
 
 
@@ -294,6 +302,41 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     });
   }
 
+  // --- Multi-unit subject property rental income (Fannie B3-3.1-08): 75% of
+  // appraisal market rent, net of the subject property's own PITIA. ---------
+  if (input.subjectProperty && !isNaN(price) && !isNaN(down)) {
+    const subjectPitia = estimateMonthlyPITI(price, down);
+    const subjectOffset = calculateSubjectPropertyRentalOffset(
+      input.subjectProperty.estimatedMarketRent,
+      subjectPitia,
+      input.subjectProperty.numberOfUnits,
+      input.subjectProperty.occupancyType,
+    );
+    if (subjectOffset) {
+      flags.push({
+        code: "SUBJECT_PROPERTY_RENTAL_OFFSET",
+        severity: "warning",
+        reason:
+          `We applied a 25% vacancy/expense factor to the subject property's projected market rent (standard guidelines): ` +
+          `$${Math.round(subjectOffset.qualifyingRentalIncome).toLocaleString()}/month qualifying, ` +
+          (subjectOffset.netOffset >= 0
+            ? `net of the property's estimated payment this adds $${Math.round(subjectOffset.netOffset).toLocaleString()}/month toward your qualifying income.`
+            : `net of the property's estimated payment this adds $${Math.round(Math.abs(subjectOffset.netOffset)).toLocaleString()}/month to your qualifying debt.`) +
+          ` Please upload the appraisal rent schedule or executed leases for the other units to confirm market rent.`,
+        requiredDocs: [
+          { documentType: "other", description: "Appraisal rent schedule (Fannie Mae Form 1025/1007) for the subject property" },
+          { documentType: "lease_agreement", description: "Executed lease agreement(s) for the non-owner-occupied unit(s), if available" },
+        ],
+        metrics: {
+          grossMonthlyMarketRent: subjectOffset.grossMonthlyMarketRent,
+          qualifyingRentalIncome: Number(subjectOffset.qualifyingRentalIncome.toFixed(2)),
+          subjectPitia: Number(subjectOffset.subjectPitia.toFixed(2)),
+          netOffset: Number(subjectOffset.netOffset.toFixed(2)),
+        },
+      });
+    }
+  }
+
   return flags;
 }
 
@@ -316,6 +359,7 @@ export function buildFlagOutreach(
       case "VERIFIED_DEBT_DTI":
       case "LARGE_DEPOSIT_SOURCING":
       case "RENTAL_INCOME_OFFSET":
+      case "SUBJECT_PROPERTY_RENTAL_OFFSET":
         // These reasons are already written borrower-first with the specific
         // numbers and the resolution path baked in.
         return f.reason;
@@ -383,7 +427,7 @@ export async function runPreUnderwriting(
     .limit(1);
   if (!application) throw new Error(`Application ${applicationId} not found`);
 
-  const [[voa], [pull]] = await Promise.all([
+  const [[voa], [pull], propertyInfo] = await Promise.all([
     db
       .select({ totalBalance: verificationReports.totalBalance, rawPayload: verificationReports.rawPayload })
       .from(verificationReports)
@@ -402,6 +446,7 @@ export async function runPreUnderwriting(
       .where(and(eq(creditPulls.applicationId, applicationId), eq(creditPulls.status, "completed")))
       .orderBy(desc(creditPulls.completedAt))
       .limit(1),
+    storage.getUrlaPropertyInfo(applicationId),
   ]);
 
   const flags = derivePreUnderwritingFlags({
@@ -416,6 +461,13 @@ export async function runPreUnderwriting(
       ((voa?.rawPayload as { transactions?: DepositoryTransaction[] } | null)?.transactions as
         | DepositoryTransaction[]
         | undefined) ?? null,
+    subjectProperty: propertyInfo
+      ? {
+          numberOfUnits: propertyInfo.numberOfUnits,
+          occupancyType: propertyInfo.occupancyType,
+          estimatedMarketRent: propertyInfo.estimatedMarketRent,
+        }
+      : null,
   });
 
   const previous = (application.preUwFlags ?? null) as { notifiedHash?: string } | null;

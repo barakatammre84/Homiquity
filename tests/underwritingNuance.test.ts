@@ -3,6 +3,7 @@ import {
   adjustLiabilities,
   assessIncomeSeasoning,
   calculateRentalIncomeOffsets,
+  calculateSubjectPropertyRentalOffset,
   computeDti,
   computeVaResidualIncome,
   computeWhatIfPayoff,
@@ -207,5 +208,28 @@ describe("calculateRentalIncomeOffsets (Fannie B3-3.1-08)", () => {
     expect(offsets.reduce((s, o) => s + o.netOffset, 0)).toBeCloseTo(-175);
     expect(calculateRentalIncomeOffsets(null)).toHaveLength(0);
     expect(calculateRentalIncomeOffsets([])).toHaveLength(0);
+  });
+});
+
+describe("calculateSubjectPropertyRentalOffset (Fannie B3-3.1-08, S-06)", () => {
+  it("reproduces S-06's worked example: $3,000 market rent -> $2,250 qualifying offset", () => {
+    const offset = calculateSubjectPropertyRentalOffset("3000", 1800, 3, "primary_residence");
+    expect(offset).not.toBeNull();
+    expect(offset!.qualifyingRentalIncome).toBeCloseTo(2_250);
+    expect(offset!.netOffset).toBeCloseTo(450);
+  });
+
+  it("returns null when occupancy is not primary residence", () => {
+    expect(calculateSubjectPropertyRentalOffset("3000", 1800, 3, "investment")).toBeNull();
+  });
+
+  it("returns null for 1-unit and 5+-unit properties", () => {
+    expect(calculateSubjectPropertyRentalOffset("3000", 1800, 1, "primary_residence")).toBeNull();
+    expect(calculateSubjectPropertyRentalOffset("3000", 1800, 5, "primary_residence")).toBeNull();
+  });
+
+  it("returns null when no market rent is provided", () => {
+    expect(calculateSubjectPropertyRentalOffset(null, 1800, 3, "primary_residence")).toBeNull();
+    expect(calculateSubjectPropertyRentalOffset(0, 1800, 3, "primary_residence")).toBeNull();
   });
 });

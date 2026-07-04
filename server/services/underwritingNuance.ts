@@ -340,3 +340,39 @@ export function calculateRentalIncomeOffsets(
     };
   });
 }
+
+// ---------------------------------------------------------------------------
+// Scenario 6 — multi-unit subject property rental income (Fannie B3-3.1-08)
+// ---------------------------------------------------------------------------
+
+export interface SubjectPropertyRentalOffset {
+  grossMonthlyMarketRent: number;
+  qualifyingRentalIncome: number;
+  subjectPitia: number;
+  netOffset: number;
+}
+
+/** Fannie B3-3.1-08: an owner-occupied 2-4 unit purchase qualifies market rent
+ * from the appraisal's rent schedule at the same 75% vacancy/expense factor
+ * as investment rental income, netted against the subject property's own
+ * PITIA. Only applies when the borrower occupies one unit as a primary
+ * residence and the property has 2-4 units — a non-owner-occupied multi-unit
+ * purchase or a 1-unit/5+-unit property don't fit this rule. */
+export function calculateSubjectPropertyRentalOffset(
+  marketMonthlyRent: number | string | null | undefined,
+  subjectPitia: number,
+  numberOfUnits: number | null | undefined,
+  occupancyType: string | null | undefined,
+): SubjectPropertyRentalOffset | null {
+  if (occupancyType !== "primary_residence") return null;
+  if (!numberOfUnits || numberOfUnits < 2 || numberOfUnits > 4) return null;
+  const rent = toNum(marketMonthlyRent);
+  if (isNaN(rent) || rent <= 0) return null;
+  const qualifyingRentalIncome = rent * RENTAL_INCOME_VACANCY_FACTOR;
+  return {
+    grossMonthlyMarketRent: rent,
+    qualifyingRentalIncome,
+    subjectPitia,
+    netOffset: qualifyingRentalIncome - subjectPitia,
+  };
+}
