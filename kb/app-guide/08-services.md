@@ -48,7 +48,8 @@ depth.
 | `../auditLog.ts` | General audit logging |
 | `verification.ts` | Plaid-driven income/employment/asset verification |
 | `../plaid.ts` | Plaid API client |
-| `ausSubmission.ts` | GSE leg: Plaid asset-report parsing, DU 12.1 casefile submission (simulated until Fannie onboarding), Day 1 Certainty parsing, commitment letter builder |
+| `ausSubmission.ts` | GSE leg: Plaid asset-report parsing, dual-AUS casefile submission — DU 12.1 + LPA (both simulated until GSE onboarding; LPA rides in `ausFindings.lpa`), Day 1 Certainty parsing, commitment letter builder |
+| `lenderSubmission.ts` | Wholesale submit action: gated on submission-readiness (422 + blockers), one active submission per lender, deterministic simulated acknowledgment behind the per-lender portal seam; status machine in `shared/wholesaleLenders.ts` |
 
 ## Ops & intelligence
 

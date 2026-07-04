@@ -64,6 +64,8 @@ export interface StageDerivationInputs {
   aus: {
     casefileId: string | null;
     recommendation: string | null;
+    /** True when the dual-AUS LPA leg produced findings for this casefile. */
+    lpaAssessed: boolean;
   };
   consents: {
     eDisclosure: boolean;
@@ -117,9 +119,10 @@ export function deriveSubmissionStages(inputs: StageDerivationInputs): Omit<Brok
   } else if (!inputs.aus.recommendation) {
     ausWarnings.push("DU casefile created but no recommendation captured yet");
   }
-  // Broker doctrine targets dual AUS; the LPA leg is not built yet.
-  if (inputs.aus.recommendation) {
-    ausWarnings.push("LPA leg not available — recommendation is DU-only");
+  // Broker doctrine is dual AUS: flag DU-only casefiles (files run before
+  // the LPA leg landed re-run through AUS to pick it up).
+  if (inputs.aus.recommendation && !inputs.aus.lpaAssessed) {
+    ausWarnings.push("LPA leg has not run for this casefile — re-run AUS for the dual-AUS view");
   }
   stages.push({
     key: "aus",
@@ -231,6 +234,7 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
     aus: {
       casefileId: application.ausCasefileId ?? null,
       recommendation: application.ausRecommendation ?? null,
+      lpaAssessed: !!(application.ausFindings as { lpa?: unknown } | null)?.lpa,
     },
     consents: { eDisclosure, antiSteering },
     deliveryEdits: {

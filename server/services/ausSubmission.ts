@@ -202,6 +202,70 @@ export async function submitToDU(input: DuCasefileInput): Promise<DuFindings> {
 }
 
 // ---------------------------------------------------------------------------
+// Freddie Mac LPA (Loan Product Advisor) — second AUS leg
+//
+// Broker doctrine is dual-AUS: run DU and LPA on the same casefile inputs so
+// lender selection can follow whichever engine reads the file better. Same
+// seam discipline as DU: env-gated real integration (Freddie onboarding
+// required), deterministic simulation until then. LPA's headline outputs are
+// a risk class (Accept/Caution) and purchase eligibility.
+// ---------------------------------------------------------------------------
+
+export interface LpaFindings {
+  simulated: boolean;
+  /** Our assessment identifier (the live integration will carry Freddie's key). */
+  assessmentId: string;
+  riskClass: "accept" | "caution";
+  purchaseEligibility: "eligible" | "ineligible";
+  riskAssessment: { dti: number | null; ltv: number; creditScore: number | null };
+  messages: Array<{ code: string; severity: "info" | "condition" | "risk"; text: string }>;
+}
+
+export async function submitToLPA(input: DuCasefileInput): Promise<LpaFindings> {
+  if (process.env.FREDDIE_LPA_API_KEY) {
+    throw new Error(
+      "FREDDIE_LPA_API_KEY is set but the live LPA adapter is not implemented yet — LPA access requires " +
+        "Freddie Mac onboarding. Remove the key to use simulation.",
+    );
+  }
+
+  const ltv = input.propertyValue > 0 ? input.loanAmount / input.propertyValue : 1;
+  const messages: LpaFindings["messages"] = [];
+  const assessmentId = `sim-lpa-${createHash("sha1").update(input.applicationId).digest("hex").slice(0, 10)}`;
+
+  // Headline gates mirroring the DU simulation so the two legs are
+  // comparable; deliberately NOT identical outcomes — LPA reads borderline
+  // DTI slightly differently (45–50% takes Caution where the DU sim refers
+  // only above 50%), which is the realistic dual-AUS spread lenders exploit.
+  let riskClass: LpaFindings["riskClass"] = "accept";
+  let purchaseEligibility: LpaFindings["purchaseEligibility"] = "eligible";
+
+  if (input.creditScore === null || input.creditScore < 620) {
+    riskClass = "caution";
+    messages.push({ code: "LPA-SIM-101", severity: "risk", text: "Credit score below conventional minimum (620) or unavailable." });
+  }
+  if (input.dti !== null && input.dti > 0.45) {
+    riskClass = "caution";
+    messages.push({ code: "LPA-SIM-202", severity: "risk", text: `DTI ${(input.dti * 100).toFixed(1)}% above 45% — Caution risk class in simulation.` });
+  }
+  if (ltv > 0.97) {
+    purchaseEligibility = "ineligible";
+    messages.push({ code: "LPA-SIM-301", severity: "condition", text: `LTV ${(ltv * 100).toFixed(1)}% exceeds 97% conforming maximum.` });
+  }
+
+  const findings: LpaFindings = {
+    simulated: true,
+    assessmentId,
+    riskClass,
+    purchaseEligibility,
+    riskAssessment: { dti: input.dti, ltv: Number(ltv.toFixed(4)), creditScore: input.creditScore },
+    messages: messages.length ? messages : [{ code: "LPA-SIM-001", severity: "info", text: "Assessment completed with no adverse findings." }],
+  };
+
+  return await withTimeout(Promise.resolve(findings), "LPA assessment");
+}
+
+// ---------------------------------------------------------------------------
 // Commitment letter
 // ---------------------------------------------------------------------------
 

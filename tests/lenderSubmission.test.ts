@@ -72,3 +72,45 @@ describe("simulated lender acknowledgment", () => {
     expect(confirmationId).toMatch(/^ROCK-\d{9}$/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Dual-AUS LPA leg (simulated, mirrors the DU simulation seam)
+// ---------------------------------------------------------------------------
+import { submitToLPA } from "../server/services/ausSubmission";
+
+describe("LPA leg (dual AUS)", () => {
+  const baseInput = {
+    applicationId: "app-123",
+    loanAmount: 400_000,
+    propertyValue: 500_000,
+    creditScore: 720,
+    dti: 0.38,
+    voaReportId: null,
+    voieReportId: null,
+    auditCopyToken: null,
+  };
+
+  it("returns a deterministic simulated Accept for a clean casefile", async () => {
+    const a = await submitToLPA(baseInput);
+    const b = await submitToLPA(baseInput);
+    expect(a).toEqual(b);
+    expect(a.simulated).toBe(true);
+    expect(a.riskClass).toBe("accept");
+    expect(a.purchaseEligibility).toBe("eligible");
+  });
+
+  it("reads borderline DTI more conservatively than the DU sim (45% vs 50%)", async () => {
+    const lpa = await submitToLPA({ ...baseInput, dti: 0.47 });
+    expect(lpa.riskClass).toBe("caution");
+  });
+
+  it("marks >97% LTV purchase-ineligible", async () => {
+    const lpa = await submitToLPA({ ...baseInput, loanAmount: 495_000 });
+    expect(lpa.purchaseEligibility).toBe("ineligible");
+  });
+
+  it("goes Caution on sub-620 or missing credit", async () => {
+    expect((await submitToLPA({ ...baseInput, creditScore: 600 })).riskClass).toBe("caution");
+    expect((await submitToLPA({ ...baseInput, creditScore: null })).riskClass).toBe("caution");
+  });
+});
