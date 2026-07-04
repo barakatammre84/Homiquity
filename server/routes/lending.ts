@@ -38,6 +38,7 @@ import { assertVerifiedForDecisioning, isDecisionGrade, type DataProvenance } fr
 import { assertStageRequirements } from "@shared/stageRequirements";
 import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
 import { evaluateTridTrigger, tridHardStopError } from "../services/trid";
+import { intakePausedGate } from "../services/maintenanceMode";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -448,7 +449,7 @@ export function registerLendingRoutes(
     }
   });
 
-  app.post("/api/loan-applications", isAuthenticated, async (req, res) => {
+  app.post("/api/loan-applications", isAuthenticated, intakePausedGate, async (req, res) => {
     try {
       const user = req.user as User;
       const userId = user.id;

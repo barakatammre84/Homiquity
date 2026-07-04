@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { US_STATES } from "@/lib/us-states";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
 import { 
@@ -945,7 +946,7 @@ function PreApprovalFunnel() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to submit application. Please try again.",
+        description: friendlyApiError(error, "Failed to submit application. Please try again."),
         variant: "destructive",
       });
     },
