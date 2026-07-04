@@ -3,7 +3,20 @@ import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Building, MapPin, FileCheck, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  Shield,
+  Building,
+  MapPin,
+  FileCheck,
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  Monitor,
+  RefreshCw,
+  CreditCard,
+  Accessibility,
+  Scale,
+} from "lucide-react";
 
 const LICENSING_STATES = [
   "Alabama", "Arizona", "California", "Colorado", "Connecticut", "Delaware",
@@ -167,6 +180,88 @@ export default function Disclosures() {
           </CardContent>
         </Card>
 
+        <Card data-testid="card-not-commitment">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 flex-wrap">
+              <FileText className="h-5 w-5 text-primary" />
+              Not a Commitment to Lend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              The information provided on the Homiquity platform is for general informational purposes and does not
+              constitute an offer or commitment to lend, a guarantee of any particular rate or term, or approval of
+              any application. All loans are subject to credit approval, income and asset verification, property
+              appraisal, and satisfaction of all underwriting conditions.
+            </p>
+            <p>
+              Any rates, payments, or terms shown are illustrative, may not reflect your individual circumstances, and
+              are subject to the disclosures presented at the time they are displayed. Receipt of a pre-approval or
+              pre-qualification does not guarantee a final loan approval.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-credit-inquiries">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 flex-wrap">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Credit Inquiries
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              With your authorization, we obtain your credit report to evaluate your eligibility. A preliminary rate
+              quote or pre-qualification typically uses a soft credit inquiry, which does not affect your credit score.
+            </p>
+            <p>
+              A full mortgage application generally requires a hard credit inquiry, which may affect your credit score.
+              We handle credit information in accordance with the Fair Credit Reporting Act (FCRA).
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-electronic-communications">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 flex-wrap">
+              <Monitor className="h-5 w-5 text-primary" />
+              Electronic Communications (E-SIGN)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              By using the Services and consenting to electronic records, you agree that we may provide disclosures,
+              notices, and documents to you electronically in accordance with the federal Electronic Signatures in
+              Global and National Commerce Act (E-SIGN Act). Electronic disclosures are considered to be "in writing."
+            </p>
+            <p>
+              To access electronic disclosures you need a device with internet access, a current web browser, and the
+              ability to view and save PDF documents. You may withdraw your consent or request paper copies at any time
+              by contacting us; withdrawing consent may affect our ability to serve you online.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-servicing-transfer">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 flex-wrap">
+              <RefreshCw className="h-5 w-5 text-primary" />
+              Transfer of Loan Servicing
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              The servicing of your mortgage loan — the collection of your payments — may be assigned, sold, or
+              transferred to another party. Your loan terms will not change as a result of a servicing transfer.
+            </p>
+            <p>
+              If servicing of your loan is transferred, you will receive advance written notice as required by the
+              Real Estate Settlement Procedures Act (RESPA), including the effective date and the contact information
+              for your new servicer.
+            </p>
+          </CardContent>
+        </Card>
+
         <Card data-testid="card-affiliated-business">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 flex-wrap">
@@ -184,6 +279,47 @@ export default function Disclosures() {
               You are not required to use any of our affiliated service providers. You are free to shop for 
               and select your own providers for settlement services. Your choice of providers will not affect 
               our decision to approve or deny your loan application.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-complaints">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 flex-wrap">
+              <Scale className="h-5 w-5 text-primary" />
+              Complaints & State Regulators
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              If you have a complaint about your loan or our services, please contact our compliance team at
+              compliance@homiquity.com so we can work to resolve it.
+            </p>
+            <p>
+              You may also file a complaint with the Consumer Financial Protection Bureau (CFPB) at consumerfinance.gov,
+              with the New York State Department of Financial Services, or with the mortgage regulator in your state of
+              residence. State-specific complaint and disclosure notices are provided during the application process
+              where required by law.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-accessibility">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 flex-wrap">
+              <Accessibility className="h-5 w-5 text-primary" />
+              Website Accessibility
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              Homiquity is committed to making its website accessible to all users, including people with disabilities,
+              and strives to conform to the Web Content Accessibility Guidelines (WCAG) 2.1 Level AA.
+            </p>
+            <p>
+              If you experience any difficulty accessing part of our website, please contact us at
+              accessibility@homiquity.com or 1-800-HOMIQTY so we can assist you and continue to improve the experience
+              for everyone.
             </p>
           </CardContent>
         </Card>

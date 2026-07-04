@@ -160,7 +160,7 @@ export async function seed() {
 
   // [units, occupancy] -> max LTV. Standard purchase/fixed-rate limits.
   // Second homes are 1-unit only; other combinations are intentionally unseeded
-  // (out of band -> manual review).
+  // (a matrix miss routes to manual review as out-of-band).
   const maxLtvDefs: Array<{ units: number; occupancy: string; maxLtv: number }> = [
     { units: 1, occupancy: "PRIMARY", maxLtv: 95 },
     { units: 2, occupancy: "PRIMARY", maxLtv: 85 },

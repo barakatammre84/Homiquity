@@ -1,7 +1,7 @@
 /**
  * Single source of truth for agency loan limits.
  *
- * Keeping this here (rather than as scattered literals) prevents the classes of
+ * Keeping this here (rather than as scattered literals) prevents the class of
  * bug where one surface quotes a stale limit while another quotes the current
  * one — e.g. the borrower graph calling a $790k loan "jumbo" against the 2024
  * value while the rate sheets price it as conforming against the 2026 value.

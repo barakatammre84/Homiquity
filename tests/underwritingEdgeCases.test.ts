@@ -20,10 +20,10 @@ vi.mock("../server/services/lookupResolver", () => ({
       };
       return scalars[code];
     },
-    // Eligibility matrices must cover the fixture's coordinates; pricing
-    // matrices (PMI/LLPA) resolve to a 0 adjustment.
-    resolveMatrixValue: async ({ matrixCode }: { matrixCode: string }) =>
-      matrixCode === "CONVENTIONAL_MAX_LTV" ? 97 : 0,
+    // Occupancy max-LTV mirrors the cap above; PMI/LLPA rates are 0 so pricing
+    // does not affect the value-guard assertions.
+    resolveMatrixValue: async (query: { matrixCode?: string }) =>
+      query?.matrixCode === "CONVENTIONAL_MAX_LTV" ? 97 : 0,
   },
 }));
 

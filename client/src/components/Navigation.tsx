@@ -185,6 +185,11 @@ export function Navigation() {
                 Resources
               </button>
             </Link>
+            <Link href="/glossary">
+              <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
+                Glossary
+              </button>
+            </Link>
           </div>
 
           <div className="flex items-center gap-2">
@@ -330,10 +335,18 @@ export function Navigation() {
               </Link>
               <Link href="/resources">
                 <button
-                  className="w-full py-4 text-left font-medium text-foreground"
+                  className="w-full border-b border-border py-4 text-left font-medium text-foreground"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Resources
+                </button>
+              </Link>
+              <Link href="/glossary">
+                <button
+                  className="w-full py-4 text-left font-medium text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Glossary
                 </button>
               </Link>
 
