@@ -1519,5 +1519,24 @@ describe("evaluateGseSubmissionReadiness — submit-gse 422 gate", () => {
     expect(gate.blocked).toBe(false);
     expect(gate.body.gseReady).toBe(true);
     expect(gate.body.missingFields).toEqual([]);
+    expect(gate.body.coApplicantLimitation).toBeNull();
+  });
+
+  it("blocks a declared co-borrower with zero URLA records, even when everything else is GSE-ready (LO-M11)", async () => {
+    // Pre-fix, this exact application sailed through: per-field co-borrower
+    // gaps fold into criticalErrors, but a co-borrower missing from the
+    // casefile ENTIRELY produced only the advisory coApplicantLimitation note,
+    // which the gate never read — a joint application could reach DU with one
+    // borrower absent.
+    setFixtures(gseReadyOpts({ profile: { ...militaryProfile(), hasCoBorrower: true } }));
+    const result = await validateMISMOCompleteness("app-1");
+    const gate = evaluateGseSubmissionReadiness(result);
+
+    expect(result.gseGatingFailed).toBe(false);
+    expect(result.criticalErrors).toEqual([]);
+    expect(result.coApplicantLimitation).not.toBeNull();
+    expect(gate.blocked).toBe(true);
+    expect(gate.status).toBe(422);
+    expect(gate.body.coApplicantLimitation).toMatch(/co-borrower is indicated/i);
   });
 });
