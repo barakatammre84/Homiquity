@@ -765,6 +765,8 @@ export interface GseSubmissionGate {
     overallScore: number;
     criticalErrors: string[];
     missingFields: string[];
+    /** Set when a declared co-borrower has no URLA records at all (LO-M11). */
+    coApplicantLimitation: string | null;
   };
 }
 
@@ -773,13 +775,17 @@ export interface GseSubmissionGate {
  * application may be submitted to Fannie Mae DU, and build the 422 payload the
  * route returns when it may not.
  *
- * Blocks on missing required URLA fields (gating sections 1a/4/5) or any
+ * Blocks on missing required URLA fields (gating sections 1a/4/5), any
  * criticalError — the latter already folds in ARM and ATR/QM regulatory
- * failures. Deliberately does NOT block on the >=90 overallScore threshold
- * that gseReady additionally requires: an application with every required
- * field present but sparse optional fields can score below 90, and blocking it
- * would return an empty, unactionable error list. Kept as a pure function so
- * the gate decision is unit-testable without mounting the route.
+ * failures — or a declared co-borrower with no URLA records at all
+ * (coApplicantLimitation, LO-M11: a joint application whose co-borrower is
+ * entirely absent from the casefile must never reach DU; per-field co-borrower
+ * gaps already surface through criticalErrors, this closes the zero-rows edge).
+ * Deliberately does NOT block on the >=90 overallScore threshold that gseReady
+ * additionally requires: an application with every required field present but
+ * sparse optional fields can score below 90, and blocking it would return an
+ * empty, unactionable error list. Kept as a pure function so the gate decision
+ * is unit-testable without mounting the route.
  */
 export function evaluateGseSubmissionReadiness(validation: MISMOValidationResult): GseSubmissionGate {
   const missingFields = validation.sections
@@ -787,7 +793,10 @@ export function evaluateGseSubmissionReadiness(validation: MISMOValidationResult
     .flatMap(s => s.missingFields.map(f => `${s.section}: ${f}`));
 
   return {
-    blocked: validation.gseGatingFailed || validation.criticalErrors.length > 0,
+    blocked:
+      validation.gseGatingFailed ||
+      validation.criticalErrors.length > 0 ||
+      validation.coApplicantLimitation !== null,
     status: 422,
     body: {
       error:
@@ -797,6 +806,7 @@ export function evaluateGseSubmissionReadiness(validation: MISMOValidationResult
       overallScore: validation.overallScore,
       criticalErrors: validation.criticalErrors,
       missingFields,
+      coApplicantLimitation: validation.coApplicantLimitation,
     },
   };
 }
