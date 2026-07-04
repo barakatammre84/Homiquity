@@ -248,6 +248,11 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: describeEngineGap(err), metrics: null, resolvedPolicy: null, ...base };
   }
 
+  // Subject-property occupancy and unit count drive the agency max-LTV
+  // eligibility caps; pull them from the URLA property record when captured so a
+  // multi-unit or investment property is not decisioned as an owner-occupied SFR.
+  const propertyInfo = await storage.getUrlaPropertyInfo(applicationId);
+
   // Run the deterministic engine on the aggregated, multi-borrower figures.
   const input: UnderwritingInput = {
     isVeteran: app.isVeteran ?? false,
@@ -261,6 +266,8 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     proposedPiti: monthlyPiti,
     assets: fin.assets,
     subjectPropertyState: app.propertyState ?? undefined,
+    occupancyType: propertyInfo?.occupancyType ?? undefined,
+    numberOfUnits: propertyInfo?.numberOfUnits ?? undefined,
   };
 
   let result;

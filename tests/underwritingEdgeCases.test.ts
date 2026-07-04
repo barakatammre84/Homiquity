@@ -13,12 +13,17 @@ vi.mock("../server/services/lookupResolver", () => ({
         CONVENTIONAL_DTI_CAP: 43,
         CONVENTIONAL_STRETCH_DTI: 50,
         CONVENTIONAL_LTV_CAP: 97,
+        CONVENTIONAL_FICO_FLOOR: 620,
+        CONFORMING_LOAN_LIMIT: 806500,
         HAIRCUT_STOCK_INVESTMENT: 70,
         HAIRCUT_RETIREMENT: 60,
       };
       return scalars[code];
     },
-    resolveMatrixValue: async () => 0,
+    // Occupancy max-LTV mirrors the cap above; PMI/LLPA rates are 0 so pricing
+    // does not affect the value-guard assertions.
+    resolveMatrixValue: async (query: { matrixCode?: string }) =>
+      query?.matrixCode === "CONVENTIONAL_MAX_LTV" ? 97 : 0,
   },
 }));
 
