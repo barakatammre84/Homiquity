@@ -35,7 +35,7 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 | "Homiquity is a licensed broker" | **False.** `server/config/company.ts`: `nmlsId: "PENDING"`, `mersOrgId: "PENDING"`. Nothing commercial is real until F1 clears. | Everything |
 | "The app sends email" | **False in prod.** Code is complete (SendGrid + SMTP fallback) but no `SENDGRID_API_KEY` in Vercel → emails log to console | LS-2 |
 | "Production errors are visible" | **False.** Sentry-style reporter built, no-op until `SENTRY_DSN` is set; no uptime monitor | LS-2 |
-| "Uploaded documents persist in prod" | **False.** Multer disk path writes to serverless `/tmp` and vanishes; GCS presigned flow needs bucket credentials. Fix is open PR #44 + LS-2 env vars | LS-2, PR #44 |
+| "Uploaded documents persist in prod" | **False until LS-2.** Code side done (merged 2026-07-04, PR #44): the multer disk path is deleted, presigned-URL flow is the only path, and `request-url` returns a deliberate 503 `UPLOADS_UNCONFIGURED` until storage exists. Remaining = GCS bucket + credentials in Vercel, then the prod acceptance test | LS-2 |
 | "CI runs on every push" | **False on `main`.** `.github/` does not exist on `main`. A finished `ci.yml` exists on local branch `claude/inspiring-faraday-86b6b2` (commit `4fa08ad`) but the automation token lacks `workflow` scope — **a human must push it**. Until then all checks are manual (`npm run check`, `npm test`) | Roadmap #5 |
 | "Live mortgage rates" | Real vendor (realty-us RapidAPI) but key exists only in Vercel; local/dev sees simulated survey | — |
 
