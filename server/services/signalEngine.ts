@@ -40,15 +40,21 @@ const DSCR_SIGNAL_WINDOW_DAYS = 30;
 async function buildDscrSignals(): Promise<StaffSignal[]> {
   try {
     const candidates = await storage.getRecentDscrCandidates(DSCR_SIGNAL_WINDOW_DAYS, 20);
-    return candidates.map((c) => ({
-      type: "investor_candidate" as const,
-      priority: 3 as const,
-      applicationId: null,
-      userId: c.userId,
-      borrowerName: c.userName || "Borrower",
-      title: "Investor-loan (DSCR) candidate",
-      detail: `Rental income (Schedule E${c.rentalPropertyCount ? `, ${c.rentalPropertyCount} propert${c.rentalPropertyCount === 1 ? "y" : "ies"}` : ""}) found on ${c.taxYear} tax return.`,
-    }));
+    return candidates.map((c) => {
+      const props = c.rentalPropertyCount
+        ? `, ${c.rentalPropertyCount} propert${c.rentalPropertyCount === 1 ? "y" : "ies"}`
+        : "";
+      const via = c.cpaFirm ? ` Referred by ${c.cpaFirm} (CPA).` : "";
+      return {
+        type: "investor_candidate" as const,
+        priority: 3 as const,
+        applicationId: null,
+        userId: c.userId,
+        borrowerName: c.userName || "Borrower",
+        title: "Investor-loan (DSCR) candidate",
+        detail: `Rental income (Schedule E${props}) found on ${c.taxYear} tax return.${via}`,
+      };
+    });
   } catch (err) {
     console.warn("[Signals] DSCR candidate fetch failed (non-fatal):", err);
     return [];

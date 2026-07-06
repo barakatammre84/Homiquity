@@ -99,6 +99,9 @@ const ReferralLanding = lazy(() => import("@/pages/agent-broker/ReferralLanding"
 const PartnerLanding = lazy(() => import("@/pages/agent-broker/PartnerLanding"));
 const ApplyInvite = lazy(() => import("@/pages/agent-broker/ApplyInvite"));
 const FindAnAgent = lazy(() => import("@/pages/agent-broker/FindAnAgent"));
+const CpaPartnerLanding = lazy(() => import("@/pages/agent-broker/CpaPartnerLanding"));
+const CpaInviteLanding = lazy(() => import("@/pages/agent-broker/CpaInviteLanding"));
+const CpaPortal = lazy(() => import("@/pages/agent-broker/CpaPortal"));
 
 const ScenarioDesk = lazy(() => import("@/pages/realtor-engine/ScenarioDesk"));
 const DealRescue = lazy(() => import("@/pages/realtor-engine/DealRescue"));
@@ -163,6 +166,10 @@ function StaffPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"]}>{children}</PrivateLayout>;
 }
 
+function CpaPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["cpa", "admin"]}>{children}</PrivateLayout>;
+}
+
 function AdminPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={["admin"]}>{children}</PrivateLayout>;
 }
@@ -213,6 +220,13 @@ function Router() {
         </Route>
         <Route path="/partner/:profileId">
           {(params) => <Gated><BareLayout><PartnerLanding /></BareLayout></Gated>}
+        </Route>
+        {/* CPA channel: /for-cpas is B2B partner onboarding (ungated); the client
+            invite landing is gated like /ref/:code so it funnels to the waitlist
+            during prelaunch. */}
+        <Route path="/for-cpas"><BareLayout><CpaPartnerLanding /></BareLayout></Route>
+        <Route path="/cpa/:code">
+          {(params) => <Gated><BareLayout><CpaInviteLanding /></BareLayout></Gated>}
         </Route>
         <Route path="/find-an-agent">
           <Gated><PublicPage><FindAnAgent /></PublicPage></Gated>
@@ -379,6 +393,9 @@ function Router() {
         </Route>
         <Route path="/broker-dashboard">
           <StaffPage><BrokerDashboard /></StaffPage>
+        </Route>
+        <Route path="/cpa-portal">
+          <CpaPage><CpaPortal /></CpaPage>
         </Route>
         <Route path="/invite-clients">
           <StaffPage><InviteGenerator /></StaffPage>

@@ -301,6 +301,12 @@ import {
   taxInsights,
   type TaxInsight,
   type InsertTaxInsight,
+  cpaPartners,
+  cpaReferrals,
+  type CpaPartner,
+  type InsertCpaPartner,
+  type CpaReferral,
+  type InsertCpaReferral,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -751,7 +757,19 @@ export interface IStorage {
   // Tax Insights (derived signals from self-uploaded tax returns)
   upsertTaxInsight(data: InsertTaxInsight): Promise<TaxInsight>;
   getTaxInsightsByUser(userId: string): Promise<TaxInsight[]>;
-  getRecentDscrCandidates(days: number, limit: number): Promise<Array<TaxInsight & { userName: string | null }>>;
+  getRecentDscrCandidates(days: number, limit: number): Promise<Array<TaxInsight & { userName: string | null; cpaFirm: string | null }>>;
+
+  // CPA partner channel (inviter-only referral source)
+  createCpaPartner(data: InsertCpaPartner): Promise<CpaPartner>;
+  getCpaPartnerByCode(code: string): Promise<CpaPartner | undefined>;
+  getCpaPartnerByUserId(userId: string): Promise<CpaPartner | undefined>;
+  getCpaReferralByUser(referredUserId: string): Promise<CpaReferral | undefined>;
+  createCpaReferral(data: InsertCpaReferral): Promise<CpaReferral>;
+  /** Stage-only projection for the CPA portal — never financials or full PII. */
+  getCpaReferralsForPortal(cpaPartnerId: string): Promise<Array<{ displayName: string; stage: string; referredAt: Date }>>;
+  getCpaReferralStats(cpaPartnerId: string): Promise<{ total: number; active: number; exploring: number }>;
+  /** For staff-signal annotation: the CPA firm that referred a user, if any. */
+  getCpaFirmForUser(referredUserId: string): Promise<string | null>;
 
   // Partner Providers & Orders
   createPartnerProvider(data: InsertPartnerProvider): Promise<PartnerProvider>;
@@ -3511,23 +3529,120 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(taxInsights.taxYear));
   }
 
-  async getRecentDscrCandidates(days: number, limit: number): Promise<Array<TaxInsight & { userName: string | null }>> {
+  async getRecentDscrCandidates(days: number, limit: number): Promise<Array<TaxInsight & { userName: string | null; cpaFirm: string | null }>> {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const rows = await db
       .select({
         insight: taxInsights,
         firstName: users.firstName,
         lastName: users.lastName,
+        cpaFirm: cpaPartners.firmName,
       })
       .from(taxInsights)
       .innerJoin(users, eq(taxInsights.userId, users.id))
+      .leftJoin(cpaReferrals, eq(cpaReferrals.referredUserId, taxInsights.userId))
+      .leftJoin(cpaPartners, eq(cpaPartners.id, cpaReferrals.cpaPartnerId))
       .where(and(eq(taxInsights.dscrCandidate, true), gte(taxInsights.updatedAt, since)))
       .orderBy(desc(taxInsights.updatedAt))
       .limit(limit);
     return rows.map((r) => ({
       ...r.insight,
       userName: [r.firstName, r.lastName].filter(Boolean).join(" ") || null,
+      cpaFirm: r.cpaFirm ?? null,
     }));
+  }
+
+  // ===== CPA PARTNER CHANNEL =====
+  async createCpaPartner(data: InsertCpaPartner): Promise<CpaPartner> {
+    const [row] = await db.insert(cpaPartners).values(data).returning();
+    return row;
+  }
+
+  async getCpaPartnerByCode(code: string): Promise<CpaPartner | undefined> {
+    const [row] = await db.select().from(cpaPartners).where(eq(cpaPartners.referralCode, code)).limit(1);
+    return row;
+  }
+
+  async getCpaPartnerByUserId(userId: string): Promise<CpaPartner | undefined> {
+    const [row] = await db.select().from(cpaPartners).where(eq(cpaPartners.userId, userId)).limit(1);
+    return row;
+  }
+
+  async getCpaReferralByUser(referredUserId: string): Promise<CpaReferral | undefined> {
+    const [row] = await db.select().from(cpaReferrals).where(eq(cpaReferrals.referredUserId, referredUserId)).limit(1);
+    return row;
+  }
+
+  async createCpaReferral(data: InsertCpaReferral): Promise<CpaReferral> {
+    const [row] = await db.insert(cpaReferrals).values(data).returning();
+    return row;
+  }
+
+  async getCpaReferralsForPortal(
+    cpaPartnerId: string,
+  ): Promise<Array<{ displayName: string; stage: string; referredAt: Date }>> {
+    const refs = await db
+      .select({
+        referredUserId: cpaReferrals.referredUserId,
+        clientName: cpaReferrals.clientName,
+        referredAt: cpaReferrals.createdAt,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(cpaReferrals)
+      .innerJoin(users, eq(cpaReferrals.referredUserId, users.id))
+      .where(eq(cpaReferrals.cpaPartnerId, cpaPartnerId))
+      .orderBy(desc(cpaReferrals.createdAt));
+
+    // Latest application status per referred user (stage only — no financials).
+    const userIds = refs.map((r) => r.referredUserId);
+    const stageByUser = new Map<string, string>();
+    if (userIds.length > 0) {
+      const apps = await db
+        .select({
+          userId: loanApplications.userId,
+          status: loanApplications.status,
+          createdAt: loanApplications.createdAt,
+        })
+        .from(loanApplications)
+        .where(inArray(loanApplications.userId, userIds))
+        .orderBy(desc(loanApplications.createdAt));
+      for (const a of apps) {
+        if (!stageByUser.has(a.userId)) stageByUser.set(a.userId, a.status); // desc → first is latest
+      }
+    }
+
+    return refs.map((r) => {
+      // Privacy minimization: first name + last initial only. Never email,
+      // income, tax figures, or DSCR flags — a CPA is an inviter, not a
+      // recipient of borrower financial data (IRC §7216).
+      const initial = r.lastName ? `${r.lastName.charAt(0)}.` : "";
+      const displayName =
+        [r.firstName, initial].filter(Boolean).join(" ") || r.clientName || "Client";
+      return {
+        displayName,
+        stage: stageByUser.get(r.referredUserId) ?? "exploring",
+        referredAt: r.referredAt,
+      };
+    });
+  }
+
+  async getCpaReferralStats(
+    cpaPartnerId: string,
+  ): Promise<{ total: number; active: number; exploring: number }> {
+    const portal = await this.getCpaReferralsForPortal(cpaPartnerId);
+    const exploring = portal.filter((p) => p.stage === "exploring").length;
+    return { total: portal.length, active: portal.length - exploring, exploring };
+  }
+
+  async getCpaFirmForUser(referredUserId: string): Promise<string | null> {
+    const [row] = await db
+      .select({ firmName: cpaPartners.firmName })
+      .from(cpaReferrals)
+      .innerJoin(cpaPartners, eq(cpaReferrals.cpaPartnerId, cpaPartners.id))
+      .where(eq(cpaReferrals.referredUserId, referredUserId))
+      .limit(1);
+    return row?.firmName ?? null;
   }
 
   // ===== PARTNER PROVIDERS =====

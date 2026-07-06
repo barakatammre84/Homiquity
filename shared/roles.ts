@@ -17,6 +17,7 @@ export const STAFF_ROLES = [
   "closer",          // Closer/Funder - Wire management & final docs
   "broker",          // Mortgage Broker - Loan origination & lender relationships
   "lender",          // Lender Representative - Loan product & pricing management
+  "cpa",             // CPA Partner - Inviter-only referral source (never sees borrower data)
 ] as const;
 
 // Client Roles
@@ -39,6 +40,7 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   closer: "Closer/Funder",
   broker: "Mortgage Broker",
   lender: "Lender Representative",
+  cpa: "CPA Partner",
   aspiring_owner: "Aspiring Owner",
   active_buyer: "Active Buyer",
 };
@@ -53,6 +55,7 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   closer: "Wire management, final document sign-off",
   broker: "Loan origination, lender relationships, deal management",
   lender: "Loan product management, pricing, approvals",
+  cpa: "Refer clients to check home-buying readiness; sees referral progress only",
   aspiring_owner: "Explore homeownership, sandbox mode, gap calculator",
   active_buyer: "Apply for mortgages, upload documents, track progress",
 };

@@ -6,7 +6,7 @@ export interface IAuthStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(userData: { id: string; email?: string | null; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null }): Promise<User>;
-  createUserWithPassword(userData: { email: string; passwordHash: string; firstName?: string | null; lastName?: string | null }): Promise<User>;
+  createUserWithPassword(userData: { email: string; passwordHash: string; firstName?: string | null; lastName?: string | null; role?: string }): Promise<User>;
   upsertSocialUser(userData: { email: string; firstName?: string | null; lastName?: string | null; profileImageUrl?: string | null; authProvider: string }): Promise<User>;
   setLockoutState(userId: string, state: { failedLoginAttempts: number; lockoutUntil: Date | null }): Promise<void>;
   // Password + email-verification token lifecycle.
@@ -53,7 +53,7 @@ class AuthStorage implements IAuthStorage {
     return user;
   }
 
-  async createUserWithPassword(userData: { email: string; passwordHash: string; firstName?: string | null; lastName?: string | null }): Promise<User> {
+  async createUserWithPassword(userData: { email: string; passwordHash: string; firstName?: string | null; lastName?: string | null; role?: string }): Promise<User> {
     const [user] = await db
       .insert(users)
       .values({
@@ -62,7 +62,9 @@ class AuthStorage implements IAuthStorage {
         authProvider: "email",
         firstName: userData.firstName ?? null,
         lastName: userData.lastName ?? null,
-        role: "aspiring_owner",
+        // Defaults to the borrower role; callers that create partner accounts
+        // (e.g. CPA onboarding) pass an explicit role.
+        role: userData.role ?? "aspiring_owner",
       })
       .returning();
     return user;
