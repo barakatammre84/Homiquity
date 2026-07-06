@@ -956,6 +956,11 @@ export interface MISMOGenerationOptions {
   purpose?: "underwriting" | "loanDelivery";
   /** Note date (YYYY-MM-DD) for the AtClosing loan state, when known. */
   noteDate?: string;
+  /**
+   * Generation clock for ABOUT_VERSION CreatedDatetime and the Current
+   * loan-state date. Same inputs + same clock ⇒ byte-identical XML.
+   */
+  generatedAt?: Date;
 }
 
 export function generateMISMO34XML(
@@ -968,6 +973,7 @@ export function generateMISMO34XML(
     generateMersMin = true,
     purpose = "underwriting",
     noteDate,
+    generatedAt = new Date(),
   } = options;
 
   let mersMin: string | undefined;
@@ -999,7 +1005,7 @@ export function generateMISMO34XML(
         buildLoanNode(dto, mersMin, { loanStateType: "AtClosing", loanStateDate: noteDate }),
         buildLoanNode(dto, mersMin, {
           loanStateType: "Current",
-          loanStateDate: new Date().toISOString().slice(0, 10),
+          loanStateDate: generatedAt.toISOString().slice(0, 10),
         }),
       ],
     });
@@ -1044,7 +1050,7 @@ export function generateMISMO34XML(
         {
           tag: "ABOUT_VERSION",
           children: [
-            { tag: "CreatedDatetime", text: new Date().toISOString() },
+            { tag: "CreatedDatetime", text: generatedAt.toISOString() },
             { tag: "DataVersionIdentifier", text: "3.4.0" },
             { tag: "DataVersionName", text: "MISMO" },
           ],

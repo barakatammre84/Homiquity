@@ -88,8 +88,12 @@ export interface LenderPackage {
  * snapshot, not regenerated later — see mismoPackageXml on lender_submissions).
  * Pure — unit-tested directly; submitToWholesaleLender supplies the DTO.
  */
-export function buildLenderPackage(dto: MISMOLoanDTO, noteDate?: string): LenderPackage {
-  const xml = generateMISMO34XML(dto, { purpose: "loanDelivery", noteDate });
+export function buildLenderPackage(
+  dto: MISMOLoanDTO,
+  noteDate?: string,
+  generatedAt: Date = new Date(),
+): LenderPackage {
+  const xml = generateMISMO34XML(dto, { purpose: "loanDelivery", noteDate, generatedAt });
   const validation = validateMISMOXML(xml);
   const hash = createHash("sha256").update(xml).digest("hex");
   return { xml, hash, validation };
