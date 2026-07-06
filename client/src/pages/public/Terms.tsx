@@ -11,7 +11,7 @@ const SECTIONS = [
   },
   {
     title: "About This Website and Its Content",
-    content: "The Services are owned and operated by Homiquity Corporation and its subsidiaries and provide general information about our and our subsidiaries' mortgage products and services. Your eligibility for any particular product or service is subject to our final determination, restrictions, and acceptance. We may modify, discontinue, or make changes to the information, products, licenses, or services described in the Services at any time, and we reserve the right to terminate any or all offerings without prior notice. Any dated information is published as of its publication date only, and we undertake no obligation to update it. Although we strive to provide accurate and timely information, the Services may contain inadvertent technical or factual inaccuracies or typographical errors, and we do not warrant the accuracy, completeness, or timeliness of any content, text, graphics, or links.",
+    content: "The Services are owned and operated by Homiquity Mortgage Corporation and its subsidiaries and provide general information about our and our subsidiaries' mortgage products and services. Your eligibility for any particular product or service is subject to our final determination, restrictions, and acceptance. We may modify, discontinue, or make changes to the information, products, licenses, or services described in the Services at any time, and we reserve the right to terminate any or all offerings without prior notice. Any dated information is published as of its publication date only, and we undertake no obligation to update it. Although we strive to provide accurate and timely information, the Services may contain inadvertent technical or factual inaccuracies or typographical errors, and we do not warrant the accuracy, completeness, or timeliness of any content, text, graphics, or links.",
   },
   {
     title: "Eligibility",
@@ -19,7 +19,7 @@ const SECTIONS = [
   },
   {
     title: "Description of Services",
-    content: "Homiquity provides a digital mortgage platform that facilitates pre-approvals, loan applications, document management, and related mortgage services. Our platform connects borrowers with lending products and provides tools to evaluate mortgage options. Homiquity acts as a mortgage broker and/or direct lender depending on the product and state. By offering information, products, or services through the Services, we make no solicitation to any person to use them in jurisdictions where doing so is prohibited by law.",
+    content: "Homiquity provides a digital mortgage platform that facilitates pre-approvals, loan applications, document management, and related mortgage services. Our platform connects borrowers with lending products and provides tools to evaluate mortgage options. Homiquity acts as a mortgage broker, arranging loans with third-party wholesale lending partners; Homiquity does not make credit decisions or fund loans. By offering information, products, or services through the Services, we make no solicitation to any person to use them in jurisdictions where doing so is prohibited by law.",
   },
   {
     title: "Your Account",
@@ -55,7 +55,7 @@ const SECTIONS = [
   },
   {
     title: "Intellectual Property",
-    content: "All content, features, and functionality of the Homiquity platform, including but not limited to text, graphics, logos, icons, software, expressions, and the compilation thereof, are the exclusive property of Homiquity Corporation and are protected by U.S. and international copyright, trademark, patent, publicity, and other intellectual property laws. You may print a copy of the information contained in the Services solely for your personal, non-commercial use; this right may be revoked at any time. Any commercial use of the Services or their content is prohibited.",
+    content: "All content, features, and functionality of the Homiquity platform, including but not limited to text, graphics, logos, icons, software, expressions, and the compilation thereof, are the exclusive property of Homiquity Mortgage Corporation and are protected by U.S. and international copyright, trademark, patent, publicity, and other intellectual property laws. You may print a copy of the information contained in the Services solely for your personal, non-commercial use; this right may be revoked at any time. Any commercial use of the Services or their content is prohibited.",
   },
   {
     title: "Prohibited Uses",
@@ -67,11 +67,11 @@ const SECTIONS = [
   },
   {
     title: "Limitation of Liability",
-    content: "To the fullest extent permitted by law, Homiquity Corporation and its subsidiaries, officers, directors, employees, and agents shall not be liable for any direct, indirect, special, incidental, consequential, or punitive damages arising out of or in connection with the Services or your use of, or inability to use, the Services, including damages arising from any failure of performance, error, omission, interruption, defect, delay in operation or transmission, computer virus, system failure, or disclosure of information, even if we have been advised of the possibility of such damages. Some jurisdictions do not allow the exclusion or limitation of certain damages, in which case our liability is limited to the greatest extent permitted by law. Where liability cannot be excluded, our total liability shall not exceed the fees, if any, you paid to access the Services during the twelve months preceding the claim.",
+    content: "To the fullest extent permitted by law, Homiquity Mortgage Corporation and its subsidiaries, officers, directors, employees, and agents shall not be liable for any direct, indirect, special, incidental, consequential, or punitive damages arising out of or in connection with the Services or your use of, or inability to use, the Services, including damages arising from any failure of performance, error, omission, interruption, defect, delay in operation or transmission, computer virus, system failure, or disclosure of information, even if we have been advised of the possibility of such damages. Some jurisdictions do not allow the exclusion or limitation of certain damages, in which case our liability is limited to the greatest extent permitted by law. Where liability cannot be excluded, our total liability shall not exceed the fees, if any, you paid to access the Services during the twelve months preceding the claim.",
   },
   {
     title: "Indemnification",
-    content: "You agree to indemnify and hold harmless Homiquity Corporation and its subsidiaries from and against any and all claims, losses, expenses, demands, or liabilities, including reasonable attorneys' fees and costs, arising out of your use of the Services in violation of these Terms or of any applicable law, or out of any third-party claim (including any intellectual-property claim). You agree to cooperate fully in the defense of any such claim. We reserve the right, at our own expense, to assume the exclusive defense and control of any matter otherwise subject to indemnification by you, and you will not settle any such claim without our written consent.",
+    content: "You agree to indemnify and hold harmless Homiquity Mortgage Corporation and its subsidiaries from and against any and all claims, losses, expenses, demands, or liabilities, including reasonable attorneys' fees and costs, arising out of your use of the Services in violation of these Terms or of any applicable law, or out of any third-party claim (including any intellectual-property claim). You agree to cooperate fully in the defense of any such claim. We reserve the right, at our own expense, to assume the exclusive defense and control of any matter otherwise subject to indemnification by you, and you will not settle any such claim without our written consent.",
   },
   {
     title: "Dispute Resolution",
@@ -117,7 +117,7 @@ export default function Terms() {
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-warning-subtle-foreground" />
               <p className="text-sm text-muted-foreground leading-relaxed">
-                These Terms of Use constitute a legally binding agreement between you and Homiquity Corporation. 
+                These Terms of Use constitute a legally binding agreement between you and Homiquity Mortgage Corporation. 
                 By using our services, you acknowledge that you have read, understood, and agree to be bound by these terms.
               </p>
             </div>

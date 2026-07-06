@@ -1796,7 +1796,7 @@ function PreApprovalFunnel() {
               <div>
                 <p className="font-semibold text-foreground text-base mb-3">Homiquity</p>
                 <p className="text-muted-foreground text-xs leading-relaxed">
-                  Homiquity Mortgage Corporation is a direct lender dedicated to providing a fast, transparent digital mortgage experience backed by superior customer support.
+                  Homiquity Mortgage Corporation is a mortgage broker. Loans are arranged with third-party wholesale lending partners; Homiquity does not make credit decisions or fund loans.
                 </p>
               </div>
               <div>
@@ -1819,7 +1819,7 @@ function PreApprovalFunnel() {
                 <div className="text-xs text-muted-foreground space-y-0.5">
                   <p>NMLS Consumer Access</p>
                   <p>Disclosures & Licensing</p>
-                  <p>Equal Housing Lender</p>
+                  <p>Equal Housing Opportunity</p>
                 </div>
               </div>
             </div>
@@ -1827,10 +1827,10 @@ function PreApprovalFunnel() {
 
           <div className="border-t border-muted pt-4 text-xs text-muted-foreground leading-relaxed space-y-3">
             <p>
-              &copy; {new Date().getFullYear()} Homiquity Mortgage Corporation. All rights reserved. Homiquity is a family of companies serving the homeownership ecosystem including mortgage lending, property search, and AI-powered guidance.
+              &copy; {new Date().getFullYear()} Homiquity Mortgage Corporation. All rights reserved. Homiquity is a family of companies serving the homeownership ecosystem including mortgage brokerage, property search, and AI-powered guidance.
             </p>
             <p>
-              Home lending products offered by Homiquity Mortgage Corporation. NMLS #PENDING. Loans made or arranged pursuant to applicable state licensing. Not available in all states. Equal Housing Lender. NMLS Consumer Access.
+              Mortgage loans arranged by Homiquity Mortgage Corporation through third-party wholesale lending partners. Not available in all states. Equal Housing Opportunity. NMLS Consumer Access.
             </p>
             <div className="flex items-center justify-center gap-4 pt-2">
               <div className="flex items-center gap-1">
@@ -1839,7 +1839,7 @@ function PreApprovalFunnel() {
               </div>
               <div className="flex items-center gap-1">
                 <Home className="h-3.5 w-3.5" />
-                <span>Equal Housing Lender</span>
+                <span>Equal Housing Opportunity</span>
               </div>
             </div>
           </div>

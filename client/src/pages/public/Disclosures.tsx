@@ -2,7 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { COMPANY_IDENTITY, isCompanyNmlsPending } from "@shared/companyIdentity";
 import {
   Shield,
   Building,
@@ -18,21 +18,12 @@ import {
   Scale,
 } from "lucide-react";
 
-const LICENSING_STATES = [
-  "Alabama", "Arizona", "California", "Colorado", "Connecticut", "Delaware",
-  "Florida", "Georgia", "Idaho", "Illinois", "Indiana", "Iowa",
-  "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts",
-  "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska",
-  "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York",
-  "North Carolina", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
-  "South Carolina", "Tennessee", "Texas", "Utah", "Virginia",
-  "Washington", "West Virginia", "Wisconsin",
-];
+// State licensing list intentionally omitted until real licenses are issued (roadmap F1).
 
 export default function Disclosures() {
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead title="Disclosures & Licensing" description="View Homiquity Corporation licensing information, NMLS details, state licensing, equal housing lender disclosure, and affiliated business arrangements." />
+      <SEOHead title="Disclosures & Licensing" description="Homiquity Mortgage Corporation disclosures: our role as a mortgage broker, NMLS Consumer Access, licensing status, Equal Housing Opportunity, and affiliated business arrangements." />
       <Navigation />
 
       <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(213,52%,18%)] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
@@ -64,15 +55,15 @@ export default function Disclosures() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-sm font-medium">Legal Entity</p>
-                <p className="text-sm text-muted-foreground">Homiquity Corporation</p>
+                <p className="text-sm text-muted-foreground">Homiquity Mortgage Corporation</p>
               </div>
               <div>
                 <p className="text-sm font-medium">NMLS ID</p>
-                <p className="text-sm text-muted-foreground">#123456</p>
+                <p className="text-sm text-muted-foreground">{isCompanyNmlsPending() ? "Pending" : COMPANY_IDENTITY.nmlsId}</p>
               </div>
               <div>
-                <p className="text-sm font-medium">Headquarters</p>
-                <p className="text-sm text-muted-foreground">World Trade Center, 200 State Street, New York, NY 10000</p>
+                <p className="text-sm font-medium">Mailing Address</p>
+                <p className="text-sm text-muted-foreground">Available on request — contact us at the email below.</p>
               </div>
               <div>
                 <p className="text-sm font-medium">Contact</p>
@@ -91,7 +82,7 @@ export default function Disclosures() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Homiquity Corporation is registered with the Nationwide Multistate Licensing System & Registry (NMLS). 
+              Homiquity Mortgage Corporation is registered with the Nationwide Multistate Licensing System & Registry (NMLS). 
               You can verify our licensing status, view public filings, and access consumer resources through the 
               NMLS Consumer Access portal.
             </p>
@@ -117,16 +108,10 @@ export default function Disclosures() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Homiquity Corporation is licensed to originate mortgage loans in the following states. 
-              Licensing requirements and available products may vary by state.
+              Homiquity is completing the state mortgage licensing process. Once our licenses
+              are issued, the states where we can arrange financing will be listed here and
+              independently verifiable through NMLS Consumer Access.
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {LICENSING_STATES.map((state) => (
-                <Badge key={state} variant="secondary" className="text-xs">
-                  {state}
-                </Badge>
-              ))}
-            </div>
           </CardContent>
         </Card>
 
@@ -134,14 +119,15 @@ export default function Disclosures() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 flex-wrap">
               <Shield className="h-5 w-5 text-primary" />
-              Equal Housing Lender
+              Equal Housing Opportunity
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Homiquity Corporation is an Equal Housing Lender. We are committed to fair lending practices and 
-              do not discriminate on the basis of race, color, religion, national origin, sex, marital status, 
-              age, disability, familial status, or any other characteristic protected by federal, state, or local law.
+              Homiquity Mortgage Corporation supports Equal Housing Opportunity. We are committed to fair
+              practices and do not discriminate on the basis of race, color, religion, national origin, sex,
+              marital status, age, disability, familial status, or any other characteristic protected by
+              federal, state, or local law.
             </p>
             <div className="flex items-start gap-3 rounded-md border p-4">
               <AlertCircle className="h-5 w-5 shrink-0 text-warning-subtle-foreground" />
@@ -272,7 +258,7 @@ export default function Disclosures() {
           <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
             <p>
               In accordance with Section 8 of the Real Estate Settlement Procedures Act (RESPA), we disclose 
-              that Homiquity Corporation may have business relationships with title companies, appraisal firms, 
+              that Homiquity Mortgage Corporation may have business relationships with title companies, appraisal firms, 
               and insurance providers. These relationships are fully disclosed during the loan application process.
             </p>
             <p>

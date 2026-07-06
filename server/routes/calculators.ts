@@ -4,6 +4,7 @@ import { calculateLLPA } from "../pricing";
 import { getPMIRateCard } from "../propertyAnalyzer";
 import { extractLeaseData } from "../extractionService";
 import { upload, verifyFileSignature } from "./utils";
+import { prelaunchGate } from "../services/prelaunchGate";
 
 // Fallback 30-year fixed base rate used only when no live/maintained rate is
 // available (e.g. database empty or unreachable). The preferred source is the
@@ -66,7 +67,7 @@ export function registerCalculatorRoutes(app: Express, storage: IStorage) {
   // band so client-side calculators can run consistent math without
   // exposing the staff-only pricing engine.
   // ============================================================
-  app.get("/api/calculators/credit-tiers", async (_req, res) => {
+  app.get("/api/calculators/credit-tiers", prelaunchGate, async (_req, res) => {
     try {
       const { baseRate, source } = await resolveBaseRate(storage);
 
