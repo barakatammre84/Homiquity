@@ -56,6 +56,7 @@ const ForgotPassword = lazy(() => import("@/pages/public/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/public/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/public/VerifyEmail"));
 const AffordabilityCheck = lazy(() => import("@/pages/public/AffordabilityCheck"));
+const ApprovalStrength = lazy(() => import("@/pages/public/ApprovalStrength"));
 const Waitlist = lazy(() => import("@/pages/public/Waitlist"));
 
 const PreApproval = lazy(() => import("@/pages/lending/PreApproval"));
@@ -296,6 +297,11 @@ function Router() {
 
         {/* Affordability Check - "Can I Afford This Home?" */}
         <Route path="/afford"><Gated><BareLayout><AffordabilityCheck /></BareLayout></Gated></Route>
+
+        {/* Approval Strength - "Will I qualify?" Gated pre-F1: the tool's whole
+            vocabulary is approval language, which the launch charter bars from
+            the public pre-license surface (kb/ARMED_LAUNCH_CHARTER_2026-07-07.md §2). */}
+        <Route path="/approval-strength"><Gated><BareLayout><ApprovalStrength /></BareLayout></Gated></Route>
 
         {/* Private Pages - Any authenticated user (role-aware content) */}
         <Route path="/dashboard">
