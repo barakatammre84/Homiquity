@@ -9,18 +9,12 @@ import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { NotificationsBell } from "@/components/NotificationsPanel";
 import { SkipLink } from "@/components/SkipLink";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { isStaffRole } from "@shared/roles";
+import { getRoleHomeRoute } from "@/lib/roleRoutes";
 import type { DealActivity } from "@shared/schema";
 
 interface PrivateLayoutProps {
   children: React.ReactNode;
   requiredRoles?: string[];
-}
-
-function getRoleHomeRoute(role: string): string {
-  if (role === "admin") return "/admin";
-  if (isStaffRole(role)) return "/staff-dashboard";
-  return "/dashboard";
 }
 
 export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {

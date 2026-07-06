@@ -3,7 +3,7 @@ import { canAccessRoleQueue } from "../server/services/taskEngine";
 import { getRoleHomeRoute } from "../client/src/lib/roleRoutes";
 
 const INTERNAL_STAFF = ["lo", "loa", "processor", "underwriter", "closer"];
-const EXTERNAL_PARTNERS = ["broker", "lender"];
+const EXTERNAL_PARTNERS = ["broker", "lender", "cpa"];
 const CLIENTS = ["active_buyer", "aspiring_owner"];
 
 describe("canAccessRoleQueue — by-role work queue gate", () => {
@@ -47,6 +47,10 @@ describe("getRoleHomeRoute — post-login landing", () => {
 
   it("routes brokers to their own dashboard", () => {
     expect(getRoleHomeRoute("broker")).toBe("/broker-dashboard");
+  });
+
+  it("routes CPAs to their inviter-only partner portal", () => {
+    expect(getRoleHomeRoute("cpa")).toBe("/cpa-portal");
   });
 
   it("routes internal staff to the operations dashboard", () => {
