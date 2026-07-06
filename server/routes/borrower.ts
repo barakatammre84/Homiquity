@@ -1634,6 +1634,55 @@ export function registerBorrowerRoutes(
     }
   });
 
+  // Revoke a consent the borrower granted for their own data. Only consent
+  // types the borrower may self-revoke go through here: credit consent has a
+  // dedicated staff-gated workflow (/api/credit/consent/:consentId/revoke)
+  // because revoking it mid-application disrupts a regulated flow, and
+  // e-disclosure withdrawal needs a paper-delivery fallback before it can be
+  // honored. tax_document_use promises revocation in its template text.
+  const SELF_REVOCABLE_CONSENT_TYPES = new Set(["tax_document_use"]);
+
+  app.post("/api/consents/:consentType/revoke", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { consentType } = req.params;
+
+      if (!SELF_REVOCABLE_CONSENT_TYPES.has(consentType)) {
+        return res.status(400).json({ error: "This consent type cannot be revoked from here" });
+      }
+
+      const revoked = await storage.revokeConsentsByTypeAndUser(
+        consentType,
+        user.id,
+        "borrower_requested",
+      );
+      if (revoked.length === 0) {
+        return res.status(404).json({ error: "No active consent to revoke" });
+      }
+
+      // Revocation must stop downstream use of already-derived data, not just
+      // future derivations: purge the derived tax_insights rows so the staff
+      // DSCR feed (getRecentDscrCandidates) and the borrower graph stop
+      // reading them. The encrypted extraction lineage stays on the source
+      // document (extraction_raw_* columns) for audit purposes.
+      let taxInsightsDeleted = 0;
+      if (consentType === "tax_document_use") {
+        taxInsightsDeleted = await storage.deleteTaxInsightsByUser(user.id);
+      }
+
+      await logAudit(req, "consent.revoked", "borrower_consent", revoked[0].id, {
+        consentType,
+        consentsRevoked: revoked.length,
+        taxInsightsDeleted,
+      });
+
+      res.json({ revoked: revoked.length, taxInsightsDeleted });
+    } catch (error) {
+      console.error("Revoke consent error:", error);
+      res.status(500).json({ error: "Failed to revoke consent" });
+    }
+  });
+
   // Get consents for current user
   app.get("/api/consents/me", isAuthenticated, async (req, res) => {
     try {

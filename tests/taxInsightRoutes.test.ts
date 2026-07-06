@@ -184,3 +184,119 @@ describe("Tax insight routes", () => {
     expect(res.status).toBe(400);
   });
 });
+
+/**
+ * tax_document_use revocation — the template text promises "You can revoke
+ * this authorization at any time", so revocation must (a) flip isRevoked on
+ * the consent rows, (b) purge derived tax_insights so the staff DSCR feed and
+ * borrower graph stop reading them, and (c) re-lock the processing gate.
+ *
+ * Self-contained: ensures its own consent + insight in beforeAll, so it holds
+ * regardless of what earlier blocks left behind. It deliberately ends with the
+ * renter unconsented, which exercises the consent-gate branch in the block
+ * above on the next run.
+ */
+describe("Tax consent revocation", () => {
+  let renterCookie: string;
+
+  const registerTaxDoc = async () => {
+    const reg = await apiPost(
+      "/api/documents/upload",
+      {
+        objectPath: `/objects/test-tax-revoke-${Date.now()}.pdf`,
+        fileName: "test-tax-return-2025.pdf",
+        fileSize: 123456,
+        mimeType: "application/pdf",
+        documentType: "tax_return",
+      },
+      { headers: { Cookie: renterCookie } },
+    );
+    expect(reg.status).toBeLessThan(300);
+    return reg.body.id as string;
+  };
+
+  beforeAll(async () => {
+    renterCookie = await loginCookie("renter@test.com", TEST_PASSWORD);
+    expect(renterCookie).toBeTruthy();
+
+    // Ensure an active consent and at least one derived insight exist.
+    const consents = await apiGet("/api/consents/me", { headers: { Cookie: renterCookie } });
+    const hasConsent =
+      Array.isArray(consents.body) &&
+      consents.body.some(
+        (c: any) => c.consentType === "tax_document_use" && c.consentGiven && !c.isRevoked,
+      );
+    if (!hasConsent) {
+      const consent = await apiPost(
+        "/api/consents",
+        { consentType: "tax_document_use", consentGiven: true, consentMethod: "click" },
+        { headers: { Cookie: renterCookie } },
+      );
+      expect(consent.status).toBe(201);
+    }
+
+    const processed = await apiPost(
+      "/api/tax-insights/process",
+      { documentId: await registerTaxDoc() },
+      { headers: { Cookie: renterCookie } },
+    );
+    expect(processed.status).toBe(200);
+  });
+
+  it("rejects unauthenticated revocation", async () => {
+    const res = await apiPost("/api/consents/tax_document_use/revoke", {});
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects consent types that are not borrower-self-revocable", async () => {
+    const res = await apiPost(
+      "/api/consents/credit_check/revoke",
+      {},
+      { headers: { Cookie: renterCookie } },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("revokes the consent, purges derived insights, and re-locks the gate", async () => {
+    const res = await apiPost(
+      "/api/consents/tax_document_use/revoke",
+      {},
+      { headers: { Cookie: renterCookie } },
+    );
+    expect(res.status).toBe(200);
+    expect(res.body?.revoked).toBeGreaterThan(0);
+    expect(res.body?.taxInsightsDeleted).toBeGreaterThan(0);
+
+    // No active consent row remains…
+    const consents = await apiGet("/api/consents/me", { headers: { Cookie: renterCookie } });
+    expect(consents.status).toBe(200);
+    const active = (consents.body as any[]).filter(
+      (c) => c.consentType === "tax_document_use" && c.consentGiven && !c.isRevoked,
+    );
+    expect(active.length).toBe(0);
+
+    // …the derived rows are gone (this is what the staff DSCR feed and the
+    // borrower graph read — they select from tax_insights)…
+    const me = await apiGet("/api/tax-insights/me", { headers: { Cookie: renterCookie } });
+    expect(me.status).toBe(200);
+    expect(me.body.insights.length).toBe(0);
+
+    // …and processing is blocked again until fresh consent.
+    const blocked = await apiPost(
+      "/api/tax-insights/process",
+      { documentId: await registerTaxDoc() },
+      { headers: { Cookie: renterCookie } },
+    );
+    expect(blocked.status).toBe(403);
+    expect(blocked.body?.code).toBe("CONSENT_REQUIRED");
+  });
+
+  it("returns 404 when there is no active consent to revoke", async () => {
+    const res = await apiPost(
+      "/api/consents/tax_document_use/revoke",
+      {},
+      { headers: { Cookie: renterCookie } },
+    );
+    expect(res.status).toBe(404);
+  });
+});

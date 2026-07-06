@@ -747,11 +747,13 @@ export interface IStorage {
   getBorrowerConsentsByApplication(applicationId: string): Promise<BorrowerConsent[]>;
   getConsentByTypeAndApplication(consentType: string, applicationId: string): Promise<BorrowerConsent | undefined>;
   getConsentByTypeAndUser(consentType: string, userId: string): Promise<BorrowerConsent | undefined>;
+  revokeConsentsByTypeAndUser(consentType: string, userId: string, reason?: string): Promise<BorrowerConsent[]>;
 
   // Tax Insights (derived signals from self-uploaded tax returns)
   upsertTaxInsight(data: InsertTaxInsight): Promise<TaxInsight>;
   getTaxInsightsByUser(userId: string): Promise<TaxInsight[]>;
   getRecentDscrCandidates(days: number, limit: number): Promise<Array<TaxInsight & { userName: string | null }>>;
+  deleteTaxInsightsByUser(userId: string): Promise<number>;
 
   // Partner Providers & Orders
   createPartnerProvider(data: InsertPartnerProvider): Promise<PartnerProvider>;
@@ -3490,6 +3492,20 @@ export class DatabaseStorage implements IStorage {
     return consent;
   }
 
+  async revokeConsentsByTypeAndUser(consentType: string, userId: string, reason?: string): Promise<BorrowerConsent[]> {
+    return await db
+      .update(borrowerConsents)
+      .set({ isRevoked: true, revokedAt: new Date(), revocationReason: reason ?? null })
+      .where(
+        and(
+          eq(borrowerConsents.consentType, consentType),
+          eq(borrowerConsents.userId, userId),
+          eq(borrowerConsents.isRevoked, false)
+        )
+      )
+      .returning();
+  }
+
   // ===== TAX INSIGHTS =====
   async upsertTaxInsight(data: InsertTaxInsight): Promise<TaxInsight> {
     const [insight] = await db
@@ -3528,6 +3544,14 @@ export class DatabaseStorage implements IStorage {
       ...r.insight,
       userName: [r.firstName, r.lastName].filter(Boolean).join(" ") || null,
     }));
+  }
+
+  async deleteTaxInsightsByUser(userId: string): Promise<number> {
+    const deleted = await db
+      .delete(taxInsights)
+      .where(eq(taxInsights.userId, userId))
+      .returning({ id: taxInsights.id });
+    return deleted.length;
   }
 
   // ===== PARTNER PROVIDERS =====
