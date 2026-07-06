@@ -4,6 +4,7 @@ import { useParams, Link } from "wouter";
 
 import { ConsentGateCard } from "@/components/ConsentGateCard";
 import { TermTooltip } from "@/components/TermTooltip";
+import { LoanComparisonMatrix } from "@/components/LoanComparisonMatrix";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -387,6 +388,7 @@ function MarketPricingSection({ market }: { market: MarketOffersResponse }) {
 export default function LoanOptions() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const [viewMode, setViewMode] = useState<"cards" | "compare">("cards");
 
   const { data, isLoading, error } = useQuery<LoanOptionsData>({
     queryKey: ['/api/loan-applications', id, 'options'],
@@ -548,9 +550,31 @@ export default function LoanOptions() {
                 : "Based on your profile, here are your best options"}
             </p>
           </div>
-          <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
-            <Shield className="h-4 w-4" />
-            <span>Rates as of today</span>
+          <div className="flex items-center gap-4">
+            <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
+              <Shield className="h-4 w-4" />
+              <span>Rates as of today</span>
+            </div>
+            {options.length > 1 && (
+              <div className="flex rounded-lg border p-0.5" role="group" aria-label="View mode">
+                <Button
+                  size="sm"
+                  variant={viewMode === "cards" ? "secondary" : "ghost"}
+                  onClick={() => setViewMode("cards")}
+                  data-testid="button-view-cards"
+                >
+                  Cards
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === "compare" ? "secondary" : "ghost"}
+                  onClick={() => setViewMode("compare")}
+                  data-testid="button-view-compare"
+                >
+                  Compare
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -562,6 +586,13 @@ export default function LoanOptions() {
               Your scenarios are being computed against underwriting guidelines. This usually takes less than a minute.
             </p>
           </Card>
+        ) : viewMode === "compare" ? (
+          <LoanComparisonMatrix
+            options={options}
+            steeringAcknowledged={steeringAcknowledged}
+            lockPending={lockRateMutation.isPending}
+            onLockRate={(optionId) => lockRateMutation.mutate(optionId)}
+          />
         ) : (
           <div className="grid gap-6 lg:grid-cols-3">
             {options.map((option) => (
@@ -672,9 +703,11 @@ export default function LoanOptions() {
 
                   <div className="space-y-2">
                     {option.isLocked ? (
-                      <Button className="w-full" variant="secondary" disabled>
+                      <Button className="w-full" variant="secondary" disabled data-testid={`button-locked-${option.loanType}`}>
                         <Lock className="mr-2 h-4 w-4" />
-                        Rate Locked
+                        {option.lockExpiresAt
+                          ? `Locked — expires ${new Date(option.lockExpiresAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                          : "Rate Locked"}
                       </Button>
                     ) : (
                       <Button

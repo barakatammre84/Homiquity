@@ -82,7 +82,7 @@ function toNumber(v: unknown): number {
   return isNaN(n) ? 0 : n;
 }
 
-interface ScenarioInputs {
+export interface ScenarioInputs {
   purchasePrice: number;
   downPayment: number;
   loanAmount: number;
@@ -105,14 +105,16 @@ function escrowFor(purchasePrice: number): { tax: number; insurance: number } {
 function buildScenario(
   loanType: "conventional" | "fha" | "va",
   inputs: ScenarioInputs,
-  opts: { points?: number; isRecommended?: boolean } = {},
+  opts: { points?: number; isRecommended?: boolean; termYears?: 15 | 30 } = {},
 ): LoanScenario {
   const { purchasePrice, downPayment, loanAmount, creditScore } = inputs;
-  const termMonths = 360;
+  const termYears = opts.termYears ?? 30;
+  const termMonths = termYears * 12;
   const points = opts.points ?? 0;
   // 1 discount point buys ~0.25% off the rate (standard rule of thumb; the
-  // real buy-down comes from rate sheets once Contract 2 lands).
-  const rate = baseRateFor(loanType, creditScore) - points * 0.25;
+  // real buy-down comes from rate sheets once Contract 2 lands). 15-year
+  // terms carry the customary ~0.50% discount to the 30-year base rate.
+  const rate = baseRateFor(loanType, creditScore) - points * 0.25 - (termYears === 15 ? 0.5 : 0);
   const { tax, insurance } = escrowFor(purchasePrice);
   const ltv = (loanAmount / purchasePrice) * 100;
 
@@ -133,7 +135,7 @@ function buildScenario(
 
   return {
     loanType,
-    loanTerm: 30,
+    loanTerm: termYears,
     interestRate: rate.toFixed(3),
     apr: (rate + (loanType === "fha" ? 0.5 : 0.25)).toFixed(3),
     points: String(points),
@@ -153,10 +155,13 @@ function buildScenario(
   };
 }
 
-function buildScenarios(inputs: ScenarioInputs): LoanScenario[] {
+export function buildScenarios(inputs: ScenarioInputs): LoanScenario[] {
   const scenarios: LoanScenario[] = [
     buildScenario("conventional", inputs, { isRecommended: !inputs.isVeteran }),
     buildScenario("conventional", inputs, { points: 1 }),
+    // 15-year fixed: same deterministic model, shorter amortization — shows
+    // the equity-velocity trade-off (higher payment, far less total interest).
+    buildScenario("conventional", inputs, { termYears: 15 }),
   ];
   if (inputs.creditScore <= 720 || inputs.isFirstTimeBuyer) {
     scenarios.push(buildScenario("fha", inputs));

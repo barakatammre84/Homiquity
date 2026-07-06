@@ -65,6 +65,7 @@ export default defineConfig({
       "tests/mismoXsdValidation.test.ts",
       "tests/approvalStrength.test.ts",
       "tests/buyingPowerEstimate.test.ts",
+      "tests/loanScenarioMatrix.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
