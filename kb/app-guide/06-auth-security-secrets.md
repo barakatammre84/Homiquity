@@ -96,6 +96,23 @@ are done inline in handlers — always add them for borrower data.
 
 Deeper reading: [threat_model.md](../../threat_model.md).
 
+## Pre-flight checklist — PII or auth changes
+
+Before merging anything in this chapter's territory:
+
+1. New/changed PII fields go through `encryptionService.ts` (direct identifiers
+   through the PII vault) — never a plaintext column; responses expose only
+   last-4 fragments.
+2. The action emits an audit-log entry (`server/auditLog.ts`; credit-chain
+   events use the hash-chained credit audit log).
+3. Logging stays PII-free — response-body logging is allowlist-only; do not
+   widen `RESPONSE_BODY_LOG_ALLOWLIST` near PII routes.
+4. Write endpoints handling borrower data route bodies through `pickTableFields`
+   (mass-assignment defense) and carry per-resource ownership checks.
+5. This is a **security-review trigger**: run `/security-review` before merge
+   ([TEAM_PRACTICES](../TEAM_PRACTICES.md) §9); unresolved CRITICAL findings
+   block.
+
 ## Secrets inventory (complete)
 
 Everything the code reads from `process.env`, grouped. **Required** means the

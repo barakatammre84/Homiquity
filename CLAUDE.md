@@ -60,6 +60,9 @@ Full rules in [DEVELOPER_PLAYBOOK.md](DEVELOPER_PLAYBOOK.md); the non-negotiable
   functions until real contracts exist. Never call a vendor outside its adapter.
 - Anything touching borrower PII goes through `server/services/encryptionService.ts`
   (SSNs via `server/services/ssnVault.ts`) and gets an audit-log entry (`server/auditLog.ts`).
+- Security-sensitive changes (PII vault/encryption, auth/sessions, role gates, uploads,
+  outbound messaging) require a security review before merge — binding trigger list in
+  [kb/TEAM_PRACTICES.md](kb/TEAM_PRACTICES.md) §9.
 - File uploads go through the object-storage layer at `server/integrations/object_storage/`;
   the shared size cap lives in `shared/uploads.ts`.
 - The underwriting engine (`server/underwritingEngine.ts` + `server/services/decisionEngine.ts`,
