@@ -408,6 +408,33 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     extractedDocs.push(docStatus);
   }
 
+  // Derived tax insights (tax_insights table) — unlike the notes JSON above,
+  // this is where the extraction route actually persists income values, so it
+  // is the path that lights up the passport for a self-uploaded tax return.
+  // Skip if the notes path already produced a tax-return source (no double count).
+  if (!incomeSources.some((s) => s.type === "tax_return_agi" || s.type === "tax_return_gross")) {
+    try {
+      const insights = await storage.getTaxInsightsByUser(userId);
+      const latest = insights.find((i) => i.confidence !== "low");
+      if (latest) {
+        const annual = parseNum(latest.adjustedGrossIncome) || parseNum(latest.grossIncome) || 0;
+        if (annual > 0) {
+          incomeSources.push({
+            source: "document",
+            trust: "tier1",
+            type: "tax_return_agi",
+            amount: annual,
+            period: "annual",
+            documentYear: String(latest.taxYear),
+            confidence: latest.confidence,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("[BorrowerGraph] Failed to fetch tax insights:", err);
+    }
+  }
+
   if (activeApp) {
     const hasLineItemIncome = activeApp.incomeSources && Array.isArray(activeApp.incomeSources) && (activeApp.incomeSources as any[]).length > 0;
 

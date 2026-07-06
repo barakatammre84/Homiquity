@@ -13,3 +13,4 @@ export * from "./schema/decisions";
 export * from "./schema/leads";
 export * from "./schema/marketData";
 export * from "./schema/delivery";
+export * from "./schema/taxInsights";

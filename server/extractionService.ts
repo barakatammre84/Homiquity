@@ -19,7 +19,7 @@ import { computeHash, encryptSensitiveData } from "./services/encryptionService"
 // to the exact model + prompt that produced it. Bump EXTRACTION_PROMPT_VERSION
 // whenever any extraction prompt text changes.
 export const EXTRACTION_MODEL_ID = "gemini-2.0-flash";
-export const EXTRACTION_PROMPT_VERSION = "2026-07-v1";
+export const EXTRACTION_PROMPT_VERSION = "2026-07-v2";
 
 const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
@@ -41,6 +41,8 @@ interface ExtractionLineage {
 export interface ExtractedTaxReturnData extends ExtractionLineage {
   documentYear: string;
   taxpayerName?: string;
+  /** Form 1040 line 1a — total W-2 wages. */
+  w2Wages?: number;
   grossIncome?: number;
   adjustedGrossIncome?: number;
   taxableIncome?: number;
@@ -52,6 +54,18 @@ export interface ExtractedTaxReturnData extends ExtractionLineage {
   };
   scheduleD?: {
     capitalGains?: number;
+  };
+  scheduleE?: {
+    /** Schedule E Part I line 26 — total rental real estate income or (loss). */
+    netRentalIncomeLoss?: number;
+    /** Sum of line 3 (rents received) across property columns. */
+    grossRents?: number;
+    /** Line 18 total depreciation expense. */
+    totalDepreciation?: number;
+    /** Line 12 total mortgage interest paid to banks. */
+    mortgageInterest?: number;
+    /** Number of property columns with data (Part I). */
+    propertyCount?: number;
   };
   confidence: "high" | "medium" | "low";
   extractedFields: string[];
@@ -186,6 +200,7 @@ const warningsList = z.array(z.string().max(500)).max(20).optional().catch(undef
 const taxReturnSchema = z.object({
   documentYear: z.string().trim().regex(/^\d{4}$/).optional().catch(undefined),
   taxpayerName: shortText,
+  w2Wages: money,
   grossIncome: money,
   adjustedGrossIncome: money,
   taxableIncome: money,
@@ -198,10 +213,25 @@ const taxReturnSchema = z.object({
   scheduleD: z.object({
     capitalGains: signedMoney,
   }).optional().catch(undefined),
+  scheduleE: z.object({
+    netRentalIncomeLoss: signedMoney,
+    grossRents: money,
+    totalDepreciation: money,
+    mortgageInterest: money,
+    propertyCount: z.preprocess(coerceMoney, z.number().int().min(0).max(50)).optional().catch(undefined),
+  }).optional().catch(undefined),
   confidence: confidenceLevel,
   extractedFields: extractedFieldsList,
   warnings: warningsList,
 });
+
+/**
+ * Test seam: parse + schema-validate a raw tax-return model response.
+ * Exercises the same untrusted-input path extractTaxReturnData uses.
+ */
+export function validateTaxReturnResponse(rawText: string) {
+  return validateExtraction(taxReturnSchema, rawText, "Tax return");
+}
 
 const payStubSchema = z.object({
   employeeName: shortText,
@@ -307,6 +337,16 @@ function checkTaxReturnConsistency(data: ExtractedTaxReturnData): void {
   if (data.adjustedGrossIncome !== undefined && data.grossIncome !== undefined && data.adjustedGrossIncome > data.grossIncome) {
     capConfidence(data, "medium", "Consistency check: AGI exceeds gross income");
   }
+  if (data.w2Wages !== undefined && data.grossIncome !== undefined && data.w2Wages > data.grossIncome) {
+    capConfidence(data, "medium", "Consistency check: W-2 wages exceed gross income");
+  }
+  if (
+    data.scheduleE?.netRentalIncomeLoss !== undefined &&
+    data.scheduleE.grossRents !== undefined &&
+    data.scheduleE.netRentalIncomeLoss > data.scheduleE.grossRents
+  ) {
+    capConfidence(data, "medium", "Consistency check: Schedule E net rental income exceeds gross rents");
+  }
 }
 
 function checkPayStubConsistency(data: ExtractedPayStubData): void {
@@ -366,6 +406,55 @@ function rawLineage(rawText: string): ExtractionLineage {
 }
 
 /**
+ * Deterministic simulated extraction (EXTRACTION_SIMULATE=true, no Gemini key):
+ * same file path → same figures, internally consistent so the confidence caps
+ * don't fire. Always includes a Schedule E block so downstream DSCR flagging
+ * is exercisable in tests and local dev. Clearly flagged via warnings.
+ */
+function simulatedTaxReturnExtraction(
+  filePath: string,
+  documentYear?: string,
+): ExtractedTaxReturnData {
+  const frac = parseInt(computeHash(`tax-sim:${filePath}`).slice(0, 8), 16) / 0xffffffff;
+  const w2Wages = Math.round(60_000 + frac * 60_000);
+  const grossRents = Math.round(24_000 + frac * 24_000);
+  const netRental = Math.round(grossRents * 0.35);
+  const scheduleCNet = Math.round(10_000 + frac * 20_000);
+  const grossIncome = w2Wages + netRental + scheduleCNet;
+  return {
+    documentYear: documentYear || (new Date().getFullYear() - 1).toString(),
+    w2Wages,
+    grossIncome,
+    adjustedGrossIncome: grossIncome - Math.round(frac * 5_000),
+    taxableIncome: grossIncome - Math.round(15_000 + frac * 10_000),
+    filingStatus: frac < 0.5 ? "single" : "married",
+    scheduleC: {
+      businessIncome: scheduleCNet + 15_000,
+      businessExpenses: 15_000,
+      netProfitLoss: scheduleCNet,
+    },
+    scheduleE: {
+      netRentalIncomeLoss: netRental,
+      grossRents,
+      totalDepreciation: Math.round(grossRents * 0.25),
+      mortgageInterest: Math.round(grossRents * 0.3),
+      propertyCount: frac < 0.5 ? 1 : 2,
+    },
+    confidence: "medium",
+    extractedFields: [
+      "w2Wages",
+      "grossIncome",
+      "adjustedGrossIncome",
+      "taxableIncome",
+      "filingStatus",
+      "scheduleC",
+      "scheduleE",
+    ],
+    warnings: ["Simulated extraction - no Gemini credentials (EXTRACTION_SIMULATE)"],
+  };
+}
+
+/**
  * Extract tax return data using Gemini vision
  */
 export async function extractTaxReturnData(
@@ -373,6 +462,9 @@ export async function extractTaxReturnData(
   documentYear?: string
 ): Promise<ExtractedTaxReturnData> {
   if (!genAI) {
+    if (process.env.EXTRACTION_SIMULATE === "true") {
+      return simulatedTaxReturnExtraction(filePath, documentYear);
+    }
     return {
       documentYear: documentYear || new Date().getFullYear().toString(),
       confidence: "low",
@@ -391,6 +483,7 @@ Return ONLY valid JSON with this structure:
 {
   "documentYear": "2024",
   "taxpayerName": "extracted name or null",
+  "w2Wages": 68000,
   "grossIncome": 75000,
   "adjustedGrossIncome": 72000,
   "taxableIncome": 65000,
@@ -403,13 +496,24 @@ Return ONLY valid JSON with this structure:
   "scheduleD": {
     "capitalGains": 5000
   },
+  "scheduleE": {
+    "netRentalIncomeLoss": 12000,
+    "grossRents": 36000,
+    "totalDepreciation": 8000,
+    "mortgageInterest": 9000,
+    "propertyCount": 2
+  },
   "confidence": "high or medium or low",
   "extractedFields": ["list of successfully extracted field names"],
   "warnings": ["list of any concerns or unclear values"]
 }
 
+"w2Wages" is Form 1040 line 1a (total W-2 wages). For "scheduleE", use Part I:
+netRentalIncomeLoss from line 26, grossRents as the sum of line 3 across property
+columns, totalDepreciation from line 18, mortgageInterest from line 12, and
+propertyCount as the number of property columns with data.
 Only include fields that are clearly visible. Return null for any unclear values.
-If Schedule C or D are not present, omit those sections.`;
+If Schedule C, D, or E are not present, omit those sections.`;
 
     const response = await genAI.models.generateContent({
       model: EXTRACTION_MODEL_ID,

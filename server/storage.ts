@@ -298,6 +298,9 @@ import {
   type InsertLead,
   smsOptOuts,
   type SmsOptOut,
+  taxInsights,
+  type TaxInsight,
+  type InsertTaxInsight,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -743,6 +746,12 @@ export interface IStorage {
   getBorrowerConsentsByUser(userId: string): Promise<BorrowerConsent[]>;
   getBorrowerConsentsByApplication(applicationId: string): Promise<BorrowerConsent[]>;
   getConsentByTypeAndApplication(consentType: string, applicationId: string): Promise<BorrowerConsent | undefined>;
+  getConsentByTypeAndUser(consentType: string, userId: string): Promise<BorrowerConsent | undefined>;
+
+  // Tax Insights (derived signals from self-uploaded tax returns)
+  upsertTaxInsight(data: InsertTaxInsight): Promise<TaxInsight>;
+  getTaxInsightsByUser(userId: string): Promise<TaxInsight[]>;
+  getRecentDscrCandidates(days: number, limit: number): Promise<Array<TaxInsight & { userName: string | null }>>;
 
   // Partner Providers & Orders
   createPartnerProvider(data: InsertPartnerProvider): Promise<PartnerProvider>;
@@ -3463,6 +3472,62 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(borrowerConsents.consentedAt))
       .limit(1);
     return consent;
+  }
+
+  async getConsentByTypeAndUser(consentType: string, userId: string): Promise<BorrowerConsent | undefined> {
+    const [consent] = await db
+      .select()
+      .from(borrowerConsents)
+      .where(
+        and(
+          eq(borrowerConsents.consentType, consentType),
+          eq(borrowerConsents.userId, userId),
+          eq(borrowerConsents.isRevoked, false)
+        )
+      )
+      .orderBy(desc(borrowerConsents.consentedAt))
+      .limit(1);
+    return consent;
+  }
+
+  // ===== TAX INSIGHTS =====
+  async upsertTaxInsight(data: InsertTaxInsight): Promise<TaxInsight> {
+    const [insight] = await db
+      .insert(taxInsights)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [taxInsights.userId, taxInsights.taxYear],
+        set: { ...data, updatedAt: new Date() },
+      })
+      .returning();
+    return insight;
+  }
+
+  async getTaxInsightsByUser(userId: string): Promise<TaxInsight[]> {
+    return await db
+      .select()
+      .from(taxInsights)
+      .where(eq(taxInsights.userId, userId))
+      .orderBy(desc(taxInsights.taxYear));
+  }
+
+  async getRecentDscrCandidates(days: number, limit: number): Promise<Array<TaxInsight & { userName: string | null }>> {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        insight: taxInsights,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(taxInsights)
+      .innerJoin(users, eq(taxInsights.userId, users.id))
+      .where(and(eq(taxInsights.dscrCandidate, true), gte(taxInsights.updatedAt, since)))
+      .orderBy(desc(taxInsights.updatedAt))
+      .limit(limit);
+    return rows.map((r) => ({
+      ...r.insight,
+      userName: [r.firstName, r.lastName].filter(Boolean).join(" ") || null,
+    }));
   }
 
   // ===== PARTNER PROVIDERS =====
