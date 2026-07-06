@@ -234,7 +234,10 @@ the funnel lights up on F1.** They compose (distinct env vars; #53 exempts `/api
 PR's server `prelaunchGate` on the rate/credit-tier/application APIs is what actually protects
 pricing from an admitted tester). Rollout:
 
-1. Merge #53 + #54 (trivial conflicts: both edit `.env.example` + `vitest.config.ts` — keep both).
+1. Merge #53 first (clean onto current main), then #54 — **one trivial conflict**, in
+   `vitest.config.ts`: union the test `include` entries (`rateLimitRelaxed` + `betaGate` +
+   `prelaunchGate`). `.env.example` auto-merges; `tsconfig.json` is #53-only; no other conflicts.
+   *(Verified 2026-07-05 by a trial merge onto current `origin/main` = adce335.)*
 2. Set `BETA_ACCESS_CODE`; leave `PRELAUNCH_GATED`/`VITE_PRELAUNCH_GATED` unset (fail-safe
    gates prod while NMLS PENDING). → public sees #53's invite screen; testers get the platform,
    funnel/rates/apply dark.
