@@ -225,3 +225,25 @@ Post-fix gate: `tsc` clean, **653/653 unit tests pass**.
   (Lane 3 #4).
 - **Founder-actions (Lane 5):** confirm prod migrations 0005–0008 applied; LS-2 env vars
   (SendGrid + SPF/DKIM, SENTRY_DSN + uptime, GCS creds).
+
+## 9. Launch shape — DECIDED 2026-07-05: layer with the private-beta gate (PR #53)
+
+Reconciled with the open PR #53 (private-beta Edge Middleware, `BETA_ACCESS_CODE`). Decision:
+**layer both — beta gate is the front door, this pre-license gate hides the funnel inside,
+the funnel lights up on F1.** They compose (distinct env vars; #53 exempts `/api/*`, so this
+PR's server `prelaunchGate` on the rate/credit-tier/application APIs is what actually protects
+pricing from an admitted tester). Rollout:
+
+1. Merge #53 + #54 (trivial conflicts: both edit `.env.example` + `vitest.config.ts` — keep both).
+2. Set `BETA_ACCESS_CODE`; leave `PRELAUNCH_GATED`/`VITE_PRELAUNCH_GATED` unset (fail-safe
+   gates prod while NMLS PENDING). → public sees #53's invite screen; testers get the platform,
+   funnel/rates/apply dark.
+3. **F1:** real NMLS id + `PRELAUNCH_GATED=false` + `VITE_PRELAUNCH_GATED=false` → funnel lights
+   up for testers (site still invite-only).
+4. **Public launch:** delete `BETA_ACCESS_CODE` → middleware no-op, site public + funnel live.
+
+**Open seam (founder call):** an admitted tester lands on this PR's Waitlist at `/` (odd —
+they're already in; and #53's invite screen collects no public emails, so the Waitlist is
+effectively unused in this shape). Either keep it (thin beta — testers Sign in and test the
+authed app) or change `/` in beta mode to the gated Landing (extra work: gate the Landing's
+RatesTeaser + apply CTAs). Deferred pending what the beta is meant to test.
