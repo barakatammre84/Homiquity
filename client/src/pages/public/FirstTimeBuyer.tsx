@@ -445,7 +445,7 @@ export default function FirstTimeBuyer() {
               options, and your exact next step.
             </p>
             <Link href="/apply?type=first-time" className="mt-8 w-full max-w-md sm:w-auto sm:max-w-none">
-              <Button size="lg" variant="secondary" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-ftb-apply-footer">
+              <Button size="lg" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-ftb-apply-footer">
                 See Where I Stand
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </Button>

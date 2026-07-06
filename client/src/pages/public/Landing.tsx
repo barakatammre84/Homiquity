@@ -118,7 +118,6 @@ export default function Landing() {
               <Link href="/apply" className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  variant="secondary"
                   className="w-full gap-2 font-semibold shadow-lg sm:w-auto"
                   data-testid="button-hero-preapprove"
                 >

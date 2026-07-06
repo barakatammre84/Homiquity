@@ -9,30 +9,36 @@
 > `npm run checkup`) **fails CI on any raw Tailwind palette class**, so the rules
 > below are enforced, not aspirational.
 
-## Design approach — "Obsidian Indigo" (monochromatic precision)
+## Design approach — "Charcoal Emerald" (Better.com-style conversion clarity)
 
-A single desaturated navy-indigo hue (~216°) expanded across a strict value ramp,
-Stripe / Linear / Notion register — institutional trust, "high-performance
-financial utility, not consumer neobank."
+*User-authorized repaint 2026-07-06, superseding "Obsidian Indigo".* Stark-white
+surfaces, neutral slate structure, deep-charcoal data typography, and **emerald
+reserved for forward-moving conversion actions** ("green means Go") — radical
+transparency, frictionless onboarding, high-velocity conversion.
 
 **Value ramp** (`precision.*` in Tailwind, CSS vars in `index.css`):
-`950 #050B14` Obsidian (primary type & actions) · `900 #0C1625` Deep Ink
-(nav/sidebars) · `700 #1D2D44` Steel Blue · `500 #3E5370` Muted Slate (secondary
-text) · `300 #889DBE` Dusty Ice · `100 #D0DDF0` Frost Tint (hairlines) ·
-`50 #F2F6FC` Paper Ice (canvas).
+`950 #121212` Deep Charcoal (primary type, dark heroes) · `900 #1E293B` slate-800
+(nav/dark surfaces) · `700 #334155` slate-700 · `500 #64748B` Muted Slate
+(micro-copy) · `300 #94A3B8` slate-400 · `100 #E2E8F0` slate-200 (hairlines) ·
+`50 #F8FAFC` Ultra-Light Gray (data-section separation).
 
 **Core principles**
-1. **Hierarchy through VALUE, not hue.** Depth comes from the monochromatic ramp.
-2. **Non-ramp color is reserved for semantic status only** (see below).
-3. Radical transparency, speed indicators, trust through clarity, data-as-centerpiece.
+1. **Hierarchy through VALUE, not hue.** Depth comes from the neutral ramp +
+   whitespace; no harsh borders.
+2. **Emerald = action.** `bg-primary` is #047857 (emerald-700, AA-safe with white
+   text at 5.49:1 — raw #10B981 is only 2.49:1 and must not carry white text);
+   `--ring` is emerald-600. Non-action green stays in the success tokens.
+3. **Other non-ramp color is reserved for semantic status only** (see below).
+4. Radical transparency, speed indicators, trust through clarity, data-as-centerpiece.
 
 ## Color system
 
 ### Layers
-- **Layer 0** `bg-background` — Paper Ice canvas (soft, not stark white).
-- **Layer 1** — white cards + 1px Frost hairline (`border-card-border`), **no default shadow**.
-- **Layer 2** — Obsidian primary actions (`bg-primary`), hover deepens via the elevate system.
-- **Sidebar** — Deep Ink dark nav container.
+- **Layer 0** `bg-background` — Stark White canvas; `bg-muted` (#F8FAFC) separates
+  data sections (e.g. PITI panels).
+- **Layer 1** — white cards + 1px slate-200 hairline (`border-card-border`), **no default shadow**.
+- **Layer 2** — Emerald conversion actions (`bg-primary`), hover deepens via the elevate system.
+- **Sidebar** — Deep Charcoal dark nav container.
 
 ### Semantic status (the ONLY non-ramp color)
 Use these tokens or the `<Badge>/<Alert>` variants — **never** raw palette classes
@@ -40,8 +46,8 @@ like `text-emerald-600` / `bg-amber-100` (the guard blocks them, and they fail W
 
 | Intent | Solid fill | Foreground on fill | Subtle chip (default for text) |
 |---|---|---|---|
-| success | `bg-success` (#10B981) | `text-success-foreground` (Obsidian) | `bg-success-subtle` + `text-success-subtle-foreground` |
-| warning | `bg-warning` (#F59E0B) | `text-warning-foreground` (Obsidian) | `bg-warning-subtle` + `text-warning-subtle-foreground` |
+| success | `bg-success` (#10B981) | `text-success-foreground` (charcoal) | `bg-success-subtle` + `text-success-subtle-foreground` |
+| warning | `bg-warning` (#F59E0B) | `text-warning-foreground` (charcoal) | `bg-warning-subtle` + `text-warning-subtle-foreground` |
 | info    | `bg-info`               | `text-info-foreground` | `bg-info-subtle` + `text-info` |
 | destructive | `bg-destructive` (red-600) | `text-destructive-foreground` (white) | `bg-destructive-subtle` + `text-destructive` |
 
@@ -56,7 +62,7 @@ like `text-emerald-600` / `bg-amber-100` (the guard blocks them, and they fail W
 ### Charts
 `chart-1..5` is a **colorblind-safe categorical** set (navy/teal/amber/indigo/rose)
 for multi-series data-viz — it deliberately does NOT reuse the success/warning
-hues. For a single ordered metric, use the navy value ramp instead.
+hues. For a single ordered metric, use the neutral value ramp instead.
 
 ## Typography
 - **Fonts:** Geist (primary) → Inter fallback; Source Serif 4 for display/hero;
@@ -77,11 +83,12 @@ hues. For a single ordered metric, use the navy value ramp instead.
 ## Radii, elevation, motion
 - **Radii:** `--radius` .75rem → `rounded-lg` 12px (cards/modals), `rounded-md` 8px
   (inputs/buttons), `rounded-sm` 4px (chips).
-- **Elevation:** `--shadow-2xs`…`--shadow-2xl` (house-hue tinted). **Cards default
+- **Elevation:** `--shadow-2xs`…`--shadow-2xl` (neutral tinted). **Cards default
   to no shadow + hairline**; reach for shadow only for true overlays (popover/toast).
 - **Motion:** `transition-all duration-150 ease-in-out` on interactive atoms;
   the elevate system (`hover-elevate`/`active-elevate-2`) supplies hover/active
-  tints. Loading = `<Skeleton>` (`animate-skeleton-precision`, Frost→Paper), never spinners.
+  tints. Loading = `<Skeleton>` (`animate-skeleton-precision`, slate-200→slate-50),
+  never spinners.
 
 ## Components (`components/ui/*`)
 - **Button** — variants `default, destructive, outline, secondary, ghost, link`;
