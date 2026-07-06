@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { documents, loanApplications, loanConditions, users } from "@shared/schema";
 import { and, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { storage } from "../storage";
 
 /**
  * Staff signals feed — the loan-officer "who needs attention first" queue.
@@ -9,7 +10,8 @@ import { and, inArray, isNotNull, lte, sql } from "drizzle-orm";
  * list so an LO opens the day knowing exactly which files to touch:
  *   1 (act now)   — pre-underwriting flags blocking progress
  *   2 (review)    — conditions moved to "submitted" by document uploads
- *   3 (rescue)    — applications stalled mid-funnel (no activity in 3+ days)
+ *   3 (rescue)    — applications stalled mid-funnel (no activity in 3+ days);
+ *                   also investor-loan (DSCR) candidates from tax insights
  *   4 (freshness) — documents approaching the 30-day staleness rule
  *
  * Pure read — the feed derives from state the engines already maintain
@@ -17,12 +19,40 @@ import { and, inArray, isNotNull, lte, sql } from "drizzle-orm";
  */
 
 export interface StaffSignal {
-  type: "preuw_flag" | "conditions_review" | "stalled" | "docs_expiring";
+  type: "preuw_flag" | "conditions_review" | "stalled" | "docs_expiring" | "investor_candidate";
   priority: 1 | 2 | 3 | 4;
-  applicationId: string;
+  /** Null for signals that predate any application (e.g. incubator tax insights). */
+  applicationId: string | null;
+  /** Set when applicationId is null so the client can still identify the person. */
+  userId?: string;
   borrowerName: string;
   title: string;
   detail: string;
+}
+
+const DSCR_SIGNAL_WINDOW_DAYS = 30;
+
+/**
+ * Investor-loan (DSCR) candidates: users whose self-uploaded tax return showed
+ * Schedule E rental income. Informational lead signal only — no compensation
+ * or referral mechanics attach to it (RESPA §8).
+ */
+async function buildDscrSignals(): Promise<StaffSignal[]> {
+  try {
+    const candidates = await storage.getRecentDscrCandidates(DSCR_SIGNAL_WINDOW_DAYS, 20);
+    return candidates.map((c) => ({
+      type: "investor_candidate" as const,
+      priority: 3 as const,
+      applicationId: null,
+      userId: c.userId,
+      borrowerName: c.userName || "Borrower",
+      title: "Investor-loan (DSCR) candidate",
+      detail: `Rental income (Schedule E${c.rentalPropertyCount ? `, ${c.rentalPropertyCount} propert${c.rentalPropertyCount === 1 ? "y" : "ies"}` : ""}) found on ${c.taxYear} tax return.`,
+    }));
+  } catch (err) {
+    console.warn("[Signals] DSCR candidate fetch failed (non-fatal):", err);
+    return [];
+  }
 }
 
 const ACTIVE_STATUSES = [
@@ -52,7 +82,10 @@ export async function buildStaffSignals(limit = 30): Promise<StaffSignal[]> {
     .from(loanApplications)
     .where(inArray(loanApplications.status, [...ACTIVE_STATUSES]));
 
-  if (activeApps.length === 0) return [];
+  // DSCR candidates come from tax_insights, not applications — they must
+  // surface even when the active-application pipeline is empty.
+  const dscrSignals = await buildDscrSignals();
+  if (activeApps.length === 0) return dscrSignals.slice(0, limit);
   const appIds = activeApps.map((a) => a.id);
   const appById = new Map(activeApps.map((a) => [a.id, a]));
 
@@ -166,6 +199,8 @@ export async function buildStaffSignals(limit = 30): Promise<StaffSignal[]> {
       detail: `Most lenders require documents under ${DOC_FRESHNESS_DAYS} days old at underwriting — request refreshed copies before this delays closing.`,
     });
   }
+
+  signals.push(...dscrSignals);
 
   signals.sort((a, b) => a.priority - b.priority);
   return signals.slice(0, limit);

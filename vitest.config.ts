@@ -60,6 +60,7 @@ export default defineConfig({
       "tests/rateLimitRelaxed.test.ts",
       "tests/betaGate.test.ts",
       "tests/prelaunchGate.test.ts",
+      "tests/taxInsight.test.ts",
       "tests/mismoXsdValidation.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to

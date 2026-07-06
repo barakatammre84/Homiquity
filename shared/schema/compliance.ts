@@ -466,6 +466,7 @@ export const CONSENT_TYPES = [
   "rate_lock_agreement",    // Rate lock terms
   "intent_to_proceed",      // TRID intent to proceed
   "loan_estimate_receipt",  // Acknowledge loan estimate receipt
+  "tax_document_use",       // Use of a self-uploaded tax return for readiness insights
 ] as const;
 
 export type ConsentType = typeof CONSENT_TYPES[number];

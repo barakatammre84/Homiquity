@@ -18,7 +18,7 @@ const objectStorageService = new ObjectStorageService();
 
 // The encrypted raw model response is stored server-side only; never return the
 // ciphertext/IV/key to the client. The hash and model/prompt lineage are safe.
-function publicExtraction<T extends Record<string, any>>(extractedData: T) {
+export function publicExtraction<T extends Record<string, any>>(extractedData: T) {
   const { rawResponseEncrypted, rawResponseIv, rawResponseKeyId, ...rest } = extractedData;
   return rest;
 }
@@ -255,6 +255,25 @@ export function registerDocumentRoutes(
         extractionRawIv: extractedData.rawResponseIv,
         extractionRawKeyId: extractedData.rawResponseKeyId,
       });
+
+      if (document.documentType === "tax_return") {
+        // Keep the derived tax-insight row in sync when a tax return is
+        // extracted through the origination flow too (non-fatal: the insight
+        // is a readiness signal, not part of the extraction contract).
+        // Consent-gated exactly like POST /api/tax-insights/process: without
+        // the borrower's tax_document_use authorization, extraction proceeds
+        // but NO insight is derived — the DSCR staff signal and readiness
+        // income feed must never exist for an unconsented borrower.
+        try {
+          const { hasUserConsent } = await import("../consentGate");
+          if (await hasUserConsent("tax_document_use", document.userId)) {
+            const { saveTaxInsightForDocument } = await import("../services/taxInsightService");
+            await saveTaxInsightForDocument(document.userId, id, extractedData);
+          }
+        } catch (insightErr) {
+          console.warn("[TaxInsight] Insight derivation failed (non-fatal):", insightErr);
+        }
+      }
 
       if (extractedData.confidence !== "low" && extractedData.extractedFields) {
         try {

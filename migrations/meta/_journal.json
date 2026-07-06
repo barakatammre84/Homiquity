@@ -71,6 +71,13 @@
       "when": 1783593600004,
       "tag": "0009_lender_submission_package",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783593600005,
+      "tag": "0010_tax_insights",
+      "breakpoints": true
     }
   ]
 }

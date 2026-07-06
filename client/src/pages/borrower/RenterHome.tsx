@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { HomeReadinessPassport } from "@/components/HomeReadinessPassport";
+import { TaxReturnInsightCard } from "@/components/TaxReturnInsightCard";
 import { formatCurrency } from "@/lib/formatters";
 import {
   ArrowRight,
@@ -179,6 +180,9 @@ export function RenterHome({
 
         {/* Readiness passport (credit / income / assets verification state) */}
         <HomeReadinessPassport compact />
+
+        {/* Tax return upload → income readiness signals */}
+        <TaxReturnInsightCard />
 
         {/* Toolkit */}
         <div>
