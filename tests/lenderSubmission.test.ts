@@ -4,7 +4,8 @@ import {
   getWholesaleLender,
   isValidSubmissionTransition,
 } from "../shared/wholesaleLenders";
-import { simulateLenderAcknowledgment } from "../server/services/lenderSubmission";
+import { simulateLenderAcknowledgment, buildLenderPackage } from "../server/services/lenderSubmission";
+import type { MISMOLoanDTO } from "../server/mismo";
 
 describe("wholesale lender catalog", () => {
   it("carries the Target-5 shortlist with unique ids", () => {
@@ -70,6 +71,80 @@ describe("simulated lender acknowledgment", () => {
   it("shapes the confirmation like a lender-side loan number", () => {
     const { confirmationId } = simulateLenderAcknowledgment("rocket-pro-tpo", "app-123");
     expect(confirmationId).toMatch(/^ROCK-\d{9}$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Per-lender MISMO package assembly (LS-10 slice 2)
+// ---------------------------------------------------------------------------
+
+function baseDto(overrides: Partial<MISMOLoanDTO> = {}): MISMOLoanDTO {
+  return {
+    application: {
+      id: "3f8a-9c2d-11ee-8c90-0242ac120002",
+      status: "pre_approved",
+      loanPurpose: "purchase",
+      preferredLoanType: "conventional",
+      propertyType: "single_family",
+      propertyAddress: "123 Main St",
+      propertyCity: "Austin",
+      propertyState: "TX",
+      propertyZip: "78701",
+      propertyValue: "500000",
+      purchasePrice: "500000",
+      downPayment: "100000",
+      createdAt: new Date("2026-01-01"),
+      ...(overrides.application ?? {}),
+    } as any,
+    user: { id: "user-abc123", email: "b@example.com" } as any,
+    personalInfo: { firstName: "Jane", lastName: "Doe", ssn: "123-45-6789" } as any,
+    employment: overrides.employment ?? [],
+    assets: overrides.assets ?? [],
+    liabilities: overrides.liabilities ?? [],
+    propertyInfo: overrides.propertyInfo ?? null,
+    declarations: null,
+    loanOptions: overrides.loanOptions ?? [],
+    documents: [],
+  };
+}
+
+describe("buildLenderPackage", () => {
+  it("assembles a structurally valid MISMO 3.4 package for a complete file", () => {
+    const pkg = buildLenderPackage(baseDto());
+    expect(pkg.validation.valid).toBe(true);
+    expect(pkg.validation.errors).toEqual([]);
+    expect(pkg.xml).toContain("<NoteAmount>");
+    expect(pkg.hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("is deterministic: the same file always hashes the same", () => {
+    const a = buildLenderPackage(baseDto());
+    const b = buildLenderPackage(baseDto());
+    expect(a.xml).toBe(b.xml);
+    expect(a.hash).toBe(b.hash);
+  });
+
+  it("hashes differ when the underlying file data differs", () => {
+    const a = buildLenderPackage(baseDto());
+    const b = buildLenderPackage(baseDto({ application: { purchasePrice: "600000" } as any }));
+    expect(a.hash).not.toBe(b.hash);
+  });
+
+  it("fails validation when the loan amount cannot be determined (no option, no down payment)", () => {
+    // Neither a locked loan option nor a down payment means NoteAmount/
+    // BaseLoanAmount are omitted from the export (server/mismo.ts:627-647) —
+    // the package-assembly gate must catch this before a lender ever sees it.
+    const pkg = buildLenderPackage(
+      baseDto({ application: { downPayment: null } as any, loanOptions: [] }),
+    );
+    expect(pkg.validation.valid).toBe(false);
+    expect(pkg.validation.errors).toContain("Missing required ULDD data point: NoteAmount");
+  });
+
+  it("threads the delivery note date through to the AtClosing loan state", () => {
+    const withDate = buildLenderPackage(baseDto(), "2026-08-01");
+    const withoutDate = buildLenderPackage(baseDto());
+    expect(withDate.xml).not.toBe(withoutDate.xml);
   });
 });
 

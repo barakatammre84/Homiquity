@@ -872,7 +872,10 @@ export function registerUnderwritingRoutes(
             confirmationId: result.submission.confirmationId,
             simulated: result.submission.simulated,
           });
-          res.status(201).json(result.submission);
+          // Omit the MISMO XML body (carries full SSN/DOB) from the response;
+          // fetch it explicitly via the mismo-package route below.
+          const { mismoPackageXml, ...submission } = result.submission;
+          res.status(201).json(submission);
         } catch (err) {
           if (err instanceof SubmissionBlockedError) {
             return res.status(422).json({ error: err.message, blockers: err.blockers });
@@ -896,10 +899,40 @@ export function registerUnderwritingRoutes(
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
         }
-        res.json(await storage.getLenderSubmissionsByApplication(id));
+        const submissions = await storage.getLenderSubmissionsByApplication(id);
+        // Omit the MISMO XML body (carries full SSN/DOB) from the list view;
+        // fetch it explicitly via the mismo-package route below.
+        res.json(submissions.map(({ mismoPackageXml, ...s }) => s));
       } catch (error) {
         console.error("List lender submissions error:", error);
         res.status(500).json({ error: "Failed to list lender submissions" });
+      }
+    },
+  );
+
+  // Download the exact MISMO 3.4 XML package sent for a given submission —
+  // an immutable snapshot, not regenerated from current data. Internal staff
+  // only, same rationale as the mismo-export route (full SSN/DOB payload).
+  app.get(
+    "/api/loan-applications/:id/lender-submissions/:submissionId/mismo-package",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id, submissionId } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        const submission = await storage.getLenderSubmission(submissionId);
+        if (!submission || submission.applicationId !== id || !submission.mismoPackageXml) {
+          return res.status(404).json({ error: "Package not found" });
+        }
+        res.setHeader("Content-Type", "application/xml");
+        res.setHeader("Content-Disposition", `attachment; filename="mismo-package-${submissionId}.xml"`);
+        res.send(submission.mismoPackageXml);
+      } catch (error) {
+        console.error("Lender package download error:", error);
+        res.status(500).json({ error: "Failed to fetch lender package" });
       }
     },
   );
