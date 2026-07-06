@@ -246,4 +246,6 @@ pricing from an admitted tester). Rollout:
 they're already in; and #53's invite screen collects no public emails, so the Waitlist is
 effectively unused in this shape). Either keep it (thin beta — testers Sign in and test the
 authed app) or change `/` in beta mode to the gated Landing (extra work: gate the Landing's
-RatesTeaser + apply CTAs). Deferred pending what the beta is meant to test.
+RatesTeaser + apply CTAs). **DECIDED 2026-07-05: ship as-is (Waitlist-at-`/`, thin beta).**
+Gating the Landing for a richer beta is a deliberate deferred backlog item — revisit only if
+testers need to walk the full marketing/education surface pre-F1.
