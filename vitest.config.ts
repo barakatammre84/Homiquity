@@ -31,6 +31,7 @@ export default defineConfig({
       "tests/scenarioCatalog.test.ts",
       "tests/statusVocabulary.test.ts",
       "tests/intakeSchema.test.ts",
+      "tests/illinoisDpaSeed.test.ts",
       "tests/stageRequirements.test.ts",
       "tests/fileHealth.test.ts",
       "tests/borrowerStateMachine.test.ts",
