@@ -551,6 +551,19 @@ export async function getConsentById(consentId: string): Promise<CreditConsent |
   return consent || null;
 }
 
+/**
+ * Full consent ledger for one user, newest first — active, revoked, and
+ * declined records alike (the borrower transparency dashboard shows history,
+ * not just the currently-active consent).
+ */
+export async function getCreditConsentsByUser(userId: string): Promise<CreditConsent[]> {
+  return await db
+    .select()
+    .from(creditConsents)
+    .where(eq(creditConsents.userId, userId))
+    .orderBy(desc(creditConsents.consentTimestamp));
+}
+
 export async function revokeConsent(
   consentId: string,
   reason: string,

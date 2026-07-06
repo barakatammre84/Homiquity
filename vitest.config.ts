@@ -53,6 +53,7 @@ export default defineConfig({
       "tests/loanDeliveryEdits.test.ts",
       "tests/brokerSubmissionReadiness.test.ts",
       "tests/lenderSubmission.test.ts",
+      "tests/myDataSharing.test.ts",
       "tests/pipelineEngineDocumentRequirements.test.ts",
       "tests/leadNotifications.test.ts",
       "tests/uploadsPresignedOnly.test.ts",

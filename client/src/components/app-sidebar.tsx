@@ -50,6 +50,7 @@ import {
   ClipboardList,
   Palette,
   Gauge,
+  Fingerprint,
 } from "lucide-react";
 
 interface TeamMember {
@@ -92,6 +93,7 @@ const aspiringOwnerNavigation: NavSection[] = [
       { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
       { title: "Gap Calculator", href: "/gap-calculator", icon: Calculator, testId: "link-gap-calculator" },
       { title: "Down Payment Help", href: "/down-payment-wizard", icon: PiggyBank, testId: "link-dpa-wizard" },
+      { title: "My Data", href: "/my-data", icon: Fingerprint, testId: "link-my-data" },
     ],
   },
 ];
@@ -112,6 +114,7 @@ const activeBuyerNavigation: NavSection[] = [
       { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
       { title: "Application Details", href: "/application-summary", icon: FileText, testId: "link-application-summary" },
       { title: "Verification", href: "/verification", icon: Shield, testId: "link-verification" },
+      { title: "My Data", href: "/my-data", icon: Fingerprint, testId: "link-my-data" },
     ],
   },
 ];

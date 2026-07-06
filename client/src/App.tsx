@@ -80,6 +80,7 @@ const EConsent = lazy(() => import("@/pages/borrower/EConsent"));
 const GapCalculator = lazy(() => import("@/pages/borrower/GapCalculator"));
 const BuyerProperties = lazy(() => import("@/pages/borrower/BuyerProperties"));
 const HmdaDemographics = lazy(() => import("@/pages/borrower/HmdaDemographics"));
+const MyData = lazy(() => import("@/pages/borrower/MyData"));
 
 const StaffDashboard = lazy(() => import("@/pages/staff/StaffDashboard"));
 const LoCommandCenter = lazy(() => import("@/pages/staff/LoCommandCenter"));
@@ -318,6 +319,9 @@ function Router() {
         </Route>
 
         {/* Private Pages - Borrower only (clients working on their mortgage) */}
+        <Route path="/my-data">
+          <BorrowerPage><MyData /></BorrowerPage>
+        </Route>
         <Route path="/gap-calculator">
           <BorrowerPage><GapCalculator /></BorrowerPage>
         </Route>
