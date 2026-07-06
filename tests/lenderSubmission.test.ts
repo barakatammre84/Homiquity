@@ -109,6 +109,12 @@ function baseDto(overrides: Partial<MISMOLoanDTO> = {}): MISMOLoanDTO {
 }
 
 describe("buildLenderPackage", () => {
+  // The XML embeds the generation instant (CreatedDatetime, Current
+  // LoanStateDate), so every comparison pins generatedAt — otherwise two
+  // calls straddling a clock tick produce different XML and the assertion
+  // measures the wall clock instead of the file data.
+  const generatedAt = new Date("2026-07-06T12:00:00.000Z");
+
   it("assembles a structurally valid MISMO 3.4 package for a complete file", () => {
     const pkg = buildLenderPackage(baseDto());
     expect(pkg.validation.valid).toBe(true);
@@ -118,15 +124,19 @@ describe("buildLenderPackage", () => {
   });
 
   it("is deterministic: the same file always hashes the same", () => {
-    const a = buildLenderPackage(baseDto());
-    const b = buildLenderPackage(baseDto());
+    const a = buildLenderPackage(baseDto(), undefined, generatedAt);
+    const b = buildLenderPackage(baseDto(), undefined, generatedAt);
     expect(a.xml).toBe(b.xml);
     expect(a.hash).toBe(b.hash);
   });
 
   it("hashes differ when the underlying file data differs", () => {
-    const a = buildLenderPackage(baseDto());
-    const b = buildLenderPackage(baseDto({ application: { purchasePrice: "600000" } as any }));
+    const a = buildLenderPackage(baseDto(), undefined, generatedAt);
+    const b = buildLenderPackage(
+      baseDto({ application: { purchasePrice: "600000" } as any }),
+      undefined,
+      generatedAt,
+    );
     expect(a.hash).not.toBe(b.hash);
   });
 
@@ -142,8 +152,8 @@ describe("buildLenderPackage", () => {
   });
 
   it("threads the delivery note date through to the AtClosing loan state", () => {
-    const withDate = buildLenderPackage(baseDto(), "2026-08-01");
-    const withoutDate = buildLenderPackage(baseDto());
+    const withDate = buildLenderPackage(baseDto(), "2026-08-01", generatedAt);
+    const withoutDate = buildLenderPackage(baseDto(), undefined, generatedAt);
     expect(withDate.xml).not.toBe(withoutDate.xml);
   });
 });

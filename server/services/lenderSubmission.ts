@@ -86,10 +86,17 @@ export interface LenderPackage {
  * Assembles the MISMO 3.4 XML package for a wholesale submission and hashes
  * it for tamper-evident audit (the package is persisted as an immutable
  * snapshot, not regenerated later — see mismoPackageXml on lender_submissions).
- * Pure — unit-tested directly; submitToWholesaleLender supplies the DTO.
+ * Pure given generatedAt — the XML embeds the generation instant
+ * (CreatedDatetime, Current LoanStateDate), so callers that need identical
+ * output for identical file data must supply it explicitly.
+ * Unit-tested directly; submitToWholesaleLender supplies the DTO.
  */
-export function buildLenderPackage(dto: MISMOLoanDTO, noteDate?: string): LenderPackage {
-  const xml = generateMISMO34XML(dto, { purpose: "loanDelivery", noteDate });
+export function buildLenderPackage(
+  dto: MISMOLoanDTO,
+  noteDate?: string,
+  generatedAt?: Date,
+): LenderPackage {
+  const xml = generateMISMO34XML(dto, { purpose: "loanDelivery", noteDate, generatedAt });
   const validation = validateMISMOXML(xml);
   const hash = createHash("sha256").update(xml).digest("hex");
   return { xml, hash, validation };
@@ -146,7 +153,14 @@ export async function submitToWholesaleLender(
     );
   }
   const deliveryData = await storage.getLoanDeliveryData(applicationId);
-  const pkg = buildLenderPackage(mismoData as MISMOLoanDTO, deliveryData?.noteDate ?? undefined);
+  // Capture one instant so the CreatedDatetime inside the persisted XML and
+  // the mismoPackageGeneratedAt column record the same moment.
+  const packageGeneratedAt = new Date();
+  const pkg = buildLenderPackage(
+    mismoData as MISMOLoanDTO,
+    deliveryData?.noteDate ?? undefined,
+    packageGeneratedAt,
+  );
   if (!pkg.validation.valid) {
     throw new SubmissionBlockedError(
       "The assembled MISMO package failed structural validation — cannot submit.",
@@ -165,7 +179,7 @@ export async function submitToWholesaleLender(
     readinessSnapshot: readiness as unknown as Record<string, unknown>,
     mismoPackageXml: pkg.xml,
     mismoPackageHash: pkg.hash,
-    mismoPackageGeneratedAt: new Date(),
+    mismoPackageGeneratedAt: packageGeneratedAt,
     submittedBy,
   });
 
