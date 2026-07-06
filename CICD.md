@@ -85,6 +85,36 @@ Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
 Persistent hosts (Fly, a VPS) still work unchanged: `npm run build` +
 `npm start`.
 
+## Private beta gate (invite-link access)
+
+Root-level `middleware.ts` is a Vercel **Edge Middleware** that locks the whole
+site (every route except `/api/*`) behind invite links while the
+`BETA_ACCESS_CODE` env var is set in Vercel. Tests live in
+`tests/betaGate.test.ts`.
+
+- **Turn on:** Vercel → Settings → Environment Variables → add
+  `BETA_ACCESS_CODE` (Production) with one or more comma-separated codes, e.g.
+  `hq-beta-7f3k2m` — then redeploy. Generate codes with `openssl rand -hex 4`
+  or pick memorable phrases; avoid guessable words.
+- **Invite testers:** send `https://<host>/?beta=<code>`. Opening it sets a
+  90-day HttpOnly cookie (the SHA-256 of the code, so the raw code never sits
+  in the browser) and redirects to a clean URL. Visitors without a code get a
+  401 lock screen with a code-entry form.
+- **Revoke a group:** remove that group's code from the env var and redeploy —
+  its cookies stop validating immediately.
+- **Turn off (public launch):** delete `BETA_ACCESS_CODE` and redeploy. The
+  middleware becomes a no-op; nothing else to remove.
+- **SEO while gated:** `/robots.txt` answers `Disallow: /` and every gate
+  response carries `X-Robots-Tag: noindex`, so the beta never gets indexed.
+  When the gate is off, the static `client/public/robots.txt` (allow-all)
+  serves instead.
+- **Why `/api/*` is exempt:** Vercel cron invocations and webhooks carry no
+  browser cookie (they authenticate via `CRON_SECRET` / webhook secrets), and
+  API routes already sit behind app auth. The gate is a privacy screen for the
+  beta, not a security boundary — real access control stays in the app.
+- Edge Middleware only runs on Vercel; `npm run dev` and local prod builds
+  never execute it.
+
 ## Optional checks (run manually, nothing enforces them)
 
 ```bash

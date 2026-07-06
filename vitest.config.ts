@@ -57,6 +57,7 @@ export default defineConfig({
       "tests/leadNotifications.test.ts",
       "tests/uploadsPresignedOnly.test.ts",
       "tests/rateLimitRelaxed.test.ts",
+      "tests/betaGate.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
