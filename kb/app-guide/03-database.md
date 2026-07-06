@@ -11,17 +11,19 @@
   `localhost`/`127.0.0.1` `DATABASE_URL` (or `USE_LOCAL_PG=true`) uses the
   standard `pg` driver; any other URL uses the **Neon serverless** driver
   (WebSocket-based — what runs on Vercel).
-- **Migrations**: there are none — the project uses `drizzle-kit push`
-  (`npm run db:push`), which diffs the TS schema against the live DB and
-  applies it. Forward-only. Snapshot/branch the Neon DB before destructive
-  changes (see [ROLLBACK.md](../../ROLLBACK.md) §3).
+- **Migrations**: versioned SQL in [`migrations/`](../../migrations/)
+  (`0000_baseline.sql` onward), **hand-authored** — `drizzle-kit generate` has
+  snapshot drift in this repo and produces wrong output. Apply with
+  `npm run db:migrate`. Forward-only (no automatic "down"); snapshot/branch the
+  Neon DB before destructive changes (see [ROLLBACK.md](../../ROLLBACK.md) §3).
+  `db:push` is retired for shared environments — see the pre-flight below.
 
 ### Environments
 
 | Environment | Database | How |
 |-------------|----------|-----|
 | Local dev | Native Postgres on `localhost:5432`, db `homiquity` | `DATABASE_URL` in `.env` |
-| Production (Vercel) | Neon (us-east-2, pooled) | `DATABASE_URL` in Vercel env; also stored locally as `PROD_DATABASE_URL` in `.env` for schema pushes: `DATABASE_URL="$PROD_DATABASE_URL" npm run db:push` |
+| Production (Vercel) | Neon (us-east-2, pooled) | `DATABASE_URL` in Vercel env; also stored locally as `PROD_DATABASE_URL` in `.env` for founder-supervised migration applies (see pre-flight below) |
 
 ## Schema domains (what lives where)
 
@@ -56,14 +58,23 @@
   compliance chain; audit log rows are hash-chained (tamper-evident) and
   sensitive fields are encrypted with `CREDIT_ENCRYPTION_KEY`.
 
-## How to make a schema change
+## How to make a schema change (pre-flight)
 
 1. Edit the right `shared/schema/<domain>.ts` (or create a new domain file and
    export it from `shared/schema.ts`).
-2. `npm run db:push` against your local DB; test.
-3. Ship the code; run `DATABASE_URL="$PROD_DATABASE_URL" npm run db:push` for
-   production. **If the change drops/renames anything, snapshot Neon first.**
-4. Drizzle infers insert/select types — use `createInsertSchema` (drizzle-zod)
+2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql` — never
+   `drizzle-kit generate` (snapshot drift). Apply locally with
+   `npm run db:migrate` and test.
+3. From a **worktree**, never `npm run db:push` against the shared dev DB — it
+   drops other branches' columns; use targeted `ALTER TABLE` statements instead
+   ([.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md)).
+4. Production applies are **founder-supervised**
+   ([TEAM_PRACTICES](../TEAM_PRACTICES.md) §6). The Neon pooler breaks
+   `db:migrate` against prod — apply via a direct `pg` client and insert the
+   migrations-journal row manually; verify the journal row landed. **If the
+   change drops/renames anything, snapshot Neon first.** Record the apply in
+   CICD.md's production change ledger.
+5. Drizzle infers insert/select types — use `createInsertSchema` (drizzle-zod)
    for request validation like the existing routes do.
 
 ## Reading the data-access layer

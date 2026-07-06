@@ -67,6 +67,21 @@ depth.
 | `../propertyAnalyzer.ts` | Property affordability analysis |
 | `../storage.ts` | The `IStorage` data-access layer (~4,700 lines) used by most routes |
 
+## Pre-flight checklist — underwriting engine & regulated math
+
+1. Determinism is a hard invariant: no vendor calls, clock reads, or randomness
+   inside `underwritingEngine.ts` / `decisionEngine.ts` / `ruleEngine.ts` —
+   same inputs → same outcome, typed error classification preserved
+   ([CLAUDE.md](../../CLAUDE.md) ground rules).
+2. Regulated-math changes carry a `kb/regulatory-ledger.json` citation **in the
+   same commit** — no citation, no code change
+   ([TEAM_PRACTICES](../TEAM_PRACTICES.md) §5.5).
+3. `tests/complianceInvariants.test.ts` and `tests/scenarioCatalog.test.ts`
+   stay green — they read the engine directly and exist to catch exactly this
+   class of change.
+4. Every displayed APR still comes from `apr.ts`; TRID timing from
+   `businessDays.ts` — never reimplement either inline.
+
 ## Reading tips
 
 - Start with `borrowerGraph.ts` and `ruleEngine.ts` — they encode the two big

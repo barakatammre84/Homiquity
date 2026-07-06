@@ -64,12 +64,45 @@ report commit. *(Prevents: the `kb/lo-audit/2026-07-04-pm.md` stranding.)*
    [.agents/memory/db-push-blocker.md](../.agents/memory/db-push-blocker.md) — note that
    `.agents/memory/` is in-repo agent memory, visible to every session; check it before
    fighting a known battle.
+7. New or changed environment variables land in `.env.example` **and** the Vercel env-var
+   list in [CICD.md](../CICD.md) in the same PR. *(Prevents: a variable that exists only in
+   someone's `.env` or the Vercel dashboard, invisible to the next deployer.)*
+8. PR body contract: verification evidence (point 4), each new dependency justified in one
+   line, a prod-impact note (migrations to apply / env vars to set / "none"), and an explicit
+   doc-sync line — "docs updated: <files>" or "no doc update required". Silence is not a
+   doc-sync statement.
+9. Before implementing anything non-trivial: state your assumptions and the verifiable
+   success criterion first ("write a failing test, then make it pass" beats "make it work"),
+   then ship the **minimum diff** that satisfies it. Every changed line traces to the
+   request; if a simpler approach exists, say so instead of building the clever one.
+
+### Known traps index (check before fighting a known battle)
+
+The trap doctrine lives where it lives — this is the one-stop pointer list. A newly
+discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR.
+
+- **`npm run db:push` from a worktree** drops other branches' columns on the shared dev DB;
+  never `--force` — [.agents/memory/db-push-blocker.md](../.agents/memory/db-push-blocker.md).
+- **`drizzle-kit generate` has snapshot drift** in this repo — hand-author migration SQL
+  (point 6 above; [CLAUDE.md](../CLAUDE.md) database rules).
+- **Neon's pooled connection breaks `npm run db:migrate` against prod** — apply via a direct
+  `pg` client and insert the migrations-journal row manually
+  ([kb/app-guide/03-database.md](app-guide/03-database.md)).
+- **npm crashes mid-install on Vercel** ("Exit handler never called") — Vercel builds with
+  pnpm; after any dependency change run `npx pnpm@10 import` and commit **both** lockfiles
+  ([CICD.md](../CICD.md)).
+- **The integration suite trips the auth rate limiter** — boot the test server with
+  `RATE_LIMIT_RELAXED=true` (point 3 above).
 
 ## 6. Push and merge policy
 
 - Pushes to `main` deploy production. They are **founder-approved**: either the founder
   pushes, or a session pushes under an explicit, per-batch approval (the 2026-07-04
   launch-integration push was such a one-time authorization — it does not generalize).
+- A push to `main` — and any action against the production DB or env — is not complete until
+  its entry lands in the **production change ledger** in [CICD.md](../CICD.md), same session:
+  what shipped, prod DB/env actions, validation evidence, rollback pointer. *(Prevents: an
+  unledgered deploy invisible to the next incident responder.)*
 - Scheduled routines publish **docs-only** (the evening-triage gate inspects every
   unpushed commit's paths before pushing).
 - Batch merges via integration push preserve PR head SHAs (`git merge --no-ff` per PR) so
@@ -98,3 +131,21 @@ Grep before claiming "missing"; read the code before repeating a doc's claim; ch
 `gh pr list` / `git log` before describing PR or branch state. The source-of-truth rule
 applies to our own tickets and reports, not just external research. *(Prevents: ticket
 #34 — a TRID clock "gap" that had been fully implemented on main all along.)*
+
+## 9. Security-review triggers (binding)
+
+Any PR touching one of the areas below runs `/security-review` (or an equivalent structured
+security pass) **before merge**, and unresolved CRITICAL findings block the merge — the same
+contract as the regulated-math rule in §5.5: no review, no merge. Record the outcome in the
+PR body (part of the §5.8 contract).
+
+- **PII vault / field encryption:** `server/services/ssnVault.ts`,
+  `server/services/piiVault.ts`, `server/services/encryptionService.ts`, or any
+  `shared/schema/` column holding PII.
+- **Auth & sessions:** `server/auth.ts`, `server/socialAuth.ts`, `server/integrations/auth/`.
+- **Role/permission gates** (`isAdmin`, `requireRole`, staff scoping) and per-resource
+  ownership checks on borrower data.
+- **Uploads / object storage:** `server/integrations/object_storage/`, `shared/uploads.ts`.
+- **Outbound messaging:** `server/services/emailService.ts`,
+  `server/services/smsCompliance.ts`, webhook receivers under `/api/webhooks/*`.
+- **Logging near PII:** any widening of `RESPONSE_BODY_LOG_ALLOWLIST` in `server/app.ts`.

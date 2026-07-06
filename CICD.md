@@ -96,3 +96,17 @@ TEST_BASE_URL=http://127.0.0.1:5001 npm run test:integration   # against a runni
 If you later want gates again (block bad pushes before they deploy), add a
 GitHub Actions workflow that runs the commands above and enable branch
 protection — but that's a deliberate future choice, not the current setup.
+
+## Production change ledger (append-only)
+
+Every push to `main` (it deploys) and every action against the production database or its
+env vars gets a row here **in the same session** — newest first
+([TEAM_PRACTICES](kb/TEAM_PRACTICES.md) §6). Never rewrite or delete rows; corrections get a
+new row. Each row: what shipped · prod DB/env actions (and how) · validation evidence ·
+rollback pointer.
+
+| Date | Change | Prod DB / env | Validation | Rollback |
+|---|---|---|---|---|
+| 2026-07-04 (evening) | Launch-integration batch: 13 PRs (#37, #39–#50) merged to `main` in one founder-authorized push | none (migrations 0005–0008 already applied) | 647 unit + 73 integration tests green pre-push | [ROLLBACK.md](ROLLBACK.md) §1–2 |
+| 2026-07-04 | PR #38 — GSE delivery engines (SFC/QM/edit mirror), broker submission workflow, lender submissions, dual-AUS | Migrations 0005–0008 applied via direct `pg` client + manual journal insert (Neon pooler breaks `npm run db:migrate` — see the known-traps index in [TEAM_PRACTICES](kb/TEAM_PRACTICES.md) §5) | Deploy verified live post-migration | [ROLLBACK.md](ROLLBACK.md) §1, §3 |
+| ≤ 2026-07-04 | Baseline — everything before this ledger existed: migrations `0000`–`0004` and all prior deploys | Verified applied/live in the 2026-07-04 source-of-truth audit | [ASSUMPTIONS.md](ASSUMPTIONS.md) §4 | — |

@@ -64,3 +64,18 @@ can execute.
   soft-pull credit bureau API, Optimal Blue pricing, Fannie DU / Freddie LPA
   submission, lead-aggregator webhooks (Zillow/LendingTree), Twilio/ElevenLabs
   voice. See the session notes / PRODUCT_SPINE for context.
+
+## Pre-flight checklist — vendor & GSE delivery changes
+
+1. Vendor calls live **only** inside their adapter, and everything stays a
+   deterministic simulation until a real contract exists — converting a row is
+   a roadmap ticket ([ASSUMPTIONS.md](../../ASSUMPTIONS.md) §1).
+2. Anything touching MISMO/ULDD/UCD/delivery: consult
+   [`docs/fannie-mae/`](../../docs/fannie-mae/) plus the official Loan Delivery
+   job aid first, and **never invent MISMO names**
+   ([CLAUDE.md](../../CLAUDE.md) compliance-first rules).
+3. If the MISMO export shape changes, validate against the in-repo schemas and
+   golden samples (`docs/fannie-mae/schemas/` — ULDD Phase 5 extension XSD,
+   UCD v2 + samples).
+4. New env vars for an integration land in `.env.example` **and** CICD.md's
+   Vercel list in the same PR ([TEAM_PRACTICES](../TEAM_PRACTICES.md) §5.7).
