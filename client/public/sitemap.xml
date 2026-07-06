@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Scoped to the pre-license public surface (kb/ARMED_LAUNCH_CHARTER_2026-07-07.md):
+     educational routes that stay live while PRELAUNCH_GATED. Gated routes (persona
+     LPs, /apply, /rates/*) are deliberately absent — add them at the F1 config flip.
+     While the private-beta Edge gate is on, middleware.ts overrides /robots.txt with
+     Disallow-all, so nothing here is crawled before July 7. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://homiquity.com/</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/learn</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/learn/illinois-down-payment-assistance-2026</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/learn/chicago-homegrown-purchase-assistance</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/learn/cook-county-down-payment-assistance-2026</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/learn/first-time-homebuyer-guide</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/learn/fixed-vs-adjustable-rate-mortgages</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/learn/improve-credit-score-mortgage</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/down-payment-wizard</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/resources</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/faq</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/glossary</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/privacy</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/terms</loc><lastmod>2026-07-06</lastmod></url>
+  <url><loc>https://homiquity.com/disclosures</loc><lastmod>2026-07-06</lastmod></url>
+</urlset>

@@ -253,6 +253,32 @@ export default function DownPaymentWizard() {
         </div>
       )}
 
+      <Card className="mt-6" data-testid="card-il-guides">
+        <CardContent className="py-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Buying in Illinois?</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Our Learning Center guides cover the{" "}
+                <Link href="/learn/illinois-down-payment-assistance-2026" className="underline underline-offset-2" data-testid="link-wizard-dpa-ihda">
+                  four IHDA statewide programs
+                </Link>
+                , the{" "}
+                <Link href="/learn/chicago-homegrown-purchase-assistance" className="underline underline-offset-2" data-testid="link-wizard-dpa-homegrown">
+                  Chicago HomeGrown grant (up to $70,000)
+                </Link>
+                , and the{" "}
+                <Link href="/learn/cook-county-down-payment-assistance-2026" className="underline underline-offset-2" data-testid="link-wizard-dpa-cook">
+                  Cook County program reopening July 20, 2026
+                </Link>
+                .
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="mt-6" data-testid="card-bottom-cta">
         <CardContent className="py-6 text-center">
           <PiggyBank className="mx-auto h-8 w-8 text-primary mb-3" />

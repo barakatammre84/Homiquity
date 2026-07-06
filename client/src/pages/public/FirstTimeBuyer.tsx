@@ -173,15 +173,15 @@ export default function FirstTimeBuyer() {
               <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/70">
                 <span className="flex items-center gap-2">
                   <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
+                  Know exactly where you stand
+                </span>
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
                   No hard credit check
                 </span>
                 <span className="flex items-center gap-2">
                   <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
                   Free — no obligation
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  About 3 minutes
                 </span>
               </div>
             </div>
@@ -381,7 +381,19 @@ export default function FirstTimeBuyer() {
                   available, many states and cities offer first-time buyer assistance, and
                   veterans may qualify with no down payment at all. Flag yourself as a
                   first-time buyer in the application and your options get reviewed with
-                  that in mind.
+                  that in mind. Buying in Illinois? Our guides to the{" "}
+                  <Link href="/learn/illinois-down-payment-assistance-2026" className="underline underline-offset-2" data-testid="link-ftb-dpa-ihda">
+                    IHDA statewide programs
+                  </Link>
+                  , the{" "}
+                  <Link href="/learn/chicago-homegrown-purchase-assistance" className="underline underline-offset-2" data-testid="link-ftb-dpa-homegrown">
+                    Chicago HomeGrown grant
+                  </Link>
+                  , and the{" "}
+                  <Link href="/learn/cook-county-down-payment-assistance-2026" className="underline underline-offset-2" data-testid="link-ftb-dpa-cook">
+                    Cook County program
+                  </Link>{" "}
+                  break down what each one offers.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="credit">
@@ -445,7 +457,7 @@ export default function FirstTimeBuyer() {
               options, and your exact next step.
             </p>
             <Link href="/apply?type=first-time" className="mt-8 w-full max-w-md sm:w-auto sm:max-w-none">
-              <Button size="lg" variant="secondary" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-ftb-apply-footer">
+              <Button size="lg" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-ftb-apply-footer">
                 See Where I Stand
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </Button>

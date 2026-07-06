@@ -294,7 +294,7 @@ export default function VALoans() {
               you talk to anyone.
             </p>
             <Link href="/apply?type=va" className="mt-8 w-full max-w-md sm:w-auto sm:max-w-none">
-              <Button size="lg" variant="secondary" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-va-apply-footer">
+              <Button size="lg" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-va-apply-footer">
                 Check My VA Loan Options
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </Button>
