@@ -28,9 +28,9 @@
 - [x] **LS-7. Persona-LP work: PR #42 merged 2026-07-04** — 4 landing pages **including the G-E route-collision fix**. *(Superseded the dead branch `claude/distracted-ramanujan-35682b`.)*
 - [x] **LS-8. G-A speed-to-lead notification.** *(PR #40 merged 2026-07-04.)*
 - [x] **LS-9. LO-M11 co-applicant GSE gate.** *(PR #41 merged 2026-07-04.)*
-- [ ] **LS-10. Lender submission adapter (post-#38)** — the actual delivery leg to wholesale lenders. **← next engineering item**, alongside L6 (XSD-validate the MISMO export).
+- [ ] **LS-10. Lender submission adapter (post-#38)** — the actual delivery leg to wholesale lenders. *(Slice 2 — per-lender MISMO package assembly + validation gate at submission time — built 2026-07-05, open as [PR #51](https://github.com/barakatammre84/MortgageStream/pull/51), mergeable, not yet merged. Slice 3 — real per-lender portal hand-off — stays blocked on broker-lender agreements; `submitToLenderPortal` remains the deterministic simulation.)* **← next: merge #51**, then L6 (XSD-validate the MISMO export against `docs/fannie-mae/schemas/`).
 
-*(2026-07-04 launch-integration batch: all 13 open PRs — #37, #39–#50 — merged to main in a single integration push; the engineering sprint is fully landed. Remaining sprint items are founder-side (LS-1/2/4/6) plus LS-10/L6 engineering. Fact/assumption register: [ASSUMPTIONS.md](ASSUMPTIONS.md).)*
+*(2026-07-04 launch-integration batch: all 13 open PRs — #37, #39–#50 — merged to main in a single integration push; the engineering sprint is fully landed. 2026-07-05: two new PRs opened mid-day — [#51](https://github.com/barakatammre84/MortgageStream/pull/51) (LS-10 slice 2, code) and [#52](https://github.com/barakatammre84/MortgageStream/pull/52) (docs: SDLC/security-review/DoD additions) — both clean/mergeable against current main, no file overlap between them, neither merged yet. Remaining sprint items are founder-side (LS-1/2/4/6) plus LS-10 slice 3/L6 engineering. Fact/assumption register: [ASSUMPTIONS.md](ASSUMPTIONS.md).)*
 
 Everything else in this file is explicitly **not** the sprint: CS\*, ARC-\*, CH-\*, G-B/G-C, LO-M16/M17, S-07+ wait until we are live or their blocker clears.
 
