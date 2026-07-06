@@ -25,6 +25,7 @@ import {
 } from "@shared/wholesaleLenders";
 import type { LenderSubmission } from "@shared/schema";
 import type { BrokerSubmissionReadiness } from "./brokerSubmissionReadiness";
+import { generateMISMO34XML, validateMISMOXML, type MISMOLoanDTO } from "../mismo";
 
 /** Statuses that count as a live submission (blocks a duplicate to the same lender). */
 const ACTIVE_STATUSES: LenderSubmissionStatus[] = [
@@ -75,6 +76,25 @@ async function submitToLenderPortal(
   return simulateLenderAcknowledgment(lender.id, applicationId);
 }
 
+export interface LenderPackage {
+  xml: string;
+  hash: string;
+  validation: { valid: boolean; errors: string[] };
+}
+
+/**
+ * Assembles the MISMO 3.4 XML package for a wholesale submission and hashes
+ * it for tamper-evident audit (the package is persisted as an immutable
+ * snapshot, not regenerated later — see mismoPackageXml on lender_submissions).
+ * Pure — unit-tested directly; submitToWholesaleLender supplies the DTO.
+ */
+export function buildLenderPackage(dto: MISMOLoanDTO, noteDate?: string): LenderPackage {
+  const xml = generateMISMO34XML(dto, { purpose: "loanDelivery", noteDate });
+  const validation = validateMISMOXML(xml);
+  const hash = createHash("sha256").update(xml).digest("hex");
+  return { xml, hash, validation };
+}
+
 export interface SubmitResult {
   submission: LenderSubmission;
   readiness: BrokerSubmissionReadiness;
@@ -114,6 +134,26 @@ export async function submitToWholesaleLender(
     );
   }
 
+  // Per-lender package assembly: build the exact MISMO 3.4 XML the lender
+  // would receive and validate it structurally before allowing submission.
+  // A readiness-gate pass doesn't guarantee the export itself is well-formed
+  // (different check — see L6 for the fuller XSD-validation slice).
+  const mismoData = await storage.getMISMOLoanData(applicationId);
+  if (!mismoData) {
+    throw new SubmissionBlockedError(
+      "Application data not found — cannot assemble the lender package.",
+      [],
+    );
+  }
+  const deliveryData = await storage.getLoanDeliveryData(applicationId);
+  const pkg = buildLenderPackage(mismoData as MISMOLoanDTO, deliveryData?.noteDate ?? undefined);
+  if (!pkg.validation.valid) {
+    throw new SubmissionBlockedError(
+      "The assembled MISMO package failed structural validation — cannot submit.",
+      pkg.validation.errors,
+    );
+  }
+
   const ack = await submitToLenderPortal(lender, applicationId);
 
   const submission = await storage.createLenderSubmission({
@@ -123,6 +163,9 @@ export async function submitToWholesaleLender(
     simulated: ack.simulated,
     confirmationId: ack.confirmationId,
     readinessSnapshot: readiness as unknown as Record<string, unknown>,
+    mismoPackageXml: pkg.xml,
+    mismoPackageHash: pkg.hash,
+    mismoPackageGeneratedAt: new Date(),
     submittedBy,
   });
 
@@ -130,7 +173,7 @@ export async function submitToWholesaleLender(
     applicationId,
     activityType: "note",
     title: `Submitted to ${lender.name}`,
-    description: `Wholesale submission ${ack.confirmationId}${ack.simulated ? " (simulated — no broker agreement live)" : ""}`,
+    description: `Wholesale submission ${ack.confirmationId}${ack.simulated ? " (simulated — no broker agreement live)" : ""} — MISMO package ${pkg.hash.slice(0, 12)}`,
     performedBy: submittedBy,
   });
 

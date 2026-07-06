@@ -134,6 +134,15 @@ export const lenderSubmissions = pgTable(
     confirmationId: varchar("confirmation_id", { length: 60 }),
     /** Snapshot of the submission-readiness report at the moment of submission. */
     readinessSnapshot: jsonb("readiness_snapshot"),
+    /**
+     * The MISMO 3.4 XML package assembled and sent at submission time — an
+     * immutable snapshot, not regenerated later, so staff can see exactly
+     * what the lender received even after the source data changes.
+     */
+    mismoPackageXml: text("mismo_package_xml"),
+    /** sha256 hex digest of mismoPackageXml, for tamper-evident audit. */
+    mismoPackageHash: varchar("mismo_package_hash", { length: 64 }),
+    mismoPackageGeneratedAt: timestamp("mismo_package_generated_at"),
     /** Staff user who performed the submission. */
     submittedBy: varchar("submitted_by").notNull(),
     submittedAt: timestamp("submitted_at").defaultNow().notNull(),

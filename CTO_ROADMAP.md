@@ -28,7 +28,7 @@
 - [x] **LS-7. Persona-LP work: PR #42 merged 2026-07-04** — 4 landing pages **including the G-E route-collision fix**. *(Superseded the dead branch `claude/distracted-ramanujan-35682b`.)*
 - [x] **LS-8. G-A speed-to-lead notification.** *(PR #40 merged 2026-07-04.)*
 - [x] **LS-9. LO-M11 co-applicant GSE gate.** *(PR #41 merged 2026-07-04.)*
-- [ ] **LS-10. Lender submission adapter (post-#38)** — the actual delivery leg to wholesale lenders. **← next engineering item**, alongside L6 (XSD-validate the MISMO export).
+- [ ] **LS-10. Lender submission adapter (post-#38)** — the actual delivery leg to wholesale lenders. **← next engineering item**, alongside L6 (XSD-validate the MISMO export). *(Slice 2 of 3 — per-lender MISMO package assembly — done 2026-07-05: `submitToWholesaleLender` now builds the MISMO 3.4 XML package at submission time via the new pure `buildLenderPackage()`, structurally validates it before allowing submission, and persists an immutable snapshot + sha256 hash on `lender_submissions` (migration 0009) for staff download via a new `mismo-package` route. Slice 1 (status machine/persistence) shipped with #38; slice 3 (delivery hand-off) remains.)*
 
 *(2026-07-04 launch-integration batch: all 13 open PRs — #37, #39–#50 — merged to main in a single integration push; the engineering sprint is fully landed. Remaining sprint items are founder-side (LS-1/2/4/6) plus LS-10/L6 engineering. Fact/assumption register: [ASSUMPTIONS.md](ASSUMPTIONS.md).)*
 
