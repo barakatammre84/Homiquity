@@ -13,6 +13,7 @@ import { loanConditions, loanMilestones, users, dealActivities } from "@shared/s
 import { db } from "./db";
 import { inArray, desc, eq, max } from "drizzle-orm";
 import { computeFileHealth, daysSince, type FileHealth } from "./services/fileHealth";
+import { documentTypesMatch } from "@shared/documentTypes";
 import {
   LOAN_APP_TRANSITIONS,
   isLoanAppStatus,
@@ -400,8 +401,13 @@ export async function matchUploadedDocumentToConditions(args: {
   const { applicationId, documentType, fileName, uploadedBy } = args;
 
   const conditions = await storage.getLoanConditionsByApplication(applicationId);
+  // Alias-aware match: the borrower checklist uploads finer-grained types
+  // ("paystub", "bank_statement_checking") than conditions require
+  // ("pay_stub", "bank_statement") — shared/documentTypes.ts bridges them.
   const matches = conditions.filter(
-    (c) => c.status === "outstanding" && (c.requiredDocumentTypes ?? []).includes(documentType),
+    (c) =>
+      c.status === "outstanding" &&
+      (c.requiredDocumentTypes ?? []).some((rt) => documentTypesMatch(rt, documentType)),
   );
   if (matches.length === 0) return { matchedConditionIds: [] };
 

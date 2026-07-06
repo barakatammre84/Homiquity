@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import type { Document } from "@shared/schema";
+import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
+import { canonicalDocumentType } from "@shared/documentTypes";
 import { PageShell } from "@/components/PageShell";
 import {
   FileText,
@@ -28,6 +30,7 @@ import {
   FileCheck,
   Clock,
   Shield,
+  ClipboardList,
 } from "lucide-react";
 
 interface DashboardData {
@@ -128,6 +131,17 @@ const UPLOAD_NEXT_STEPS: Record<string, string> = {
     "This moves your file forward toward final review. We'll let you know if the underwriter needs anything else about the property.",
 };
 
+// Friendly names for document types, falling back to prettified snake_case for
+// condition-required types that aren't in the static catalog (e.g. a letter of
+// explanation added by an underwriter).
+const DOC_TYPE_NAMES: Record<string, string> = Object.fromEntries(
+  DOCUMENT_CATEGORIES.flatMap((cat) => cat.documents.map((d) => [d.type, d.name])),
+);
+
+function docTypeName(type: string): string {
+  return DOC_TYPE_NAMES[type] ?? type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
 function getUploadNextStep(docType: string): string {
   const category = DOCUMENT_CATEGORIES.find(cat =>
     cat.documents.some(d => d.type === docType)
@@ -165,6 +179,46 @@ export default function Documents() {
     enabled: !authLoading,
   });
 
+  // Condition-focus mode: the pipeline's per-condition "Upload" button links
+  // here with ?condition=<id>. Resolve it through the same pipeline endpoint
+  // the Loan Progress page uses (one deterministic source), then spotlight the
+  // document types that clear it. Uploads of a matching type flip the
+  // condition to "submitted" server-side (matchUploadedDocumentToConditions).
+  const search = useSearch();
+  const conditionId = new URLSearchParams(search).get("condition");
+
+  const { data: myApps } = useQuery<LoanApplication[]>({
+    queryKey: ["/api/loan-applications"],
+    enabled: !!conditionId && !authLoading,
+  });
+  const focusAppId = myApps?.[0]?.id;
+
+  const { data: focusPipeline, isLoading: focusLoading } = useQuery<{ conditions: LoanCondition[] }>({
+    queryKey: ["/api/loan-applications", focusAppId, "pipeline"],
+    enabled: !!conditionId && !!focusAppId,
+  });
+
+  const focusedCondition = conditionId
+    ? (focusPipeline?.conditions ?? []).find((c) => c.id === conditionId) ?? null
+    : null;
+  // Canonical set so catalog types ("paystub") match condition requirements
+  // ("pay_stub") — same bridge the server-side auto-matcher uses.
+  const focusTypes = new Set(
+    (focusedCondition?.requiredDocumentTypes ?? []).map(canonicalDocumentType),
+  );
+
+  // Open the categories that contain the spotlighted document types.
+  useEffect(() => {
+    if (!focusedCondition) return;
+    const types = new Set(focusedCondition.requiredDocumentTypes ?? []);
+    const cats = DOCUMENT_CATEGORIES.filter((c) => c.documents.some((d) => types.has(d.type))).map(
+      (c) => c.id,
+    );
+    if (cats.length) {
+      setExpandedCategories((prev) => Array.from(new Set([...prev, ...cats])));
+    }
+  }, [focusedCondition?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleUploadClick = (docType: string) => {
     setActiveDocType(docType);
     fileInputRef.current?.click();
@@ -190,6 +244,9 @@ export default function Documents() {
       });
       if (registered.ok) {
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+        // Refresh pipeline data too — a matching upload moves the focused
+        // condition to "submitted" and the banner should say so.
+        queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
         toast({ title: "Document uploaded", description: getUploadNextStep(activeDocType) });
       } else {
         // Never claim success on a failed registration — that's how files get lost.
@@ -300,6 +357,79 @@ export default function Documents() {
         data-testid="input-file-upload"
       />
       <PageShell fullHeight width="wide" title="Document Checklist" subtitle="Submit required documents as requested — we may ask for more as your application progresses">
+        {/* Condition-focus banner: arrived from a specific outstanding item */}
+        {conditionId && focusedCondition && (
+          <Card
+            className={
+              focusedCondition.status === "outstanding"
+                ? "mb-6 border-primary/50"
+                : "mb-6"
+            }
+            data-testid="card-condition-focus"
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">
+                  {focusedCondition.status === "outstanding"
+                    ? `Uploading for: ${focusedCondition.title}`
+                    : focusedCondition.status === "submitted"
+                      ? `Under review: ${focusedCondition.title}`
+                      : `Cleared: ${focusedCondition.title}`}
+                </CardTitle>
+              </div>
+              {focusedCondition.description && (
+                <CardDescription>{focusedCondition.description}</CardDescription>
+              )}
+            </CardHeader>
+            {focusedCondition.status === "outstanding" ? (
+              <CardContent className="space-y-3">
+                {(focusedCondition.requiredDocumentTypes ?? []).length > 0 ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Any one of these documents can clear this item — it moves to
+                      "Under Review" automatically the moment a match is uploaded.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(focusedCondition.requiredDocumentTypes ?? []).map((type) => (
+                        <Button
+                          key={type}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleUploadClick(type)}
+                          disabled={isUploading}
+                          data-testid={`button-focus-upload-${type}`}
+                        >
+                          <Upload className="mr-1.5 h-3.5 w-3.5" />
+                          {docTypeName(type)}
+                        </Button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Your loan team will review this item — no specific document is
+                    mapped to it, but you can upload anything relevant below.
+                  </p>
+                )}
+              </CardContent>
+            ) : (
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  {focusedCondition.status === "submitted"
+                    ? "Your upload is with the team — nothing more is needed on this item right now."
+                    : "This item is done. Anything still outstanding is listed below."}
+                </p>
+              </CardContent>
+            )}
+          </Card>
+        )}
+        {conditionId && !focusedCondition && !focusLoading && myApps && (
+          <div className="mb-6 rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground" data-testid="text-condition-gone">
+            That item is no longer on your list — the checklist below is current.
+          </div>
+        )}
+
         {/* Status Summary */}
         <div className={`mb-6 inline-flex items-center gap-4 rounded-xl px-5 py-3 ${statusInfo.bgColor} border ${statusInfo.borderColor}`} data-testid="status-summary">
           <StatusIcon className={`h-8 w-8 ${statusInfo.iconColor}`} />
@@ -402,7 +532,7 @@ export default function Documents() {
                                 : docType.required
                                 ? "bg-warning-subtle/50"
                                 : "bg-muted/30"
-                            }`}
+                            } ${focusTypes.has(canonicalDocumentType(docType.type)) ? "ring-2 ring-primary" : ""}`}
                             data-testid={`row-doctype-${docType.type}`}
                           >
                             <div className="flex items-center gap-3 flex-1">
