@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      // Layer 1: white module on Paper Ice — a crisp Frost hairline carries
+      // Layer 1: white module on the stark-white canvas — a slate hairline carries
       // the separation; no default shadow (near-flat precision).
       "shadcn-card rounded-lg bg-card text-card-foreground border border-card-border",
       className

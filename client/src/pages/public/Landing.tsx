@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 // Monochromatic by design: differentiation comes from the icon, not a rainbow
-// of chip colors (Obsidian Indigo sweep — precision ramp only on this page).
+// of chip colors (Charcoal Emerald sweep — precision ramp only on this page).
 const AUDIENCE_PATHS = [
   {
     id: "first-time",
