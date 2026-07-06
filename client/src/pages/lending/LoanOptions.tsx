@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 
 import { ConsentGateCard } from "@/components/ConsentGateCard";
+import { TermTooltip } from "@/components/TermTooltip";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,6 +124,72 @@ function RateBreakdown({ optionId }: { optionId: string }) {
               </p>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PitiRow({ label, value }: { label: ReactNode; value: string }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium tabular-nums">{formatCurrency(value)}</span>
+    </div>
+  );
+}
+
+/**
+ * Radical-transparency payment panel: the headline number is the FULL monthly
+ * payment (the engine computes PITI, not just P&I), itemized below so every
+ * dollar is accounted for. Rows without escrow estimates (legacy options) fall
+ * back to the plain "Principal & Interest" caption rather than implying a
+ * breakdown we don't have.
+ */
+function MonthlyPaymentPanel({ option }: { option: LoanOption }) {
+  const amount = (v: string | null) => (v == null ? 0 : parseFloat(v));
+  const escrowed = amount(option.propertyTax) > 0 || amount(option.homeInsurance) > 0;
+
+  return (
+    <div>
+      <div className="text-center">
+        <p className="text-sm text-muted-foreground">Monthly Payment</p>
+        <p className="text-4xl font-bold" data-testid={`text-monthly-payment-${option.loanType}`}>
+          {formatCurrency(option.monthlyPayment)}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {escrowed ? (
+            <>
+              Full <TermTooltip term="piti" /> — taxes &amp; insurance included
+            </>
+          ) : (
+            "Principal & Interest"
+          )}
+        </p>
+      </div>
+
+      {escrowed && (
+        <div
+          className="mt-4 space-y-2 rounded-lg bg-muted/50 p-4"
+          data-testid={`section-piti-${option.loanType}`}
+        >
+          <PitiRow label="Principal & Interest" value={option.principalAndInterest} />
+          {amount(option.propertyTax) > 0 && (
+            <PitiRow label="Property taxes" value={option.propertyTax!} />
+          )}
+          {amount(option.homeInsurance) > 0 && (
+            <PitiRow label="Homeowners insurance" value={option.homeInsurance!} />
+          )}
+          {amount(option.pmi) > 0 && (
+            <PitiRow
+              label={<TermTooltip term="pmi">Mortgage insurance</TermTooltip>}
+              value={option.pmi!}
+            />
+          )}
+          {amount(option.hoaFees) > 0 && <PitiRow label="HOA dues" value={option.hoaFees!} />}
+          <p className="pt-1 text-xs text-muted-foreground">
+            Taxes &amp; insurance are estimates, collected monthly in <TermTooltip term="escrow" />.
+          </p>
         </div>
       )}
     </div>
@@ -531,13 +598,7 @@ export default function LoanOptions() {
                 </CardHeader>
 
                 <CardContent className="space-y-6">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Monthly Payment</p>
-                    <p className="text-4xl font-bold" data-testid={`text-monthly-payment-${option.loanType}`}>
-                      {formatCurrency(option.monthlyPayment)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Principal & Interest</p>
-                  </div>
+                  <MonthlyPaymentPanel option={option} />
 
                   <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/50 p-4">
                     <div className="text-center">
@@ -550,7 +611,7 @@ export default function LoanOptions() {
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">APR</span>
+                        <TermTooltip term="apr" className="text-sm text-muted-foreground" />
                       </div>
                       <p className="text-lg font-semibold">{formatPercent(option.apr)}</p>
                     </div>
@@ -569,19 +630,19 @@ export default function LoanOptions() {
                     </div>
                     {parseFloat(option.points || "0") > 0 && (
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Points</span>
+                        <TermTooltip term="points" className="text-muted-foreground">Points</TermTooltip>
                         <span className="font-medium">
                           {option.points} ({formatCurrency(option.pointsCost || "0")})
                         </span>
                       </div>
                     )}
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Closing Costs</span>
+                      <TermTooltip term="closingCosts" className="text-muted-foreground">Closing Costs</TermTooltip>
                       <span className="font-medium">{formatCurrency(option.closingCosts || "0")}</span>
                     </div>
                     <div className="border-t pt-3">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">Cash to Close</span>
+                        <TermTooltip term="cashToClose" className="font-medium">Cash to Close</TermTooltip>
                         <span className="text-lg font-bold text-primary">
                           {formatCurrency(option.cashToClose || "0")}
                         </span>
@@ -592,7 +653,19 @@ export default function LoanOptions() {
                   {option.pmi && parseFloat(option.pmi) > 0 && (
                     <div className="rounded-lg border border-border bg-warning-subtle p-3">
                       <p className="text-xs text-warning-subtle-foreground">
-                        Includes ${option.pmi}/mo PMI until 20% equity
+                        {option.loanType === "fha" ? (
+                          <>
+                            Includes {formatCurrency(option.pmi)}/mo FHA mortgage insurance (MIP),
+                            which usually lasts the life of the loan. Many buyers refinance out of
+                            it after reaching 20% equity.
+                          </>
+                        ) : (
+                          <>
+                            Includes {formatCurrency(option.pmi)}/mo{" "}
+                            <TermTooltip term="pmi" showIcon={false} />. It's temporary — you can
+                            request removal once you reach 20% equity.
+                          </>
+                        )}
                       </p>
                     </div>
                   )}

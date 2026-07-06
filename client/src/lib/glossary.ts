@@ -53,6 +53,11 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     definition:
       "One-time fees paid when the loan finalizes — things like appraisal, title, and lender fees. Often 2–5% of the loan.",
   },
+  cashToClose: {
+    label: "cash to close",
+    definition:
+      "The total money you bring on closing day: your down payment plus closing costs, minus any deposits or credits already applied.",
+  },
   preApproval: {
     label: "pre-approval",
     definition:

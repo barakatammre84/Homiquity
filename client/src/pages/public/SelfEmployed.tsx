@@ -125,15 +125,15 @@ export default function SelfEmployed() {
               <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/70">
                 <span className="flex items-center gap-2">
                   <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
+                  A real answer, not an algorithm's guess
+                </span>
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
                   No hard credit check
                 </span>
                 <span className="flex items-center gap-2">
                   <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
                   Free — no obligation
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  About 3 minutes
                 </span>
               </div>
             </div>
@@ -302,7 +302,7 @@ export default function SelfEmployed() {
               any hard credit pull, and before you gather a single document.
             </p>
             <Link href="/apply?type=self-employed" className="mt-8 w-full max-w-md sm:w-auto sm:max-w-none">
-              <Button size="lg" variant="secondary" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-se-apply-footer">
+              <Button size="lg" className="w-full gap-2 font-semibold shadow-lg sm:w-auto" data-testid="button-se-apply-footer">
                 Check My Options
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </Button>
