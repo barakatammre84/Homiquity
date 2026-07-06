@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -256,14 +257,20 @@ export default function DownPaymentWizard() {
         <CardContent className="py-6 text-center">
           <PiggyBank className="mx-auto h-8 w-8 text-primary mb-3" />
           <h3 className="font-bold text-foreground mb-1">Found a program that fits?</h3>
-          <p className="text-sm text-muted-foreground mb-4">Start your pre-approval and we'll factor in DPA programs automatically.</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            {PRELAUNCH_GATED
+              ? "Save it — you'll be able to factor DPA programs into your pre-approval when we launch."
+              : "Start your pre-approval and we'll factor in DPA programs automatically."}
+          </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Button asChild data-testid="button-apply">
-              <Link href="/apply">
-                Start Pre-Approval
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </Link>
-            </Button>
+            {!PRELAUNCH_GATED && (
+              <Button asChild data-testid="button-apply">
+                <Link href="/apply">
+                  Start Pre-Approval
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </Link>
+              </Button>
+            )}
             <Button variant="outline" asChild data-testid="button-dpa-coach">
               <Link href="/ai-coach">
                 <Bot className="h-3.5 w-3.5" />

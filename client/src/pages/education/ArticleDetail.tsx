@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChevronLeft,
@@ -200,11 +201,13 @@ export default function ArticleDetail() {
                     View FAQs
                   </Button>
                 </Link>
-                <Link href="/apply">
-                  <Button data-testid="button-get-preapproved">
-                    Get Pre-Approved
-                  </Button>
-                </Link>
+                {!PRELAUNCH_GATED && (
+                  <Link href="/apply">
+                    <Button data-testid="button-get-preapproved">
+                      Get Pre-Approved
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
       </article>

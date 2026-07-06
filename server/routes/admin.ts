@@ -14,6 +14,7 @@ import { logAudit } from "../auditLog";
 import { refreshRates, syncBestExecutionRates } from "../services/rateService";
 import { requireRole } from "../auth";
 import { microCache } from "../middleware/httpCache";
+import { prelaunchGate } from "../services/prelaunchGate";
 import { parseBodyOr400 } from "./validate";
 
 export function registerAdminRoutes(
@@ -408,7 +409,7 @@ export function registerAdminRoutes(
   // MORTGAGE RATES
   // =============================================================================
 
-  app.get("/api/rates", microCache(60), async (req, res) => {
+  app.get("/api/rates", prelaunchGate, microCache(60), async (req, res) => {
     try {
       const rates = await storage.getMortgageRatesForLocation(undefined, undefined);
       const preview = rates.slice(0, 6).map((r: any) => ({
@@ -426,7 +427,7 @@ export function registerAdminRoutes(
   });
 
   // Get mortgage rates for a location (public)
-  app.get("/api/mortgage-rates", microCache(60), async (req, res) => {
+  app.get("/api/mortgage-rates", prelaunchGate, microCache(60), async (req, res) => {
     try {
       const { state, zipcode } = req.query;
       const rates = await storage.getMortgageRatesForLocation(
@@ -441,7 +442,7 @@ export function registerAdminRoutes(
   });
 
   // Get all rate programs (public)
-  app.get("/api/mortgage-rate-programs", microCache(300), async (req, res) => {
+  app.get("/api/mortgage-rate-programs", prelaunchGate, microCache(300), async (req, res) => {
     try {
       const programs = await storage.getActiveMortgageRatePrograms();
       res.json(programs);

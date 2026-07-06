@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { Input } from "@/components/ui/input";
 import {
   Search,
@@ -331,8 +332,9 @@ export default function Glossary() {
               Ready to put these terms to work?
             </h3>
             <p className="mt-2 text-muted-foreground">
-              Explore our guides and tools, or get pre-approved in about 3
-              minutes.
+              {PRELAUNCH_GATED
+                ? "Explore our guides and tools."
+                : "Explore our guides and tools, or get pre-approved in about 3 minutes."}
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-3">
               <Link href="/resources">
@@ -340,12 +342,14 @@ export default function Glossary() {
                   Explore Resources
                 </Button>
               </Link>
-              <Link href="/apply">
-                <Button data-testid="button-get-preapproved">
-                  Get Pre-Approved
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              </Link>
+              {!PRELAUNCH_GATED && (
+                <Link href="/apply">
+                  <Button data-testid="button-get-preapproved">
+                    Get Pre-Approved
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>

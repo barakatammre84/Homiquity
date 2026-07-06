@@ -8,6 +8,7 @@ import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { PrivateLayout } from "@/components/layouts/PrivateLayout";
 import { BareLayout } from "@/components/layouts/BareLayout";
 import { Loader2 } from "lucide-react";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 
 // Lazy — this modal is the only eager import that pulls framer-motion, so
 // loading it eagerly shipped the whole animation library in the main chunk on
@@ -55,6 +56,7 @@ const ForgotPassword = lazy(() => import("@/pages/public/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/public/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/public/VerifyEmail"));
 const AffordabilityCheck = lazy(() => import("@/pages/public/AffordabilityCheck"));
+const Waitlist = lazy(() => import("@/pages/public/Waitlist"));
 
 const PreApproval = lazy(() => import("@/pages/lending/PreApproval"));
 const LoanOptions = lazy(() => import("@/pages/lending/LoanOptions"));
@@ -175,17 +177,25 @@ function Redirect({ to }: { to: string }) {
   return null;
 }
 
+// Pre-license gate: a public route that would solicit a mortgage transaction
+// (rates, pricing, the application funnel, persona conversion pages) redirects
+// to the waitlist "/" while PRELAUNCH_GATED. See kb/ARMED_LAUNCH_CHARTER_2026-07-07.md.
+function Gated({ children }: { children: React.ReactNode }) {
+  if (PRELAUNCH_GATED) return <Redirect to="/" />;
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
         {/* Public Pages - Anyone can access */}
-        <Route path="/" component={Landing} />
+        <Route path="/">{PRELAUNCH_GATED ? <Waitlist /> : <Landing />}</Route>
         {/* Dedicated persona conversion pages — render their own SkipLink/main/Footer like Landing */}
-        <Route path="/refinance" component={Refinance} />
-        <Route path="/va-loans" component={VALoans} />
-        <Route path="/self-employed" component={SelfEmployed} />
-        <Route path="/first-time-buyer" component={FirstTimeBuyer} />
+        <Route path="/refinance"><Gated><Refinance /></Gated></Route>
+        <Route path="/va-loans"><Gated><VALoans /></Gated></Route>
+        <Route path="/self-employed"><Gated><SelfEmployed /></Gated></Route>
+        <Route path="/first-time-buyer"><Gated><FirstTimeBuyer /></Gated></Route>
         <Route path="/login"><BareLayout><Login /></BareLayout></Route>
         <Route path="/signup"><BareLayout><Signup /></BareLayout></Route>
         <Route path="/forgot-password"><BareLayout><ForgotPassword /></BareLayout></Route>
@@ -194,18 +204,18 @@ function Router() {
         {!isProduction && <Route path="/test-login"><BareLayout><TestLogin /></BareLayout></Route>}
         <Route path="/redeem-invite"><BareLayout><RedeemInvite /></BareLayout></Route>
         <Route path="/redeem-invite/:code"><BareLayout><RedeemInvite /></BareLayout></Route>
-        <Route path="/apply"><BareLayout><PreApproval /></BareLayout></Route>
+        <Route path="/apply"><Gated><BareLayout><PreApproval /></BareLayout></Gated></Route>
         <Route path="/apply/:token">
-          {(params) => <BareLayout><ApplyInvite /></BareLayout>}
+          {(params) => <Gated><BareLayout><ApplyInvite /></BareLayout></Gated>}
         </Route>
         <Route path="/ref/:code">
-          {(params) => <BareLayout><ReferralLanding /></BareLayout>}
+          {(params) => <Gated><BareLayout><ReferralLanding /></BareLayout></Gated>}
         </Route>
         <Route path="/partner/:profileId">
-          {(params) => <BareLayout><PartnerLanding /></BareLayout>}
+          {(params) => <Gated><BareLayout><PartnerLanding /></BareLayout></Gated>}
         </Route>
         <Route path="/find-an-agent">
-          <PublicPage><FindAnAgent /></PublicPage>
+          <Gated><PublicPage><FindAnAgent /></PublicPage></Gated>
         </Route>
         <Route path="/resources">
           <PublicPage><Resources /></PublicPage>
@@ -215,7 +225,7 @@ function Router() {
         </Route>
         {/* Must precede /learn/:slug — Switch takes the first match */}
         <Route path="/learn/first-time-buyer">
-          <PublicPage><FirstTimeBuyerHub /></PublicPage>
+          <Gated><PublicPage><FirstTimeBuyerHub /></PublicPage></Gated>
         </Route>
         <Route path="/learn/:slug">
           {(params) => <PublicPage><ArticleDetail /></PublicPage>}
@@ -241,33 +251,33 @@ function Router() {
           <PublicPage><DownPaymentWizard /></PublicPage>
         </Route>
         <Route path="/properties">
-          <PublicPage><Properties /></PublicPage>
+          <Gated><PublicPage><Properties /></PublicPage></Gated>
         </Route>
         <Route path="/properties/live">
-          <PublicPage><LivePropertyDetail /></PublicPage>
+          <Gated><PublicPage><LivePropertyDetail /></PublicPage></Gated>
         </Route>
         <Route path="/properties/:id">
-          {(params) => <PublicPage><PropertyDetail /></PublicPage>}
+          {(params) => <Gated><PublicPage><PropertyDetail /></PublicPage></Gated>}
         </Route>
 
         {/* Rate Pages - Public with navigation header */}
         <Route path="/rates">
-          <PublicPage><MortgageRates /></PublicPage>
+          <Gated><PublicPage><MortgageRates /></PublicPage></Gated>
         </Route>
         <Route path="/rates/purchase">
-          <PublicPage><PurchaseRates /></PublicPage>
+          <Gated><PublicPage><PurchaseRates /></PublicPage></Gated>
         </Route>
         <Route path="/rates/refinance">
-          <PublicPage><RefinanceRates /></PublicPage>
+          <Gated><PublicPage><RefinanceRates /></PublicPage></Gated>
         </Route>
         <Route path="/rates/cash-out">
-          <PublicPage><CashOutRates /></PublicPage>
+          <Gated><PublicPage><CashOutRates /></PublicPage></Gated>
         </Route>
         <Route path="/rates/heloc">
-          <PublicPage><HelocRates /></PublicPage>
+          <Gated><PublicPage><HelocRates /></PublicPage></Gated>
         </Route>
         <Route path="/rates/va">
-          <PublicPage><VaRates /></PublicPage>
+          <Gated><PublicPage><VaRates /></PublicPage></Gated>
         </Route>
 
         {/* Calculator Pages - Public with navigation header */}
@@ -281,11 +291,11 @@ function Router() {
           <PublicPage><MortgageCalculator /></PublicPage>
         </Route>
         <Route path="/calculators/rent-to-own">
-          <PublicPage><RentToOwnReadiness /></PublicPage>
+          <Gated><PublicPage><RentToOwnReadiness /></PublicPage></Gated>
         </Route>
 
         {/* Affordability Check - "Can I Afford This Home?" */}
-        <Route path="/afford"><BareLayout><AffordabilityCheck /></BareLayout></Route>
+        <Route path="/afford"><Gated><BareLayout><AffordabilityCheck /></BareLayout></Gated></Route>
 
         {/* Private Pages - Any authenticated user (role-aware content) */}
         <Route path="/dashboard">

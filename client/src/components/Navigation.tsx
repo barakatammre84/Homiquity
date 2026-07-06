@@ -14,6 +14,7 @@ import {
 import { LayoutDashboard, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, Percent, Bot, ArrowRight, Users } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 
 interface NavItem {
   href: string;
@@ -173,13 +174,17 @@ export function Navigation() {
           </Link>
 
           <div className="hidden items-center gap-1 lg:flex">
-            <NavDropdown label="Buy" items={buyMenuItems} testId="nav-dropdown-buy" />
-            <NavDropdown label="Refinance & HELOC" items={refinanceMenuItems} testId="nav-dropdown-refinance" />
-            <Link href="/rates">
-              <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
-                Rates
-              </button>
-            </Link>
+            {!PRELAUNCH_GATED && (
+              <>
+                <NavDropdown label="Buy" items={buyMenuItems} testId="nav-dropdown-buy" />
+                <NavDropdown label="Refinance & HELOC" items={refinanceMenuItems} testId="nav-dropdown-refinance" />
+                <Link href="/rates">
+                  <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
+                    Rates
+                  </button>
+                </Link>
+              </>
+            )}
             <Link href="/resources">
               <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
                 Resources
@@ -296,15 +301,17 @@ export function Navigation() {
                     Sign in
                   </Button>
                 </Link>
-                <Link href="/apply">
-                  <Button
-                    size="sm"
-                    className="font-semibold"
-                    data-testid="button-get-started"
-                  >
-                    Get Pre-Approved
-                  </Button>
-                </Link>
+                {!PRELAUNCH_GATED && (
+                  <Link href="/apply">
+                    <Button
+                      size="sm"
+                      className="font-semibold"
+                      data-testid="button-get-started"
+                    >
+                      Get Pre-Approved
+                    </Button>
+                  </Link>
+                )}
               </div>
             )}
 
@@ -323,16 +330,20 @@ export function Navigation() {
         {mobileMenuOpen && (
           <div className="border-t py-4 lg:hidden">
             <div className="flex flex-col">
-              <MobileNavSection label="Buy" items={buyMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
-              <MobileNavSection label="Refinance & HELOC" items={refinanceMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
-              <Link href="/rates">
-                <button
-                  className="w-full border-b border-border py-4 text-left font-medium text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Rates
-                </button>
-              </Link>
+              {!PRELAUNCH_GATED && (
+                <>
+                  <MobileNavSection label="Buy" items={buyMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
+                  <MobileNavSection label="Refinance & HELOC" items={refinanceMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
+                  <Link href="/rates">
+                    <button
+                      className="w-full border-b border-border py-4 text-left font-medium text-foreground"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Rates
+                    </button>
+                  </Link>
+                </>
+              )}
               <Link href="/resources">
                 <button
                   className="w-full border-b border-border py-4 text-left font-medium text-foreground"
@@ -384,11 +395,13 @@ export function Navigation() {
                       Sign in
                     </Button>
                   </Link>
-                  <Link href="/apply">
-                    <Button size="lg" className="w-full font-semibold" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-apply">
-                      Get Pre-Approved
-                    </Button>
-                  </Link>
+                  {!PRELAUNCH_GATED && (
+                    <Link href="/apply">
+                      <Button size="lg" className="w-full font-semibold" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-apply">
+                        Get Pre-Approved
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               )}
             </div>

@@ -30,3 +30,13 @@ export function companyNmlsDisplay(): string | null {
   if (!id || id === "PENDING") return null;
   return `NMLS #${id}`;
 }
+
+/**
+ * True while the company NMLS license (roadmap F1) has not yet been issued.
+ * Drives the pre-license launch gate (server/services/prelaunchGate.ts): we
+ * cannot solicit a mortgage transaction until this returns false.
+ */
+export function isCompanyNmlsPending(): boolean {
+  const id = COMPANY_IDENTITY.nmlsId as string;
+  return !id || id === "PENDING";
+}
