@@ -260,9 +260,16 @@ export function registerDocumentRoutes(
         // Keep the derived tax-insight row in sync when a tax return is
         // extracted through the origination flow too (non-fatal: the insight
         // is a readiness signal, not part of the extraction contract).
+        // Consent-gated exactly like POST /api/tax-insights/process: without
+        // the borrower's tax_document_use authorization, extraction proceeds
+        // but NO insight is derived — the DSCR staff signal and readiness
+        // income feed must never exist for an unconsented borrower.
         try {
-          const { saveTaxInsightForDocument } = await import("../services/taxInsightService");
-          await saveTaxInsightForDocument(document.userId, id, extractedData);
+          const { hasUserConsent } = await import("../consentGate");
+          if (await hasUserConsent("tax_document_use", document.userId)) {
+            const { saveTaxInsightForDocument } = await import("../services/taxInsightService");
+            await saveTaxInsightForDocument(document.userId, id, extractedData);
+          }
         } catch (insightErr) {
           console.warn("[TaxInsight] Insight derivation failed (non-fatal):", insightErr);
         }

@@ -121,6 +121,48 @@ describe("Tax insight routes", () => {
     expect([403, 404]).toContain(res.status);
   });
 
+  it("origination extract route derives no insight without consent (security-review fix)", async () => {
+    const buyerCookie = await loginCookie("buyer@test.com", TEST_PASSWORD);
+    expect(buyerCookie).toBeTruthy();
+
+    // buyer may have consented in a previous run — branch the assertion.
+    const consents = await apiGet("/api/consents/me", { headers: { Cookie: buyerCookie } });
+    const hasConsent =
+      Array.isArray(consents.body) &&
+      consents.body.some(
+        (c: any) => c.consentType === "tax_document_use" && c.consentGiven && !c.isRevoked,
+      );
+
+    const reg = await apiPost(
+      "/api/documents/upload",
+      {
+        objectPath: `/objects/test-extract-hook-${Date.now()}.pdf`,
+        fileName: "buyer-tax-return-2025.pdf",
+        fileSize: 23456,
+        mimeType: "application/pdf",
+        documentType: "tax_return",
+      },
+      { headers: { Cookie: buyerCookie } },
+    );
+    expect(reg.status).toBeLessThan(300);
+
+    const extract = await apiPost(
+      `/api/documents/${reg.body.id}/extract`,
+      {},
+      { headers: { Cookie: buyerCookie } },
+    );
+    expect(extract.status).toBe(200);
+
+    const me = await apiGet("/api/tax-insights/me", { headers: { Cookie: buyerCookie } });
+    expect(me.status).toBe(200);
+    if (!hasConsent) {
+      // Extraction succeeds, but no insight may exist for an unconsented user.
+      expect(me.body.insights.length).toBe(0);
+    } else {
+      expect(me.body.insights.length).toBeGreaterThan(0);
+    }
+  });
+
   it("rejects a non-tax-return document type", async () => {
     const reg = await apiPost(
       "/api/documents/upload",
