@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, Percent, Bot, ArrowRight, Users } from "lucide-react";
+import { LayoutDashboard, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, Percent, Bot, ArrowRight, Users, Gauge } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
@@ -25,6 +25,7 @@ interface NavItem {
 
 const buyMenuItems: NavItem[] = [
   { href: "/apply", label: "Get Pre-Approved", description: "Takes about 3 minutes", icon: FileText },
+  { href: "/approval-strength", label: "Approval Strength", description: "See where you stand before you apply", icon: Gauge },
   { href: "/rates/purchase", label: "Today's Rates", description: "Current purchase rates", icon: Percent },
   { href: "/calculators/affordability", label: "Affordability Calculator", description: "See what fits your budget", icon: Calculator },
   { href: "/calculators/rent-to-own", label: "Rent-to-Own Readiness", description: "Turn your rent into a mortgage", icon: Home },
