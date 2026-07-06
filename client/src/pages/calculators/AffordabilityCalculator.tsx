@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
+import { SEOHead } from "@/components/SEOHead";
 import { TermTooltip } from "@/components/TermTooltip";
 import { PageShell } from "@/components/PageShell";
 import { formatCurrency } from "@/lib/formatters";
@@ -369,6 +370,10 @@ export default function AffordabilityCalculator() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title="Mortgage Affordability Calculator — How Much Home Can You Afford?"
+        description="Free mortgage affordability calculator. Adjust income, monthly debts, down payment, and credit score with interactive sliders to see your comfortable home price range — no sign-up, no credit check."
+      />
       <PageShell width="wide">
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl" data-testid="text-page-title">

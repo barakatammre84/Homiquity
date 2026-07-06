@@ -155,6 +155,49 @@ Most improvements take 30-60 days to show on your credit report. Start working o
           status: "published",
           publishedAt: new Date(),
         },
+        {
+          title: "How Algorithmic Underwriting Speeds Up Closings — and Why Sellers Should Care",
+          slug: "algorithmic-underwriting-faster-closings",
+          excerpt:
+            "Deterministic, rules-based underwriting turns weeks of back-and-forth into a documented checklist from day one. Here's what that means for sellers weighing competing offers.",
+          content: `When a seller compares two offers, the price is only half the question. The other half is: **will this buyer actually close, and when?** That answer depends heavily on how the buyer's lender underwrites — and it's why the underwriting model behind a pre-approval letter matters more than most sellers realize.
+
+## What "algorithmic underwriting" actually means
+
+Traditional underwriting queues a file behind a human reviewer at every step: application, then a wait; documents, then a wait; conditions, then another wait. Each pass can surface a new request the borrower didn't see coming.
+
+Rules-based (algorithmic) underwriting runs the borrower's complete profile against published lending guidelines the moment the application is submitted. The same inputs always produce the same outcome — no queue, no mood, no Monday-morning backlog. Two things fall out of that immediately:
+
+### 1. The document list is known on day one
+
+Because the rules are evaluated up front, every document the file will need is generated as a checklist at the start — pay stubs, W-2s, bank statements, the purchase contract — each tied to the specific guideline that requires it. The borrower isn't drip-fed surprise requests in week three; they're clearing a known list from day one, and each upload is matched to its requirement automatically.
+
+### 2. Conditions surface early, not at the deadline
+
+The riskiest phrase in a purchase timeline is "the underwriter came back with questions" — ten days before closing. When guideline checks run at intake, issues like a debt-to-income ratio near its limit or a documentation gap show up before an offer is even written, while there's still time to fix them.
+
+## Why this matters when you're choosing an offer
+
+A pre-approval built this way isn't a marketing letter — it reflects an actual evaluation of the buyer's finances against the guidelines their loan must satisfy. For a seller or listing agent, that changes the diligence questions:
+
+- **Ask what the pre-approval evaluated.** Was income actually checked against guidelines, or was it a five-minute estimate?
+- **Ask what's still outstanding.** A buyer working from a complete, day-one checklist can tell you exactly what's left. Vague answers usually mean an unknown document list.
+- **Ask how conditions are tracked.** A file where every outstanding item has an owner and a status is a file that keeps moving.
+
+## What algorithmic underwriting doesn't do
+
+Honesty matters here. Rules-based evaluation doesn't eliminate the human decision — a licensed underwriter still reviews and makes the final call, and no reputable lender should guarantee a closing date. Appraisals, title work, and third parties still take real time. What the algorithmic model removes is the *avoidable* delay: the surprise document request, the condition discovered late, the file that sat in a queue.
+
+A pre-approval is also not a commitment to lend — final approval always depends on full verification of income, assets, employment, and the property itself. Any letter that implies otherwise is a red flag, not a selling point.
+
+## The bottom line for sellers
+
+You can't control a buyer's finances, but you can weigh how their financing is being processed. A buyer whose lender evaluated their file against real guidelines on day one — with a complete document checklist and visible condition tracking — carries measurably less timeline risk than one whose underwriting hasn't started yet. When offers are close, that difference is worth asking about.`,
+          categoryId: "cat-home-buying",
+          tags: ["sellers", "underwriting", "closing timeline", "pre-approval", "agents"],
+          status: "published",
+          publishedAt: new Date(),
+        },
       ];
 
       for (const article of articleData) {
