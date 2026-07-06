@@ -109,17 +109,18 @@ export default {
           warning: "#F59E0B", // pending loan-officer review
           danger: "#EF4444", // TCPA opt-out / credit alert
         },
-        // "Obsidian Indigo" monochromatic value ramp (single ~216° hue).
+        // "Charcoal Emerald" neutral value ramp (charcoal→slate→white).
         // Prefer the semantic tokens (bg-background, text-foreground, …) in
-        // components; reach for precision-* only for bespoke value stacking.
+        // components; reach for precision-* only for bespoke value stacking
+        // (e.g. the dark hero gradients on the persona landing pages).
         precision: {
-          950: "#050B14", // Obsidian — primary type, primary actions
-          900: "#0C1625", // Deep Ink — nav containers, dark surfaces
-          700: "#1D2D44", // Steel Blue — secondary text, inactive borders
-          500: "#3E5370", // Muted Slate — placeholders, secondary borders
-          300: "#889DBE", // Dusty Ice — hover borders, disabled states
-          100: "#D0DDF0", // Frost Tint — card hairlines, active input bg
-          50: "#F2F6FC", // Paper Ice — global canvas
+          950: "#121212", // Deep Charcoal — primary type, dark heroes
+          900: "#1E293B", // slate-800 — nav containers, dark surfaces
+          700: "#334155", // slate-700 — secondary text, inactive borders
+          500: "#64748B", // Muted Slate — placeholders, micro-copy
+          300: "#94A3B8", // slate-400 — hover borders, disabled states
+          100: "#E2E8F0", // slate-200 — card hairlines, active input bg
+          50: "#F8FAFC", // Ultra-Light Gray — data-section separation
         },
       },
       fontFamily: {
@@ -138,10 +139,10 @@ export default {
           to: { height: "0" },
         },
         // Precision skeleton: field-level loading pulse between ramp stops
-        // (frost -> paper) instead of a generic gray spinner.
+        // (slate-200 -> slate-50) instead of a generic gray spinner.
         "skeleton-precision": {
-          "0%, 100%": { backgroundColor: "#D0DDF0" },
-          "50%": { backgroundColor: "#F2F6FC" },
+          "0%, 100%": { backgroundColor: "#E2E8F0" },
+          "50%": { backgroundColor: "#F8FAFC" },
         },
       },
       animation: {
