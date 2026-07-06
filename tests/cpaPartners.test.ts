@@ -3,21 +3,24 @@ import {
   isStaffRole,
   isInternalStaffRole,
   isClientRole,
+  isPartnerRole,
   ROLE_DISPLAY_NAMES,
 } from "../shared/roles";
 import { makeReferralCode } from "../server/routes/cpaPartners";
 
 /**
  * Unit coverage for the CPA channel's security-load-bearing invariants:
- * the role posture (external partner, never internal staff) and the
+ * the role posture (self-registering partner, never staff) and the
  * server-generated, sanitized referral code.
  */
 
 describe("cpa role posture", () => {
-  it("is a staff role but NOT an internal staff role", () => {
-    // This is the spine of the channel's security model: a CPA can never reach
-    // a borrower record through object-level authorization.
-    expect(isStaffRole("cpa")).toBe(true);
+  it("is a self-registering PARTNER role, never staff or client", () => {
+    // Spine of the channel's security model: CPA registration is public, so a
+    // CPA must NOT be isStaffRole — otherwise every isStaffRole()-gated endpoint
+    // (staff directory, compliance reports, etc.) would be exposed to anyone.
+    expect(isPartnerRole("cpa")).toBe(true);
+    expect(isStaffRole("cpa")).toBe(false);
     expect(isInternalStaffRole("cpa")).toBe(false);
     expect(isClientRole("cpa")).toBe(false);
   });

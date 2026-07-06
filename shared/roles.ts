@@ -7,7 +7,10 @@
  * server code and existing `@shared/schema` imports are unaffected.
  */
 
-// Staff Roles (Internal & Partner)
+// Staff Roles (Internal & Partner). Every role here is provisioned by a trusted
+// process (staff invite / admin assignment) — NOT self-registration. Many
+// endpoints gate on isStaffRole() alone, so a self-registerable role must never
+// be added to this list (see PARTNER_ROLES).
 export const STAFF_ROLES = [
   "admin",           // Tech/Ops Lead - Full system access
   "lo",              // Loan Officer - Sales & lead qualification
@@ -17,7 +20,6 @@ export const STAFF_ROLES = [
   "closer",          // Closer/Funder - Wire management & final docs
   "broker",          // Mortgage Broker - Loan origination & lender relationships
   "lender",          // Lender Representative - Loan product & pricing management
-  "cpa",             // CPA Partner - Inviter-only referral source (never sees borrower data)
 ] as const;
 
 // Client Roles
@@ -26,8 +28,17 @@ export const CLIENT_ROLES = [
   "active_buyer",    // Borrower in buying process
 ] as const;
 
+// Self-registering external partners. Deliberately NOT in STAFF_ROLES: because
+// these accounts are created by public self-service (POST /api/cpa-partners/register),
+// treating them as staff would expose every isStaffRole()-gated endpoint (staff
+// directory, compliance reports, deal-rescue, etc.) to anyone. Access is granted
+// ONLY through exact-role checks (requireRole("cpa", ...) / the /cpa-portal gate).
+export const PARTNER_ROLES = [
+  "cpa",             // CPA Partner - Inviter-only referral source (never sees borrower data)
+] as const;
+
 // All roles combined
-export const ALL_ROLES = [...STAFF_ROLES, ...CLIENT_ROLES] as const;
+export const ALL_ROLES = [...STAFF_ROLES, ...CLIENT_ROLES, ...PARTNER_ROLES] as const;
 export type UserRole = typeof ALL_ROLES[number];
 
 // Role display names for UI
@@ -88,4 +99,10 @@ export function isInternalStaffRole(role: string): boolean {
 // Helper to check if role is client
 export function isClientRole(role: string): boolean {
   return CLIENT_ROLES.includes(role as typeof CLIENT_ROLES[number]);
+}
+
+// Helper to check if role is a self-registering external partner (e.g. cpa).
+// These are NOT staff and reach only their own exact-role-gated surfaces.
+export function isPartnerRole(role: string): boolean {
+  return PARTNER_ROLES.includes(role as typeof PARTNER_ROLES[number]);
 }

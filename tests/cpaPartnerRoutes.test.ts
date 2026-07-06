@@ -132,4 +132,17 @@ describe("CPA partner channel", () => {
     const res = await apiGet("/api/cpa/me");
     expect(res.status).toBe(401);
   });
+
+  it("a self-registered CPA gets NO staff access (privilege-escalation regression)", async () => {
+    // cpa is a PARTNER role, not a STAFF role — isStaffRole-gated and
+    // broker-gated endpoints must reject it, even though it is authenticated.
+    const staffDirectory = await apiGet("/api/available-staff", { headers: { Cookie: cpaA.cookie } });
+    expect(staffDirectory.status).toBe(403);
+
+    const compliance = await apiGet("/api/credit/retention-policies", { headers: { Cookie: cpaA.cookie } });
+    expect(compliance.status).toBe(403);
+
+    const brokerReferrals = await apiGet("/api/broker/referrals", { headers: { Cookie: cpaA.cookie } });
+    expect(brokerReferrals.status).toBe(403);
+  });
 });
