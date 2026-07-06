@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Navigation } from "@/components/Navigation";
+import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
@@ -94,63 +95,67 @@ export default function Landing() {
         <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-precision-500/15 blur-3xl" />
 
         <div className="relative mx-auto max-w-6xl">
-          <div className="flex flex-col items-center text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
-              <Shield className="h-4 w-4 text-precision-300" />
-              Built by a military veteran with 15+ years in banking
+          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-10">
+            <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
+                <Shield className="h-4 w-4 text-precision-300" />
+                Built by a military veteran with 15+ years in banking
+              </div>
+
+              <h1 className="text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl" data-testid="text-hero-title">
+                Clarity for every stage
+                <br />
+                <span className="bg-gradient-to-r from-precision-100 to-precision-300 bg-clip-text text-transparent">
+                  of homeownership.
+                </span>
+              </h1>
+
+              <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/80" data-testid="text-hero-subtitle">
+                Whether you're buying your first home, refinancing, or investing,
+                Homiquity helps you understand your options and move forward with confidence.
+              </p>
+
+              <div className="mt-8 flex w-full max-w-md flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4">
+                <Link href="/apply" className="w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="w-full gap-2 font-semibold shadow-lg sm:w-auto"
+                    data-testid="button-hero-preapprove"
+                  >
+                    Start Your Pre-Approval
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/afford" className="w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full gap-2 border-white/25 bg-white/5 text-white backdrop-blur-sm sm:w-auto"
+                    data-testid="button-hero-afford"
+                  >
+                    Can I Afford This Home?
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/70 lg:justify-start">
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-precision-300" />
+                  No hard credit check
+                </span>
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-precision-300" />
+                  Takes about 3 minutes
+                </span>
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-precision-300" />
+                  100% free
+                </span>
+              </div>
             </div>
 
-            <h1 className="text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl" data-testid="text-hero-title">
-              Clarity for every stage
-              <br />
-              <span className="bg-gradient-to-r from-precision-100 to-precision-300 bg-clip-text text-transparent">
-                of homeownership.
-              </span>
-            </h1>
-
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-white/80 sm:text-xl" data-testid="text-hero-subtitle">
-              Whether you're buying your first home, refinancing, or investing,{" "}
-              <br className="hidden sm:block" />
-              Homiquity helps you understand your options and move forward with confidence.
-            </p>
-
-            <div className="mt-10 flex w-full max-w-md flex-col items-center gap-3 sm:w-auto sm:max-w-none sm:flex-row sm:gap-4">
-              <Link href="/apply" className="w-full sm:w-auto">
-                <Button
-                  size="lg"
-                  className="w-full gap-2 font-semibold shadow-lg sm:w-auto"
-                  data-testid="button-hero-preapprove"
-                >
-                  Start Your Pre-Approval
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/afford" className="w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full gap-2 border-white/25 bg-white/5 text-white backdrop-blur-sm sm:w-auto"
-                  data-testid="button-hero-afford"
-                >
-                  Can I Afford This Home?
-                </Button>
-              </Link>
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-sm text-white/70">
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-precision-300" />
-                No hard credit check
-              </span>
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-precision-300" />
-                Takes about 3 minutes
-              </span>
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-precision-300" />
-                100% free
-              </span>
-            </div>
+            <BuyingPowerEstimator />
           </div>
 
           <div className="relative mt-16 grid gap-4 sm:grid-cols-3 sm:gap-6">
