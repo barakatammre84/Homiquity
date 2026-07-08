@@ -1,9 +1,9 @@
 # CLAUDE.md — Homiquity (MortgageStream)
 
 Guidance for Claude Code when working in this repository. The deep engineering map is
-[DEVELOPER_PLAYBOOK.md](DEVELOPER_PLAYBOOK.md); the per-subsystem handbook is [kb/app-guide/](kb/app-guide/);
+[DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md); the per-subsystem handbook is [knowledge-base/handbook/app-guide/](knowledge-base/handbook/app-guide/);
 session working practices (doc rules, branch lifecycle, definition of done, push policy)
-are [kb/TEAM_PRACTICES.md](kb/TEAM_PRACTICES.md). This file covers what must be true in *every* session.
+are [knowledge-base/governance/TEAM_PRACTICES.md](knowledge-base/governance/TEAM_PRACTICES.md). This file covers what must be true in *every* session.
 
 ## Compliance first: Fannie Mae loan delivery (ULDD / UCD / URLA / MISMO)
 
@@ -51,7 +51,7 @@ escalate discrepancies to the user instead of picking an interpretation.
 
 ## Architecture ground rules
 
-Full rules in [DEVELOPER_PLAYBOOK.md](DEVELOPER_PLAYBOOK.md); the non-negotiables:
+Full rules in [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md); the non-negotiables:
 
 - `main` is production — every push deploys to Vercel. No long-lived branches; land work via PRs.
 - `client/` never imports from `server/`; `server/` never imports from `client/`; both import
@@ -62,7 +62,7 @@ Full rules in [DEVELOPER_PLAYBOOK.md](DEVELOPER_PLAYBOOK.md); the non-negotiable
   (SSNs via `server/services/ssnVault.ts`) and gets an audit-log entry (`server/auditLog.ts`).
 - Security-sensitive changes (PII vault/encryption, auth/sessions, role gates, uploads,
   outbound messaging) require a security review before merge — binding trigger list in
-  [kb/TEAM_PRACTICES.md](kb/TEAM_PRACTICES.md) §9.
+  [knowledge-base/governance/TEAM_PRACTICES.md](knowledge-base/governance/TEAM_PRACTICES.md) §9.
 - File uploads go through the object-storage layer at `server/integrations/object_storage/`;
   the shared size cap lives in `shared/uploads.ts`.
 - The underwriting engine (`server/underwritingEngine.ts` + `server/services/decisionEngine.ts`,
@@ -83,9 +83,10 @@ Full rules in [DEVELOPER_PLAYBOOK.md](DEVELOPER_PLAYBOOK.md); the non-negotiable
 - `npm run dev` — dev server (local convention: port 5001; worktree test servers on 5002)
 - `npm run check` — TypeScript
 - `npm test` / `npm run test:integration` — unit / integration tests
-- Local setup details: [LOCAL_DEV.md](LOCAL_DEV.md)
+- Local setup details: [LOCAL_DEV.md](knowledge-base/runbooks/LOCAL_DEV.md)
 
 ## Source-of-truth notes
 
-- [CTO_ROADMAP.md](CTO_ROADMAP.md) is the live roadmap. Other `kb/` assessment documents go
-  stale — verify any "X is missing" claim against the code before acting on it.
+- [CTO_ROADMAP.md](CTO_ROADMAP.md) is the live roadmap. All other docs live in
+  [`knowledge-base/`](knowledge-base/) (indexed in its README); the dated `knowledge-base/logs/`
+  assessments go stale — verify any "X is missing" claim against the code before acting on it.
