@@ -215,14 +215,21 @@ export type LienPriorityType =
   | "FourthLien"
   | "Other";
 
-export type LoanPurposeType = 
+// ULDD LoanPurposeTypeEnumerated — the ONLY valid values, verified against
+// docs/fannie-mae/schemas/uldd-phase5-extension/MISMO_3_0.xsd (LoanPurposeTypeEnumerated)
+// and both golden UCD samples. Cash-out is NOT a LoanPurposeType — it is carried by
+// REFINANCE/RefinanceCashOutDeterminationType. Construction has no base-XSD value (escalation U-7).
+export type LoanPurposeType =
   | "Purchase"
   | "Refinance"
-  | "ConstructionOnly"
-  | "ConstructionToPermanent"
-  | "NoCashOutRefinance"
-  | "CashOutRefinance"
+  | "MortgageModification"
   | "Other";
+
+// ULDD RefinanceCashOutDeterminationTypeEnumerated (REFINANCE container), verified vs MISMO_3_0.xsd.
+export type RefinanceCashOutDeterminationType =
+  | "CashOut"
+  | "LimitedCashOut"
+  | "NoCashOut";
 
 export type MortgageType = 
   | "Conventional"

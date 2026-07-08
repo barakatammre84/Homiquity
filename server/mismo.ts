@@ -151,15 +151,24 @@ function mapMortgageType(loanType: string | null | undefined): MortgageType {
 }
 
 function mapLoanPurpose(purpose: string | null | undefined): LoanPurposeType {
-  const mapping: Record<string, LoanPurposeType> = {
-    purchase: "Purchase",
-    refinance: "Refinance",
-    cash_out_refinance: "CashOutRefinance",
-    cash_out: "CashOutRefinance",
-    no_cash_out_refinance: "NoCashOutRefinance",
-    construction: "ConstructionToPermanent",
-  };
-  return mapping[purpose?.toLowerCase() || ""] || "Purchase";
+  const p = purpose?.toLowerCase() || "";
+  // ULDD LoanPurposeTypeEnumerated = {MortgageModification, Other, Purchase, Refinance}
+  // (verified vs docs/fannie-mae/schemas MISMO_3_0.xsd + golden UCD samples; ledger
+  // uldd-loanpurposetype-enum). Cash-out is NOT a LoanPurposeType value — a cash-out or
+  // rate/term refi is LoanPurposeType=Refinance, with the cash-out fact carried separately
+  // by REFINANCE/RefinanceCashOutDeterminationType (follow-up, tracked with the F-018 restructure).
+  if (p === "purchase") return "Purchase";
+  if (p === "refinance" || p === "cash_out_refinance" || p === "cash_out" || p === "no_cash_out_refinance") {
+    return "Refinance";
+  }
+  if (p === "construction") {
+    // U-7: the base ULDD XSD has no Construction LoanPurposeType value. Fail loud rather than
+    // emit an out-of-enum value that fails GSE ingestion (pending ULDD data-dictionary confirmation).
+    throw new Error(
+      "MISMO LoanPurposeType: construction loan purpose is unmapped — no valid ULDD enum value (escalation U-7, pending source confirmation)",
+    );
+  }
+  return "Purchase";
 }
 
 function mapPropertyUsage(usage: string | null | undefined): PropertyUsageType {
