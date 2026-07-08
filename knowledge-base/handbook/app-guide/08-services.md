@@ -28,11 +28,10 @@ depth.
 
 | Service | Does |
 |---------|------|
-| `documentEngine.ts` | Document lifecycle: classification, status |
-| `../extractionService.ts` | Runs AI extraction on uploaded docs (paystub/W-2/bank statement/tax return) — owns its own Gemini client |
+| `../extractionService.ts` | Runs AI extraction on uploaded docs (paystub/W-2/bank statement/tax return) — **owns its own Gemini client**; there is no separate pluggable AI-gateway module (the old `aiGateway.ts` was removed) |
 | `documentConfidence.ts` | Scores extraction trustworthiness |
-| `aiGateway.ts` | Provider-pluggable AI gateway (Gemini default; Claude via `AI_GATEWAY_PROVIDER` + `ANTHROPIC_API_KEY`) |
-| `coachingService.ts` | AI Homebuyer Coach (OpenAI) |
+| `taxInsightService.ts` | Derives readiness signals from consumer-uploaded tax returns (the §7216-safe consumer-direct path; routes in `server/routes/taxInsights.ts`) |
+| `coachingService.ts` + `coachIntake.ts` | AI Homebuyer Coach (OpenAI) + its structured intake |
 
 ## Compliance & security
 

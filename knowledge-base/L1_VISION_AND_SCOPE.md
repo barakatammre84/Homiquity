@@ -53,11 +53,15 @@ For work already in flight, the MVP scope is locked:
 
 | IN for MVP (serves the loop / unblocks launch) | Deferred (good, but not the loop) |
 |---|---|
-| The core loop (intake → decision → package → delivery) | Borrower data-permission dashboard (#62) |
-| Acquisition top-of-funnel: Approval Strength (#61), Buying Power + SEO (#63) | The dead server-only subsystems (Intelligence, Rules authoring, Rate Sheets, Optimization, Market-data) |
-| Uploads hardening (#67) | The analytics/predictive feedback loop |
-| The MISMO delivery-correctness fixes (the 2 P0s) | P2 security/test hardening; running the QA review sweep |
+| The core loop (intake → decision → package → delivery) | Borrower data-permission dashboard (PR #62) |
+| Acquisition top-of-funnel: Approval Strength (PR #61), Buying Power + SEO (PR #63) | The dead server-only subsystems (Intelligence, Rules authoring, Rate Sheets, Optimization, Market-data) |
+| Uploads hardening (PR #67) | The analytics/predictive feedback loop |
+| The MISMO delivery-correctness fixes (the 2 P0s: [F-018/F-019](feature-review/FINDINGS.md)) | P2 security/test hardening; running the QA review sweep |
 | Licensing + ops launch gates | Title / Insurance / Invest and other future modules |
+
+> Parenthetical `PR #NN` are GitHub pull-request numbers (not `CTO_ROADMAP.md` line items — that
+> file uses its own `LS-`/`F-`/`G-` numbering). Live status for any of them: the
+> [CICD.md](runbooks/CICD.md) production change ledger.
 
 ## 4. What the platform IS (modules, prescriptively)
 

@@ -47,14 +47,6 @@ re-discovered on re-runs.
 | ux-03 | UX | ux-refinement | P2 | no | `PageShell`/`PageHeader` at 7/99 adoption; 40 pages hand-roll `min-h-screen` → header/spacing drift | `client/src/components/PageShell.tsx` + callers | open |
 | ux-04 | UX | ux-refinement | P2 | no | 12/14 property/street-view `<img>` lack `alt` (a11y + SEO) | `pages/property/*`, `BuyerProperties.tsx:441` | open |
 | ux-05 | UX/1 | ux-refinement | P2 | yes (Reg Z) | Rate-advertising disclosure is thin; confirm §1026.24(d)(2) completeness (legal review, not asserted violation) | `pages/rates/PurchaseRates.tsx:200-203` | open |
-| D-001 | doc | doc-drift | **P0-ops** | no | `db:push`-to-prod contradiction across 7 docs (incl. Tier-1 Playbook + a deploy checklist) — data-loss landmine | `DEVELOPER_PLAYBOOK.md:220,222,274`, `COMPLIANCE_COUNSEL_REVIEW.md:16-22,182`, `ROLLBACK.md:92-99`, `app-guide/10-deploy-ops.md:52`, `FREE_DATA_MOAT.md:21`, `01-start-here.md:37` | open |
-| D-002 | 11/13 | doc-drift | P1 | no | `06-auth-security-secrets.md:32` states a stale 4-role model; omits `isInternalStaffRole` vs `isStaffRole` (authz-hole risk) | vs `shared/roles.ts` | open |
-| D-003 | doc | doc-drift | P1-ops | no | `10-deploy-ops.md:72` claims `npm run check` is red (~22 errors); actual `tsc` = 0 | `knowledge-base/handbook/app-guide/10-deploy-ops.md:72` | open |
-| D-004 | doc | doc-drift | P2 | no | Stale assessments assert resolved items as open — STATE_OF_THE_PLATFORM, LENDER_READINESS (anti-steering ships), BACKEND_UI_OPTIMIZATION_AUDIT | those files vs code | open |
-| D-005 | doc | doc-drift | P2 | no | Unresolved status banners: `ARMED_LAUNCH_CHARTER_2026-07-07` reads "active" past its date; `COMPLIANCE_COUNSEL_REVIEW` unbannered | those files | open |
-| D-006 | doc | doc-drift | P2 | no | Compliance-critical docs unindexed in the README ladder (ARMED_LAUNCH_CHARTER, SAFE_MLO_COMPLIANCE_MAP, docs/nmls/, COMPLIANCE_COUNSEL_REVIEW) | `README.md` | open |
-| D-007 | doc | doc-drift | P2 | no | Stale anchors/counts: `threat_model.md:33` cites deleted `server/replit_integrations/...`; Node 20-vs-24 drift; wrong table/route counts | `threat_model.md:33`, LOCAL_DEV/PLAYBOOK/CICD | open |
-| F-001 | 3 | doc-drift | P3 | no | `08-services.md` references deleted `documentEngine.ts`/`aiGateway.ts` | `knowledge-base/handbook/app-guide/08-services.md` | open |
 
 ## Refuted / downgraded (do not re-report)
 
@@ -79,4 +71,11 @@ re-discovered on re-runs.
 
 | id | fixed in (PR) | re-verified |
 |---|---|---|
-| _none yet_ | | |
+| D-001 | `d421c42` (docs: kill the db:push landmine across 7 docs) | 2026-07-08 md-organization pass — grep of all 7 flagged docs shows every `db:push` mention is now a **"never `db:push`"** warning; no positive prod-`db:push` instruction remains |
+| D-002 | 2026-07-08 md-organization pass (`06-auth-security-secrets.md`) | Role model rewritten from authoritative `shared/roles.ts`: 8 staff + 2 client + `cpa` partner; adds the `isStaffRole()` vs `isInternalStaffRole()` authz distinction the finding flagged |
+| D-003 | `d421c42` | `10-deploy-ops.md` now reads `npm run check … (currently clean — 0 errors)`; `tsc` = 0 confirmed |
+| D-004 | 2026-07-08 md-organization pass (indirect) | The three assessments already carry `TEAM_PRACTICES §2` supersession banners (immutable snapshots — not rewritten); their pointer target `CTO_ROADMAP.md` was reconciled to current reality this pass, so the banners' "trust the roadmap" guidance now resolves correctly |
+| D-005 | 2026-07-08 md-organization pass | `ARMED_LAUNCH_CHARTER` status → "target met — armed launch executed" + dated-charter banner; `COMPLIANCE_COUNSEL_REVIEW` given a 2026-07-08 freshness banner |
+| D-006 | 2026-07-08 md-organization pass (`README.md`) | Root README Tier map now lists `SAFE_MLO_COMPLIANCE_MAP`, `COMPLIANCE_COUNSEL_REVIEW`, `docs/nmls/`, `docs/nmls-safe/` (Tier 2) and the `ARMED_LAUNCH_CHARTER` (Tier 4) |
+| D-007 | 2026-07-08 md-organization pass | `threat_model.md` deleted-`replit_integrations` ref corrected to `server/integrations/auth/`; `LOCAL_DEV.md` Node "20+" → pinned "24.x"; the table-count conflict (`02-architecture` 158 vs `03-database` 160) reconciled to the verified **168 tables / 17 schema files** |
+| F-001 | 2026-07-08 md-organization pass (`08-services.md`) | Deleted `documentEngine.ts`/`aiGateway.ts` rows removed; table now reflects `extractionService.ts` owning its own Gemini client + `taxInsightService.ts` |

@@ -33,9 +33,12 @@ The routine ("UX daily loop") does the following each run:
 
 ## Ground rules (inherited from the codebase)
 
-- **Design system:** "Obsidian Indigo" — single 216° hue value ramp, semantic pop colors
-  (success/warning/danger) outside the ramp. Source of truth: `client/src/index.css` +
-  `tailwind.config.ts` + `design_guidelines.md`. No new hues.
+- **Design system:** "Charcoal Emerald" (user-authorized repaint 2026-07-06, PR #57 — superseded
+  the earlier "Obsidian Indigo"; dated artifacts in this folder from before that date still
+  reference the navy palette). Stark-white surfaces, a neutral charcoal→slate→white value ramp,
+  emerald `#047857` for conversion actions, and semantic pop colors (success/warning/danger)
+  outside the ramp. Source of truth: `client/src/index.css` + `tailwind.config.ts` +
+  `design_guidelines.md`. No new hues.
 - **No logic changes in redesign commits.** Visual sweep only, one route per commit.
 - **Analytics is first-party:** `POST /api/track` (`server/routes/borrower.ts`), client hooks in
   `client/src/hooks/useActivityTracker.ts`. No third-party trackers without a compliance review

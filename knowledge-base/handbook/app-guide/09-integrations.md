@@ -60,10 +60,12 @@ can execute.
 - **Direct-to-storage uploads**: files go browser → GCS with a short-lived
   signed URL; the API only issues URLs and records metadata. Don't route file
   bytes through Express.
-- **Roadmap integrations** (from the AI-brokerage plan, not yet built):
-  soft-pull credit bureau API, Optimal Blue pricing, Fannie DU / Freddie LPA
-  submission, lead-aggregator webhooks (Zillow/LendingTree), Twilio/ElevenLabs
-  voice. See the session notes / PRODUCT_SPINE for context.
+- **Roadmap integrations** (not yet built; each is a deterministic simulation behind an adapter
+  today — see [ASSUMPTIONS.md](../../governance/ASSUMPTIONS.md) §1 and the roadmap F-series):
+  soft-pull credit bureau API (F3), Fannie DU / Freddie LPA submission (F6), a pricing engine
+  (Lender Price / Mortech — Optimal Blue was evaluated and passed on, F11), lead-aggregator
+  webhooks (Zillow/LendingTree), Twilio/ElevenLabs voice. See
+  [L1](../../L1_VISION_AND_SCOPE.md) for how integrations serve the core loop.
 
 ## Pre-flight checklist — vendor & GSE delivery changes
 

@@ -32,7 +32,7 @@ This is a single npm workspace, not a multi-package monorepo. The blueprint conc
 │   └── src/
 │       ├── main.tsx            Entry point; mounts <App/>
 │       ├── App.tsx             All routes (wouter). Pages are lazy-loaded.
-│       ├── index.css           Obsidian Indigo design tokens (CSS variables)
+│       ├── index.css           Charcoal Emerald design tokens (CSS variables)
 │       ├── components/
 │       │   ├── ui/             shadcn/Radix primitives, restyled to tokens
 │       │   └── *.tsx           Cross-page components (HomeReadinessPassport, …)

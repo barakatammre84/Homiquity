@@ -5,6 +5,13 @@
 **Subject:** the compliance-hardening changes on branch `claude/bold-jang-224c91` (PR #2)
 **Status:** code complete and tested; **must not be relied on in production until the items below are ratified.**
 
+> **Freshness (2026-07-08):** a dated counsel-review package from the PR #2 hardening era. The
+> engineering it describes (adverse-action mapping, the Reg Z APR solver, the TRID clock) has
+> since **shipped and evolved on `main`** — for implementation state trust the current code plus
+> [CTO_ROADMAP.md](../../CTO_ROADMAP.md) (#26, #34) and [ASSUMPTIONS.md](../governance/ASSUMPTIONS.md).
+> What remains genuinely open is the **legal ratification** of the questions below (a
+> counsel/founder action), not the code.
+
 This package exists because several items in the hardening work are legal
 determinations or fixed regulatory text that engineering can draft but **cannot
 sign off on**. Each section states what was built, what is assumed, and the

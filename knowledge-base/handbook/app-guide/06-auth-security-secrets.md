@@ -29,11 +29,23 @@ see [TEST_ACCOUNTS.md](../../runbooks/TEST_ACCOUNTS.md).
 
 ## Authorization (RBAC)
 
-`users.role` ∈ borrower · staff · admin · agent. Middleware in `server/auth.ts`:
-`isAuthenticated`, `isAdmin`, `requireRole(...roles)`. The role is re-read from
-the DB on each authenticated request, so demotions apply immediately.
-Per-resource ownership checks (does this application belong to `req.user.id`?)
-are done inline in handlers — always add them for borrower data.
+`users.role` is defined in [`shared/roles.ts`](../../../shared/roles.ts) — the single source of
+truth, importable by the client without dragging in the ORM:
+
+- **Internal staff** (`INTERNAL_STAFF_ROLES`): `admin`, `lo`, `loa`, `processor`, `underwriter`,
+  `closer` — platform-wide staff.
+- **External partners**: `broker` and `lender` (staff-typed but deal-team-scoped), plus `cpa`
+  (self-registering, inviter-only — deliberately **not** in `STAFF_ROLES`, so it can't reach
+  any `isStaffRole()`-gated surface).
+- **Clients** (`CLIENT_ROLES`): `aspiring_owner` (sandbox) and `active_buyer` (applying).
+
+Middleware in `server/auth.ts`: `isAuthenticated`, `isAdmin`, `requireRole(...roles)`; the role
+is re-read from the DB on every authenticated request, so demotions apply immediately.
+**The authorization distinction that matters:** `isStaffRole()` *includes* the external partners
+`broker`/`lender`, so for object-level access to borrower data use **`isInternalStaffRole()`** —
+`broker`/`lender` must be explicit deal-team members, and `cpa` reaches only its own
+exact-role-gated surfaces. Per-resource ownership checks (does this application belong to
+`req.user.id`?) are done inline in handlers — always add them for borrower data.
 
 ## Platform security controls (`server/app.ts`)
 
