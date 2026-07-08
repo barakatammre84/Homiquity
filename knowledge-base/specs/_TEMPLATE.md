@@ -35,7 +35,7 @@ cut-line.⟩
   auth/sessions, role gates, uploads, outbound messaging, PII-adjacent logging? If **yes**, name
   the required `/security-review` and note it blocks merge on unresolved CRITICALs.⟩
 - **Regulated math?** ⟨If it introduces/changes a threshold/factor/enum, it carries a
-  `kb/regulatory-ledger.json` citation in the same commit — no citation, no change (I2).⟩
+  `data/regulatory/regulatory-ledger.json` citation in the same commit — no citation, no change (I2).⟩
 
 ## 4. Scope
 
@@ -47,7 +47,7 @@ cut-line.⟩
 ⟨The how, referencing existing patterns — don't reinvent. Cover as applicable:⟩
 - **Server:** ⟨routes + services + the adapter seam; determinism/AI-free rules where relevant⟩
 - **Data model:** ⟨`shared/schema/*` changes → hand-authored migration (`db:migrate`, never
-  `db:push` — see `kb/app-guide/03-database.md`)⟩
+  `db:push` — see `knowledge-base/handbook/app-guide/03-database.md`)⟩
 - **Client:** ⟨pages/components; loading/empty/**error** states; role gates mirror the server
   (`isInternalStaffRole`, not `isStaffRole`)⟩
 - **Contract:** ⟨request/response shape; who can call it⟩

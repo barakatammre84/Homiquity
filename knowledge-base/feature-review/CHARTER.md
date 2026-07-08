@@ -36,7 +36,7 @@ after any significant change — the teams are durable agents in `.claude/agents
 5. **Compliance humility.** Nobody rules on MISMO/ULDD/UCD/QM/SFC/TRID/FCRA/ECOA/TCPA/NMLS/
    ESIGN questions from memory. Verify against `docs/fannie-mae/`, `docs/nmls/`, or eCFR — or
    mark UNVERIFIABLE and escalate. Never invent MISMO names, edit codes, or SFCs.
-6. **Cross-reference, don't duplicate.** `kb/ux-audit/page-audit.md` and `CTO_ROADMAP.md`
+6. **Cross-reference, don't duplicate.** `knowledge-base/logs/ux-audit/page-audit.md` and `CTO_ROADMAP.md`
    already track known issues; findings that overlap must cite them. Known deliberate cuts
    (launch-sprint list, `ASSUMPTIONS.md`) are not defects.
 
@@ -97,7 +97,7 @@ REFUTED findings are recorded in the register with status: refuted (so they aren
 ## Fix waves (Phase 3)
 
 - **Wave 1 (P0/P1):** isolated worktrees, one PR per coherent cluster. Security-review gate for
-  anything matching `kb/TEAM_PRACTICES.md` §9 triggers; compliance-auditor sign-off for
+  anything matching `knowledge-base/governance/TEAM_PRACTICES.md` §9 triggers; compliance-auditor sign-off for
   Fannie/NMLS-touching fixes.
 - **Wave 2 (P2/P3):** batched polish PRs.
 - **UX wave:** `ux-refinement` findings, one route per PR (the existing redesign convention),
