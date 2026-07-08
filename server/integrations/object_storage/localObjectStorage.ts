@@ -89,5 +89,9 @@ export function streamLocalObject(objectPath: string, res: Response): void {
     return;
   }
   res.setHeader("Cache-Control", "private, max-age=3600");
+  // Defense in depth: the raw /objects/ path streams without Content-Disposition,
+  // so forbid MIME sniffing. Content is already allowlisted to PDF/image/doc at
+  // upload, but this stops any sniff-to-render path outright.
+  res.setHeader("X-Content-Type-Options", "nosniff");
   fs.createReadStream(filePath).pipe(res);
 }
