@@ -14,6 +14,21 @@
 
 **Goal: live production — take real borrower applications and deliver complete files to wholesale lenders for approval and closing.** Maintained nightly by the evening triage routine (sole append authority; keep it under ~12 items — anything not launch-blocking belongs in the sections below, not here). The 16-routine executive suite was consolidated to 4 launch routines the same day (see [kb/PRE_PRODUCTION_OPS_ROUTINES.md](./knowledge-base/runbooks/PRE_PRODUCTION_OPS_ROUTINES.md)).
 
+> **Status update — 2026-07-08.** Since this sprint opened, three pushes landed (authoritative
+> record: the production change ledger in [CICD.md](./knowledge-base/runbooks/CICD.md), and
+> [ASSUMPTIONS.md](./knowledge-base/governance/ASSUMPTIONS.md) for what's real vs. simulated):
+> **(1)** the **armed launch** shipped — the public site now deploys in pre-license *gated* mode
+> (`server/services/prelaunchGate.ts` + `Waitlist.tsx`; fail-safe while NMLS is `PENDING`),
+> commercial funnel built and behind the flag (see
+> [ARMED_LAUNCH_CHARTER](./knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md));
+> **(2)** the **Tax Return Insight pipeline** merged (PRs #55/#66, migrations `0009`–`0011`,
+> applied to prod — HEAD now `0011`); **(3)** a **Cleanup-to-MVP batch** merged 2026-07-08
+> (10 PRs, #61–#76: Approval Strength #61, Buying Power + SEO #63, MISMO enum fixes #64/#75,
+> KB consolidation + index guard #73/#74, L1 Vision & Scope #69), suite now **739 unit green**.
+> The remaining launch-blockers below are unchanged and still accurate: **F1 (NMLS)** gates
+> everything commercial; **LS-2** (Vercel env vars) and **LS-6** (prod reseed) are founder-side;
+> **LS-10 slice 3** / **L6-fix** (MISMO XSD conformance) are the open engineering legs.
+
 **Founder (⛔ human — blocks everything commercial):**
 
 - [ ] **LS-1. F1 NMLS licensing (+ MERS org ID).** `server/config/company.ts` still says `PENDING`; no wholesale lender will credential an unlicensed broker. This is the single longest-lead item — everything else exists to be ready the day it clears.
@@ -30,7 +45,7 @@
 - [x] **LS-9. LO-M11 co-applicant GSE gate.** *(PR #41 merged 2026-07-04.)*
 - [ ] **LS-10. Lender submission adapter (post-#38)** — the actual delivery leg to wholesale lenders. *(Slice 2 of 3 — per-lender MISMO package assembly — merged 2026-07-05, PR #51: `submitToWholesaleLender` now builds the MISMO 3.4 XML package at submission time via the new pure `buildLenderPackage()`, structurally validates it before allowing submission, and persists an immutable snapshot + sha256 hash on `lender_submissions` (migration 0009) for staff download via a new `mismo-package` route. Slice 1 (status machine/persistence) shipped with #38; slice 3 — real per-lender portal hand-off — stays blocked on broker-lender agreements, `submitToLenderPortal` remains the deterministic simulation.)* **← next engineering item: slice 3**, alongside L6 (XSD-validate the MISMO export against `docs/fannie-mae/schemas/`).
 
-*(2026-07-04 launch-integration batch: all 13 PRs — #37, #39–#50 — merged in one integration push; the engineering sprint is fully landed. 2026-07-05: PR #51 (LS-10 slice 2, code) + PR #52 (docs: SDLC/security-review/DoD additions) merged in a second integration push. PR #53 (private-beta Edge Middleware gate) held for coordination with the in-flight pre-license compliance gate (`prelaunchGate.ts`), which locks soliciting surfaces while NMLS is PENDING — the two overlap and should land together. Remaining sprint items are founder-side (LS-1/2/4/6) plus LS-10 slice 3/L6 engineering. Fact/assumption register: [ASSUMPTIONS.md](./knowledge-base/governance/ASSUMPTIONS.md).)*
+*(2026-07-04 launch-integration batch: all 13 PRs — #37, #39–#50 — merged in one integration push; the engineering sprint is fully landed. 2026-07-05: PR #51 (LS-10 slice 2, code) + PR #52 (docs: SDLC/security-review/DoD additions) merged in a second integration push. The private-beta Edge Middleware gate (PR #53) and the pre-license compliance gate (`prelaunchGate.ts`) were reconciled to **layer** — the beta gate is the front door, the pre-license gate hides the funnel inside, and the funnel lights up on F1 (decision + rollout in [ARMED_LAUNCH_CHARTER](./knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md) §9). For everything that shipped 2026-07-05 → 07-08 and the current launch-blocker set, see the **Status update — 2026-07-08** box above. Fact/assumption register: [ASSUMPTIONS.md](./knowledge-base/governance/ASSUMPTIONS.md).)*
 
 Everything else in this file is explicitly **not** the sprint: CS\*, ARC-\*, CH-\*, G-B/G-C, LO-M16/M17, S-07+ wait until we are live or their blocker clears.
 
@@ -152,7 +167,8 @@ These wait until licensing and contracts are in motion. Each contract unlocks a 
 Strategy: own borrower intent *before* the credit pull via first-party channels — direct network → agent B2B2C → VA affinity → free-tool lead capture. Phase 2's co-branded agent intake is **mostly built already** (`referralCode` links, ReferralLanding, `co_brand_profiles`, application-invites, broker referral dashboard); its remaining gap is a RESPA §8 review before any agent co-marketing spend. G2/G3 are buildable pre-licensing; G1's public launch waits on state advertising rules + F1.
 
 - [ ] **G1. VA-specific funnel.** Persona-siloed VA purchase + IRRRL landing page and intake. Engine already routes `isVeteran` → VA products (580 FICO / 100% LTV seeded); missing: COE check, VA funding-fee calc (incl. exemptions), residual-income table, IRRRL flow.
-- [ ] **G2. "Approval Strength Score" public tool.** Unauthenticated lead magnet: buyer enters income / down payment / target ZIP, gets an offer-strength readout from the existing readiness + decision engines on self-reported inputs; detailed breakdown gated behind account creation + explicit opt-in through the existing `POST /api/leads` (TrustedForm) API. Guardrails: no Reg Z trigger terms, never present output as an approval/pre-approval (Reg N).
+- [x] **G2. "Approval Strength Score" public tool — shipped 2026-07-08 as PR #61.** Unauthenticated lead magnet: buyer enters income / down payment / target ZIP, gets an offer-strength readout from the existing readiness + decision engines on self-reported inputs; detailed breakdown gated behind account creation + explicit opt-in through the existing `POST /api/leads` (TrustedForm) API. Guardrails held: no Reg Z trigger terms, never presents output as an approval/pre-approval (Reg N). *(Like every soliciting surface, it renders behind the pre-license gate until F1 — see the Status box above.)*
+- [x] **G2b. Buying Power Estimator + SEO article cluster — shipped 2026-07-08 as PR #63.** Top-of-funnel acquisition surface + SEO content (also gated pre-F1).
 - [ ] **G3. Acquisition metrics instrumentation.** Pull-through rate (target >70%), time-to-clear (<12 days), B2B referral rate (>30%) — derive from stage timestamps + referral attribution, surface on admin analytics. Phase gates: don't advance an acquisition phase until the prior phase's metrics verify.
 
 ---

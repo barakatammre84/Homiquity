@@ -4,7 +4,7 @@ The whole app runs on your machine. Only Postgres is a managed service — the f
 tier of Neon costs nothing, so this is a $0 local setup.
 
 ## 1. Prerequisites
-- Node.js 20+ (`node -v`)
+- Node.js 24.x (`node -v`) — matches the pinned `engines.node` in `package.json` (what Vercel builds with)
 - A Postgres database (see step 3)
 - `git` and this repo cloned locally
 

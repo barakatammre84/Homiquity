@@ -4,11 +4,15 @@ An AI-native mortgage **brokerage** platform: borrower intake (digital 1003), do
 collection, deterministic underwriting, MISMO 3.4 packaging, and delivery of complete
 loan files to wholesale lenders. Deployed at <https://mortgage-stream.vercel.app>.
 
-**Current status (2026-07-04): built, deployed, pre-launch.** All four core lending
-workflows run end-to-end against **simulated vendors**. The platform cannot legally or
-commercially process a real loan yet — see [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) for exactly
-what is real, what is simulated, and what is pending. The active plan to get live is the
-**🚀 Launch sprint** section at the top of [CTO_ROADMAP.md](CTO_ROADMAP.md).
+**Current status (2026-07-08): deployed in pre-license gated mode.** The public site is live
+in production behind a **pre-license gate** (`server/services/prelaunchGate.ts`; fail-safe —
+gated whenever the company NMLS id is `PENDING`), so a stranger reaches educational content and
+a waitlist, never a mortgage-solicitation surface. The full commercial machine — intake,
+deterministic pre-approval, MISMO packaging, wholesale delivery — is **built and proven behind
+the gate against simulated vendors**, one config flip from going live the day **F1 (NMLS
+licensing)** clears. Nothing commercial is legally real until then — see
+[ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) for what is real, simulated, or
+pending, and [CTO_ROADMAP.md](CTO_ROADMAP.md) for the live work queue.
 
 ## Quick start
 
@@ -23,10 +27,13 @@ Dev logins: see [TEST_ACCOUNTS.md](knowledge-base/runbooks/TEST_ACCOUNTS.md) (re
 ## Which document do I trust?
 
 **All documentation lives in [`knowledge-base/`](knowledge-base/)** (see its
-[index](knowledge-base/README.md)). Only three docs stay at the repo root: this **README.md**
+[index](knowledge-base/README.md)). Three *living* docs stay at the repo root: this **README.md**
 (landing), **[CLAUDE.md](CLAUDE.md)** (Claude Code auto-loads it here), and
-**[CTO_ROADMAP.md](CTO_ROADMAP.md)** (the live work queue). Regulatory source binaries stay in
-**[`docs/`](docs/)**; app-data (not docs) in `data/regulatory/`.
+**[CTO_ROADMAP.md](CTO_ROADMAP.md)** (the live work queue). A fourth root file,
+**[PRODUCT_SPINE.md](PRODUCT_SPINE.md)**, is a one-line pointer stub kept only so old links
+resolve — its content moved to [L1](knowledge-base/L1_VISION_AND_SCOPE.md); do not add to it.
+Regulatory source binaries stay in **[`docs/`](docs/)**; app-data (not docs) in
+`data/regulatory/`.
 
 Two axes of authority:
 
@@ -56,8 +63,9 @@ Two axes of authority:
 | [governance/AI_GOVERNANCE_POLICY.md](knowledge-base/governance/AI_GOVERNANCE_POLICY.md) · [governance/MODEL_RISK_GOVERNANCE.md](knowledge-base/governance/MODEL_RISK_GOVERNANCE.md) | Adopted AI governance policy + model inventory under it. |
 | [compliance/REGULATORY_MONITORING.md](knowledge-base/compliance/REGULATORY_MONITORING.md) | How statutory constants stay verifiably aligned with official sources. |
 | [compliance/SCENARIO_ARCHITECT.md](knowledge-base/compliance/SCENARIO_ARCHITECT.md) | Operating instructions for scenario/guardian work. |
+| [compliance/SAFE_MLO_COMPLIANCE_MAP.md](knowledge-base/compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [compliance/COMPLIANCE_COUNSEL_REVIEW.md](knowledge-base/compliance/COMPLIANCE_COUNSEL_REVIEW.md) | SAFE Act / MLO advertising crosswalk + the standing compliance-counsel review. |
 | [runbooks/PRE_PRODUCTION_OPS_ROUTINES.md](knowledge-base/runbooks/PRE_PRODUCTION_OPS_ROUTINES.md) | The founder's pre-launch operating routines (current: 5-routine launch suite). |
-| [docs/fannie-mae/](docs/fannie-mae/) | Official GSE reference documents — never work from memory on ULDD/UCD/URLA/MISMO. |
+| [docs/fannie-mae/](docs/fannie-mae/) · [docs/nmls/](docs/nmls/) · [docs/nmls-safe/](docs/nmls-safe/) | Official GSE + NMLS reference documents — never work from memory on ULDD/UCD/URLA/MISMO or NMLS licensing. |
 | [handbook/design/design_guidelines.md](knowledge-base/handbook/design/design_guidelines.md) | Design system rules. |
 | [compliance/security/threat_model.md](knowledge-base/compliance/security/threat_model.md) | Security threat model. |
 
@@ -70,6 +78,9 @@ Two axes of authority:
 Everything under [knowledge-base/logs/](knowledge-base/logs/) — point-in-time assessments
 ([logs/assessments/](knowledge-base/logs/assessments/)) and dated routine/audit runs
 ([logs/founder-routines/](knowledge-base/logs/founder-routines/), [logs/lo-audit/](knowledge-base/logs/lo-audit/), [logs/ux-audit/](knowledge-base/logs/ux-audit/)).
+The [governance/ARMED_LAUNCH_CHARTER_2026-07-07.md](knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md)
+is filed under `governance/` for its locked launch *decisions*, but its execution log is a dated
+snapshot — read its status banner, not it, for the current launch state.
 
 **Snapshot rule:** these are never silently edited to look current. When reality moves on,
 they get a dated **superseded/status banner** at the top pointing to the live source.

@@ -24,7 +24,7 @@ hits the server (as a serverless function).
 └───────────────────┬──────────────────────────────┬─────────────────────┘
                     ▼                              ▼
              PostgreSQL (Drizzle)          External services
-             158 tables, 12 domains       (Plaid, Gemini, OpenAI, GCS,
+             168 tables, 17 files          (Plaid, Gemini, OpenAI, GCS,
              shared/schema/*               Google Maps, RapidAPI, SMTP)
 ```
 

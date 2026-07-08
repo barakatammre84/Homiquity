@@ -1,10 +1,15 @@
 # Armed Launch Charter — target EOD 2026-07-07
 
-**Owner:** Amr (founder) · **Drafted:** 2026-07-05 · **Status:** active
+**Owner:** Amr (founder) · **Drafted:** 2026-07-05 · **Status:** ✅ **target met — armed launch
+executed** (BUILD-1 shipped + verified; audit swarm complete — see the §8 execution log).
 
-This charter governs the July 7 launch push. It exists so that when the audit bites on
-July 6, we execute a pre-agreed rule instead of holding an argument. Read it before
-spinning up any team.
+> **This is a dated charter, retained for its locked launch *decisions* (§1–2 date-vs-scope
+> rule, §9 gate layering) — not a live tracker.** For the current production state, trust the
+> [CICD.md](../runbooks/CICD.md) production change ledger and
+> [CTO_ROADMAP.md](../../CTO_ROADMAP.md), not this file.
+
+This charter governed the July 7 launch push. It existed so that when the audit bit on
+July 6, we executed a pre-agreed rule instead of holding an argument.
 
 ---
 

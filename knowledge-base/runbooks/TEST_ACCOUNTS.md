@@ -1,6 +1,6 @@
 # Test Accounts (dev only)
 
-Ten role-based test accounts for development. Source of truth is `setupDevTestLogin` in
+Eleven role-based test accounts for development. Source of truth is `setupDevTestLogin` in
 [server/auth.ts](../../server/auth.ts) — if this table and the code disagree, the code wins.
 
 **Password:** all accounts share the single password in the `DEV_TEST_PASSWORD` env var
@@ -18,6 +18,7 @@ returns 404 in prod; 503 if `DEV_TEST_PASSWORD` is unset).
 | closer@test.com | `closer` | Closer |
 | broker@test.com | `broker` | External referral partner (broker dashboard) |
 | lender@test.com | `lender` | Lender rep |
+| cpa@test.com | `cpa` | CPA partner — inviter-only referral portal; never sees borrower data |
 | renter@test.com | `aspiring_owner` | Incubator surface (RenterHome) |
 | buyer@test.com | `active_buyer` | Borrower engine (Dashboard) — integration tests use this account |
 

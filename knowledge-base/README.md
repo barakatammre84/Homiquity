@@ -2,10 +2,12 @@
 
 The single home for all Homiquity documentation. Every `.md` here is indexed below — an
 unindexed doc is an unread doc (enforced by `scripts/kb-index-guard.cjs` via `npm run checkup`).
-Only three docs live outside this tree, deliberately: **`CLAUDE.md`** (Claude Code auto-loads it
-from repo root), **`README.md`** (the repo landing page), and **`CTO_ROADMAP.md`** (the live work
-queue). Regulatory source binaries stay in **`docs/`** (fannie-mae / nmls / nmls-safe). App-data
-(not docs) lives in **`data/regulatory/`**.
+Three living docs live outside this tree, deliberately: **`CLAUDE.md`** (Claude Code auto-loads
+it from repo root), **`README.md`** (the repo landing page), and **`CTO_ROADMAP.md`** (the live
+work queue). A fourth, **`PRODUCT_SPINE.md`**, is a one-line pointer stub retained only so old
+links resolve — its content moved to [L1](L1_VISION_AND_SCOPE.md). Regulatory source binaries
+stay in **`docs/`** (fannie-mae / nmls / nmls-safe). App-data (not docs) lives in
+**`data/regulatory/`**.
 
 ## Precedence hierarchy (which doc wins)
 
@@ -22,8 +24,11 @@ doc-drift bug to fix):
 ### Handbook — how the system is built · [`handbook/`](handbook/)
 - [DEVELOPER_PLAYBOOK.md](handbook/DEVELOPER_PLAYBOOK.md) — the map: where code lives, the core
   workflows, the golden rules.
-- [app-guide/](handbook/app-guide/) — the 11-part subsystem handbook (`01-start-here` …
-  `11-domain-glossary`).
+- [app-guide/](handbook/app-guide/) — the 11-chapter subsystem handbook (read in order, or jump):
+  - [01 — Start Here](handbook/app-guide/01-start-here.md) · [02 — Architecture, Entry & Exit Points](handbook/app-guide/02-architecture.md) · [03 — Database & Schema](handbook/app-guide/03-database.md)
+  - [04 — API Surface](handbook/app-guide/04-api-routes.md) · [05 — Data Flow: A Loan's Journey](handbook/app-guide/05-data-flow.md) · [06 — Auth, Security & Secrets](handbook/app-guide/06-auth-security-secrets.md)
+  - [07 — Frontend](handbook/app-guide/07-frontend.md) · [08 — Service Catalog](handbook/app-guide/08-services.md) · [09 — External Integrations](handbook/app-guide/09-integrations.md)
+  - [10 — Deploy & Operations](handbook/app-guide/10-deploy-ops.md) · [11 — Mortgage Domain Glossary](handbook/app-guide/11-domain-glossary.md)
 - [design/design_guidelines.md](handbook/design/design_guidelines.md) — the design system.
 
 ### Compliance — regulated-logic doctrine (L2 detail) · [`compliance/`](compliance/)

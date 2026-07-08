@@ -4,7 +4,7 @@
 
 - **PostgreSQL**, accessed through **Drizzle ORM**.
 - Schema is defined in TypeScript under [`shared/schema/`](../../../shared/schema/)
-  (13 domain files, **160 tables**), re-exported through
+  (17 schema files, **168 tables** as of 2026-07-08), re-exported through
   [`shared/schema.ts`](../../../shared/schema.ts). Because it lives in `shared/`,
   the client gets the same types and Zod validators (via `drizzle-zod`).
 - **Driver selection** ([`server/db.ts`](../../../server/db.ts)): a
@@ -38,15 +38,20 @@
 | `property.ts` | 6 | Properties, saved searches, affordability analyses |
 | `coach.ts` | 3 | AI coach conversations/messages |
 | `lookup.ts` | 2 | Lookup matrix infrastructure |
-| `core.ts` | 2 | `users`, `sessions` (the Postgres session store table) |
+| `core.ts` | 4 | `users`, `sessions` (Postgres session store), and auth/verification token tables |
 | `leads.ts` | 1 | Inbound lead capture: source attribution (Zillow/LendingTree/organic), TrustedForm + TCPA consent evidence, opt-outs, conversion linkage |
 | `decisions.ts` | 1 | Decision engine records |
 | `ai.ts` | 1 | AI usage/audit |
+| `marketData.ts` | 3 | Free-data moat: HMDA competitor loans, competitor rate benchmarks, loan-performance profiles |
+| `delivery.ts` | 2 | Fannie Mae loan-delivery capture (`loan_delivery_data`) + delivery-readiness state |
+| `cpaPartners.ts` | 2 | CPA partner registry + referral tracking (inviter-only channel) |
+| `taxInsights.ts` | 1 | Tax Return Insight signals derived from consumer-uploaded returns |
 
 ## The tables you'll touch most
 
-- **`users`** (`core.ts`) — one row per account; `role` drives RBAC
-  (borrower / staff / admin / agent). Password hash lives here for
+- **`users`** (`core.ts`) — one row per account; `role` drives RBAC (the roles defined in
+  [`shared/roles.ts`](../../../shared/roles.ts): internal staff, external partners incl. `cpa`,
+  and clients — see [doc 06](./06-auth-security-secrets.md)). Password hash lives here for
   email/password auth; social logins link by email.
 - **`loan_applications`** (`lending.ts`) — the aggregate root of the whole
   system. Almost everything else hangs off `loan_application_id` or `user_id`.

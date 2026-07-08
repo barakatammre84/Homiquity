@@ -18,7 +18,8 @@ to the SPA.
 
 Each file in [`server/routes/`](../../../server/routes/) registers one domain in
 `registerRoutes()` ([`server/routes.ts`](../../../server/routes.ts)). Endpoint
-counts give you a sense of surface area (~470 total):
+counts give you a sense of surface area (~490 total across 34 route files; counts are
+approximate — grep a file to confirm):
 
 | File | ~Endpoints | Domain |
 |------|-----------:|--------|
@@ -45,6 +46,14 @@ counts give you a sense of surface area (~470 total):
 | `notifications.ts` | 4 | User notifications |
 | `listings.ts` | 3 | External property listings search (Redfin/RapidAPI) |
 | `calculators.ts` | 2 | Mortgage calculators |
+| `jobs.ts` | 6 | Scheduled lifecycle jobs: refi/equity scans, adverse-action delivery, closed-loan graduation |
+| `cpaPartners.ts` | 6 | CPA partner portal: self-registration, referral-code validate/apply, partner self-view (inviter-only) |
+| `leads.ts` | 4 | Public lead intake (`POST /api/leads`, TrustedForm-gated + rate-limited) + staff list/detail + admin delete |
+| `market-data.ts` | 3 | Market-data moat: competitor benchmark, undercut quote, risk profile |
+| `taxInsights.ts` | 2 | Tax Return Insight pipeline: consumer-direct upload → readiness signals |
+| `webhooks.ts` | 1 | Inbound provider webhooks (SMS STOP/opt-out; provider-agnostic) |
+| `monitoring.ts` | 1 | Client error intake (`/api/client-errors`) → server-side Sentry reporter |
+| `shell.ts` | 1 | Consolidated badge counts for the authenticated app shell |
 
 To enumerate a domain's exact endpoints, grep it:
 
@@ -74,5 +83,6 @@ never trust a client-supplied user id.
 - Errors: `res.status(4xx).json({ error: "..." })`; unexpected errors bubble to
   the central error handler.
 - Rate limits: auth endpoints and uploads have stricter limiters (see doc 02).
-- Response bodies of sensitive endpoints are suppressed from server logs
-  (list in `server/app.ts` → `SUPPRESS_RESPONSE_BODY_PATTERNS`).
+- Response-body logging is **allow-list only**: only explicitly PII-free paths log their
+  bodies, everything else logs status/duration only
+  (`server/app.ts` → `RESPONSE_BODY_LOG_ALLOWLIST`; matches doc 06).

@@ -68,7 +68,7 @@ The industry terms this codebase assumes you know, decoded.
 |------|---------|
 | **Borrower Graph** | Our unified, trust-tiered borrower profile (`borrowerGraph.ts`) |
 | **3-tier trust** | Every fact is self-reported → documented → verified |
-| **Borrower Package** | The 11-section lender-ready output (see PRODUCT_SPINE.md) |
+| **Borrower Package** | The lender-ready MISMO 3.4 output delivered to a wholesale lender (see [L1](../../L1_VISION_AND_SCOPE.md) §2) |
 | **Calm Path** | The borrower-portal design principle: one dominant CTA, steppers, no clutter |
 | **Rules DSL** | The editable deterministic underwriting rule language (`ruleEngine.ts`) |
 | **Lookup matrix** | Grid-based guideline lookups (e.g. price adjustments by score×LTV) |

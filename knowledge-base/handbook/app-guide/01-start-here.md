@@ -8,7 +8,8 @@ a conversational pre-approval application, document collection, deterministic
 underwriting, and a generated pre-approval letter — with dashboards for
 borrowers, loan-processing staff, admins, and referring real-estate agents.
 
-The product vision and module map live in [PRODUCT_SPINE.md](../../../PRODUCT_SPINE.md).
+The product vision and module map live in [L1_VISION_AND_SCOPE.md](../../L1_VISION_AND_SCOPE.md)
+(which superseded and absorbed the old `PRODUCT_SPINE.md`).
 The one-paragraph version: modules are **Lend** (origination), **Coach** (AI
 guidance), **Listings** (property search + affordability), **Ops** (staff
 pipeline), **Rates**, **Calculators**, **Education**, **Realtor Engine**
@@ -61,9 +62,9 @@ npm run db:migrate         # apply versioned migrations (hand-authored SQL in mi
 push drops other branches' columns; migrations are hand-authored (drizzle-kit generate
 has snapshot drift). See `.agents/memory/db-push-blocker.md` and CLAUDE.md.
 
-## Health of the codebase (as of 2026-07-04)
+## Health of the codebase (as of 2026-07-08)
 
-Clean bill: `npm run check` is **0 errors**, unit tests **647/647**, integration
+Clean bill: `npm run check` is **0 errors**, unit tests **739 green**, integration
 tests **73/73** (against a running dev server; see [TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md)
 for the auth-rate-limit note when running the full integration suite). All Replit
 coupling was removed on 2026-07-02 — auth (session + Passport) now initializes

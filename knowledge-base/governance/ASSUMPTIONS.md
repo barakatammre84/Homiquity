@@ -7,7 +7,11 @@ assumption becomes fact (contract signed, env var set, PR merged), move it and u
 date in the same commit. If you find a claim here that the code contradicts, the code wins —
 fix this file.
 
-Last full verification pass: **2026-07-04** (source-of-truth audit).
+Last full verification pass: **2026-07-04** (source-of-truth audit). Spot-updated **2026-07-08**
+for migration HEAD (`0011`) and the pre-license gated-launch state; entries still dated
+`2026-07-04` were not re-verified in the spot-update — trust the
+[CICD.md](../runbooks/CICD.md) production change ledger and [CTO_ROADMAP.md](../../CTO_ROADMAP.md)
+for anything that has moved since.
 
 ---
 
@@ -62,10 +66,17 @@ items; the "no citation → not implemented" contract in kb/UNDERWRITING_SCENARI
 - Encryption **fails closed in production**: startup refuses to boot without
   `CREDIT_ENCRYPTION_KEY`; SSNs go through `ssnVault.ts`. The Feb-2026
   INFRASTRUCTURE_RISKS findings are resolved (doc archived).
-- Migrations `0000`–`0008` are versioned SQL on `main` and applied to prod
-  (0005–0008 verified applied 2026-07-04).
-- Dev test login: **10 role accounts**, single shared `DEV_TEST_PASSWORD` env var, endpoint
-  404s in production. No credentials live in the repo (TEST_ACCOUNTS.md rewritten to match).
+- Migrations `0000`–`0011` are versioned SQL on `main` and applied to prod — prod HEAD
+  confirmed `0011` (12/12 `drizzle.__drizzle_migrations` rows) on **2026-07-08**; `0009`–`0011`
+  (lender package, tax_insights, cpa_partners) were applied via the Neon-pooler raw-`pg`
+  workaround (see [CICD.md](../runbooks/CICD.md) ledger).
+- The public site deploys in **pre-license gated mode**: `server/services/prelaunchGate.ts`
+  fail-safes to gated in prod while the company NMLS id is `PENDING`, so a stranger sees only
+  educational content + a waitlist. The full commercial funnel is built and behind the flag
+  (roadmap armed-launch state).
+- Dev test login: **11 role accounts** (one per role, incl. `cpa`), single shared
+  `DEV_TEST_PASSWORD` env var, endpoint 404s in production. No credentials live in the repo
+  (TEST_ACCOUNTS.md matches `setupDevTestLogin`).
 - Dark mode is **unreachable by users** (no ThemeProvider/toggle) — decided unsupported
   (roadmap #21).
 - The underwriting engine is deterministic with no vendor calls inside it
