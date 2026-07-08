@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import {
@@ -8,9 +8,17 @@ import {
   extractLeaseData,
 } from "../extractionService";
 import { recordCoarseExtraction } from "../services/documentConfidence";
-import { allowedUploadTypes } from "./utils";
+import { allowedUploadTypes, bufferMatchesAllowedSignature } from "./utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
-import { ObjectStorageService, ObjectNotFoundError } from "../integrations/object_storage";
+import {
+  ObjectStorageService,
+  ObjectNotFoundError,
+  isLocalFallbackEnabled,
+  isValidObjectId,
+  createLocalUpload,
+  writeLocalObject,
+  streamLocalObject,
+} from "../integrations/object_storage";
 import { type User } from "@shared/schema";
 import { logAudit } from "../auditLog";
 
@@ -42,29 +50,33 @@ export function registerDocumentRoutes(
 ) {
   app.post("/api/uploads/request-url", isAuthenticated, async (req, res) => {
     try {
-      // Graceful gate until the GCS env vars land (GCS_SERVICE_ACCOUNT_KEY +
-      // PRIVATE_OBJECT_DIR, see .env.example): a deliberate 503 JSON envelope
-      // that the client surfaces as a maintenance message, instead of a
-      // generated URL that could never work.
-      if (!objectStorageService.isConfigured()) {
-        return res.status(503).json({
-          error: "Document uploads are temporarily unavailable. Please try again later.",
-          code: "UPLOADS_UNCONFIGURED",
-        });
-      }
-
       const { name, size, contentType } = req.body;
 
       if (!name) {
         return res.status(400).json({ error: "Missing required field: name" });
       }
-
       if (contentType && !allowedUploadTypes.includes(contentType)) {
         return res.status(400).json({ error: "Invalid file type" });
       }
-
       if (size && size > MAX_UPLOAD_BYTES) {
         return res.status(400).json({ error: `File too large (max ${MAX_UPLOAD_LABEL})` });
+      }
+
+      // No GCS bucket configured: in local dev, hand back a local upload target so
+      // the same client flow (request-url → PUT → register → download) works without
+      // cloud credentials. In PRODUCTION we refuse loudly (503, UPLOADS_UNCONFIGURED)
+      // rather than silently storing on ephemeral disk — the exact "uploads vanish on
+      // redeploy" bug the GCS path fixes (see .env.example: GCS_SERVICE_ACCOUNT_KEY +
+      // PRIVATE_OBJECT_DIR).
+      if (!objectStorageService.isConfigured()) {
+        if (!isLocalFallbackEnabled()) {
+          return res.status(503).json({
+            error: "Document uploads are temporarily unavailable. Please try again later.",
+            code: "UPLOADS_UNCONFIGURED",
+          });
+        }
+        const { uploadURL, objectPath } = createLocalUpload();
+        return res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
       }
 
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
@@ -80,6 +92,41 @@ export function registerDocumentRoutes(
       res.status(500).json({ error: "Failed to generate upload URL" });
     }
   });
+
+  // Local-only upload receiver, the counterpart to createLocalUpload(). Accepts the
+  // raw bytes a client would otherwise PUT to a presigned GCS URL and stores them on
+  // the local filesystem. Guarded so it can never be a prod write surface: 404s in
+  // production and whenever real object storage is configured.
+  app.put(
+    "/api/uploads/local/:objectId",
+    isAuthenticated,
+    express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES }),
+    (req, res) => {
+      if (!isLocalFallbackEnabled()) {
+        return res.status(404).json({ error: "Not found" });
+      }
+      const { objectId } = req.params;
+      if (!isValidObjectId(objectId)) {
+        return res.status(400).json({ error: "Invalid object id" });
+      }
+      const buf = req.body;
+      if (!Buffer.isBuffer(buf) || buf.length === 0) {
+        return res.status(400).json({ error: "Empty upload" });
+      }
+      // Same magic-byte guard the disk path enforces, so the local flow rejects
+      // spoofed/unsupported content just like production's allowlist + GCS.
+      if (!bufferMatchesAllowedSignature(buf)) {
+        return res.status(400).json({ error: "Invalid or unsupported file content" });
+      }
+      try {
+        writeLocalObject(objectId, buf);
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error("Local object write failed:", err);
+        return res.status(500).json({ error: "Failed to store file" });
+      }
+    },
+  );
 
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
     try {
@@ -115,6 +162,16 @@ export function registerDocumentRoutes(
       }
 
       logAudit(req, "document.download", "document", req.path, { role: user.role });
+
+      // Dev local fallback: when no GCS bucket is configured, stream from the local
+      // store (dev only; 404 in prod so a misconfigured deploy is obvious, not lossy).
+      if (!objectStorageService.isConfigured()) {
+        if (!isLocalFallbackEnabled()) {
+          return res.status(404).json({ error: "Object not found" });
+        }
+        return streamLocalObject(req.path, res);
+      }
+
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
@@ -153,6 +210,15 @@ export function registerDocumentRoutes(
       }
 
       if (document.storagePath?.startsWith("/objects/")) {
+        // Dev local fallback: stream from the local store when GCS is unconfigured
+        // (dev only; 404 in prod).
+        if (!objectStorageService.isConfigured()) {
+          if (!isLocalFallbackEnabled()) {
+            return res.status(404).json({ error: "File not found in storage" });
+          }
+          res.set("Content-Disposition", `attachment; filename="${safeDispositionFilename(document.fileName)}"`);
+          return streamLocalObject(document.storagePath, res);
+        }
         const objectFile = await objectStorageService.getObjectEntityFile(document.storagePath);
         // Defense in depth: even though the app-level checks above passed, the
         // object's own ACL is the second gate — so a document record that was
