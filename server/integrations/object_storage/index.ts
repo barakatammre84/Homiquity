@@ -17,4 +17,15 @@ export {
   setObjectAclPolicy,
 } from "./objectAcl";
 
+// Dev-only local filesystem fallback for the upload flow (no GCS in local dev).
+export {
+  isObjectStorageConfigured,
+  isLocalFallbackEnabled,
+  isValidObjectId,
+  createLocalUpload,
+  localObjectExists,
+  writeLocalObject,
+  streamLocalObject,
+} from "./localObjectStorage";
+
 

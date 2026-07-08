@@ -72,3 +72,12 @@ export function verifyFileSignature(
   }
   next();
 }
+
+/**
+ * Buffer-based magic-byte check, for callers that hold the file bytes in memory
+ * (e.g. the dev local object-storage PUT receiver) rather than on disk. Returns
+ * true only if the buffer's header matches an allowed file signature.
+ */
+export function bufferMatchesAllowedSignature(buf: Buffer): boolean {
+  return matchesKnownSignature(buf);
+}
