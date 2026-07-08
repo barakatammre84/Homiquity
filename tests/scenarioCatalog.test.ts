@@ -6,11 +6,11 @@ import { SCENARIO_CATALOG } from "../server/services/scenarioCatalog";
 /**
  * Catalog sync contract: the machine-readable catalog must stay a faithful
  * projection of the registry and the engine — unique IDs, real citations,
- * and every implemented S-XX from kb/UNDERWRITING_SCENARIOS.md present.
+ * and every implemented S-XX from knowledge-base/compliance/UNDERWRITING_SCENARIOS.md present.
  * (Flag codes are enforced at compile time via the PreUwFlagCode type.)
  */
 
-const registry = readFileSync(join(__dirname, "../kb/UNDERWRITING_SCENARIOS.md"), "utf8");
+const registry = readFileSync(join(__dirname, "../knowledge-base/compliance/UNDERWRITING_SCENARIOS.md"), "utf8");
 
 describe("scenario catalog integrity", () => {
   it("has unique scenario ids", () => {
