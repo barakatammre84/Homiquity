@@ -1120,7 +1120,8 @@ export function validateMISMOXML(xml: string): { valid: boolean; errors: string[
     "NoteAmount",
     "LoanPurposeType",
     "MortgageType",
-    "BaseLoanAmount",
+    // BaseLoanAmount was dropped in the F-018 restructure (redundant with NoteAmount and
+    // out-of-schema in TERMS_OF_MORTGAGE); NoteAmount is the canonical loan amount.
     "LoanAmortizationType",
   ];
 
