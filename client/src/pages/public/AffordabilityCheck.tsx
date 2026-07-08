@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
+import { loadBuyingPowerScenario } from "@/lib/buyingPowerScenario";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -200,10 +201,13 @@ export default function AffordabilityCheck() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
+  // Seeded from the landing-page Buying Power Estimator when the visitor
+  // arrived through it — never re-ask what the widget already asked.
+  const [seeded] = useState(() => loadBuyingPowerScenario());
   const [financials, setFinancials] = useState<FinancialInputs>({
-    annualIncome: 100000,
-    monthlyDebts: 500,
-    downPayment: 50000,
+    annualIncome: seeded?.annualIncome ?? 100000,
+    monthlyDebts: seeded?.monthlyDebts ?? 500,
+    downPayment: seeded?.downPayment ?? 50000,
     creditScore: 700,
     interestRate: 6.75,
   });
@@ -218,7 +222,9 @@ export default function AffordabilityCheck() {
         setProperty(data.property);
         setNotFound(null);
         const basisPrice = getBasisPrice(data.property);
-        if (basisPrice > 0) {
+        // Default down payment to 10% of the home — unless the visitor already
+        // told the landing-page estimator what cash they actually have.
+        if (basisPrice > 0 && !seeded) {
           setFinancials((prev) => ({
             ...prev,
             downPayment: Math.round(basisPrice * 0.1),

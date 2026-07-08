@@ -13,6 +13,7 @@ import {
   Share2,
 } from "lucide-react";
 import type { Article, ContentCategory } from "@shared/schema";
+import { SEOHead } from "@/components/SEOHead";
 
 export default function ArticleDetail() {
   const params = useParams<{ slug: string }>();
@@ -100,6 +101,11 @@ export default function ArticleDetail() {
 
   return (
     <>
+      <SEOHead
+        title={article.title}
+        description={article.excerpt || `${article.title} — mortgage guidance from Homiquity's Learning Center.`}
+        ogType="article"
+      />
       <article className="mx-auto max-w-3xl p-6 sm:p-8 lg:p-12">
             <div className="mb-8">
               <Link href="/learn">
