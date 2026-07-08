@@ -51,6 +51,7 @@ check "production build"              npm run build --silent
 check "dependency vulnerabilities"    npm audit --audit-level=moderate
 check "no orphaned files"             node scripts/orphan-scan.cjs
 check "design tokens (no raw colors)" node scripts/design-token-guard.cjs
+check "knowledge base indexed"        node scripts/kb-index-guard.cjs
 check "regulatory ledger fresh"       node scripts/regulatory-freshness.cjs
 check "production health ($PROD_URL)" prod_healthy
 

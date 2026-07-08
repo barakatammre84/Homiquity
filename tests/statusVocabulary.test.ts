@@ -11,7 +11,7 @@ import {
 
 /**
  * Status vocabulary invariants — the guardrails behind the single-writer
- * pipeline refactor (kb/BACKEND_UI_OPTIMIZATION_AUDIT.md).
+ * pipeline refactor (knowledge-base/logs/assessments/BACKEND_UI_OPTIMIZATION_AUDIT.md).
  *
  * Two failure classes these catch:
  *  1. A new code path compares or writes a loan-application status literal

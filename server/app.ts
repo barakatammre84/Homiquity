@@ -30,7 +30,7 @@ app.set("trust proxy", 1);
 
 // Content Security Policy — the authorized-script control for PCI DSS 4.0.1
 // Req 6.4.3 / 11.6.1. Every third-party origin listed here is a deliberate,
-// documented authorization (script inventory lives in kb/app-guide/06):
+// documented authorization (script inventory lives in knowledge-base/handbook/app-guide/06):
 //   - maps.googleapis.com  : Google Maps JS API + Street View (PropertyMap/StreetView)
 //   - cdn.plaid.com        : Plaid Link (react-plaid-link script + iframe)
 //   - fonts.googleapis.com / fonts.gstatic.com : Google Fonts (until self-hosted)

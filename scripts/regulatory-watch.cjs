@@ -2,7 +2,7 @@
 /**
  * Regulatory change watcher — polls the OFFICIAL public sources for guideline
  * and rulemaking changes and diffs against the last-seen state committed in
- * kb/regulatory-watch-state.json.
+ * data/regulatory/regulatory-watch-state.json.
  *
  *   node scripts/regulatory-watch.cjs                 # report changes, exit 2 if any
  *   node scripts/regulatory-watch.cjs --update-state  # also persist the new state
@@ -26,7 +26,7 @@ const path = require("path");
 const { createHash } = require("crypto");
 
 const ROOT = path.resolve(__dirname, "..");
-const STATE_PATH = path.join(ROOT, "kb/regulatory-watch-state.json");
+const STATE_PATH = path.join(ROOT, "data/regulatory/regulatory-watch-state.json");
 const UPDATE_STATE = process.argv.includes("--update-state");
 
 const FR_API =
@@ -138,7 +138,7 @@ async function main() {
     for (const c of changes) console.log(`  • ${c}`);
     console.log(
       "\nAction: review each item; if a guideline our engine implements changed, file a" +
-        " 'Correction to S-XX' in kb/UNDERWRITING_SCENARIOS.md and update kb/regulatory-ledger.json.",
+        " 'Correction to S-XX' in knowledge-base/compliance/UNDERWRITING_SCENARIOS.md and update data/regulatory/regulatory-ledger.json.",
     );
     process.exit(2);
   }

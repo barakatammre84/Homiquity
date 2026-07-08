@@ -34,7 +34,7 @@ export async function seed() {
 
   // ==========================================
   // SEED: Policy Scalars (Hardcoded values moved to database)
-  // Every scalar here is cited in kb/regulatory-ledger.json (roadmap #30) —
+  // Every scalar here is cited in data/regulatory/regulatory-ledger.json (roadmap #30) —
   // agency-sourced values carry the Selling Guide/FHFA entry, deliberately
   // conservative platform overlays carry a PLATFORM POLICY entry. Never change
   // a value without updating its ledger entry; changes to regulated math route
