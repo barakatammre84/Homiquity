@@ -143,24 +143,35 @@ describe("MISMO export vs. the official schema (known-violations baseline)", () 
   // updating this baseline. If a change removes one, that's progress on the
   // L6-fix remediation ticket: update the baseline down and note it in the
   // commit. See CTO_ROADMAP.md L6 for the tracked remediation scope.
+  // F-018 (2026-07-08): fixing the LOAN child-container sequence + nesting cleared the
+  // LOAN_DETAIL / LOAN_IDENTIFIERS structural violations (the five terms points now sit in
+  // TERMS_OF_MORTGAGE, amortization in AMORTIZATION_RULE, children emitted in XSD order). That
+  // let xmllint validate INTO the UNDERWRITING container, which surfaced pre-existing (previously
+  // masked) violations there — AUTOMATED_UNDERWRITINGS / UnderwritingDecisionType — tracked as
+  // escalation U-1 (AUS data-point names pending ULDD data-dictionary confirmation; MISMO's is
+  // AutomatedUnderwritingRecommendationDescription). Net structural progress; do not "fix" the
+  // UNDERWRITING names from memory.
   const KNOWN_UNDERWRITING_VIOLATIONS = [
     "ASSETS",
+    "AUTOMATED_UNDERWRITINGS",
     "BorrowerSSNIdentifier",
     "CONTACT_POINTS",
     "EmployerName",
     "FirstNameText",
-    "LOAN_DETAIL",
     "LoanIdentifier",
     "SUBJECT_PROPERTY",
+    "UnderwritingDecisionType",
   ];
   const KNOWN_LOAN_DELIVERY_VIOLATIONS = [
+    "AUTOMATED_UNDERWRITINGS",
     "BorrowerSSNIdentifier",
     "CONTACT_POINTS",
     "EmployerName",
     "FirstNameText",
     "LIABILITIES",
-    "LOAN_IDENTIFIERS",
+    "LoanIdentifier",
     "SUBJECT_PROPERTY",
+    "UnderwritingDecisionType",
   ];
 
   it("underwriting-purpose export matches the known-violations baseline", () => {

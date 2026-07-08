@@ -1127,16 +1127,19 @@ export interface ULDDDataPoint {
 }
 
 export const ULDD_PHASE_5_DATA_POINTS: ULDDDataPoint[] = [
-  { sortId: "1", dataPointName: "NoteAmount", xpath: "DEAL/LOANS/LOAN/LOAN_DETAIL/NoteAmount", required: true },
-  { sortId: "2", dataPointName: "NoteDate", xpath: "DEAL/LOANS/LOAN/LOAN_DETAIL/NoteDate", required: true, format: "YYYY-MM-DD" },
-  { sortId: "3", dataPointName: "NoteRatePercent", xpath: "DEAL/LOANS/LOAN/LOAN_DETAIL/NoteRatePercent", required: true },
-  { sortId: "4", dataPointName: "LoanPurposeType", xpath: "DEAL/LOANS/LOAN/LOAN_DETAIL/LoanPurposeType", required: true, enumerations: ["Purchase", "Refinance", "ConstructionOnly", "ConstructionToPermanent", "NoCashOutRefinance", "CashOutRefinance", "Other"] },
-  { sortId: "5", dataPointName: "MortgageType", xpath: "DEAL/LOANS/LOAN/LOAN_DETAIL/MortgageType", required: true, enumerations: ["Conventional", "FHA", "USDA", "VA", "Other"] },
-  { sortId: "6", dataPointName: "LienPriorityType", xpath: "DEAL/LOANS/LOAN/LOAN_DETAIL/LienPriorityType", required: true, enumerations: ["FirstLien", "SecondLien", "ThirdLien", "FourthLien", "Other"] },
-  { sortId: "7", dataPointName: "BaseLoanAmount", xpath: "DEAL/LOANS/LOAN/TERMS_OF_LOAN/BaseLoanAmount", required: true },
-  { sortId: "8", dataPointName: "LoanAmortizationType", xpath: "DEAL/LOANS/LOAN/TERMS_OF_LOAN/LoanAmortizationType", required: true, enumerations: ["Fixed", "AdjustableRate", "GEM", "GPM", "Other"] },
-  { sortId: "9", dataPointName: "LoanAmortizationPeriodCount", xpath: "DEAL/LOANS/LOAN/TERMS_OF_LOAN/LoanAmortizationPeriodCount", required: false },
-  { sortId: "10", dataPointName: "InterestRatePercent", xpath: "DEAL/LOANS/LOAN/TERMS_OF_LOAN/InterestRatePercent", required: true },
+  // F-018: terms-of-loan data points live in TERMS_OF_MORTGAGE (element <TERMS_OF_MORTGAGE>),
+  // amortization in AMORTIZATION/AMORTIZATION_RULE, and only ApplicationReceivedDate stays in
+  // LOAN_DETAIL — verified vs docs/fannie-mae/schemas MISMO_3_0.xsd (LOAN/TERMS_OF_MORTGAGE/
+  // AMORTIZATION_RULE complexTypes) + the xmllint XSD gate. BaseLoanAmount/InterestRatePercent
+  // were redundant with NoteAmount/NoteRatePercent and out-of-schema in the terms container — dropped.
+  { sortId: "1", dataPointName: "NoteAmount", xpath: "DEAL/LOANS/LOAN/TERMS_OF_MORTGAGE/NoteAmount", required: true },
+  { sortId: "2", dataPointName: "NoteDate", xpath: "DEAL/LOANS/LOAN/TERMS_OF_MORTGAGE/NoteDate", required: true, format: "YYYY-MM-DD" },
+  { sortId: "3", dataPointName: "NoteRatePercent", xpath: "DEAL/LOANS/LOAN/TERMS_OF_MORTGAGE/NoteRatePercent", required: true },
+  { sortId: "4", dataPointName: "LoanPurposeType", xpath: "DEAL/LOANS/LOAN/TERMS_OF_MORTGAGE/LoanPurposeType", required: true, enumerations: ["MortgageModification", "Other", "Purchase", "Refinance"] },
+  { sortId: "5", dataPointName: "MortgageType", xpath: "DEAL/LOANS/LOAN/TERMS_OF_MORTGAGE/MortgageType", required: true, enumerations: ["Conventional", "FHA", "USDA", "VA", "Other"] },
+  { sortId: "6", dataPointName: "LienPriorityType", xpath: "DEAL/LOANS/LOAN/TERMS_OF_MORTGAGE/LienPriorityType", required: true, enumerations: ["FirstLien", "SecondLien", "ThirdLien", "FourthLien", "Other"] },
+  { sortId: "8", dataPointName: "LoanAmortizationType", xpath: "DEAL/LOANS/LOAN/AMORTIZATION/AMORTIZATION_RULE/LoanAmortizationType", required: true, enumerations: ["Fixed", "AdjustableRate", "GEM", "GPM", "Other"] },
+  { sortId: "9", dataPointName: "LoanAmortizationPeriodCount", xpath: "DEAL/LOANS/LOAN/AMORTIZATION/AMORTIZATION_RULE/LoanAmortizationPeriodCount", required: false },
   { sortId: "49.1", dataPointName: "FNMCondominiumProjectManagerCertificationIdentifier", xpath: "DEAL/LOANS/LOAN/CONDOMINIUM_PROJECT/FNMCondominiumProjectManagerCertificationIdentifier", required: false, phase: 5 },
   { sortId: "49.2", dataPointName: "FNMCondominiumProjectManagerPhaseIdentifier", xpath: "DEAL/LOANS/LOAN/CONDOMINIUM_PROJECT/FNMCondominiumProjectManagerPhaseIdentifier", required: false, phase: 5 },
   { sortId: "251.1", dataPointName: "CreditScoreModelNameType", xpath: "DEAL/PARTIES/PARTY/ROLES/ROLE/BORROWER/CREDIT_SCORES/CREDIT_SCORE/CreditScoreModelNameType", required: false, phase: 5 },

@@ -616,27 +616,10 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string, loanState?: LoanStat
 
   loanChildren.push({ tag: "LOAN_IDENTIFIERS", children: loanIdentifiers });
 
-  const loanDetail: XMLNode[] = [];
-  if (application.createdAt) {
-    loanDetail.push({ 
-      tag: "ApplicationReceivedDate", 
-      text: formatDate(application.createdAt) 
-    });
-  }
-  loanDetail.push({ tag: "LienPriorityType", text: "FirstLien" });
-  loanDetail.push({ 
-    tag: "LoanPurposeType", 
-    text: mapLoanPurpose(application.loanPurpose) 
-  });
-  loanDetail.push({ 
-    tag: "MortgageType", 
-    text: mapMortgageType(application.preferredLoanType) 
-  });
-  
-  // Prefer an explicit loan-option amount; otherwise derive from price minus
-  // down payment. Use != null (not truthiness) so a real $0 down payment yields
-  // loan = price, while a MISSING down payment leaves the amount unknown rather
-  // than defaulting NoteAmount to the full purchase price (an overstated loan).
+  // Loan amount + selected option (used by TERMS_OF_MORTGAGE below). Prefer an explicit loan-option
+  // amount; otherwise derive from price minus down payment. Use != null (not truthiness) so a real
+  // $0 down payment yields loan = price, while a MISSING down payment leaves the amount unknown
+  // rather than overstating the loan.
   const optionAmount = loanOptions[0]?.loanAmount != null
     ? parseFloat(String(loanOptions[0].loanAmount))
     : NaN;
@@ -648,42 +631,46 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string, loanState?: LoanStat
   } else if (Number.isFinite(price) && Number.isFinite(down)) {
     loanAmount = price - down;
   }
-  if (loanAmount != null && loanAmount > 0) {
-    loanDetail.push({
-      tag: "NoteAmount",
-      text: formatCurrency(loanAmount),
-    });
-  }
-
   const selectedOption = loanOptions.find(o => o.isLocked) || loanOptions[0];
-  if (selectedOption?.interestRate) {
-    loanDetail.push({ 
-      tag: "NoteRatePercent", 
-      text: formatPercent(selectedOption.interestRate) 
-    });
-  }
 
+  // F-018 (verified vs docs/fannie-mae/schemas MISMO_3_0.xsd + golden UCD samples):
+  //   LOAN_DETAIL      = loan-characteristic detail (ApplicationReceivedDate here);
+  //   AMORTIZATION_RULE = amortization type/term;
+  //   TERMS_OF_MORTGAGE    = LienPriorityType, LoanPurposeType, MortgageType, NoteAmount, NoteRatePercent.
+  // Previously all five plus amortization were mis-nested in LOAN_DETAIL/TERMS_OF_MORTGAGE, and the
+  // LOAN children were emitted out of XSD sequence — both fixed here (see the ordered push below).
+  const loanDetail: XMLNode[] = [];
+  if (application.createdAt) {
+    loanDetail.push({ tag: "ApplicationReceivedDate", text: formatDate(application.createdAt) });
+  }
   loanChildren.push({ tag: "LOAN_DETAIL", children: loanDetail });
 
+  loanChildren.push({
+    tag: "AMORTIZATION",
+    children: [
+      {
+        tag: "AMORTIZATION_RULE",
+        // XSD AMORTIZATION_RULE sequence: PeriodCount, PeriodType, LoanAmortizationType.
+        children: [
+          { tag: "LoanAmortizationPeriodCount", text: String(selectedOption?.loanTerm || 30) },
+          { tag: "LoanAmortizationPeriodType", text: "Year" },
+          { tag: "LoanAmortizationType", text: "Fixed" },
+        ],
+      },
+    ],
+  });
+
   const termsOfLoan: XMLNode[] = [];
+  termsOfLoan.push({ tag: "LienPriorityType", text: "FirstLien" });
+  termsOfLoan.push({ tag: "LoanPurposeType", text: mapLoanPurpose(application.loanPurpose) });
+  termsOfLoan.push({ tag: "MortgageType", text: mapMortgageType(application.preferredLoanType) });
   if (loanAmount != null && loanAmount > 0) {
-    termsOfLoan.push({
-      tag: "BaseLoanAmount",
-      text: formatCurrency(loanAmount)
-    });
+    termsOfLoan.push({ tag: "NoteAmount", text: formatCurrency(loanAmount) });
   }
-  termsOfLoan.push({ tag: "LoanAmortizationType", text: "Fixed" });
-  termsOfLoan.push({ tag: "LoanAmortizationPeriodCount", text: String(selectedOption?.loanTerm || 30) });
-  termsOfLoan.push({ tag: "LoanAmortizationPeriodType", text: "Year" });
-
   if (selectedOption?.interestRate) {
-    termsOfLoan.push({ 
-      tag: "InterestRatePercent", 
-      text: formatPercent(selectedOption.interestRate) 
-    });
+    termsOfLoan.push({ tag: "NoteRatePercent", text: formatPercent(selectedOption.interestRate) });
   }
-
-  loanChildren.push({ tag: "TERMS_OF_LOAN", children: termsOfLoan });
+  loanChildren.push({ tag: "TERMS_OF_MORTGAGE", children: termsOfLoan });
 
   if (mersMin) {
     loanChildren.push({
@@ -745,6 +732,23 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string, loanState?: LoanStat
       children: [{ tag: "QUALIFICATION_DETAIL", children: qualificationChildren }],
     });
   }
+
+  // F-018: emit LOAN children in the MISMO LOAN sequence order (the XSD is a <sequence>),
+  // regardless of the order they were built above. Verified against MISMO_3_0.xsd LOAN complexType.
+  const LOAN_CHILD_ORDER = [
+    "AMORTIZATION",
+    "LOAN_DETAIL",
+    "LOAN_IDENTIFIERS",
+    "LOAN_STATE",
+    "MERS_REGISTRATION",
+    "QUALIFICATION",
+    "REFINANCE",
+    "TERMS_OF_MORTGAGE",
+    "UNDERWRITING",
+  ];
+  loanChildren.sort(
+    (a, b) => LOAN_CHILD_ORDER.indexOf(a.tag) - LOAN_CHILD_ORDER.indexOf(b.tag),
+  );
 
   return { tag: "LOAN", children: loanChildren };
 }
