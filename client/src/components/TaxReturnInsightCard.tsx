@@ -65,6 +65,7 @@ export function TaxReturnInsightCard() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [consentChecked, setConsentChecked] = useState(false);
   const [step, setStep] = useState<Step>("idle");
+  const [confirmingRevoke, setConfirmingRevoke] = useState(false);
 
   const { data: insightData, isLoading } = useQuery<{ insights: TaxInsightRecord[] }>({
     queryKey: ["/api/tax-insights/me"],
@@ -153,6 +154,34 @@ export function TaxReturnInsightCard() {
       setStep("idle");
       toast({
         title: "Couldn't record your authorization",
+        description: friendlyApiError(error, "Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // The consent template promises "You can revoke this authorization at any
+  // time" — this is that promise. The server revokes the consent AND purges
+  // the derived insights, so the card falls back to the upload CTA.
+  const revoke = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/consents/tax_document_use/revoke");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consents/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tax-insights/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      setConfirmingRevoke(false);
+      toast({
+        title: "Authorization revoked",
+        description:
+          "Your tax return insights were removed and won't be used. Your uploaded document stays in your secure documents.",
+      });
+    },
+    onError: (error: Error) => {
+      setConfirmingRevoke(false);
+      toast({
+        title: "Couldn't revoke the authorization",
         description: friendlyApiError(error, "Please try again."),
         variant: "destructive",
       });
@@ -321,6 +350,46 @@ export function TaxReturnInsightCard() {
               Add last year's tax return
             </Button>
           </div>
+        )}
+
+        {hasConsent && step !== "consent" && !busy && (
+          confirmingRevoke ? (
+            <div className="space-y-2 rounded-md border p-2" data-testid="tax-revoke-confirm">
+              <p className="text-xs text-muted-foreground">
+                Revoking removes your tax return insights and stops our staff from using them. You
+                can re-authorize later by uploading a return again.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={revoke.isPending}
+                  onClick={() => revoke.mutate()}
+                  data-testid="button-tax-revoke-confirm"
+                >
+                  {revoke.isPending && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                  Revoke authorization
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={revoke.isPending}
+                  onClick={() => setConfirmingRevoke(false)}
+                >
+                  Keep it
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              onClick={() => setConfirmingRevoke(true)}
+              data-testid="button-tax-revoke"
+            >
+              Revoke tax document authorization
+            </button>
+          )
         )}
 
         <p className="text-[11px] leading-snug text-muted-foreground border-t pt-2" data-testid="text-tax-disclaimer">
