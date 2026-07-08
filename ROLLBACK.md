@@ -88,19 +88,18 @@ The app uses Drizzle with **versioned migrations** (`migrations/`, applied with
 is reviewable and reproducible — but Postgres migrations still have no
 automatic "down". Reverting code does **not** revert schema changes.
 
-The workflow for a schema change:
+The workflow for a schema change (canonical: [kb/app-guide/03-database.md](kb/app-guide/03-database.md)):
 1. Edit `shared/schema/*.ts`.
-2. `npm run db:generate` — writes a new SQL file under `migrations/`. Review it
-   like code (especially any `DROP`/`ALTER ... TYPE`).
-3. `npm run db:migrate` — applies pending migrations to `DATABASE_URL`.
-4. Commit the migration file together with the schema change.
-
-(`npm run db:push` still exists for quick local prototyping, but anything that
-merges must carry a generated migration.)
-
-Adopting on a database that was built with `db:push` (already has the schema):
-run `npm run db:migrate:adopt -- --apply` once — it records the existing
-migration files as applied without executing them.
+2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql` — **never
+   `drizzle-kit generate`** (snapshot drift in this repo). Review it like code
+   (especially any `DROP`/`ALTER ... TYPE`).
+3. `npm run db:migrate` — applies pending migrations to `DATABASE_URL`. **Never
+   `npm run db:push`**: it has no down-migration and, against the shared dev DB,
+   drops columns belonging to other branches.
+4. Commit the migration file together with the schema change. Production applies
+   are founder-supervised — the Neon pooler breaks `db:migrate` against prod, so
+   apply via a direct `pg` client and insert the migrations-journal row manually
+   (snapshot Neon first if the change is destructive).
 
 Rules of thumb:
 - **Additive changes** (new nullable column, new table) are safe to leave in

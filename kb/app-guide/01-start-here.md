@@ -33,7 +33,7 @@ Full guide: [LOCAL_DEV.md](../../LOCAL_DEV.md). Short version:
 ```bash
 npm install
 cp .env.example .env        # fill in DATABASE_URL + the three secrets
-npm run db:push             # create tables
+npm run db:migrate          # create tables (apply hand-authored migrations; never db:push)
 npm run dev                 # http://localhost:5001 (PORT is set in .env)
 ```
 

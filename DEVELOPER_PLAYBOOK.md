@@ -215,14 +215,14 @@ There is no external lock-sync webhook today because there is no external PPE; w
 
 **Query performance — the two-wave rule:** we do not use `relations()`/`db.query`; the house style is explicit `db.select()` through the storage layer (`server/storage.ts`) with **batched fan-out**. The reference implementation is the `/api/dashboard` handler in `server/routes/lending.ts`: it was rewritten from ~30 serial queries (13×N per-application loops) to two parallel waves using `inArray(column, ids)`, cutting hydration from serial-RTT-bound to 2 round trips. If your handler queries inside a `for` loop over rows, stop and batch it — on Neon every round trip is a network hop.
 
-**Migration workflow:**
+**Migration workflow** — canonical steps live in [kb/app-guide/03-database.md](kb/app-guide/03-database.md) "How to make a schema change"; the rules:
 1. Edit the table in `shared/schema/<domain>.ts` (and re-export from the barrel if it's new).
-2. `npm run db:push` (`drizzle-kit push`) against your **local** database first — push introspects and applies the diff. `drizzle-kit generate` (SQL files into `migrations/`) is available when you need a reviewable artifact for a risky change, but push is the day-to-day flow.
-3. Run the app + tests locally.
-4. Commit, then run `npm run db:push` with `DATABASE_URL` pointed at production (Neon) **before** pushing code that reads the new columns — code deploys instantly on push to `main`, so schema must land first.
+2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql`. **Never `drizzle-kit generate`** — it has snapshot drift and produces wrong output in this repo. **Never `npm run db:push`** — it has no down-migration and, against the shared dev DB, drops columns belonging to other branches. Review the SQL like code, especially any `DROP`/`ALTER … TYPE`.
+3. Apply locally with `npm run db:migrate`, then run the app + tests.
+4. Commit the migration file with the schema change. **Production applies are founder-supervised** — the Neon pooler breaks `db:migrate` against prod, so apply via a direct `pg` client and insert the migrations-journal row manually (verify it landed); snapshot Neon first if anything is dropped/renamed; record the apply in [CICD.md](CICD.md)'s production change ledger.
 5. Seeding: `server/seed.ts` (demo fixtures); pricing demo data (UWM lender + rate sheets) is seeded manually in local dev only.
 
-**Never** hand-edit `migrations/` output, and never run destructive column changes without checking what production data is in the column first.
+**Never** run destructive column changes without checking what production data is in the column first.
 
 ---
 
@@ -271,7 +271,7 @@ Prereqs: Node 24.x, npm, and either Docker **or** a local/hosted Postgres.
 3. **Database** — pick one:
    - `npm run db:start` — starts/reuses a `postgres:16` Docker container on 5432, then `DATABASE_URL=postgresql://postgres:pass@localhost:5432/homiquity`
    - a native local Postgres, or a free Neon database — paste its URL. Localhost URLs automatically use the standard `pg` driver; anything else uses the Neon serverless driver.
-4. **Apply schema:** `npm run db:push`
+4. **Apply schema:** `npm run db:migrate` (applies the hand-authored SQL in `migrations/` — **never `db:push`**; see the Migration workflow in Section 3)
 5. **Run the app:** `npm run dev` → http://localhost:5001 (Vite HMR runs as Express middleware — one process serves API + client).
 6. **Log in:** register a fresh user via the UI, or use fixture accounts via `POST /api/test-login` — `buyer@test.com`, `renter@test.com`, `lo@test.com`, `admin@test.com`, etc., all with `DEV_TEST_PASSWORD`. (A fresh user with no application lands on the RenterHome incubator; `buyer@test.com` has pipeline data.)
 7. **Tests:**

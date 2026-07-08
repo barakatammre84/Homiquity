@@ -18,7 +18,7 @@ feed three Postgres tables; the app reads them through indexed point lookups
 - `loan_performance_profiles` — per-band historical risk aggregates. A few
   hundred rows regardless of source size.
 
-Create tables with `npm run db:push` (or plain SQL — see the table definitions).
+Create tables by applying the hand-authored migration: `npm run db:migrate` (**never `db:push`** — see [kb/app-guide/03-database.md](app-guide/03-database.md)).
 
 ## Ingest: HMDA competitors
 

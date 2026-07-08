@@ -15,10 +15,13 @@ specific question for counsel.
 ## 0. Operational prerequisite (not a legal item)
 
 The TRID trigger adds one nullable column, `loan_applications.trid_triggered_at`.
-The project uses `drizzle-kit push` (no migration history; see [ROLLBACK.md](../ROLLBACK.md)).
-It was applied and smoke-tested on the **dev** database only. **Production requires
-`npm run db:push` against `PROD_DATABASE_URL` at deploy.** The change is additive
-and nullable, so it is safe to leave in place across a code rollback.
+The project uses **versioned, hand-authored SQL migrations** (`migrations/`, applied with
+`npm run db:migrate` — **never `db:push`**; see [kb/app-guide/03-database.md](app-guide/03-database.md)).
+It was applied and smoke-tested on the **dev** database only. **Production applies are
+founder-supervised**: apply the hand-authored migration via a direct `pg` client (the Neon
+pooler breaks `db:migrate` against prod) and record it in [CICD.md](../CICD.md)'s production
+change ledger. The change is additive and nullable, so it is safe to leave in place across a
+code rollback.
 
 ---
 
@@ -179,4 +182,4 @@ blocks forward movement of a file whose LE is overdue.
 - [ ] §3 — delivery, 30-day timing, 25-month retention confirmed
 - [ ] §4 — representative fees match actual charges; assumption disclosures adequate
 - [ ] §5 — six-piece definition and ESIGN consent confirmed
-- [ ] §0 — `db:push` run against production at deploy
+- [ ] §0 — the `trid_triggered_at` migration applied to production (founder-supervised, per [kb/app-guide/03-database.md](app-guide/03-database.md)) and recorded in CICD.md's change ledger

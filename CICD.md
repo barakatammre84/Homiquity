@@ -44,10 +44,11 @@ Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
   good one → **Promote to Production**. Instant, no rebuild.
 - **Undo the bad code** → `git revert <sha> && git push` (never
   `reset --hard` + force-push).
-- **Database** → schema changes ship as versioned migration files
-  (`migrations/`, `npm run db:generate` + `npm run db:migrate` — see
-  [ROLLBACK.md](ROLLBACK.md) §3). Still snapshot/branch in Neon before
-  destructive schema changes; migrations have no automatic "down".
+- **Database** → schema changes ship as **hand-authored** versioned migration
+  files in `migrations/`, applied with `npm run db:migrate` (**never `db:push`**,
+  **never `drizzle-kit generate`** — see [ROLLBACK.md](ROLLBACK.md) §3 and
+  [kb/app-guide/03-database.md](kb/app-guide/03-database.md)). Still snapshot/branch
+  in Neon before destructive schema changes; migrations have no automatic "down".
 
 ## How the Vercel deploy works
 

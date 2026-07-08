@@ -49,9 +49,13 @@ Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
   unreachable. First thing to curl when anything looks wrong.
 - **Logs**: Vercel → Deployments → Functions logs (server `log()` output).
   Sensitive response bodies are already suppressed.
-- **DB schema push to prod**: `DATABASE_URL="$PROD_DATABASE_URL" npm run db:push`
-  (the URL is stashed in your gitignored `.env`). Snapshot/branch Neon first if
-  the change is destructive — drizzle push has **no down migrations**.
+- **Apply a schema change to prod** (founder-supervised): **never `db:push`** — it
+  drops other branches' columns and has no rollback. Apply the hand-authored
+  `migrations/00NN_*.sql` via a direct `pg` client (the Neon pooler breaks
+  `db:migrate` against prod), then insert the `drizzle.__drizzle_migrations`
+  journal row manually and verify it landed. Snapshot/branch Neon first if the
+  change is destructive. Full recipe: [03-database.md](03-database.md); ledger it
+  in [CICD.md](../../CICD.md).
 - **Seeding**: happens automatically at boot, idempotent (existence-checked).
 
 ## Serverless caveats (accepted trade-offs, revisit as traffic grows)
@@ -69,7 +73,7 @@ Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
 ## Manual quality checks (nothing enforces these — run them yourself)
 
 ```bash
-npm run check          # typecheck (currently red: ~22 pre-existing errors)
+npm run check          # typecheck (currently clean — 0 errors)
 npm run test:unit      # fast, no server needed
 TEST_BASE_URL=http://127.0.0.1:5001 npm run test:integration
 npm run build          # prove the prod build compiles
