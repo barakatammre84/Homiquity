@@ -31,6 +31,7 @@ export default defineConfig({
       "tests/scenarioCatalog.test.ts",
       "tests/statusVocabulary.test.ts",
       "tests/intakeSchema.test.ts",
+      "tests/illinoisDpaSeed.test.ts",
       "tests/stageRequirements.test.ts",
       "tests/fileHealth.test.ts",
       "tests/borrowerStateMachine.test.ts",
@@ -59,6 +60,9 @@ export default defineConfig({
       "tests/rateLimitRelaxed.test.ts",
       "tests/betaGate.test.ts",
       "tests/prelaunchGate.test.ts",
+      "tests/taxInsight.test.ts",
+      "tests/cpaPartners.test.ts",
+      "tests/mismoXsdValidation.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

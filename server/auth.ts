@@ -28,7 +28,7 @@ declare global {
   }
 }
 
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
@@ -340,6 +340,7 @@ function setupDevTestLogin(app: Express) {
       "closer@test.com": { role: "closer", firstName: "Loan", lastName: "Closer" },
       "broker@test.com": { role: "broker", firstName: "Mortgage", lastName: "Broker" },
       "lender@test.com": { role: "lender", firstName: "Lender", lastName: "Rep" },
+      "cpa@test.com": { role: "cpa", firstName: "Casey", lastName: "CPA" },
       "renter@test.com": { role: "aspiring_owner", firstName: "Aspiring", lastName: "Owner" },
       "buyer@test.com": { role: "active_buyer", firstName: "Active", lastName: "Buyer" },
     };

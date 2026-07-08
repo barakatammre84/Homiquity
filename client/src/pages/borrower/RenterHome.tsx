@@ -1,9 +1,12 @@
+import { useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { HomeReadinessPassport } from "@/components/HomeReadinessPassport";
+import { TaxReturnInsightCard } from "@/components/TaxReturnInsightCard";
 import { formatCurrency } from "@/lib/formatters";
 import {
   ArrowRight,
@@ -74,6 +77,17 @@ export function RenterHome({
 }: {
   userName?: string;
 }) {
+  // A client who arrived via a CPA invite link may have signed up on a separate
+  // page; apply the stashed attribution code once, here on their landing surface.
+  useEffect(() => {
+    const code = localStorage.getItem("pendingCpaCode");
+    if (!code) return;
+    localStorage.removeItem("pendingCpaCode");
+    apiRequest("POST", "/api/cpa/apply-referral", { referralCode: code }).catch(() => {
+      /* best-effort attribution — never blocks the incubator experience */
+    });
+  }, []);
+
   const { data: goalData } = useQuery<GoalResponse>({
     queryKey: ["/api/homeownership-goal"],
   });
@@ -179,6 +193,9 @@ export function RenterHome({
 
         {/* Readiness passport (credit / income / assets verification state) */}
         <HomeReadinessPassport compact />
+
+        {/* Tax return upload → income readiness signals */}
+        <TaxReturnInsightCard />
 
         {/* Toolkit */}
         <div>

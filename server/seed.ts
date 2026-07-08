@@ -1,7 +1,8 @@
 import { db } from "./db";
-import { contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders, properties } from "@shared/schema";
+import { contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders, properties, dpaPrograms } from "@shared/schema";
 import { refreshRates, syncBestExecutionRates } from "./services/rateService";
 import { seedMarketPricing } from "./seedMarketPricing";
+import { ILLINOIS_DPA_ARTICLES, ILLINOIS_DPA_PROGRAMS } from "./seedData/illinoisDpa";
 
 export async function seedDatabase() {
   try {
@@ -768,6 +769,8 @@ For more information, visit www.consumerfinance.gov/learnmore`,
       console.log(`Seeded ${sampleProperties.length} sample properties`);
     }
 
+    await seedIllinoisDpaContent();
+
     await seedMarketPricing();
 
     // Advertised rates = lowest executable rate per program from the active
@@ -785,5 +788,31 @@ For more information, visit www.consumerfinance.gov/learnmore`,
     console.log("Database seeded successfully");
   } catch (error) {
     console.error("Seed error:", error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Illinois DPA content — runs on EVERY boot (outside the empty-DB check) so it
+// backfills existing dev/prod databases. Insert-only: articles key on their
+// unique slug, programs on their exact name, so rows an admin has since edited
+// are never overwritten. Facts verified 2026-07-06 against the administering
+// agencies (IHDA, City of Chicago DOH / NHS Chicago, Cook County / Club 720);
+// each article carries a "confirm current terms" note because DPA funding
+// pauses without notice.
+// ---------------------------------------------------------------------------
+
+export async function seedIllinoisDpaContent() {
+  for (const article of ILLINOIS_DPA_ARTICLES) {
+    await db.insert(articles).values(article).onConflictDoNothing({ target: articles.slug });
+  }
+
+  const existing = await db.select({ name: dpaPrograms.name }).from(dpaPrograms);
+  const have = new Set(existing.map((row) => row.name));
+  const missing = ILLINOIS_DPA_PROGRAMS.filter((program) => !have.has(program.name));
+  for (const program of missing) {
+    await db.insert(dpaPrograms).values(program);
+  }
+  if (missing.length > 0) {
+    console.log(`Seeded ${missing.length} Illinois DPA programs`);
   }
 }

@@ -2,61 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - "Obsidian Indigo": monochromatic navy-indigo precision system.
-   Value ramp (single hue ~216): 950 #050B14 · 900 #0C1625 · 700 #1D2D44 ·
-   500 #3E5370 · 300 #889DBE · 100 #D0DDF0 · 50 #F2F6FC.
-   Semantic status colors stay fully separate so they "pop" against the ramp. */
+/* LIGHT MODE - "Charcoal Emerald": Better.com-style stark-white system
+   (user-authorized repaint 2026-07-06, supersedes "Obsidian Indigo").
+   Neutrals are the slate family: canvas #FFFFFF, data-section fill #F8FAFC,
+   hairlines #E2E8F0, micro-copy #64748B, type #121212 charcoal.
+   Conversion green: emerald — #047857 (700) for solid fills so white text
+   clears WCAG AA (5.49:1; raw #10B981 is only 2.49:1), #059669 (600) for
+   rings, #10B981 (500) reserved for status/success accents. */
 :root {
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .06);
-  /* Layer 0: Paper Ice #F2F6FC — soft canvas, not stark white */
-  --background: 216 63% 97%;
-  /* Primary typography: Obsidian #050B14 */
-  --foreground: 216 60% 5%;
-  /* Frost Tint #D0DDF0 hairlines */
-  --border: 216 52% 88%;
-  /* Layer 1: white cards separated by Frost hairline */
+  /* Layer 0: Stark White canvas */
+  --background: 0 0% 100%;
+  /* Primary typography: Deep Charcoal #121212 */
+  --foreground: 0 0% 7%;
+  /* Slate-200 #E2E8F0 hairlines — soft separation, no harsh borders */
+  --border: 214 32% 91%;
+  /* Layer 1: white cards separated by slate hairline */
   --card: 0 0% 100%;
-  --card-foreground: 216 60% 5%;
-  --card-border: 216 52% 88%;
-  /* Sidebar: Deep Ink #0C1625 navigation container (Linear-style) */
-  --sidebar: 216 51% 10%;
-  --sidebar-foreground: 216 63% 97%;
-  --sidebar-border: 215 40% 19%;
-  /* Active nav item: Paper pill on Deep Ink */
-  --sidebar-primary: 216 63% 97%;
-  --sidebar-primary-foreground: 216 60% 5%;
-  --sidebar-accent: 215 40% 16%;
-  --sidebar-accent-foreground: 216 63% 97%;
-  --sidebar-ring: 216 52% 88%;
+  --card-foreground: 0 0% 7%;
+  --card-border: 214 32% 91%;
+  /* Sidebar: Deep Charcoal #121212 navigation container */
+  --sidebar: 0 0% 7%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-border: 0 0% 16%;
+  /* Active nav item: light pill on charcoal */
+  --sidebar-primary: 210 40% 98%;
+  --sidebar-primary-foreground: 0 0% 7%;
+  --sidebar-accent: 0 0% 13%;
+  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-ring: 160 84% 39%;
   --popover: 0 0% 100%;
-  --popover-foreground: 216 60% 5%;
-  --popover-border: 216 52% 86%;
-  /* Layer 2: primary action = Obsidian #050B14 (hover→Deep Ink via elevate) */
-  --primary: 216 60% 5%;
+  --popover-foreground: 0 0% 7%;
+  --popover-border: 214 32% 88%;
+  /* Layer 2: conversion action = Emerald #047857 (green means "Go";
+     700-depth so white button text passes AA) */
+  --primary: 163 94% 24%;
   --primary-foreground: 0 0% 100%;
-  /* Secondary surfaces: frosted chip */
-  --secondary: 216 50% 94%;
-  --secondary-foreground: 216 60% 5%;
-  --muted: 216 55% 95%;
-  /* Secondary text: Muted Slate #3E5370 (placeholders/metadata) */
-  --muted-foreground: 215 29% 34%;
-  /* Accent: Deep Ink #0C1625 — quieter than primary, same hue family */
-  --accent: 216 51% 10%;
+  /* Secondary surfaces: slate-100 chip */
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 0 0% 7%;
+  /* Data-section separation: Ultra-Light Gray #F8FAFC */
+  --muted: 210 40% 98%;
+  /* Empathetic micro-copy: Muted Slate — one step deeper than #64748B so it
+     clears AA on the #F8FAFC panels too (4.83:1), not just on white */
+  --muted-foreground: 215 16% 45%;
+  /* Accent: charcoal chip — quieter than the emerald primary */
+  --accent: 0 0% 10%;
   --accent-foreground: 0 0% 100%;
   /* Semantic pop: danger. Red-600 (was red-500 #EF4444) so white text on the
      solid fill clears WCAG AA (4.80:1, was 3.76:1). */
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  /* Input borders: between Dusty Ice and Frost */
-  --input: 216 30% 79%;
-  --ring: 216 60% 5%;
-  /* Charts: colorblind-safe CATEGORICAL set (max hue separation, tinted to the
-     brand). Deliberately does NOT reuse success/warning hues so a green series
-     never reads as "good". For a single ordered metric use the navy value ramp
+  /* Input borders: slate-300, a step deeper than the card hairline */
+  --input: 213 27% 84%;
+  /* Focus ring: emerald-600 #059669 (3.77:1 on white — passes UI 3:1) */
+  --ring: 161 94% 30%;
+  /* Charts: colorblind-safe CATEGORICAL set (max hue separation). Deliberately
+     does NOT reuse success/warning hues so a green series never reads as
+     "good". For a single ordered metric use the slate value ramp
      (precision.900→300) instead of these. */
   --chart-1: 216 51% 24%;  /* navy anchor */
   --chart-2: 184 65% 34%;  /* teal */
@@ -64,14 +71,14 @@
   --chart-4: 255 55% 58%;  /* indigo */
   --chart-5: 340 68% 50%;  /* rose */
   /* Semantic pop: success #10B981 (Day 1 Certainty / auto-approved).
-     Foreground is Obsidian, not white — dark-on-emerald is 7.78:1 (AA);
+     Foreground is charcoal, not white — dark-on-emerald is 7.5:1 (AA);
      white-on-emerald was only 2.54:1. Matches warning's dark-on-fill model. */
   --success: 160 84% 39%;
-  --success-foreground: 216 60% 5%;
+  --success-foreground: 0 0% 7%;
   /* Semantic pop: warning #F59E0B (pending review) */
   --warning: 38 92% 51%;
-  --warning-foreground: 216 60% 5%;
-  /* Info: mid-value of the house hue */
+  --warning-foreground: 0 0% 7%;
+  /* Info: desaturated slate-blue (kept distinct from the emerald brand) */
   --info: 216 51% 40%;
   --info-foreground: 0 0% 100%;
   /* Subtle semantic surfaces — the AA-safe pattern for status badges/alerts
@@ -90,15 +97,15 @@
   --font-mono: "Geist Mono", "JetBrains Mono", monospace;
   /* Precision radius: 12px cards, tighter than consumer-soft */
   --radius: .75rem;
-  /* Near-flat shadows tinted with the house hue; hairlines carry the depth */
-  --shadow-2xs: 0 1px 2px 0 hsl(216 60% 10% / 0.03);
-  --shadow-xs: 0 1px 3px 0 hsl(216 60% 10% / 0.04), 0 1px 2px -1px hsl(216 60% 10% / 0.03);
-  --shadow-sm: 0 2px 6px -1px hsl(216 60% 10% / 0.05), 0 1px 2px -1px hsl(216 60% 10% / 0.03);
-  --shadow: 0 3px 8px -2px hsl(216 60% 10% / 0.06), 0 1px 3px -1px hsl(216 60% 10% / 0.04);
-  --shadow-md: 0 6px 16px -4px hsl(216 60% 10% / 0.07);
-  --shadow-lg: 0 10px 24px -6px hsl(216 60% 10% / 0.08), 0 3px 8px -3px hsl(216 60% 10% / 0.05);
-  --shadow-xl: 0 16px 32px -8px hsl(216 60% 10% / 0.10), 0 6px 12px -4px hsl(216 60% 10% / 0.06);
-  --shadow-2xl: 0 24px 48px -12px hsl(216 60% 10% / 0.14);
+  /* Near-flat neutral shadows; hairlines and whitespace carry the depth */
+  --shadow-2xs: 0 1px 2px 0 hsl(215 25% 10% / 0.03);
+  --shadow-xs: 0 1px 3px 0 hsl(215 25% 10% / 0.04), 0 1px 2px -1px hsl(215 25% 10% / 0.03);
+  --shadow-sm: 0 2px 6px -1px hsl(215 25% 10% / 0.05), 0 1px 2px -1px hsl(215 25% 10% / 0.03);
+  --shadow: 0 3px 8px -2px hsl(215 25% 10% / 0.06), 0 1px 3px -1px hsl(215 25% 10% / 0.04);
+  --shadow-md: 0 6px 16px -4px hsl(215 25% 10% / 0.07);
+  --shadow-lg: 0 10px 24px -6px hsl(215 25% 10% / 0.08), 0 3px 8px -3px hsl(215 25% 10% / 0.05);
+  --shadow-xl: 0 16px 32px -8px hsl(215 25% 10% / 0.10), 0 6px 12px -4px hsl(215 25% 10% / 0.06);
+  --shadow-2xl: 0 24px 48px -12px hsl(215 25% 10% / 0.14);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -131,52 +138,52 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* DARK MODE - "Obsidian Night": the same 216° ramp anchored on its deep end */
+/* DARK MODE - "Charcoal Night": neutral charcoal surfaces + emerald actions.
+   NOTE: dark mode is decided-unsupported (no provider ever applies .dark);
+   this block is kept coherent with the light theme, not separately tuned. */
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .06);
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .05);
   --elevate-2: rgba(255,255,255, .10);
-  /* Background: Obsidian #050B14 */
-  --background: 216 60% 5%;
-  /* Primary Text: Paper Ice */
-  --foreground: 216 63% 97%;
-  /* Borders: Steel Blue #1D2D44 */
-  --border: 215 40% 19%;
-  /* Surface: Deep Ink #0C1625 */
-  --card: 216 51% 10%;
-  --card-foreground: 216 63% 97%;
-  --card-border: 215 40% 19%;
-  --sidebar: 216 57% 4%;
-  --sidebar-foreground: 216 63% 97%;
-  --sidebar-border: 215 40% 16%;
-  /* Active nav item: Paper pill on Obsidian */
-  --sidebar-primary: 216 63% 97%;
-  --sidebar-primary-foreground: 216 60% 5%;
-  --sidebar-accent: 215 40% 14%;
-  --sidebar-accent-foreground: 216 63% 97%;
-  --sidebar-ring: 217 29% 64%;
-  --popover: 216 51% 11%;
-  --popover-foreground: 216 63% 97%;
-  --popover-border: 215 40% 21%;
-  /* Primary action inverts: Paper button on dark (Linear-style) */
-  --primary: 216 63% 97%;
-  --primary-foreground: 216 60% 5%;
-  --secondary: 215 40% 16%;
-  --secondary-foreground: 216 63% 97%;
-  --muted: 216 45% 13%;
-  /* Secondary Text: Dusty Ice #889DBE */
-  --muted-foreground: 217 29% 64%;
-  /* Accent: Steel Blue surfaces */
-  --accent: 215 40% 24%;
-  --accent-foreground: 216 63% 97%;
+  /* Background: Deep Charcoal #121212 */
+  --background: 0 0% 7%;
+  /* Primary Text: slate-50 */
+  --foreground: 210 40% 98%;
+  --border: 0 0% 18%;
+  /* Surface: lifted charcoal */
+  --card: 0 0% 10%;
+  --card-foreground: 210 40% 98%;
+  --card-border: 0 0% 18%;
+  --sidebar: 0 0% 5%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-border: 0 0% 15%;
+  /* Active nav item: light pill on charcoal */
+  --sidebar-primary: 210 40% 98%;
+  --sidebar-primary-foreground: 0 0% 7%;
+  --sidebar-accent: 0 0% 13%;
+  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-ring: 160 84% 45%;
+  --popover: 0 0% 10%;
+  --popover-foreground: 210 40% 98%;
+  --popover-border: 0 0% 20%;
+  /* Conversion action: emerald-500 fill, charcoal text (7.5:1) */
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 7%;
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 0 0% 12%;
+  /* Secondary Text: slate-400 */
+  --muted-foreground: 215 20% 65%;
+  --accent: 0 0% 22%;
+  --accent-foreground: 210 40% 98%;
   /* Semantic pop: danger (red-600, matches light mode for AA on the fill) */
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --input: 215 40% 25%;
-  --ring: 217 29% 64%;
-  /* Charts (dark): same categorical hues lifted for contrast on Obsidian. */
+  --input: 0 0% 24%;
+  --ring: 160 84% 45%;
+  /* Charts (dark): same categorical hues lifted for contrast on charcoal. */
   --chart-1: 216 40% 72%;  /* navy anchor */
   --chart-2: 184 60% 52%;  /* teal */
   --chart-3: 38 90% 60%;   /* amber */
@@ -184,15 +191,14 @@
   --chart-5: 340 75% 68%;  /* rose */
   /* Semantic pop: success */
   --success: 160 84% 45%;
-  --success-foreground: 216 60% 5%;
+  --success-foreground: 0 0% 7%;
   /* Semantic pop: warning */
   --warning: 38 92% 55%;
-  --warning-foreground: 216 60% 5%;
-  /* Info: Dusty Ice */
-  --info: 217 29% 64%;
-  --info-foreground: 216 60% 5%;
-  /* Subtle semantic surfaces (dark): pale tint text on a deep tint fill.
-     All pairs verified ≥7.9:1 against the Obsidian Night ramp. */
+  --warning-foreground: 0 0% 7%;
+  /* Info: slate-400 */
+  --info: 215 20% 65%;
+  --info-foreground: 0 0% 7%;
+  /* Subtle semantic surfaces (dark): pale tint text on a deep tint fill. */
   --success-subtle: 160 50% 14%;
   --success-subtle-foreground: 160 70% 72%;
   --warning-subtle: 33 60% 15%;

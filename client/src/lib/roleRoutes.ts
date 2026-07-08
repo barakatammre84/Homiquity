@@ -5,6 +5,7 @@ import { isStaffRole } from "@shared/roles";
 //
 // - admin        -> admin console
 // - broker       -> its own referral/commission dashboard
+// - cpa          -> its own inviter-only partner portal
 // - lender       -> deferred persona: falls through to the staff route, which renders
 //                   a neutral partner landing for non-internal-staff (no product surface yet)
 // - other staff  -> internal operations dashboard
@@ -12,6 +13,7 @@ import { isStaffRole } from "@shared/roles";
 export function getRoleHomeRoute(role: string): string {
   if (role === "admin") return "/admin";
   if (role === "broker") return "/broker-dashboard";
+  if (role === "cpa") return "/cpa-portal";
   if (isStaffRole(role)) return "/staff-dashboard";
   return "/dashboard";
 }

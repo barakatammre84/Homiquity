@@ -35,6 +35,20 @@ export async function hasBorrowerConsent(
 }
 
 /**
+ * User-scoped variant for consents that exist before any application does
+ * (e.g. tax_document_use in the renter incubator). borrower_consents rows
+ * with a null applicationId are exactly this case — POST /api/consents
+ * already records them.
+ */
+export async function hasUserConsent(
+  consentType: string,
+  userId: string,
+): Promise<boolean> {
+  const consent = await storage.getConsentByTypeAndUser(consentType, userId);
+  return !!consent && consent.consentGiven === true;
+}
+
+/**
  * Anti-steering loan-options disclosure (Reg Z §1026.36(e)(3)). Single source
  * of truth for the template content; ensured idempotently at server boot so
  * existing databases (whose consent_templates were seeded before this
@@ -71,6 +85,40 @@ By acknowledging below, you confirm that these loan options were presented to yo
   effectiveDate: new Date("2026-07-03T00:00:00Z"),
 } as const;
 
+/**
+ * Authorization for using a self-uploaded tax return for readiness insights.
+ * The taxpayer uploads their own return (consumer-direct), so IRC §7216
+ * preparer-disclosure rules do not attach; this consent is purpose-limitation
+ * and UDAAP hygiene, not a §7216 form. The "educational estimate only" line is
+ * a hard requirement — the feature must never present as a prequalification
+ * (Reg Z advertising / Reg N MAP Rule).
+ */
+const TAX_DOCUMENT_USE_TEMPLATE = {
+  consentType: "tax_document_use",
+  version: "1.0",
+  title: "Tax Document Use Authorization",
+  shortDescription:
+    "Lets us read income figures from the tax return you upload to build your readiness snapshot",
+  fullText: `TAX DOCUMENT USE AUTHORIZATION
+
+You are choosing to upload your own tax return to Homiquity. By agreeing, you authorize us to read income figures from it (such as W-2 wages, self-employment income, and rental income) and use them only to:
+
+1. Show you an educational home-buying readiness snapshot; and
+2. Let our licensed staff review loan programs that may fit your situation, so they can discuss them with you if you ask.
+
+We do not sell your tax information or share it with outside companies for their own marketing. Your document is encrypted and access to it is logged.
+
+You can revoke this authorization at any time, and you can ask us to delete the uploaded document.
+
+THIS PRODUCES AN EDUCATIONAL ESTIMATE ONLY. It is not a prequalification, preapproval, loan offer, or commitment to lend. Any figures used in an actual loan decision are separately verified during a loan application.`,
+  regulatoryReference: "GLBA privacy; Reg N (MAP Rule) advertising limits",
+  isActive: true,
+  effectiveDate: new Date("2026-07-06T00:00:00Z"),
+} as const;
+
+/** Templates this module seeds and rolls forward at boot. */
+const COMPLIANCE_TEMPLATES = [ANTI_STEERING_TEMPLATE, TAX_DOCUMENT_USE_TEMPLATE] as const;
+
 let templatesEnsured: Promise<void> | null = null;
 
 /** Idempotently insert compliance templates this module gates on. Non-fatal. */
@@ -78,41 +126,43 @@ export function ensureComplianceTemplates(): Promise<void> {
   if (!templatesEnsured) {
     templatesEnsured = (async () => {
       try {
-        const [existing] = await db
-          .select({ id: consentTemplates.id, version: consentTemplates.version })
-          .from(consentTemplates)
-          .where(
-            and(
-              eq(consentTemplates.consentType, ANTI_STEERING_TEMPLATE.consentType),
-              eq(consentTemplates.isActive, true),
-            ),
-          )
-          .limit(1);
-        if (!existing) {
-          await db.insert(consentTemplates).values({ ...ANTI_STEERING_TEMPLATE });
-          console.log(
-            `[consent] Seeded anti-steering disclosure template (v${ANTI_STEERING_TEMPLATE.version})`,
-          );
-        } else if (existing.version !== ANTI_STEERING_TEMPLATE.version) {
-          // Roll forward a stale disclosure. Deactivate (never delete) the old
-          // template so historical borrower_consents keep their templateId/
-          // templateVersion snapshot, then activate the corrected text. This is
-          // what makes a text correction (e.g. the v1.0 over-claim of a third
-          // "no risky features" option) actually reach production, since the
-          // seed above is insert-if-missing only.
-          await db
-            .update(consentTemplates)
-            .set({ isActive: false, expirationDate: new Date() })
+        for (const template of COMPLIANCE_TEMPLATES) {
+          const [existing] = await db
+            .select({ id: consentTemplates.id, version: consentTemplates.version })
+            .from(consentTemplates)
             .where(
               and(
-                eq(consentTemplates.consentType, ANTI_STEERING_TEMPLATE.consentType),
+                eq(consentTemplates.consentType, template.consentType),
                 eq(consentTemplates.isActive, true),
               ),
+            )
+            .limit(1);
+          if (!existing) {
+            await db.insert(consentTemplates).values({ ...template });
+            console.log(
+              `[consent] Seeded ${template.consentType} template (v${template.version})`,
             );
-          await db.insert(consentTemplates).values({ ...ANTI_STEERING_TEMPLATE });
-          console.log(
-            `[consent] Rolled anti-steering disclosure forward ${existing.version} -> ${ANTI_STEERING_TEMPLATE.version}`,
-          );
+          } else if (existing.version !== template.version) {
+            // Roll forward a stale disclosure. Deactivate (never delete) the old
+            // template so historical borrower_consents keep their templateId/
+            // templateVersion snapshot, then activate the corrected text. This is
+            // what makes a text correction (e.g. the anti-steering v1.0 over-claim
+            // of a third "no risky features" option) actually reach production,
+            // since the seed above is insert-if-missing only.
+            await db
+              .update(consentTemplates)
+              .set({ isActive: false, expirationDate: new Date() })
+              .where(
+                and(
+                  eq(consentTemplates.consentType, template.consentType),
+                  eq(consentTemplates.isActive, true),
+                ),
+              );
+            await db.insert(consentTemplates).values({ ...template });
+            console.log(
+              `[consent] Rolled ${template.consentType} template forward ${existing.version} -> ${template.version}`,
+            );
+          }
         }
       } catch (err) {
         templatesEnsured = null; // retry on next call

@@ -29,6 +29,8 @@ import { registerJobRoutes } from "./routes/jobs";
 import { registerShellRoutes } from "./routes/shell";
 import { registerMarketDataRoutes } from "./routes/market-data";
 import { registerLeadRoutes } from "./routes/leads";
+import { registerTaxInsightRoutes } from "./routes/taxInsights";
+import { registerCpaPartnerRoutes } from "./routes/cpaPartners";
 import { registerWebhookRoutes } from "./routes/webhooks";
 import { registerMonitoringRoutes } from "./routes/monitoring";
 import { seedDatabase } from "./seed";
@@ -92,6 +94,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerShellRoutes(app, storage);
   registerMarketDataRoutes(app);
   registerLeadRoutes(app, storage);
+  registerTaxInsightRoutes(app, storage);
+  registerCpaPartnerRoutes(app, storage);
   registerWebhookRoutes(app, storage);
   registerMonitoringRoutes(app);
 

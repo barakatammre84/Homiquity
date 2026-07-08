@@ -21,6 +21,8 @@ export default defineConfig({
       "tests/loCommandCenter.test.ts",
       "tests/mismoExportAccess.test.ts",
       "tests/pricingUnderwriting.test.ts",
+      "tests/taxInsightRoutes.test.ts",
+      "tests/cpaPartnerRoutes.test.ts",
     ],
   },
   resolve: {
