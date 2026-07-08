@@ -12,12 +12,10 @@ queue). Regulatory source binaries stay in **`docs/`** (fannie-mae / nmls / nmls
 Decisions flow **L1 → L2 → L3**, and **code wins over any doc on a stale fact** (that's a
 doc-drift bug to fix):
 
-- **L1 — Vision & Scope** — decides what we build (the cut-line). *Lands here as
-  `L1_VISION_AND_SCOPE.md` when PR #69 merges; currently at repo root `VISION_AND_SCOPE.md`.*
-- **L2 — Compliance & Logic** — the guardrails that override any feature. *Lands here as
-  `L2_COMPLIANCE_AND_LOGIC.md` when PR #69 merges; currently root `COMPLIANCE_AND_LOGIC.md`.*
-- **L3 — Feature specs** — [`specs/`](specs/) — each cites its L1 loop + L2 invariants. Template
-  lands as `specs/_TEMPLATE.md` when PR #69 merges (currently root `FEATURE_SPEC_TEMPLATE.md`).
+- **L1 — [Vision & Scope](L1_VISION_AND_SCOPE.md)** — decides what we build (the cut-line).
+- **L2 — [Compliance & Logic](L2_COMPLIANCE_AND_LOGIC.md)** — the guardrails that override any feature.
+- **L3 — Feature specs** — [`specs/`](specs/), template [`specs/_TEMPLATE.md`](specs/_TEMPLATE.md) —
+  each cites its L1 loop + L2 invariants.
 
 ## Sections
 
@@ -46,7 +44,15 @@ doc-drift bug to fix):
 - [support-playbooks/](runbooks/support-playbooks/) — locked-out user, discrimination/credit-error escalation.
 
 ### Specs — L3 feature specs · [`specs/`](specs/)
+- [_TEMPLATE.md](specs/_TEMPLATE.md) — the L3 spec skeleton (cite L1 loop + L2 invariants).
 - [FREE_DATA_MOAT.md](specs/FREE_DATA_MOAT.md) — HMDA + Fannie loan-performance data pipelines.
+
+### Feature Review — the durable QA program · [`feature-review/`](feature-review/)
+The re-runnable QA teams (agents in `.claude/agents/`) that review every feature vs intended use.
+- [CHARTER.md](feature-review/CHARTER.md) — program rules, severity scale, the Reality Map.
+- [DOMAINS.md](feature-review/DOMAINS.md) — the 13 domain charters + UX lens.
+- [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
+- [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
 
 ### Logs — dated, immutable snapshots · [`logs/`](logs/)
 > Point-in-time records. Never rewritten; supersession goes in a top banner (TEAM_PRACTICES §2).

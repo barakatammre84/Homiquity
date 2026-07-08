@@ -50,7 +50,7 @@ Two axes of authority:
 
 | Document | What it decides |
 |---|---|
-| [PRODUCT_SPINE.md](PRODUCT_SPINE.md) *(→ superseded by L1 `VISION_AND_SCOPE.md`, PR #69)* | Product modules, roles, AI boundaries (AI never decides lending outcomes). |
+| [L1 — Vision & Scope](knowledge-base/L1_VISION_AND_SCOPE.md) *(supersedes `PRODUCT_SPINE.md`)* | Product modules, roles, the core loop, AI boundaries (AI never decides lending outcomes). |
 | [governance/TEAM_PRACTICES.md](knowledge-base/governance/TEAM_PRACTICES.md) | How every session works: doc-staleness rules, branch/worktree lifecycle, definition of done, push policy. |
 | [compliance/UNDERWRITING_SCENARIOS.md](knowledge-base/compliance/UNDERWRITING_SCENARIOS.md) | Living scenario registry — the "no citation → not implemented" contract. |
 | [governance/AI_GOVERNANCE_POLICY.md](knowledge-base/governance/AI_GOVERNANCE_POLICY.md) · [governance/MODEL_RISK_GOVERNANCE.md](knowledge-base/governance/MODEL_RISK_GOVERNANCE.md) | Adopted AI governance policy + model inventory under it. |

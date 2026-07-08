@@ -43,7 +43,7 @@ Status ledger (updated by the orchestrator after each run):
 - **Intended use**: persona-siloed conversion pages feeding the funnel; prelaunch/waitlist
   gating of soliciting routes; calculators as lead tools.
 - **Source docs**: `kb/` landing-page conversion research + GTM battlecards, borrower-acquisition
-  playbook, `PRODUCT_SPINE.md`, `kb/app-guide/01-start-here.md`.
+  playbook, `PRODUCT_SPINE.md`, `knowledge-base/handbook/app-guide/01-start-here.md`.
 - **Owned tests**: `tests/leads*`, calculator/APR-adjacent units. **Reg Z trigger-term risk** on
   any rate/payment displayed → compliance flag.
 - **Wiring note (audit):** #61 Approval Strength + #63 Buying Power/SEO land here (MVP).
@@ -61,7 +61,7 @@ Status ledger (updated by the orchestrator after each run):
   electronic delivery and credit pulls; TRID clock starts exactly at six pieces. **Decisioning
   runs as a server cascade on `POST /api/loan-applications`** (N-002) — assert on the cascade
   outputs, not the dead `instant-decision`/`calculate-*`/`advance-stage` endpoints.
-- **Source docs**: `kb/app-guide/05-data-flow.md`, `DEVELOPER_PLAYBOOK.md` §2.1–2.2,
+- **Source docs**: `knowledge-base/handbook/app-guide/05-data-flow.md`, `DEVELOPER_PLAYBOOK.md` §2.1–2.2,
   `PRODUCT_SPINE.md`, `docs/fannie-mae/` URLA documents.
 - **Owned tests**: `tests/preApprovalMachine*`, `tests/trid*`, `tests/intakeSchema*`,
   `tests/stageRequirements*`. **Coverage gap (F-015):** `loanAnalysis.finalizeIntake` (the ECOA
@@ -78,8 +78,8 @@ Status ledger (updated by the orchestrator after each run):
   `AI_GOVERNANCE_POLICY`) — extracted values must pass a human/confidence gate before they
   influence a regulated outcome; sensitive extracted values encrypted; unconfigured Gemini is a
   safe no-op.
-- **Source docs**: `kb/AI_GOVERNANCE_POLICY.md`, `kb/MODEL_RISK_GOVERNANCE.md`, tax-insight
-  pipeline docs (§7216), `kb/app-guide/08-services.md`.
+- **Source docs**: `knowledge-base/governance/AI_GOVERNANCE_POLICY.md`, `knowledge-base/governance/MODEL_RISK_GOVERNANCE.md`, tax-insight
+  pipeline docs (§7216), `knowledge-base/handbook/app-guide/08-services.md`.
 - **Owned tests**: `tests/uploadsPresignedOnly*`, `tests/taxInsight*`. **Coverage gap:**
   `coachingService`/`coachIntake`/`extractionService`/`documentConfidence` have **zero tests**.
 - **Compliance**: AI-in-decision-path invariant, IRC §7216 (tax info), RESPA §8 (no steering),
@@ -94,7 +94,7 @@ Status ledger (updated by the orchestrator after each run):
 - **Intended use**: Day-1-Certainty provenance promotion (three dimensions → VERIFIED →
   decision recalc); FCRA consent required before any pull; credit sim refuses in prod unless
   `CREDIT_VENDOR_MODE=simulation`; raw responses encrypted, never in a response.
-- **Source docs**: `DEVELOPER_PLAYBOOK.md` §2.1, `kb/app-guide/09-integrations.md`,
+- **Source docs**: `DEVELOPER_PLAYBOOK.md` §2.1, `knowledge-base/handbook/app-guide/09-integrations.md`,
   `docs/fannie-mae/` (D1C), FCRA references.
 - **Owned tests**: `tests/adverseActionNotice*`, `tests/mcpAudit*`, integration `authRecovery`.
   **Note (D-008):** `creditService.ts:666` uses `Math.random` — violates the deterministic-sim
@@ -113,7 +113,7 @@ Status ledger (updated by the orchestrator after each run):
   in `ApplicationSummary`.
 - **Intended use**: deterministic, AI-free decisioning; typed error → human routing; PRELIMINARY
   vs VERIFIED provenance gating; every nuance rule cites its guideline; never auto-deny.
-- **Source docs**: `kb/UNDERWRITING_SCENARIOS.md`, scenario-engine invariants,
+- **Source docs**: `knowledge-base/compliance/UNDERWRITING_SCENARIOS.md`, scenario-engine invariants,
   `DEVELOPER_PLAYBOOK.md` §2.3.
 - **Owned tests**: `tests/underwriting*`, `tests/scenarioCatalog*`, `tests/complianceInvariants*`
   (**F-014: this is grep-only, executes nothing — false confidence**), integration
@@ -185,7 +185,7 @@ Status ledger (updated by the orchestrator after each run):
   (`compliance.ts:827`; only cron + reader wired). If the MVP can deny, ECOA requires the notice
   — resolve before launch. **F-008\*:** SMS webhook has no signature verification (blocker only
   if SMS is live — TCPA).
-- **Source docs**: `docs/nmls/`, `kb/TEAM_PRACTICES.md` §9, FCRA/ECOA/TCPA references.
+- **Source docs**: `docs/nmls/`, `knowledge-base/governance/TEAM_PRACTICES.md` §9, FCRA/ECOA/TCPA references.
 - **Owned tests**: `tests/adverseAction*`, `tests/fairLendingAnalysis*`, `tests/smsCompliance*`,
   `tests/quietHours*`.
 - **Compliance**: ECOA/Reg B, FCRA, TCPA, HMDA, fair lending.
@@ -203,7 +203,7 @@ Status ledger (updated by the orchestrator after each run):
   (`outcomeTracker.ts:113,146`) are never called → the analytics/prediction dashboards render
   off an empty table.** Most of `intelligence.ts`/`optimizations.ts` (35+ endpoints) are dead
   (no client caller) — decide wire/defer/delete per the dead-surface map.
-- **Source docs**: `kb/app-guide/08-services.md`, `MODEL_RISK_GOVERNANCE.md`.
+- **Source docs**: `knowledge-base/handbook/app-guide/08-services.md`, `MODEL_RISK_GOVERNANCE.md`.
 - **Owned tests**: **zero** across this cluster (QA priority).
 
 ## 11. Staff, partner & pipeline ops
@@ -219,8 +219,8 @@ Status ledger (updated by the orchestrator after each run):
   materialized conditions; SLA tasks escalate; two staff scoping models (internal-unrestricted
   vs team-scoped); **client gates must match server gates** (`isInternalStaffRole` vs
   `isStaffRole` — D-002 the app-guide role doc is stale).
-- **Source docs**: `kb/app-guide/08-services.md`, `kb/lo-audit/*`, access-control notes,
-  `kb/support-playbooks/`.
+- **Source docs**: `knowledge-base/handbook/app-guide/08-services.md`, `knowledge-base/logs/lo-audit/*`, access-control notes,
+  `knowledge-base/runbooks/support-playbooks/`.
 - **Owned tests**: integration `loCommandCenter`, `tests/borrowerStateMachine*`,
   `tests/lifecycleEngine*`, `tests/statusVocabulary*`, `tests/accessControl*`. **F-013:**
   `maintenanceMode.test.ts` runs in neither config. **Coverage:** `pipelineEngine.updatePipelineStage`
@@ -238,7 +238,7 @@ Status ledger (updated by the orchestrator after each run):
   (unset → simulated/no live value locally); closed-loan graduation → Homeowner Hub with equity
   snapshot + refi alerts (TCPA-gated).
 - **Source docs**: property-data-vendor notes, lifecycle-architecture (Incubator/Engine/Portfolio
-  separation), `kb/app-guide/09-integrations.md`.
+  separation), `knowledge-base/handbook/app-guide/09-integrations.md`.
 - **Owned tests**: `tests/valueEstimate*`, `tests/marketDataParsers*`. **Zero-coverage:**
   `propertyAnalyzer.ts`, property routes.
 
@@ -259,8 +259,8 @@ Status ledger (updated by the orchestrator after each run):
   SSN/account *writes* unaudited; **F-007** `/api/admin/users` returns `passwordHash`; **F-009**
   legacy plaintext `ssn` not stripped (verify prod backfill); **F-010** presigned upload trusts
   client type/size; **F-011** Plaid webhook static secret.
-- **Source docs**: `kb/TEAM_PRACTICES.md` §9, `kb/AI_GOVERNANCE_POLICY.md`,
-  `kb/app-guide/06-auth-security-secrets.md`.
+- **Source docs**: `knowledge-base/governance/TEAM_PRACTICES.md` §9, `knowledge-base/governance/AI_GOVERNANCE_POLICY.md`,
+  `knowledge-base/handbook/app-guide/06-auth-security-secrets.md`.
 - **Owned tests**: `tests/accessControl*`, `tests/ssnVault*`, `tests/encryptionRotation*`,
   `tests/loginLockout*`, `tests/adversarialPersonas*`, `tests/mcp*`, integration `authRecovery`.
   **Zero-coverage:** `piiVault.ts`, `auditLog.ts` (general), `socialAuth.ts`.
@@ -283,9 +283,9 @@ Runs over every surface from teams 1–12, on three axes:
   `PageShell` is at 7/99 adoption (40 pages hand-roll layout).
 - **Compliance rails on copy**: Reg Z trigger terms (flag to compliance-auditor), no consent
   dark patterns (**audit: consent UX is exemplary — 0 pre-checked boxes**), Reg B denial tone.
-- **Builds on the standing system**: cross-reference `kb/ux-audit/page-audit.md` ids; use
+- **Builds on the standing system**: cross-reference `knowledge-base/logs/ux-audit/page-audit.md` ids; use
   `psychology-patterns.md` as the copy standard; `component-inventory.csv` for the census.
-- **Source docs**: `design_guidelines.md`, `kb/ux-audit/*`, landing-page research, design skills
+- **Source docs**: `design_guidelines.md`, `knowledge-base/logs/ux-audit/*`, landing-page research, design skills
   under `.agents/skills/`.
 - **Owned checks**: `node scripts/design-token-guard.cjs` (via `npm run checkup`), preview
   screenshots/inspects per surface group. **A11y:** 12/14 property `<img>` lack `alt`.
