@@ -1,209 +1,291 @@
 # Feature Review — Domain Team Charters
 
-Nine domain teams. Each charter lists: subsystems + primary files, client surfaces,
-intended-use source docs, and owned tests. A `feature-reviewer` run takes ONE numbered charter
-as its brief; team 9 runs `ux-reviewer` across all surfaces. Program rules: `CHARTER.md`.
+Thirteen domain teams + one cross-cutting UX lens. Each charter lists: subsystems + primary
+files, client surfaces, intended-use source docs, and owned tests. A `feature-reviewer` run
+takes ONE numbered charter as its brief; the UX lens runs `ux-reviewer` across all surfaces.
+Program rules: `CHARTER.md`.
+
+> **Census (verified this session, supersedes the old "37 subsystems / 40 surfaces / 7
+> workflows"):** ~**95 backend subsystems** · **88 routed client pages** (95 routes across 13
+> nested `client/src/pages/` dirs) · ~**14 end-to-end workflows** (8 fully wired / 4 partial / 2
+> broken-from-UI). The prior 9-domain taxonomy left ~⅓ of the code unowned — the added domains
+> (3 AI Coach/extraction, 4 Verification & credit, 9 Compliance analytics, 10 Borrower graph &
+> data intelligence, 12 Property/listings/homeowner) close that gap.
 
 Status ledger (updated by the orchestrator after each run):
 
 | # | Domain | Last reviewed | Result |
 |---|---|---|---|
-| 1 | Public funnel & acquisition | — | not yet run |
+| 1 | Public funnel, acquisition & education | — | not yet run |
 | 2 | Application & intake | — | not yet run |
-| 3 | Underwriting & decisioning | — | not yet run |
-| 4 | Pricing & disclosures | — | not yet run |
-| 5 | GSE delivery & compliance export | — | not yet run |
-| 6 | AUS & lender submission | — | not yet run |
-| 7 | Staff, partner & pipeline ops | — | not yet run |
-| 8 | Security, PII & cross-cutting | — | not yet run |
-| 9 | UI/UX & friction (all surfaces) | — | not yet run |
+| 3 | AI Coach, documents & extraction | — | not yet run |
+| 4 | Verification & credit | — | not yet run |
+| 5 | Underwriting & decisioning | — | not yet run |
+| 6 | Pricing, rates & disclosures | — | not yet run |
+| 7 | AUS & lender submission | — | not yet run |
+| 8 | GSE delivery & compliance export | — | not yet run |
+| 9 | Compliance analytics & adverse action | — | not yet run |
+| 10 | Borrower graph & data intelligence | — | not yet run |
+| 11 | Staff, partner & pipeline ops | — | not yet run |
+| 12 | Property, listings & homeowner | — | not yet run |
+| 13 | Security, PII & platform cross-cutting | — | not yet run |
+| UX | UI/UX & friction (all surfaces) | — | not yet run |
 
 ---
 
-## 1. Public funnel & acquisition
+## 1. Public funnel, acquisition & education
 
 - **Server**: `server/routes/leads.ts`, `server/services/leadNotifications.ts`,
-  `server/routes/calculators.ts`, `server/routes/rate-sheets.ts`, rates via
-  `server/services/rateService.ts`, education content routes.
-- **Client**: `pages/public/` (Landing, Refinance, VALoans, SelfEmployed, FirstTimeBuyer,
-  Waitlist, AffordabilityCheck, legal pages), `pages/rates/*`, `pages/calculators/*`,
-  `pages/education/*` (LearningCenter, DownPaymentWizard, FirstTimeBuyerHub, Glossary, FAQ),
-  prelaunch gate `client/src/lib/prelaunch.ts`, referral landings
-  (`pages/agent-broker/ReferralLanding.tsx`, `PartnerLanding.tsx`, `ApplyInvite.tsx`).
-- **Intended use**: persona-siloed conversion pages feeding the application funnel;
-  prelaunch/waitlist gating of transaction-soliciting routes; calculators as lead tools.
-- **Source docs**: `kb/` landing-page conversion research + GTM battlecards,
-  borrower-acquisition playbook docs, `PRODUCT_SPINE.md` (Calculators/Education modules),
-  `kb/app-guide/01-start-here.md`.
-- **Owned tests**: `tests/leads*` (integration: `leads`), calculator/APR-adjacent units where
-  rates are displayed. Note: public pages showing rates/payments carry Reg Z trigger-term risk
-  → compliance flag.
+  `server/routes/calculators.ts`, rates via `server/services/rateService.ts`, education content.
+- **Client**: `pages/public/*` (Landing, persona LPs, Waitlist, AffordabilityCheck, legal),
+  `pages/rates/*`, `pages/calculators/*`, `pages/education/*`, prelaunch gate
+  `client/src/lib/prelaunch.ts`, referral landings (`pages/agent-broker/{ReferralLanding,PartnerLanding,ApplyInvite}.tsx`).
+- **Intended use**: persona-siloed conversion pages feeding the funnel; prelaunch/waitlist
+  gating of soliciting routes; calculators as lead tools.
+- **Source docs**: `kb/` landing-page conversion research + GTM battlecards, borrower-acquisition
+  playbook, `PRODUCT_SPINE.md`, `kb/app-guide/01-start-here.md`.
+- **Owned tests**: `tests/leads*`, calculator/APR-adjacent units. **Reg Z trigger-term risk** on
+  any rate/payment displayed → compliance flag.
+- **Wiring note (audit):** #61 Approval Strength + #63 Buying Power/SEO land here (MVP).
 
 ## 2. Application & intake
 
-- **Server**: intake portions of `server/routes/lending.ts`, `server/services/trid.ts`
-  (six-piece trigger, sole writer of `tridTriggeredAt`), `server/consentGate.ts`,
-  `server/routes/documents.ts`, `server/integrations/object_storage/`, `server/plaid.ts`,
-  `server/services/verification.ts`, `server/extractionService.ts` (Gemini extraction),
-  `server/services/preUnderwriting.ts` (intake-completion hook).
+- **Server**: intake portions of `server/routes/lending.ts` + `server/routes/borrower.ts`
+  (URLA save), `server/services/trid.ts` (six-piece trigger, sole writer of `tridTriggeredAt`),
+  `server/consentGate.ts`, `server/services/preUnderwriting.ts`, `shared/stageRequirements.ts`,
+  `server/services/nextAction.ts`.
 - **Client**: `pages/lending/PreApproval.tsx` + `client/src/funnel/*` (preApprovalMachine,
-  autosave), `pages/borrower/URLAForm.tsx` + `pages/borrower/urla/*`, `Documents.tsx` +
-  `UploadDocumentDialog`, `Verification.tsx`, `IdentityVerification.tsx`, consent pages
+  autosave), `pages/borrower/URLAForm.tsx` + `pages/borrower/urla/*`, consent pages
   (`CreditConsent`, `EConsent`, `HmdaDemographics`), `OnboardingJourney.tsx`.
-- **Intended use**: guided pre-approval intake with autosave; URLA completeness; uploads via
-  presigned GCS URLs only; consents gate electronic delivery and credit pulls; TRID clock
-  starts exactly at six pieces.
-- **Source docs**: `kb/app-guide/05-data-flow.md` ("A Loan's Journey"),
-  `DEVELOPER_PLAYBOOK.md` §2.1–2.2, `PRODUCT_SPINE.md` (Borrower Package),
-  `docs/fannie-mae/` URLA documents.
-- **Owned tests**: `tests/preApprovalMachine*`, `tests/trid*`, `tests/uploadsPresignedOnly*`,
-  document/extraction units, `tests/taxInsight*`.
+- **Intended use**: guided pre-approval intake with autosave; URLA completeness; consents gate
+  electronic delivery and credit pulls; TRID clock starts exactly at six pieces. **Decisioning
+  runs as a server cascade on `POST /api/loan-applications`** (N-002) — assert on the cascade
+  outputs, not the dead `instant-decision`/`calculate-*`/`advance-stage` endpoints.
+- **Source docs**: `kb/app-guide/05-data-flow.md`, `DEVELOPER_PLAYBOOK.md` §2.1–2.2,
+  `PRODUCT_SPINE.md`, `docs/fannie-mae/` URLA documents.
+- **Owned tests**: `tests/preApprovalMachine*`, `tests/trid*`, `tests/intakeSchema*`,
+  `tests/stageRequirements*`. **Coverage gap (F-015):** `loanAnalysis.finalizeIntake` (the ECOA
+  decision locus) is grep-only, never executed.
 
-## 3. Underwriting & decisioning
+## 3. AI Coach, documents & extraction
 
-- **Server**: `server/underwritingEngine.ts`, `server/underwriting.ts`,
-  `server/services/decisionEngine.ts`, `server/services/ruleEngine.ts` +
-  `server/routes/underwriting-rules.ts`, `server/services/underwritingNuance.ts`,
-  `server/services/preUnderwriting.ts`, `server/services/scenarioCatalog.ts`,
-  `server/services/loanAnalysis.ts`, `server/routes/underwriting.ts`,
+- **Server**: `server/services/coachingService.ts` + `coachIntake.ts` + `server/routes/coach.ts`,
+  `server/extractionService.ts` (Gemini OCR/extraction), `server/services/documentConfidence.ts`,
+  `server/routes/documents.ts`, `server/integrations/object_storage/*`.
+- **Client**: `pages/education/AICoach.tsx`, `Documents.tsx` + `UploadDocumentDialog`.
+- **Intended use**: conversational homebuyer coaching + document extraction feeding
+  qualification; uploads via presigned GCS URLs only; **AI never decides** (P1 of
+  `AI_GOVERNANCE_POLICY`) — extracted values must pass a human/confidence gate before they
+  influence a regulated outcome; sensitive extracted values encrypted; unconfigured Gemini is a
+  safe no-op.
+- **Source docs**: `kb/AI_GOVERNANCE_POLICY.md`, `kb/MODEL_RISK_GOVERNANCE.md`, tax-insight
+  pipeline docs (§7216), `kb/app-guide/08-services.md`.
+- **Owned tests**: `tests/uploadsPresignedOnly*`, `tests/taxInsight*`. **Coverage gap:**
+  `coachingService`/`coachIntake`/`extractionService`/`documentConfidence` have **zero tests**.
+- **Compliance**: AI-in-decision-path invariant, IRC §7216 (tax info), RESPA §8 (no steering),
+  prompt-injection via uploaded documents.
+
+## 4. Verification & credit
+
+- **Server**: `server/plaid.ts` + `server/services/verification.ts` + `server/routes/webhooks.ts`
+  (VOA/VOIE), `server/services/creditService.ts` + `server/routes/compliance.ts` (FCRA consent,
+  pulls, hash-chained credit audit log), `server/mcp/*` credit tools, `server/consentGate.ts`.
+- **Client**: `Verification.tsx`, `IdentityVerification.tsx`, `CreditConsent.tsx`.
+- **Intended use**: Day-1-Certainty provenance promotion (three dimensions → VERIFIED →
+  decision recalc); FCRA consent required before any pull; credit sim refuses in prod unless
+  `CREDIT_VENDOR_MODE=simulation`; raw responses encrypted, never in a response.
+- **Source docs**: `DEVELOPER_PLAYBOOK.md` §2.1, `kb/app-guide/09-integrations.md`,
+  `docs/fannie-mae/` (D1C), FCRA references.
+- **Owned tests**: `tests/adverseActionNotice*`, `tests/mcpAudit*`, integration `authRecovery`.
+  **Note (D-008):** `creditService.ts:666` uses `Math.random` — violates the deterministic-sim
+  ground rule.
+- **Compliance**: FCRA, GLBA-style PII.
+
+## 5. Underwriting & decisioning
+
+- **Server**: `server/services/decisionEngine.ts` + `server/underwritingEngine.ts` (**the LIVE
+  decision path**), `server/services/ruleEngine.ts` + `server/routes/underwriting-rules.ts`,
+  `underwritingNuance.ts`, `preUnderwriting.ts`, `scenarioCatalog.ts`, `loanAnalysis.ts`,
   `shared/dataProvenance.ts`, `shared/stageRequirements.ts`.
-- **Client**: `pages/realtor-engine/ScenarioDesk.tsx`, staff `PolicyOps.tsx`, decision
-  surfaces in borrower dashboard / `ApplicationSummary`.
-- **Intended use**: deterministic, AI-free decisioning (same inputs → same outcome), typed
-  error classification routing to humans; PRELIMINARY vs VERIFIED provenance gating binding
-  outcomes; every nuance rule cites its guideline; never auto-deny (ECOA adverse-action path).
-- **Source docs**: `kb/UNDERWRITING_SCENARIOS.md` (scenario catalog), scenario-engine
-  invariants, `kb/app-guide/08-services.md`, `DEVELOPER_PLAYBOOK.md` §2.3.
-- **Owned tests**: `tests/underwriting*` (nuance, edge cases, pre-underwriting),
-  `tests/scenarioCatalog.test.ts`, `tests/runUnderwritingTestSuite.ts`,
-  `tests/complianceInvariants*`, `tests/borrowerStateMachine*` (decision-adjacent),
-  integration `pricingUnderwriting`.
-- **Compliance**: Fannie Selling Guide cites, ECOA/Reg B. Determinism is itself an invariant —
-  any nondeterminism or vendor call inside the engine is a P0.
+  **Trap (audit):** `server/underwriting.ts` *looks* like the engine (its header says so) but is
+  a superseded helper — audit `decisionEngine.ts → underwritingEngine.ts`, not it.
+- **Client**: `pages/realtor-engine/ScenarioDesk.tsx`, staff `PolicyOps.tsx`, decision surfaces
+  in `ApplicationSummary`.
+- **Intended use**: deterministic, AI-free decisioning; typed error → human routing; PRELIMINARY
+  vs VERIFIED provenance gating; every nuance rule cites its guideline; never auto-deny.
+- **Source docs**: `kb/UNDERWRITING_SCENARIOS.md`, scenario-engine invariants,
+  `DEVELOPER_PLAYBOOK.md` §2.3.
+- **Owned tests**: `tests/underwriting*`, `tests/scenarioCatalog*`, `tests/complianceInvariants*`
+  (**F-014: this is grep-only, executes nothing — false confidence**), integration
+  `pricingUnderwriting`. **Zero-coverage:** `ruleEngine.ts`.
+- **Compliance**: Fannie Selling Guide, ECOA/Reg B. Determinism is itself an invariant (any
+  nondeterminism/vendor call inside the engine = P0).
 
-## 4. Pricing & disclosures
+## 6. Pricing, rates & disclosures
 
-- **Server**: `server/pricing.ts` (LLPA/PMI matrices), `server/services/pricingAdapter.ts`,
-  `server/services/rateService.ts`, `server/services/loanEstimate.ts`,
-  `server/services/apr.ts` (Appendix J actuarial solver — the ONLY allowed APR source),
-  `server/services/trid.ts` + `server/services/businessDays.ts` (LE 3-business-day clock),
-  `server/routes/rate-sheets.ts`, `server/seedLendingGrids.ts`,
-  `server/services/lookupResolver.ts` + `server/routes/lookup-matrix.ts`.
-- **Client**: `pages/lending/LoanEstimate.tsx`, `pages/staff/PricingMatrices.tsx`,
-  `pages/lending/LoanOptions.tsx`, `BorrowerDealComparison.tsx`.
+- **Server**: `server/pricing.ts` (LLPA/PMI), `server/services/pricingAdapter.ts`, `rateService.ts`,
+  `loanEstimate.ts`, `apr.ts` (Appendix J solver — the ONLY allowed APR source), `trid.ts` +
+  `businessDays.ts`, `server/routes/{rate-sheets,market-data}.ts`, `marketDataParsers.ts`,
+  `lookupResolver.ts` + `server/routes/lookup-matrix.ts`, `shared/fannieMae/qmThresholds.ts`.
+- **Client**: `pages/lending/{LoanEstimate,LoanOptions,BorrowerDealComparison}.tsx`,
+  `pages/staff/PricingMatrices.tsx`.
 - **Intended use**: versioned policy matrices (no hardcoded rate cards); APR from the solver
-  only (flat spreads = TILA violation); LE generated within the TRID clock; QM thresholds by
-  note-date (`shared/fannieMae/qmThresholds.ts`).
-- **Source docs**: `DEVELOPER_PLAYBOOK.md` §2.4, `kb/app-guide/08-services.md`, CFPB/Fannie QM
-  job aid in `docs/fannie-mae/`.
+  only; LE within the TRID clock; QM thresholds by note-date.
+- **Source docs**: `DEVELOPER_PLAYBOOK.md` §2.4, `docs/fannie-mae/` QM job aid.
 - **Owned tests**: `tests/apr*`, `tests/qmThresholds*`, `tests/lookupResolver*`, integration
-  `pricingUnderwriting`, `lookupMatrixLifecycle`, `lookupMatrixCoverageGap`.
+  `pricingUnderwriting`, `lookupMatrix*`. **✓ verified correct (N-003):** QM P&F + APR-APOR
+  tables 2024–26. **F-026:** APR solver omits Appendix J odd-first-period (fine for estimates).
 - **Compliance**: TILA/Reg Z §1026.22 + Appendix J, TRID.
 
-## 5. GSE delivery & compliance export — *compliance-auditor mandatory on every finding*
-
-- **Server/shared**: `server/mismo.ts` (ULDD Phase 5 XML), `shared/mismo.ts` (types/enums),
-  `server/services/mismoValidation.ts` (URLA gating + QM points-and-fees),
-  `server/services/loanDeliveryReadiness.ts`, `shared/fannieMae/loanDeliveryEdits.ts`,
-  `shared/fannieMae/specialFeatureCodes.ts`, `shared/fannieMae/ucdFeeEnumerations.ts`,
-  `shared/schema/delivery.ts`.
-- **Client**: MISMO export from `pages/staff/LoCommandCenter.tsx`, delivery-readiness surfaces
-  in `BorrowerFile.tsx`.
-- **Intended use**: generate valid ULDD Phase 5 MISMO 3.4 XML; single delivery-readiness
-  report (URLA completeness → ULDD shape → edit mirror → SFC derivation); SSN decrypted only
-  at the delivery seam.
-- **Source docs**: `docs/fannie-mae/` (spec PDFs + XSD schemas + golden samples — validate
-  against the XSDs where possible), Loan Delivery job aid (fetch), `CLAUDE.md` compliance
-  section.
-- **Owned tests**: `tests/mismo*` (validation, export, MERS MIN, XSD validation),
-  `tests/loanDeliveryEdits*`, `tests/specialFeatureCodes*`, integration `mismoExportAccess`.
-
-## 6. AUS & lender submission
+## 7. AUS & lender submission
 
 - **Server/shared**: `server/services/ausSubmission.ts` + `server/routes/aus.ts` (DU + LPA,
-  env-gated sims), `server/services/brokerSubmissionReadiness.ts` (4-stage derivation),
-  `server/services/lenderSubmission.ts` + `shared/wholesaleLenders.ts` (Target-5, status
-  machine, readiness snapshot audit), `server/services/lenderMatchingEngine.ts` +
-  `server/services/borrowerGraph.ts`.
-- **Client**: submission surfaces in `LoCommandCenter.tsx` / `BorrowerFile.tsx`,
-  `SubmissionReadinessDialog.tsx`, `pages/lending/LoanPipeline.tsx`.
-- **Intended use**: broker-model flow — intake gates (URLA/TRID/e-disclosure) → AUS gate →
-  lender package (MISMO validity, docs, QM pre-flight, Reg Z anti-steering §1026.36(e)(3)) →
-  informational delivery preflight; submission blocked until stages 1–3 clean; one adapter
-  seam per lender portal; simulations clearly flagged until broker agreements exist.
-- **Source docs**: broker/MISMO/PPE strategy docs in `kb/`, `DEVELOPER_PLAYBOOK.md` §2.3,
-  wholesale-lender catalog rationale.
-- **Owned tests**: `tests/lenderSubmission*` (known pre-existing determinism flake — do not
-  re-report as new), `tests/brokerSubmissionReadiness*`, AUS units.
-- **Compliance**: Reg Z anti-steering, TRID, Fannie DU.
+  env-gated sims that intentionally throw on a real key), `brokerSubmissionReadiness.ts`
+  (4-stage), `lenderSubmission.ts` + `shared/wholesaleLenders.ts` (Target-5), `lenderMatchingEngine.ts`.
+- **Client**: `SubmissionReadinessDialog.tsx`, submission surfaces in `LoCommandCenter`/`BorrowerFile`,
+  `pages/lending/LoanPipeline.tsx`.
+- **Intended use**: broker flow — intake/AUS/lenderPackage/deliveryPreflight gates → submission
+  blocked until stages 1–3 clean; one adapter seam per lender; sims flagged.
+- **Wiring note (audit):** **F-003 — AUS DU/LPA submission (`aus.ts:134`) has no UI trigger**
+  (workflow #9 broken-from-UI). MVP delivery is the wholesale-lender submission (workflow #10,
+  wired). Confirm with Target-5 lenders whether a DU casefile is required at submission.
+- **Source docs**: broker/MISMO/PPE strategy docs, `DEVELOPER_PLAYBOOK.md` §2.3.
+- **Owned tests**: `tests/lenderSubmission*` (**F-005: determinism flake is a real product bug —
+  `mismo.ts:1034` ms timestamp in hashed XML; = PRs #64/#65**), `tests/brokerSubmissionReadiness*`.
+- **Compliance**: Reg Z anti-steering §1026.36, TRID, Fannie DU.
 
-## 7. Staff, partner & pipeline ops
+## 8. GSE delivery & compliance export — *compliance-auditor mandatory on every finding*
+
+- **Server/shared**: `server/mismo.ts` (ULDD Phase 5 XML), `shared/mismo.ts` (types/enums),
+  `mismoValidation.ts`, `loanDeliveryReadiness.ts`, `shared/fannieMae/{loanDeliveryEdits,specialFeatureCodes,ucdFeeEnumerations}.ts`,
+  `shared/schema/delivery.ts`.
+- **Client**: MISMO export from `LoCommandCenter.tsx`, delivery-readiness in `BorrowerFile.tsx`.
+- **Intended use**: valid ULDD Phase 5 MISMO 3.4 XML; single delivery-readiness report; SSN
+  decrypted only at the delivery seam.
+- **P0 launch-blockers (audit):** **F-018** core points mis-nested `LOAN_DETAIL` vs
+  `TERMS_OF_LOAN` (`mismo.ts:617-668`); **F-019** invalid `LoanPurposeType` enums
+  (`mismo.ts:157-160`). Both → delivery rejection. **F-025:** in-app validation is a substring
+  check (no XSD gate). Escalations **U-1…U-6** need founder source confirmation.
+- **Source docs**: `docs/fannie-mae/` (spec PDFs + XSDs + golden samples — validate against the
+  XSDs), Loan Delivery job aid, `CLAUDE.md` compliance section.
+- **Owned tests**: `tests/mismo*`, `tests/loanDeliveryEdits*`, `tests/specialFeatureCodes*`,
+  integration `mismoExportAccess`. **F-015:** `loanDeliveryReadiness` (the caller of the tested
+  edit engines) has zero tests.
+
+## 9. Compliance analytics & adverse action
+
+- **Server**: `server/services/fairLendingAnalysis.ts`, `hmdaIngestService.ts`,
+  `adverseActionDelivery.ts` + `pdfLetterGenerator.ts` + `server/routes/jobs.ts` (30-day
+  watchdog cron), `smsCompliance.ts` + `quietHours.ts`, `server/routes/compliance.ts` (HMDA,
+  disparate-impact).
+- **Client**: `AdverseActionNotice.tsx`, `HmdaDemographics.tsx`.
+- **Intended use**: adverse-action sweep meets ECOA 30-day; STOP/quiet-hours gate all outbound
+  SMS; fair-lending/HMDA analytics.
+- **Launch-critical (audit):** **F-004 — adverse-action *generation* has no UI trigger**
+  (`compliance.ts:827`; only cron + reader wired). If the MVP can deny, ECOA requires the notice
+  — resolve before launch. **F-008\*:** SMS webhook has no signature verification (blocker only
+  if SMS is live — TCPA).
+- **Source docs**: `docs/nmls/`, `kb/TEAM_PRACTICES.md` §9, FCRA/ECOA/TCPA references.
+- **Owned tests**: `tests/adverseAction*`, `tests/fairLendingAnalysis*`, `tests/smsCompliance*`,
+  `tests/quietHours*`.
+- **Compliance**: ECOA/Reg B, FCRA, TCPA, HMDA, fair lending.
+
+## 10. Borrower graph & data intelligence
+
+- **Server**: `server/services/borrowerGraph.ts` (docs call it the single most important
+  service), `signalEngine.ts`, `intentTracker.ts`, `activitySummary.ts`, `analyticsEventPipeline.ts`,
+  `outcomeTracker.ts`, `predictiveEngine.ts`, `optimizationEngine.ts`, `frictionLog.ts`,
+  `server/routes/{data-intelligence,intelligence,optimizations}.ts`.
+- **Client**: `pages/staff/IntelligenceTab.tsx`, `PredictionInsights` surfaces.
+- **Intended use**: unified 3-tier-trust borrower profile; staff attention-priority feed;
+  closed-loop outcomes → predictions/optimizations.
+- **Wiring note (audit):** **F-002 — the feedback loop is broken: `loanOutcomes` writers
+  (`outcomeTracker.ts:113,146`) are never called → the analytics/prediction dashboards render
+  off an empty table.** Most of `intelligence.ts`/`optimizations.ts` (35+ endpoints) are dead
+  (no client caller) — decide wire/defer/delete per the dead-surface map.
+- **Source docs**: `kb/app-guide/08-services.md`, `MODEL_RISK_GOVERNANCE.md`.
+- **Owned tests**: **zero** across this cluster (QA priority).
+
+## 11. Staff, partner & pipeline ops
 
 - **Server**: `server/pipelineEngine.ts` (status ladder, conditions, file health),
-  `server/services/taskEngine.ts` + `server/routes/task-engine.ts` (SLA classes, escalation,
-  role-scoped access), `server/services/borrowerStateMachine.ts`,
-  `server/services/lifecycleEngine.ts` + `nextAction.ts`, `server/services/signalEngine.ts` +
-  `fileHealth.ts` (staff prioritization), CPA-channel routes (PR #66), admin routes.
-- **Client**: `pages/staff/*` (StaffDashboard, LoCommandCenter, BorrowerFile, TaskOperations,
-  PolicyOps, IntelligenceTab), `pages/agent-broker/*` (BrokerDashboard, AgentDashboard/Edit/
-  Pipeline, InviteGenerator, AgentCoBranding, PartnerServices, FindAnAgent),
-  `pages/admin/*`, `pages/realtor-engine/*` (DealRescue, StrategySessions, ClosingGuarantee),
-  `pages/borrower/Tasks.tsx`/`TaskDetail.tsx`, `Messages.tsx`, deal-team components.
-- **Intended use**: LO start-of-day prioritization (File Health, signals); pipeline
-  transitions validated with materialized conditions; SLA tasks escalate; two staff scoping
-  models — internal-unrestricted vs team-scoped (broker/lender scoped to referred apps);
-  client gates must match server gates (`isInternalStaff` vs `isStaff` distinction).
-- **Source docs**: `kb/app-guide/08-services.md`, LO-audit docs (`kb/lo-audit/`),
-  LO-partner GTM docs, access-control model notes, `kb/support-playbooks/`.
+  `server/services/taskEngine.ts` + `server/routes/task-engine.ts` (SLA, escalation,
+  role-scoped access), `borrowerStateMachine.ts`, `lifecycleEngine.ts`, `server/routes/jobs.ts`
+  (lifecycle sweeps), CPA-channel routes, admin/staff-invite routes, `emailService.ts` +
+  `server/routes/notifications.ts`.
+- **Client**: `pages/staff/*`, `pages/agent-broker/*`, `pages/admin/*`,
+  `pages/realtor-engine/*`, `pages/borrower/{Tasks,TaskDetail,Messages}.tsx`, deal-team components.
+- **Intended use**: LO start-of-day prioritization; pipeline transitions validated with
+  materialized conditions; SLA tasks escalate; two staff scoping models (internal-unrestricted
+  vs team-scoped); **client gates must match server gates** (`isInternalStaffRole` vs
+  `isStaffRole` — D-002 the app-guide role doc is stale).
+- **Source docs**: `kb/app-guide/08-services.md`, `kb/lo-audit/*`, access-control notes,
+  `kb/support-playbooks/`.
 - **Owned tests**: integration `loCommandCenter`, `tests/borrowerStateMachine*`,
-  `tests/lifecycleEngine*`, `tests/stageRequirements*`, `tests/statusVocabulary*`,
-  task-engine units, `tests/accessControl*` (shared with team 8).
+  `tests/lifecycleEngine*`, `tests/statusVocabulary*`, `tests/accessControl*`. **F-013:**
+  `maintenanceMode.test.ts` runs in neither config. **Coverage:** `pipelineEngine.updatePipelineStage`
+  is grep-only.
 
-## 8. Security, PII & cross-cutting
+## 12. Property, listings & homeowner
+
+- **Server**: `server/propertyAnalyzer.ts`, `server/services/valueEstimate.ts` (AVM parse),
+  `server/routes/{property,listings,geocode}.ts`, refi/equity in `lifecycleEngine.ts`,
+  `shared/schema/property.ts`.
+- **Client**: `pages/property/*` (Properties, PropertyDetail, LivePropertyDetail, PropertyForm),
+  `pages/borrower/BuyerProperties.tsx`, `pages/homeowner/HomeownerDashboard.tsx`,
+  `pages/realtor-engine/*`.
+- **Intended use**: property search/affordability; AVM via the `RAPIDAPI_KEY` realty-us adapter
+  (unset → simulated/no live value locally); closed-loan graduation → Homeowner Hub with equity
+  snapshot + refi alerts (TCPA-gated).
+- **Source docs**: property-data-vendor notes, lifecycle-architecture (Incubator/Engine/Portfolio
+  separation), `kb/app-guide/09-integrations.md`.
+- **Owned tests**: `tests/valueEstimate*`, `tests/marketDataParsers*`. **Zero-coverage:**
+  `propertyAnalyzer.ts`, property routes.
+
+## 13. Security, PII & platform cross-cutting
 
 - **Server**: `server/services/encryptionService.ts` (KMS envelope, rotation, fails closed),
-  `server/services/ssnVault.ts` + `piiVault.ts`, `server/auditLog.ts` (+ hash-chained credit
-  audit log), `server/auth.ts` + `server/integrations/auth/*` + `server/socialAuth.ts`,
-  `server/services/loginLockout.ts` + `accountRecovery.ts`, `server/consentGate.ts`,
-  `server/services/creditService.ts` + `server/routes/compliance.ts`,
-  `server/services/adverseActionDelivery.ts` + `pdfLetterGenerator.ts` +
-  `server/routes/jobs.ts` (30-day watchdog cron), `server/services/smsCompliance.ts` +
-  `quietHours.ts`, `server/services/fairLendingAnalysis.ts`, `server/mcp/*` (AG-1 audit
-  chain, AG-2 identity, vendor adapters), `shared/roles.ts`.
-- **Client**: auth pages, `AdverseActionNotice.tsx`, role-gated layout wrappers
-  (`PrivateLayout` requiredRoles vs server gates).
-- **Intended use**: SSNs/accounts ciphertext + last4 only, decryption only at MISMO/AUS seams
-  + audited staff reveal; sessions 12h rolling; lockout; consent gate 403s unconsented
-  delivery; adverse-action sweep meets ECOA 30-day; STOP/quiet-hours gate all outbound SMS;
-  MCP fails closed in prod; **never add a self-registerable role to STAFF_ROLES** (HIGH
-  escalation precedent, commit ae06fd4).
-- **Source docs**: `kb/TEAM_PRACTICES.md` §9 (security-review triggers),
-  `kb/AI_GOVERNANCE_POLICY.md`, `kb/MODEL_RISK_GOVERNANCE.md`,
+  `ssnVault.ts` + `piiVault.ts`, `server/auditLog.ts`, `server/auth.ts` + `server/integrations/auth/*`
+  + `socialAuth.ts`, `loginLockout.ts` + `accountRecovery.ts`, `rateLimitPolicy.ts`,
+  `maintenanceMode.ts` + `prelaunchGate.ts`, `server/services/errorMonitoring.ts` +
+  `server/routes/monitoring.ts`, `server/storage.ts` (5,134-line sole PII write path — concentration
+  risk), `server/mcp/*` (AG-1 audit chain, AG-2 identity), `shared/roles.ts`.
+- **Client**: auth pages, role-gated layout wrappers (`PrivateLayout` requiredRoles vs server gates).
+- **Intended use**: SSNs/accounts ciphertext + last4 only, decryption only at MISMO/AUS seams +
+  audited staff reveal; sessions rolling; lockout; consent gate 403s unconsented delivery; MCP
+  fails closed in prod; **never add a self-registerable role to STAFF_ROLES** (HIGH escalation,
+  commit ae06fd4).
+- **Posture (audit): STRONG — no P0, no IDOR, PII-at-rest sound (N-001).** Hardening: **F-006**
+  SSN/account *writes* unaudited; **F-007** `/api/admin/users` returns `passwordHash`; **F-009**
+  legacy plaintext `ssn` not stripped (verify prod backfill); **F-010** presigned upload trusts
+  client type/size; **F-011** Plaid webhook static secret.
+- **Source docs**: `kb/TEAM_PRACTICES.md` §9, `kb/AI_GOVERNANCE_POLICY.md`,
   `kb/app-guide/06-auth-security-secrets.md`.
 - **Owned tests**: `tests/accessControl*`, `tests/ssnVault*`, `tests/encryptionRotation*`,
-  `tests/loginLockout*`, `tests/adversarialPersonas*`, `tests/mcpAudit*`,
-  `tests/mcpAgentIdentity*`, `tests/smsCompliance*`, `tests/quietHours*`,
-  `tests/adverseAction*`, `tests/fairLendingAnalysis*`, integration `authRecovery`.
-- **Compliance**: GLBA-style PII, FCRA, ECOA/Reg B, TCPA, fair lending.
+  `tests/loginLockout*`, `tests/adversarialPersonas*`, `tests/mcp*`, integration `authRecovery`.
+  **Zero-coverage:** `piiVault.ts`, `auditLog.ts` (general), `socialAuth.ts`.
+- **Compliance**: GLBA-style PII, FCRA, ECOA/Reg B.
 
-## 9. UI/UX & friction — cross-cutting, ALL client surfaces (`ux-reviewer`)
+## UX. UI/UX & friction — cross-cutting, ALL client surfaces (`ux-reviewer`)
 
-Runs over every surface from teams 1–8, on three axes:
+Runs over every surface from teams 1–12, on three axes:
 
-- **Uniformity**: Charcoal Emerald conformance (tokens in `client/src/index.css` /
-  `tailwind.config.ts`; guard `scripts/design-token-guard.cjs` — anything it flags is a
-  finding), layer rules, AA contrast pairs, consistent shadcn/ui usage, nav/shell coherence,
-  spacing/type drift, responsive (375px/tablet/desktop) + dark mode.
-- **Friction & psychology**: funnel drop-off (form length vs progressive profiling), CTA
-  clarity, loading/empty/error states, trust signals near sensitive asks (SSN, credit
-  consent, uploads), defaults, reassurance at anxiety moments (credit pull, denial,
-  underwriting wait), dashboard speed-to-value.
-- **Compliance rails on copy**: Reg Z trigger terms on rate/payment claims (flag to
-  compliance-auditor), no consent dark patterns (ESIGN), Reg B-consistent denial tone.
-- **Builds on the standing system — does not duplicate it**: cross-reference
-  `kb/ux-audit/page-audit.md` issue ids; use `kb/ux-audit/psychology-patterns.md` copy
-  patterns as the reference standard; `component-inventory.csv` for component census.
-- **Source docs**: `design_guidelines.md`, `kb/ux-audit/*`, landing-page conversion research,
-  design skills under `.agents/skills/`.
+- **Uniformity**: design-system conformance (tokens in `client/src/index.css` /
+  `tailwind.config.ts`; guard `scripts/design-token-guard.cjs` — anything it flags is a finding),
+  consistent shadcn/ui usage, nav/shell coherence, spacing/type drift, responsive
+  (375px/tablet/desktop). **Branch note:** this branch is Obsidian Indigo (navy); Charcoal
+  Emerald (PR #57) is on `main` — verify after rebase. **Guard blind spot:** 157
+  `text-white`/`bg-white`/`bg-black` literals bypass the shade-only regex; ~106 lines of dead
+  dark-mode CSS.
+- **Friction & psychology**: funnel drop-off, CTA clarity, **loading/empty/error states — P1:
+  41/68 data pages don't handle query-*error* (server failure renders a misleading "empty")**,
+  trust signals near sensitive asks, reassurance at anxiety moments, dashboard speed-to-value.
+  `PageShell` is at 7/99 adoption (40 pages hand-roll layout).
+- **Compliance rails on copy**: Reg Z trigger terms (flag to compliance-auditor), no consent
+  dark patterns (**audit: consent UX is exemplary — 0 pre-checked boxes**), Reg B denial tone.
+- **Builds on the standing system**: cross-reference `kb/ux-audit/page-audit.md` ids; use
+  `psychology-patterns.md` as the copy standard; `component-inventory.csv` for the census.
+- **Source docs**: `design_guidelines.md`, `kb/ux-audit/*`, landing-page research, design skills
+  under `.agents/skills/`.
 - **Owned checks**: `node scripts/design-token-guard.cjs` (via `npm run checkup`), preview
-  screenshots/inspects per surface group.
+  screenshots/inspects per surface group. **A11y:** 12/14 property `<img>` lack `alt`.

@@ -1,10 +1,14 @@
 # Feature Review Program — Charter
 
 **What this is:** the standing QA program that reviews every Homiquity feature against its
-intended use and verifies the end-to-end workflows function correctly. Nine domain teams
-(`DOMAINS.md`) + one workflow-verification pass (`WORKFLOWS.md`), all writing to one findings
-register (`FINDINGS.md`). Re-runnable after any significant change — the teams are durable
-agents in `.claude/agents/`.
+intended use and verifies the end-to-end workflows function correctly. **Thirteen domain teams
++ a cross-cutting UX lens** (`DOMAINS.md`) + one workflow-verification pass (`WORKFLOWS.md`) +
+documentation governance, all writing to one findings register (`FINDINGS.md`). Re-runnable
+after any significant change — the teams are durable agents in `.claude/agents/`.
+
+> **Verified census (supersedes "37/40/7"):** ~95 backend subsystems · 88 client pages · ~14
+> end-to-end workflows. The register was seeded 2026-07-08 from a 9-dimension audit — see
+> `FINDINGS.md`.
 
 ## The teams
 
@@ -15,6 +19,7 @@ agents in `.claude/agents/`.
 | `ux-reviewer` | Audits client surfaces: design-system uniformity, friction/psychology, copy rails |
 | `finding-verifier` | Adversarial skeptic — tries to refute every finding before it enters the register |
 | `compliance-auditor` | Verifies compliance-touching findings against `docs/fannie-mae/`, `docs/nmls/`, CFR |
+| `doc-governance-reviewer` | Audits the `.md` corpus vs the 4-point framework (prescriptive · Business-Intent · L1/L2/L3 · friction); flags stale/contradictory docs |
 
 ## Program rules (binding)
 
@@ -34,6 +39,31 @@ agents in `.claude/agents/`.
 6. **Cross-reference, don't duplicate.** `kb/ux-audit/page-audit.md` and `CTO_ROADMAP.md`
    already track known issues; findings that overlap must cite them. Known deliberate cuts
    (launch-sprint list, `ASSUMPTIONS.md`) are not defects.
+
+## Reality Map — read BEFORE reviewing (stops false-positive findings)
+
+The 2026-07-08 audit established these facts. A reviewer who files against them is filing a
+false positive:
+
+- **Dark-by-design locally (NOT bugs):** uploads (`PRIVATE_OBJECT_DIR`/GCS), live rates+AVM
+  (`RAPIDAPI_KEY`), Gemini extraction, email/SMS, Plaid link, Sentry, cron. Unset →
+  simulated/no-op/503 by design.
+- **Simulated vendors — determinism is NOT a defect:** DU, LPA, soft-pull, full-credit,
+  HouseCanary. Setting a real GSE key **intentionally throws** — that's a guardrail.
+- **The underwriting-engine trap:** `server/underwriting.ts` *looks* like the engine (header
+  says so) but is a superseded helper. The live path is `decisionEngine.ts → underwritingEngine.ts`.
+- **Decisioning is a server cascade** on `POST /api/loan-applications` (`finalizeIntake →
+  recalculateDecision → runInstantDecision`). The `instant-decision`/`calculate-*`/`advance-stage`
+  endpoints are dead-but-redundant — assert on cascade outputs, not those endpoints (N-002).
+- **~100 dead endpoints / 5 server-only subsystems** (Borrower Intelligence, Underwriting Rules,
+  Rate Sheets, Optimization, Market-data) — unshipped surface; don't review as features or write
+  tests against endpoints nothing calls. Decide wire/defer/delete per the dead-surface map.
+- **Security posture is STRONG** — no P0, no IDOR, PII-at-rest sound (N-001). Findings are P1/P2
+  hardening on §9 trigger surfaces.
+- **`grep-only` compliance tests give false confidence** — `complianceInvariants.test.ts` (F-014)
+  executes nothing. A green run there ≠ correct regulated math.
+- **Branch note:** this branch is Obsidian Indigo (navy); Charcoal Emerald (PR #57) is on `main`
+  — the branch trails `main` (also 2 migrations behind). Rebase before treating as a baseline.
 
 ## Severity scale
 

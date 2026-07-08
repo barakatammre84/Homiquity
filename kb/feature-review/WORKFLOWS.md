@@ -1,6 +1,6 @@
 # Feature Review — End-to-End Workflow Scripts
 
-The seven end-to-end workflows that must function correctly, scripted as
+The core end-to-end workflows that must function correctly, scripted as
 `step → action → expected observable` for the `workflow-verifier` agent. Verified live against
 the worktree dev server (port 5002). Program rules: `CHARTER.md`.
 
@@ -8,17 +8,25 @@ Steps marked **[gate]** are negative checks: the workflow must *refuse* correctl
 Vendor steps run against the deterministic simulations (flagged in code) — a simulated response
 is expected locally; an unhandled error is a finding.
 
+> **Wiring status (2026-07-08 audit):** the census found **~14 end-to-end workflows total — 8
+> fully wired, 4 partial, 2 broken-from-UI.** The 7 scripted below are the core lending flows;
+> the additional ~7 (public acquisition funnel, AI-Coach package, agent/broker referral,
+> analytics feedback loop, etc.) are lower-priority and scripted on demand. The **Wiring** column
+> records the audit verdict so the verifier knows which flows it can prove live vs which are
+> broken (a broken flow is a finding to confirm, not a "verification").
+
 Status ledger:
 
-| # | Workflow | Last run | Verdict |
-|---|---|---|---|
-| 1 | Pre-approval / instant decision | — | not yet run |
-| 2 | Intake → AUS → lender package → wholesale submission | — | not yet run |
-| 3 | GSE loan-delivery readiness | — | not yet run |
-| 4 | Document upload → extraction → qualification | — | not yet run |
-| 5 | Credit consent → pull → denial → adverse action | — | not yet run |
-| 6 | Verification-driven provenance promotion | — | not yet run |
-| 7 | Lifecycle / evergreen re-engagement | — | not yet run |
+| # | Workflow | Wiring (audit) | Last run | Verdict |
+|---|---|---|---|---|
+| 1 | Pre-approval / instant decision | FULLY (via cascade, N-002) | — | not yet run |
+| 2 | Intake → AUS → lender package → wholesale submission | PARTIAL — AUS leg broken-from-UI (F-003); wholesale submission wired | — | not yet run |
+| 3 | GSE loan-delivery readiness | FULLY — **but 2 P0 export bugs (F-018/F-019)** | — | not yet run |
+| 4 | Document upload → extraction → qualification | FULLY | — | not yet run |
+| 5 | Credit consent → pull → denial → adverse action | PARTIAL — adverse-action *generation* has no UI trigger (F-004) | — | not yet run |
+| 6 | Verification-driven provenance promotion | FULLY (via cascade) | — | not yet run |
+| 7 | Lifecycle / evergreen re-engagement | PARTIAL — lifecycle sweep is cron-only | — | not yet run |
+| + | Analytics feedback loop (outcomes → predictive) | **BROKEN — `loanOutcomes` never written (F-002)** | — | not yet run |
 
 > **Before first run:** the verifier expands each outline below into exact route + payload
 > steps by reading the client code (the UI's actual requests are the spec) and records the
