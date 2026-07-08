@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, FileText, Search, Shield, ClipboardCheck, Key, Banknote } from "lucide-react";
+import { CheckCircle2, Circle, FileText, Search, Shield, ClipboardCheck, Key, FileSignature, Banknote } from "lucide-react";
 
 const JOURNEY_STEPS = [
   { 
@@ -38,11 +38,22 @@ const JOURNEY_STEPS = [
     label: "Clear to Close",
     shortLabel: "Clear to Close",
     icon: Key,
-    statuses: ["clear_to_close", "closing"],
+    statuses: ["clear_to_close"],
     estimate: "1-2 days",
   },
-  { 
-    id: "funded", 
+  {
+    id: "closing",
+    label: "Signing",
+    shortLabel: "Signing",
+    icon: FileSignature,
+    // The borrower is at the closing table signing docs — a distinct milestone
+    // from Clear to Close (the underwriter sign-off that precedes it). The
+    // backend tracks this as its own `closing` status; the tracker must too.
+    statuses: ["closing"],
+    estimate: "1-3 days",
+  },
+  {
+    id: "funded",
     label: "Funded", 
     shortLabel: "Funded",
     icon: Banknote,
