@@ -5,8 +5,8 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 /**
- * Obsidian Indigo atoms — hierarchy through value, not hue:
- *  default   = Layer 2: Obsidian fill (hover deepens via the elevate system)
+ * Charcoal Emerald atoms — hierarchy through value, not hue:
+ *  default   = Layer 2: emerald conversion fill (hover deepens via the elevate system)
  *  secondary = frosted chip on the ramp
  *  outline   = Layer 1: white + hairline (elevate supplies the hover tint)
  *  destructive = semantic pop (danger red, outside the ramp)

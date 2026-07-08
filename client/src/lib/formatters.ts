@@ -130,7 +130,7 @@ export function getPresenceLabel(status: string): string {
 }
 
 export function getStatusColor(status: string): string {
-  // Obsidian Indigo: in-flight states stay on the monochromatic ramp;
+  // Charcoal Emerald: in-flight states stay on the monochromatic ramp;
   // status-* pop colors are reserved for approval/denial semantics.
   const colors: Record<string, string> = {
     draft: "bg-muted text-muted-foreground",
