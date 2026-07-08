@@ -44,6 +44,29 @@ function baseDto(overrides: Partial<MISMOLoanDTO> = {}): MISMOLoanDTO {
   };
 }
 
+describe("LoanPurposeType — valid ULDD enum (F-019)", () => {
+  // ULDD LoanPurposeTypeEnumerated = {MortgageModification, Other, Purchase, Refinance}.
+  // The exporter previously emitted CashOutRefinance / NoCashOutRefinance / ConstructionToPermanent,
+  // which are out-of-enum and rejected at GSE ingestion.
+  it("emits Refinance (not CashOutRefinance) for a cash-out refinance", () => {
+    const xml = generateMISMO34XML(baseDto({ application: { loanPurpose: "cash_out_refinance" } as any }));
+    expect(xml).toContain("<LoanPurposeType>Refinance</LoanPurposeType>");
+    expect(xml).not.toContain("CashOutRefinance");
+    expect(xml).not.toContain("NoCashOutRefinance");
+  });
+
+  it("emits Refinance for a no-cash-out refinance", () => {
+    const xml = generateMISMO34XML(baseDto({ application: { loanPurpose: "no_cash_out_refinance" } as any }));
+    expect(xml).toContain("<LoanPurposeType>Refinance</LoanPurposeType>");
+  });
+
+  it("fails loud on construction (U-7) rather than emitting an out-of-enum value", () => {
+    expect(() =>
+      generateMISMO34XML(baseDto({ application: { loanPurpose: "construction" } as any })),
+    ).toThrow(/construction loan purpose is unmapped/);
+  });
+});
+
 describe("ConstructionMethodType (Fix 5)", () => {
   it("emits SiteBuilt for a standard property, never the raw propertyType", () => {
     const xml = generateMISMO34XML(baseDto());
