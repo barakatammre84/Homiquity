@@ -143,7 +143,7 @@ app won't boot or a core feature dies without it.
 |----------|---------|
 | `GEMINI_API_KEY` (or `AI_INTEGRATIONS_GEMINI_API_KEY`) | Document AI extraction |
 | `AI_INTEGRATIONS_OPENAI_API_KEY` / `AI_INTEGRATIONS_OPENAI_BASE_URL` | AI Coach |
-| `AI_GATEWAY_PROVIDER`, `AI_GATEWAY_GEMINI_MODEL`, `AI_GATEWAY_CLAUDE_MODEL`, `ANTHROPIC_API_KEY` | Pluggable AI gateway (`server/services/aiGateway.ts`) |
+| `EXTRACTION_SIMULATE` | Set `true` to run deterministic simulated extraction with no Gemini key (dev/test) |
 | `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` | Income/employment/asset verification |
 | `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` | Document storage (GCS) |
 | `GOOGLE_MAPS_API_KEY` | Address autocomplete/geocoding/maps |

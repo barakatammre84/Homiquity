@@ -10,7 +10,7 @@ just supporting detail.
   2. Pre-approval form     →  loan_applications + URLA tables
      (conversational 1003)
   3. Coach conversation    →  coachingService (OpenAI) → structured intake
-  4. Document upload       →  GCS (signed URL) → documentEngine
+  4. Document upload       →  GCS (signed URL) → extractionService
                                → Gemini extraction → extraction results
                                → documentConfidence scoring
   5. Plaid link            →  verification.ts → income/employment/asset data
@@ -56,9 +56,9 @@ just supporting detail.
 ### 4. Documents
 - Client asks `server/routes/documents.ts` for an **upload URL** → uploads the
   file **directly to GCS** (the server never proxies bytes).
-- `server/services/documentEngine.ts` classifies; `server/extractionService.ts`
-  runs OCR/AI extraction (paystubs, W-2s, bank statements, tax returns);
-  `documentConfidence.ts` scores how trustworthy the extraction is.
+- `server/extractionService.ts` runs OCR/AI extraction (paystubs, W-2s, bank
+  statements, tax returns); `server/services/documentConfidence.ts` scores how
+  trustworthy the extraction is.
 
 ### 5. Verification
 - `server/plaid.ts` + `server/services/verification.ts`: borrower links
