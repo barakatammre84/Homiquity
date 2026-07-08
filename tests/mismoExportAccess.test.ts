@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { BASE_URL } from "./setup";
 
 // ---------------------------------------------------------------------------
-// H8 regression (kb/lo-audit/2026-07-04.md): the MISMO 3.4 export embeds the
+// H8 regression (knowledge-base/logs/lo-audit/2026-07-04.md): the MISMO 3.4 export embeds the
 // full SSN (TaxpayerIdentifierValue) and DOB, so the route must be internal-
 // staff-only. broker/lender are external partners and must get 403 even when
 // authenticated — GSE delivery is not a partner-facing action.

@@ -9,7 +9,7 @@ import { trackIntent } from "./intentTracker";
  * intent_events (eventType "friction_event", category "friction") with a
  * stable point name, so the daily guardian can aggregate the last N days
  * (GET /api/jobs/friction-summary) and turn recurring walls into scenario
- * proposals or UX fixes in kb/UNDERWRITING_SCENARIOS.md.
+ * proposals or UX fixes in knowledge-base/compliance/UNDERWRITING_SCENARIOS.md.
  *
  * Friction data NEVER changes behavior directly — it produces proposals that
  * go through the same cited, tested pipeline as every other change.

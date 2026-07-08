@@ -4,10 +4,10 @@
 > It predates the Vercel migration, versioned migrations, password auth, and the launch
 > sprint: it instructs `db:push` against production (now forbidden — see CLAUDE.md),
 > describes Replit Auth/OIDC and Replit-checkpoint rollback (superseded by
-> [ROLLBACK.md](../../ROLLBACK.md)), and its "80% ready" verdict predates the real launch
+> [ROLLBACK.md](../runbooks/ROLLBACK.md)), and its "80% ready" verdict predates the real launch
 > plan. **Current launch readiness lives in the 🚀 Launch sprint section of
 > [CTO_ROADMAP.md](../../CTO_ROADMAP.md)**; the fact/assumption register is
-> [ASSUMPTIONS.md](../../ASSUMPTIONS.md). Retained for history only.
+> [ASSUMPTIONS.md](../governance/ASSUMPTIONS.md). Retained for history only.
 
 Generated: February 15, 2026
 Application: Homiquity Mortgage Lending Platform

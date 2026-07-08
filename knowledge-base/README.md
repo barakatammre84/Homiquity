@@ -57,7 +57,7 @@ doc-drift bug to fix):
 - [research/my-research/](research/my-research/) — scratch (nothing load-bearing).
 - [research/gtm/](research/gtm/) — GTM battlecards + competitive briefs.
 
-### Archive — obsolete, quarantined · [`archive/`](archive/)
+### Archive — obsolete, quarantined · [`archive/`](./archive/)
 Superseded docs kept for provenance. Never act on these.
 
 ## The rule (continuous update)

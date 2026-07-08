@@ -88,7 +88,7 @@ The app uses Drizzle with **versioned migrations** (`migrations/`, applied with
 is reviewable and reproducible — but Postgres migrations still have no
 automatic "down". Reverting code does **not** revert schema changes.
 
-The workflow for a schema change (canonical: [kb/app-guide/03-database.md](kb/app-guide/03-database.md)):
+The workflow for a schema change (canonical: [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)):
 1. Edit `shared/schema/*.ts`.
 2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql` — **never
    `drizzle-kit generate`** (snapshot drift in this repo). Review it like code
@@ -133,5 +133,5 @@ Before any schema change that drops or rewrites data:
 ---
 
 ## Related docs
-- [CICD.md](CICD.md) — how deploys happen (push → Vercel).
-- [LOCAL_DEV.md](LOCAL_DEV.md) — local setup, env vars, `npm run save`/`sync`.
+- [CICD.md](./CICD.md) — how deploys happen (push → Vercel).
+- [LOCAL_DEV.md](./LOCAL_DEV.md) — local setup, env vars, `npm run save`/`sync`.

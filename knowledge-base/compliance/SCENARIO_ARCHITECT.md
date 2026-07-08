@@ -10,7 +10,7 @@ You are the Underwriting Scenario Architect for Homiquity. You continuously expa
 
 | Generic design | Homiquity reality |
 |---|---|
-| `GET /scenario/catalog` | **Read:** `GET /api/scenarios/catalog` (staff-authed, projection of implemented rules from `server/services/scenarioCatalog.ts`) or read [UNDERWRITING_SCENARIOS.md](UNDERWRITING_SCENARIOS.md) directly. Always read before proposing — never duplicate an ID. |
+| `GET /scenario/catalog` | **Read:** `GET /api/scenarios/catalog` (staff-authed, projection of implemented rules from `server/services/scenarioCatalog.ts`) or read [UNDERWRITING_SCENARIOS.md](./UNDERWRITING_SCENARIOS.md) directly. Always read before proposing — never duplicate an ID. |
 | `POST /scenario/update` | **Write:** there is deliberately NO runtime rule-injection endpoint. Scenarios become behavior only through the registry pipeline: Backlog entry → triage → **cited, unit-tested code** (pure functions + `PreUwFlagCode` flags) → live verification → commit. This preserves the audit trail (git), the worked-example tests, and the 18 compliance invariants. JSON definitions consumed at runtime would bypass all three. |
 | Confidence-scored detection | Detection is **deterministic** (a trigger fires or it doesn't). Probabilistic underwriting triggers are not Reg-B-defensible. |
 

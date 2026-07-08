@@ -38,7 +38,7 @@ gets its own preview deployment automatically.
 
 ## Reverting
 
-Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
+Full detail in [ROLLBACK.md](./ROLLBACK.md). Short version:
 
 - **Prod is broken right now** → Vercel dashboard → Deployments → pick the last
   good one → **Promote to Production**. Instant, no rebuild.
@@ -46,8 +46,8 @@ Full detail in [ROLLBACK.md](ROLLBACK.md). Short version:
   `reset --hard` + force-push).
 - **Database** → schema changes ship as **hand-authored** versioned migration
   files in `migrations/`, applied with `npm run db:migrate` (**never `db:push`**,
-  **never `drizzle-kit generate`** — see [ROLLBACK.md](ROLLBACK.md) §3 and
-  [kb/app-guide/03-database.md](kb/app-guide/03-database.md)). Still snapshot/branch
+  **never `drizzle-kit generate`** — see [ROLLBACK.md](./ROLLBACK.md) §3 and
+  [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)). Still snapshot/branch
   in Neon before destructive schema changes; migrations have no automatic "down".
 
 ## How the Vercel deploy works
@@ -132,13 +132,13 @@ protection — but that's a deliberate future choice, not the current setup.
 
 Every push to `main` (it deploys) and every action against the production database or its
 env vars gets a row here **in the same session** — newest first
-([TEAM_PRACTICES](kb/TEAM_PRACTICES.md) §6). Never rewrite or delete rows; corrections get a
+([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6). Never rewrite or delete rows; corrections get a
 new row. Each row: what shipped · prod DB/env actions (and how) · validation evidence ·
 rollback pointer.
 
 | Date | Change | Prod DB / env | Validation | Rollback |
 |---|---|---|---|---|
-| 2026-07-05 | Close-out push `049a7fc→809eb7c`: PR #52 (docs SDLC) + PR #51 (LS-10 slice 2 — lender MISMO package assembly). Includes this ledger row (docs follow-up). PR #53/#54 (overlapping pre-launch gates) held for coordination. | ⛔ **Migration `0009` (lender_submissions package columns) PENDING on prod** — founder-supervised `npm run db:migrate`; idempotent `ADD COLUMN IF NOT EXISTS`, and the write path is F1-gated so not urgent, but must precede any real lender submission | 656 unit + 73 integration green pre-push; server boot + `/api/health` 200 on :5002 | [ROLLBACK.md](ROLLBACK.md) §1; `git revert -m 1 809eb7c` isolates the two PRs |
-| 2026-07-04 (evening) | Launch-integration batch: 13 PRs (#37, #39–#50) merged to `main` in one founder-authorized push | none (migrations 0005–0008 already applied) | 647 unit + 73 integration tests green pre-push | [ROLLBACK.md](ROLLBACK.md) §1–2 |
-| 2026-07-04 | PR #38 — GSE delivery engines (SFC/QM/edit mirror), broker submission workflow, lender submissions, dual-AUS | Migrations 0005–0008 applied via direct `pg` client + manual journal insert (Neon pooler breaks `npm run db:migrate` — see the known-traps index in [TEAM_PRACTICES](kb/TEAM_PRACTICES.md) §5) | Deploy verified live post-migration | [ROLLBACK.md](ROLLBACK.md) §1, §3 |
-| ≤ 2026-07-04 | Baseline — everything before this ledger existed: migrations `0000`–`0004` and all prior deploys | Verified applied/live in the 2026-07-04 source-of-truth audit | [ASSUMPTIONS.md](ASSUMPTIONS.md) §4 | — |
+| 2026-07-05 | Close-out push `049a7fc→809eb7c`: PR #52 (docs SDLC) + PR #51 (LS-10 slice 2 — lender MISMO package assembly). Includes this ledger row (docs follow-up). PR #53/#54 (overlapping pre-launch gates) held for coordination. | ⛔ **Migration `0009` (lender_submissions package columns) PENDING on prod** — founder-supervised `npm run db:migrate`; idempotent `ADD COLUMN IF NOT EXISTS`, and the write path is F1-gated so not urgent, but must precede any real lender submission | 656 unit + 73 integration green pre-push; server boot + `/api/health` 200 on :5002 | [ROLLBACK.md](./ROLLBACK.md) §1; `git revert -m 1 809eb7c` isolates the two PRs |
+| 2026-07-04 (evening) | Launch-integration batch: 13 PRs (#37, #39–#50) merged to `main` in one founder-authorized push | none (migrations 0005–0008 already applied) | 647 unit + 73 integration tests green pre-push | [ROLLBACK.md](./ROLLBACK.md) §1–2 |
+| 2026-07-04 | PR #38 — GSE delivery engines (SFC/QM/edit mirror), broker submission workflow, lender submissions, dual-AUS | Migrations 0005–0008 applied via direct `pg` client + manual journal insert (Neon pooler breaks `npm run db:migrate` — see the known-traps index in [TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5) | Deploy verified live post-migration | [ROLLBACK.md](./ROLLBACK.md) §1, §3 |
+| ≤ 2026-07-04 | Baseline — everything before this ledger existed: migrations `0000`–`0004` and all prior deploys | Verified applied/live in the 2026-07-04 source-of-truth audit | [ASSUMPTIONS.md](../governance/ASSUMPTIONS.md) §4 | — |

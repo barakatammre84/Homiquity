@@ -6,9 +6,9 @@ Three tiers, two automated today:
 
 ## Tier 1 — The regulatory ledger (automated, live)
 
-[`kb/regulatory-ledger.json`](regulatory-ledger.json) holds one entry per statutory constant in the codebase: the rule, its value, the exact citation, the **official source URL**, the code location, `lastVerified` date, and a review interval. `scripts/regulatory-freshness.cjs` runs inside `npm run checkup` (and therefore the daily guardian) and **fails** when any entry is overdue for re-verification or its code reference no longer exists.
+[`kb/regulatory-ledger.json`](../../data/regulatory/regulatory-ledger.json) holds one entry per statutory constant in the codebase: the rule, its value, the exact citation, the **official source URL**, the code location, `lastVerified` date, and a review interval. `scripts/regulatory-freshness.cjs` runs inside `npm run checkup` (and therefore the daily guardian) and **fails** when any entry is overdue for re-verification or its code reference no longer exists.
 
-**The human loop:** when a check fails, open the entry's `sourceUrl`, confirm the value against the official text, then update `lastVerified` (and the value + a `Correction to S-XX` in the [scenarios registry](UNDERWRITING_SCENARIOS.md) if the guideline changed). Values never change without a citation.
+**The human loop:** when a check fails, open the entry's `sourceUrl`, confirm the value against the official text, then update `lastVerified` (and the value + a `Correction to S-XX` in the [scenarios registry](./UNDERWRITING_SCENARIOS.md) if the guideline changed). Values never change without a citation.
 
 The ledger already surfaces two genuine review items it exists to catch:
 - `platform-dti-ceiling-43`: the 43% flag threshold references the repealed Appendix Q QM standard; DU approves up to 50% — decide whether to align.

@@ -9,7 +9,7 @@ cleanly with no uncited rules, no broken validation, and nothing aging past 48h.
 ⛔ = gated on F1 (NMLS licensing, currently PENDING in `server/config/company.ts`) — do not act
 on these until licensing clears.
 
-**Target-5 desk research gaps** (new file: [kb/my-research/wholesale-lender-shortlist-2026-07-04.md](../my-research/wholesale-lender-shortlist-2026-07-04.md)):
+**Target-5 desk research gaps** (new file: [kb/my-research/wholesale-lender-shortlist-2026-07-04.md](../../research/my-research/wholesale-lender-shortlist-2026-07-04.md)):
 - [ ] Manually read Plaza Home Mortgage's [Wholesale Broker Guide PDF](https://www.plazahomemortgage.com/documents/becomeanapproved/wholesale-broker-guide.pdf) — automated fetch couldn't parse its stream encoding; it's the most detailed public doc of the five and likely has the actual net-worth/bond/FHA-rider numbers.
 - [ ] Confirm whether UWM (BOLT) and Rocket Pro TPO pricing is consumable by a Lender Price/Mortech PPE feed or is portal-only — affects F11 PPE middleware scope.
 - [ ] Angel Oak and Newrez have no public approval-checklist detail; automated search hit a wall on both. Lowest priority unless non-QM becomes a near-term product goal.
@@ -40,18 +40,18 @@ across the three standing acceptance-gate files pass.
 ## Checks run → results → evidence
 
 **1. F1 gate check**
-- `grep -n -i "nmls\|licens" server/config/company.ts` → `nmlsId: "PENDING"` ([server/config/company.ts:4](../../server/config/company.ts)). Unchanged from prior runs — no correction needed.
+- `grep -n -i "nmls\|licens" server/config/company.ts` → `nmlsId: "PENDING"` ([server/config/company.ts:4](../../../server/config/company.ts)). Unchanged from prior runs — no correction needed.
 
 **2. Target-5 pipeline**
-- `ls kb/my-research/` before this run: only `README.md`, a `.docx`, and a screenshots folder — no lender shortlist existed. Created [kb/my-research/wholesale-lender-shortlist-2026-07-04.md](../my-research/wholesale-lender-shortlist-2026-07-04.md) covering 5 lenders with per-lender "what we have / what's missing" and a founder checklist. Desk research only (WebSearch/WebFetch against public lender sites and trade press) — zero outbound contact.
+- `ls kb/my-research/` before this run: only `README.md`, a `.docx`, and a screenshots folder — no lender shortlist existed. Created [kb/my-research/wholesale-lender-shortlist-2026-07-04.md](../../research/my-research/wholesale-lender-shortlist-2026-07-04.md) covering 5 lenders with per-lender "what we have / what's missing" and a founder checklist. Desk research only (WebSearch/WebFetch against public lender sites and trade press) — zero outbound contact.
 
 **3. Scenario translation**
 - `git log -p --since="1 day ago" -- kb/UNDERWRITING_SCENARIOS.md` → one commit (`4c1f0bb`, "fix S-06 commit reference after rebase") — a housekeeping sha correction, not a new quirk. No unprocessed lender-specific rule found.
-- Confirmed S-06 (multi-unit subject property rental income) is fully implemented per the registry, and S-07 (rental income conversion) is next in the backlog, already cited (Fannie Mae Selling Guide B3-3.1-08) — but its own spec notes intake doesn't yet collect the property-disposition field it needs ([kb/UNDERWRITING_SCENARIOS.md:132](../UNDERWRITING_SCENARIOS.md)), so it's a schema+UI change, not a same-day isolated-worktree implement. Left in the backlog for the guardian loop, per the task's "small and unambiguous" bar.
+- Confirmed S-06 (multi-unit subject property rental income) is fully implemented per the registry, and S-07 (rental income conversion) is next in the backlog, already cited (Fannie Mae Selling Guide B3-3.1-08) — but its own spec notes intake doesn't yet collect the property-disposition field it needs ([kb/UNDERWRITING_SCENARIOS.md:132](../../compliance/UNDERWRITING_SCENARIOS.md)), so it's a schema+UI change, not a same-day isolated-worktree implement. Left in the backlog for the guardian loop, per the task's "small and unambiguous" bar.
 
 **4. MISMO export gate**
 - Acceptance-gate tests: `npx vitest run tests/mismoExport.test.ts tests/mismoValidation.test.ts tests/mismoMersMin.test.ts` → **3 files, 105 tests, all passed.**
-- Generated a dummy-borrower MISMO 3.4 XML via `generateMISMO34XML` ([server/mismo.ts:915](../../server/mismo.ts)) and validated it via `validateULDDCompliance` ([server/mismo.ts:1071](../../server/mismo.ts)):
+- Generated a dummy-borrower MISMO 3.4 XML via `generateMISMO34XML` ([server/mismo.ts:915](../../../server/mismo.ts)) and validated it via `validateULDDCompliance` ([server/mismo.ts:1071](../../../server/mismo.ts)):
   - `DataVersionIdentifier` confirmed `3.4.0` (deliberate — matches doctrine, not chasing 3.6).
   - Validation result: `valid: true`, `errors: []`, `warnings: ["MERS Org ID is not configured; a MERS MIN cannot be generated for loan delivery"]`, `phase5Ready: false`.
   - The one warning is expected and correct: `mersOrgId` is also `"PENDING"` in `server/config/company.ts` — same F1-adjacent gate, not a bug.

@@ -9,7 +9,7 @@ LAUNCH DISTANCE: sprint 5/10 · founder blockers 5 open · prod ✓ · domain �
 ```
 Today's single most important unblock: **LS-2 ops env vars** (SendGrid/Sentry/GCS/CRON_SECRET) — it's the cheapest founder task left (~1 hr) and it's what's silently keeping production email, error visibility, and durable uploads off despite the code being merged.
 
-**(a) Sprint ledger** — 5/10 checked in the "🚀 Launch sprint" section of [CTO_ROADMAP.md](../../CTO_ROADMAP.md):
+**(a) Sprint ledger** — 5/10 checked in the "🚀 Launch sprint" section of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md):
 - [ ] LS-1 NMLS licensing + MERS org ID — **founder**
 - [ ] LS-2 Ops env vars in Vercel — **founder**
 - [x] LS-3 PR #39 merged
@@ -46,13 +46,13 @@ Both gates (tsc, unit tests) pass clean and `npm audit` is still 0/0/0/0 across 
 2. **Security quick-scan (deltas vs 2026-07-04-security.md baseline):**
    - `npm audit --production --json` → `{info:0, low:0, moderate:0, high:0, critical:0}` across 775 total deps (605 prod) — same as yesterday's baseline, no new criticals/highs.
    - Secrets scan: `git log --since="24 hours ago" -p | grep -inE 'sk-|api_key=|password=|BEGIN PRIVATE KEY|postgres://...'` → no output, no hits. (No commits in the window at all.)
-   - PII-in-logs: `grep -rnE "console\.(log|error|warn|info)" server/` filtered for ssn/dob/dateOfBirth/creditScore/account-number → 6 hits, all in [server/scripts/backfillSsnEncryption.ts](../../server/scripts/backfillSsnEncryption.ts) (logs row counts/ids/applicationId, never the plaintext SSN value) and the previously-cleared [server/routes/borrower.ts:495](../../server/routes/borrower.ts:495) (`console.error("SSN reveal error:", error)` — logs the caught exception, not the `ssn` variable). No leak.
+   - PII-in-logs: `grep -rnE "console\.(log|error|warn|info)" server/` filtered for ssn/dob/dateOfBirth/creditScore/account-number → 6 hits, all in [server/scripts/backfillSsnEncryption.ts](../../../server/scripts/backfillSsnEncryption.ts) (logs row counts/ids/applicationId, never the plaintext SSN value) and the previously-cleared [server/routes/borrower.ts:495](../../../server/routes/borrower.ts:495) (`console.error("SSN reveal error:", error)` — logs the caught exception, not the `ssn` variable). No leak.
    - New routes: `git log --since="24 hours ago" --stat -- server/routes/` → empty. No route-guard delta to check.
 
 3. **Adverse-action seams (static read):**
-   - Staff status→denied: [server/routes/lending.ts:1395](../../server/routes/lending.ts:1395) calls `creditService.ensureAdverseActionForDenial` before the status flips (422 if it fails); [server/routes/lending.ts:1474](../../server/routes/lending.ts:1474) fires `sendNotificationEmail({type: "application_denied", ...})`.
-   - Direct AAN generation: [server/routes/compliance.ts:866](../../server/routes/compliance.ts:866) `generateAdverseAction`, logged via `logAudit` at line ~878, borrower notified via `createNotification` + `sendNotificationEmail({type: "application_denied"})` at compliance.ts:895.
-   - Reasons are deterministic: `HMDA_TO_ADVERSE_ACTION_REASON` mapping in [server/services/creditService.ts:1059](../../server/services/creditService.ts:1059); no AI-generated language anywhere in the path.
+   - Staff status→denied: [server/routes/lending.ts:1395](../../../server/routes/lending.ts:1395) calls `creditService.ensureAdverseActionForDenial` before the status flips (422 if it fails); [server/routes/lending.ts:1474](../../../server/routes/lending.ts:1474) fires `sendNotificationEmail({type: "application_denied", ...})`.
+   - Direct AAN generation: [server/routes/compliance.ts:866](../../../server/routes/compliance.ts:866) `generateAdverseAction`, logged via `logAudit` at line ~878, borrower notified via `createNotification` + `sendNotificationEmail({type: "application_denied"})` at compliance.ts:895.
+   - Reasons are deterministic: `HMDA_TO_ADVERSE_ACTION_REASON` mapping in [server/services/creditService.ts:1059](../../../server/services/creditService.ts:1059); no AI-generated language anywhere in the path.
    - Mondays-only live-denial test: **skipped** — today is Sunday (verified via `date`).
 
 4. **Regulatory freshness:** `npm run checkup` → `PASS regulatory ledger fresh`. Overall checkup script reported `FAIL` only on an unrelated check — `FAIL no orphaned files`: `server/scripts/ingestFannieMaePerformance.ts` and `server/scripts/ingestHmdaCompetitors.ts` are never imported. `git log --oneline -- <those files>` traces them to `fac55ba` ("checkpoint: WIP market-data services"), pre-existing and unrelated to today's window or to regulatory freshness — not a compliance gap, not ticketed.

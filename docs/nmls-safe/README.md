@@ -21,7 +21,7 @@ sponsorship, renewal, unique-identifier and disclosure obligations — lives at
 1. **Platform compliance checklist** — the SAFE outline's federal-law section is a
    de-facto enumeration of every consumer-protection regime a mortgage platform must
    respect. The honest map of outline topic → what Homiquity implements (or deliberately
-   defers) is maintained at [kb/SAFE_MLO_COMPLIANCE_MAP.md](../../kb/SAFE_MLO_COMPLIANCE_MAP.md).
+   defers) is maintained at [kb/SAFE_MLO_COMPLIANCE_MAP.md](../../knowledge-base/compliance/SAFE_MLO_COMPLIANCE_MAP.md).
 2. **Founder licensing prep** — the test outline + guidebook are the primary study/process
    references for F1 (company + MLO licensing), which the founder is handling personally.
 3. **Reg H / unique-identifier plumbing** — the Uniform State Content section codifies the

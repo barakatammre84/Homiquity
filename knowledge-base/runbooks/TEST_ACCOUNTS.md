@@ -1,7 +1,7 @@
 # Test Accounts (dev only)
 
 Ten role-based test accounts for development. Source of truth is `setupDevTestLogin` in
-[server/auth.ts](server/auth.ts) — if this table and the code disagree, the code wins.
+[server/auth.ts](../../server/auth.ts) — if this table and the code disagree, the code wins.
 
 **Password:** all accounts share the single password in the `DEV_TEST_PASSWORD` env var
 (set it in your `.env`; see LOCAL_DEV.md). Credentials are deliberately **not** stored in

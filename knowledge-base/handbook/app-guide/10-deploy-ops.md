@@ -1,7 +1,7 @@
 # 10 — Deploy & Operations
 
-The authoritative docs are [CICD.md](../../CICD.md) (deploy) and
-[ROLLBACK.md](../../ROLLBACK.md) (revert). This page is the operator's summary.
+The authoritative docs are [CICD.md](../../runbooks/CICD.md) (deploy) and
+[ROLLBACK.md](../../runbooks/ROLLBACK.md) (revert). This page is the operator's summary.
 
 ## The flow (deliberately simple — no CI gates)
 
@@ -18,7 +18,7 @@ Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
 - **Client**: `npm run vercel-build` (= `vite build`) → `dist/public`, served
   from Vercel's CDN.
 - **API**: every `/api/*` request invokes the serverless function
-  [`api/index.ts`](../../api/index.ts), which builds the Express app once per
+  [`api/index.ts`](../../../api/index.ts), which builds the Express app once per
   warm instance via `createApp()` (no `listen()`).
 - **Routing** (`vercel.json` rewrites): filesystem first (static assets), then
   `/api/(.*)` → the function, then everything → `index.html` (SPA fallback).
@@ -54,8 +54,8 @@ Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
   `migrations/00NN_*.sql` via a direct `pg` client (the Neon pooler breaks
   `db:migrate` against prod), then insert the `drizzle.__drizzle_migrations`
   journal row manually and verify it landed. Snapshot/branch Neon first if the
-  change is destructive. Full recipe: [03-database.md](03-database.md); ledger it
-  in [CICD.md](../../CICD.md).
+  change is destructive. Full recipe: [03-database.md](./03-database.md); ledger it
+  in [CICD.md](../../runbooks/CICD.md).
 - **Seeding**: happens automatically at boot, idempotent (existence-checked).
 
 ## Serverless caveats (accepted trade-offs, revisit as traffic grows)

@@ -22,14 +22,14 @@ The routine ("UX daily loop") does the following each run:
 
 | File | What it is | Consumer |
 |---|---|---|
-| [exec-summary.md](exec-summary.md) | Top 5 UX risks, top 5 fixes, daily log | Founder/CTO |
-| [page-audit.md](page-audit.md) | Page-by-page audit: status, top issues, severity | Designers/devs |
-| [component-inventory.csv](component-inventory.csv) | Component census with palette status | Storybook import |
-| [design-tokens.json](design-tokens.json) | Color/type/spacing/radius/elevation/z-index tokens | Design tools, CI |
-| [workflows.md](workflows.md) | Borrower E2E map + ops workflow with gates/handoffs | PM/eng |
-| [psychology-patterns.md](psychology-patterns.md) | Trust/completion patterns with exact copy | Devs (paste-ready) |
-| [analytics-plan.md](analytics-plan.md) | Event schema, funnel metrics, 3 A/B tests | Devs/analytics |
-| [ux-roadmap.md](ux-roadmap.md) | Prioritized backlog, effort, acceptance criteria | Sprint planning |
+| [exec-summary.md](./exec-summary.md) | Top 5 UX risks, top 5 fixes, daily log | Founder/CTO |
+| [page-audit.md](./page-audit.md) | Page-by-page audit: status, top issues, severity | Designers/devs |
+| [component-inventory.csv](./component-inventory.csv) | Component census with palette status | Storybook import |
+| [design-tokens.json](./design-tokens.json) | Color/type/spacing/radius/elevation/z-index tokens | Design tools, CI |
+| [workflows.md](./workflows.md) | Borrower E2E map + ops workflow with gates/handoffs | PM/eng |
+| [psychology-patterns.md](./psychology-patterns.md) | Trust/completion patterns with exact copy | Devs (paste-ready) |
+| [analytics-plan.md](./analytics-plan.md) | Event schema, funnel metrics, 3 A/B tests | Devs/analytics |
+| [ux-roadmap.md](./ux-roadmap.md) | Prioritized backlog, effort, acceptance criteria | Sprint planning |
 
 ## Ground rules (inherited from the codebase)
 

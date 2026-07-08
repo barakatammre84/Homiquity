@@ -12,7 +12,7 @@
  *
  * On F1 day this flips together with (a) the real NMLS id in
  * shared/companyIdentity.ts and (b) the server PRELAUNCH_GATED env var. See
- * kb/ARMED_LAUNCH_CHARTER_2026-07-07.md.
+ * knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md.
  */
 export const PRELAUNCH_GATED: boolean =
   import.meta.env.VITE_PRELAUNCH_GATED === "true" ||

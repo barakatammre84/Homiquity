@@ -2,7 +2,7 @@
 
 **Audience:** every engineer working on this codebase.
 **Purpose:** one document that tells you where code lives, how the four high-stakes lending workflows are wired, the database rules we follow, where the compliance guardrails are (and where they are still missing), and how to be productive on day one.
-**Deeper dives:** the [`kb/app-guide/`](kb/app-guide/) handbook covers each subsystem in more detail. This playbook is the map; the handbook is the terrain.
+**Deeper dives:** the [`kb/app-guide/`](./app-guide/) handbook covers each subsystem in more detail. This playbook is the map; the handbook is the terrain.
 
 > **Golden rules**
 > 1. `main` is production. Every push deploys to Vercel. Revert commits are the rollback plan — no long-lived branches.
@@ -215,11 +215,11 @@ There is no external lock-sync webhook today because there is no external PPE; w
 
 **Query performance — the two-wave rule:** we do not use `relations()`/`db.query`; the house style is explicit `db.select()` through the storage layer (`server/storage.ts`) with **batched fan-out**. The reference implementation is the `/api/dashboard` handler in `server/routes/lending.ts`: it was rewritten from ~30 serial queries (13×N per-application loops) to two parallel waves using `inArray(column, ids)`, cutting hydration from serial-RTT-bound to 2 round trips. If your handler queries inside a `for` loop over rows, stop and batch it — on Neon every round trip is a network hop.
 
-**Migration workflow** — canonical steps live in [kb/app-guide/03-database.md](kb/app-guide/03-database.md) "How to make a schema change"; the rules:
+**Migration workflow** — canonical steps live in [kb/app-guide/03-database.md](./app-guide/03-database.md) "How to make a schema change"; the rules:
 1. Edit the table in `shared/schema/<domain>.ts` (and re-export from the barrel if it's new).
 2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql`. **Never `drizzle-kit generate`** — it has snapshot drift and produces wrong output in this repo. **Never `npm run db:push`** — it has no down-migration and, against the shared dev DB, drops columns belonging to other branches. Review the SQL like code, especially any `DROP`/`ALTER … TYPE`.
 3. Apply locally with `npm run db:migrate`, then run the app + tests.
-4. Commit the migration file with the schema change. **Production applies are founder-supervised** — the Neon pooler breaks `db:migrate` against prod, so apply via a direct `pg` client and insert the migrations-journal row manually (verify it landed); snapshot Neon first if anything is dropped/renamed; record the apply in [CICD.md](CICD.md)'s production change ledger.
+4. Commit the migration file with the schema change. **Production applies are founder-supervised** — the Neon pooler breaks `db:migrate` against prod, so apply via a direct `pg` client and insert the migrations-journal row manually (verify it landed); snapshot Neon first if anything is dropped/renamed; record the apply in [CICD.md](../runbooks/CICD.md)'s production change ledger.
 5. Seeding: `server/seed.ts` (demo fixtures); pricing demo data (UWM lender + rate sheets) is seeded manually in local dev only.
 
 **Never** run destructive column changes without checking what production data is in the column first.
@@ -282,4 +282,4 @@ Prereqs: Node 24.x, npm, and either Docker **or** a local/hosted Postgres.
    ```
 8. **MCP server (stdio):** registered for Claude Code in `.mcp.json` as `homiquity`; run manually with `npm run mcp`. Smoke test by piping newline-delimited JSON-RPC (`initialize` → `notifications/initialized` → `tools/list` → `tools/call`) into `npx tsx server/mcp/index.ts`. Tools: `run_soft_credit_pull`, `get_best_execution_rates`, `retrieve_property_valuation`. **Never** add a `console.log` to the MCP import graph — stdout is the protocol; `bootstrap.ts` rebinds logging to stderr and must remain the first import.
 9. **Ship:** commit to `main` and push — Vercel builds (`pnpm install --frozen-lockfile`, `npm run vercel-build`) and deploys automatically. Verify `https://mortgage-stream.vercel.app/api/health` after deploy. Roll back with `git revert <sha> && git push`.
-10. **Read next:** [`kb/app-guide/01-start-here.md`](kb/app-guide/01-start-here.md) and the rest of the handbook for architecture, data flow, schema, and secrets deep-dives.
+10. **Read next:** [`kb/app-guide/01-start-here.md`](./app-guide/01-start-here.md) and the rest of the handbook for architecture, data flow, schema, and secrets deep-dives.

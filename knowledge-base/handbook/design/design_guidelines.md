@@ -1,9 +1,9 @@
 # Design Guidelines — Homiquity
 
 > **Source of truth is the code, not this file.** Tokens live in
-> [`client/src/index.css`](client/src/index.css) (CSS variables) and
-> [`tailwind.config.ts`](tailwind.config.ts); primitives live in
-> [`client/src/components/ui/`](client/src/components/ui). This doc explains the
+> [`client/src/index.css`](../../../client/src/index.css) (CSS variables) and
+> [`tailwind.config.ts`](../../../tailwind.config.ts); primitives live in
+> [`client/src/components/ui/`](../../../client/src/components/ui). This doc explains the
 > *rules*; when they disagree with the code, the code wins — fix the doc.
 > The `design-token guard` (`scripts/design-token-guard.cjs`, run by
 > `npm run checkup`) **fails CI on any raw Tailwind palette class**, so the rules

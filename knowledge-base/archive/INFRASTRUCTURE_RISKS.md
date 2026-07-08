@@ -5,8 +5,8 @@
 > now **refuses to start in production** without a dedicated `CREDIT_ENCRYPTION_KEY`, and SSNs
 > flow through `ssnVault.ts`; Risk 3's `server/replit_integrations/` path no longer exists
 > (auth is scrypt password auth in `server/auth.ts`); schema changes ship as versioned
-> migrations, not `db:push`. Current security posture: [threat_model.md](../../threat_model.md)
-> and [kb/app-guide/06-auth-security-secrets.md](../app-guide/06-auth-security-secrets.md).
+> migrations, not `db:push`. Current security posture: [threat_model.md](../compliance/security/threat_model.md)
+> and [kb/app-guide/06-auth-security-secrets.md](../handbook/app-guide/06-auth-security-secrets.md).
 > Retained for history only.
 
 Generated: February 16, 2026

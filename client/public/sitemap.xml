@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Scoped to the pre-license public surface (kb/ARMED_LAUNCH_CHARTER_2026-07-07.md):
+<!-- Scoped to the pre-license public surface (knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md):
      educational routes that stay live while PRELAUNCH_GATED. Gated routes (persona
      LPs, /apply, /rates/*) are deliberately absent — add them at the F1 config flip.
      While the private-beta Edge gate is on, middleware.ts overrides /robots.txt with

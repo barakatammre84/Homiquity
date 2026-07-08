@@ -15,7 +15,7 @@ import { Mail, CheckCircle2, ArrowRight } from "lucide-react";
  * carries NO rate, payment, APR, or approval language and makes NO claim of
  * being licensed: pre-license we collect a marketing "notify me" email only
  * (POST /api/email-capture — NOT the TrustedForm/TCPA leads path), never a
- * mortgage lead. Keep it that way — see kb/ARMED_LAUNCH_CHARTER_2026-07-07.md.
+ * mortgage lead. Keep it that way — see knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md.
  */
 export default function Waitlist() {
   const { toast } = useToast();

@@ -14,7 +14,7 @@ import {
 // is edited.
 
 // Solicitation / approval phrasing banned on pre-F1 public surfaces
-// (kb/ARMED_LAUNCH_CHARTER_2026-07-07.md §2 blocker class 2, audit Lane 2).
+// (knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md §2 blocker class 2, audit Lane 2).
 const BANNED_PHRASES = [
   "pre-approv",
   "preapprov",

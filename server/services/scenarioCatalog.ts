@@ -9,7 +9,7 @@ import type { PreUwFlagCode } from "./preUnderwriting";
  * ("read the catalog before proposing" — duplicate prevention). It is NOT a
  * rules engine: changing this file changes nothing about underwriting
  * behavior. Rules change only through the registry pipeline
- * (kb/UNDERWRITING_SCENARIOS.md → cited, tested code).
+ * (knowledge-base/compliance/UNDERWRITING_SCENARIOS.md → cited, tested code).
  *
  * Maintenance contract (checked by tests/scenarioCatalog.test.ts): every
  * implemented S-XX in the registry has an entry here, flag codes are typed

@@ -13,7 +13,7 @@ Password reset and email verification are fully built and verified end-to-end in
 
 ## Checks run → results → evidence
 
-**Playbook written today:** [kb/support-playbooks/locked-out-user.md](../support-playbooks/locked-out-user.md) (rotation item a). Also wrote the standing [kb/support-playbooks/discrimination-credit-error-escalation.md](../support-playbooks/discrimination-credit-error-escalation.md), required by section 2 of this routine's doctrine since that escalation was undefined anywhere in the repo. Created `kb/support-playbooks/README.md` as an index (directory didn't exist before today).
+**Playbook written today:** [kb/support-playbooks/locked-out-user.md](../../runbooks/support-playbooks/locked-out-user.md) (rotation item a). Also wrote the standing [kb/support-playbooks/discrimination-credit-error-escalation.md](../../runbooks/support-playbooks/discrimination-credit-error-escalation.md), required by section 2 of this routine's doctrine since that escalation was undefined anywhere in the repo. Created `kb/support-playbooks/README.md` as an index (directory didn't exist before today).
 
 **Locked-out user flow (verified, all claims code-checked):**
 - Reset token TTL 30 min, verify token TTL 48 h: `server/services/accountRecovery.ts:9-10`.

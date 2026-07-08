@@ -19,7 +19,7 @@
    - **Dedupe:** if it matches an Implemented or Backlog entry, it's dropped (noted in the run report). A re-submission of an implemented scenario is only acted on if labeled **`Correction to S-XX`** with a citation — corrections to regulated math never happen silently.
    - **Citation check:** missing/uncited/conflicting guideline → moved to **Needs Clarification** with an `NC-XX` ID and the specific open questions.
 4. **Implement** (at most one per daily run; immediately if pasted in chat): pure cited function → flag → unit tests reproducing the scenario's worked example → simulated-vendor extension if new data is needed → schema to local+prod before code → live verification in dev.
-5. **Record.** In the SAME commit: the entry moves to **Implemented** in the uniform record format below, the Backlog copy is deleted, and `server/services/scenarioCatalog.ts` gains the entry (the read-only machine catalog served at `GET /api/scenarios/catalog`, kept in sync by `tests/scenarioCatalog.test.ts`). Operating instructions for scenario sessions live in [SCENARIO_ARCHITECT.md](SCENARIO_ARCHITECT.md).
+5. **Record.** In the SAME commit: the entry moves to **Implemented** in the uniform record format below, the Backlog copy is deleted, and `server/services/scenarioCatalog.ts` gains the entry (the read-only machine catalog served at `GET /api/scenarios/catalog`, kept in sync by `tests/scenarioCatalog.test.ts`). Operating instructions for scenario sessions live in [SCENARIO_ARCHITECT.md](./SCENARIO_ARCHITECT.md).
 
 **LLM generation prompt** (paste into Gemini; its output drops straight into Backlog):
 
@@ -69,7 +69,7 @@ from application data, credit tradelines, bank transactions, or public records.
 ### S-01: Hybrid W-2 / Self-Employed Creator (income seasoning)
 - Status: Implemented 2026-07-03 (commit 1e189b2)
 - Guideline: Fannie Mae Selling Guide B3-3.2 (24-month seasoning; 12–24 conditional)
-- Engine: `assessIncomeSeasoning` + `incomeDiscrepancyPct` in [underwritingNuance.ts](../server/services/underwritingNuance.ts) → flag `INCOME_SEASONING` (blocking <12mo, warning 12–24mo)
+- Engine: `assessIncomeSeasoning` + `incomeDiscrepancyPct` in [underwritingNuance.ts](../../server/services/underwritingNuance.ts) → flag `INCOME_SEASONING` (blocking <12mo, warning 12–24mo)
 - Signal source: intake `incomeSources[].yearsInRole`; discrepancy delta armed for verified income when Truv/Argyle lands
 - Tests: `tests/underwritingNuance.test.ts` (14-month conditional case matches the source doc)
 - Verified live: 14-month self-employment consulting income → warning flag with 1040s resolution path
@@ -108,7 +108,7 @@ from application data, credit tradelines, bank transactions, or public records.
 ### S-05: Rental Income Calculation (Schedule E)
 - Status: Implemented 2026-07-03
 - Guideline: Fannie Mae Selling Guide B3-3.1-08 (Rental Income)
-- Engine: `calculateRentalIncomeOffsets` in [underwritingNuance.ts](../server/services/underwritingNuance.ts) → flag `RENTAL_INCOME_OFFSET`
+- Engine: `calculateRentalIncomeOffsets` in [underwritingNuance.ts](../../server/services/underwritingNuance.ts) → flag `RENTAL_INCOME_OFFSET`
 - Signal source: intake `incomeSources[].rentalProperties[]` (monthlyRentalIncome + monthlyDebtPayment per property)
 - Tests: `tests/underwritingNuance.test.ts` (reproduces the source doc: $2,000 rent × 0.75 − $1,200 PITIA = +$300/month; also covers a negative net-offset case and multi-property summation)
 - Verified live: fresh registered borrower, rental income source with $2,000/mo rent + $1,200/mo PITIA → `RENTAL_INCOME_OFFSET` raised with "$1,500/month qualifying... adds $300/month toward your qualifying income", borrower notified
@@ -116,7 +116,7 @@ from application data, credit tradelines, bank transactions, or public records.
 ### S-06: Multi-Unit Subject Property Rental Income
 - Status: Implemented 2026-07-04 (commit b7f6e5d)
 - Guideline: Fannie Mae Selling Guide B3-3.1-08 (Rental Income from Subject Property)
-- Engine: `calculateSubjectPropertyRentalOffset` in [underwritingNuance.ts](../server/services/underwritingNuance.ts) → flag `SUBJECT_PROPERTY_RENTAL_OFFSET`
+- Engine: `calculateSubjectPropertyRentalOffset` in [underwritingNuance.ts](../../server/services/underwritingNuance.ts) → flag `SUBJECT_PROPERTY_RENTAL_OFFSET`
 - Signal source: `urla_property_info.numberOfUnits` + `.occupancyType` + new `.estimatedMarketRent` column (appraisal rent schedule / lease estimate captured on the URLA property step)
 - Tests: `tests/underwritingNuance.test.ts` (reproduces the source doc: $3,000 market rent × 0.75 = $2,250 qualifying; also covers non-primary-occupancy and 1-unit/5+-unit exclusions)
 - Verified live: fresh registered borrower, 3-unit primary-residence purchase ($450,000/$90,000 down) + $3,000/mo estimated market rent → `SUBJECT_PROPERTY_RENTAL_OFFSET` raised with $2,250/month qualifying against the computed $2,863.84 subject PITIA, borrower notified
@@ -125,7 +125,7 @@ from application data, credit tradelines, bank transactions, or public records.
 - **Low reserves** (`LOW_RESERVES_WARNING`): post-closing reserves < 2 months PITI from verified assets — auto-condition + outreach. *Threshold is platform policy; formal citation research pending (Fannie reserve requirements, B3-4.1-01, vary by transaction type).*
 - **Complex income** (`COMPLEX_INCOME_CHECK`): self-employed → 2-year tax-return conditions gate clear-to-close
 - **VA zero-down funnel path**: military status asked before down payment; $0 down gated to VA-eligible purchases; PMI guidance suppressed
-- **Anti-steering, eDisclosure, FCRA consent gates**: see [LENDER_READINESS_GAP_ANALYSIS.md](LENDER_READINESS_GAP_ANALYSIS.md)
+- **Anti-steering, eDisclosure, FCRA consent gates**: see [LENDER_READINESS_GAP_ANALYSIS.md](../logs/assessments/LENDER_READINESS_GAP_ANALYSIS.md)
 
 ---
 

@@ -1,6 +1,6 @@
 # SAFE MLO test outline → Homiquity compliance map
 
-**Created:** 2026-07-04 · **Source:** [docs/nmls-safe/SAFENationalTestOutline.pdf](../docs/nmls-safe/SAFENationalTestOutline.pdf)
+**Created:** 2026-07-04 · **Source:** [docs/nmls-safe/SAFENationalTestOutline.pdf](../../docs/nmls-safe/SAFENationalTestOutline.pdf)
 **What this is:** the SAFE National Test outline's federal-law section enumerates every
 consumer-protection regime an originator must know — which makes it a free, authoritative
 audit checklist for the platform. This maps each regime to what Homiquity actually

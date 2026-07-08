@@ -3,7 +3,7 @@
 **Adopted:** 2026-07-04 · **Tier 2 doctrine** (decisions in force) · **Audience:** every
 work session — human or Claude, scheduled routine or interactive — operating on this repo.
 The source-of-truth ladder ("which doc do I trust") lives in the root
-[README.md](../README.md); this page covers **how we work**, not what is true.
+[README.md](../../README.md); this page covers **how we work**, not what is true.
 
 These rules were distilled from a real failure day: on 2026-07-04 a 13-PR batch merge
 staled a layer of documentation within hours, one report file sat untracked and invisible
@@ -13,7 +13,7 @@ Each rule below names the failure it prevents.
 ## 1. No transient state in living docs
 
 Open-PR numbers, branch names, session names, and merge-queue status appear **only** in
-the 🚀 Launch sprint section of [CTO_ROADMAP.md](../CTO_ROADMAP.md) (maintained nightly by
+the 🚀 Launch sprint section of [CTO_ROADMAP.md](../../CTO_ROADMAP.md) (maintained nightly by
 evening triage) and in dated snapshot reports. Living docs (README, ASSUMPTIONS,
 kb doctrine, app-guide) state durable facts and link to the roadmap for "what's in
 flight." *(Prevents: "Open PR #45 — verify on merge" surviving in a fact register hours
@@ -57,15 +57,15 @@ report commit. *(Prevents: the `kb/lo-audit/2026-07-04-pm.md` stranding.)*
    behavior — capture the evidence in the PR body.
 5. Regulated math changes carry a `kb/regulatory-ledger.json` citation **in the same
    commit** — no citation, no code change. Never invent MISMO names (see
-   [CLAUDE.md](../CLAUDE.md) compliance-first rules).
+   [CLAUDE.md](../../CLAUDE.md) compliance-first rules).
 6. Schema changes are **hand-authored** SQL in `migrations/` (drizzle-kit generate has
    snapshot drift). Never `npm run db:push` from a worktree — the shared dev DB serves
    multiple branches and push drops other branches' columns. Full gotcha doctrine:
-   [.agents/memory/db-push-blocker.md](../.agents/memory/db-push-blocker.md) — note that
+   [.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md) — note that
    `.agents/memory/` is in-repo agent memory, visible to every session; check it before
    fighting a known battle.
 7. New or changed environment variables land in `.env.example` **and** the Vercel env-var
-   list in [CICD.md](../CICD.md) in the same PR. *(Prevents: a variable that exists only in
+   list in [CICD.md](../runbooks/CICD.md) in the same PR. *(Prevents: a variable that exists only in
    someone's `.env` or the Vercel dashboard, invisible to the next deployer.)*
 8. PR body contract: verification evidence (point 4), each new dependency justified in one
    line, a prod-impact note (migrations to apply / env vars to set / "none"), and an explicit
@@ -82,15 +82,15 @@ The trap doctrine lives where it lives — this is the one-stop pointer list. A 
 discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR.
 
 - **`npm run db:push` from a worktree** drops other branches' columns on the shared dev DB;
-  never `--force` — [.agents/memory/db-push-blocker.md](../.agents/memory/db-push-blocker.md).
+  never `--force` — [.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md).
 - **`drizzle-kit generate` has snapshot drift** in this repo — hand-author migration SQL
-  (point 6 above; [CLAUDE.md](../CLAUDE.md) database rules).
+  (point 6 above; [CLAUDE.md](../../CLAUDE.md) database rules).
 - **Neon's pooled connection breaks `npm run db:migrate` against prod** — apply via a direct
   `pg` client and insert the migrations-journal row manually
-  ([kb/app-guide/03-database.md](app-guide/03-database.md)).
+  ([kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)).
 - **npm crashes mid-install on Vercel** ("Exit handler never called") — Vercel builds with
   pnpm; after any dependency change run `npx pnpm@10 import` and commit **both** lockfiles
-  ([CICD.md](../CICD.md)).
+  ([CICD.md](../runbooks/CICD.md)).
 - **The integration suite trips the auth rate limiter** — boot the test server with
   `RATE_LIMIT_RELAXED=true` (point 3 above).
 
@@ -100,7 +100,7 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
   pushes, or a session pushes under an explicit, per-batch approval (the 2026-07-04
   launch-integration push was such a one-time authorization — it does not generalize).
 - A push to `main` — and any action against the production DB or env — is not complete until
-  its entry lands in the **production change ledger** in [CICD.md](../CICD.md), same session:
+  its entry lands in the **production change ledger** in [CICD.md](../runbooks/CICD.md), same session:
   what shipped, prod DB/env actions, validation evidence, rollback pointer. *(Prevents: an
   unledgered deploy invisible to the next incident responder.)*
 - Scheduled routines publish **docs-only** (the evening-triage gate inspects every

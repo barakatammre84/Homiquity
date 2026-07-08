@@ -3,7 +3,7 @@
 ## Authentication
 
 Two login paths, all managed by Passport + express-session
-([`server/auth.ts`](../../server/auth.ts), `server/socialAuth.ts`,
+([`server/auth.ts`](../../../server/auth.ts), `server/socialAuth.ts`,
 `server/integrations/auth/`):
 
 1. **Email/password** — `POST /api/auth/register` / `POST /api/auth/login`;
@@ -25,7 +25,7 @@ session state.
 ### Dev logins
 `POST /api/test-login` (dev only; guarded by `NODE_ENV` and requires
 `DEV_TEST_PASSWORD`) logs you in as seeded role accounts —
-see [TEST_ACCOUNTS.md](../../TEST_ACCOUNTS.md).
+see [TEST_ACCOUNTS.md](../../runbooks/TEST_ACCOUNTS.md).
 
 ## Authorization (RBAC)
 
@@ -94,7 +94,7 @@ are done inline in handlers — always add them for borrower data.
   (soft/hard recorded) → adverse action records — all in
   `server/services/creditService.ts` + `shared/schema/compliance.ts`.
 
-Deeper reading: [threat_model.md](../../threat_model.md).
+Deeper reading: [threat_model.md](../../compliance/security/threat_model.md).
 
 ## Pre-flight checklist — PII or auth changes
 
@@ -110,7 +110,7 @@ Before merging anything in this chapter's territory:
 4. Write endpoints handling borrower data route bodies through `pickTableFields`
    (mass-assignment defense) and carry per-resource ownership checks.
 5. This is a **security-review trigger**: run `/security-review` before merge
-   ([TEAM_PRACTICES](../TEAM_PRACTICES.md) §9); unresolved CRITICAL findings
+   ([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §9); unresolved CRITICAL findings
    block.
 
 ## Secrets inventory (complete)

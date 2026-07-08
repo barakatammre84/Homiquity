@@ -16,8 +16,8 @@ to the SPA.
 
 ## Route domains
 
-Each file in [`server/routes/`](../../server/routes/) registers one domain in
-`registerRoutes()` ([`server/routes.ts`](../../server/routes.ts)). Endpoint
+Each file in [`server/routes/`](../../../server/routes/) registers one domain in
+`registerRoutes()` ([`server/routes.ts`](../../../server/routes.ts)). Endpoint
 counts give you a sense of surface area (~470 total):
 
 | File | ~Endpoints | Domain |
@@ -54,7 +54,7 @@ grep -nE 'app\.(get|post|put|patch|delete)\(' server/routes/borrower.ts | less
 
 ## Authorization pattern
 
-Handlers protect themselves with middleware from [`server/auth.ts`](../../server/auth.ts):
+Handlers protect themselves with middleware from [`server/auth.ts`](../../../server/auth.ts):
 
 - `isAuthenticated` — any logged-in user; also refreshes `req.user.role` from
   the DB so role changes take effect without re-login.

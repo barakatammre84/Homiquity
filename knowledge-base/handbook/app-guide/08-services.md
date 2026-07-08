@@ -1,6 +1,6 @@
 # 08 — Service Catalog
 
-Business logic lives in [`server/services/`](../../server/services/) plus a few
+Business logic lives in [`server/services/`](../../../server/services/) plus a few
 root-level `server/*.ts` modules. One line each — read the file when you need
 depth.
 
@@ -72,10 +72,10 @@ depth.
 1. Determinism is a hard invariant: no vendor calls, clock reads, or randomness
    inside `underwritingEngine.ts` / `decisionEngine.ts` / `ruleEngine.ts` —
    same inputs → same outcome, typed error classification preserved
-   ([CLAUDE.md](../../CLAUDE.md) ground rules).
+   ([CLAUDE.md](../../../CLAUDE.md) ground rules).
 2. Regulated-math changes carry a `kb/regulatory-ledger.json` citation **in the
    same commit** — no citation, no code change
-   ([TEAM_PRACTICES](../TEAM_PRACTICES.md) §5.5).
+   ([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §5.5).
 3. `tests/complianceInvariants.test.ts` and `tests/scenarioCatalog.test.ts`
    stay green — they read the engine directly and exist to catch exactly this
    class of change.

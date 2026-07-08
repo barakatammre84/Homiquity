@@ -11,5 +11,5 @@ still describe this platform stay in `kb/` with a status banner instead.
 
 | File | Archived | Why |
 |---|---|---|
-| [LAUNCH_READINESS_CHECKLIST.md](LAUNCH_READINESS_CHECKLIST.md) | 2026-07-04 | Feb-2026 Replit-era checklist; superseded by the CTO_ROADMAP.md launch sprint |
-| [INFRASTRUCTURE_RISKS.md](INFRASTRUCTURE_RISKS.md) | 2026-07-04 | Feb-2026 findings since fixed (fail-closed encryption, versioned migrations) |
+| [LAUNCH_READINESS_CHECKLIST.md](./LAUNCH_READINESS_CHECKLIST.md) | 2026-07-04 | Feb-2026 Replit-era checklist; superseded by the CTO_ROADMAP.md launch sprint |
+| [INFRASTRUCTURE_RISKS.md](./INFRASTRUCTURE_RISKS.md) | 2026-07-04 | Feb-2026 findings since fixed (fail-closed encryption, versioned migrations) |

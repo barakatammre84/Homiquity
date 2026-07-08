@@ -1,14 +1,14 @@
 # Blueprint 18-Desk Crosswalk
 
 **Date:** 2026-07-03 · **Lens:** the "Master Homiquity Autonomous Enterprise Blueprint" (18 specialized desks) mapped onto code that exists today
-**Companion docs:** [STATE_OF_THE_PLATFORM.md](STATE_OF_THE_PLATFORM.md) (CTO assessment — P0/P1 inventory) · [LENDER_READINESS_GAP_ANALYSIS.md](LENDER_READINESS_GAP_ANALYSIS.md) (vendor-review lens) · [CTO_ROADMAP.md](../CTO_ROADMAP.md) (living checklist)
+**Companion docs:** [STATE_OF_THE_PLATFORM.md](./STATE_OF_THE_PLATFORM.md) (CTO assessment — P0/P1 inventory) · [LENDER_READINESS_GAP_ANALYSIS.md](./LENDER_READINESS_GAP_ANALYSIS.md) (vendor-review lens) · [CTO_ROADMAP.md](../../../CTO_ROADMAP.md) (living checklist)
 
 ## Why this doc exists
 
 The blueprint reads as a from-scratch org plan ("stand up 18 isolated Claude workspaces"). It is mostly a **description of a platform that already exists.** This crosswalk exists so we don't rebuild what's built, and so the genuinely-missing desks are visible against the two constraints that actually govern our work:
 
-1. **The freeze** — [PRODUCT_SPINE.md](../PRODUCT_SPINE.md): *"Nothing new ships unless it improves correctness, compliance, or reliability. Feature development is frozen."*
-2. **The real P0 list** — licensing, vendor contracts, uploads, auth recovery, email, observability, CI ([STATE_OF_THE_PLATFORM.md](STATE_OF_THE_PLATFORM.md) §3). None of these is a new desk; all block every desk.
+1. **The freeze** — [PRODUCT_SPINE.md](../../../PRODUCT_SPINE.md): *"Nothing new ships unless it improves correctness, compliance, or reliability. Feature development is frozen."*
+2. **The real P0 list** — licensing, vendor contracts, uploads, auth recovery, email, observability, CI ([STATE_OF_THE_PLATFORM.md](./STATE_OF_THE_PLATFORM.md) §3). None of these is a new desk; all block every desk.
 
 Legend: ✅ built · 🟡 partial · ❌ absent · 🔒 net-new (would violate the freeze) · ⚖️ framable as compliance/correctness (freeze-allowed)
 

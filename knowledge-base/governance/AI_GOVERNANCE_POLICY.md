@@ -3,7 +3,7 @@
 **Status:** ADOPTED 2026-07-04 (v1.0) — annual review due 2027-07-04.
 **Owner:** Principal (founder/operator) — see §3 for role assignments.
 **Frameworks:** Fannie Mae Lender Letter LL-2026-04 (AI/ML governance for sellers/servicers), Freddie Mac equivalent Guide update, FHFA AB 2022-02, SR 11-7, NIST AI RMF 1.0, ECOA/Reg B, FCRA.
-**Companion document:** [MODEL_RISK_GOVERNANCE.md](MODEL_RISK_GOVERNANCE.md) is the living model inventory and technical-control evidence. This document is the *policy*: the normative rules, lifecycle procedures, and role assignments the inventory is governed by. When they disagree, this policy controls and the inventory must be corrected.
+**Companion document:** [MODEL_RISK_GOVERNANCE.md](./MODEL_RISK_GOVERNANCE.md) is the living model inventory and technical-control evidence. This document is the *policy*: the normative rules, lifecycle procedures, and role assignments the inventory is governed by. When they disagree, this policy controls and the inventory must be corrected.
 
 ---
 
@@ -50,7 +50,7 @@ Homiquity is a single-operator shop. LL-2026-04 roles are therefore *hats*, all 
 
 ## 4. AI system inventory
 
-The authoritative inventory is [MODEL_RISK_GOVERNANCE.md §1](MODEL_RISK_GOVERNANCE.md) (M-1 … M-6). Inventory rules:
+The authoritative inventory is [MODEL_RISK_GOVERNANCE.md §1](./MODEL_RISK_GOVERNANCE.md) (M-1 … M-6). Inventory rules:
 
 - No AI system may reach production without an inventory row naming its type, purpose, decision role, and code location.
 - The decision-role column must state one of: `input generation only`, `non-decisioning`, `orchestration`, `primary decisioning (non-AI)`. The value `primary decisioning` is **prohibited for any AI-type row** (P1).

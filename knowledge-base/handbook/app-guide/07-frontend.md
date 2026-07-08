@@ -10,7 +10,7 @@ schemas the server validates with, from `shared/`). UI is **Shadcn/ui** on
 Radix primitives + Tailwind, with light/dark themes (`next-themes`).
 
 Entry chain: `client/index.html` → `client/src/main.tsx` →
-[`client/src/App.tsx`](../../client/src/App.tsx) (~420 lines: providers, layout,
+[`client/src/App.tsx`](../../../client/src/App.tsx) (~420 lines: providers, layout,
 and every route — 160+ `<Route>`s).
 
 ## Page map (`client/src/pages/`)
@@ -46,7 +46,7 @@ Shadcn primitives).
 - **Design language**: "Calm Path" — one dominant CTA per screen, progress
   steppers with time estimates, collapsible secondary content. Brand palette:
   deep navy / emerald / amber / ocean blue, Inter font. See
-  [design_guidelines.md](../../design_guidelines.md).
+  [design_guidelines.md](../design/design_guidelines.md).
 - **Aliases**: `@/` → `client/src/`, `@shared/` → `shared/` (defined in
   `vite.config.ts` + `tsconfig.json`).
 

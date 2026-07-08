@@ -3,19 +3,19 @@
 ## Fundamentals
 
 - **PostgreSQL**, accessed through **Drizzle ORM**.
-- Schema is defined in TypeScript under [`shared/schema/`](../../shared/schema/)
+- Schema is defined in TypeScript under [`shared/schema/`](../../../shared/schema/)
   (13 domain files, **160 tables**), re-exported through
-  [`shared/schema.ts`](../../shared/schema.ts). Because it lives in `shared/`,
+  [`shared/schema.ts`](../../../shared/schema.ts). Because it lives in `shared/`,
   the client gets the same types and Zod validators (via `drizzle-zod`).
-- **Driver selection** ([`server/db.ts`](../../server/db.ts)): a
+- **Driver selection** ([`server/db.ts`](../../../server/db.ts)): a
   `localhost`/`127.0.0.1` `DATABASE_URL` (or `USE_LOCAL_PG=true`) uses the
   standard `pg` driver; any other URL uses the **Neon serverless** driver
   (WebSocket-based — what runs on Vercel).
-- **Migrations**: versioned SQL in [`migrations/`](../../migrations/)
+- **Migrations**: versioned SQL in [`migrations/`](../../../migrations/)
   (`0000_baseline.sql` onward), **hand-authored** — `drizzle-kit generate` has
   snapshot drift in this repo and produces wrong output. Apply with
   `npm run db:migrate`. Forward-only (no automatic "down"); snapshot/branch the
-  Neon DB before destructive changes (see [ROLLBACK.md](../../ROLLBACK.md) §3).
+  Neon DB before destructive changes (see [ROLLBACK.md](../../runbooks/ROLLBACK.md) §3).
   `db:push` is retired for shared environments — see the pre-flight below.
 
 ### Environments
@@ -67,9 +67,9 @@
    `npm run db:migrate` and test.
 3. From a **worktree**, never `npm run db:push` against the shared dev DB — it
    drops other branches' columns; use targeted `ALTER TABLE` statements instead
-   ([.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md)).
+   ([.agents/memory/db-push-blocker.md](../../../.agents/memory/db-push-blocker.md)).
 4. Production applies are **founder-supervised**
-   ([TEAM_PRACTICES](../TEAM_PRACTICES.md) §6). The Neon pooler breaks
+   ([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §6). The Neon pooler breaks
    `db:migrate` against prod — apply via a direct `pg` client and insert the
    migrations-journal row manually; verify the journal row landed. **If the
    change drops/renames anything, snapshot Neon first.** Record the apply in
@@ -79,7 +79,7 @@
 
 ## Reading the data-access layer
 
-[`server/storage.ts`](../../server/storage.ts) (~4,700 lines) implements the
+[`server/storage.ts`](../../../server/storage.ts) (~4,700 lines) implements the
 `IStorage` interface — a very wide repository of CRUD methods passed into most
 route registrars. Newer services (e.g. the intelligence layer) often query
 Drizzle directly instead. Both patterns coexist; prefer keeping related queries

@@ -2,7 +2,7 @@
 
 **Status:** DRAFT for institutional compliance reporting — prepared 2026-07-03 as part of the production-readiness security & governance audit.
 **Frameworks referenced:** Fannie Mae AI/ML lender guidance, FHFA AB 2022-02 (Artificial Intelligence/Machine Learning Risk Management), SR 11-7 (Model Risk Management), NIST AI RMF 1.0, ECOA/Reg B, FCRA.
-**Governing policy:** [AI_GOVERNANCE_POLICY.md](AI_GOVERNANCE_POLICY.md) (adopted 2026-07-04) — this document is the model inventory and control evidence under that policy; the policy controls on conflict.
+**Governing policy:** [AI_GOVERNANCE_POLICY.md](./AI_GOVERNANCE_POLICY.md) (adopted 2026-07-04) — this document is the model inventory and control evidence under that policy; the policy controls on conflict.
 
 ---
 

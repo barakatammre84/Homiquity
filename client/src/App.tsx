@@ -186,7 +186,7 @@ function Redirect({ to }: { to: string }) {
 
 // Pre-license gate: a public route that would solicit a mortgage transaction
 // (rates, pricing, the application funnel, persona conversion pages) redirects
-// to the waitlist "/" while PRELAUNCH_GATED. See kb/ARMED_LAUNCH_CHARTER_2026-07-07.md.
+// to the waitlist "/" while PRELAUNCH_GATED. See knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md.
 function Gated({ children }: { children: React.ReactNode }) {
   if (PRELAUNCH_GATED) return <Redirect to="/" />;
   return <>{children}</>;

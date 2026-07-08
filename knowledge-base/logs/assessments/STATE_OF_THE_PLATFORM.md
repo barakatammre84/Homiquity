@@ -3,7 +3,7 @@
 **Date:** 2026-07-03 (point-in-time snapshot — update or supersede, don't let it rot)
 
 > **STATUS 2026-07-04 (source-of-truth audit):** much of §3/§4 has since shipped — trust
-> [CTO_ROADMAP.md](../CTO_ROADMAP.md) for current status, this doc for the reasoning.
+> [CTO_ROADMAP.md](../../../CTO_ROADMAP.md) for current status, this doc for the reasoning.
 > Resolved since writing: §3.4 auth recovery ✓ (roadmap #2), §3.5 email code ✓ (ops env
 > pending, LS-2), §3.7 error monitoring built (DSN pending, LS-2), §3.9 legal-page shells +
 > adverse-action flow ✓ (#26), §4.1 task engine ✓ (#6), §4.2 stage-gated validation ✓ (#7),

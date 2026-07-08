@@ -8,7 +8,7 @@ a conversational pre-approval application, document collection, deterministic
 underwriting, and a generated pre-approval letter — with dashboards for
 borrowers, loan-processing staff, admins, and referring real-estate agents.
 
-The product vision and module map live in [PRODUCT_SPINE.md](../../PRODUCT_SPINE.md).
+The product vision and module map live in [PRODUCT_SPINE.md](../../../PRODUCT_SPINE.md).
 The one-paragraph version: modules are **Lend** (origination), **Coach** (AI
 guidance), **Listings** (property search + affordability), **Ops** (staff
 pipeline), **Rates**, **Calculators**, **Education**, **Realtor Engine**
@@ -28,7 +28,7 @@ pipeline), **Rates**, **Calculators**, **Education**, **Realtor Engine**
 
 ## Run it locally (5 minutes)
 
-Full guide: [LOCAL_DEV.md](../../LOCAL_DEV.md). Short version:
+Full guide: [LOCAL_DEV.md](../../runbooks/LOCAL_DEV.md). Short version:
 
 ```bash
 npm install
@@ -41,7 +41,7 @@ On this machine specifically: Postgres runs **natively** (not Docker) on
 localhost:5432, and the app uses **PORT=5001** because macOS AirPlay squats on
 port 5000.
 
-Log in during dev with the test accounts (see [TEST_ACCOUNTS.md](../../TEST_ACCOUNTS.md))
+Log in during dev with the test accounts (see [TEST_ACCOUNTS.md](../../runbooks/TEST_ACCOUNTS.md))
 via `POST /api/test-login` — enabled only when `NODE_ENV !== production` and
 `DEV_TEST_PASSWORD` is set.
 
@@ -64,7 +64,7 @@ has snapshot drift). See `.agents/memory/db-push-blocker.md` and CLAUDE.md.
 ## Health of the codebase (as of 2026-07-04)
 
 Clean bill: `npm run check` is **0 errors**, unit tests **647/647**, integration
-tests **73/73** (against a running dev server; see [TEAM_PRACTICES](../TEAM_PRACTICES.md)
+tests **73/73** (against a running dev server; see [TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md)
 for the auth-rate-limit note when running the full integration suite). All Replit
 coupling was removed on 2026-07-02 — auth (session + Passport) now initializes
 unconditionally, so login works on any host. If any of those go red, it's the change
@@ -72,5 +72,5 @@ in front of you, not inherited debt.
 
 ## Where to go next
 
-Read [02-architecture.md](02-architecture.md) for how a request actually moves
+Read [02-architecture.md](./02-architecture.md) for how a request actually moves
 through this system.

@@ -57,7 +57,7 @@ npm run db:migrate
 Fresh databases are built from the committed migration files in `migrations/`.
 If your database was created earlier with `db:push`, adopt it once with
 `npm run db:migrate:adopt -- --apply` (records existing migrations as applied
-without re-running them). Schema-change workflow: [ROLLBACK.md](ROLLBACK.md) §3.
+without re-running them). Schema-change workflow: [ROLLBACK.md](./ROLLBACK.md) §3.
 
 ## 6. Run it
 ```bash
@@ -158,4 +158,4 @@ Set the same env vars in the host's dashboard (`DATABASE_URL`, `CREDIT_ENCRYPTIO
 `PORT`; the server already reads it.
 
 **The app has no Replit dependencies** — it deploys to Vercel today (see
-[CICD.md](CICD.md)) and can move to any of the hosts above without code changes.
+[CICD.md](./CICD.md)) and can move to any of the hosts above without code changes.

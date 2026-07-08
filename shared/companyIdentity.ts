@@ -3,7 +3,7 @@
  * mention of who Homiquity is. Shared because both the client (footer, LPs)
  * and the server (emails, generated documents, MISMO) must render the same
  * identity, and the SAFE Act / Reg H unique-identifier requirement (12 CFR
- * 1008; see docs/nmls-safe/ + kb/SAFE_MLO_COMPLIANCE_MAP.md) binds them all
+ * 1008; see docs/nmls-safe/ + knowledge-base/compliance/SAFE_MLO_COMPLIANCE_MAP.md) binds them all
  * the moment a real NMLS ID exists.
  *
  * Server-only settings (baseUrl env resolution, MERS org ID) stay in
