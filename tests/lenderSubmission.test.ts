@@ -109,6 +109,11 @@ function baseDto(overrides: Partial<MISMOLoanDTO> = {}): MISMOLoanDTO {
 }
 
 describe("buildLenderPackage", () => {
+  // Pinned generation clock: the envelope stamps CreatedDatetime (and the
+  // Current loan-state date) from the clock, so cross-call comparisons must
+  // hold it fixed to isolate the data under test.
+  const clock = new Date("2026-07-06T12:00:00.000Z");
+
   it("assembles a structurally valid MISMO 3.4 package for a complete file", () => {
     const pkg = buildLenderPackage(baseDto());
     expect(pkg.validation.valid).toBe(true);
@@ -117,16 +122,20 @@ describe("buildLenderPackage", () => {
     expect(pkg.hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("is deterministic: the same file always hashes the same", () => {
-    const a = buildLenderPackage(baseDto());
-    const b = buildLenderPackage(baseDto());
+  it("is deterministic: the same file + same clock always hashes the same", () => {
+    const a = buildLenderPackage(baseDto(), undefined, clock);
+    const b = buildLenderPackage(baseDto(), undefined, clock);
     expect(a.xml).toBe(b.xml);
     expect(a.hash).toBe(b.hash);
   });
 
   it("hashes differ when the underlying file data differs", () => {
-    const a = buildLenderPackage(baseDto());
-    const b = buildLenderPackage(baseDto({ application: { purchasePrice: "600000" } as any }));
+    const a = buildLenderPackage(baseDto(), undefined, clock);
+    const b = buildLenderPackage(
+      baseDto({ application: { purchasePrice: "600000" } as any }),
+      undefined,
+      clock,
+    );
     expect(a.hash).not.toBe(b.hash);
   });
 
@@ -142,8 +151,8 @@ describe("buildLenderPackage", () => {
   });
 
   it("threads the delivery note date through to the AtClosing loan state", () => {
-    const withDate = buildLenderPackage(baseDto(), "2026-08-01");
-    const withoutDate = buildLenderPackage(baseDto());
+    const withDate = buildLenderPackage(baseDto(), "2026-08-01", clock);
+    const withoutDate = buildLenderPackage(baseDto(), undefined, clock);
     expect(withDate.xml).not.toBe(withoutDate.xml);
   });
 });
