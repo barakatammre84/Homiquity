@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -138,12 +139,24 @@ export default function LoanPipeline() {
     downPayment: "",
   });
 
-  const { data: appData, isLoading: appLoading } = useQuery<ApplicationData>({
+  const {
+    data: appData,
+    isLoading: appLoading,
+    isError: appIsError,
+    error: appErrorObj,
+    refetch: refetchApp,
+  } = useQuery<ApplicationData>({
     queryKey: ['/api/loan-applications', applicationId],
     enabled: !!applicationId && !authLoading,
   });
 
-  const { data: pipelineData, isLoading: pipelineLoading } = useQuery<PipelineData>({
+  const {
+    data: pipelineData,
+    isLoading: pipelineLoading,
+    isError: pipelineIsError,
+    error: pipelineErrorObj,
+    refetch: refetchPipeline,
+  } = useQuery<PipelineData>({
     queryKey: ['/api/loan-applications', applicationId, 'pipeline'],
     enabled: !!applicationId && !authLoading,
   });
@@ -240,6 +253,26 @@ export default function LoanPipeline() {
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
           </div>
           <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  // A server failure used to fall through to the "Application Not Found" card,
+  // masking the error as a missing application — show an honest error + retry (ux-01).
+  if (appIsError || pipelineIsError) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-md">
+          <QueryErrorState
+            error={appErrorObj ?? pipelineErrorObj}
+            onRetry={() => {
+              void refetchApp();
+              void refetchPipeline();
+            }}
+            title="We couldn't load your loan progress"
+            data-testid="pipeline-error"
+          />
         </div>
       </div>
     );
