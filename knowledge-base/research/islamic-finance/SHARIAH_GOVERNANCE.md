@@ -54,6 +54,14 @@ reviewed against AAOIFI standards, with annual audit. **Cost is not published** 
 direct contact). This is how a fintech obtains oversight without recruiting a standing board of
 Taqi-Usmani-caliber scholars.
 
+**Precedent — a full-stack halal fintech carries all three layers.** **Manzil** (Canadian Islamic
+fintech, now expanding to the US) runs its **own Shariah supervisory board + internal & external
+Sharia auditors + a third-party Sharia advisory firm**, and is AAOIFI-compliant. That is the
+governance load of a **manufacturer** (Manzil originates the structures). It reinforces the split:
+if Homiquity ever *manufactures*, it inherits Manzil-level board overhead; as a **broker-triage
+intermediary**, it relies on the funder's certification (pending the advisor + counsel confirmation
+below). Manzil is also a **competitor** — see [LENDER_CHANNEL_VALIDATION.md](LENDER_CHANNEL_VALIDATION.md) §5.
+
 ## Strategic conclusion for broker-triage
 
 - **Structure certification = the funder's burden.** Homiquity relies on the funder's existing board
@@ -85,3 +93,4 @@ Taqi-Usmani-caliber scholars.
 - AAOIFI GS-1 (Shariah Supervisory Board) — <https://aaoifi.com/aaoifi-gs-1-sharia-supervisory-board-appointment-composition-and-report/?lang=en>
 - Amanie Advisors — Shariah advisory/consultancy — <https://amanieadvisors.com/shariah-advisory-consultancy/>
 - Shariyah Review Bureau — services — <https://shariyah.net/services/>
+- Manzil — Shariah governance (own board + auditors + third-party advisory) / US expansion — <https://betakit.com/manzil-wants-to-become-the-north-american-islamic-neobank-as-it-expands-to-the-us/>

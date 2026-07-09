@@ -43,8 +43,10 @@ asset-backed and risk-sharing rather than interest-bearing.
 this — Homiquity operates **strictly as a broker**. The UAL is a **front-end pre-underwriting triage
 and packaging layer** that normalizes messy self-employed / 1099 files and hands a clean packet to
 a funder in the **existing Ijara-CDC + conventional-wholesale ecosystem** (the Ijara CDC facilitator
-holds the title-trust; a wholesale lender such as **CMG** — via its TPO channel — or **US Bank**
-funds and pairs it with a GSE/FHA/VA product). It is **not** routed to the retail direct providers
+holds the title-trust; a wholesale lender such as **CMG** or **US Bank** funds and pairs it with a
+GSE/FHA/VA product — **but note: whether that halal product is reachable through a *broker/TPO*
+channel is unconfirmed and public signals lean retail-only; see
+[LENDER_CHANNEL_VALIDATION.md](LENDER_CHANNEL_VALIDATION.md)**). It is **not** routed to the retail direct providers
 (UIF, Devon, Guidance), which have **no broker channel** — see the validation in
 [LENDER_CHANNEL_VALIDATION.md](LENDER_CHANNEL_VALIDATION.md). Homiquity does **not** hold title,
 provision SPVs, act as landlord, submit directly to DU/LPA, or issue securities. This shrinks the
