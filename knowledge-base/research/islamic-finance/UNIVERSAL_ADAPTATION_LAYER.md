@@ -41,13 +41,14 @@ asset-backed and risk-sharing rather than interest-bearing.
 
 **The operating model: broker-triage, not lender.** The revised strategy is explicit and correct on
 this — Homiquity operates **strictly as a broker**. The UAL is a **front-end pre-underwriting triage
-and packaging layer** that normalizes messy self-employed / 1099 files and formats an
-alternative-structure application so it can be handed to one of the few **legacy Shariah wholesale
-lenders** (e.g. University Islamic Financial, Devon Bank, Guidance) who already hold the
-title-holding licenses, the Shariah-board sign-off, and the privately-negotiated GSE approvals.
-Homiquity does **not** hold title, provision SPVs, act as landlord, submit directly to DU/LPA, or
-issue securities. This shrinks the legal surface from "become an Islamic bank" to "clean up the
-intake" — see §4 for what that means engine-by-engine.
+and packaging layer** that normalizes messy self-employed / 1099 files and hands a clean packet to
+a funder in the **existing Ijara-CDC + conventional-wholesale ecosystem** (the Ijara CDC facilitator
+holds the title-trust; a wholesale lender such as **CMG** — via its TPO channel — or **US Bank**
+funds and pairs it with a GSE/FHA/VA product). It is **not** routed to the retail direct providers
+(UIF, Devon, Guidance), which have **no broker channel** — see the validation in
+[LENDER_CHANNEL_VALIDATION.md](LENDER_CHANNEL_VALIDATION.md). Homiquity does **not** hold title,
+provision SPVs, act as landlord, submit directly to DU/LPA, or issue securities. This shrinks the
+legal surface from "become an Islamic bank" to "clean up the intake" — see §4 engine-by-engine.
 
 **The core bottleneck is legal characterization, not code.** Conventional consumer-finance law
 (TILA / RESPA / TRID) is built for a lender–debtor relationship secured by a lien; true Shariah
@@ -170,8 +171,9 @@ legacy lender, who holds title, the licenses, and the GSE approvals). For each: 
 - Also **not Homiquity's to build.** The GSE **"negotiated variances"** that let Fannie/Freddie buy
   Musharaka/Ijara contracts are **proprietary and exclusive** to the legacy firms who negotiated
   them over years of legal/Shariah review (§5.5) — a startup cannot inherit or programmatically use
-  them. Homiquity's role is to **route the packaged file to a legacy lender who holds those
-  approvals**, not to be a direct GSE seller/servicer.
+  them. Homiquity's role is to **route the packaged file to a funder in the Ijara-CDC +
+  conventional-wholesale ecosystem** (CMG / US Bank — see
+  [LENDER_CHANNEL_VALIDATION.md](LENDER_CHANNEL_VALIDATION.md)), not to be a direct GSE seller/servicer.
 - Tokenized Sukuk / ERC-3643 issuance and "true-sale" securitization are securities-law
   determinations, and the precedents the paper cites (**East Cameron, Arcapita**) are **inapposite
   to retail residential** (§5.7). Out of lane regardless.
@@ -191,7 +193,7 @@ marked **OPEN** for **Homiquity** is a real gate before promotion.
 | 5.2 | OCC "functional-equivalence" (**IL 806/1997**, **IL 867/1999**, to the NY branch of United Bank of Kuwait) | **Resolved direction:** those letters preempt only for *banks* — Homiquity does **not** rely on them. Operate as a **state-licensed broker** routing to lenders that hold the authority. New open item → **state-by-state SAFE licensing + non-bank title/landlord prohibitions**. | **Homiquity** (OPEN — state licensing) |
 | 5.3 | Assign borrower **SSN as the trust's tax ID** | Out of the broker-triage lane — a title-holding-entity function; the funding lender/aggregator's determination. | **Funding lender** (out of lane) |
 | 5.4 | "Substance-over-form" **single-conveyance transfer tax** | Same — the title-holding entity's problem, jurisdiction-by-jurisdiction; not the broker's. | **Funding lender** (out of lane) |
-| 5.5 | GSE **Rep & Warranty relief** via "negotiated variances" | **Resolved:** variances are **proprietary/exclusive** to legacy lenders (years of legal/Shariah review) and are **not inheritable**. Homiquity routes files to them; it is **not** a direct GSE seller/servicer. | **Legacy lender** (resolved) |
+| 5.5 | GSE **Rep & Warranty relief** via "negotiated variances" | **Resolved:** variances are **proprietary/exclusive** to legacy lenders (years of legal/Shariah review) and are **not inheritable**. Homiquity routes files into the **Ijara-CDC + conventional-wholesale ecosystem** (CMG/US Bank — [validation](LENDER_CHANNEL_VALIDATION.md)), not to UIF/Devon/Guidance (retail); it is **not** a direct GSE seller/servicer. | **Funder ecosystem** (resolved) |
 | 5.6 | Deliver via MISMO `MortgageType="Other"` / non-`Fixed` amortization | The delivery representation is the funding lender's; needs GSE confirmation. **Never invent enums** (CLAUDE.md). | **Funding lender** (OPEN) |
 | 5.7 | "True sale" precedents **East Cameron / Arcapita** | **Verified — inapposite.** East Cameron = oil-&-gas project finance ($165.7M ORRI, offshore Gulf, W.D. La. 2009); Arcapita = wholesale commodity Murabaha (LME metals, S.D.N.Y. 2012). Neither binds **retail consumer residential**; securitization is out of lane regardless. | **N/A** — do not cite as residential precedent |
 | 5.8 | Faith-targeted marketing of the product | Genuinely open: ECOA/fair-lending review of targeting / steering / redlining exposure. | **Homiquity** (OPEN) |
