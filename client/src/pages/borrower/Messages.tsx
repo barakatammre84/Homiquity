@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { getPresenceColor, getPresenceLabel } from "@/lib/formatters";
 import {
   Dialog,
@@ -322,13 +323,25 @@ export default function Messages() {
   }, []);
 
   // Fetch team members with real-time updates (every 30 seconds for presence)
-  const { data: teamMembers = [], isLoading: isLoadingTeam } = useQuery<TeamMember[]>({
+  const {
+    data: teamMembers = [],
+    isLoading: isLoadingTeam,
+    isError: isErrorTeam,
+    error: teamErrorObj,
+    refetch: refetchTeam,
+  } = useQuery<TeamMember[]>({
     queryKey: ["/api/team-members"],
     refetchInterval: 30000, // Refresh presence every 30 seconds
   });
 
   // Fetch conversations for list view with real-time updates
-  const { data: conversations = [], isLoading: isLoadingConversations } = useQuery<ConversationData[]>({
+  const {
+    data: conversations = [],
+    isLoading: isLoadingConversations,
+    isError: isErrorConversations,
+    error: conversationsErrorObj,
+    refetch: refetchConversations,
+  } = useQuery<ConversationData[]>({
     queryKey: ["/api/messages/conversations"],
     refetchInterval: 5000, // Refresh every 5 seconds
   });
@@ -398,6 +411,9 @@ export default function Messages() {
     return [...teamEntries, ...fromConversations.filter(e => !teamIds.has(e.member.id))];
   })();
   const isLoadingList = isStaff ? isLoadingConversations : isLoadingTeam;
+  const isErrorList = isStaff ? isErrorConversations : isErrorTeam;
+  const listErrorObj = isStaff ? conversationsErrorObj : teamErrorObj;
+  const refetchList = isStaff ? refetchConversations : refetchTeam;
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -452,7 +468,16 @@ export default function Messages() {
               <CardTitle>{isStaff ? "Conversations" : "Your Team"}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {isLoadingList ? (
+              {isErrorList ? (
+                <div className="p-4">
+                  <QueryErrorState
+                    error={listErrorObj}
+                    onRetry={() => refetchList()}
+                    title="We couldn't load your messages"
+                    data-testid="messages-error"
+                  />
+                </div>
+              ) : isLoadingList ? (
                 <div className="p-4 space-y-4">
                   {[1, 2, 3].map(i => (
                     <div key={i} className="flex items-center gap-4">

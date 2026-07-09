@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { TermTooltip } from "@/components/TermTooltip";
 import { PageShell } from "@/components/PageShell";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import {
   Form,
   FormControl,
@@ -121,7 +122,13 @@ export default function GapCalculator() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSavingsDialog, setShowSavingsDialog] = useState(false);
 
-  const { data: goalData, isLoading: goalLoading } = useQuery<{
+  const {
+    data: goalData,
+    isLoading: goalLoading,
+    isError: goalIsError,
+    error: goalErrorObj,
+    refetch: refetchGoal,
+  } = useQuery<{
     goal: HomeownershipGoal | null;
     creditActions: CreditAction[];
     savingsTransactions: SavingsTransaction[];
@@ -285,6 +292,22 @@ export default function GapCalculator() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // A server failure on the goal query used to render the "set up your goal"
+  // onboarding form as if the user had none — misleading, and it re-prompts users
+  // who already have a goal. Show an honest error + retry first (ux-01).
+  if (goalIsError) {
+    return (
+      <div className="container max-w-3xl mx-auto py-8 px-4">
+        <QueryErrorState
+          error={goalErrorObj}
+          onRetry={() => refetchGoal()}
+          title="We couldn't load your homeownership goal"
+          data-testid="gap-error"
+        />
       </div>
     );
   }
