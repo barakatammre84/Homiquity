@@ -61,6 +61,8 @@ export default defineConfig({
       "tests/betaGate.test.ts",
       "tests/prelaunchGate.test.ts",
       "tests/taxInsight.test.ts",
+      "tests/extractionService.test.ts",
+      "tests/documentConfidence.test.ts",
       "tests/cpaPartners.test.ts",
       "tests/mismoXsdValidation.test.ts",
       "tests/approvalStrength.test.ts",

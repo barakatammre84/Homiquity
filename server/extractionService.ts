@@ -330,7 +330,9 @@ function capConfidence(
   }
 }
 
-function checkTaxReturnConsistency(data: ExtractedTaxReturnData): void {
+// Exported as a test seam: this cross-field hardening runs only in the real
+// Gemini path (after schema validation), so the unit tests exercise it directly.
+export function checkTaxReturnConsistency(data: ExtractedTaxReturnData): void {
   if (data.taxableIncome !== undefined && data.grossIncome !== undefined && data.taxableIncome > data.grossIncome) {
     capConfidence(data, "medium", "Consistency check: taxable income exceeds gross income");
   }

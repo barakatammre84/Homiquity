@@ -770,8 +770,6 @@ export interface IStorage {
   /** Stage-only projection for the CPA portal — never financials or full PII. */
   getCpaReferralsForPortal(cpaPartnerId: string): Promise<Array<{ displayName: string; stage: string; referredAt: Date }>>;
   getCpaReferralStats(cpaPartnerId: string): Promise<{ total: number; active: number; exploring: number }>;
-  /** For staff-signal annotation: the CPA firm that referred a user, if any. */
-  getCpaFirmForUser(referredUserId: string): Promise<string | null>;
 
   // Partner Providers & Orders
   createPartnerProvider(data: InsertPartnerProvider): Promise<PartnerProvider>;
@@ -3649,16 +3647,6 @@ export class DatabaseStorage implements IStorage {
     const portal = await this.getCpaReferralsForPortal(cpaPartnerId);
     const exploring = portal.filter((p) => p.stage === "exploring").length;
     return { total: portal.length, active: portal.length - exploring, exploring };
-  }
-
-  async getCpaFirmForUser(referredUserId: string): Promise<string | null> {
-    const [row] = await db
-      .select({ firmName: cpaPartners.firmName })
-      .from(cpaReferrals)
-      .innerJoin(cpaPartners, eq(cpaReferrals.cpaPartnerId, cpaPartners.id))
-      .where(eq(cpaReferrals.referredUserId, referredUserId))
-      .limit(1);
-    return row?.firmName ?? null;
   }
 
   async deleteTaxInsightsByUser(userId: string): Promise<number> {

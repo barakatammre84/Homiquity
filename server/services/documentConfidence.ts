@@ -119,7 +119,9 @@ export async function recordCoarseExtraction(options: {
   });
 }
 
-function getReviewThreshold(documentType: string): number {
+// Exported for unit testing: the per-doc-type review gate that decides whether a
+// coarse extractor confidence auto-verifies or lands on the human-review queue.
+export function getReviewThreshold(documentType: string): number {
   const thresholds: Record<string, number> = {
     tax_return: 0.85,
     w2: 0.80,

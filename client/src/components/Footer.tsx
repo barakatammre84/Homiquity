@@ -56,6 +56,7 @@ export function Footer() {
               <li><Link href="/ai-coach" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-coach">Homiquity Coach</Link></li>
               <li><Link href="/rates" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-rates">Rates</Link></li>
               <li><Link href="/resources" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-resources-2">Resources</Link></li>
+              <li><Link href="/for-cpas" className="block rounded-md px-2 py-2 -mx-2 hover:text-white transition-colors" data-testid="link-footer-for-cpas">For CPAs</Link></li>
             </ul>
           </div>
         </div>

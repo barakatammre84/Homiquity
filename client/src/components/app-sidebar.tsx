@@ -19,7 +19,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { getPresenceColor } from "@/lib/formatters";
-import { isStaffRole, isInternalStaffRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
+import { isStaffRole, isInternalStaffRole, isPartnerRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
 import { useShellBadges } from "@/hooks/useShellBadges";
 import {
   LayoutDashboard,
@@ -154,6 +154,18 @@ const partnerNavigation: NavSection[] = [
   },
 ];
 
+// CPA partners are a self-registering PARTNER role (not staff). They reach only
+// their own portal — inviter-only, no borrower/staff routes — so the nav is a
+// single Dashboard entry rather than the borrower nav they'd otherwise inherit.
+const cpaNavigation: NavSection[] = [
+  {
+    section: "Partner",
+    items: [
+      { title: "CPA Dashboard", href: "/cpa-portal", icon: LayoutDashboard, testId: "link-cpa-portal" },
+    ],
+  },
+];
+
 const adminNavigation: NavSection[] = [
   {
     section: "Administration",
@@ -192,6 +204,7 @@ export function AppSidebar() {
   const userRole = user?.role || "";
   const isStaff = isStaffRole(userRole);
   const isInternalStaff = isInternalStaffRole(userRole);
+  const isCpa = isPartnerRole(userRole);
   const isAdmin = userRole === "admin";
   const isAspiringOwner = userRole === "aspiring_owner";
 
@@ -202,6 +215,8 @@ export function AppSidebar() {
     navigation = staffNavigation;
   } else if (isStaff) {
     navigation = partnerNavigation;
+  } else if (isCpa) {
+    navigation = cpaNavigation;
   } else if (isAspiringOwner) {
     navigation = aspiringOwnerNavigation;
   } else {
@@ -219,9 +234,11 @@ export function AppSidebar() {
         ? "Lender Portal"
         : isStaff
           ? "Staff Portal"
-          : isAspiringOwner
-            ? "Aspiring Owner"
-            : "Active Buyer";
+          : isCpa
+            ? "CPA Partner"
+            : isAspiringOwner
+              ? "Aspiring Owner"
+              : "Active Buyer";
 
   return (
     <Sidebar>
