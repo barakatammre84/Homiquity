@@ -133,10 +133,16 @@ const HelocRates = lazy(() => import("@/pages/rates/HelocRates"));
 const VaRates = lazy(() => import("@/pages/rates/VaRates"));
 const MortgageRates = lazy(() => import("@/pages/rates/MortgageRates"));
 
+const CalculatorsHub = lazy(() => import("@/pages/calculators/CalculatorsHub"));
 const RentVsBuyCalculator = lazy(() => import("@/pages/calculators/RentVsBuyCalculator"));
 const AffordabilityCalculator = lazy(() => import("@/pages/calculators/AffordabilityCalculator"));
 const MortgageCalculator = lazy(() => import("@/pages/calculators/MortgageCalculator"));
 const RentToOwnReadiness = lazy(() => import("@/pages/calculators/RentToOwnReadiness"));
+const AmortizationCalculator = lazy(() => import("@/pages/calculators/AmortizationCalculator"));
+const HomeEquityCalculator = lazy(() => import("@/pages/calculators/HomeEquityCalculator"));
+const MortgagePayoffCalculator = lazy(() => import("@/pages/calculators/MortgagePayoffCalculator"));
+const DownPaymentCalculator = lazy(() => import("@/pages/calculators/DownPaymentCalculator"));
+const BahCalculator = lazy(() => import("@/pages/calculators/BahCalculator"));
 
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminRates = lazy(() => import("@/pages/admin/AdminRates"));
@@ -296,6 +302,9 @@ function Router() {
         </Route>
 
         {/* Calculator Pages - Public with navigation header */}
+        <Route path="/calculators">
+          <PublicPage><CalculatorsHub /></PublicPage>
+        </Route>
         <Route path="/calculators/rent-vs-buy">
           <PublicPage><RentVsBuyCalculator /></PublicPage>
         </Route>
@@ -304,6 +313,21 @@ function Router() {
         </Route>
         <Route path="/calculators/mortgage">
           <PublicPage><MortgageCalculator /></PublicPage>
+        </Route>
+        <Route path="/calculators/amortization">
+          <PublicPage><AmortizationCalculator /></PublicPage>
+        </Route>
+        <Route path="/calculators/home-equity">
+          <PublicPage><HomeEquityCalculator /></PublicPage>
+        </Route>
+        <Route path="/calculators/payoff">
+          <PublicPage><MortgagePayoffCalculator /></PublicPage>
+        </Route>
+        <Route path="/calculators/down-payment">
+          <PublicPage><DownPaymentCalculator /></PublicPage>
+        </Route>
+        <Route path="/calculators/bah">
+          <PublicPage><BahCalculator /></PublicPage>
         </Route>
         <Route path="/calculators/rent-to-own">
           <Gated><PublicPage><RentToOwnReadiness /></PublicPage></Gated>
