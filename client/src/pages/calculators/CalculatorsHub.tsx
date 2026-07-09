@@ -2,6 +2,8 @@ import { Link } from "wouter";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { LifestyleImage } from "@/components/LifestyleImage";
+import { lifestyleImages } from "@/lib/lifestyleImages";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Home,
@@ -126,6 +128,15 @@ export default function CalculatorsHub() {
             Run the numbers on every part of your homebuying journey — free, instant, and no
             sign-up required.
           </p>
+        </div>
+
+        <div className="mb-10 h-40 overflow-hidden rounded-2xl border shadow-sm sm:h-52">
+          <LifestyleImage
+            src={lifestyleImages.learning.src}
+            alt={lifestyleImages.learning.alt}
+            testId="img-calculators-banner"
+            position="center 30%"
+          />
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

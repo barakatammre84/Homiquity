@@ -5,6 +5,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
+import { FramedPhoto } from "@/components/FramedPhoto";
+import { ImageTextSection } from "@/components/ImageTextSection";
+import { lifestyleImages } from "@/lib/lifestyleImages";
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
@@ -76,60 +79,67 @@ export default function VALoans() {
       <SEOHead
         title="VA Home Loans - No Down Payment Required | Homiquity"
         description="Use the VA home loan benefit you earned: no down payment required, no monthly mortgage insurance, and underwriting built around the VA's residual-income standard. Built by a fellow veteran."
+        ogImage={lifestyleImages.vaLoans.src}
       />
       <SkipLink />
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {/* Hero — dedicated conversion page: wordmark only, no global nav */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 pb-36 pt-6 sm:px-6 lg:px-8">
-          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-precision-700/25 blur-3xl" />
-          <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-precision-500/15 blur-3xl" />
-
-          <div className="relative mx-auto max-w-6xl">
+        <section className="border-b bg-gradient-to-b from-primary/5 to-background px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
+          <div className="mx-auto max-w-6xl">
             <div className="flex items-center justify-between">
-              <Link href="/" className="text-xl font-bold tracking-tight text-white" data-testid="link-va-home">
+              <Link href="/" className="text-xl font-bold tracking-tight text-foreground" data-testid="link-va-home">
                 homiquity
               </Link>
-              <span className="hidden items-center gap-2 text-sm text-white/70 sm:flex">
-                <ShieldCheck aria-hidden="true" className="h-4 w-4 text-precision-300" />
+              <span className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
+                <ShieldCheck aria-hidden="true" className="h-4 w-4 text-primary" />
                 No hard credit check
               </span>
             </div>
 
-            <div className="mt-14 flex flex-col items-center text-center lg:mt-20">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
-                <Medal aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                Built by a fellow veteran
+            <div className="mt-10 grid items-center gap-12 lg:mt-14 lg:grid-cols-2 lg:gap-16">
+              <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm">
+                  <Medal aria-hidden="true" className="h-4 w-4 text-primary" />
+                  Built by a fellow veteran
+                </div>
+                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-va-hero-title">
+                  You earned this benefit. We'll help you use it.
+                </h1>
+                <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
+                  VA home loans: no down payment required, no monthly mortgage insurance, and
+                  underwriting that follows the VA's own playbook — not a W-2 algorithm's.
+                </p>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground lg:justify-start">
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+                    No hard credit check
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+                    Free — no obligation
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+                    About 3 minutes
+                  </span>
+                </div>
               </div>
-              <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl" data-testid="text-va-hero-title">
-                You earned this benefit.
-                <br />
-                We'll help you use it.
-              </h1>
-              <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/80">
-                VA home loans: no down payment required, no monthly mortgage insurance, and
-                underwriting that follows the VA's own playbook — not a W-2 algorithm's.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/70">
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  No hard credit check
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  Free — no obligation
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  About 3 minutes
-                </span>
-              </div>
+
+              <FramedPhoto
+                src={lifestyleImages.vaLoans.src}
+                alt={lifestyleImages.vaLoans.alt}
+                testId="img-hero-va"
+                position="center 25%"
+                loading="eager"
+                className="mx-auto w-full max-w-lg lg:max-w-none"
+              />
             </div>
           </div>
         </section>
 
         {/* Pre-screen — the doctrine's "military service status question first" */}
-        <section aria-labelledby="va-prescreen-heading" className="relative z-10 -mt-24 px-4 sm:px-6 lg:px-8">
+        <section aria-labelledby="va-prescreen-heading" className="px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <div className="mx-auto max-w-2xl">
             <Card>
               <CardHeader>
@@ -171,6 +181,27 @@ export default function VALoans() {
         </section>
 
         {/* Benefits — clear legible cards, no stock photos */}
+        <ImageTextSection
+          testId="section-va-earned"
+          eyebrow="Built by a fellow veteran"
+          title="The benefit you earned, put to work for your family"
+          image={lifestyleImages.landingHero.src}
+          imageAlt={lifestyleImages.landingHero.alt}
+          imagePosition="center 25%"
+          reverse
+          className="border-t bg-muted/30"
+        >
+          <p>
+            The VA home loan is one of the strongest benefits of your service — no down payment
+            required and no monthly mortgage insurance. We underwrite it against the VA's own
+            residual-income standard, the way it's meant to be read.
+          </p>
+          <p>
+            Whether you're buying your first place or using your entitlement again, we'll help
+            you get the most from it.
+          </p>
+        </ImageTextSection>
+
         <section aria-labelledby="va-benefits-heading" className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-5xl">
             <h2 id="va-benefits-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
