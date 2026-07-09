@@ -54,6 +54,7 @@ import {
   XCircle,
   RefreshCw,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 interface PipelineData {
   progress: {
@@ -232,16 +233,14 @@ export default function LoanPipeline() {
 
   if (isLoading) {
     return (
-      <div className="overflow-y-auto p-6">
-        <div className="mx-auto max-w-5xl space-y-6">
-          <Skeleton className="h-12 w-64" />
-          <Skeleton className="h-32 w-full" />
-          <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
-          </div>
-          <Skeleton className="h-64 w-full" />
+      <PageShell width="wide" contentClassName="space-y-6">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-32 w-full" />
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
-      </div>
+        <Skeleton className="h-64 w-full" />
+      </PageShell>
     );
   }
 
@@ -294,26 +293,23 @@ export default function LoanPipeline() {
   );
 
   return (
-    <>
-      <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
-                  Loan Progress
-                </h1>
-                <p className="text-muted-foreground">
-                  Track your mortgage application every step of the way
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {summary.estimatedClosingDays > 0 && (
-                  <Badge variant="secondary" className="gap-1" data-testid="badge-est-close">
-                    <Calendar className="h-3 w-3" />
-                    Est. {summary.estimatedClosingDays} days to close
-                  </Badge>
-                )}
-              </div>
-            </div>
+    <PageShell
+      width="wide"
+      title="Loan Progress"
+      subtitle="Track your mortgage application every step of the way"
+      titleTestId="text-page-title"
+      headerAction={
+        <div className="flex items-center gap-2">
+          {summary.estimatedClosingDays > 0 && (
+            <Badge variant="secondary" className="gap-1" data-testid="badge-est-close">
+              <Calendar className="h-3 w-3" />
+              Est. {summary.estimatedClosingDays} days to close
+            </Badge>
+          )}
+        </div>
+      }
+      contentClassName="space-y-6"
+    >
 
             <Card data-testid="card-stage-timeline">
               <CardHeader className="pb-3">
@@ -922,7 +918,6 @@ export default function LoanPipeline() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-    </>
+    </PageShell>
   );
 }
