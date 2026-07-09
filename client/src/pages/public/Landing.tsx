@@ -7,6 +7,9 @@ import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
+import { HeroPhotoBackdrop } from "@/components/HeroPhotoBackdrop";
+import { LifestyleImage } from "@/components/LifestyleImage";
+import { lifestyleImages } from "@/lib/lifestyleImages";
 import { useQuery } from "@tanstack/react-query";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { 
@@ -18,11 +21,11 @@ import {
   TrendingUp,
   Scale,
   Bot,
-  Users,
   Building2,
   Briefcase,
   Key,
 } from "lucide-react";
+// Users icon replaced by a lifestyle photo in the founder-note band.
 
 // Monochromatic by design: differentiation comes from the icon, not a rainbow
 // of chip colors (Charcoal Emerald sweep — precision ramp only on this page).
@@ -85,12 +88,14 @@ export default function Landing() {
         title="Homiquity - Clarity for Every Stage of Homeownership"
         description="Homiquity gives you clarity, organization, and confidence in every stage of homeownership. Pre-approval, property search, AI coaching, and smart tools — all in one place."
         ogType="website"
+        ogImage={lifestyleImages.landingHero.src}
       />
       <SkipLink />
       <Navigation />
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
       <section className="relative overflow-hidden bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <HeroPhotoBackdrop src={lifestyleImages.landingHero.src} position="center 25%" />
         <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-precision-700/25 blur-3xl" />
         <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-precision-500/15 blur-3xl" />
 
@@ -303,8 +308,13 @@ export default function Landing() {
 
           <div className="mt-12 rounded-2xl border bg-card p-8 sm:p-10" data-testid="card-founder-note">
             <div className="flex flex-col items-center text-center lg:flex-row lg:text-left lg:gap-8">
-              <div className="mb-6 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/10 lg:mb-0">
-                <Users className="h-8 w-8 text-primary" />
+              <div className="mb-6 h-44 w-full shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:mb-0 lg:h-40 lg:w-64">
+                <LifestyleImage
+                  src={lifestyleImages.founderNote.src}
+                  alt={lifestyleImages.founderNote.alt}
+                  testId="img-founder-note"
+                  position="center 30%"
+                />
               </div>
               <div>
                 <h3 className="text-lg font-semibold">A note from our team</h3>

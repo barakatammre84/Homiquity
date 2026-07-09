@@ -5,6 +5,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
+import { HeroPhotoBackdrop } from "@/components/HeroPhotoBackdrop";
+import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
   ArrowRight,
@@ -75,12 +77,14 @@ export default function VALoans() {
       <SEOHead
         title="VA Home Loans - No Down Payment Required | Homiquity"
         description="Use the VA home loan benefit you earned: no down payment required, no monthly mortgage insurance, and underwriting built around the VA's residual-income standard. Built by a fellow veteran."
+        ogImage={lifestyleImages.vaLoans.src}
       />
       <SkipLink />
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {/* Hero — dedicated conversion page: wordmark only, no global nav */}
         <section className="relative overflow-hidden bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 pb-36 pt-6 sm:px-6 lg:px-8">
+          <HeroPhotoBackdrop src={lifestyleImages.vaLoans.src} position="center 25%" variant="center" />
           <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-precision-700/25 blur-3xl" />
           <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-precision-500/15 blur-3xl" />
 

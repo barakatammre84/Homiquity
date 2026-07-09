@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LifestyleImage } from "@/components/LifestyleImage";
+import { lifestyleImages } from "@/lib/lifestyleImages";
 import {
   Search,
   BookOpen,
@@ -159,6 +161,17 @@ export default function LearningCenter() {
                 />
               </div>
             </div>
+      </div>
+
+      <div className="mx-auto max-w-5xl px-4 pt-8 sm:px-6 lg:px-8">
+        <div className="h-44 overflow-hidden rounded-2xl border shadow-sm sm:h-56">
+          <LifestyleImage
+            src={lifestyleImages.learning.src}
+            alt={lifestyleImages.learning.alt}
+            testId="img-learning-banner"
+            position="center 30%"
+          />
+        </div>
       </div>
 
       <div className="p-4 sm:p-6 lg:p-8">
