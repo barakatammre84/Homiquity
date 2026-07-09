@@ -6,6 +6,7 @@ import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
+import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
@@ -189,6 +190,26 @@ export default function SelfEmployed() {
         </section>
 
         {/* The pain — why algorithmic lenders fail this borrower */}
+        <ImageTextSection
+          testId="section-se-story"
+          eyebrow="Built for complex income"
+          title="Your tax return tells a story. We read the whole thing."
+          image={lifestyleImages.learning.src}
+          imageAlt={lifestyleImages.learning.alt}
+          imagePosition="center 30%"
+          className="border-t bg-muted/30"
+        >
+          <p>
+            1099s, K-1s, depreciation, multiple entities — automated systems choke on income
+            like yours. Homiquity's application is built for it, and people who actually
+            understand business returns review your file.
+          </p>
+          <p>
+            You get a real answer based on how you truly earn — not a one-size-fits-all
+            algorithm's guess.
+          </p>
+        </ImageTextSection>
+
         <section aria-labelledby="se-pain-heading" className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-5xl">
             <h2 id="se-pain-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">

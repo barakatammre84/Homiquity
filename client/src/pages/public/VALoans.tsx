@@ -6,6 +6,7 @@ import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
+import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
@@ -179,6 +180,27 @@ export default function VALoans() {
         </section>
 
         {/* Benefits — clear legible cards, no stock photos */}
+        <ImageTextSection
+          testId="section-va-earned"
+          eyebrow="Built by a fellow veteran"
+          title="The benefit you earned, put to work for your family"
+          image={lifestyleImages.landingHero.src}
+          imageAlt={lifestyleImages.landingHero.alt}
+          imagePosition="center 25%"
+          reverse
+          className="border-t bg-muted/30"
+        >
+          <p>
+            The VA home loan is one of the strongest benefits of your service — no down payment
+            required and no monthly mortgage insurance. We underwrite it against the VA's own
+            residual-income standard, the way it's meant to be read.
+          </p>
+          <p>
+            Whether you're buying your first place or using your entitlement again, we'll help
+            you get the most from it.
+          </p>
+        </ImageTextSection>
+
         <section aria-labelledby="va-benefits-heading" className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-5xl">
             <h2 id="va-benefits-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">

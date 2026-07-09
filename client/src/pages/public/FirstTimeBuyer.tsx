@@ -10,6 +10,7 @@ import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
+import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { formatCurrency } from "@/lib/formatters";
 import { usePageView } from "@/hooks/useActivityTracker";
@@ -331,6 +332,24 @@ export default function FirstTimeBuyer() {
         </section>
 
         {/* Myth-busting — education for the anxious first-timer */}
+        <ImageTextSection
+          testId="section-ftb-guided"
+          eyebrow="You're not on your own"
+          title="New to all this? That's exactly who we built it for."
+          image={lifestyleImages.founderNote.src}
+          imageAlt={lifestyleImages.founderNote.alt}
+          imagePosition="center 30%"
+          reverse
+          className="border-t bg-muted/30"
+        >
+          <p>
+            First-time buying comes with unfamiliar words and big decisions. Homiquity walks
+            you through each step in plain language — what you can afford, what to save, and
+            what happens next — so you're never guessing.
+          </p>
+          <p>No jargon and no pressure. When you're ready, a real person reviews your file.</p>
+        </ImageTextSection>
+
         <section aria-labelledby="ftb-myths-heading" className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-5xl">
             <h2 id="ftb-myths-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">

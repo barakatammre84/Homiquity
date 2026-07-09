@@ -12,6 +12,7 @@ import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
+import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { formatCurrency } from "@/lib/formatters";
 import { usePageView } from "@/hooks/useActivityTracker";
@@ -377,6 +378,27 @@ export default function Refinance() {
         </section>
 
         {/* Why homeowners refinance — educational, no numeric claims */}
+        <ImageTextSection
+          testId="section-refi-life"
+          eyebrow="More than a rate"
+          title="Refinance around your life — not just today's number"
+          image={lifestyleImages.founderNote.src}
+          imageAlt={lifestyleImages.founderNote.alt}
+          imagePosition="center 30%"
+          className="border-t bg-muted/30"
+        >
+          <p>
+            Lowering your payment is one reason to refinance. Shortening your term,
+            consolidating debt, or tapping equity for a remodel are others. We lay out the real
+            tradeoffs of each — the monthly change and the long-run cost — so you can choose what
+            fits your plans.
+          </p>
+          <p>
+            Run the numbers yourself first. When you want to go further, a soft credit check
+            keeps your score untouched.
+          </p>
+        </ImageTextSection>
+
         <section aria-labelledby="refi-why-heading" className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-5xl">
             <h2 id="refi-why-heading" className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
