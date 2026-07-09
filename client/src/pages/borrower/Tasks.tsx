@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { PageShell } from "@/components/PageShell";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 
 interface DashboardData {
   applications: LoanApplication[];
@@ -98,7 +99,13 @@ export default function Tasks() {
     enabled: !authLoading,
   });
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
+  const {
+    data: tasks,
+    isLoading: tasksLoading,
+    isError: tasksIsError,
+    error: tasksError,
+    refetch: refetchTasks,
+  } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     enabled: !authLoading && !!user,
   });
@@ -186,6 +193,21 @@ export default function Tasks() {
           ))}
         </div>
       </div>
+    );
+  }
+
+  // A server failure on the tasks query used to fall through to the "No Tasks
+  // Yet" empty state — misleading. Show an honest error + retry instead (ux-01).
+  if (tasksIsError) {
+    return (
+      <PageShell fullHeight width="wide" title="My Tasks" subtitle="Complete these tasks to move forward with your loan application">
+        <QueryErrorState
+          error={tasksError}
+          onRetry={() => refetchTasks()}
+          title="We couldn't load your tasks"
+          data-testid="tasks-error"
+        />
+      </PageShell>
     );
   }
 
