@@ -5,6 +5,19 @@ Guidance for Claude Code when working in this repository. The deep engineering m
 session working practices (doc rules, branch lifecycle, definition of done, push policy)
 are [knowledge-base/governance/TEAM_PRACTICES.md](knowledge-base/governance/TEAM_PRACTICES.md). This file covers what must be true in *every* session.
 
+## Domain skills (loaded on demand)
+
+Four `.claude/skills/*/SKILL.md` router skills carry each domain's non-negotiable rules
+and point to the authoritative app-guide chapter (they don't duplicate it — that chapter
+wins). Claude Code auto-loads a skill when its work matches:
+
+- **`api-routes`** — backend endpoints under `server/routes/` (auth gating, Zod, CSRF/webhooks, PII/audit, `inArray`).
+- **`ui-components`** — client UI/theming (Charcoal Emerald token guard, WCAG AA, Shadcn/TanStack Query).
+- **`mortgage-calculations`** — affordability/pricing/underwriting math (determinism + no-citation-no-implementation).
+- **`seo-content`** — public marketing/SEO surfaces (Reg Z trigger terms, Reg N no-approval, TCPA, pre-license gate).
+
+The rules below still bind every session regardless of which skill is active.
+
 ## Compliance first: Fannie Mae loan delivery (ULDD / UCD / URLA / MISMO)
 
 Before building or modifying **anything** that touches Fannie Mae loan delivery, ULDD, UCD,

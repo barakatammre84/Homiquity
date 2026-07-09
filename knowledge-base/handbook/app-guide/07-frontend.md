@@ -43,10 +43,12 @@ Shadcn primitives).
 - **Data fetching**: never `fetch` directly in components — use the existing
   TanStack Query helpers (`queryClient`, `apiRequest` in `client/src/lib/`)
   so auth, errors, and cache invalidation stay consistent.
-- **Design language**: "Calm Path" — one dominant CTA per screen, progress
-  steppers with time estimates, collapsible secondary content. Brand palette:
-  deep navy / emerald / amber / ocean blue, Inter font. See
-  [design_guidelines.md](../design/design_guidelines.md).
+- **Design language**: **Charcoal Emerald** (2026-07-06, supersedes Obsidian
+  Indigo) — stark-white surfaces, neutral slate ramp, deep-charcoal type, emerald
+  reserved for conversion actions; one dominant CTA per screen, progress steppers,
+  collapsible secondary content. Fonts: Geist → Inter. Tokens are enforced by the
+  design-token guard — see [design_guidelines.md](../design/design_guidelines.md)
+  (authoritative).
 - **Aliases**: `@/` → `client/src/`, `@shared/` → `shared/` (defined in
   `vite.config.ts` + `tsconfig.json`).
 
