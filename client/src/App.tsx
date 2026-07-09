@@ -222,11 +222,15 @@ function Router() {
         <Route path="/apply/:token">
           {(params) => <Gated><BareLayout><ApplyInvite /></BareLayout></Gated>}
         </Route>
+        {/* Referral / co-brand landings self-gate: prelaunch they render a
+            referral-aware waitlist (LO/partner context + email capture + code
+            stashed) rather than redirecting to the bare waitlist and losing the
+            referral. Not wrapped in <Gated>. */}
         <Route path="/ref/:code">
-          {(params) => <Gated><BareLayout><ReferralLanding /></BareLayout></Gated>}
+          {(params) => <BareLayout><ReferralLanding /></BareLayout>}
         </Route>
         <Route path="/partner/:profileId">
-          {(params) => <Gated><BareLayout><PartnerLanding /></BareLayout></Gated>}
+          {(params) => <BareLayout><PartnerLanding /></BareLayout>}
         </Route>
         {/* CPA channel: /for-cpas is B2B partner onboarding (ungated); the client
             invite landing is gated like /ref/:code so it funnels to the waitlist
