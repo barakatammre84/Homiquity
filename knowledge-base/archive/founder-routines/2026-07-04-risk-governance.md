@@ -1,5 +1,7 @@
 # Risk & Model Governance — 2026-07-04 (midmorning run)
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: FAIL** — carried forward from this morning's run: the live VA residual-income calculation still contradicts its own cited source and still applies an uncited 5% discount. No code in the decision path changed since the 06:49 report; this is the standing, unresolved blocker, not a new discovery. Everything checked fresh this run (test suite, audit chain, model inventory, a new threshold sample) is clean.
 
 ## ⛔ Human actions

@@ -62,15 +62,17 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 
 ### Logs — dated, immutable snapshots · [`logs/`](logs/)
 > Point-in-time records. Never rewritten; supersession goes in a top banner (TEAM_PRACTICES §2).
-- [logs/assessments/](logs/assessments/) — one-time platform/lender/UI audits (several superseded).
-- [logs/founder-routines/](logs/founder-routines/) · [logs/lo-audit/](logs/lo-audit/) · [logs/ux-audit/](logs/ux-audit/) — dated routine + audit runs.
+- [logs/ux-audit/](logs/ux-audit/) — dated UX audit + design routine runs.
+> The launch-era operational logs (founder-routines, lo-audit) and one-time platform assessments (2026-07-02 → 07-06) were archived 2026-07-08 — see the Archive section below.
 
 ### Research — scratch + strategy collateral · [`research/`](research/)
 - [research/my-research/](research/my-research/) — scratch (nothing load-bearing).
 - [research/gtm/](research/gtm/) — GTM battlecards + competitive briefs.
 
 ### Archive — obsolete, quarantined · [`archive/`](./archive/)
-Superseded docs kept for provenance. Never act on these.
+Superseded docs kept for provenance. Never act on these. Includes the launch-era
+operational logs quarantined 2026-07-08: [archive/founder-routines/](archive/founder-routines/),
+[archive/lo-audit/](archive/lo-audit/), [archive/assessments/](archive/assessments/).
 
 ## The rule (continuous update)
 

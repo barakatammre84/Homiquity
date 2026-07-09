@@ -1,5 +1,7 @@
 # Vendor Procurement & Management — 2026-07-04
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: OK** — no live vendor is degraded and no simulated seam is silently being treated as real; everything is on the same track as last check, with a short list of founder-only asks below.
 
 ## Human actions (procurement checklist)

@@ -1,5 +1,7 @@
 # State of Homiquity — CTO Platform Assessment
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **Date:** 2026-07-03 (point-in-time snapshot — update or supersede, don't let it rot)
 
 > **STATUS 2026-07-04 (source-of-truth audit):** much of §3/§4 has since shipped — trust

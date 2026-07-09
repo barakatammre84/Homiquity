@@ -1,5 +1,7 @@
 # Midday LO Edge-Case Mining — 2026-07-04
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: WARN** — No edge case silently produced a wrong regulated outcome today, but two friction-telemetry signal types are declared and never fired (a real capture gap), and the known S-05/S-06 rental-income advisory-vs-decision gap remains open. One concrete edge case was found, fixed, tested, and shipped as a PR today.
 
 ---

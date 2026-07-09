@@ -1,5 +1,7 @@
 # Bridge & Bind — 2026-07-04
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: WARN** — invariants, load-bearing handshakes, trust-language, and AI-import doctrine all clean; two entire NEW route files (leads intake, market-data moat) merged in the last 48h ship with zero client binding.
 
 ## Human actions

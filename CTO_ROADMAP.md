@@ -1,6 +1,6 @@
 # Homiquity CTO Roadmap — Development & Business Tasks
 
-**What this is:** the CTO-level checklist of all project development and business work left to do (separate from the in-app borrower/staff "tasks" feature), in plain language, in the order it should be done. Details and reasoning for each item live in [kb/STATE_OF_THE_PLATFORM.md](./knowledge-base/logs/assessments/STATE_OF_THE_PLATFORM.md).
+**What this is:** the CTO-level checklist of all project development and business work left to do (separate from the in-app borrower/staff "tasks" feature), in plain language, in the order it should be done. Details and reasoning for each item live in [kb/STATE_OF_THE_PLATFORM.md](./knowledge-base/archive/assessments/STATE_OF_THE_PLATFORM.md) (archived launch-era snapshot).
 
 **How to use it:**
 - Work top to bottom in the "Do next" section — the order matters.
@@ -142,6 +142,7 @@ Everything else in this file is explicitly **not** the sprint: CS\*, ARC-\*, CH-
 - [ ] **CH-4. Consolidate 15+ raw `user.role !== "admin"` checks behind a shared `isAdmin(user)` predicate.** Scattered across `agent-broker.ts`, `compliance.ts`, `lending.ts`, `underwriting-rules.ts`, `data-intelligence.ts`, `documents.ts`, `borrower.ts` — `requireRole()` (`server/auth.ts:428`) and `shared/roles.ts`'s `isInternalStaffRole`/`isStaffRole` already exist for route-level gating, but object-level admin checks inside handlers are all hand-rolled string comparisons. Touches 8 files. Est: 4h.
 - [ ] **CH-5. Write a dedicated test file for `server/services/ruleEngine.ts`.** 189 lines, zero test coverage today, backs the accepted-baseline `/api/underwriting-rules/execute` endpoint (a DSL condition/action evaluator with no tests at all). Est: 3h.
 - [ ] **CH-6. Write a dedicated test file for `server/pipelineEngine.ts`.** 897 lines — the largest decision-adjacent module with no dedicated coverage; only incidentally touched by `tests/statusVocabulary.test.ts`. Est: 5h.
+- [ ] **CH-8. Verify/apply the status-vocabulary data migration on prod.** `scripts/migrate-status-vocabulary.ts` was flagged as a deploy-time production follow-up by the 2026-07-02 backend→UI optimization sprint (now archived at `kb/archive/assessments/BACKEND_UI_OPTIMIZATION_AUDIT.md`). Dry-run first (`npx tsx scripts/migrate-status-vocabulary.ts`), confirm whether it already ran against prod, and apply with `--apply` if not. Founder-supervised (production data write). *(Migrated here 2026-07-08 so the reminder outlives the archived audit.)*
 - [ ] **CH-7. Remove 15 verified-orphaned dependencies** (`google-auth-library`, `memoizee`, `memorystore`, `openid-client`, `passport-local`, `@types/memoizee`, `@types/passport-local`, `@types/supertest`, `supertest`, `@jridgewell/trace-mapping`, `next-themes`, `p-limit`, `p-retry`, `tw-animate-css`, `zod-validation-error`) — Replit-Auth-era + otherwise zero-reference packages, three-check-verified dead. Blocked on CH-1 (or a warm-cache environment) so the removal can be verified without unrelated version drift. Est: 1h once unblocked.
 
 ---

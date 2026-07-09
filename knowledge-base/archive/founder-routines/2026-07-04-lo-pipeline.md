@@ -1,5 +1,7 @@
 # Morning LO Pipeline Handoff — 2026-07-04
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: WARN** — no live stalled file exists to be silently ignored today (there are no live LO borrower files at all — this ran against seed data as a drill), and every shipped No-Stall surface (fileHealth, LO Command Center, deal-team scoping, MISMO export gate) verified working on current `main`. WARN, not OK, because the doc-request one-click-approve automation the ping workflow depends on still doesn't exist — pre-launch, not a regression.
 
 **No-Stall verdict: Can we honestly promise "no file goes stale silently" today? YES, conditionally.** No file is currently stale (all seed-data rows show `daysIdle: 0`, one `withdrawn` file is a correct terminal red, not a stall), and the automation that would catch a stale file — `fileHealth.ts`'s 48h rule surfaced live on the queue — is verified working. The unmet piece is forward-looking: once real files exist, the founder can be *notified* of a stall (fileHealth/Command Center works), but cannot yet forward an LO a ready-to-approve document request — that step is still manual. That gap doesn't break the promise itself, only the polished pitch of it.

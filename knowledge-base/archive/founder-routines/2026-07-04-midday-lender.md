@@ -1,5 +1,7 @@
 # Midday Lender Liquidity — 2026-07-04
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: OK** — F1 (NMLS licensing) still PENDING as expected, so this block stays in
 preparation mode; all three prep lanes (Target-5, scenario translation, MISMO gate) advanced
 cleanly with no uncited rules, no broken validation, and nothing aging past 48h.

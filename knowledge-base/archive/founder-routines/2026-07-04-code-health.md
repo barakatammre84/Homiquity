@@ -1,5 +1,7 @@
 # Code Health — 2026-07-04
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: WARN** — no compliance seam broken and no prior code-health PR regressed anything (this is the routine's first run), but the intended dependency-removal PR had to be aborted mid-flight when a clean reinstall proved unsafe, and this environment has a real tooling landmine worth fixing before anyone next touches `package.json`.
 
 ## Human actions

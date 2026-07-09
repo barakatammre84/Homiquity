@@ -1,5 +1,7 @@
 # Vendor Procurement & Management — 2026-07-06
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: WARN** — no live vendor is broken and no simulated seam is silently being treated as real, but F1 has no new signal and five launch-ops env items (GCS/SendGrid/Sentry/CRON_SECRET/homiquity.com domain) remain unconfirmed after multiple routine cycles with no founder action visible on any of them.
 
 ## ⛔ Human actions (procurement checklist)

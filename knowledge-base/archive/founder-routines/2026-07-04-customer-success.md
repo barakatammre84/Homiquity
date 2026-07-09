@@ -1,5 +1,7 @@
 # Customer Success Executive — Daily Report — 2026-07-04
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: WARN** — the two rehearsed paths I checked most closely (locked-out recovery, adverse-action dispute rights) are solid in code; the gaps are in measurement and escalation routing, not in broken borrower-facing flows.
 
 ## Human actions

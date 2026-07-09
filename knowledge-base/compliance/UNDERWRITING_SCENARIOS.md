@@ -125,7 +125,7 @@ from application data, credit tradelines, bank transactions, or public records.
 - **Low reserves** (`LOW_RESERVES_WARNING`): post-closing reserves < 2 months PITI from verified assets — auto-condition + outreach. *Threshold is platform policy; formal citation research pending (Fannie reserve requirements, B3-4.1-01, vary by transaction type).*
 - **Complex income** (`COMPLEX_INCOME_CHECK`): self-employed → 2-year tax-return conditions gate clear-to-close
 - **VA zero-down funnel path**: military status asked before down payment; $0 down gated to VA-eligible purchases; PMI guidance suppressed
-- **Anti-steering, eDisclosure, FCRA consent gates**: see [LENDER_READINESS_GAP_ANALYSIS.md](../logs/assessments/LENDER_READINESS_GAP_ANALYSIS.md)
+- **Anti-steering, eDisclosure, FCRA consent gates**: see [LENDER_READINESS_GAP_ANALYSIS.md](../archive/assessments/LENDER_READINESS_GAP_ANALYSIS.md) (archived launch-era snapshot)
 
 ---
 

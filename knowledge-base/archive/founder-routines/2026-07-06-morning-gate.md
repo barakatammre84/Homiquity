@@ -1,5 +1,7 @@
 # Morning Launch Gate — 2026-07-06
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **STATUS: OK** — gates green (tsc clean, 673/673 unit tests across 48 files), 0 npm audit findings, no secrets in the last 24h of commits, no PII-in-logs regressions, no route-guard regressions, both adverse-action seams verified **live end-to-end** (today is Monday), regulatory ledger fresh.
 
 ## LAUNCH DISTANCE

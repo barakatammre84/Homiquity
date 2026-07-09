@@ -1,5 +1,7 @@
 # Backend → UI Optimization Audit
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 > **STATUS: SPRINT EXECUTED 2026-07-02.** All nine items below were implemented
 > the same night (193 unit + 50 integration tests green). See "Sprint results"
 > at the bottom for what shipped, extra bugs found during implementation, and

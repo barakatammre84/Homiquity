@@ -75,9 +75,11 @@ Two axes of authority:
 
 ### Tier 4 — Dated snapshots (true as of their date only)
 
-Everything under [knowledge-base/logs/](knowledge-base/logs/) — point-in-time assessments
-([logs/assessments/](knowledge-base/logs/assessments/)) and dated routine/audit runs
-([logs/founder-routines/](knowledge-base/logs/founder-routines/), [logs/lo-audit/](knowledge-base/logs/lo-audit/), [logs/ux-audit/](knowledge-base/logs/ux-audit/)).
+Everything under [knowledge-base/logs/](knowledge-base/logs/) — currently the dated
+UX audit + design routine runs ([logs/ux-audit/](knowledge-base/logs/ux-audit/)). The
+launch-era operational logs (founder-routines, lo-audit) and one-time platform assessments
+(2026-07-02 → 07-06) were quarantined 2026-07-08 to
+[knowledge-base/archive/](knowledge-base/archive/) (banner-marked; never act on them).
 The [governance/ARMED_LAUNCH_CHARTER_2026-07-07.md](knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md)
 is filed under `governance/` for its locked launch *decisions*, but its execution log is a dated
 snapshot — read its status banner, not it, for the current launch state.

@@ -1,5 +1,7 @@
 # Blueprint 18-Desk Crosswalk
 
+> **⛔ ARCHIVED 2026-07-08 — launch-era snapshot (2026-07-02 → 07-06), superseded. Do not act on this document.** Current truth lives in the 🚀 Launch sprint of [CTO_ROADMAP.md](../../../CTO_ROADMAP.md); see the [archive rationale](../README.md). Retained for history only; its dated findings are preserved as written.
+
 **Date:** 2026-07-03 · **Lens:** the "Master Homiquity Autonomous Enterprise Blueprint" (18 specialized desks) mapped onto code that exists today
 **Companion docs:** [STATE_OF_THE_PLATFORM.md](./STATE_OF_THE_PLATFORM.md) (CTO assessment — P0/P1 inventory) · [LENDER_READINESS_GAP_ANALYSIS.md](./LENDER_READINESS_GAP_ANALYSIS.md) (vendor-review lens) · [CTO_ROADMAP.md](../../../CTO_ROADMAP.md) (living checklist)
 
