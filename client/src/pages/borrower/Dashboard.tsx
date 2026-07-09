@@ -762,7 +762,7 @@ export default function Dashboard() {
                 </h1>
                 {fileHealth === "healthy" && (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full bg-status-success/10 px-2 py-0.5 text-[11px] font-medium text-status-success"
+                    className="inline-flex items-center gap-1 rounded-full bg-success-subtle px-2 py-0.5 text-[11px] font-medium text-success-subtle-foreground"
                     title="Automated pre-underwriting review found no issues"
                     data-testid="chip-file-healthy"
                   >
@@ -772,7 +772,7 @@ export default function Dashboard() {
                 )}
                 {fileHealth === "action" && (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full bg-status-warning/10 px-2 py-0.5 text-[11px] font-medium text-status-warning"
+                    className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-medium text-warning-subtle-foreground"
                     title={activePreUw?.flags?.map((f) => f.reason).join(" ")}
                     data-testid="chip-file-action-needed"
                   >

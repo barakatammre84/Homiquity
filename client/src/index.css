@@ -2,13 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - "Charcoal Emerald": Better.com-style stark-white system
-   (user-authorized repaint 2026-07-06, supersedes "Obsidian Indigo").
+/* LIGHT MODE - "Royal Blue Emerald": stark-white system with vivid royal-blue
+   dark surfaces (2026-07-08 repaint of "Charcoal Emerald" — charcoal dark
+   surfaces swapped for royal blue; emerald kept as the action color).
    Neutrals are the slate family: canvas #FFFFFF, data-section fill #F8FAFC,
-   hairlines #E2E8F0, micro-copy #64748B, type #121212 charcoal.
-   Conversion green: emerald — #047857 (700) for solid fills so white text
-   clears WCAG AA (5.49:1; raw #10B981 is only 2.49:1), #059669 (600) for
-   rings, #10B981 (500) reserved for status/success accents. */
+   hairlines #E2E8F0, micro-copy #64748B, type near-black slate #0F172A.
+   Dark surfaces (sidebar, hero gradients): royal blue. Conversion green:
+   emerald — #047857 (700) for solid fills so white text clears WCAG AA
+   (5.49:1; raw #10B981 is only 2.49:1), #059669 (600) for rings, #10B981
+   (500) reserved for status/success accents. */
 :root {
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .05);
@@ -17,26 +19,26 @@
   --elevate-2: rgba(0,0,0, .06);
   /* Layer 0: Stark White canvas */
   --background: 0 0% 100%;
-  /* Primary typography: Deep Charcoal #121212 */
-  --foreground: 0 0% 7%;
+  /* Primary typography: near-black slate #0F172A (cool blue undertone) */
+  --foreground: 222 47% 11%;
   /* Slate-200 #E2E8F0 hairlines — soft separation, no harsh borders */
   --border: 214 32% 91%;
   /* Layer 1: white cards separated by slate hairline */
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 7%;
+  --card-foreground: 222 47% 11%;
   --card-border: 214 32% 91%;
-  /* Sidebar: Deep Charcoal #121212 navigation container */
-  --sidebar: 0 0% 7%;
+  /* Sidebar: deep royal-blue navigation container (~#122A6B) */
+  --sidebar: 224 71% 24%;
   --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 0 0% 16%;
-  /* Active nav item: light pill on charcoal */
+  --sidebar-border: 224 40% 34%;
+  /* Active nav item: light pill on royal blue */
   --sidebar-primary: 210 40% 98%;
-  --sidebar-primary-foreground: 0 0% 7%;
-  --sidebar-accent: 0 0% 13%;
+  --sidebar-primary-foreground: 222 47% 11%;
+  --sidebar-accent: 224 52% 32%;
   --sidebar-accent-foreground: 210 40% 98%;
   --sidebar-ring: 160 84% 39%;
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 7%;
+  --popover-foreground: 222 47% 11%;
   --popover-border: 214 32% 88%;
   /* Layer 2: conversion action = Emerald #047857 (green means "Go";
      700-depth so white button text passes AA) */
@@ -44,14 +46,15 @@
   --primary-foreground: 0 0% 100%;
   /* Secondary surfaces: slate-100 chip */
   --secondary: 210 40% 96%;
-  --secondary-foreground: 0 0% 7%;
+  --secondary-foreground: 222 47% 11%;
   /* Data-section separation: Ultra-Light Gray #F8FAFC */
   --muted: 210 40% 98%;
-  /* Empathetic micro-copy: Muted Slate — one step deeper than #64748B so it
-     clears AA on the #F8FAFC panels too (4.83:1), not just on white */
-  --muted-foreground: 215 16% 45%;
-  /* Accent: charcoal chip — quieter than the emerald primary */
-  --accent: 0 0% 10%;
+  /* Secondary/micro-copy: Muted Slate, darkened 2026-07-08 for readability
+     (~6.2:1 on white, ~5.8:1 on the #F8FAFC panels — was 4.83:1). Still clearly
+     recessive vs the near-black primary type (~16:1). */
+  --muted-foreground: 215 24% 37%;
+  /* Accent: deep royal-blue chip — quieter than the emerald primary */
+  --accent: 224 60% 24%;
   --accent-foreground: 0 0% 100%;
   /* Semantic pop: danger. Red-600 (was red-500 #EF4444) so white text on the
      solid fill clears WCAG AA (4.80:1, was 3.76:1). */

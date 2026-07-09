@@ -109,14 +109,15 @@ export default {
           warning: "#F59E0B", // pending loan-officer review
           danger: "#EF4444", // TCPA opt-out / credit alert
         },
-        // "Charcoal Emerald" neutral value ramp (charcoal→slate→white).
-        // Prefer the semantic tokens (bg-background, text-foreground, …) in
-        // components; reach for precision-* only for bespoke value stacking
-        // (e.g. the dark hero gradients on the persona landing pages).
+        // "Royal Blue Emerald" ramp. The dark end (950/900/700) is a vivid
+        // royal-blue gradient used only for the dark hero surfaces on the
+        // persona/landing pages; the light end (500→50) stays neutral slate for
+        // micro-copy, borders, and section fills. Prefer the semantic tokens
+        // (bg-background, text-foreground, …) in components.
         precision: {
-          950: "#121212", // Deep Charcoal — primary type, dark heroes
-          900: "#1E293B", // slate-800 — nav containers, dark surfaces
-          700: "#334155", // slate-700 — secondary text, inactive borders
+          950: "#0A1E52", // deep royal navy — hero gradient anchor
+          900: "#1B3B9E", // royal blue — hero gradient mid
+          700: "#2456D6", // vivid royal blue — hero gradient end + glow
           500: "#64748B", // Muted Slate — placeholders, micro-copy
           300: "#94A3B8", // slate-400 — hover borders, disabled states
           100: "#E2E8F0", // slate-200 — card hairlines, active input bg

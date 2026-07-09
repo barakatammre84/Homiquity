@@ -277,6 +277,12 @@ interface AdvisoryPanelProps {
   currentStepId: string;
 }
 
+// Steps shown before any numbers are entered — the advisory panel has nothing
+// useful to show yet, so it (and the right-hand column the main content reserves
+// for it) is suppressed. Shared so the panel's visibility and the layout's
+// reserved space can never drift apart.
+const ADVISORY_HIDDEN_STEPS: string[] = ["intro", "loanPurpose", "propertyType"];
+
 function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
   // Payment estimates use the live advertised 30-year fixed rate — a payment
   // figure shown to a borrower must be reproducible from current pricing,
@@ -326,7 +332,7 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
     return { dti, estMortgage, loanAmount, ltv, downPaymentPercent, estRatePct };
   }, [formValues, advertised30YrRate]);
 
-  if (currentStepId === "intro" || currentStepId === "loanPurpose" || currentStepId === "propertyType") {
+  if (ADVISORY_HIDDEN_STEPS.includes(currentStepId)) {
     return null;
   }
 
@@ -1663,7 +1669,14 @@ function PreApprovalFunnel() {
       <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 pt-20 pb-0 w-full max-w-4xl mx-auto relative lg:pr-96">
+      <div
+        className={cn(
+          "flex-1 flex flex-col items-center justify-center p-6 pt-20 pb-0 w-full max-w-4xl mx-auto relative",
+          // Only reserve the right-hand column while the advisory panel is shown;
+          // on the opening steps it isn't, so the question stays centered.
+          !ADVISORY_HIDDEN_STEPS.includes(currentQ.id) && "lg:pr-96",
+        )}
+      >
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={stepId}

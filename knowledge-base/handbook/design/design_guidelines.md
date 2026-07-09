@@ -9,18 +9,21 @@
 > `npm run checkup`) **fails CI on any raw Tailwind palette class**, so the rules
 > below are enforced, not aspirational.
 
-## Design approach — "Charcoal Emerald" (Better.com-style conversion clarity)
+## Design approach — "Royal Blue Emerald" (Better.com-style conversion clarity)
 
-*User-authorized repaint 2026-07-06, superseding "Obsidian Indigo".* Stark-white
-surfaces, neutral slate structure, deep-charcoal data typography, and **emerald
-reserved for forward-moving conversion actions** ("green means Go") — radical
-transparency, frictionless onboarding, high-velocity conversion.
+*Royal-blue repaint 2026-07-08 of "Charcoal Emerald" (which superseded "Obsidian
+Indigo" on 2026-07-06): charcoal dark surfaces swapped for vivid royal blue,
+emerald kept as the action color.* Stark-white surfaces, neutral slate structure,
+near-black slate typography (#0F172A), **royal-blue dark surfaces** (sidebar, hero
+gradients), and **emerald reserved for forward-moving conversion actions** ("green
+means Go") — radical transparency, frictionless onboarding, high-velocity conversion.
 
-**Value ramp** (`precision.*` in Tailwind, CSS vars in `index.css`):
-`950 #121212` Deep Charcoal (primary type, dark heroes) · `900 #1E293B` slate-800
-(nav/dark surfaces) · `700 #334155` slate-700 · `500 #64748B` Muted Slate
+**Dark-surface ramp** (`precision.950/900/700` in Tailwind — hero gradients only):
+`950 #0A1E52` deep royal navy · `900 #1B3B9E` royal blue · `700 #2456D6` vivid royal
+blue. **Neutral light ramp** (`precision.500→50`): `500 #64748B` Muted Slate
 (micro-copy) · `300 #94A3B8` slate-400 · `100 #E2E8F0` slate-200 (hairlines) ·
-`50 #F8FAFC` Ultra-Light Gray (data-section separation).
+`50 #F8FAFC` Ultra-Light Gray (data-section separation). Primary type: near-black
+slate `#0F172A`. Sidebar: deep royal blue.
 
 **Core principles**
 1. **Hierarchy through VALUE, not hue.** Depth comes from the neutral ramp +
@@ -38,7 +41,7 @@ transparency, frictionless onboarding, high-velocity conversion.
   data sections (e.g. PITI panels).
 - **Layer 1** — white cards + 1px slate-200 hairline (`border-card-border`), **no default shadow**.
 - **Layer 2** — Emerald conversion actions (`bg-primary`), hover deepens via the elevate system.
-- **Sidebar** — Deep Charcoal dark nav container.
+- **Sidebar** — deep royal-blue dark nav container.
 
 ### Semantic status (the ONLY non-ramp color)
 Use these tokens or the `<Badge>/<Alert>` variants — **never** raw palette classes

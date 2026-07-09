@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -125,61 +126,34 @@ export default function AdminDashboard() {
       {/* Stats Cards */}
       <div className="mx-auto max-w-7xl px-4 -mt-6 sm:px-6 lg:px-8">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="shadow-lg border-0">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-info-subtle">
-                <Users className="h-7 w-7 text-info" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-3xl font-bold" data-testid="text-total-users">
-                  {stats?.totalUsers || 0}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-0">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
-                <FileText className="h-7 w-7 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Applications</p>
-                <p className="text-3xl font-bold" data-testid="text-total-applications">
-                  {stats?.totalApplications || 0}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-0">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-success-subtle">
-                <DollarSign className="h-7 w-7 text-success-subtle-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Loan Volume</p>
-                <p className="text-2xl font-bold text-success-subtle-foreground" data-testid="text-loan-volume">
-                  {formatCurrency(stats?.totalLoanVolume || "0")}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-0">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-warning-subtle">
-                <TrendingUp className="h-7 w-7 text-warning-subtle-foreground" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Approval Rate</p>
-                <p className="text-3xl font-bold" data-testid="text-approval-rate">
-                  {stats?.approvalRate || 0}%
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard
+            label="Total Users"
+            value={stats?.totalUsers ?? 0}
+            icon={Users}
+            tone="info"
+            data-testid="text-total-users"
+          />
+          <StatCard
+            label="Applications"
+            value={stats?.totalApplications ?? 0}
+            icon={FileText}
+            tone="primary"
+            data-testid="text-total-applications"
+          />
+          <StatCard
+            label="Loan Volume"
+            value={formatCurrency(stats?.totalLoanVolume || "0")}
+            icon={DollarSign}
+            tone="success"
+            data-testid="text-loan-volume"
+          />
+          <StatCard
+            label="Approval Rate"
+            value={`${stats?.approvalRate || 0}%`}
+            icon={TrendingUp}
+            tone="warning"
+            data-testid="text-approval-rate"
+          />
         </div>
       </div>
 

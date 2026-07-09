@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { QueryBoundary } from "@/components/ui/query-boundary";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication } from "@shared/schema";
@@ -27,41 +29,26 @@ interface DashboardData {
 export default function ApplicationSummary() {
   const { user, isLoading: authLoading } = useAuth();
 
-  const { data, isLoading } = useQuery<DashboardData>({
+  // A disabled query (while auth resolves) reports `isPending`, so QueryBoundary
+  // covers the auth-loading, fetching, error, and empty branches in one place.
+  const query = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
     enabled: !authLoading,
   });
 
-  if (authLoading || isLoading) {
-    return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <Skeleton className="mb-4 h-8 w-64" />
-        <Skeleton className="mb-8 h-4 w-full" />
-        <div className="space-y-4">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-        </div>
-      </div>
-    );
-  }
-
-  const applications = data?.applications || [];
-  const activeApplication = applications.find(
-    (app) => !isTerminalLoanAppStatus(app.status)
-  );
-
-  const loanAmount = activeApplication
-    ? parseFloat(activeApplication.purchasePrice || "0") - parseFloat(activeApplication.downPayment || "0")
-    : 0;
-
-  const applicantName = user?.firstName && user?.lastName 
-    ? `${user.firstName} ${user.lastName}` 
+  const applicantName = user?.firstName && user?.lastName
+    ? `${user.firstName} ${user.lastName}`
     : user?.email?.split("@")[0] || "Applicant";
 
-  const propertyLocation = activeApplication?.propertyCity && activeApplication?.propertyState
-    ? `${activeApplication.propertyCity}, ${activeApplication.propertyState}`
-    : activeApplication?.propertyState || "Not specified";
+  const loadingSkeleton = (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-24" />
+      <Skeleton className="h-32" />
+      <Skeleton className="h-32" />
+    </div>
+  );
 
   return (
     <div className="min-h-full">
@@ -77,22 +64,39 @@ export default function ApplicationSummary() {
       </div>
 
       <div className="p-6 max-w-2xl mx-auto space-y-6">
-        {!activeApplication ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Home className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="text-lg font-medium">No active application</p>
-              <p className="text-sm text-muted-foreground text-center">
-                Start your pre-approval to see your application summary
-              </p>
-              <Button className="mt-6 gap-2" data-testid="button-start-application">
-                Start Pre-Approval
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
+        <QueryBoundary query={query} loading={loadingSkeleton} data-testid="application-summary">
+          {(data) => {
+            const applications = data.applications || [];
+            const activeApplication = applications.find(
+              (app) => !isTerminalLoanAppStatus(app.status)
+            );
+
+            if (!activeApplication) {
+              return (
+                <EmptyState
+                  icon={Home}
+                  title="No active application"
+                  description="Start your pre-approval to see your application summary."
+                  action={
+                    <Button className="gap-2" data-testid="button-start-application">
+                      Start Pre-Approval
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  }
+                />
+              );
+            }
+
+            const loanAmount =
+              parseFloat(activeApplication.purchasePrice || "0") -
+              parseFloat(activeApplication.downPayment || "0");
+            const propertyLocation =
+              activeApplication.propertyCity && activeApplication.propertyState
+                ? `${activeApplication.propertyCity}, ${activeApplication.propertyState}`
+                : activeApplication.propertyState || "Not specified";
+
+            return (
+              <>
             <p className="text-sm text-muted-foreground">
               This is what you told us about your finances and property on your application — we're here to help if you need to make any changes.
             </p>
@@ -244,8 +248,10 @@ export default function ApplicationSummary() {
                 </div>
               </CardContent>
             </Card>
-          </>
-        )}
+              </>
+            );
+          }}
+        </QueryBoundary>
       </div>
     </div>
   );
