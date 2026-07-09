@@ -15,6 +15,64 @@ import {
 import type { Article, ContentCategory } from "@shared/schema";
 import { SEOHead } from "@/components/SEOHead";
 
+/**
+ * Minimal markdown-lite renderer for article body text. Handles headings and
+ * groups consecutive list items into proper <ul>/<ol> wrappers (no bare <li>,
+ * which is invalid HTML and breaks list semantics). Superseded by the full
+ * sanitized markdown renderer planned in roadmap Phase 4.
+ */
+function renderArticleBody(content: string): JSX.Element[] {
+  const lines = content.split("\n");
+  const blocks: JSX.Element[] = [];
+  let list: { type: "ul" | "ol"; items: string[] } | null = null;
+
+  const flushList = () => {
+    if (!list) return;
+    const items = list.items.map((item, i) => <li key={i}>{item}</li>);
+    blocks.push(
+      list.type === "ul" ? (
+        <ul key={`list-${blocks.length}`}>{items}</ul>
+      ) : (
+        <ol key={`list-${blocks.length}`}>{items}</ol>
+      ),
+    );
+    list = null;
+  };
+
+  lines.forEach((line, index) => {
+    if (!line.trim()) {
+      flushList();
+      return;
+    }
+    if (line.startsWith("- ") || line.startsWith("* ")) {
+      if (list && list.type === "ul") list.items.push(line.slice(2));
+      else {
+        flushList();
+        list = { type: "ul", items: [line.slice(2)] };
+      }
+      return;
+    }
+    if (/^\d+\.\s/.test(line)) {
+      const text = line.replace(/^\d+\.\s/, "");
+      if (list && list.type === "ol") list.items.push(text);
+      else {
+        flushList();
+        list = { type: "ol", items: [text] };
+      }
+      return;
+    }
+    flushList();
+    const key = `b-${index}`;
+    if (line.startsWith("### ")) blocks.push(<h3 key={key}>{line.slice(4)}</h3>);
+    else if (line.startsWith("## ")) blocks.push(<h2 key={key}>{line.slice(3)}</h2>);
+    else if (line.startsWith("# ")) blocks.push(<h1 key={key}>{line.slice(2)}</h1>);
+    else blocks.push(<p key={key}>{line}</p>);
+  });
+
+  flushList();
+  return blocks;
+}
+
 export default function ArticleDetail() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
@@ -170,27 +228,7 @@ export default function ArticleDetail() {
               className="prose prose-lg max-w-none dark:prose-invert"
               data-testid="article-content"
             >
-              {article.content?.split('\n').map((paragraph, index) => {
-                if (!paragraph.trim()) return null;
-                
-                if (paragraph.startsWith('# ')) {
-                  return <h1 key={index}>{paragraph.slice(2)}</h1>;
-                }
-                if (paragraph.startsWith('## ')) {
-                  return <h2 key={index}>{paragraph.slice(3)}</h2>;
-                }
-                if (paragraph.startsWith('### ')) {
-                  return <h3 key={index}>{paragraph.slice(4)}</h3>;
-                }
-                if (paragraph.startsWith('- ') || paragraph.startsWith('* ')) {
-                  return <li key={index}>{paragraph.slice(2)}</li>;
-                }
-                if (paragraph.match(/^\d+\.\s/)) {
-                  return <li key={index}>{paragraph.replace(/^\d+\.\s/, '')}</li>;
-                }
-                
-                return <p key={index}>{paragraph}</p>;
-              })}
+              {renderArticleBody(article.content || "")}
             </div>
 
             <div className="mt-12 border-t pt-8">

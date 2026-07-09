@@ -13,6 +13,7 @@ import {
   Link2,
 } from "lucide-react";
 import { usePageView } from "@/hooks/useActivityTracker";
+import { SEOHead } from "@/components/SEOHead";
 import { glossaryTerms, slugifyTerm, type GlossaryTerm } from "./glossaryData";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -125,6 +126,11 @@ export default function Glossary() {
 
   return (
     <>
+      <SEOHead
+        title="Mortgage Glossary — Plain-English Definitions of Home Loan Terms"
+        description="Understand mortgage and homebuying terminology, from APR and escrow to PMI and underwriting — clear definitions with related terms and cross-references."
+        canonical="/glossary"
+      />
       {/* Hero */}
       <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
         <div className="mx-auto max-w-4xl text-center">

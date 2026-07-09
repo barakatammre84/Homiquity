@@ -13,6 +13,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { usePageView } from "@/hooks/useActivityTracker";
+import { SEOHead } from "@/components/SEOHead";
 
 type Category = "all" | "affordability" | "agent" | "offer" | "process";
 
@@ -139,6 +140,11 @@ export default function Resources() {
 
   return (
     <div className="min-h-full">
+      <SEOHead
+        title="Homebuying Resources & Guides"
+        description="Curated guides and tools to help you navigate buying a home — from pre-approval and choosing an agent to understanding how mortgages work."
+        canonical="/resources"
+      />
       <div className="border-b bg-background">
         <div className="p-6 max-w-5xl mx-auto">
           <h1 className="text-2xl font-bold tracking-tight" data-testid="text-resources-title">

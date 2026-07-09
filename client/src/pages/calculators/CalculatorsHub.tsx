@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { usePageView } from "@/hooks/useActivityTracker";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent } from "@/components/ui/card";
@@ -129,7 +130,9 @@ export default function CalculatorsHub() {
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {generalCalculators.map((calc) => (
+          {generalCalculators
+            .filter((calc) => !PRELAUNCH_GATED || !calc.href.startsWith("/refinance"))
+            .map((calc) => (
             <CalculatorCard key={calc.href} calc={calc} />
           ))}
         </div>

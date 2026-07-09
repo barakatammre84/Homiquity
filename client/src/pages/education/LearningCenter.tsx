@@ -21,6 +21,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import type { Article, ContentCategory } from "@shared/schema";
+import { SEOHead } from "@/components/SEOHead";
 
 const iconMap: Record<string, React.ElementType> = {
   "book-open": BookOpen,
@@ -134,6 +135,11 @@ export default function LearningCenter() {
 
   return (
     <>
+      <SEOHead
+        title="Mortgage Learning Center — Guides for Every Step of Homebuying"
+        description="Homiquity's Learning Center: clear, jargon-free guides on getting pre-approved, understanding mortgage types, improving your credit, and buying your first home."
+        canonical="/learn"
+      />
       <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
             <div className="mx-auto max-w-4xl text-center">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
