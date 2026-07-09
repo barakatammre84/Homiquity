@@ -1425,7 +1425,18 @@ export function registerBorrowerRoutes(
 
       const withinDays = parseInt(req.query.days as string) || 7;
       const locks = await storage.getExpiringRateLocks(withinDays);
-      res.json(locks);
+
+      // Assignment-scoped, mirroring GET /api/pipeline/queue: an admin sees
+      // every expiring lock; every other internal-staff role sees only locks
+      // on files they are an active deal-team member of.
+      if (user.role === "admin") {
+        return res.json(locks);
+      }
+      const memberships = await storage.getTeamMembersByUser(user.id);
+      const allowedAppIds = new Set(
+        memberships.map((m) => m.application?.id).filter((id): id is string => Boolean(id)),
+      );
+      res.json(locks.filter((lock) => allowedAppIds.has(lock.applicationId)));
     } catch (error) {
       console.error("Get expiring locks error:", error);
       res.status(500).json({ error: "Failed to get expiring locks" });

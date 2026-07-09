@@ -4,6 +4,7 @@ import { runLifecycleSweep, graduateClosedLoan } from "../services/lifecycleEngi
 import { sweepUndeliveredAdverseActions } from "../services/adverseActionDelivery";
 import { buildStaffSignals } from "../services/signalEngine";
 import { aggregateAnonymizedData } from "../services/optimizationEngine";
+import { runRateLockAlertSweep } from "../services/rateLockAlerts";
 import { logAudit } from "../auditLog";
 import { db } from "../db";
 import { intentEvents } from "@shared/schema";
@@ -47,6 +48,33 @@ export function registerJobRoutes(app: Express) {
       } catch (err) {
         console.error("[jobs] Lifecycle sweep failed:", err);
         res.status(500).json({ ok: false, error: "Lifecycle sweep failed" });
+      }
+    });
+  });
+
+  // Rate-lock expiration watchdog. Same dual-trigger shape as the lifecycle
+  // sweep: Vercel cron (CRON_SECRET) or an admin session. Notifies the assigned
+  // loan officer about locks expiring within the alert window so a lock never
+  // lapses unseen (one notification per lock; it lingers until read).
+  app.get("/api/jobs/rate-lock-alerts", async (req, res) => {
+    if (isCronRequest(req)) {
+      try {
+        const result = await runRateLockAlertSweep();
+        return res.json({ ok: true, trigger: "cron", ...result });
+      } catch (err) {
+        console.error("[jobs] Rate-lock alert sweep failed:", err);
+        return res.status(500).json({ ok: false, error: "Rate-lock alert sweep failed" });
+      }
+    }
+    // Not a cron call — fall through to the admin-authenticated variant.
+    return requireRole("admin")(req, res, async () => {
+      try {
+        const result = await runRateLockAlertSweep();
+        logAudit(req, "jobs.rate_lock_alerts", "system", "rate_lock", { ...result });
+        res.json({ ok: true, trigger: "manual", ...result });
+      } catch (err) {
+        console.error("[jobs] Rate-lock alert sweep failed:", err);
+        res.status(500).json({ ok: false, error: "Rate-lock alert sweep failed" });
       }
     });
   });
