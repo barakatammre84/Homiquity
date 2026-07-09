@@ -108,6 +108,25 @@ export default function Waitlist() {
               </p>
             </div>
           )}
+
+          {/*
+            Product-authorized deviation from ARMED_LAUNCH_CHARTER BUILD-1 (2026-07-08):
+            BUILD-1 keeps priced calculators / apply CTAs off the pre-license surface.
+            Product elected to surface the free calculators here anyway. Kept low-risk:
+            educational framing, no Reg Z trigger terms (rate/payment/APR) or approval
+            language in this link. Revisit with compliance before F1.
+          */}
+          <div className="mt-12 border-t border-border/60 pt-8">
+            <p className="text-sm text-muted-foreground">
+              While you wait, explore our free mortgage calculators.
+            </p>
+            <Link href="/calculators">
+              <Button variant="outline" size="sm" className="mt-3 gap-2" data-testid="button-waitlist-calculators">
+                Open the calculators
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </main>
 
