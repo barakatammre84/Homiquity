@@ -184,13 +184,15 @@ export function Navigation() {
                     Rates
                   </button>
                 </Link>
-                <Link href="/calculators">
-                  <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
-                    Calculators
-                  </button>
-                </Link>
               </>
             )}
+            {/* Calculators stay visible even in gated pre-launch mode — they are
+                free educational tools, not the rate/pricing/application funnel. */}
+            <Link href="/calculators">
+              <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
+                Calculators
+              </button>
+            </Link>
             <Link href="/resources">
               <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
                 Resources
@@ -348,16 +350,16 @@ export function Navigation() {
                       Rates
                     </button>
                   </Link>
-                  <Link href="/calculators">
-                    <button
-                      className="w-full border-b border-border py-4 text-left font-medium text-foreground"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Calculators
-                    </button>
-                  </Link>
                 </>
               )}
+              <Link href="/calculators">
+                <button
+                  className="w-full border-b border-border py-4 text-left font-medium text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Calculators
+                </button>
+              </Link>
               <Link href="/resources">
                 <button
                   className="w-full border-b border-border py-4 text-left font-medium text-foreground"
