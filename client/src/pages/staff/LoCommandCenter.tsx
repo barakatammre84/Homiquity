@@ -9,9 +9,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { SubmissionReadinessDialog } from "@/components/SubmissionReadinessDialog";
+import { RateLockDialog } from "@/components/RateLockDialog";
 import { isInternalStaffRole } from "@shared/roles";
 import { getLoanAppStatusMeta } from "@shared/schema";
-import { AlertCircle, Download, ExternalLink, Gauge, Loader2, Users } from "lucide-react";
+import type { RateLock } from "@shared/schema";
+import { AlertCircle, Clock, Download, ExternalLink, Gauge, Loader2, Users } from "lucide-react";
+
+function daysUntilExpiry(expiresAt: string | Date): number {
+  return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000);
+}
 
 // -----------------------------------------------------------------------------
 // LO Command Center — the loan officer's start-of-day pipeline view.
@@ -124,6 +130,19 @@ export default function LoCommandCenter() {
     queryKey: ["/api/pipeline/queue"],
     enabled: !authLoading && !!user && isInternalStaff,
   });
+
+  // Expiring rate locks for this staffer's book (server scopes to deal-team
+  // membership; admins see all). Drives the alert strip below.
+  const { data: expiringLocks } = useQuery<RateLock[]>({
+    queryKey: ["/api/rate-locks/expiring"],
+    enabled: !authLoading && !!user && isInternalStaff,
+  });
+
+  const borrowerByApp = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const f of queueData?.queue ?? []) map.set(f.applicationId, f.borrowerName);
+    return map;
+  }, [queueData]);
 
   const files = useMemo(() => {
     const queue = queueData?.queue ?? [];
@@ -251,6 +270,38 @@ export default function LoCommandCenter() {
         </div>
       </div>
 
+      {expiringLocks && expiringLocks.length > 0 && (
+        <Card className="border-warning-subtle-foreground/25 bg-warning-subtle" data-testid="expiring-locks-strip">
+          <CardContent className="p-4 text-warning-subtle-foreground">
+            <div className="flex items-start gap-3">
+              <Clock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">
+                  {expiringLocks.length} rate lock{expiringLocks.length === 1 ? "" : "s"} expiring within 7 days
+                </p>
+                <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                  {expiringLocks.map((lock) => {
+                    const days = daysUntilExpiry(lock.expiresAt);
+                    const name = borrowerByApp.get(lock.applicationId) ?? "File";
+                    return (
+                      <li key={lock.id}>
+                        <Link
+                          href={`/borrower-file/${lock.applicationId}`}
+                          className="underline-offset-2 hover:underline"
+                          data-testid={`expiring-lock-${lock.applicationId}`}
+                        >
+                          {name} — {lock.interestRate}%, {days <= 0 ? "expired" : `${days}d left`}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {files.length === 0 ? (
         <Card>
           <CardContent className="p-10 text-center">
@@ -318,6 +369,10 @@ export default function LoCommandCenter() {
                               </Link>
                             </Button>
                             <SubmissionReadinessDialog
+                              applicationId={file.applicationId}
+                              borrowerName={file.borrowerName}
+                            />
+                            <RateLockDialog
                               applicationId={file.applicationId}
                               borrowerName={file.borrowerName}
                             />
