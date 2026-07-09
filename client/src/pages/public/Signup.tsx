@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { getPostAuthRoute } from "@/lib/roleRoutes";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 
 export default function Signup() {
@@ -20,13 +21,13 @@ export default function Signup() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/dashboard");
+      navigate(getPostAuthRoute(user?.role ?? "aspiring_owner"));
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   if (isAuthenticated) {
     return null;
@@ -56,7 +57,9 @@ export default function Signup() {
       const data = await res.json();
       if (data.success) {
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-        navigate("/dashboard");
+        // New accounts are always aspiring_owner; getPostAuthRoute still returns
+        // /apply first if a completed funnel is waiting to be submitted.
+        navigate(getPostAuthRoute("aspiring_owner"));
       }
     } catch (error: any) {
       const message = error?.message?.includes("409")

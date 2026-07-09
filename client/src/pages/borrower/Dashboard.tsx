@@ -6,6 +6,7 @@ import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
+import { hasPendingPreApprovalSubmit } from "@/lib/pendingAttribution";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -605,6 +606,17 @@ export default function Dashboard() {
   useEffect(() => {
     if (!authLoading && isStaff) {
       navigate("/staff-dashboard");
+    }
+  }, [authLoading, isStaff, navigate]);
+
+  // Catch-all for OAuth sign-in: the password login/signup handlers already route
+  // a deferred pre-approval submit back to /apply, but an OAuth callback lands the
+  // user here on /dashboard. If a completed funnel is waiting to submit, bounce to
+  // /apply so the replay effect finishes it instead of stranding them on the
+  // incubator with their answers unsent.
+  useEffect(() => {
+    if (!authLoading && !isStaff && hasPendingPreApprovalSubmit()) {
+      navigate("/apply");
     }
   }, [authLoading, isStaff, navigate]);
 

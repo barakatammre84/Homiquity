@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { PENDING_REFERRAL_CODE_KEY } from "@/lib/pendingAttribution";
 import { CheckCircle, User, Building2, Shield, ArrowRight, Home, Mail } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -49,7 +50,7 @@ export default function ReferralLanding() {
         title: "Connected",
         description: data.message || "You've been connected with your loan officer!",
       });
-      localStorage.removeItem("pendingReferralCode");
+      localStorage.removeItem(PENDING_REFERRAL_CODE_KEY);
     },
     onError: (error: Error) => {
       toast({
@@ -62,7 +63,7 @@ export default function ReferralLanding() {
 
   useEffect(() => {
     if (code) {
-      localStorage.setItem("pendingReferralCode", code);
+      localStorage.setItem(PENDING_REFERRAL_CODE_KEY, code);
     }
   }, [code]);
 
@@ -76,7 +77,10 @@ export default function ReferralLanding() {
     if (user) {
       setLocation("/dashboard");
     } else {
-      window.location.href = "/login";
+      // A referred consumer is almost always brand-new — send them to create an
+      // account. The stashed pendingReferralCode is applied by usePendingAttribution
+      // once they authenticate, so the LO attribution survives signup.
+      window.location.href = "/signup";
     }
   };
 

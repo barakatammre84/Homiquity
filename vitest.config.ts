@@ -70,6 +70,7 @@ export default defineConfig({
       "tests/loanScenarioMatrix.test.ts",
       "tests/documentTypeAliases.test.ts",
       "tests/localObjectStorage.test.ts",
+      "tests/postAuthRoute.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
@@ -83,6 +84,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@shared": path.resolve(__dirname, "shared"),
+      "@": path.resolve(__dirname, "client", "src"),
     },
   },
 });

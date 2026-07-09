@@ -17,6 +17,11 @@ import { US_STATES } from "@/lib/us-states";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
+import {
+  PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
+  PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
+  PREAPPROVAL_PENDING_SUBMIT_KEY as PENDING_SUBMIT_KEY,
+} from "@/lib/pendingAttribution";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
 import { 
@@ -620,9 +625,8 @@ function PreApprovalFunnel() {
     } catch {}
   }, []);
 
-  const AUTOSAVE_KEY = "homiquity_preapproval_draft";
-  const AUTOSAVE_STEP_KEY = "homiquity_preapproval_step";
-  const PENDING_SUBMIT_KEY = "homiquity_preapproval_pending_submit";
+  // Draft/step/pending-submit keys now live in @/lib/pendingAttribution so the
+  // post-auth router (getPostAuthRoute) can detect a deferred submit too.
   const [autosaveRestored, setAutosaveRestored] = useState(false);
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
@@ -1769,13 +1773,18 @@ function PreApprovalFunnel() {
               One last step
             </h3>
             <p className="text-muted-foreground mb-6">
-              Sign in to see your pre-approval results. Your answers are already saved.
+              Create an account (or sign in) to see your pre-approval results. Your answers are already saved.
             </p>
             <div className="space-y-3">
-              <a href="/login" className="block">
-                <Button size="lg" className="w-full" data-testid="button-auth-gate-login">
-                  Sign In
+              <a href="/signup" className="block">
+                <Button size="lg" className="w-full" data-testid="button-auth-gate-signup">
+                  Create account
                   <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </a>
+              <a href="/login" className="block">
+                <Button size="lg" variant="outline" className="w-full" data-testid="button-auth-gate-login">
+                  Sign In
                 </Button>
               </a>
               <Button

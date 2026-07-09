@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { usePendingAttribution } from "@/hooks/usePendingAttribution";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -20,6 +21,10 @@ interface PrivateLayoutProps {
 export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [, navigate] = useLocation();
+
+  // Apply any pre-signup attribution code (LO /ref or CPA /cpa) once the user is
+  // authenticated, no matter which authenticated page they first land on.
+  usePendingAttribution();
 
   const { data: dashboardData } = useQuery<{
     activities: DealActivity[];
