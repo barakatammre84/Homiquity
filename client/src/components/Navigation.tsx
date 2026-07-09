@@ -184,6 +184,11 @@ export function Navigation() {
                     Rates
                   </button>
                 </Link>
+                <Link href="/calculators">
+                  <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
+                    Calculators
+                  </button>
+                </Link>
               </>
             )}
             <Link href="/resources">
@@ -341,6 +346,14 @@ export function Navigation() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Rates
+                    </button>
+                  </Link>
+                  <Link href="/calculators">
+                    <button
+                      className="w-full border-b border-border py-4 text-left font-medium text-foreground"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Calculators
                     </button>
                   </Link>
                 </>
