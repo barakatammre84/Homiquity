@@ -5,7 +5,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { HeroPhotoBackdrop } from "@/components/HeroPhotoBackdrop";
+import { FramedPhoto } from "@/components/FramedPhoto";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
@@ -95,57 +95,62 @@ export default function SelfEmployed() {
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {/* Hero — dedicated conversion page: wordmark only, no global nav */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 pb-36 pt-6 sm:px-6 lg:px-8">
-          <HeroPhotoBackdrop src={lifestyleImages.selfEmployed.src} position="center 25%" variant="center" />
-          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-precision-700/25 blur-3xl" />
-          <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-precision-500/15 blur-3xl" />
-
-          <div className="relative mx-auto max-w-6xl">
+        <section className="border-b bg-gradient-to-b from-primary/5 to-background px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
+          <div className="mx-auto max-w-6xl">
             <div className="flex items-center justify-between">
-              <Link href="/" className="text-xl font-bold tracking-tight text-white" data-testid="link-se-home">
+              <Link href="/" className="text-xl font-bold tracking-tight text-foreground" data-testid="link-se-home">
                 homiquity
               </Link>
-              <span className="hidden items-center gap-2 text-sm text-white/70 sm:flex">
-                <ShieldCheck aria-hidden="true" className="h-4 w-4 text-precision-300" />
+              <span className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
+                <ShieldCheck aria-hidden="true" className="h-4 w-4 text-primary" />
                 No hard credit check
               </span>
             </div>
 
-            <div className="mt-14 flex flex-col items-center text-center lg:mt-20">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
-                <UserCheck aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                Humans read your file — not just software
+            <div className="mt-10 grid items-center gap-12 lg:mt-14 lg:grid-cols-2 lg:gap-16">
+              <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm">
+                  <UserCheck aria-hidden="true" className="h-4 w-4 text-primary" />
+                  Humans read your file — not just software
+                </div>
+                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-se-hero-title">
+                  You built a business. It should count for you, not against you.
+                </h1>
+                <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
+                  1099s, K-1s, write-offs, multiple income streams — our application was built
+                  for income like yours, and people who understand business returns review it.
+                  No W-2 needed.
+                </p>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground lg:justify-start">
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+                    A real answer, not an algorithm's guess
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+                    No hard credit check
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+                    Free — no obligation
+                  </span>
+                </div>
               </div>
-              <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl" data-testid="text-se-hero-title">
-                You built a business.
-                <br />
-                It should count for you, not against you.
-              </h1>
-              <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/80">
-                1099s, K-1s, write-offs, multiple income streams — our application was built
-                for income like yours, and people who understand business returns review it.
-                No W-2 needed.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/70">
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  A real answer, not an algorithm's guess
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  No hard credit check
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  Free — no obligation
-                </span>
-              </div>
+
+              <FramedPhoto
+                src={lifestyleImages.selfEmployed.src}
+                alt={lifestyleImages.selfEmployed.alt}
+                testId="img-hero-se"
+                position="center 25%"
+                loading="eager"
+                className="mx-auto w-full max-w-lg lg:max-w-none"
+              />
             </div>
           </div>
         </section>
 
         {/* Pre-screen — income shape first, per the progressive-profiling doctrine */}
-        <section aria-labelledby="se-prescreen-heading" className="relative z-10 -mt-24 px-4 sm:px-6 lg:px-8">
+        <section aria-labelledby="se-prescreen-heading" className="px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <div className="mx-auto max-w-2xl">
             <Card>
               <CardHeader>

@@ -9,7 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
-import { HeroPhotoBackdrop } from "@/components/HeroPhotoBackdrop";
+import { FramedPhoto } from "@/components/FramedPhoto";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { formatCurrency } from "@/lib/formatters";
 import { usePageView } from "@/hooks/useActivityTracker";
@@ -143,57 +143,62 @@ export default function FirstTimeBuyer() {
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {/* Hero — dedicated conversion page: wordmark only, no global nav */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 pb-36 pt-6 sm:px-6 lg:px-8">
-          <HeroPhotoBackdrop src={lifestyleImages.firstTimeBuyer.src} position="center 30%" variant="center" />
-          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-precision-700/25 blur-3xl" />
-          <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-precision-500/15 blur-3xl" />
-
-          <div className="relative mx-auto max-w-6xl">
+        <section className="border-b bg-gradient-to-b from-primary/5 to-background px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-20">
+          <div className="mx-auto max-w-6xl">
             <div className="flex items-center justify-between">
-              <Link href="/" className="text-xl font-bold tracking-tight text-white" data-testid="link-ftb-home">
+              <Link href="/" className="text-xl font-bold tracking-tight text-foreground" data-testid="link-ftb-home">
                 homiquity
               </Link>
-              <span className="hidden items-center gap-2 text-sm text-white/70 sm:flex">
-                <ShieldCheck aria-hidden="true" className="h-4 w-4 text-precision-300" />
+              <span className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
+                <ShieldCheck aria-hidden="true" className="h-4 w-4 text-primary" />
                 No hard credit check
               </span>
             </div>
 
-            <div className="mt-14 flex flex-col items-center text-center lg:mt-20">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
-                <Sparkles aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                Made for first-time buyers
+            <div className="mt-10 grid items-center gap-12 lg:mt-14 lg:grid-cols-2 lg:gap-16">
+              <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm">
+                  <Sparkles aria-hidden="true" className="h-4 w-4 text-primary" />
+                  Made for first-time buyers
+                </div>
+                <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-ftb-hero-title">
+                  Your first home is closer than you think.
+                </h1>
+                <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
+                  You already make a housing payment every month — it's called rent. See what
+                  that same payment could buy instead, then find out exactly where you stand.
+                  Plain language, no pressure.
+                </p>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground lg:justify-start">
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+                    Know exactly where you stand
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+                    No hard credit check
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-primary" />
+                    Free — no obligation
+                  </span>
+                </div>
               </div>
-              <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl" data-testid="text-ftb-hero-title">
-                Your first home is closer
-                <br />
-                than you think.
-              </h1>
-              <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/80">
-                You already make a housing payment every month — it's called rent. See what
-                that same payment could buy instead, then find out exactly where you stand.
-                Plain language, no pressure.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/70">
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  Know exactly where you stand
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  No hard credit check
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-precision-300" />
-                  Free — no obligation
-                </span>
-              </div>
+
+              <FramedPhoto
+                src={lifestyleImages.firstTimeBuyer.src}
+                alt={lifestyleImages.firstTimeBuyer.alt}
+                testId="img-hero-ftb"
+                position="center 30%"
+                loading="eager"
+                className="mx-auto w-full max-w-lg lg:max-w-none"
+              />
             </div>
           </div>
         </section>
 
-        {/* Rent-reframe calculator — high on the page, overlapping the hero */}
-        <section aria-labelledby="ftb-calc-heading" className="relative z-10 -mt-24 px-4 sm:px-6 lg:px-8">
+        {/* Rent-reframe calculator */}
+        <section aria-labelledby="ftb-calc-heading" className="px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <div className="mx-auto max-w-5xl">
             <Card>
               <CardHeader>
