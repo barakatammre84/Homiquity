@@ -68,7 +68,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 ### Research — scratch + strategy collateral · [`research/`](research/)
 - [research/my-research/](research/my-research/) — scratch (nothing load-bearing).
 - [research/gtm/](research/gtm/) — GTM battlecards + competitive briefs.
-- [research/islamic-finance/](research/islamic-finance/) — alternative / Shariah-compliant (Musharaka/Ijara/Murabaha) "Universal Adaptation Layer" feasibility + compliance-gap map (below the L1 cut-line; authorizes nothing).
+- [research/islamic-finance/](research/islamic-finance/) — alternative / Shariah-compliant (Musharaka/Ijara/Murabaha) "Universal Adaptation Layer" as a **broker-triage future moat**: feasibility + compliance-gap map (post-launch; below the L1 cut-line; authorizes nothing).
 
 ### Archive — obsolete, quarantined · [`archive/`](./archive/)
 Superseded docs kept for provenance. Never act on these. Includes the launch-era
