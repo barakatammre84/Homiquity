@@ -193,6 +193,7 @@ app.use("/api/client-errors", rateLimit({
   message: { error: "Too many error reports" },
 }));
 app.use("/api/email-capture", emailCaptureLimiter);
+app.use("/api/partner-waitlist", emailCaptureLimiter);
 app.use(generalLimiter);
 
 declare module 'http' {
