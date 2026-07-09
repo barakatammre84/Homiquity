@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { isStaffRole } from "@shared/roles";
+import { isStaffRole, isPartnerRole } from "@shared/roles";
 import { useShellBadges } from "@/hooks/useShellBadges";
 import {
   LayoutDashboard,
@@ -29,6 +29,7 @@ export function MobileBottomNav() {
 
   const userRole = user?.role || "";
   const isStaff = isStaffRole(userRole);
+  const isCpa = isPartnerRole(userRole);
 
   const badges = useShellBadges();
   const pendingTaskCount = isStaff ? 0 : badges.pendingTasks;
@@ -48,7 +49,13 @@ export function MobileBottomNav() {
     { href: "/messages", label: "Messages", icon: MessageCircle, testId: "mobile-nav-messages", badge: unreadCount },
   ];
 
-  const items = isStaff ? staffItems : borrowerItems;
+  // CPA partners are inviter-only and reach just their own portal — never the
+  // borrower dashboard/apply/docs tabs. Single primary tab + the "More" toggle.
+  const cpaItems: NavItem[] = [
+    { href: "/cpa-portal", label: "Portal", icon: LayoutDashboard, testId: "mobile-nav-cpa-portal" },
+  ];
+
+  const items = isStaff ? staffItems : isCpa ? cpaItems : borrowerItems;
 
   const isActive = (href: string) => {
     if (href === "/dashboard" && location === "/dashboard") return true;

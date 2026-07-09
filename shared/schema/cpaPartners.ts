@@ -20,8 +20,12 @@ import { users } from "./core";
  * IRC §7216 disclosure flow entirely. No compensation is tracked anywhere
  * (RESPA §8): this table has no fee/commission columns by design.
  *
- * The `cpa` role is a STAFF_ROLE but NOT an INTERNAL_STAFF_ROLE, so a CPA can
- * never reach a borrower record through object-level authorization.
+ * The `cpa` role is a self-registering PARTNER_ROLE — deliberately NOT a
+ * STAFF_ROLE (see shared/roles.ts). Because CPAs self-register via the public
+ * POST /api/cpa-partners/register, adding `cpa` to STAFF_ROLES would expose
+ * every isStaffRole()-gated endpoint to anyone who signs up. Its endpoints are
+ * gated by exact-role requireRole("cpa", ...) only, so a CPA can never reach a
+ * borrower record through object-level authorization.
  */
 export const cpaPartners = pgTable("cpa_partners", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
