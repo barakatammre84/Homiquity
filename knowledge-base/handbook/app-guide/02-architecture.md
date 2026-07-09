@@ -32,13 +32,13 @@ hits the server (as a serverless function).
 
 | Entry | File | Used when |
 |-------|------|-----------|
-| Dev server | `server/index-dev.ts` → `runApp(setupVite)` | `npm run dev` — Vite runs as Express middleware, HMR for client |
-| Prod server (persistent) | `server/index-prod.ts` → `runApp(serveStatic)` | `npm start` on a VM/Fly — serves `dist/public` statically |
+| Dev server | `server/index-dev.ts` → `runApp(setupVite)` | `pnpm dev` — Vite runs as Express middleware, HMR for client |
+| Prod server (persistent) | `server/index-prod.ts` → `runApp(serveStatic)` | `pnpm start` on a VM/Fly — serves `dist/public` statically |
 | Vercel serverless | `api/index.ts` → `createApp(noop)` | Every `/api/*` request on Vercel; client is served by the CDN, not Express |
 | Client | `client/index.html` → `client/src/main.tsx` → `App.tsx` | The SPA — all browser routes |
-| MCP server | `server/mcp/index.ts` → `npm run mcp` (stdio) | AI agents calling platform tools (soft credit pull, best-execution rates, AVM) — registered for Claude Code via `.mcp.json` |
+| MCP server | `server/mcp/index.ts` → `pnpm mcp` (stdio) | AI agents calling platform tools (soft credit pull, best-execution rates, AVM) — registered for Claude Code via `.mcp.json` |
 | DB scripts | `server/scripts/*` (e.g. `seedLendingGrids.ts`), `drizzle-kit push` | Manual/ops |
-| Tests | `vitest.config.ts` (unit), `vitest.integration.config.ts` (HTTP) | `npm run test:*` |
+| Tests | `vitest.config.ts` (unit), `vitest.integration.config.ts` (HTTP) | `pnpm test:*` |
 
 Key distinction in `server/app.ts`:
 - **`createApp(setup)`** builds the fully-wired Express app *without* binding a

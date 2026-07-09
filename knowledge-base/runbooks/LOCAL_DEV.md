@@ -9,8 +9,11 @@ tier of Neon costs nothing, so this is a $0 local setup.
 - `git` and this repo cloned locally
 
 ## 2. Install dependencies
+
+pnpm is the package manager (pinned via `packageManager` in `package.json`; it's the only lockfile — `pnpm-lock.yaml` — and what Vercel builds with). Activate it once with corepack, which ships with Node:
 ```bash
-npm install
+corepack enable      # one-time; activates the pinned pnpm
+pnpm install
 ```
 
 ## 3. Database — pick one
@@ -35,7 +38,7 @@ other URL uses Neon. No code change needed.
    ```
    DATABASE_URL=postgresql://postgres:pass@localhost:5432/homiquity
    ```
-3. `npm run db:migrate` then `npm run dev`. That's it — fully offline, $0.
+3. `pnpm db:migrate` then `pnpm dev`. That's it — fully offline, $0.
 
 ## 4. Create your `.env`
 ```bash
@@ -52,16 +55,16 @@ Paste those lines into `.env`, add your `DATABASE_URL`, and (optionally) a
 
 ## 5. Create the tables
 ```bash
-npm run db:migrate
+pnpm db:migrate
 ```
 Fresh databases are built from the committed migration files in `migrations/`.
 If your database was created earlier with `db:push`, adopt it once with
-`npm run db:migrate:adopt -- --apply` (records existing migrations as applied
+`pnpm db:migrate:adopt -- --apply` (records existing migrations as applied
 without re-running them). Schema-change workflow: [ROLLBACK.md](./ROLLBACK.md) §3.
 
 ## 6. Run it
 ```bash
-PORT=5001 npm run dev
+PORT=5001 pnpm dev
 ```
 Open http://localhost:5001. Edits hot-reload. (Local convention: **5001** — macOS
 AirPlay squats on 5000 and answers with an HTTP 403 that looks like a broken app.
@@ -69,24 +72,24 @@ Worktree test servers use 5002+.)
 
 ## 7. Typecheck and tests before committing
 ```bash
-npm run check     # TypeScript
-npm test          # unit suite (no DB or server needed)
+pnpm check     # TypeScript
+pnpm test          # unit suite (no DB or server needed)
 ```
 Integration tests need a running server. Boot it with `RATE_LIMIT_RELAXED=true` — the
 suite makes ~30 auth calls, which would otherwise trip the auth rate limiter (20 per
 15 min; the flag is ignored in production builds):
 ```bash
-RATE_LIMIT_RELAXED=true PORT=5002 npm run dev   # in one terminal
+RATE_LIMIT_RELAXED=true PORT=5002 pnpm dev   # in one terminal
 set -a; source .env; set +a
-TEST_BASE_URL=http://localhost:5002 npm run test:integration
+TEST_BASE_URL=http://localhost:5002 pnpm test:integration
 ```
 
 ## GitHub sync — one-command workflows
 
 ```bash
-npm run save   # commit everything with a timestamp + pull + push (daily driver)
-npm run sync   # just pull + push (when you've already committed)
-npm run db:start  # start (or first-time create) the local Postgres container
+pnpm save   # commit everything with a timestamp + pull + push (daily driver)
+pnpm sync   # just pull + push (when you've already committed)
+pnpm db:start  # start (or first-time create) the local Postgres container
 ```
 
 `save` is the "back everything up now" button: stages all changes, commits with a
@@ -103,20 +106,20 @@ git log --oneline -20
 **Undo one bad commit (safest — keeps history):**
 ```bash
 git revert <commit-sha>     # creates a new commit that undoes that one
-npm run sync
+pnpm sync
 ```
 
 **Restore a single file from an older commit:**
 ```bash
 git checkout <commit-sha> -- path/to/file.tsx
-npm run save
+pnpm save
 ```
 
 **Roll the whole project back to an older state (history-preserving):**
 ```bash
 git revert --no-commit <bad-sha-1> <bad-sha-2> ...   # or a range: <old-sha>..HEAD
 git commit -m "revert to known-good state"
-npm run sync
+pnpm sync
 ```
 
 **Just look around an old version (no changes):**
@@ -150,8 +153,8 @@ This is one Express server + Postgres, so host it as a single web service:
 
 **Build/run for any host:**
 ```bash
-npm run build          # vite build + esbuild server -> dist/
-npm start              # NODE_ENV=production node dist/index.js
+pnpm build          # vite build + esbuild server -> dist/
+pnpm start              # NODE_ENV=production node dist/index.js
 ```
 Set the same env vars in the host's dashboard (`DATABASE_URL`, `CREDIT_ENCRYPTION_KEY`,
 `PII_HASH_SALT`, `SESSION_SECRET`, `GEMINI_API_KEY`, `PORT`). The host provides

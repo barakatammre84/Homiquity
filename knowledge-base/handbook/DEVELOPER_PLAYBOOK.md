@@ -15,7 +15,7 @@
 
 ## Section 1 — Repository directory map
 
-This is a single npm workspace, not a multi-package monorepo. The blueprint concepts map onto real directories like this:
+This is a single workspace, not a multi-package monorepo. The blueprint concepts map onto real directories like this:
 
 | Concept | Real directory |
 |---|---|
@@ -93,7 +93,7 @@ This is a single npm workspace, not a multi-package monorepo. The blueprint conc
 ├── api/                        Vercel serverless target
 │   ├── index.ts                Handler: dynamic-imports the bundle below
 │   └── _app.mjs                esbuild pre-bundle of server/app.ts (generated
-│                               by `npm run vercel-build` — never edit by hand)
+│                               by `pnpm vercel-build` — never edit by hand)
 │
 ├── tests/                      Vitest suites (unit + integration configs)
 ├── migrations/                 drizzle-kit output directory
@@ -217,8 +217,8 @@ There is no external lock-sync webhook today because there is no external PPE; w
 
 **Migration workflow** — canonical steps live in [kb/app-guide/03-database.md](./app-guide/03-database.md) "How to make a schema change"; the rules:
 1. Edit the table in `shared/schema/<domain>.ts` (and re-export from the barrel if it's new).
-2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql`. **Never `drizzle-kit generate`** — it has snapshot drift and produces wrong output in this repo. **Never `npm run db:push`** — it has no down-migration and, against the shared dev DB, drops columns belonging to other branches. Review the SQL like code, especially any `DROP`/`ALTER … TYPE`.
-3. Apply locally with `npm run db:migrate`, then run the app + tests.
+2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql`. **Never `drizzle-kit generate`** — it has snapshot drift and produces wrong output in this repo. **Never `pnpm db:push`** — it has no down-migration and, against the shared dev DB, drops columns belonging to other branches. Review the SQL like code, especially any `DROP`/`ALTER … TYPE`.
+3. Apply locally with `pnpm db:migrate`, then run the app + tests.
 4. Commit the migration file with the schema change. **Production applies are founder-supervised** — the Neon pooler breaks `db:migrate` against prod, so apply via a direct `pg` client and insert the migrations-journal row manually (verify it landed); snapshot Neon first if anything is dropped/renamed; record the apply in [CICD.md](../runbooks/CICD.md)'s production change ledger.
 5. Seeding: `server/seed.ts` (demo fixtures); pricing demo data (UWM lender + rate sheets) is seeded manually in local dev only.
 
@@ -253,12 +253,14 @@ Honesty matters more than aspiration here. New engineers must know which guardra
 
 ## Section 5 — Day-one onboarding quickstart
 
-Prereqs: Node 24.x, npm, and either Docker **or** a local/hosted Postgres.
+Prereqs: Node 24.x (corepack ships with it), and either Docker **or** a local/hosted Postgres.
 
 1. **Clone and install**
    ```bash
    git clone https://github.com/barakatammre84/MortgageStream.git homiquity
-   cd homiquity && npm ci
+   cd homiquity
+   corepack enable        # one-time: activates the pinned pnpm (pnpm-lock.yaml is the only lockfile)
+   pnpm install
    ```
 2. **Configure env** — `cp .env.example .env`, then fill it. The file documents every variable; the required ones:
    ```bash
@@ -269,17 +271,17 @@ Prereqs: Node 24.x, npm, and either Docker **or** a local/hosted Postgres.
    ```
    Set `PORT=5001` (macOS AirPlay squats on 5000) and `DEV_TEST_PASSWORD` for fixture logins.
 3. **Database** — pick one:
-   - `npm run db:start` — starts/reuses a `postgres:16` Docker container on 5432, then `DATABASE_URL=postgresql://postgres:pass@localhost:5432/homiquity`
+   - `pnpm db:start` — starts/reuses a `postgres:16` Docker container on 5432, then `DATABASE_URL=postgresql://postgres:pass@localhost:5432/homiquity`
    - a native local Postgres, or a free Neon database — paste its URL. Localhost URLs automatically use the standard `pg` driver; anything else uses the Neon serverless driver.
-4. **Apply schema:** `npm run db:migrate` (applies the hand-authored SQL in `migrations/` — **never `db:push`**; see the Migration workflow in Section 3)
-5. **Run the app:** `npm run dev` → http://localhost:5001 (Vite HMR runs as Express middleware — one process serves API + client).
+4. **Apply schema:** `pnpm db:migrate` (applies the hand-authored SQL in `migrations/` — **never `db:push`**; see the Migration workflow in Section 3)
+5. **Run the app:** `pnpm dev` → http://localhost:5001 (Vite HMR runs as Express middleware — one process serves API + client).
 6. **Log in:** register a fresh user via the UI, or use fixture accounts via `POST /api/test-login` — `buyer@test.com`, `renter@test.com`, `lo@test.com`, `admin@test.com`, etc., all with `DEV_TEST_PASSWORD`. (A fresh user with no application lands on the RenterHome incubator; `buyer@test.com` has pipeline data.)
 7. **Tests:**
    ```bash
-   npm test                  # unit (vitest): lookup resolver, MISMO validation
-   npm run test:integration  # API/pricing suites — needs the dev DB running;
+   pnpm test                  # unit (vitest): lookup resolver, MISMO validation
+   pnpm test:integration  # API/pricing suites — needs the dev DB running;
                              # note: creates loan applications for buyer@test.com
    ```
-8. **MCP server (stdio):** registered for Claude Code in `.mcp.json` as `homiquity`; run manually with `npm run mcp`. Smoke test by piping newline-delimited JSON-RPC (`initialize` → `notifications/initialized` → `tools/list` → `tools/call`) into `npx tsx server/mcp/index.ts`. Tools: `run_soft_credit_pull`, `get_best_execution_rates`, `retrieve_property_valuation`. **Never** add a `console.log` to the MCP import graph — stdout is the protocol; `bootstrap.ts` rebinds logging to stderr and must remain the first import.
-9. **Ship:** commit to `main` and push — Vercel builds (`pnpm install --frozen-lockfile`, `npm run vercel-build`) and deploys automatically. Verify `https://mortgage-stream.vercel.app/api/health` after deploy. Roll back with `git revert <sha> && git push`.
+8. **MCP server (stdio):** registered for Claude Code in `.mcp.json` as `homiquity`; run manually with `pnpm mcp`. Smoke test by piping newline-delimited JSON-RPC (`initialize` → `notifications/initialized` → `tools/list` → `tools/call`) into `npx tsx server/mcp/index.ts`. Tools: `run_soft_credit_pull`, `get_best_execution_rates`, `retrieve_property_valuation`. **Never** add a `console.log` to the MCP import graph — stdout is the protocol; `bootstrap.ts` rebinds logging to stderr and must remain the first import.
+9. **Ship:** commit to `main` and push — Vercel builds (`pnpm install --frozen-lockfile`, `pnpm vercel-build`) and deploys automatically. Verify `https://mortgage-stream.vercel.app/api/health` after deploy. Roll back with `git revert <sha> && git push`.
 10. **Read next:** [`kb/app-guide/01-start-here.md`](./app-guide/01-start-here.md) and the rest of the handbook for architecture, data flow, schema, and secrets deep-dives.

@@ -95,6 +95,17 @@
   --info-subtle-foreground: 216 51% 30%;
   --destructive-subtle: 0 84% 96%;
   --destructive-subtle-foreground: 0 74% 38%;
+  /* Veteran-founded seal — intentional off-palette brand accent, NOT a semantic
+     status token. Gold + navy are a contained trust mark used only in the
+     footer / About / VA surfaces, never as global UI chrome. Gold appears solely
+     as a ring + small icon, never as text or a text-bearing fill (gold-on-white
+     fails WCAG AA). The cream disc is mode-stable so the navy star keeps contrast
+     on both light pages and the dark footer. --veteran-red is the VA (military)
+     surface accent only. */
+  --veteran-gold: 42 64% 42%;      /* antique brass ~#B08A1E */
+  --veteran-navy: 234 31% 33%;     /* old-glory navy ~#3C3B6E */
+  --veteran-red: 351 66% 42%;      /* old-glory red ~#B02234 */
+  --veteran-seal-bg: 45 44% 96%;   /* warm cream disc, mode-stable */
   --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-serif: "Source Serif 4", Georgia, serif;
   --font-mono: "Geist Mono", "JetBrains Mono", monospace;
@@ -210,6 +221,10 @@
   --info-subtle-foreground: 217 40% 78%;
   --destructive-subtle: 0 60% 16%;
   --destructive-subtle-foreground: 0 90% 80%;
+  /* Veteran seal — lift gold + red so the ring/flag read on dark surfaces; the
+     cream disc + navy star are mode-stable (self-contained on the disc). */
+  --veteran-gold: 42 68% 55%;
+  --veteran-red: 351 70% 58%;
   --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.20);
   --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.25), 0 1px 2px -1px hsl(0 0% 0% / 0.20);
   --shadow-sm: 0 2px 4px -1px hsl(0 0% 0% / 0.30), 0 1px 2px -1px hsl(0 0% 0% / 0.22);

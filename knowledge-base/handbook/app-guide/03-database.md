@@ -14,7 +14,7 @@
 - **Migrations**: versioned SQL in [`migrations/`](../../../migrations/)
   (`0000_baseline.sql` onward), **hand-authored** — `drizzle-kit generate` has
   snapshot drift in this repo and produces wrong output. Apply with
-  `npm run db:migrate`. Forward-only (no automatic "down"); snapshot/branch the
+  `pnpm db:migrate`. Forward-only (no automatic "down"); snapshot/branch the
   Neon DB before destructive changes (see [ROLLBACK.md](../../runbooks/ROLLBACK.md) §3).
   `db:push` is retired for shared environments — see the pre-flight below.
 
@@ -69,8 +69,8 @@
    export it from `shared/schema.ts`).
 2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql` — never
    `drizzle-kit generate` (snapshot drift). Apply locally with
-   `npm run db:migrate` and test.
-3. From a **worktree**, never `npm run db:push` against the shared dev DB — it
+   `pnpm db:migrate` and test.
+3. From a **worktree**, never `pnpm db:push` against the shared dev DB — it
    drops other branches' columns; use targeted `ALTER TABLE` statements instead
    ([.agents/memory/db-push-blocker.md](../../../.agents/memory/db-push-blocker.md)).
 4. Production applies are **founder-supervised**
