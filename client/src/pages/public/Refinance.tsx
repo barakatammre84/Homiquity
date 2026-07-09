@@ -249,10 +249,10 @@ export default function Refinance() {
 
                     <Collapsible open={costsOpen} onOpenChange={setCostsOpen}>
                       <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="gap-1 px-2 -mx-2" data-testid="button-refi-toggle-costs">
+                        <Button variant="ghost" size="sm" className="h-auto gap-1 px-2 -mx-2 whitespace-normal text-left" data-testid="button-refi-toggle-costs">
                           <ChevronDown
                             aria-hidden="true"
-                            className={`h-4 w-4 transition-transform ${costsOpen ? "rotate-180" : ""}`}
+                            className={`h-4 w-4 shrink-0 transition-transform ${costsOpen ? "rotate-180" : ""}`}
                           />
                           Add estimated closing costs to see your break-even point
                         </Button>
