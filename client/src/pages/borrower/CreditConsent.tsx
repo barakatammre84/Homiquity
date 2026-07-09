@@ -26,6 +26,7 @@ import {
   Save,
   RefreshCw,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import type { LoanApplication, DraftConsentProgress } from "@shared/schema";
 
 interface DisclosureData {
@@ -203,16 +204,16 @@ export default function CreditConsent() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <PageShell width="content" contentClassName="space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
-      </div>
+      </PageShell>
     );
   }
 
   if (!application) {
     return (
-      <div className="p-6">
+      <PageShell width="content">
         <Card>
           <CardContent className="py-12 text-center">
             <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -220,7 +221,7 @@ export default function CreditConsent() {
             <p className="text-muted-foreground">The loan application could not be found.</p>
           </CardContent>
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
@@ -229,15 +230,14 @@ export default function CreditConsent() {
   const latestPull = creditSummary?.latestPull;
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3">
-        <Shield className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-credit-auth-title">Credit Authorization</h1>
-          <p className="text-muted-foreground">FCRA-compliant credit disclosure and consent</p>
-        </div>
-      </div>
-
+    <PageShell
+      width="content"
+      icon={<Shield className="h-8 w-8 text-primary" />}
+      title="Credit Authorization"
+      subtitle="FCRA-compliant credit disclosure and consent"
+      titleTestId="text-credit-auth-title"
+      contentClassName="space-y-6"
+    >
       {hasActiveConsent && (
         <Card className="border-border bg-success-subtle">
           <CardContent className="py-6">
@@ -477,6 +477,6 @@ export default function CreditConsent() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

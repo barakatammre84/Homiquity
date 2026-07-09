@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageShell } from "@/components/PageShell";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication } from "@shared/schema";
@@ -34,7 +35,7 @@ export default function ApplicationSummary() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
+      <PageShell width="narrow">
         <Skeleton className="mb-4 h-8 w-64" />
         <Skeleton className="mb-8 h-4 w-full" />
         <div className="space-y-4">
@@ -42,7 +43,7 @@ export default function ApplicationSummary() {
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -64,19 +65,13 @@ export default function ApplicationSummary() {
     : activeApplication?.propertyState || "Not specified";
 
   return (
-    <div className="min-h-full">
-      <div className="border-b bg-background">
-        <div className="p-6 max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
-            Application summary
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            See your application details here
-          </p>
-        </div>
-      </div>
-
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <PageShell
+      width="narrow"
+      title="Application summary"
+      subtitle="See your application details here"
+      titleTestId="text-page-title"
+      contentClassName="space-y-6"
+    >
         {!activeApplication ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -246,7 +241,6 @@ export default function ApplicationSummary() {
             </Card>
           </>
         )}
-      </div>
-    </div>
+    </PageShell>
   );
 }
