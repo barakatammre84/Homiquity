@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Daily code health checkup — read-only, safe to run anytime: `npm run checkup`
+# Daily code health checkup — read-only, safe to run anytime: `pnpm checkup`
 #
 # Checks: working tree clean, in sync with origin/main, typecheck, unit tests,
 # production build, dependency vulnerabilities, orphaned files, production health.
@@ -46,9 +46,9 @@ echo "=== Homiquity daily checkup: $(date '+%Y-%m-%d %H:%M') ==="
 check "working tree clean"            tree_clean
 check "in sync with origin/main"      main_in_sync
 check "typecheck (tsc)"               npx tsc --noEmit
-check "unit tests"                    npm test --silent
-check "production build"              npm run build --silent
-check "dependency vulnerabilities"    npm audit --audit-level=moderate
+check "unit tests"                    pnpm test --silent
+check "production build"              pnpm build --silent
+check "dependency vulnerabilities"    pnpm audit --audit-level=moderate
 check "no orphaned files"             node scripts/orphan-scan.cjs
 check "design tokens (no raw colors)" node scripts/design-token-guard.cjs
 check "knowledge base indexed"        node scripts/kb-index-guard.cjs

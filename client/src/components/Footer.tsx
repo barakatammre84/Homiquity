@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Phone, Mail } from "lucide-react";
 import { COMPANY_IDENTITY, companyNmlsDisplay } from "@shared/companyIdentity";
+import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 
 export function Footer() {
   // Deep Ink container in both modes (bg-primary would invert badly in dark
@@ -17,6 +18,9 @@ export function Footer() {
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/70">
               Clarity for every stage of homeownership. Pre-approval, property search, and AI coaching — all in one place.
             </p>
+            <div className="mt-5">
+              <VeteranFoundedBadge variant="compact" className="text-white/85" data-testid="badge-footer-veteran" />
+            </div>
           </div>
 
           <div>

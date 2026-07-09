@@ -11,11 +11,11 @@ PR branches       ──▶  automatic preview deployments
 broken prod?      ──▶  Vercel → Deployments → last good → Promote (instant)
 ```
 
-Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
+Ship with `pnpm save` (commit-all + pull + push) or plain `git push`.
 
 ## How Vercel runs this app
 
-- **Client**: `npm run vercel-build` (= `vite build`) → `dist/public`, served
+- **Client**: `pnpm vercel-build` (= `vite build`) → `dist/public`, served
   from Vercel's CDN.
 - **API**: every `/api/*` request invokes the serverless function
   [`api/index.ts`](../../../api/index.ts), which builds the Express app once per
@@ -36,7 +36,7 @@ Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
 
 | | Local dev | Production (Vercel) |
 |---|---|---|
-| Start | `npm run dev` (port 5001) | automatic on push to `main` |
+| Start | `pnpm dev` (port 5001) | automatic on push to `main` |
 | DB | native Postgres `localhost:5432` | Neon (serverless driver) |
 | Client | Vite middleware (HMR) | CDN static |
 | Secrets | `.env` (gitignored) | Vercel project env vars |
@@ -73,10 +73,10 @@ Ship with `npm run save` (commit-all + pull + push) or plain `git push`.
 ## Manual quality checks (nothing enforces these — run them yourself)
 
 ```bash
-npm run check          # typecheck (currently clean — 0 errors)
-npm run test:unit      # fast, no server needed
-TEST_BASE_URL=http://127.0.0.1:5001 npm run test:integration
-npm run build          # prove the prod build compiles
+pnpm check          # typecheck (currently clean — 0 errors)
+pnpm test:unit      # fast, no server needed
+TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration
+pnpm build          # prove the prod build compiles
 ```
 
 If you later want enforcement, add a GitHub Actions workflow running those

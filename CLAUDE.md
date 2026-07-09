@@ -87,15 +87,15 @@ Full rules in [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK
 - Schema is in `shared/schema/`; migrations are versioned SQL in `migrations/`.
 - **Hand-author migration SQL files** — `drizzle-kit generate` has snapshot drift and produces
   wrong output in this repo.
-- **Never run `npm run db:push` from a worktree** against the shared dev database: it drops
+- **Never run `pnpm db:push` from a worktree** against the shared dev database: it drops
   columns belonging to other branches. Use targeted `ALTER TABLE` statements instead.
-- Apply migrations with `npm run db:migrate`.
+- Apply migrations with `pnpm db:migrate`.
 
 ## Commands
 
-- `npm run dev` — dev server (local convention: port 5001; worktree test servers on 5002)
-- `npm run check` — TypeScript
-- `npm test` / `npm run test:integration` — unit / integration tests
+- `pnpm dev` — dev server (local convention: port 5001; worktree test servers on 5002)
+- `pnpm check` — TypeScript
+- `pnpm test` / `pnpm test:integration` — unit / integration tests
 - Local setup details: [LOCAL_DEV.md](knowledge-base/runbooks/LOCAL_DEV.md)
 
 ## Source-of-truth notes

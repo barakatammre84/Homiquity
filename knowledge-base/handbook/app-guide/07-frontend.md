@@ -54,7 +54,7 @@ Shadcn primitives).
 
 ## Dev experience
 
-`npm run dev` runs Express with Vite as middleware — client edits hot-reload
+`pnpm dev` runs Express with Vite as middleware — client edits hot-reload
 instantly; **server** edits require a restart (tsx is not in watch mode).
 The client build outputs to `dist/public` (`vite.config.ts`), which is exactly
 what Vercel's CDN (prod) or `serveStatic` (VM prod) serves.
