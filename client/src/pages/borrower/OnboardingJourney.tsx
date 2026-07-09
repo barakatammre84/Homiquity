@@ -29,6 +29,7 @@ import {
   ClipboardCheck,
   CreditCard,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 interface OnboardingStatus {
   profile: Record<string, unknown> | null;
@@ -307,14 +308,14 @@ export default function OnboardingJourney() {
 
   if (isLoading) {
     return (
-      <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
+      <PageShell width="content" contentClassName="space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-96" />
         <Skeleton className="h-48" />
         <div className="space-y-3">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20" />)}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -327,18 +328,17 @@ export default function OnboardingJourney() {
   const nextStep = steps.find(s => !s.complete && s.active);
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="onboarding-journey-page">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Rocket className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground md:text-2xl" data-testid="text-journey-title">Your Mortgage Journey</h1>
-            <p className="text-sm text-muted-foreground">Here's every step from application to closing.</p>
-          </div>
+    <PageShell
+      width="content"
+      icon={
+        <div className="p-2 bg-primary/10 rounded-lg">
+          <Rocket className="h-5 w-5 text-primary" />
         </div>
-      </div>
+      }
+      title="Your Mortgage Journey"
+      subtitle="Here's every step from application to closing."
+      titleTestId="text-journey-title"
+    >
 
       <Card className="mb-6" data-testid="card-borrower-profile">
         <CardContent className="pt-5 pb-4">
@@ -519,6 +519,6 @@ export default function OnboardingJourney() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }
