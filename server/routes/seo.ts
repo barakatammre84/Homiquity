@@ -202,8 +202,40 @@ export function registerSeoRoutes(app: Express) {
   });
 
   // Dynamic sitemap. Registered at the clean /sitemap.xml (served by Express in
-  // dev) and /api/sitemap.xml (reached on Vercel via the vercel.json rewrite,
-  // since the function only handles /api/*).
+  // dev, and on Vercel via the vercel.json "/sitemap.xml -> /api" rewrite which
+  // preserves the path) and /api/sitemap.xml (the always-reachable /api form).
   app.get("/sitemap.xml", handleSitemap);
   app.get("/api/sitemap.xml", handleSitemap);
+
+  // On Vercel the single serverless function is reached only via /api/* plus the
+  // paths the vercel.json rewrites forward here with the original path preserved
+  // (the bot-user-agent document rewrite). Render per-URL SEO for any such
+  // non-API document GET. Gated to Vercel so it never shadows the dev/self-host
+  // SPA catch-all (setupVite / serveStatic), which serve the real app to humans.
+  if (process.env.VERCEL) {
+    app.use((req, res, next) => {
+      if (req.method !== "GET" || req.path.startsWith("/api/")) {
+        next();
+        return;
+      }
+      void (async () => {
+        try {
+          const origin = `${req.protocol}://${req.get("host")}`;
+          const { html, status } = await renderSeoDocument(req.path, origin);
+          if (!html) {
+            res.status(502).send("SEO render unavailable");
+            return;
+          }
+          res
+            .status(status)
+            .set("Content-Type", "text/html; charset=utf-8")
+            .set("Cache-Control", "public, max-age=300")
+            .send(html);
+        } catch (err) {
+          console.error("SEO document render error:", err);
+          res.status(500).send("SEO render error");
+        }
+      })();
+    });
+  }
 }
