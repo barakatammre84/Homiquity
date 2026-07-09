@@ -32,10 +32,10 @@ pipeline), **Rates**, **Calculators**, **Education**, **Realtor Engine**
 Full guide: [LOCAL_DEV.md](../../runbooks/LOCAL_DEV.md). Short version:
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env        # fill in DATABASE_URL + the three secrets
-npm run db:migrate          # create tables (apply hand-authored migrations; never db:push)
-npm run dev                 # http://localhost:5001 (PORT is set in .env)
+pnpm db:migrate          # create tables (apply hand-authored migrations; never db:push)
+pnpm dev                 # http://localhost:5001 (PORT is set in .env)
 ```
 
 On this machine specifically: Postgres runs **natively** (not Docker) on
@@ -49,22 +49,22 @@ via `POST /api/test-login` — enabled only when `NODE_ENV !== production` and
 ## Useful commands
 
 ```bash
-npm run dev                # dev server with Vite middleware (hot reload for client)
-npm run check              # TypeScript typecheck (see "known issues" below)
-npm run test:unit          # fast pure-logic tests
-TEST_BASE_URL=http://127.0.0.1:5001 npm run test:integration   # API tests against a running server
-npm run build && npm start # production build + run
-npm run save               # commit-everything + pull + push (the daily driver)
-npm run db:migrate         # apply versioned migrations (hand-authored SQL in migrations/)
+pnpm dev                # dev server with Vite middleware (hot reload for client)
+pnpm check              # TypeScript typecheck (see "known issues" below)
+pnpm test:unit          # fast pure-logic tests
+TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration   # API tests against a running server
+pnpm build && pnpm start # production build + run
+pnpm save               # commit-everything + pull + push (the daily driver)
+pnpm db:migrate         # apply versioned migrations (hand-authored SQL in migrations/)
 ```
 
-⚠️ Do **not** use `npm run db:push` — the shared dev DB serves multiple branches and
+⚠️ Do **not** use `pnpm db:push` — the shared dev DB serves multiple branches and
 push drops other branches' columns; migrations are hand-authored (drizzle-kit generate
 has snapshot drift). See `.agents/memory/db-push-blocker.md` and CLAUDE.md.
 
 ## Health of the codebase (as of 2026-07-08)
 
-Clean bill: `npm run check` is **0 errors**, unit tests **739 green**, integration
+Clean bill: `pnpm check` is **0 errors**, unit tests **739 green**, integration
 tests **73/73** (against a running dev server; see [TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md)
 for the auth-rate-limit note when running the full integration suite). All Replit
 coupling was removed on 2026-07-02 — auth (session + Passport) now initializes

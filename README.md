@@ -17,9 +17,10 @@ pending, and [CTO_ROADMAP.md](CTO_ROADMAP.md) for the live work queue.
 ## Quick start
 
 ```bash
-npm ci && npm run dev   # dev server on port 5001 — full setup in LOCAL_DEV.md
-npm run check           # typecheck
-npm test                # unit tests
+corepack enable            # one-time: activates the pinned pnpm (ships with Node)
+pnpm install && pnpm dev   # dev server on port 5001 — full setup in LOCAL_DEV.md
+pnpm check                 # typecheck
+pnpm test                  # unit tests
 ```
 
 Dev logins: see [TEST_ACCOUNTS.md](knowledge-base/runbooks/TEST_ACCOUNTS.md) (requires `DEV_TEST_PASSWORD` in `.env`).
@@ -99,5 +100,5 @@ history. Never act on these.
 - `client/` and `server/` never import from each other; both import from `shared/`.
 - Vendor integrations are deterministic simulations behind adapters until real contracts exist.
 - Borrower PII goes through `server/services/encryptionService.ts` / `ssnVault.ts` + audit log.
-- Migrations are hand-authored SQL in `migrations/` (`npm run db:migrate`). Never `db:push`
+- Migrations are hand-authored SQL in `migrations/` (`pnpm db:migrate`). Never `db:push`
   from a worktree against the shared dev database.
