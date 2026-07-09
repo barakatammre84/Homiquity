@@ -14,7 +14,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 
 import { storage } from "../storage";
 import {
@@ -24,6 +24,7 @@ import {
   type JsonLd,
 } from "@shared/seo/schema";
 import {
+  buildSitemapXml,
   DEFAULT_DESCRIPTION,
   DEFAULT_TITLE,
   injectSeo,
@@ -33,6 +34,7 @@ import {
   resolveStaticMeta,
   STATIC_ROUTE_META,
   type ResolvedMeta,
+  type SitemapArticle,
 } from "@shared/seo/routeMeta";
 
 let cachedTemplate: string | null = null;
@@ -157,6 +159,27 @@ export async function renderSeoDocument(
   return { html: injectSeo(template, renderSeoHeadTags(meta), ""), status: 200 };
 }
 
+/** Serve the DB-driven sitemap: static registry routes + published article slugs. */
+async function handleSitemap(_req: Request, res: Response) {
+  try {
+    const articles = await storage.getPublishedArticles();
+    const items: SitemapArticle[] = articles.map((a) => {
+      const dateValue = a.updatedAt ?? a.publishedAt ?? null;
+      return {
+        slug: a.slug,
+        lastmod: dateValue ? new Date(dateValue as unknown as string).toISOString().slice(0, 10) : undefined,
+      };
+    });
+    res
+      .set("Content-Type", "application/xml; charset=utf-8")
+      .set("Cache-Control", "public, max-age=3600")
+      .send(buildSitemapXml(items));
+  } catch (err) {
+    console.error("sitemap render error:", err);
+    res.status(500).type("text/plain").send("sitemap error");
+  }
+}
+
 export function registerSeoRoutes(app: Express) {
   app.get("/api/seo/render", async (req, res) => {
     try {
@@ -177,4 +200,10 @@ export function registerSeoRoutes(app: Express) {
       res.status(500).send("SEO render error");
     }
   });
+
+  // Dynamic sitemap. Registered at the clean /sitemap.xml (served by Express in
+  // dev) and /api/sitemap.xml (reached on Vercel via the vercel.json rewrite,
+  // since the function only handles /api/*).
+  app.get("/sitemap.xml", handleSitemap);
+  app.get("/api/sitemap.xml", handleSitemap);
 }

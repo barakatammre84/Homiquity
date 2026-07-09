@@ -12,6 +12,7 @@
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap.xml" },
     {
       "source": "/((?!api/|.*\\.).*)",
       "has": [

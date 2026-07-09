@@ -181,3 +181,47 @@ export function injectSeo(template: string, headTags: string, jsonLdScript: stri
   }
   return html;
 }
+
+/**
+ * Ungated, indexable static routes for the sitemap. Gated routes (persona LPs,
+ * /apply, /rates/*) are deliberately excluded until the F1 config flip — add them
+ * then. Article URLs (/learn/:slug) are appended dynamically from the DB, so new
+ * admin-authored articles never drift out of the sitemap. Every path here exists
+ * in STATIC_ROUTE_META.
+ */
+export const SITEMAP_STATIC_PATHS: string[] = [
+  "/",
+  "/learn",
+  "/faq",
+  "/glossary",
+  "/resources",
+  "/down-payment-wizard",
+  "/calculators",
+  "/privacy",
+  "/terms",
+  "/disclosures",
+];
+
+export interface SitemapArticle {
+  slug: string;
+  /** ISO date (YYYY-MM-DD) for <lastmod>; omitted if unknown. */
+  lastmod?: string;
+}
+
+function xmlEscape(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Build the sitemap XML from the static route list + DB-sourced article slugs. */
+export function buildSitemapXml(articles: SitemapArticle[]): string {
+  const entries: string[] = [];
+  for (const routePath of SITEMAP_STATIC_PATHS) {
+    entries.push(`  <url><loc>${xmlEscape(absoluteUrl(routePath))}</loc></url>`);
+  }
+  for (const article of articles) {
+    const loc = xmlEscape(absoluteUrl(`/learn/${article.slug}`));
+    const lastmod = article.lastmod ? `<lastmod>${xmlEscape(article.lastmod)}</lastmod>` : "";
+    entries.push(`  <url><loc>${loc}</loc>${lastmod}</url>`);
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>\n`;
+}
