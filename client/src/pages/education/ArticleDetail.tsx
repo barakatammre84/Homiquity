@@ -15,64 +15,7 @@ import {
 import type { Article, ContentCategory } from "@shared/schema";
 import { SEOHead } from "@/components/SEOHead";
 import { articleSchema, breadcrumbSchema } from "@/lib/structuredData";
-
-/**
- * Minimal markdown-lite renderer for article body text. Handles headings and
- * groups consecutive list items into proper <ul>/<ol> wrappers (no bare <li>,
- * which is invalid HTML and breaks list semantics). Superseded by the full
- * sanitized markdown renderer planned in roadmap Phase 4.
- */
-function renderArticleBody(content: string): JSX.Element[] {
-  const lines = content.split("\n");
-  const blocks: JSX.Element[] = [];
-  let list: { type: "ul" | "ol"; items: string[] } | null = null;
-
-  const flushList = () => {
-    if (!list) return;
-    const items = list.items.map((item, i) => <li key={i}>{item}</li>);
-    blocks.push(
-      list.type === "ul" ? (
-        <ul key={`list-${blocks.length}`}>{items}</ul>
-      ) : (
-        <ol key={`list-${blocks.length}`}>{items}</ol>
-      ),
-    );
-    list = null;
-  };
-
-  lines.forEach((line, index) => {
-    if (!line.trim()) {
-      flushList();
-      return;
-    }
-    if (line.startsWith("- ") || line.startsWith("* ")) {
-      if (list && list.type === "ul") list.items.push(line.slice(2));
-      else {
-        flushList();
-        list = { type: "ul", items: [line.slice(2)] };
-      }
-      return;
-    }
-    if (/^\d+\.\s/.test(line)) {
-      const text = line.replace(/^\d+\.\s/, "");
-      if (list && list.type === "ol") list.items.push(text);
-      else {
-        flushList();
-        list = { type: "ol", items: [text] };
-      }
-      return;
-    }
-    flushList();
-    const key = `b-${index}`;
-    if (line.startsWith("### ")) blocks.push(<h3 key={key}>{line.slice(4)}</h3>);
-    else if (line.startsWith("## ")) blocks.push(<h2 key={key}>{line.slice(3)}</h2>);
-    else if (line.startsWith("# ")) blocks.push(<h1 key={key}>{line.slice(2)}</h1>);
-    else blocks.push(<p key={key}>{line}</p>);
-  });
-
-  flushList();
-  return blocks;
-}
+import { MarkdownContent } from "@/components/MarkdownContent";
 
 export default function ArticleDetail() {
   const params = useParams<{ slug: string }>();
@@ -95,8 +38,25 @@ export default function ArticleDetail() {
     queryKey: ["/api/content-categories"],
   });
 
+  const { data: allArticles = [] } = useQuery<Article[]>({
+    queryKey: ["/api/articles"],
+  });
+
   const category = categories.find((c) => c.id === article?.categoryId);
-  const readTime = Math.max(1, Math.ceil((article?.content?.length || 0) / 1000));
+
+  // Related-by-category/tag (falls back to nothing) — adds internal crawl paths
+  // and keeps readers moving through the content hub instead of a generic CTA.
+  const relatedArticles = article
+    ? allArticles
+        .filter((a) => a.slug !== article.slug)
+        .filter(
+          (a) =>
+            a.categoryId === article.categoryId ||
+            (a.tags || []).some((t) => (article.tags || []).includes(t)),
+        )
+        .slice(0, 3)
+    : [];
+  const readTime = article?.readTimeMinutes || Math.max(1, Math.ceil((article?.content?.length || 0) / 1000));
   const publishDate = article?.publishedAt 
     ? new Date(article.publishedAt).toLocaleDateString("en-US", {
         year: "numeric",
@@ -164,6 +124,7 @@ export default function ArticleDetail() {
         title={article.title}
         description={article.excerpt || `${article.title} — mortgage guidance from Homiquity's Learning Center.`}
         ogType="article"
+        ogImage={article.featuredImage || undefined}
         canonical={`/learn/${article.slug}`}
         jsonLd={[
           articleSchema(article, category, `/learn/${article.slug}`),
@@ -234,20 +195,56 @@ export default function ArticleDetail() {
               </div>
             </div>
 
-            <div 
+            {article.featuredImage && (
+              <img
+                src={article.featuredImage}
+                alt={article.title}
+                className="mb-8 w-full rounded-lg object-cover"
+                loading="lazy"
+                data-testid="article-featured-image"
+              />
+            )}
+
+            <div
               className="prose prose-lg max-w-none dark:prose-invert"
               data-testid="article-content"
             >
-              {renderArticleBody(article.content || "")}
+              <MarkdownContent content={article.content || ""} />
             </div>
 
+            {relatedArticles.length > 0 && (
+              <div className="mt-12 border-t pt-8">
+                <h2 className="text-xl font-semibold mb-4">Related articles</h2>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {relatedArticles.map((related) => (
+                    <Link
+                      key={related.slug}
+                      href={`/learn/${related.slug}`}
+                      data-testid={`link-related-${related.slug}`}
+                    >
+                      <div className="group h-full rounded-lg border p-4 transition-colors hover:border-primary hover:shadow-sm">
+                        <h3 className="font-medium line-clamp-2 group-hover:text-primary">
+                          {related.title}
+                        </h3>
+                        {related.excerpt && (
+                          <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                            {related.excerpt}
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="mt-12 border-t pt-8">
-              <h3 className="text-lg font-semibold mb-4">Continue Learning</h3>
+              <h2 className="text-lg font-semibold mb-4">Continue learning</h2>
               <div className="flex flex-wrap gap-4">
                 <Link href="/learn">
                   <Button variant="outline" data-testid="button-more-articles">
                     <BookOpen className="mr-2 h-4 w-4" />
-                    More Articles
+                    All articles
                   </Button>
                 </Link>
                 <Link href="/faq">
