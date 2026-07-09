@@ -81,9 +81,13 @@ to the amortization primitives in [`server/services/apr.ts`](../../../server/ser
 e.g. `rentalYieldToEquivalentRate(...)` / `structureToPaymentStream(...)` — producing a
 `noteRatePct`-equivalent and an `Aₜ` stream that the existing `buildMortgagePaymentStream` /
 `calculateMortgageAPR` and `loanEstimate.ts` already know how to consume. It must carry a
-citation before implementation (no-citation-no-implementation, enforced by
-[`tests/complianceInvariants.test.ts`](../../../tests/complianceInvariants.test.ts)) and an
-anchor unit test in the shape of [`tests/apr.test.ts`](../../../tests/apr.test.ts).
+citation before implementation — the **no-citation-no-implementation contract** lives in
+[`compliance/UNDERWRITING_SCENARIOS.md`](../../compliance/UNDERWRITING_SCENARIOS.md). Note that
+this is **not** auto-enforced for a new file: the grep-style guard in
+[`tests/complianceInvariants.test.ts`](../../../tests/complianceInvariants.test.ts) is hardcoded
+to read `underwritingNuance.ts` and would not cover an `apr.ts` converter, so the P1 author must
+(a) add an anchor unit test in the shape of [`tests/apr.test.ts`](../../../tests/apr.test.ts) and
+(b) extend that guard to read the new file.
 
 ---
 
@@ -162,7 +166,7 @@ or code comments.
 | Phase | Scope | Gate |
 |---|---|---|
 | **P0 — now** | This map + the §5 counsel questions delivered to compliance/founder. | none (done) |
-| **P1** | Deterministic **Contract-Translation calculator** only: `apr.ts` converter + anchor tests, internal, `PRELAUNCH_GATED`. Math, no product. | passes L2 determinism/citation invariants |
+| **P1** | Deterministic **Contract-Translation calculator** only: `apr.ts` converter + anchor tests, internal, `PRELAUNCH_GATED`. Math, no product. | L2 determinism + `UNDERWRITING_SCENARIOS.md` citation contract — author adds the anchor test **and** extends the grep guard to the new file (not auto-enforced) |
 | **P2** | Data-model + product-type plumbing: extend `PRODUCT_TYPES`, add structure/rent-split fields, intake derivation in `loanAnalysis.ts`. | L1 promotion |
 | **P3** | Underwriting extension (product dispatch) + MISMO representation. | **counsel (§5.1, 5.6)** |
 | **P4 — far** | Tax/SPV orchestration (LTOE), securitization/Sukuk (LSB), consumer marketing. | **counsel + state licensure (§5.2–5.9)** |
