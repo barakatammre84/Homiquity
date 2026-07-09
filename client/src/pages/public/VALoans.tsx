@@ -5,6 +5,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
+import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { usePageView } from "@/hooks/useActivityTracker";
 import {
   ArrowRight,
@@ -194,22 +195,33 @@ export default function VALoans() {
         {/* Differentiator — the human/veteran angle vs algorithmic lenders */}
         <section aria-labelledby="va-why-us-heading" className="px-4 pb-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl rounded-lg border border-card-border bg-card p-8">
-            <h2 id="va-why-us-heading" className="text-2xl font-semibold tracking-tight">
-              A fellow veteran on your side
-            </h2>
-            <p className="mt-3 leading-relaxed text-muted-foreground">
-              Homiquity was built by a military veteran with 15+ years in banking — someone
-              who has been on both sides of this transaction. VA loans have real quirks:
-              the VA appraisal, funding-fee exemptions, entitlement restoration, the
-              residual-income worksheet. Big online lenders bolt VA onto a conventional
-              workflow and hope. We built the workflow around the VA's rules from day one —
-              our application literally asks the residual-income questions most lenders
-              skip until underwriting.
-            </p>
-            <p className="mt-3 leading-relaxed text-muted-foreground">
-              That means fewer surprises after you're under contract, and a pre-approval
-              that means what it says.
-            </p>
+            <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:text-left">
+              <VeteranFoundedBadge
+                variant="seal"
+                showFlag
+                caption="Built by a fellow veteran"
+                className="shrink-0"
+                data-testid="badge-va-veteran"
+              />
+              <div>
+                <h2 id="va-why-us-heading" className="text-2xl font-semibold tracking-tight">
+                  A fellow veteran on your side
+                </h2>
+                <p className="mt-3 leading-relaxed text-muted-foreground">
+                  Homiquity was built by a military veteran with 15+ years in banking — someone
+                  who has been on both sides of this transaction. VA loans have real quirks:
+                  the VA appraisal, funding-fee exemptions, entitlement restoration, the
+                  residual-income worksheet. Big online lenders bolt VA onto a conventional
+                  workflow and hope. We built the workflow around the VA's rules from day one —
+                  our application literally asks the residual-income questions most lenders
+                  skip until underwriting.
+                </p>
+                <p className="mt-3 leading-relaxed text-muted-foreground">
+                  That means fewer surprises after you're under contract, and a pre-approval
+                  that means what it says.
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 

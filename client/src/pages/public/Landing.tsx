@@ -7,6 +7,7 @@ import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
+import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { useQuery } from "@tanstack/react-query";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { 
@@ -269,7 +270,10 @@ export default function Landing() {
             <Card data-testid="card-trust-experience">
               <CardContent className="p-6 text-center">
                 <p className="text-3xl font-bold text-primary" data-testid="text-trust-years">15+</p>
-                <p className="mt-2 text-sm text-muted-foreground">Years of banking & lending experience, military veteran-founded</p>
+                <p className="mt-2 text-sm text-muted-foreground">Years of banking and lending experience</p>
+                <div className="mt-4 flex justify-center border-t pt-4">
+                  <VeteranFoundedBadge variant="compact" data-testid="badge-landing-veteran" />
+                </div>
               </CardContent>
             </Card>
             <Card data-testid="card-trust-rules">
