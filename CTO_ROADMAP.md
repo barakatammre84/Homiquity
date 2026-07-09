@@ -145,6 +145,18 @@ Everything else in this file is explicitly **not** the sprint: CS\*, ARC-\*, CH-
 - [ ] **CH-8. Verify/apply the status-vocabulary data migration on prod.** `scripts/migrate-status-vocabulary.ts` was flagged as a deploy-time production follow-up by the 2026-07-02 backend→UI optimization sprint (now archived at `kb/archive/assessments/BACKEND_UI_OPTIMIZATION_AUDIT.md`). Dry-run first (`npx tsx scripts/migrate-status-vocabulary.ts`), confirm whether it already ran against prod, and apply with `--apply` if not. Founder-supervised (production data write). *(Migrated here 2026-07-08 so the reminder outlives the archived audit.)*
 - [ ] **CH-7. Remove 15 verified-orphaned dependencies** (`google-auth-library`, `memoizee`, `memorystore`, `openid-client`, `passport-local`, `@types/memoizee`, `@types/passport-local`, `@types/supertest`, `supertest`, `@jridgewell/trace-mapping`, `next-themes`, `p-limit`, `p-retry`, `tw-animate-css`, `zod-validation-error`) — Replit-Auth-era + otherwise zero-reference packages, three-check-verified dead. Blocked on CH-1 (or a warm-cache environment) so the removal can be verified without unrelated version drift. Est: 1h once unblocked.
 
+### Optimization engine wiring (OPT-1..10 — `server/services/optimizationEngine.ts`)
+
+Audit 2026-07-08: `optimizationEngine.ts` (988 lines) is partly live (imported by `pipelineEngine`/`compliance`/`documents`/`signalEngine`/`loanAnalysis`), but its `server/routes/optimizations.ts` HTTP layer (12 endpoints) has **zero client wiring**, and 9 of its 11 engine functions have no other caller — built-but-never-triggered.
+
+- [x] **OPT-9. Anonymized cohort-data pipeline — wired 2026-07-08.** `aggregateAnonymizedData` now runs via `GET /api/jobs/aggregate-data` (dual-trigger CRON_SECRET/admin, matching the lifecycle sweep) on a weekly Vercel cron (`vercel.json`, Mon 11:17). Internal-only, PII-hashed, no outbound.
+- [ ] **OPT-2. Stale-application re-engagement email — ⛔ COMPLIANCE-BLOCKED.** `sendReEngagementEmails` (`optimizationEngine.ts:308`) sends outbound email to stale applicants with **no consent check, no opt-out/unsubscribe, no quiet-hours gate**. Do NOT schedule until (a) a §9 security review (CLAUDE.md — outbound-messaging trigger) and (b) the quiet-hours gate + STOP/opt-out webhook that DEVELOPER_PLAYBOOK §4 lists as not-yet-built both clear.
+- [ ] **OPT-7. SLA breach/alerts — delete or reconcile (duplicate).** `checkSlaBreaches`/`sendSlaAlerts` duplicate the `taskEngine` SLA path (the inert **CS1** item — empty `sla_class_configs`, no scheduler). Pick one owner; don't wire a second SLA channel.
+- [ ] **OPT-8. Refinance + post-closing — delete or reconcile (duplicate).** `checkRefinanceOpportunities`/`processPostClosingLifecycle` duplicate `lifecycleEngine` (refi savings, PMI, post-close), which the 13:00 `/api/jobs/lifecycle` cron already runs. Remove, or fold any unique logic into `lifecycleEngine`.
+- [ ] **OPT-3 / OPT-6. Match-and-price + coach pre-fill — need a UI.** `matchAndPriceBorrower` / `getCoachPreFillData` are on-demand with no surface. Wire to a staff pricing panel / the borrower coach flow, or drop.
+- [ ] **OPT-10. Agent commission — wire to a funding event.** `calculateAgentCommission` should fire when a loan funds, not on a schedule; hook it into the funded-transition path (near `graduateClosedLoan`).
+- [ ] **OPT-cleanup. Delete the dead `optimizations.ts` route** (all 12 endpoints) once the dispositions above land — nothing calls it; live callers use `optimizationEngine` functions directly.
+
 ---
 
 ## Future — blocked on business, do NOT start yet

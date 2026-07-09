@@ -3,6 +3,7 @@ import { requireRole } from "../auth";
 import { runLifecycleSweep, graduateClosedLoan } from "../services/lifecycleEngine";
 import { sweepUndeliveredAdverseActions } from "../services/adverseActionDelivery";
 import { buildStaffSignals } from "../services/signalEngine";
+import { aggregateAnonymizedData } from "../services/optimizationEngine";
 import { logAudit } from "../auditLog";
 import { db } from "../db";
 import { intentEvents } from "@shared/schema";
@@ -78,6 +79,33 @@ export function registerJobRoutes(app: Express) {
       } catch (err) {
         console.error("[jobs] Adverse-action delivery sweep failed:", err);
         res.status(500).json({ ok: false, error: "Adverse-action delivery sweep failed" });
+      }
+    });
+  });
+
+  // Anonymized cohort-data pipeline (OPT-9). Buckets borrower graphs into
+  // PII-hashed aggregate facts for benchmarking — no PII, no outbound, purely
+  // internal analytics. Same dual-trigger shape as the sweeps above: Vercel
+  // cron (CRON_SECRET) or an admin session.
+  app.get("/api/jobs/aggregate-data", async (req, res) => {
+    if (isCronRequest(req)) {
+      try {
+        const result = await aggregateAnonymizedData();
+        return res.json({ ok: true, trigger: "cron", ...result });
+      } catch (err) {
+        console.error("[jobs] Anonymized data aggregation failed:", err);
+        return res.status(500).json({ ok: false, error: "Data aggregation failed" });
+      }
+    }
+    // Not a cron call — fall through to the admin-authenticated variant.
+    return requireRole("admin")(req, res, async () => {
+      try {
+        const result = await aggregateAnonymizedData();
+        logAudit(req, "jobs.aggregate_data", "system", "analytics", { ...result });
+        res.json({ ok: true, trigger: "manual", ...result });
+      } catch (err) {
+        console.error("[jobs] Anonymized data aggregation failed:", err);
+        res.status(500).json({ ok: false, error: "Data aggregation failed" });
       }
     });
   });
