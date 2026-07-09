@@ -9,8 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { PENDING_REFERRAL_CODE_KEY } from "@/lib/pendingAttribution";
-import { PRELAUNCH_GATED } from "@/lib/prelaunch";
-import Waitlist from "@/pages/public/Waitlist";
 import { CheckCircle, User, Building2, Shield, ArrowRight, Home, Mail } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -70,25 +68,10 @@ export default function ReferralLanding() {
   }, [code]);
 
   useEffect(() => {
-    // Pre-license, we never fire an attribution write — the gated waitlist below
-    // only stashes the code for post-launch. Auto-apply is for the live product.
-    if (!PRELAUNCH_GATED && user && !applied && referrer?.valid && !applyMutation.isPending) {
+    if (user && !applied && referrer?.valid && !applyMutation.isPending) {
       applyMutation.mutate();
     }
   }, [user, applied, referrer]);
-
-  // Prelaunch: don't solicit. Show the referral-aware waitlist (LO name for
-  // context + email capture) and stash the code so attribution survives to
-  // post-launch signup, instead of silently redirecting to the bare waitlist.
-  if (PRELAUNCH_GATED) {
-    return (
-      <Waitlist
-        referrerName={referrer?.valid ? referrer.loName : undefined}
-        referralCode={referrer?.valid ? code : null}
-        source="referral"
-      />
-    );
-  }
 
   const handleGetStarted = () => {
     if (user) {

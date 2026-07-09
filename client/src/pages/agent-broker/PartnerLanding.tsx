@@ -2,8 +2,6 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { PENDING_REFERRAL_CODE_KEY } from "@/lib/pendingAttribution";
-import { PRELAUNCH_GATED } from "@/lib/prelaunch";
-import Waitlist from "@/pages/public/Waitlist";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,19 +62,6 @@ export default function PartnerLanding() {
       localStorage.setItem(PENDING_REFERRAL_CODE_KEY, profile.referralCode);
     }
   }, [profile?.referralCode]);
-
-  // Prelaunch: don't solicit on the co-branded page. Show the referral-aware
-  // waitlist branded with the partner's name and stash the code, instead of
-  // silently redirecting to the bare waitlist and losing the referral context.
-  if (PRELAUNCH_GATED) {
-    return (
-      <Waitlist
-        referrerName={profile?.brandName || profile?.loName}
-        referralCode={profile?.referralCode ?? null}
-        source="referral"
-      />
-    );
-  }
 
   if (isLoading) {
     return (

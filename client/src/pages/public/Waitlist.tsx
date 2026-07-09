@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { SEOHead } from "@/components/SEOHead";
-import { PENDING_REFERRAL_CODE_KEY } from "@/lib/pendingAttribution";
 import { COMPANY_IDENTITY, companyNmlsDisplay } from "@shared/companyIdentity";
 import { Mail, CheckCircle2, ArrowRight } from "lucide-react";
 
@@ -17,40 +16,14 @@ import { Mail, CheckCircle2, ArrowRight } from "lucide-react";
  * being licensed: pre-license we collect a marketing "notify me" email only
  * (POST /api/email-capture — NOT the TrustedForm/TCPA leads path), never a
  * mortgage lead. Keep it that way — see knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md.
- *
- * Also serves the gated referral surface: when a consumer arrives via an LO
- * `/ref` or co-branded `/partner` link during prelaunch, those pages render this
- * same non-soliciting waitlist with the referrer's name for context and the
- * referral code stashed — so the click isn't lost to a bare redirect and the
- * attribution survives to post-launch signup (usePendingAttribution applies it).
  */
-export default function Waitlist({
-  referrerName,
-  referralCode,
-  source = "waitlist",
-}: {
-  referrerName?: string;
-  referralCode?: string | null;
-  source?: string;
-} = {}) {
+export default function Waitlist() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
   const nmls = companyNmlsDisplay();
-
-  // Preserve referral attribution across the pre-launch boundary: the code is
-  // applied after the user creates an account once we go live.
-  useEffect(() => {
-    if (referralCode) {
-      try {
-        localStorage.setItem(PENDING_REFERRAL_CODE_KEY, referralCode);
-      } catch {
-        /* storage unavailable — non-fatal */
-      }
-    }
-  }, [referralCode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,7 +38,7 @@ export default function Waitlist({
       await fetch("/api/email-capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), source, website: honeypot }),
+        body: JSON.stringify({ email: email.trim(), source: "waitlist", website: honeypot }),
       });
       setDone(true);
     } catch {
@@ -93,11 +66,6 @@ export default function Waitlist({
         <div className="mx-auto w-full max-w-xl text-center">
           {!done ? (
             <>
-              {referrerName && (
-                <p className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary" data-testid="text-waitlist-referrer">
-                  Invited by {referrerName}
-                </p>
-              )}
               <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                 <Mail className="h-7 w-7 text-primary" />
               </div>
