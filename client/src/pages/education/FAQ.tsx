@@ -24,6 +24,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Faq, ContentCategory } from "@shared/schema";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { SEOHead } from "@/components/SEOHead";
+import { faqPageSchema, breadcrumbSchema } from "@/lib/structuredData";
 
 export default function FAQ() {
   usePageView("/faq");
@@ -80,6 +81,13 @@ export default function FAQ() {
         title="Mortgage FAQ — Answers to Common Homebuying Questions"
         description="Straight answers to the mortgage questions buyers ask most — pre-approval, credit, down payments, closing, and what to expect at each step."
         canonical="/faq"
+        jsonLd={[
+          faqPageSchema(faqs),
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "FAQ", path: "/faq" },
+          ]),
+        ]}
       />
       <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
         <div className="mx-auto max-w-4xl text-center">

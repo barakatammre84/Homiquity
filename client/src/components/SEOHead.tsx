@@ -8,6 +8,8 @@ const DEFAULT_TITLE = "Homiquity - Clarity for Every Stage of Homeownership";
 const SITE_URL = COMPANY_IDENTITY.siteUrl;
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
 
+type JsonLd = Record<string, unknown>;
+
 interface SEOHeadProps {
   title: string;
   description: string;
@@ -20,6 +22,12 @@ interface SEOHeadProps {
    * absolute canonical, not just the two that pass one explicitly.
    */
   canonical?: string;
+  /**
+   * JSON-LD structured data for the page (schema.org). A single node or an array;
+   * null entries are dropped so callers can pass conditional builders inline.
+   * The global Organization/WebSite nodes live statically in index.html.
+   */
+  jsonLd?: JsonLd | Array<JsonLd | null> | null;
 }
 
 /** Resolve a relative path against the canonical site URL; pass absolute through. */
@@ -28,7 +36,18 @@ function absoluteUrl(pathOrUrl: string): string {
   return `${SITE_URL}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
 }
 
-export function SEOHead({ title, description, ogImage, ogType = "website", canonical }: SEOHeadProps) {
+/** Serialize page JSON-LD, escaping "<" so an article body can never break out of the script tag. */
+function serializeJsonLd(jsonLd: SEOHeadProps["jsonLd"]): string {
+  const items = (Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []).filter(Boolean) as JsonLd[];
+  if (items.length === 0) return "";
+  return JSON.stringify(items.length === 1 ? items[0] : items).replace(/</g, "\\u003c");
+}
+
+export function SEOHead({ title, description, ogImage, ogType = "website", canonical, jsonLd }: SEOHeadProps) {
+  // Serialize once per render and depend on the string, so inline-built schema
+  // objects (new identity each render) don't re-run the effect on every render.
+  const jsonLdString = serializeJsonLd(jsonLd);
+
   useEffect(() => {
     const fullTitle = title.includes("Homiquity") ? title : `${title} | Homiquity`;
     document.title = fullTitle;
@@ -74,10 +93,26 @@ export function SEOHead({ title, description, ogImage, ogType = "website", canon
     }
     link.href = canonicalUrl;
 
+    // JSON-LD (page-scoped; global Organization/WebSite are static in index.html)
+    const existing = document.querySelector("script[data-page-jsonld]");
+    if (jsonLdString) {
+      let script = existing as HTMLScriptElement | null;
+      if (!script) {
+        script = document.createElement("script");
+        script.type = "application/ld+json";
+        script.setAttribute("data-page-jsonld", "");
+        document.head.appendChild(script);
+      }
+      script.textContent = jsonLdString;
+    } else if (existing) {
+      existing.remove();
+    }
+
     return () => {
       document.title = DEFAULT_TITLE;
+      document.querySelector("script[data-page-jsonld]")?.remove();
     };
-  }, [title, description, ogImage, ogType, canonical]);
+  }, [title, description, ogImage, ogType, canonical, jsonLdString]);
 
   return null;
 }

@@ -23,6 +23,46 @@
          fallbacks). The previous list requested 25 families — 20 unused
          leftovers from a theme scaffold — on every page load. -->
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&family=Inter:opsz,wght@14..32,300..800&family=JetBrains+Mono:wght@300..700&family=Source+Serif+4:opsz,wght@8..60,300..800&display=swap" rel="stylesheet">
+    <!-- Global structured data (schema.org). Organization + WebSite live here so
+         non-JS crawlers see the entity on every route; per-page schema (Article,
+         FAQPage, DefinedTermSet, BreadcrumbList) is injected client-side by SEOHead.
+         F1: add "identifier" (NMLS #) to the Organization once licensing lands —
+         never emit a placeholder identifier while it is PENDING. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": ["Organization", "FinancialService"],
+          "@id": "https://homiquity.com/#organization",
+          "name": "Homiquity",
+          "legalName": "Homiquity Mortgage Corporation",
+          "url": "https://homiquity.com/",
+          "logo": "https://homiquity.com/og-default.png",
+          "image": "https://homiquity.com/og-default.png",
+          "slogan": "Clarity for every stage of homeownership.",
+          "description": "Homiquity is a mortgage brokerage focused on a clear, calm homebuying experience — guidance and support at every stage of homeownership.",
+          "areaServed": "US"
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://homiquity.com/#website",
+          "url": "https://homiquity.com/",
+          "name": "Homiquity",
+          "inLanguage": "en-US",
+          "publisher": { "@id": "https://homiquity.com/#organization" },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://homiquity.com/learn?search={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

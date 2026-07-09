@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Article, ContentCategory } from "@shared/schema";
 import { SEOHead } from "@/components/SEOHead";
+import { articleSchema, breadcrumbSchema } from "@/lib/structuredData";
 
 /**
  * Minimal markdown-lite renderer for article body text. Handles headings and
@@ -163,6 +164,15 @@ export default function ArticleDetail() {
         title={article.title}
         description={article.excerpt || `${article.title} — mortgage guidance from Homiquity's Learning Center.`}
         ogType="article"
+        canonical={`/learn/${article.slug}`}
+        jsonLd={[
+          articleSchema(article, category, `/learn/${article.slug}`),
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Learning Center", path: "/learn" },
+            { name: article.title, path: `/learn/${article.slug}` },
+          ]),
+        ]}
       />
       <article className="mx-auto max-w-3xl p-6 sm:p-8 lg:p-12">
             <div className="mb-8">
