@@ -227,7 +227,7 @@ export function RenterHome({
             </p>
             <div className="flex gap-2">
               <Link href="/apply">
-                <Button variant="secondary" data-testid="button-renter-preapproval">
+                <Button data-testid="button-renter-preapproval">
                   Start pre-approval
                 </Button>
               </Link>
