@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency } from "@/lib/formatters";
@@ -152,7 +153,13 @@ export default function BuyerProperties() {
     queryKey: ["/api/loan-applications"],
   });
 
-  const { data: properties, isLoading: propertiesLoading } = useQuery<Property[]>({
+  const {
+    data: properties,
+    isLoading: propertiesLoading,
+    isError: propertiesIsError,
+    error: propertiesError,
+    refetch: refetchProperties,
+  } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
   });
 
@@ -247,6 +254,23 @@ export default function BuyerProperties() {
     const exceedsGuidelines = propertiesWithAffordability.filter(p => p.affordability.status === "exceeds_guidelines").length;
     return { withinGuidelines, requiresReview, exceedsGuidelines, total: propertiesWithAffordability.length };
   }, [propertiesWithAffordability, hasPreApproval]);
+
+  // A server failure on the properties query used to render an empty result set
+  // (looks like "no homes match") — show an honest error + retry instead (ux-01).
+  if (propertiesIsError) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <QueryErrorState
+            error={propertiesError}
+            onRetry={() => refetchProperties()}
+            title="We couldn't load properties"
+            data-testid="properties-error"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

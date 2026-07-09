@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -177,6 +178,21 @@ export default function HmdaDemographics() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
         <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  // If the existing responses fail to load, don't show a blank form — the user
+  // could unknowingly overwrite previously-saved demographics. Error + retry (ux-01).
+  if (demographicsQuery.isError) {
+    return (
+      <div className="max-w-3xl mx-auto p-6">
+        <QueryErrorState
+          error={demographicsQuery.error}
+          onRetry={() => demographicsQuery.refetch()}
+          title="We couldn't load your information"
+          data-testid="hmda-error"
+        />
       </div>
     );
   }

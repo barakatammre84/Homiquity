@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import {
   Shield,
@@ -303,7 +304,7 @@ function KYCAMLStatus({ kyc, applicationId }: { kyc: KycStatus | null; applicati
 }
 
 export default function IdentityVerification() {
-  const { data: status, isLoading } = useQuery<OnboardingStatus>({
+  const { data: status, isLoading, isError, error, refetch } = useQuery<OnboardingStatus>({
     queryKey: ["/api/onboarding/status"],
     refetchInterval: 5000,
   });
@@ -317,6 +318,21 @@ export default function IdentityVerification() {
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
         </div>
+      </div>
+    );
+  }
+
+  // A load failure would otherwise render every step as incomplete — showing the
+  // user as fully unverified when they may have passed steps. Error + retry (ux-01).
+  if (isError) {
+    return (
+      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+        <QueryErrorState
+          error={error}
+          onRetry={() => refetch()}
+          title="We couldn't load your verification status"
+          data-testid="identity-error"
+        />
       </div>
     );
   }

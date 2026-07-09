@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -301,7 +302,7 @@ function FeedbackForm({ onSubmitted }: { onSubmitted: () => void }) {
 export default function OnboardingJourney() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
-  const { data: status, isLoading } = useQuery<OnboardingStatus>({
+  const { data: status, isLoading, isError, error, refetch } = useQuery<OnboardingStatus>({
     queryKey: ["/api/onboarding/status"],
   });
 
@@ -314,6 +315,21 @@ export default function OnboardingJourney() {
         <div className="space-y-3">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20" />)}
         </div>
+      </div>
+    );
+  }
+
+  // A server failure used to render a blank page (`if (!status) return null`) —
+  // show an honest error + retry instead (ux-01).
+  if (isError) {
+    return (
+      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+        <QueryErrorState
+          error={error}
+          onRetry={() => refetch()}
+          title="We couldn't load your journey"
+          data-testid="onboarding-error"
+        />
       </div>
     );
   }
