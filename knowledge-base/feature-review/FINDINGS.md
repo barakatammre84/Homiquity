@@ -44,7 +44,7 @@ re-discovered on re-runs.
 | F-016 | UX | coverage-gap | P2 | no | Zero frontend/e2e test harness — 88 UI surfaces unverified; tooling not even a dependency | `package.json`, `tests/` | open |
 | D-008 | 4 | defect | P2 | no | `creditService` credit sim uses `Math.random` — violates the deterministic-simulation ground rule | `server/services/creditService.ts:666` | open |
 | ux-02 | UX | ux-refinement | P2 | no | Design-token guard blind spot: 157 `text-white`/`bg-white`/`bg-black` literals bypass the shade-only regex; guard not in CI | `scripts/design-token-guard.cjs:32`, 27 client files | open |
-| ux-03 | UX | ux-refinement | P2 | no | `PageShell`/`PageHeader` at 7/99 adoption; 40 pages hand-roll `min-h-screen` → header/spacing drift | `client/src/components/PageShell.tsx` + callers | open |
+| ux-03 | UX | ux-refinement | P2 | no | `PageShell`/`PageHeader` at 7/99 adoption; 40 pages hand-roll `min-h-screen` → header/spacing drift | `client/src/components/PageShell.tsx` + callers | in progress (branch `claude/pageshell-convergence`: shell hardened w/ icon/eyebrow/headerLead/headerMeta slots; 10 borrower pages converged + live-verified; staff/dashboard pages remaining) |
 | ux-04 | UX | ux-refinement | P2 | no | 12/14 property/street-view `<img>` lack `alt` (a11y + SEO) | `pages/property/*`, `BuyerProperties.tsx:441` | open |
 | ux-05 | UX/1 | ux-refinement | P2 | yes (Reg Z) | Rate-advertising disclosure is thin; confirm §1026.24(d)(2) completeness (legal review, not asserted violation) | `pages/rates/PurchaseRates.tsx:200-203` | open |
 
