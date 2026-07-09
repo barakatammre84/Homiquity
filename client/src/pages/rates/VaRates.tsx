@@ -11,6 +11,7 @@ import {
   Star
 } from "lucide-react";
 import RatePageHeader, { RateRow } from "@/components/RatePageHeader";
+import { SEOHead } from "@/components/SEOHead";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { formatRateTerm, formatRatePoints } from "@/lib/formatters";
 import type { MortgageRateWithProgram } from "@/types/rates";
@@ -64,6 +65,11 @@ export default function VaRates() {
 
   return (
     <>
+      <SEOHead
+        title="VA Loan Rates"
+        description="See current VA loan rate and APR trends for eligible veterans and service members, with the loan assumptions behind every quote."
+        canonical="/rates/va"
+      />
       <RatePageHeader
         loanType="va"
         title="VA loan rates today"

@@ -33,6 +33,7 @@ import { registerTaxInsightRoutes } from "./routes/taxInsights";
 import { registerCpaPartnerRoutes } from "./routes/cpaPartners";
 import { registerWebhookRoutes } from "./routes/webhooks";
 import { registerMonitoringRoutes } from "./routes/monitoring";
+import { registerSeoRoutes } from "./routes/seo";
 import { seedDatabase } from "./seed";
 import { pool } from "./db";
 import { assertEncryptionConfig, initEncryption } from "./services/encryptionService";
@@ -98,6 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerCpaPartnerRoutes(app, storage);
   registerWebhookRoutes(app, storage);
   registerMonitoringRoutes(app);
+  registerSeoRoutes(app);
 
   app.all("/api/*", (_req, res) => {
     res.status(404).json({ error: "Not found" });

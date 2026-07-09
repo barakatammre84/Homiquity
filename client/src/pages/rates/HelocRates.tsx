@@ -11,6 +11,7 @@ import {
   Wallet
 } from "lucide-react";
 import RatePageHeader, { RateRow } from "@/components/RatePageHeader";
+import { SEOHead } from "@/components/SEOHead";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { formatRateTerm, formatRatePoints } from "@/lib/formatters";
 import type { MortgageRateWithProgram } from "@/types/rates";
@@ -61,6 +62,11 @@ export default function HelocRates() {
 
   return (
     <>
+      <SEOHead
+        title="HELOC Rates"
+        description="Explore current home equity line of credit rate and APR trends, with the assumptions behind every quote — no personal information required."
+        canonical="/rates/heloc"
+      />
       <RatePageHeader
         loanType="heloc"
         title="HELOC rates today"

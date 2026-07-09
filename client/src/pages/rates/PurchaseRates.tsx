@@ -11,6 +11,7 @@ import {
   Home
 } from "lucide-react";
 import RatePageHeader, { RateRow } from "@/components/RatePageHeader";
+import { SEOHead } from "@/components/SEOHead";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { formatRateTerm, formatRatePoints } from "@/lib/formatters";
 import type { MortgageRateWithProgram } from "@/types/rates";
@@ -66,6 +67,11 @@ export default function PurchaseRates() {
 
   return (
     <>
+      <SEOHead
+        title="Purchase Mortgage Rates"
+        description="See current purchase mortgage rate and APR trends, with the loan assumptions behind every quote — no personal information required."
+        canonical="/rates/purchase"
+      />
       <RatePageHeader
         loanType="purchase"
         title="Purchase mortgage rates today"

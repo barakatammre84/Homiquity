@@ -11,6 +11,7 @@ import {
   Calculator
 } from "lucide-react";
 import RatePageHeader, { RateRow } from "@/components/RatePageHeader";
+import { SEOHead } from "@/components/SEOHead";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { formatRateTerm, formatRatePoints } from "@/lib/formatters";
 import type { MortgageRateWithProgram } from "@/types/rates";
@@ -65,6 +66,11 @@ export default function CashOutRates() {
 
   return (
     <>
+      <SEOHead
+        title="Cash-Out Refinance Rates"
+        description="See current cash-out refinance rate and APR trends, with the loan assumptions behind every quote — no personal information required."
+        canonical="/rates/cash-out"
+      />
       <RatePageHeader
         loanType="cashout"
         title="Cash-out refinance rates today"

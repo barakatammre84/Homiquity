@@ -16,6 +16,15 @@ export const COMPANY_IDENTITY = {
   nmlsId: "PENDING",
   contactEmail: "support@homiquity.com",
   contactPhone: "(555) 123-4567",
+  /**
+   * Canonical public web address — the single source for absolute canonical
+   * tags, OG/Twitter URLs, and the sitemap host. Matches client/public/
+   * sitemap.xml and robots.txt. This is the customer-facing marketing domain;
+   * the server request base (baseUrl, env-resolved) lives in
+   * server/config/company.ts and is reconciled at the domain cutover (roadmap
+   * Phase 3). Keep this in sync with the sitemap/robots host.
+   */
+  siteUrl: "https://homiquity.com",
 } as const;
 
 /**

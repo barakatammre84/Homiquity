@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
+import { SEOHead } from "@/components/SEOHead";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -90,6 +91,11 @@ export default function DownPaymentWizard() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="down-payment-wizard">
+      <SEOHead
+        title="Down Payment Assistance Finder"
+        description="Explore down payment assistance and grant programs — filter by state, first-time buyer status, income, and credit to see programs that may fit your situation."
+        canonical="/down-payment-wizard"
+      />
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 bg-primary/10 rounded-lg">
