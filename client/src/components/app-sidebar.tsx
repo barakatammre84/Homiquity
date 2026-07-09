@@ -17,6 +17,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { getPresenceColor } from "@/lib/formatters";
 import { isStaffRole, isInternalStaffRole, isPartnerRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
@@ -185,7 +186,7 @@ export function AppSidebar() {
   const { user } = useAuth();
   const [isHelpExpanded, setIsHelpExpanded] = useState(false);
 
-  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+  const { data: teamMembers = [], isLoading: teamLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team-members"],
     enabled: !!user,
     refetchInterval: 30000,
@@ -330,7 +331,19 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                   {isHelpExpanded && (
                     <SidebarMenuSub>
-                      {teamMembers.length > 0 ? (
+                      {teamLoading && teamMembers.length === 0 ? (
+                        [1, 2].map((i) => (
+                          <SidebarMenuSubItem key={i}>
+                            <div className="flex items-center gap-2 px-2 py-1.5" data-testid="team-loading">
+                              <Skeleton className="h-6 w-6 rounded-full" />
+                              <div className="flex-1 space-y-1">
+                                <Skeleton className="h-3 w-20" />
+                                <Skeleton className="h-2.5 w-14" />
+                              </div>
+                            </div>
+                          </SidebarMenuSubItem>
+                        ))
+                      ) : teamMembers.length > 0 ? (
                         teamMembers.map((member) => (
                           <SidebarMenuSubItem key={member.id}>
                             <SidebarMenuSubButton asChild>
