@@ -3,6 +3,7 @@ import { contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates,
 import { refreshRates, syncBestExecutionRates } from "./services/rateService";
 import { seedMarketPricing } from "./seedMarketPricing";
 import { ILLINOIS_DPA_ARTICLES, ILLINOIS_DPA_PROGRAMS } from "./seedData/illinoisDpa";
+import { EDUCATION_ARTICLES } from "./seedData/educationContent";
 
 export async function seedDatabase() {
   try {
@@ -813,6 +814,7 @@ For more information, visit www.consumerfinance.gov/learnmore`,
     }
 
     await seedIllinoisDpaContent();
+    await seedEducationContent();
 
     await seedMarketPricing();
 
@@ -857,5 +859,14 @@ export async function seedIllinoisDpaContent() {
   }
   if (missing.length > 0) {
     console.log(`Seeded ${missing.length} Illinois DPA programs`);
+  }
+}
+
+// Evergreen education cluster (affordability / DTI / down payment assistance).
+// Insert-only backfill on the unique slug, so new articles reach already-seeded
+// databases without touching admin edits — same contract as the DPA seeder.
+export async function seedEducationContent() {
+  for (const article of EDUCATION_ARTICLES) {
+    await db.insert(articles).values(article).onConflictDoNothing({ target: articles.slug });
   }
 }

@@ -24,19 +24,19 @@ function safeUrl(url: string): string | null {
   return null;
 }
 
-function renderLink(url: string, text: string, key: string): ReactNode {
+function renderLink(url: string, children: ReactNode, key: string): ReactNode {
   const safe = safeUrl(url);
-  if (!safe) return <span key={key}>{text}</span>;
+  if (!safe) return <span key={key}>{children}</span>;
   if (safe.startsWith("/") || safe.startsWith("#")) {
     return (
       <Link key={key} href={safe}>
-        {text}
+        {children}
       </Link>
     );
   }
   return (
     <a key={key} href={safe} target="_blank" rel="noopener noreferrer">
-      {text}
+      {children}
     </a>
   );
 }
@@ -51,23 +51,26 @@ function parseInline(text: string, keyPrefix: string): ReactNode[] {
   let last = 0;
   let i = 0;
   let m: RegExpExecArray | null;
-  INLINE_RE.lastIndex = 0;
-  while ((m = INLINE_RE.exec(text)) !== null) {
+  // Fresh regex per call: INLINE_RE carries the /g flag and parseInline recurses,
+  // so a shared lastIndex would corrupt the outer scan.
+  const re = new RegExp(INLINE_RE.source, "g");
+  while ((m = re.exec(text)) !== null) {
     if (m.index > last) nodes.push(text.slice(last, m.index));
     const key = `${keyPrefix}-i${i++}`;
     if (m[1] !== undefined) {
       const src = safeUrl(m[2]);
       nodes.push(src ? <img key={key} src={src} alt={m[1]} loading="lazy" /> : m[0]);
     } else if (m[3] !== undefined) {
-      nodes.push(renderLink(m[4], m[3], key));
+      // Recurse so bold/code inside link text renders; strictly shorter input, no infinite loop.
+      nodes.push(renderLink(m[4], parseInline(m[3], key), key));
     } else if (m[5] !== undefined || m[6] !== undefined) {
-      nodes.push(<strong key={key}>{m[5] ?? m[6]}</strong>);
+      nodes.push(<strong key={key}>{parseInline((m[5] ?? m[6]) as string, key)}</strong>);
     } else if (m[7] !== undefined || m[8] !== undefined) {
-      nodes.push(<em key={key}>{m[7] ?? m[8]}</em>);
+      nodes.push(<em key={key}>{parseInline((m[7] ?? m[8]) as string, key)}</em>);
     } else if (m[9] !== undefined) {
       nodes.push(<code key={key}>{m[9]}</code>);
     }
-    last = INLINE_RE.lastIndex;
+    last = re.lastIndex;
   }
   if (last < text.length) nodes.push(text.slice(last));
   return nodes;
