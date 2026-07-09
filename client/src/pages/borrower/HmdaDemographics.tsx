@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import type { HmdaDemographics as HmdaData } from "@shared/schema";
 
 interface HmdaResponse {
@@ -173,33 +174,35 @@ export default function HmdaDemographics() {
 
   if (demographicsQuery.isLoading) {
     return (
-      <div className="max-w-3xl mx-auto p-6 space-y-4">
+      <PageShell width="content" contentClassName="space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
         <Skeleton className="h-64 w-full" />
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
+    <PageShell
+      width="content"
+      icon={<Users className="h-6 w-6 text-muted-foreground" />}
+      title="Demographic Information"
+      subtitle="Government Monitoring Information (HMDA)"
+      titleTestId="heading-hmda"
+      headerLead={
         <Button
           variant="ghost"
-          size="icon" aria-label="Back"
+          size="sm"
           onClick={() => setLocation(`/dashboard`)}
           data-testid="button-back-dashboard"
+          className="-ml-2"
         >
-          <ArrowLeft />
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
         </Button>
-        <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2" data-testid="heading-hmda">
-            <Users className="h-6 w-6 text-muted-foreground" />
-            Demographic Information
-          </h1>
-          <p className="text-sm text-muted-foreground">Government Monitoring Information (HMDA)</p>
-        </div>
-      </div>
+      }
+      contentClassName="space-y-6"
+    >
 
       <Alert>
         <Info className="h-4 w-4" />
@@ -581,6 +584,6 @@ export default function HmdaDemographics() {
           {saveMutation.isPending ? "Saving..." : "Save Information"}
         </Button>
       </div>
-    </div>
+    </PageShell>
   );
 }

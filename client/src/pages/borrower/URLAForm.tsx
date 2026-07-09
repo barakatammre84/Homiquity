@@ -33,6 +33,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import {
   DECLARATION_QUESTIONS,
   demographicsToPayload,
@@ -322,19 +323,19 @@ export default function URLAForm() {
 
   if (authLoading || dashboardLoading || urlaLoading) {
     return (
-      <div className="p-8">
+      <PageShell width="wide">
         <Skeleton className="mb-8 h-8 w-48" />
         <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
           <Skeleton className="mb-6 h-12 lg:h-96" />
           <Skeleton className="h-96" />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   if (!activeApplication) {
     return (
-      <div className="p-8">
+      <PageShell width="wide">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
@@ -348,7 +349,7 @@ export default function URLAForm() {
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
@@ -358,49 +359,42 @@ export default function URLAForm() {
   const currentStep = STEPS[stepIndex];
 
   return (
-    <>
-      <div className="border-b p-4 sm:p-6 lg:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Your Loan Application
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Uniform Residential Loan Application · Freddie Mac Form 65 / Fannie Mae Form 1003 (Effective 1/2021)
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <p aria-live="polite" className="text-xs text-muted-foreground" data-testid="text-urla-save-status">
-              {saveMutation.isPending ? (
-                "Saving…"
-              ) : lastSavedAt ? (
-                <span className="flex items-center gap-1">
-                  <Check aria-hidden="true" className="h-3 w-3" />
-                  Saved at {lastSavedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                </span>
-              ) : (
-                "Progress saves each time you continue"
-              )}
-            </p>
-            <Button onClick={handleSave} disabled={saveMutation.isPending} variant="outline" className="gap-2" data-testid="button-save-urla-top">
-              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save
-            </Button>
-          </div>
-        </div>
-        <div className="mt-6 space-y-2">
-          <Progress
-            value={(completedCount / STEPS.length) * 100}
-            className="h-1.5"
-            aria-label={`Application progress: ${completedCount} of ${STEPS.length} sections complete`}
-          />
-          <p className="text-xs text-muted-foreground" data-testid="text-urla-progress">
-            {completedCount} of {STEPS.length} sections complete
+    <PageShell
+      width="wide"
+      title="Your Loan Application"
+      subtitle="Uniform Residential Loan Application · Freddie Mac Form 65 / Fannie Mae Form 1003 (Effective 1/2021)"
+      headerAction={
+        <div className="flex items-center gap-4">
+          <p aria-live="polite" className="text-xs text-muted-foreground" data-testid="text-urla-save-status">
+            {saveMutation.isPending ? (
+              "Saving…"
+            ) : lastSavedAt ? (
+              <span className="flex items-center gap-1">
+                <Check aria-hidden="true" className="h-3 w-3" />
+                Saved at {lastSavedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+              </span>
+            ) : (
+              "Progress saves each time you continue"
+            )}
           </p>
+          <Button onClick={handleSave} disabled={saveMutation.isPending} variant="outline" className="gap-2" data-testid="button-save-urla-top">
+            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save
+          </Button>
         </div>
+      }
+    >
+      <div className="mb-8 space-y-2">
+        <Progress
+          value={(completedCount / STEPS.length) * 100}
+          className="h-1.5"
+          aria-label={`Application progress: ${completedCount} of ${STEPS.length} sections complete`}
+        />
+        <p className="text-xs text-muted-foreground" data-testid="text-urla-progress">
+          {completedCount} of {STEPS.length} sections complete
+        </p>
       </div>
 
-      <div className="p-4 sm:p-6 lg:p-8">
         <Card className="mb-8">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -578,7 +572,6 @@ export default function URLAForm() {
             </div>
           </div>
         </Tabs>
-      </div>
-    </>
+    </PageShell>
   );
 }
