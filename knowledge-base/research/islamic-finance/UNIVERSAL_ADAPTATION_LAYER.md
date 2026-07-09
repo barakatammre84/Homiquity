@@ -198,6 +198,7 @@ marked **OPEN** for **Homiquity** is a real gate before promotion.
 | 5.7 | "True sale" precedents **East Cameron / Arcapita** | **Verified — inapposite.** East Cameron = oil-&-gas project finance ($165.7M ORRI, offshore Gulf, W.D. La. 2009); Arcapita = wholesale commodity Murabaha (LME metals, S.D.N.Y. 2012). Neither binds **retail consumer residential**; securitization is out of lane regardless. | **N/A** — do not cite as residential precedent |
 | 5.8 | Faith-targeted marketing of the product | Genuinely open: ECOA/fair-lending review of targeting / steering / redlining exposure. | **Homiquity** (OPEN) |
 | 5.9 | Broker these products | State **SAFE** broker licensure + any per-structure authority (**pre-license today**). | **Homiquity** (OPEN — licensing) |
+| 5.10 | Shariah certification (fatwa / Supervisory Board) | **Structure cert = the funder's** (Ijara CDC / Guidance / Devon boards, AAOIFI-aligned). Homiquity's owned item = **marketing-integrity** (name the funder's cert; never claim its own) + optional light process endorsement. Broker-needs-own-board **inferred, not settled** — confirm w/ Shariah advisor + counsel. See [SHARIAH_GOVERNANCE.md](SHARIAH_GOVERNANCE.md). | **Funder** (structure) / **Homiquity** (marketing-integrity) |
 
 **Unverified factual claims.** Every statistic, fee schedule, market-size figure, delinquency
 number, and provider credit-overlay in the source paper remains **unverified** — *cite the primary
