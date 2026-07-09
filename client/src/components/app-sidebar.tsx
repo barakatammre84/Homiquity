@@ -50,6 +50,7 @@ import {
   ClipboardList,
   Palette,
   Gauge,
+  Handshake,
 } from "lucide-react";
 
 interface TeamMember {
@@ -172,6 +173,7 @@ const adminNavigation: NavSection[] = [
     items: [
       { title: "Admin Dashboard", href: "/admin", icon: LayoutDashboard, testId: "link-admin" },
       { title: "Manage Users", href: "/admin/users", icon: Users, testId: "link-admin-users" },
+      { title: "Partner Waitlist", href: "/admin/partners", icon: Handshake, testId: "link-admin-partners" },
       { title: "Manage Rates", href: "/admin/rates", icon: Percent, testId: "link-admin-rates" },
       { title: "Manage Content", href: "/admin/content", icon: PenSquare, testId: "link-admin-content" },
       { title: "Policy Operations", href: "/admin/policy-ops", icon: Scale, testId: "link-admin-policy-ops" },
