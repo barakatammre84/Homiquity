@@ -2,21 +2,27 @@
 /**
  * Design-token ratchet guard (zero-dep).
  *
- * The "Obsidian Indigo" system routes all color through semantic tokens
+ * The "Charcoal Emerald" system routes all color through semantic tokens
  * (bg-background, text-muted-foreground, bg-success-subtle, the <Badge>/<Alert>
- * variants, …). Raw Tailwind palette utilities (text-emerald-600, bg-amber-100,
- * bg-blue-900, …) bypass the system AND frequently fail WCAG AA — e.g. amber
- * text on the Paper Ice canvas is 1.98:1. See client/src/index.css.
+ * variants, …). See client/src/index.css. Two things bypass it:
  *
- * This guard counts raw-palette occurrences under client/src and compares to a
- * committed baseline:
- *   • count > baseline  -> FAIL (a new violation was introduced) + list offenders
+ *   1. rawColorOccurrences — raw Tailwind palette utilities (text-emerald-600,
+ *      bg-amber-100, bg-blue-900, …). These also frequently fail WCAG AA (amber
+ *      text on the white canvas is ~1.98:1). Hard target: 0.
+ *   2. whiteBlackLiterals — bare white/black utilities (bg-white, text-white,
+ *      bg-black). Sometimes legitimate (white type on a dark hero) but usually a
+ *      token dodge for text-primary-foreground / bg-card / bg-background. The
+ *      shade-only regex above can't see these, so they get their own metric —
+ *      tracked and ratcheted down, not banned outright.
+ *
+ * For each metric the guard counts occurrences under client/src vs a committed
+ * baseline:
+ *   • count > baseline  -> FAIL (a regression) + list offender files
  *   • count < baseline  -> tighten the baseline to the new low and PASS
  *   • count == baseline -> PASS
  *
- * The ratchet means the number can only ever go down. Migrate a page onto tokens
- * and the baseline auto-tightens on the next run; try to add a raw color and CI
- * blocks it. Run: `node scripts/design-token-guard.cjs`
+ * The ratchet means each number can only ever go down. Run:
+ *   node scripts/design-token-guard.cjs
  */
 const fs = require("fs");
 const path = require("path");
@@ -30,13 +36,24 @@ const PROP =
 const COLOR =
   "gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
 const SHADE = "50|100|200|300|400|500|600|700|800|900|950";
-// A palette utility, optionally variant-prefixed (dark:, hover:, md:, …).
-// Lookbehind rejects mid-identifier matches; the color name list excludes every
-// semantic token (primary, muted, success, …) so only raw palette usage counts.
-const RE = new RegExp(
-  `(?<![a-zA-Z0-9-])(?:${PROP})-(?:${COLOR})-(?:${SHADE})(?![a-zA-Z0-9])`,
-  "g",
-);
+
+// Each metric: a key in the baseline file, a matcher, and a remediation hint.
+// Lookbehind rejects mid-identifier matches; the palette color list excludes
+// every semantic token (primary, muted, success, …) so only raw usage counts.
+const METRICS = [
+  {
+    key: "rawColorOccurrences",
+    label: "raw palette color",
+    re: new RegExp(`(?<![a-zA-Z0-9-])(?:${PROP})-(?:${COLOR})-(?:${SHADE})(?![a-zA-Z0-9])`, "g"),
+    hint: "Use a semantic token or a <Badge>/<Alert> variant instead of a raw palette color.",
+  },
+  {
+    key: "whiteBlackLiterals",
+    label: "bare white/black literal",
+    re: new RegExp(`(?<![a-zA-Z0-9-])(?:${PROP})-(?:white|black)(?![a-zA-Z0-9-])`, "g"),
+    hint: "Prefer a token (text-primary-foreground, bg-card, bg-background) unless it's type on a dark hero.",
+  },
+];
 
 function walk(dir, acc = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -47,49 +64,57 @@ function walk(dir, acc = []) {
   return acc;
 }
 
-const perFile = [];
-let total = 0;
-for (const file of walk(SCAN_DIR)) {
-  const matches = fs.readFileSync(file, "utf8").match(RE);
-  if (matches && matches.length) {
-    perFile.push([path.relative(ROOT, file), matches.length]);
-    total += matches.length;
+const files = walk(SCAN_DIR);
+for (const m of METRICS) {
+  m.total = 0;
+  m.perFile = [];
+}
+for (const file of files) {
+  const src = fs.readFileSync(file, "utf8");
+  for (const m of METRICS) {
+    const matches = src.match(m.re);
+    if (matches && matches.length) {
+      m.perFile.push([path.relative(ROOT, file), matches.length]);
+      m.total += matches.length;
+    }
   }
 }
-perFile.sort((a, b) => b[1] - a[1]);
+for (const m of METRICS) m.perFile.sort((a, b) => b[1] - a[1]);
 
-let baseline = null;
-if (fs.existsSync(BASELINE_FILE)) {
-  baseline = JSON.parse(fs.readFileSync(BASELINE_FILE, "utf8")).rawColorOccurrences;
+const baseline = fs.existsSync(BASELINE_FILE)
+  ? JSON.parse(fs.readFileSync(BASELINE_FILE, "utf8"))
+  : {};
+const nextBaseline = { ...baseline };
+
+let failed = false;
+let changed = false;
+
+for (const m of METRICS) {
+  const base = typeof baseline[m.key] === "number" ? baseline[m.key] : null;
+  if (base === null) {
+    nextBaseline[m.key] = m.total;
+    changed = true;
+    console.log(`design-token-guard: bootstrapped ${m.label} baseline at ${m.total}.`);
+  } else if (m.total > base) {
+    failed = true;
+    console.error(
+      `FAIL  design-token-guard: ${m.label} usage rose ${base} -> ${m.total} (+${m.total - base}).`,
+    );
+    console.error(`      ${m.hint}`);
+    console.error("      Top files:");
+    for (const [f, n] of m.perFile.slice(0, 8)) console.error(`        ${String(n).padStart(4)}  ${f}`);
+  } else if (m.total < base) {
+    nextBaseline[m.key] = m.total;
+    changed = true;
+    console.log(`design-token-guard: ${m.label} ratcheted down ${base} -> ${m.total}. Baseline tightened. ✅`);
+  } else {
+    console.log(`design-token-guard: ${m.total} ${m.label} occurrences (at baseline, no regression). ✅`);
+  }
 }
 
-const writeBaseline = (n) =>
-  fs.writeFileSync(
-    BASELINE_FILE,
-    JSON.stringify({ rawColorOccurrences: n, updated: new Date().toISOString().slice(0, 10) }, null, 2) + "\n",
-  );
-
-if (baseline === null) {
-  writeBaseline(total);
-  console.log(`design-token-guard: bootstrapped baseline at ${total} raw-palette occurrences.`);
-  process.exit(0);
+if (failed) process.exit(1);
+if (changed) {
+  nextBaseline.updated = new Date().toISOString().slice(0, 10);
+  fs.writeFileSync(BASELINE_FILE, JSON.stringify(nextBaseline, null, 2) + "\n");
 }
-
-if (total > baseline) {
-  console.error(
-    `FAIL  design-token-guard: raw palette color usage rose ${baseline} -> ${total} (+${total - baseline}).`,
-  );
-  console.error("      Use a semantic token or a <Badge>/<Alert> variant instead of a raw palette color.");
-  console.error("      Top files with raw palette colors:");
-  for (const [f, n] of perFile.slice(0, 8)) console.error(`        ${String(n).padStart(4)}  ${f}`);
-  process.exit(1);
-}
-
-if (total < baseline) {
-  writeBaseline(total);
-  console.log(`design-token-guard: ratcheted down ${baseline} -> ${total}. Baseline tightened. ✅`);
-  process.exit(0);
-}
-
-console.log(`design-token-guard: ${total} raw-palette occurrences (at baseline, no regression). ✅`);
 process.exit(0);

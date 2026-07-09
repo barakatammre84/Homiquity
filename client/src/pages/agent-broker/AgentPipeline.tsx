@@ -3,6 +3,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -221,26 +222,6 @@ function LoadingSkeleton() {
   );
 }
 
-function EmptyState() {
-  return (
-    <Card data-testid="card-empty-pipeline">
-      <CardContent className="py-8 text-center">
-        <Users className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-        <p className="font-medium text-foreground">No referred clients in the pipeline yet</p>
-        <p className="text-sm text-muted-foreground mt-1">
-          Share your co-branded referral link with clients to start tracking their loan progress here.
-        </p>
-        <Button variant="outline" size="sm" className="mt-4" asChild data-testid="button-go-cobranding">
-          <Link href="/co-branding">
-            <FileText className="h-4 w-4 mr-1" />
-            Set Up Co-Branding
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function AgentPipeline() {
   const { data: pipeline = [], isLoading } = useQuery<PipelineItem[]>({
     queryKey: ["/api/agent-pipeline"],
@@ -275,7 +256,20 @@ export default function AgentPipeline() {
       {isLoading ? (
         <LoadingSkeleton />
       ) : pipeline.length === 0 ? (
-        <EmptyState />
+        <EmptyState
+          icon={Users}
+          title="No referred clients in the pipeline yet"
+          description="Share your co-branded referral link with clients to start tracking their loan progress here."
+          data-testid="card-empty-pipeline"
+          action={
+            <Button variant="outline" size="sm" asChild data-testid="button-go-cobranding">
+              <Link href="/co-branding">
+                <FileText className="mr-1 h-4 w-4" />
+                Set Up Co-Branding
+              </Link>
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-3" data-testid="pipeline-list">
           {pipeline.map((item) => (
