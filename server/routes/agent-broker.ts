@@ -1001,6 +1001,9 @@ export function registerAgentBrokerRoutes(
         serviceAreas: profile.serviceAreas,
         loName: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Loan Officer",
         loProfileImage: user?.profileImageUrl || null,
+        // Referral code (if the LO has one) so the co-branded landing page can
+        // stash it and attribute the consumer to this LO after they sign up.
+        referralCode: user?.referralCode || null,
       });
     } catch (error) {
       console.error("Get public co-brand error:", error);

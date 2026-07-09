@@ -4039,6 +4039,55 @@ export function registerBorrowerRoutes(
     }
   });
 
+  // Pre-launch partner / center-of-influence waitlist. B2B interest capture for
+  // loan officers, lenders, CPAs, and real-estate agents — the referral network
+  // we'll service consumers through. Not a consumer mortgage lead: no TCPA/
+  // TrustedForm path, no rate/approval handling. Public + honeypot-guarded;
+  // rate-limited in app.ts alongside /api/email-capture.
+  const partnerWaitlistSchema = z.object({
+    name: z.string().trim().min(1, "Name is required").max(255),
+    email: z.string().email().max(255),
+    company: z.string().trim().max(255).optional(),
+    partnerType: z.enum(["loan_officer", "lender", "cpa", "real_estate_agent", "other"]),
+    message: z.string().trim().max(2000).optional(),
+    website: z.string().optional(), // honeypot
+  });
+
+  app.post("/api/partner-waitlist", async (req, res) => {
+    try {
+      const parsed = partnerWaitlistSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Please check the form and try again." });
+      }
+      if (parsed.data.website) {
+        return res.json({ ok: true }); // silently drop bots
+      }
+      const { partnerWaitlist } = await import("@shared/schema");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+
+      const existing = await db
+        .select({ id: partnerWaitlist.id })
+        .from(partnerWaitlist)
+        .where(eq(partnerWaitlist.email, parsed.data.email))
+        .limit(1);
+
+      if (existing.length === 0) {
+        await db.insert(partnerWaitlist).values({
+          name: parsed.data.name,
+          email: parsed.data.email,
+          company: parsed.data.company || null,
+          partnerType: parsed.data.partnerType,
+          message: parsed.data.message || null,
+        });
+      }
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Partner waitlist error:", error);
+      res.json({ ok: true });
+    }
+  });
+
   app.get("/api/user-activity-summary", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as User).id;

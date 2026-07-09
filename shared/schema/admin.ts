@@ -783,6 +783,24 @@ export const emailCaptures = pgTable("email_captures", {
   index("idx_email_captures_email").on(table.email),
 ]);
 
+// Pre-launch partner / center-of-influence waitlist. The pre-license acquisition
+// target is the referral network we service consumers THROUGH — loan officers,
+// lenders, CPAs, real-estate agents — not consumer applicants (who churn before
+// launch). B2B interest capture: not a consumer mortgage lead, so it never
+// touches the TCPA /api/leads path and carries no rate/approval language.
+export const partnerWaitlist = pgTable("partner_waitlist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  company: varchar("company", { length: 255 }),
+  // loan_officer | lender | cpa | real_estate_agent | other
+  partnerType: varchar("partner_type", { length: 30 }).notNull(),
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_partner_waitlist_email").on(table.email),
+]);
+
 export const agentReferralRequests = pgTable("agent_referral_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   firstName: varchar("first_name", { length: 100 }).notNull(),
