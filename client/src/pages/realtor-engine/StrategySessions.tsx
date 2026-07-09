@@ -24,6 +24,7 @@ import {
   TrendingUp,
   BarChart3,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
 
 interface StrategySession {
@@ -288,7 +289,7 @@ export default function StrategySessions() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="strategy-sessions-page">
+    <PageShell width="content">
       <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-foreground" data-testid="text-page-title">Strategy Sessions</h1>
@@ -552,6 +553,6 @@ export default function StrategySessions() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

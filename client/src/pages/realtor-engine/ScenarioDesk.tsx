@@ -21,6 +21,7 @@ import {
   Building2,
   ChevronRight,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { Link } from "wouter";
 import { formatCurrency, formatCurrencyDecimal } from "@/lib/formatters";
 
@@ -255,20 +256,17 @@ export default function ScenarioDesk() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto" data-testid="scenario-desk-page">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Calculator className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground md:text-2xl" data-testid="text-page-title">
-              Scenario Calculator
-            </h1>
-            <p className="text-sm text-muted-foreground">Run instant mortgage scenarios for your clients</p>
-          </div>
+    <PageShell
+      width="wide"
+      icon={
+        <div className="p-2 bg-primary/10 rounded-lg">
+          <Calculator className="h-5 w-5 text-primary" />
         </div>
-      </div>
+      }
+      title="Scenario Calculator"
+      subtitle="Run instant mortgage scenarios for your clients"
+      titleTestId="text-page-title"
+    >
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
@@ -570,6 +568,6 @@ export default function ScenarioDesk() {
           )}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

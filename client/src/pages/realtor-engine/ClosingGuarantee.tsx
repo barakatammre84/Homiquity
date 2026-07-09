@@ -25,6 +25,7 @@ import {
   FileCheck,
   MessageSquare,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
 
 interface ClosingGuarantee {
@@ -316,22 +317,17 @@ export default function ClosingGuarantee() {
   const metCount = guarantees.filter((g) => g.isMet).length;
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="closing-guarantee-page">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Shield className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground md:text-2xl" data-testid="text-page-title">
-              Zero-Stress Closing Guarantee
-            </h1>
-            <p className="text-sm text-muted-foreground" data-testid="text-page-subtitle">
-              Track closing timeline guarantees in real time
-            </p>
-          </div>
+    <PageShell
+      width="content"
+      icon={
+        <div className="p-2 bg-primary/10 rounded-lg">
+          <Shield className="h-5 w-5 text-primary" />
         </div>
-      </div>
+      }
+      title="Zero-Stress Closing Guarantee"
+      subtitle="Track closing timeline guarantees in real time"
+      titleTestId="text-page-title"
+    >
 
       <Card className="mb-6 border-primary/20" data-testid="card-info">
         <CardContent className="py-4">
@@ -436,6 +432,6 @@ export default function ClosingGuarantee() {
           ))}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
