@@ -1,4 +1,5 @@
--- 0020: PartnerHub identity spine (PH-1 — knowledge-base/specs/PARTNER_HUB_PROGRAM.md).
+-- 0021: PartnerHub identity spine (PH-1 — knowledge-base/specs/PARTNER_HUB_PROGRAM.md).
+-- (0020 was claimed concurrently by the LO Advisor LO-2 scenario_runs migration, PR #114.)
 -- partner_profiles: one row per external referral partner (realtor now; cpa converges later).
 -- No compensation columns by design (RESPA §8, charter §5-C1); license verification is a
 -- manual admin queue (§5-C10). referral_slug mirrors users.referral_code (one code, both rails).
