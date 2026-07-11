@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DealTeam } from "@/components/DealTeam";
 import { DealTeamManagement } from "@/components/DealTeamManagement";
+import { TaxIntelligencePanel } from "@/components/staff/TaxIntelligencePanel";
 import {
   FileText,
   User,
@@ -53,6 +54,7 @@ import {
   AlertOctagon,
   FileWarning,
   Users,
+  Brain,
 } from "lucide-react";
 import { format } from "date-fns";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
@@ -669,6 +671,10 @@ export default function BorrowerFile() {
                     <CreditCard className="mr-2 h-4 w-4" />
                     Credit
                   </TabsTrigger>
+                  <TabsTrigger value="tax-intel" data-testid="tab-tax-intel">
+                    <Brain className="mr-2 h-4 w-4" />
+                    Tax Intel
+                  </TabsTrigger>
                   <TabsTrigger value="team" data-testid="tab-team">
                     <Users className="mr-2 h-4 w-4" />
                     Team
@@ -1225,6 +1231,21 @@ export default function BorrowerFile() {
                       </ScrollArea>
                     </CardContent>
                   </Card>
+                </TabsContent>
+
+                <TabsContent value="tax-intel" className="space-y-4">
+                  {application?.userId ? (
+                    <TaxIntelligencePanel
+                      borrowerUserId={application.userId}
+                      applicationId={application.id}
+                    />
+                  ) : (
+                    <Card>
+                      <CardContent className="py-6 text-sm text-muted-foreground">
+                        Borrower not loaded yet.
+                      </CardContent>
+                    </Card>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="team" className="space-y-4">
