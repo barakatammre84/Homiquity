@@ -14,6 +14,7 @@ import {
   loanApplications,
 } from "@shared/schema";
 import { parseBodyOr400 } from "./validate";
+import { firstQueryValue } from "./queryParams";
 
 export function registerAgentBrokerRoutes(
   app: Express,
@@ -32,10 +33,9 @@ export function registerAgentBrokerRoutes(
 
   app.get("/api/agents/search", async (req, res) => {
     try {
-      const { location, specialty } = req.query;
       const agents = await storage.searchAgentProfiles({
-        location: location as string | undefined,
-        specialty: specialty as string | undefined,
+        location: firstQueryValue(req.query.location),
+        specialty: firstQueryValue(req.query.specialty),
       });
       const enriched = await Promise.all(
         agents.map(async (agent) => {
@@ -643,7 +643,7 @@ export function registerAgentBrokerRoutes(
   // Get historical snapshots
   app.get("/api/analytics/history", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
-      const days = parseInt(req.query.days as string) || 30;
+      const days = parseInt(firstQueryValue(req.query.days) ?? "") || 30;
       const snapshots = await storage.getAnalyticsSnapshots(days);
       res.json(snapshots);
     } catch (error) {
@@ -1182,7 +1182,7 @@ export function registerAgentBrokerRoutes(
   app.get("/api/pre-approval-letters/:id/co-brand-preview", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      const agentProfileId = req.query.agentProfileId as string;
+      const agentProfileId = firstQueryValue(req.query.agentProfileId);
 
       if (!agentProfileId) {
         return res.status(400).json({ error: "agentProfileId query parameter is required" });

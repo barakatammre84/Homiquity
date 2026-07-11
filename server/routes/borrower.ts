@@ -25,6 +25,7 @@ import { pickTableFields, sanitizePersonalInfoBody, URLA_TABLES } from "./urlaVa
 import { stripEncryptedFields } from "../services/piiVault";
 import { sendNotificationEmail } from "../services/emailService";
 import { evaluateTridTrigger } from "../services/trid";
+import { firstQueryValue } from "./queryParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -1483,7 +1484,7 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Internal staff only" });
       }
 
-      const withinDays = parseInt(req.query.days as string) || 7;
+      const withinDays = parseInt(firstQueryValue(req.query.days) ?? "") || 7;
       const locks = await storage.getExpiringRateLocks(withinDays);
 
       // Assignment-scoped, mirroring GET /api/pipeline/queue: an admin sees
@@ -1597,10 +1598,9 @@ export function registerBorrowerRoutes(
   // Get consent templates
   app.get("/api/consent-templates", isAuthenticated, async (req, res) => {
     try {
-      const { type, state } = req.query;
       const templates = await storage.getActiveConsentTemplates(
-        type as string | undefined,
-        state as string | undefined
+        firstQueryValue(req.query.type),
+        firstQueryValue(req.query.state)
       );
       res.json(templates);
     } catch (error) {
@@ -1810,10 +1810,10 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Staff only" });
       }
 
-      const { serviceType } = req.query;
+      const serviceType = firstQueryValue(req.query.serviceType);
       let providers;
       if (serviceType) {
-        providers = await storage.getPartnerProvidersByServiceType(serviceType as string);
+        providers = await storage.getPartnerProvidersByServiceType(serviceType);
       } else {
         providers = await storage.getAllPartnerProviders();
       }
@@ -2978,12 +2978,15 @@ export function registerBorrowerRoutes(
   // Get DPA programs with optional filters
   app.get("/api/dpa-programs", async (req, res) => {
     try {
-      const { state, firstTimeBuyer, minCreditScore, maxIncome } = req.query;
+      const state = firstQueryValue(req.query.state);
+      const firstTimeBuyer = firstQueryValue(req.query.firstTimeBuyer);
+      const minCreditScore = firstQueryValue(req.query.minCreditScore);
+      const maxIncome = firstQueryValue(req.query.maxIncome);
       const filters: any = {};
-      if (state) filters.state = state as string;
+      if (state) filters.state = state;
       if (firstTimeBuyer === "true") filters.firstTimeBuyer = true;
-      if (minCreditScore) filters.minCreditScore = parseInt(minCreditScore as string);
-      if (maxIncome) filters.maxIncome = parseFloat(maxIncome as string);
+      if (minCreditScore) filters.minCreditScore = parseInt(minCreditScore);
+      if (maxIncome) filters.maxIncome = parseFloat(maxIncome);
 
       const programs = await storage.getDpaPrograms(Object.keys(filters).length > 0 ? filters : undefined);
 
@@ -3450,7 +3453,7 @@ export function registerBorrowerRoutes(
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
-      const status = req.query.status as string | undefined;
+      const status = firstQueryValue(req.query.status);
       const escalations = await storage.getDealRescueEscalations({
         status,
         reportedByUserId: req.user!.id,
@@ -4184,7 +4187,7 @@ export function registerBorrowerRoutes(
   app.get("/api/borrower-graph/affordability", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const price = parseFloat(req.query.price as string);
+      const price = parseFloat(firstQueryValue(req.query.price) ?? "");
       if (!price || isNaN(price) || price <= 0) {
         return res.status(400).json({ error: "Valid price parameter required" });
       }
