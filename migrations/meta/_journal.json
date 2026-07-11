@@ -92,6 +92,13 @@
       "when": 1783593600007,
       "tag": "0012_partner_waitlist",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783593600009,
+      "tag": "0014_tax_intelligence",
+      "breakpoints": true
     }
   ]
 }

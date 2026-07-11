@@ -116,12 +116,17 @@ export const DOCUMENT_TYPE_TAXONOMY = [
   "1099_nec",
   // Income - Tax Returns
   "tax_return_1040",
+  "schedule_1",
+  "schedule_b",
   "schedule_c",
+  "schedule_d",
   "schedule_e",
   "schedule_k1",
   "business_tax_return_1120",
   "business_tax_return_1120s",
   "business_tax_return_1065",
+  "form_8825",
+  "form_4562",
   // Income - Self-Employed
   "profit_loss_statement",
   "social_security_award_letter",
@@ -266,10 +271,36 @@ export const logicalDocuments = pgTable("logical_documents", {
   periodEnd: timestamp("period_end"),
   taxYear: integer("tax_year"),
   
-  // Institution/employer info (extracted)
+  // Institution/employer info (extracted). For tax forms, institution_name
+  // holds the business-entity name read off the form (P2b entity resolution
+  // resolves it against borrower_business_entities).
   institutionName: varchar("institution_name", { length: 255 }),
   accountNumberMasked: varchar("account_number_masked", { length: 50 }),
-  
+
+  // --- Bridge to the live upload flow (UAL P2a) ------------------------------
+  // The page-image pipeline (document_uploads/document_pages) needs
+  // rasterization infra that doesn't exist yet; until it does, a logical
+  // document is produced directly from a `documents` row by the tax-form
+  // extractor. source_document_id + extraction_run_id carry that provenance.
+  sourceDocumentId: varchar("source_document_id").references(() => documents.id),
+  extractionRunId: varchar("extraction_run_id").references(() => taxExtractionRuns.id),
+  // Page attribution from the classification pass (1-indexed, inclusive).
+  pageStart: integer("page_start"),
+  pageEnd: integer("page_end"),
+  // K-1 flavor when documentType = schedule_k1 ("1065" | "1120s").
+  k1Variant: varchar("k1_variant", { length: 10 }),
+
+  // Extraction lineage for THIS form instance (mirrors documents.extraction_*):
+  // model/prompt ids plus the encrypted raw model response of the per-form
+  // extraction call, so an auditor can tie every stored field to exact output.
+  modelId: varchar("model_id", { length: 100 }),
+  promptVersion: varchar("prompt_version", { length: 50 }),
+  rawResponseHash: varchar("raw_response_hash", { length: 64 }),
+  rawResponseEncrypted: text("raw_response_encrypted"),
+  rawResponseIv: varchar("raw_response_iv", { length: 32 }),
+  rawResponseKeyId: varchar("raw_response_key_id", { length: 20 }),
+
+
   // Completeness
   expectedPageCount: integer("expected_page_count"),
   actualPageCount: integer("actual_page_count"),
@@ -287,6 +318,8 @@ export const logicalDocuments = pgTable("logical_documents", {
   index("idx_logical_docs_borrower").on(table.borrowerId),
   index("idx_logical_docs_type").on(table.documentType),
   index("idx_logical_docs_status").on(table.status),
+  index("idx_logical_docs_source_doc").on(table.sourceDocumentId),
+  index("idx_logical_docs_run").on(table.extractionRunId),
 ]);
 
 // Link table: Logical Document to Pages
@@ -310,8 +343,12 @@ export const logicalDocumentPages = pgTable("logical_document_pages", {
 export const extractedFields = pgTable("extracted_fields", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   logicalDocumentId: varchar("logical_document_id").references(() => logicalDocuments.id),
-  pageId: varchar("page_id").references(() => documentPages.id).notNull(),
-  
+  // Nullable since UAL P2a: fields produced by the whole-document tax extractor
+  // carry page_number attribution instead of a rasterized page row. When the
+  // page-image pipeline lands, page_id becomes populated again.
+  pageId: varchar("page_id").references(() => documentPages.id),
+  pageNumber: integer("page_number"), // 1-indexed page attribution from classification
+
   // Field identification
   fieldName: varchar("field_name", { length: 255 }).notNull(), // e.g., "grossMonthlyIncome", "employerName"
   fieldCategory: varchar("field_category", { length: 100 }), // income, asset, liability, identity, property
@@ -379,6 +416,47 @@ export const completenessChecks = pgTable("completeness_checks", {
   index("idx_completeness_status").on(table.status),
 ]);
 
+// H. Tax Extraction Run (UAL P2a — Situation Identification Engine)
+// One row per full multi-form extraction of an uploaded tax document:
+// classification pass + N per-form extraction passes. Append-only — a re-run
+// inserts a new row and produces fresh logical_documents; readers use the
+// latest completed run for a source document. The classification pass's raw
+// model response is kept encrypted here (per-form raw responses live on their
+// logical_documents rows).
+export const taxExtractionRuns = pgTable("tax_extraction_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").references(() => documents.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+
+  status: varchar("status", { length: 20 }).default("running").notNull(), // running, completed, failed
+  // I10: simulated output must be unmistakable wherever it lands.
+  simulated: boolean("simulated").default(false).notNull(),
+  error: text("error"),
+
+  // Lineage for the classification pass
+  modelId: varchar("model_id", { length: 100 }),
+  promptVersion: varchar("prompt_version", { length: 50 }),
+  classificationResponseHash: varchar("classification_response_hash", { length: 64 }),
+  classificationRawEncrypted: text("classification_raw_encrypted"),
+  classificationRawIv: varchar("classification_raw_iv", { length: 32 }),
+  classificationRawKeyId: varchar("classification_raw_key_id", { length: 20 }),
+
+  // Run shape
+  pageCount: integer("page_count"),
+  formCount: integer("form_count"),
+  // Conservative aggregate of per-field confidences (bottom-half mean; see
+  // shared/taxFormExtraction.ts aggregateFieldConfidence).
+  overallConfidence: decimal("overall_confidence", { precision: 5, scale: 4 }),
+
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_tax_extraction_runs_document").on(table.documentId),
+  index("idx_tax_extraction_runs_user").on(table.userId),
+  index("idx_tax_extraction_runs_status").on(table.status),
+]);
+
 // Insert schemas
 export const insertDocumentUploadSchema = createInsertSchema(documentUploads).omit({
   id: true,
@@ -422,3 +500,10 @@ export type InsertExtractedField = z.infer<typeof insertExtractedFieldSchema>;
 export type ExtractedField = typeof extractedFields.$inferSelect;
 export type InsertCompletenessCheck = z.infer<typeof insertCompletenessCheckSchema>;
 export type CompletenessCheck = typeof completenessChecks.$inferSelect;
+
+export const insertTaxExtractionRunSchema = createInsertSchema(taxExtractionRuns).omit({
+  id: true,
+  startedAt: true,
+});
+export type InsertTaxExtractionRun = z.infer<typeof insertTaxExtractionRunSchema>;
+export type TaxExtractionRun = typeof taxExtractionRuns.$inferSelect;
