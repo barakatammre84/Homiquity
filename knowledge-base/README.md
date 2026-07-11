@@ -70,6 +70,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 ### Research — scratch + strategy collateral · [`research/`](research/)
 - [research/my-research/](research/my-research/) — scratch (nothing load-bearing).
 - [research/gtm/](research/gtm/) — GTM battlecards + competitive briefs.
+- [research/islamic-finance/](research/islamic-finance/) — alternative / Shariah-compliant (Musharaka/Ijara/Murabaha) "Universal Adaptation Layer" as a **broker-triage** lane: feasibility + compliance-gap map (§3 payment-decomposition table = the citation authority for the P7 translation calculators) + lender-channel validation (route is the Ijara-CDC/CMG ecosystem; the 2 founder calls are the channel gates) + Shariah-governance validation (structure cert = the funder's). Productized as UAL program prompt P7 — funder-agnostic build only until a founder-call "yes".
 
 ### Archive — obsolete, quarantined · [`archive/`](./archive/)
 Superseded docs kept for provenance. Never act on these. Includes the launch-era
