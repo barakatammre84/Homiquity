@@ -57,6 +57,7 @@ import {
   ShieldAlert,
   Archive,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { formatCurrency, formatTimeRemaining } from "@/lib/formatters";
 import { type SlaStatus, SLA_STATUS_COLORS, SLA_DOT_COLORS, SLA_SORT_ORDER } from "@/lib/sla";
 
@@ -746,7 +747,7 @@ export default function StaffDashboard() {
         </div>
       </div>
 
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <PageShell width="full" contentClassName="space-y-6">
         <div className="grid gap-4 grid-cols-2 md:grid-cols-5" data-testid="section-kpi-cards">
           <Card data-testid="card-kpi-pipeline">
             <CardContent className="p-4">
@@ -1646,7 +1647,7 @@ export default function StaffDashboard() {
             <IntelligenceTab />
           </TabsContent>
         </Tabs>
-      </div>
+      </PageShell>
     </>
   );
 }
