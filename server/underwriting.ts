@@ -15,6 +15,8 @@ import type {
   UrlaPropertyInfo,
 } from "@shared/schema";
 import { lookupResolver } from "./services/lookupResolver";
+import { computeAgencyWageIncome } from "./services/income/paths/agencyWage";
+import { computeSelfEmploymentPath } from "./services/income/paths/selfEmployment";
 
 export interface IncomeQualificationResult {
   baseMonthlyIncome: number;
@@ -41,6 +43,9 @@ export interface IncomeQualificationResult {
       addBacks: number;
       deductions: number;
       qualifyingIncome: number;
+      trend?: string;
+      requiresManualReview?: boolean;
+      notes?: string[];
     };
   };
 }
@@ -101,74 +106,93 @@ export interface PropertyEligibilityResult {
 // INCOME QUALIFICATION ENGINE
 // ============================================================================
 
+/**
+ * @deprecated Adapter over the multi-path income orchestrator
+ * (server/services/income/orchestrator.ts) — the single income producer as of
+ * UAL P3. The wage math (agency-wage path) and self-employment math (Form 1084
+ * path) are the SAME functions the instant-decision engine uses, so this
+ * display endpoint can never disagree with a decision on the qualifying total.
+ * Fast-follow: move the one remaining caller
+ * (POST /api/loan-applications/:id/calculate-income) onto the orchestrator
+ * directly and delete this shim.
+ */
 export function qualifyIncome(
   employment: EmploymentHistory[],
   otherIncome: OtherIncomeSource[],
   applicationIncome?: { annualIncome?: number | string; employmentYears?: number }
 ): IncomeQualificationResult {
+  const agency = computeAgencyWageIncome({
+    employment,
+    otherIncome,
+    fallbackAnnualIncome: applicationIncome?.annualIncome,
+  });
+  const se = computeSelfEmploymentPath(employment);
+
   const result: IncomeQualificationResult = {
-    baseMonthlyIncome: 0,
-    variableMonthlyIncome: 0,
-    selfEmploymentMonthlyIncome: 0,
-    totalQualifyingIncome: 0,
+    baseMonthlyIncome: agency.baseMonthlyIncome,
+    variableMonthlyIncome: agency.variableMonthlyIncome,
+    selfEmploymentMonthlyIncome: se.path.monthlyQualifyingIncome,
+    totalQualifyingIncome:
+      agency.baseMonthlyIncome + agency.variableMonthlyIncome + se.path.monthlyQualifyingIncome,
     details: { employment: [], other: [] },
   };
 
-  // Process employment income
+  // Display detail: per non-SE job and per other-income source (the decision
+  // path doesn't need these, so they stay here rather than in the orchestrator).
   for (const emp of employment) {
-    // Require 2-year continuous work history
-    if (!emp.startDate) continue;
-
-    const startDate = new Date(emp.startDate);
-    const monthsEmployed = (Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
-
-    // Calculate monthly income
-    let monthlyIncome = 0;
-    if (emp.isSelfEmployed) {
-      // Self-employment handled separately
-      continue;
-    } else if (emp.totalMonthlyIncome) {
-      monthlyIncome = typeof emp.totalMonthlyIncome === 'string' 
-        ? parseFloat(emp.totalMonthlyIncome) 
-        : emp.totalMonthlyIncome;
-      result.baseMonthlyIncome += monthlyIncome;
-    } else if (applicationIncome?.annualIncome && emp.employmentType === "salaried") {
-      const annual = typeof applicationIncome.annualIncome === 'string' 
-        ? parseFloat(applicationIncome.annualIncome) 
-        : applicationIncome.annualIncome;
-      monthlyIncome = annual / 12;
-      result.baseMonthlyIncome += monthlyIncome;
-    }
-
+    if (emp.isSelfEmployed) continue;
+    const monthsEmployed = emp.startDate
+      ? (Date.now() - new Date(emp.startDate).getTime()) / (1000 * 60 * 60 * 24 * 30.44)
+      : 0;
+    const monthlyBase =
+      emp.totalMonthlyIncome != null
+        ? toNumberLike(emp.totalMonthlyIncome)
+        : toNumberLike(emp.baseIncome);
     result.details.employment.push({
       type: emp.employmentType || "salaried",
       yearsEmployed: Math.floor(monthsEmployed / 12),
-      monthlyBase: monthlyIncome,
+      monthlyBase,
     });
   }
-
-  // Process other income sources (bonuses, commissions, rental)
   for (const income of otherIncome) {
     if (!income.monthlyAmount) continue;
-
-    const monthlyAmount = typeof income.monthlyAmount === 'string' 
-      ? parseFloat(income.monthlyAmount) 
-      : income.monthlyAmount;
-
-    // Variable income qualification rules - conservatively include if documented
-    result.variableMonthlyIncome += monthlyAmount;
     result.details.other.push({
       type: income.incomeSource || "other",
-      monthlyAmount: monthlyAmount,
+      monthlyAmount: toNumberLike(income.monthlyAmount),
     });
   }
 
-  result.totalQualifyingIncome = 
-    result.baseMonthlyIncome + 
-    result.variableMonthlyIncome + 
-    result.selfEmploymentMonthlyIncome;
+  if (se.perJob.length > 0) {
+    const agg = se.perJob.reduce(
+      (a, s) => ({
+        netProfitYear1: a.netProfitYear1 + s.netProfitYear1,
+        netProfitYear2: a.netProfitYear2 + s.netProfitYear2,
+        avgNetProfit: a.avgNetProfit + s.avgAnnualCashFlow,
+        addBacks: a.addBacks + s.addBacks,
+        deductions: a.deductions + s.deductions,
+        qualifyingIncome: a.qualifyingIncome + s.monthlyQualifyingIncome,
+        notes: [...a.notes, ...s.notes],
+      }),
+      { netProfitYear1: 0, netProfitYear2: 0, avgNetProfit: 0, addBacks: 0, deductions: 0, qualifyingIncome: 0, notes: [] as string[] },
+    );
+    result.details.selfEmployment = {
+      ...agg,
+      trend: se.perJob[se.perJob.length - 1].trend,
+      requiresManualReview: se.path.requiresManualReview,
+      notes: se.path.notes,
+    };
+  }
 
   return result;
+}
+
+function toNumberLike(v: number | string | null | undefined): number {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  if (typeof v === "string") {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
 }
 
 // ============================================================================

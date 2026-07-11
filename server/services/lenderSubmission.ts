@@ -160,6 +160,19 @@ export async function submitToWholesaleLender(
 
   const ack = await submitToLenderPortal(lender, applicationId);
 
+  // The income analysis package (UAL P6) — the broker's cited income narrative
+  // shipped alongside the MISMO package. Per-lender shaped (non-QM sections
+  // only for non-QM lenders), immutable snapshot + tamper-evident hash.
+  const submittedAt = new Date();
+  const { buildIncomeAnalysisPackage } = await import("./incomeAnalysisPackage");
+  const incomePkg = await buildIncomeAnalysisPackage(
+    applicationId,
+    lenderId,
+    submittedBy,
+    ack.simulated,
+    submittedAt,
+  );
+
   const submission = await storage.createLenderSubmission({
     applicationId,
     lenderId,
@@ -169,7 +182,10 @@ export async function submitToWholesaleLender(
     readinessSnapshot: readiness as unknown as Record<string, unknown>,
     mismoPackageXml: pkg.xml,
     mismoPackageHash: pkg.hash,
-    mismoPackageGeneratedAt: new Date(),
+    mismoPackageGeneratedAt: submittedAt,
+    incomePackageJson: incomePkg.package as unknown as Record<string, unknown>,
+    incomePackageHash: incomePkg.hash,
+    incomePackageGeneratedAt: incomePkg.generatedAt,
     submittedBy,
   });
 
@@ -177,7 +193,7 @@ export async function submitToWholesaleLender(
     applicationId,
     activityType: "note",
     title: `Submitted to ${lender.name}`,
-    description: `Wholesale submission ${ack.confirmationId}${ack.simulated ? " (simulated — no broker agreement live)" : ""} — MISMO package ${pkg.hash.slice(0, 12)}`,
+    description: `Wholesale submission ${ack.confirmationId}${ack.simulated ? " (simulated — no broker agreement live)" : ""} — MISMO package ${pkg.hash.slice(0, 12)}, income package ${incomePkg.hash.slice(0, 12)}`,
     performedBy: submittedBy,
   });
 

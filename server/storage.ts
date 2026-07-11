@@ -307,6 +307,8 @@ import {
   type InsertCpaPartner,
   type CpaReferral,
   type InsertCpaReferral,
+  bankStatementAnalyses,
+  type BankStatementAnalysis,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -395,6 +397,8 @@ export interface IStorage {
   getDecryptedUrlaSsn(applicationId: string, borrowerSequenceNumber?: number): Promise<string | null>;
   
   getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]>;
+  /** Latest captured bank-statement deposit analysis (UAL P5), newest first. */
+  getLatestBankStatementAnalysis(applicationId: string): Promise<BankStatementAnalysis | undefined>;
   getEmploymentHistoryById(id: string): Promise<EmploymentHistory | undefined>;
   createEmploymentHistory(data: InsertEmploymentHistory): Promise<EmploymentHistory>;
   updateEmploymentHistory(id: string, data: Partial<EmploymentHistory>): Promise<EmploymentHistory | undefined>;
@@ -1530,6 +1534,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Employment History
+  async getLatestBankStatementAnalysis(applicationId: string): Promise<BankStatementAnalysis | undefined> {
+    const [row] = await db
+      .select()
+      .from(bankStatementAnalyses)
+      .where(eq(bankStatementAnalyses.applicationId, applicationId))
+      .orderBy(desc(bankStatementAnalyses.createdAt))
+      .limit(1);
+    return row;
+  }
+
   async getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]> {
     return await db
       .select()

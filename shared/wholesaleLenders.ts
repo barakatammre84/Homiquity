@@ -16,14 +16,19 @@ export interface WholesaleLender {
   approvalStatus: LenderApprovalStatus;
   /** Supported AUS engines on their wholesale channel. */
   ausSupport: ("DU" | "LPA")[];
+  /**
+   * Runs non-QM programs (DSCR / bank-statement). The income analysis package
+   * (UAL P6) includes the non-QM path sections only for these lenders.
+   */
+  nonQm?: boolean;
 }
 
 export const WHOLESALE_LENDERS: WholesaleLender[] = [
   { id: "uwm", name: "United Wholesale Mortgage", specialty: "Conventional/FHA/VA volume leader, fast turn times", approvalStatus: "target", ausSupport: ["DU", "LPA"] },
   { id: "rocket-pro-tpo", name: "Rocket Pro TPO", specialty: "Conventional/FHA/VA, strong tech + pricing tools", approvalStatus: "target", ausSupport: ["DU", "LPA"] },
   { id: "plaza", name: "Plaza Home Mortgage", specialty: "Broad product menu incl. renovation + manufactured", approvalStatus: "target", ausSupport: ["DU", "LPA"] },
-  { id: "angel-oak", name: "Angel Oak Mortgage Solutions", specialty: "Non-QM / bank statement / investor DSCR", approvalStatus: "target", ausSupport: ["DU"] },
-  { id: "newrez", name: "Newrez Wholesale", specialty: "Conventional/government + non-QM overlay programs", approvalStatus: "target", ausSupport: ["DU", "LPA"] },
+  { id: "angel-oak", name: "Angel Oak Mortgage Solutions", specialty: "Non-QM / bank statement / investor DSCR", approvalStatus: "target", ausSupport: ["DU"], nonQm: true },
+  { id: "newrez", name: "Newrez Wholesale", specialty: "Conventional/government + non-QM overlay programs", approvalStatus: "target", ausSupport: ["DU", "LPA"], nonQm: true },
 ];
 
 const BY_ID = new Map(WHOLESALE_LENDERS.map(l => [l.id, l]));

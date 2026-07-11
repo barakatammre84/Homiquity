@@ -32,6 +32,13 @@ function cleanInputs(overrides: Partial<StageDerivationInputs> = {}): StageDeriv
       notEvaluatedCount: 0,
       ...(overrides.deliveryEdits ?? {}),
     },
+    incomeAnalysis: {
+      // Default: a clean wage-earner file that doesn't need the income package.
+      requiresIncomePackage: false,
+      hasCurrentEvaluation: false,
+      openFlaggedReviewItems: 0,
+      ...(overrides.incomeAnalysis ?? {}),
+    },
     now: overrides.now,
   };
 }

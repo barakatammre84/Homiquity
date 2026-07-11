@@ -45,6 +45,10 @@ export const decisionSnapshots = pgTable(
     resolvedPolicy: jsonb("resolved_policy"),
     policyFingerprint: varchar("policy_fingerprint", { length: 64 }),
 
+    // Which multi-path income evaluation (P3) produced the income figure behind
+    // this decision. Nullable: back-fills as evaluations start being recorded.
+    incomePathEvaluationId: varchar("income_path_evaluation_id", { length: 36 }),
+
     createdAt: timestamp("created_at").notNull().default(sql`now()`),
   },
   (table) => ({
