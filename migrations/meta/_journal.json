@@ -106,6 +106,13 @@
       "when": 1783593600010,
       "tag": "0015_borrower_business_entities",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1783593600011,
+      "tag": "0016_situation_profiles",
+      "breakpoints": true
     }
   ]
 }

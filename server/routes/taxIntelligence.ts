@@ -12,6 +12,10 @@ import {
 } from "../services/taxDocumentIntelligence";
 import { resolveAndPersistEntities } from "../services/borrowerEntityResolution";
 import { buildTaxReconciliation } from "../services/taxReconciliation";
+import {
+  classifyAndPersistSituation,
+  getLatestSituationProfile,
+} from "../services/situationClassifier";
 import { logAudit } from "../auditLog";
 import { logFriction } from "../services/frictionLog";
 
@@ -102,15 +106,23 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         });
       }
 
-      // P2b: refresh the borrower's resolved business entities from the new
-      // extraction (non-fatal — resolution is a derived view, recomputable).
+      // P2b/P2c: refresh the borrower's resolved entities and situation
+      // profile from the new extraction (non-fatal — both are derived views,
+      // recomputable from the persisted extraction).
       let entityCount: number | undefined;
+      let situationProfileId: string | undefined;
       if (summary.status === "completed") {
         try {
           const { entities } = await resolveAndPersistEntities(user.id);
           entityCount = entities.length;
         } catch (resolutionErr) {
           console.warn("[TaxIntelligence] Entity resolution failed (non-fatal):", resolutionErr);
+        }
+        try {
+          const situation = await classifyAndPersistSituation(user.id);
+          situationProfileId = situation.id;
+        } catch (situationErr) {
+          console.warn("[TaxIntelligence] Situation classification failed (non-fatal):", situationErr);
         }
       }
 
@@ -123,7 +135,9 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         entityCount,
       });
 
-      res.status(summary.status === "failed" ? 502 : 200).json({ ...summary, entityCount });
+      res
+        .status(summary.status === "failed" ? 502 : 200)
+        .json({ ...summary, entityCount, situationProfileId });
     } catch (error) {
       console.error("Tax intelligence run error:", error);
       res.status(500).json({ error: "Failed to process tax document" });
@@ -193,6 +207,46 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
     } catch (error) {
       console.error("Tax reconciliation error:", error);
       res.status(500).json({ error: "Failed to build tax reconciliation" });
+    }
+  });
+
+  /**
+   * P2c: the SituationProfile — what kind of borrower this is, which income
+   * paths the file indicates, and which documents to request. Owner reads
+   * their own; internal staff may read any borrower's (audited). Computed
+   * fresh if nothing is persisted yet (deterministic either way).
+   */
+  app.get("/api/tax-intelligence/situation", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const requestedUserId =
+        typeof req.query.userId === "string" && req.query.userId ? req.query.userId : user.id;
+      const isOwner = requestedUserId === user.id;
+      if (!isOwner && !isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      let row = await getLatestSituationProfile(requestedUserId);
+      if (!row) {
+        row = await classifyAndPersistSituation(requestedUserId);
+      }
+
+      if (!isOwner) {
+        logAudit(req, "tax_intelligence.situation_viewed", "user", requestedUserId, {
+          situationProfileId: row.id,
+        });
+      }
+
+      res.json({
+        id: row.id,
+        userId: row.userId,
+        generatedAt: row.generatedAt.toISOString(),
+        inputsFingerprint: row.inputsFingerprint,
+        profile: row.profile,
+      });
+    } catch (error) {
+      console.error("Situation profile error:", error);
+      res.status(500).json({ error: "Failed to load situation profile" });
     }
   });
 }

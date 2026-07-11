@@ -561,3 +561,36 @@ export const insertBorrowerBusinessEntitySchema = createInsertSchema(borrowerBus
 });
 export type InsertBorrowerBusinessEntity = z.infer<typeof insertBorrowerBusinessEntitySchema>;
 export type BorrowerBusinessEntity = typeof borrowerBusinessEntities.$inferSelect;
+
+// J. Situation Profiles (UAL P2c — Situation Identification Engine output)
+// Append-only; latest row per user wins; inputs_fingerprint dedupes no-op
+// re-classifications. The profile jsonb is Zod-typed in
+// shared/situationProfile.ts; the flag columns exist for staff-feed queries.
+export const situationProfiles = pgTable("situation_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+
+  profile: jsonb("profile").notNull(),
+  inputsFingerprint: varchar("inputs_fingerprint", { length: 64 }).notNull(),
+
+  entityCount: integer("entity_count").default(0).notNull(),
+  selfEmployed: boolean("self_employed").default(false).notNull(),
+  multiEntity: boolean("multi_entity").default(false).notNull(),
+  rentalPresent: boolean("rental_present").default(false).notNull(),
+  k1Present: boolean("k1_present").default(false).notNull(),
+  varianceCount: integer("variance_count").default(0).notNull(),
+  documentRequestCount: integer("document_request_count").default(0).notNull(),
+
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_situation_profiles_user").on(table.userId, table.generatedAt),
+  index("idx_situation_profiles_flags").on(table.selfEmployed, table.rentalPresent, table.generatedAt),
+]);
+
+export const insertSituationProfileSchema = createInsertSchema(situationProfiles).omit({
+  id: true,
+  generatedAt: true,
+});
+export type InsertSituationProfile = z.infer<typeof insertSituationProfileSchema>;
+export type SituationProfileRow = typeof situationProfiles.$inferSelect;
