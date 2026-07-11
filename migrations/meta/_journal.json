@@ -92,6 +92,13 @@
       "when": 1783593600007,
       "tag": "0012_partner_waitlist",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783593600008,
+      "tag": "0013_self_employment_income",
+      "breakpoints": true
     }
   ]
 }
