@@ -153,6 +153,16 @@ describe("PartnerHub identity spine (PH-1)", () => {
     expect((await apiGet("/api/analytics/pipeline", h)).status).toBe(403);
   });
 
+  it("a realtor CANNOT reach the LO referral rail that joins full borrower rows (security-review fix)", async () => {
+    // The realtor's slug attributes buyers via users.referred_by_user_id — the
+    // same column /api/my-referrals reads. That endpoint joins full users rows +
+    // loan applications, so an inviter-only partner must be refused here and use
+    // the minimized /api/partners/me/referrals instead.
+    const h = { headers: { Cookie: agentA.cookie, ...HTTPS } };
+    expect((await apiGet("/api/my-referrals", h)).status).toBe(403);
+    expect((await apiGet("/api/my-referral-stats", h)).status).toBe(403);
+  });
+
   it("admin queue lists the realtor; license review and suspension work; suspension kills the slug", async () => {
     const adminCookie = await loginAs("admin@test.com");
     const h = { headers: { Cookie: adminCookie, ...HTTPS } };

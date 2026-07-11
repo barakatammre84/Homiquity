@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
+import { isPartnerRole } from "@shared/roles";
 import { z } from "zod";
 import crypto from "crypto";
 import { db } from "../db";
@@ -799,6 +800,14 @@ export function registerAgentBrokerRoutes(
   app.get("/api/my-referral-stats", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
+      // Self-registering partners (cpa, realtor) are inviter-only: they read
+      // their own minimized surfaces (/api/cpa/*, /api/partners/me/*), never
+      // this LO rail, which joins full borrower rows. Without this gate a
+      // realtor whose slug attributed a buyer via users.referred_by_user_id
+      // could reach the borrower data below.
+      if (isPartnerRole(user.role)) {
+        return res.status(403).json({ error: "Not available for partner accounts" });
+      }
       const stats = await storage.getReferralStats(user.id);
       res.json(stats);
     } catch (error) {
@@ -806,23 +815,31 @@ export function registerAgentBrokerRoutes(
       res.status(500).json({ error: "Failed to get referral stats" });
     }
   });
-  
+
   // Get list of users referred by current LO
   app.get("/api/my-referrals", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
+      // See /api/my-referral-stats: external partner roles are inviter-only and
+      // must not reach this borrower-data rail.
+      if (isPartnerRole(user.role)) {
+        return res.status(403).json({ error: "Not available for partner accounts" });
+      }
       const referrals = await storage.getReferralsByUser(user.id);
-      
+
       // Get applications for each referred user
       const referralsWithApps = await Promise.all(referrals.map(async (referredUser) => {
         const apps = await storage.getLoanApplicationsByUser(referredUser.id);
+        // Never egress auth-sensitive columns from a full users row, even to an
+        // LO: passwordHash and lockout state have no business in an API response.
+        const { passwordHash, failedLoginAttempts, lockoutUntil, ...safeUser } = referredUser;
         return {
-          ...referredUser,
+          ...safeUser,
           applicationCount: apps.length,
           latestApplication: apps[0] || null,
         };
       }));
-      
+
       res.json(referralsWithApps);
     } catch (error) {
       console.error("Get referrals error:", error);
