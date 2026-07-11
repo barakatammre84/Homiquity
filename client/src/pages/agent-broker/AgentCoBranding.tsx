@@ -25,6 +25,7 @@ import {
   Shield,
   ChevronRight,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
 
 interface CoBrandProfile {
@@ -558,7 +559,7 @@ export default function AgentCoBranding() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="agent-co-branding-page">
+    <PageShell width="content">
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 bg-primary/10 rounded-lg">
@@ -596,6 +597,6 @@ export default function AgentCoBranding() {
           <DealDeskTab />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }

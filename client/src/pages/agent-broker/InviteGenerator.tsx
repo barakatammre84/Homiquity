@@ -36,6 +36,7 @@ import {
   Ban,
   TrendingUp,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { format, formatDistanceToNow } from "date-fns";
 
 const inviteFormSchema = z.object({
@@ -220,7 +221,7 @@ export default function InviteGenerator() {
   }
 
   return (
-    <div className="p-8 space-y-8">
+    <PageShell width="full" contentClassName="space-y-8">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">Client Invite Links</h1>
@@ -640,6 +641,6 @@ export default function InviteGenerator() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

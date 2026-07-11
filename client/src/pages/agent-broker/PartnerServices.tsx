@@ -16,6 +16,7 @@ import {
   Plus,
   Building,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 interface PartnerProvider {
   id: string;
@@ -151,7 +152,7 @@ export default function PartnerServices() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-auto">
+    <PageShell width="full" contentClassName="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" data-testid="text-partner-services-title">Partner Services</h1>
@@ -354,6 +355,6 @@ export default function PartnerServices() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }
