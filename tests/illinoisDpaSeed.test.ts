@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
-import { join } from "path";
 import {
   ILLINOIS_DPA_ARTICLES,
   ILLINOIS_DPA_PROGRAMS,
 } from "../server/seedData/illinoisDpa";
+import { buildSitemapXml } from "../shared/seo/routeMeta";
+import { SITE_URL } from "../shared/seo/schema";
 
 // The DPA articles are public strings on the pre-license educational surface.
 // The Armed Launch Charter's Lane 2 (public-word compliance) bans solicitation
@@ -85,12 +85,15 @@ describe("Illinois DPA seed articles", () => {
   });
 
   it("are all listed in the public sitemap", () => {
-    const sitemap = readFileSync(
-      join(__dirname, "..", "client", "public", "sitemap.xml"),
-      "utf-8",
+    // /sitemap.xml is DB-driven: every published article is fed through
+    // buildSitemapXml (the "published" status these seeds carry is asserted
+    // above). Run the seed slugs through the real generator to pin the
+    // /learn/<slug> URL shape and catch XML/URL-unsafe slugs.
+    const sitemap = buildSitemapXml(
+      ILLINOIS_DPA_ARTICLES.map((a) => ({ slug: a.slug })),
     );
     for (const article of ILLINOIS_DPA_ARTICLES) {
-      expect(sitemap).toContain(`https://homiquity.com/learn/${article.slug}</loc>`);
+      expect(sitemap).toContain(`<loc>${SITE_URL}/learn/${article.slug}</loc>`);
     }
   });
 });
