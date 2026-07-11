@@ -63,6 +63,7 @@ export default defineConfig({
       "tests/taxInsight.test.ts",
       "tests/extractionService.test.ts",
       "tests/taxDocumentIntelligence.test.ts",
+      "tests/taxReconciliation.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/cpaPartners.test.ts",
       "tests/mismoXsdValidation.test.ts",

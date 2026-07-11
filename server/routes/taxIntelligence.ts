@@ -10,6 +10,8 @@ import {
   runTaxDocumentIntelligence,
   getLatestTaxIntelligence,
 } from "../services/taxDocumentIntelligence";
+import { resolveAndPersistEntities } from "../services/borrowerEntityResolution";
+import { buildTaxReconciliation } from "../services/taxReconciliation";
 import { logAudit } from "../auditLog";
 import { logFriction } from "../services/frictionLog";
 
@@ -100,15 +102,28 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         });
       }
 
+      // P2b: refresh the borrower's resolved business entities from the new
+      // extraction (non-fatal — resolution is a derived view, recomputable).
+      let entityCount: number | undefined;
+      if (summary.status === "completed") {
+        try {
+          const { entities } = await resolveAndPersistEntities(user.id);
+          entityCount = entities.length;
+        } catch (resolutionErr) {
+          console.warn("[TaxIntelligence] Entity resolution failed (non-fatal):", resolutionErr);
+        }
+      }
+
       logAudit(req, "tax_intelligence.run", "document", document.id, {
         runId: summary.runId,
         status: summary.status,
         formCount: summary.formCount,
         overallConfidence: summary.overallConfidence,
         simulated: summary.simulated,
+        entityCount,
       });
 
-      res.status(summary.status === "failed" ? 502 : 200).json(summary);
+      res.status(summary.status === "failed" ? 502 : 200).json({ ...summary, entityCount });
     } catch (error) {
       console.error("Tax intelligence run error:", error);
       res.status(500).json({ error: "Failed to process tax document" });
@@ -146,6 +161,38 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
     } catch (error) {
       console.error("Tax intelligence fetch error:", error);
       res.status(500).json({ error: "Failed to load tax intelligence" });
+    }
+  });
+
+  /**
+   * P2b: the cross-document reconciliation report — resolved business
+   * entities + deterministic tie-out checks over the user's latest
+   * extractions. Owner reads their own; internal staff may read any
+   * borrower's (audited).
+   */
+  app.get("/api/tax-intelligence/reconciliation", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const requestedUserId =
+        typeof req.query.userId === "string" && req.query.userId ? req.query.userId : user.id;
+      const isOwner = requestedUserId === user.id;
+      if (!isOwner && !isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const report = await buildTaxReconciliation(requestedUserId);
+
+      if (!isOwner) {
+        logAudit(req, "tax_intelligence.reconciliation_viewed", "user", requestedUserId, {
+          formCount: report.formCount,
+          variances: report.summary.variance,
+        });
+      }
+
+      res.json(report);
+    } catch (error) {
+      console.error("Tax reconciliation error:", error);
+      res.status(500).json({ error: "Failed to build tax reconciliation" });
     }
   });
 }

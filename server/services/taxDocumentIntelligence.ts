@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   taxExtractionRuns,
   logicalDocuments,
@@ -10,6 +10,7 @@ import {
 import {
   TAX_FORM_FIELD_CATALOG,
   aggregateFieldConfidence,
+  normalizeEntityName,
   taxFieldCategory,
   taxFieldValueType,
   MAX_FORM_INSTANCES,
@@ -380,6 +381,43 @@ export async function getLatestTaxIntelligence(
     startedAt: run.startedAt.toISOString(),
     completedAt: run.completedAt?.toISOString() ?? null,
   };
+}
+
+/**
+ * Every form instance visible for a user right now: the latest completed run
+ * of each of their tax documents, deduped across documents (the same form
+ * identity uploaded twice — e.g. last year's return re-uploaded inside this
+ * year's package — resolves to the most recent run's copy). This is the input
+ * surface for P2b entity resolution and the tie-out engine.
+ */
+export async function getLatestInstancesForUser(userId: string): Promise<PublicTaxFormInstance[]> {
+  const runs = await db
+    .select()
+    .from(taxExtractionRuns)
+    .where(and(eq(taxExtractionRuns.userId, userId), eq(taxExtractionRuns.status, "completed")))
+    .orderBy(desc(taxExtractionRuns.startedAt));
+
+  // Latest run per document; `runs` is newest-first so first wins.
+  const latestByDoc = new Map<string, TaxExtractionRun>();
+  for (const run of runs) {
+    if (!latestByDoc.has(run.documentId)) latestByDoc.set(run.documentId, run);
+  }
+
+  const seen = new Set<string>();
+  const instances: PublicTaxFormInstance[] = [];
+  // Iterate newest-run-first so the dedupe keeps the freshest copy.
+  const ordered = [...latestByDoc.values()].sort(
+    (a, b) => b.startedAt.getTime() - a.startedAt.getTime(),
+  );
+  for (const run of ordered) {
+    for (const form of await loadRunForms(run)) {
+      const key = `${form.formType}|${form.taxYear ?? ""}|${form.entityName ? normalizeEntityName(form.entityName) : ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      instances.push(form);
+    }
+  }
+  return instances;
 }
 
 async function loadRunForms(run: TaxExtractionRun): Promise<PublicTaxFormInstance[]> {

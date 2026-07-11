@@ -9,6 +9,7 @@ import {
   decimal,
   jsonb,
   index,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -284,6 +285,8 @@ export const logicalDocuments = pgTable("logical_documents", {
   // extractor. source_document_id + extraction_run_id carry that provenance.
   sourceDocumentId: varchar("source_document_id").references(() => documents.id),
   extractionRunId: varchar("extraction_run_id").references(() => taxExtractionRuns.id),
+  // Resolved business entity this form belongs to (P2b entity resolution).
+  businessEntityId: varchar("business_entity_id").references(() => borrowerBusinessEntities.id),
   // Page attribution from the classification pass (1-indexed, inclusive).
   pageStart: integer("page_start"),
   pageEnd: integer("page_end"),
@@ -320,6 +323,7 @@ export const logicalDocuments = pgTable("logical_documents", {
   index("idx_logical_docs_status").on(table.status),
   index("idx_logical_docs_source_doc").on(table.sourceDocumentId),
   index("idx_logical_docs_run").on(table.extractionRunId),
+  index("idx_logical_docs_entity").on(table.businessEntityId),
 ]);
 
 // Link table: Logical Document to Pages
@@ -457,6 +461,48 @@ export const taxExtractionRuns = pgTable("tax_extraction_runs", {
   index("idx_tax_extraction_runs_status").on(table.status),
 ]);
 
+// I. Borrower Business Entities (UAL P2b — entity resolution)
+// One row per distinct business entity resolved from a borrower's extracted
+// tax forms. identity_key is deterministic ('ein:<last4>' when an EIN was
+// read, else 'name:<normalized>'); auto-resolved rows refresh by upsert on
+// (user_id, identity_key); a human-confirmed row (auto_resolved=false, set by
+// the P5 workbench) is never overwritten by re-resolution.
+export const BUSINESS_ENTITY_TYPES = [
+  "sole_proprietorship",
+  "single_member_llc",
+  "partnership",
+  "s_corporation",
+  "c_corporation",
+] as const;
+export type BusinessEntityType = (typeof BUSINESS_ENTITY_TYPES)[number];
+
+export const borrowerBusinessEntities = pgTable("borrower_business_entities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+
+  identityKey: varchar("identity_key", { length: 300 }).notNull(),
+  entityType: varchar("entity_type", { length: 30 }).notNull(), // BUSINESS_ENTITY_TYPES
+  name: varchar("name", { length: 255 }),
+  // Last-4 only, PII-minimized at the extraction schema — a full EIN never
+  // reaches this table.
+  einLast4: varchar("ein_last4", { length: 4 }),
+  ownershipPercent: decimal("ownership_percent", { precision: 5, scale: 2 }),
+
+  firstTaxYear: integer("first_tax_year"),
+  lastTaxYear: integer("last_tax_year"),
+  sourceFormCount: integer("source_form_count").default(0).notNull(),
+  resolutionNotes: text("resolution_notes"),
+
+  autoResolved: boolean("auto_resolved").default(true).notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  unique("uq_borrower_entities_user_identity").on(table.userId, table.identityKey),
+  index("idx_borrower_entities_user").on(table.userId),
+]);
+
 // Insert schemas
 export const insertDocumentUploadSchema = createInsertSchema(documentUploads).omit({
   id: true,
@@ -507,3 +553,11 @@ export const insertTaxExtractionRunSchema = createInsertSchema(taxExtractionRuns
 });
 export type InsertTaxExtractionRun = z.infer<typeof insertTaxExtractionRunSchema>;
 export type TaxExtractionRun = typeof taxExtractionRuns.$inferSelect;
+
+export const insertBorrowerBusinessEntitySchema = createInsertSchema(borrowerBusinessEntities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBorrowerBusinessEntity = z.infer<typeof insertBorrowerBusinessEntitySchema>;
+export type BorrowerBusinessEntity = typeof borrowerBusinessEntities.$inferSelect;

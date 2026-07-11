@@ -191,7 +191,9 @@ export const TAX_FORM_FIELD_CATALOG: Record<TaxFormType, Record<string, TaxField
     ordinaryBusinessIncomeOrLoss: signed("Box: ordinary business income (loss)"),
     netRentalRealEstateIncomeOrLoss: signed("Box: net rental real estate income (loss)"),
     otherNetRentalIncomeOrLoss: signed("Box: other net rental income (loss)"),
-    guaranteedPayments: currency("Box: guaranteed payments (partnership K-1 only; omit for S corporation)"),
+    guaranteedPayments: currency(
+      "Box labeled 'Total guaranteed payments' (partnership K-1 only; omit for S corporation)",
+    ),
     interestIncome: currency("Box: interest income"),
     ordinaryDividends: currency("Box: ordinary dividends"),
     distributionsTotal: currency("Box: distributions (cash and property) to this partner/shareholder"),
@@ -269,6 +271,20 @@ export const TAX_FORM_FIELD_CATALOG: Record<TaxFormType, Record<string, TaxField
     otherIncome: currency("Box 3: other income"),
   },
 };
+
+/**
+ * Deterministic entity-name normalization used by P2b entity resolution and
+ * cross-document dedupe: lowercase, strip punctuation, collapse whitespace.
+ * Deliberately does NOT strip legal suffixes ("LP" vs "LLC" are different
+ * entities).
+ */
+export function normalizeEntityName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 /** Forms that describe a distinct business entity (drive P2b entity resolution). */
 export const ENTITY_BEARING_FORM_TYPES: readonly TaxFormType[] = [
