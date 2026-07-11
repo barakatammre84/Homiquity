@@ -46,6 +46,7 @@ import {
   Percent,
   Shield,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 
 interface MortgageRateProgram {
@@ -215,19 +216,17 @@ export default function AdminRates() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <Skeleton className="h-10 w-48 mb-8" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
+      <PageShell width="wide">
+        <Skeleton className="h-10 w-48 mb-8" />
+        <Skeleton className="h-96 w-full" />
+      </PageShell>
     );
   }
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-6xl mx-auto px-4 py-16 text-center">
+      <PageShell width="wide" className="py-16 text-center">
+        <div>
           <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-2">Admin Access Required</h1>
           <p className="text-muted-foreground mb-6">
@@ -237,13 +236,12 @@ export default function AdminRates() {
             <Link href="/">Go Home</Link>
           </Button>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <PageShell width="wide">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" aria-label="Copy link" asChild>
@@ -519,8 +517,7 @@ export default function AdminRates() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+    </PageShell>
   );
 }
 

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AgentProfile } from "@shared/schema";
 import { ChevronLeft, X } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 const SPECIALTIES = [
   "first_time_buyers",
@@ -70,9 +71,7 @@ export default function AgentEdit() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-4xl px-4 py-12">Loading...</div>
-      </div>
+      <PageShell width="content">Loading...</PageShell>
     );
   }
 
@@ -117,7 +116,7 @@ export default function AgentEdit() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <PageShell width="content">
         <Button
           variant="ghost"
           onClick={() => navigate("/agent/dashboard")}
@@ -370,7 +369,7 @@ export default function AgentEdit() {
             </form>
           </CardContent>
         </Card>
-      </div>
+      </PageShell>
 
       <Footer />
     </div>
