@@ -17,6 +17,7 @@ export default defineConfig({
       "tests/adverseActionDelivery.test.ts",
       "tests/apr.test.ts",
       "tests/aprValidation.test.ts",
+      "tests/structureTranslation.test.ts",
       "tests/encryptionRotation.test.ts",
       "tests/fairLendingAnalysis.test.ts",
       "tests/trid.test.ts",
