@@ -12,6 +12,7 @@ const FA = require("react-icons/fa");
 
 const path = require("path");
 const OUT = path.join(__dirname, "Homiquity_Lender_Demo.pptx");
+const SHOTS = path.join(__dirname, "screenshots");
 
 // ---- Palette (Royal Blue Emerald, from client/src/index.css tokens) ----
 const ROYAL       = "1C3A8F"; // vivid royal blue — dark slide surfaces
@@ -76,6 +77,15 @@ async function iconCircle(slide, name, x, y, d, circleColor, iconColor) {
 async function veteranMark(slide, x, y, onDark) {
   slide.addImage({ data: await icon("FaMedal", GOLD), x, y, w: 0.28, h: 0.28 });
   slide.addText("Veteran-founded", { x: x + 0.34, y: y - 0.02, w: 2.2, h: 0.32, fontFace: FB, fontSize: 11, bold: true, color: onDark ? WHITE : INK, valign: "middle", margin: 0 });
+}
+// browser-framed real screenshot (image is 1.6:1) + caption
+function screenshotCard(slide, img, x, y, w, caption) {
+  const barH = 0.34, imgW = w - 0.24, imgH = imgW / 1.6, cardH = barH + imgH + 0.18;
+  slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h: cardH, rectRadius: 0.07, fill: { color: WHITE }, line: { color: "E2E8F0", width: 1 }, shadow: shadow() });
+  ["F87171", "FBBF24", "34D399"].forEach((c, i) =>
+    slide.addShape(pres.shapes.OVAL, { x: x + 0.2 + i * 0.17, y: y + 0.13, w: 0.09, h: 0.09, fill: { color: c } }));
+  slide.addImage({ path: img, x: x + 0.12, y: y + barH, w: imgW, h: imgH });
+  slide.addText(caption, { x, y: y + cardH + 0.06, w, h: 0.5, fontFace: FB, fontSize: 12, color: SLATE, align: "center", valign: "top", margin: 0 });
 }
 
 // ==========================================================================
@@ -363,6 +373,26 @@ async function build() {
     footer(s, 10);
   }
 
+  // ---------- S11 — SEE IT LIVE: borrower experience (real screenshots) ----------
+  {
+    const s = pres.addSlide();
+    s.background = { color: WHITE };
+    slideTitle(s, "See it live — real product", "The borrower experience");
+    screenshotCard(s, `${SHOTS}/01-landing.png`, 0.6, 1.75, 5.9, "Persona funnel + free decision tools — consented borrowers, captured early");
+    screenshotCard(s, `${SHOTS}/07-loan-options.png`, 6.9, 1.75, 5.9, "Instant, deterministic pre-approval read — with the Reg Z anti-steering disclosure");
+    footer(s, 11);
+  }
+
+  // ---------- S12 — SEE IT LIVE: the broker's desk (real screenshots) ----------
+  {
+    const s = pres.addSlide();
+    s.background = { color: WHITE };
+    slideTitle(s, "See it live — real product", "The broker's desk");
+    screenshotCard(s, `${SHOTS}/08-lo-command-center.png`, 0.6, 1.75, 5.9, "No-Stall pipeline — one-click Export MISMO, submit to lender, lock the rate");
+    screenshotCard(s, `${SHOTS}/10-borrower-file-deck.png`, 6.9, 1.75, 5.9, "The lender-ready file — MISMO 3.4 export, SSN vaulted (last-4), LTV/DTI");
+    footer(s, 12);
+  }
+
   // ---------- S11 — WHY LENDERS WIN ----------
   {
     const s = pres.addSlide();
@@ -381,7 +411,7 @@ async function build() {
       s.addText(pillars[i][1], { x, y: y + 1.75, w: cw, h: 0.5, fontFace: FH, bold: true, fontSize: 22, color: INK, align: "center", margin: 0 });
       s.addText(pillars[i][2], { x: x + 0.35, y: y + 2.4, w: cw - 0.7, h: 1.5, fontFace: FB, fontSize: 13.5, color: SLATE, align: "center", lineSpacingMultiple: 1.1, margin: 0 });
     }
-    footer(s, 11);
+    footer(s, 13);
   }
 
   // ---------- S12 — COMPLIANCE & TRUST ----------
@@ -405,7 +435,7 @@ async function build() {
       s.addText(items[i][2], { x: x + 0.95, y: y + 0.44, w: cw - 1.05, h: 0.7, fontFace: FB, fontSize: 12.5, color: SLATE, margin: 0 });
     }
     await veteranMark(s, M, 6.55, false);
-    footer(s, 12);
+    footer(s, 14);
   }
 
   // ---------- S13 — BUILT & READY (honest status) ----------
@@ -434,7 +464,7 @@ async function build() {
       y += 0.62;
     }
     s.addText("Every integration seam is already in place — going live is configuration, not a rebuild.", { x: 7.3, y: 5.75, w: 4.95, h: 0.5, fontFace: FB, italic: true, fontSize: 12, color: ROYAL, margin: 0 });
-    footer(s, 13);
+    footer(s, 15);
   }
 
   // ---------- S14 — THE ASK (dark royal) ----------
@@ -477,7 +507,7 @@ async function build() {
       s.addText(b, { x: M + 4.6, y: y + 0.12, w: 7.0, h: 0.8, fontFace: FB, fontSize: 12, color: SLATE, valign: "middle", margin: 0 });
       y += 1.2;
     }
-    footer(s, 15);
+    footer(s, 17);
   }
 
   await pres.writeFile({ fileName: OUT });
