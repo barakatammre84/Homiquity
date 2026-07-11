@@ -9,6 +9,7 @@ import {
   computeIncomePaths,
   incomeInputsFingerprint,
   incomeEvaluationFingerprint,
+  loadLatestBankStatementAnalysis,
   type IncomePathsCoreInput,
 } from "./income/orchestrator";
 import type { IncomeOrchestrationResult } from "@shared/incomePaths";
@@ -152,11 +153,12 @@ interface AggregatedFinancials {
  * figures when line items haven't been captured yet.
  */
 async function aggregateBorrowerFinancials(app: LoanApplication): Promise<AggregatedFinancials> {
-  const [employment, otherIncome, liabilities, urlaAssets] = await Promise.all([
+  const [employment, otherIncome, liabilities, urlaAssets, bankStatementAnalysis] = await Promise.all([
     storage.getEmploymentHistory(app.id),
     storage.getOtherIncomeSources(app.id),
     storage.getUrlaLiabilities(app.id),
     storage.getUrlaAssets(app.id),
+    loadLatestBankStatementAnalysis(app.id),
   ]);
 
   // Assets across all borrowers, bucketed for the engine's reserve haircuts.
@@ -182,6 +184,7 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     otherIncome,
     rentalProperties,
     fallbackAnnualIncome: app.annualIncome,
+    bankStatementAnalysis,
   };
   const income = computeIncomePaths(incomeInput);
 

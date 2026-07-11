@@ -11,7 +11,7 @@ import type {
 } from "@shared/schema";
 import { loanConditions, loanMilestones, users, dealActivities } from "@shared/schema";
 import { db } from "./db";
-import { inArray, desc, eq, max } from "drizzle-orm";
+import { inArray, desc, eq, max, and, count } from "drizzle-orm";
 import { computeFileHealth, daysSince, type FileHealth } from "./services/fileHealth";
 import { documentTypesMatch } from "@shared/documentTypes";
 import {
@@ -727,6 +727,8 @@ function buildPipelineSummary(
   conditions: LoanCondition[],
   borrowerName: string,
   latestActivityAt: Date | null,
+  /** Open income-review workbench items (UAL P5) — tints the No-Stall light. */
+  openReviewItems = 0,
 ): PipelineSummary {
   const submittedAt = milestones?.submittedAt || application.createdAt;
   const daysInPipeline = submittedAt
@@ -808,6 +810,7 @@ function buildPipelineSummary(
     conditionsOutstanding,
     preApprovalAmount: application.preApprovalAmount,
     purchasePrice: application.purchasePrice,
+    openReviewItems,
   });
 
   return {
@@ -841,12 +844,16 @@ export async function getPipelineSummary(applicationId: string): Promise<Pipelin
       .where(eq(dealActivities.applicationId, applicationId)),
   ]);
 
+  const { countOpenReviewItems } = await import("./services/income/reviewTriage");
+  const openReviewItems = await countOpenReviewItems(applicationId).catch(() => 0);
+
   return buildPipelineSummary(
     application,
     milestones,
     conditions,
     resolveBorrowerName(user),
     latestActivity?.last ?? null,
+    openReviewItems,
   );
 }
 
@@ -910,6 +917,24 @@ export async function getPipelineSummaries(
     if (row.last) latestActivityByApp.set(row.applicationId, row.last);
   }
 
+  // One grouped query for the P5 workbench counts (keeps the inArray batching
+  // pattern — no per-app round trips). Best-effort: health signals never break
+  // the pipeline list.
+  const openReviewByApp = new Map<string, number>();
+  try {
+    const { reviewItems } = await import("@shared/schema");
+    const countRows = await db
+      .select({ applicationId: reviewItems.applicationId, n: count() })
+      .from(reviewItems)
+      .where(and(inArray(reviewItems.applicationId, applications.map(a => a.id)), eq(reviewItems.status, "open")))
+      .groupBy(reviewItems.applicationId);
+    for (const row of countRows) {
+      if (row.applicationId) openReviewByApp.set(row.applicationId, Number(row.n));
+    }
+  } catch {
+    // non-fatal
+  }
+
   return applications.map(app => {
     const user = app.userId ? userById.get(app.userId) : undefined;
     return buildPipelineSummary(
@@ -918,6 +943,7 @@ export async function getPipelineSummaries(
       conditionsByApp.get(app.id) ?? [],
       resolveBorrowerName(user),
       latestActivityByApp.get(app.id) ?? null,
+      openReviewByApp.get(app.id) ?? 0,
     );
   });
 }

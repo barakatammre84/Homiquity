@@ -35,6 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DealTeam } from "@/components/DealTeam";
 import { DealTeamManagement } from "@/components/DealTeamManagement";
 import { TaxIntelligencePanel } from "@/components/staff/TaxIntelligencePanel";
+import { ReviewWorkbenchPanel } from "@/components/staff/ReviewWorkbenchPanel";
 import {
   FileText,
   User,
@@ -1235,10 +1236,16 @@ export default function BorrowerFile() {
 
                 <TabsContent value="tax-intel" className="space-y-4">
                   {application?.userId ? (
-                    <TaxIntelligencePanel
-                      borrowerUserId={application.userId}
-                      applicationId={application.id}
-                    />
+                    <>
+                      <ReviewWorkbenchPanel
+                        borrowerUserId={application.userId}
+                        applicationId={application.id}
+                      />
+                      <TaxIntelligencePanel
+                        borrowerUserId={application.userId}
+                        applicationId={application.id}
+                      />
+                    </>
                   ) : (
                     <Card>
                       <CardContent className="py-6 text-sm text-muted-foreground">

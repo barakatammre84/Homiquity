@@ -190,6 +190,7 @@ const mocks = vi.hoisted(() => ({
   getUrlaLiabilities: vi.fn(),
   getUrlaAssets: vi.fn(),
   getUrlaPropertyInfo: vi.fn(),
+  getLatestBankStatementAnalysis: vi.fn(),
   generateLoanEstimate: vi.fn(),
 }));
 
@@ -231,6 +232,7 @@ function primeOrchestrator(app: Record<string, unknown>, data: {
   mocks.getUrlaLiabilities.mockResolvedValue(data.liabilities ?? []);
   mocks.getUrlaAssets.mockResolvedValue(data.urlaAssets ?? []);
   mocks.getUrlaPropertyInfo.mockResolvedValue(data.propertyInfo ?? undefined);
+  mocks.getLatestBankStatementAnalysis.mockResolvedValue(undefined);
   mocks.generateLoanEstimate.mockResolvedValue({
     projectedPayments: { years1Through5: { estimatedTotal: data.piti ?? 3000 } },
   });

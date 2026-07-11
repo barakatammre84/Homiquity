@@ -18,7 +18,11 @@ import { computeAgencyWageIncome } from "./paths/agencyWage";
 import { computeSelfEmploymentPath } from "./paths/selfEmployment";
 import { computeRentalPath } from "./paths/rental";
 import { computeDscrPath } from "./paths/dscr";
-import { computeBankStatementPath } from "./paths/bankStatement";
+import {
+  computeBankStatementPath,
+  BANK_STATEMENT_PERIODS,
+  type BankStatementAnalysisInput,
+} from "./paths/bankStatement";
 
 /**
  * Multi-path income orchestrator (UAL P3) — the SINGLE income producer.
@@ -43,6 +47,8 @@ export interface IncomePathsCoreInput {
   otherIncome: OtherIncomeSource[];
   rentalProperties: RentalPropertyEntry[];
   fallbackAnnualIncome?: number | string | null;
+  /** Latest captured bank-statement deposit analysis (P5 capture surface). */
+  bankStatementAnalysis?: BankStatementAnalysisInput;
 }
 
 export function computeIncomePaths(input: IncomePathsCoreInput): IncomeOrchestrationResult {
@@ -56,9 +62,7 @@ export function computeIncomePaths(input: IncomePathsCoreInput): IncomeOrchestra
 
   const hasSelfEmployment = selfEmployment.path.status === "applicable";
   const dscr = computeDscrPath(input.rentalProperties);
-  // Bank-statement analysis has no capture surface yet (P5 workbench); the
-  // path reports the program as available and what is missing.
-  const bankStatement = computeBankStatementPath(hasSelfEmployment);
+  const bankStatement = computeBankStatementPath(hasSelfEmployment, input.bankStatementAnalysis);
 
   const paths: IncomePathResult[] = [
     agency.path,
@@ -135,6 +139,14 @@ export function incomeInputsFingerprint(input: IncomePathsCoreInput): string {
       .map((p) => ({ r: numOrNull(p.monthlyRentalIncome), d: numOrNull(p.monthlyDebtPayment) }))
       .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
     fallback: numOrNull(input.fallbackAnnualIncome ?? null),
+    bankStatement: input.bankStatementAnalysis
+      ? {
+          m: input.bankStatementAnalysis.months,
+          d: numOrNull(input.bankStatementAnalysis.totalEligibleDeposits),
+          f: numOrNull(input.bankStatementAnalysis.expenseFactor ?? null),
+          c: !!input.bankStatementAnalysis.hasThirdPartyExpenseStatement,
+        }
+      : null,
   };
   return sha256(JSON.stringify(canonical));
 }
@@ -158,14 +170,36 @@ export interface EvaluatedIncomePaths {
 }
 
 /**
+ * Latest captured bank-statement deposit analysis for an application (P5
+ * capture surface), adapted to the calculator's input shape. Null when none
+ * captured or the row fails the program's period constraint.
+ */
+export async function loadLatestBankStatementAnalysis(
+  applicationId: string,
+): Promise<BankStatementAnalysisInput | undefined> {
+  const row = await storage.getLatestBankStatementAnalysis(applicationId);
+  if (!row) return undefined;
+  const months = row.months as (typeof BANK_STATEMENT_PERIODS)[number];
+  if (!BANK_STATEMENT_PERIODS.includes(months)) return undefined;
+  return {
+    months,
+    totalEligibleDeposits: Number(row.totalEligibleDeposits),
+    expenseFactor: row.expenseFactor !== null ? Number(row.expenseFactor) : undefined,
+    hasThirdPartyExpenseStatement: row.hasThirdPartyExpenseStatement,
+  };
+}
+
+/**
  * IO layer: load an application's income facts and evaluate every path. Reads
  * exactly what the instant-decision path reads, plus rental properties from
- * the application's incomeSources jsonb.
+ * the application's incomeSources jsonb and the latest captured bank-statement
+ * analysis.
  */
 export async function evaluateIncomePaths(app: LoanApplication): Promise<EvaluatedIncomePaths> {
-  const [employment, otherIncome] = await Promise.all([
+  const [employment, otherIncome, bankStatementAnalysis] = await Promise.all([
     storage.getEmploymentHistory(app.id),
     storage.getOtherIncomeSources(app.id),
+    loadLatestBankStatementAnalysis(app.id),
   ]);
   const rentalProperties = ((app.incomeSources as IncomeSourceEntry[] | null) ?? [])
     .filter((s) => s.type === "rental")
@@ -176,6 +210,7 @@ export async function evaluateIncomePaths(app: LoanApplication): Promise<Evaluat
     otherIncome,
     rentalProperties,
     fallbackAnnualIncome: app.annualIncome,
+    bankStatementAnalysis,
   };
   const result = computeIncomePaths(input);
   return {

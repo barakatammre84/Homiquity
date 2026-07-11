@@ -1,8 +1,15 @@
 import type { Express } from "express";
+import { z } from "zod";
 import type { IStorage } from "../storage";
 import { isAuthenticated } from "../auth";
 import { db } from "../db";
-import { taxExtractionRuns, type User } from "@shared/schema";
+import {
+  taxExtractionRuns,
+  bankStatementAnalyses,
+  bankStatementAnalysisInputSchema,
+  reviewItems,
+  type User,
+} from "@shared/schema";
 import { isInternalStaffRole } from "@shared/roles";
 import { and, eq, gte } from "drizzle-orm";
 import { hasUserConsent } from "../consentGate";
@@ -16,6 +23,9 @@ import {
   classifyAndPersistSituation,
   getLatestSituationProfile,
 } from "../services/situationClassifier";
+import { buildSeWorksheetDrafts } from "../services/worksheetPrefill";
+import { syncReviewItems, resolveReviewItem } from "../services/income/reviewTriage";
+import { recalculateDecision } from "../services/decisionEngine";
 import { logAudit } from "../auditLog";
 import { logFriction } from "../services/frictionLog";
 
@@ -306,6 +316,187 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
     } catch (error) {
       console.error("Situation profile error:", error);
       res.status(500).json({ error: "Failed to load situation profile" });
+    }
+  });
+
+  /**
+   * P5 smart-fill: DRAFT self-employment worksheets built from the borrower's
+   * validated document extractions, one per resolved SE-type entity, with
+   * per-field provenance. OWNER-ONLY + consent-gated (same consumer-direct
+   * doctrine as the extraction run). Drafts are never persisted — the borrower
+   * reviews them in the URLA worksheet and saves through the Zod PUT.
+   */
+  app.get("/api/tax-intelligence/se-worksheet-drafts", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!(await hasUserConsent("tax_document_use", user.id))) {
+        logFriction("consent_gate_blocked", {
+          userId: user.id,
+          detail: "tax_document_use",
+          metadata: { path: req.path },
+        });
+        return res.status(403).json({
+          error: "Please review and accept the tax document authorization first.",
+          code: "CONSENT_REQUIRED",
+          consentType: "tax_document_use",
+        });
+      }
+      const drafts = await buildSeWorksheetDrafts(user.id);
+      res.json({ drafts });
+    } catch (error) {
+      console.error("SE worksheet draft error:", error);
+      res.status(500).json({ error: "Failed to build worksheet drafts" });
+    }
+  });
+
+  /**
+   * P5 workbench: the actionable review items (one_click / flagged tiers).
+   * Sync-on-read is idempotent (insert-only on natural keys). Owner reads
+   * their own; staff follow the deal-team model.
+   */
+  app.get("/api/tax-intelligence/review-items", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const requestedUserId =
+        typeof req.query.userId === "string" && req.query.userId ? req.query.userId : user.id;
+      const applicationId =
+        typeof req.query.applicationId === "string" && req.query.applicationId
+          ? req.query.applicationId
+          : undefined;
+      const isOwner = requestedUserId === user.id;
+      if (!isOwner) {
+        const access = await staffCanAccessBorrower(user, requestedUserId, applicationId, storage);
+        if (!access.allowed) {
+          return res.status(403).json({ error: access.reason ?? "Unauthorized" });
+        }
+      }
+
+      const items = await syncReviewItems(requestedUserId, applicationId ?? null);
+      if (!isOwner) {
+        logAudit(req, "tax_intelligence.review_items_viewed", "user", requestedUserId, {
+          openCount: items.length,
+          applicationId,
+        });
+      }
+      res.json({ items });
+    } catch (error) {
+      console.error("Review items error:", error);
+      res.status(500).json({ error: "Failed to load review items" });
+    }
+  });
+
+  const resolveBodySchema = z
+    .object({
+      action: z.enum(["confirmed", "overridden", "dismissed"]),
+      correctedValue: z.string().max(500).optional(),
+      note: z.string().max(2000).optional(),
+    })
+    .strict();
+
+  /**
+   * P5 workbench: resolve one item. STAFF-ONLY (the workbench is a staff
+   * surface; borrower confirmations flow through the worksheet confirm), and
+   * deal-team scoped to the item's borrower/application. Confirm/override on
+   * an extracted field stamps it human-verified — the accuracy loop's ground
+   * truth — and triggers a decision recalc.
+   */
+  app.post("/api/tax-intelligence/review-items/:id/resolve", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const parsed = resolveBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid resolution", details: parsed.error.flatten() });
+      }
+      const [item] = await db
+        .select()
+        .from(reviewItems)
+        .where(eq(reviewItems.id, req.params.id))
+        .limit(1);
+      if (!item) {
+        return res.status(404).json({ error: "Review item not found" });
+      }
+      const access = await staffCanAccessBorrower(
+        user,
+        item.userId,
+        item.applicationId ?? (req.query.applicationId as string | undefined),
+        storage,
+      );
+      if (!access.allowed) {
+        return res.status(403).json({ error: access.reason ?? "Unauthorized" });
+      }
+
+      const resolved = await resolveReviewItem({
+        itemId: item.id,
+        actorId: user.id,
+        action: parsed.data.action,
+        correctedValue: parsed.data.correctedValue,
+        note: parsed.data.note,
+      });
+      if (!resolved) {
+        return res.status(409).json({ error: "Item is not open" });
+      }
+
+      logAudit(req, "tax_intelligence.review_item_resolved", "review_item", item.id, {
+        borrowerId: item.userId,
+        applicationId: item.applicationId,
+        itemType: item.itemType,
+        action: parsed.data.action,
+        corrected: parsed.data.correctedValue !== undefined,
+      });
+      res.json(resolved);
+    } catch (error) {
+      console.error("Review item resolve error:", error);
+      res.status(500).json({ error: "Failed to resolve review item" });
+    }
+  });
+
+  /**
+   * P5: capture surface for the cited Angel Oak bank-statement analysis (the
+   * P4 gap). STAFF-ONLY + deal-team scoped: the eligible-deposit total attests
+   * AE deposit-eligibility screening, which is a staff act. Append-only; the
+   * latest row feeds the income orchestrator, so a recalc follows.
+   */
+  app.post("/api/applications/:id/bank-statement-analysis", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const application = await storage.getLoanApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      const access = await staffCanAccessBorrower(user, application.userId, application.id, storage);
+      if (!access.allowed) {
+        return res.status(403).json({ error: access.reason ?? "Unauthorized" });
+      }
+      const parsed = bankStatementAnalysisInputSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid analysis", details: parsed.error.flatten() });
+      }
+
+      const [row] = await db
+        .insert(bankStatementAnalyses)
+        .values({
+          applicationId: application.id,
+          months: parsed.data.months,
+          totalEligibleDeposits: parsed.data.totalEligibleDeposits.toFixed(2),
+          expenseFactor: parsed.data.expenseFactor?.toFixed(4) ?? null,
+          hasThirdPartyExpenseStatement: parsed.data.hasThirdPartyExpenseStatement,
+          notes: parsed.data.notes ?? null,
+          enteredBy: user.id,
+        })
+        .returning();
+
+      logAudit(req, "tax_intelligence.bank_statement_analysis_recorded", "application", application.id, {
+        analysisId: row.id,
+        months: parsed.data.months,
+        hasThirdPartyExpenseStatement: parsed.data.hasThirdPartyExpenseStatement,
+      });
+
+      // The analysis changes the income evaluation — recalc (never throws upward).
+      const decision = await recalculateDecision(application.id, "bank_statement_analysis_recorded");
+      res.status(201).json({ analysis: row, decisionStatus: decision?.status ?? null });
+    } catch (error) {
+      console.error("Bank statement analysis error:", error);
+      res.status(500).json({ error: "Failed to record bank statement analysis" });
     }
   });
 }

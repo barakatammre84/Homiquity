@@ -29,6 +29,7 @@ export default defineConfig({
       "tests/incomeOrchestrator.test.ts",
       "tests/incomeCutoverParity.test.ts",
       "tests/nonQmProgramGate.test.ts",
+      "tests/accuracyLoop.test.ts",
       "tests/underwritingEdgeCases.test.ts",
       "tests/selfEmploymentIncome.test.ts",
       "tests/complianceInvariants.test.ts",
