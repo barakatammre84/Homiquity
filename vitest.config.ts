@@ -73,6 +73,7 @@ export default defineConfig({
       "tests/situationClassifier.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/cpaPartners.test.ts",
+      "tests/partnerProfiles.test.ts",
       "tests/mismoXsdValidation.test.ts",
       "tests/approvalStrength.test.ts",
       "tests/buyingPowerEstimate.test.ts",

@@ -307,6 +307,10 @@ import {
   type InsertCpaPartner,
   type CpaReferral,
   type InsertCpaReferral,
+  partnerProfiles,
+  type PartnerProfile,
+  type InsertPartnerProfile,
+  partnerWaitlist,
   bankStatementAnalyses,
   type BankStatementAnalysis,
 } from "@shared/schema";
@@ -774,6 +778,25 @@ export interface IStorage {
   /** Stage-only projection for the CPA portal — never financials or full PII. */
   getCpaReferralsForPortal(cpaPartnerId: string): Promise<Array<{ displayName: string; stage: string; referredAt: Date }>>;
   getCpaReferralStats(cpaPartnerId: string): Promise<{ total: number; active: number; exploring: number }>;
+  listCpaPartners(): Promise<CpaPartner[]>;
+
+  // PartnerHub identity spine (PH-1) — unified partner profiles + attribution
+  // read-model over the existing users.referred_by_user_id rail. Same doctrine
+  // as the CPA channel: inviter-only, stage-level projections, no financials.
+  createPartnerProfile(data: InsertPartnerProfile): Promise<PartnerProfile>;
+  getPartnerProfileByUserId(userId: string): Promise<PartnerProfile | undefined>;
+  getPartnerProfileBySlug(slug: string): Promise<PartnerProfile | undefined>;
+  getPartnerProfileById(id: string): Promise<PartnerProfile | undefined>;
+  listPartnerProfiles(): Promise<PartnerProfile[]>;
+  updatePartnerProfileReview(
+    id: string,
+    patch: { licenseVerificationStatus?: string; status?: string },
+  ): Promise<PartnerProfile | undefined>;
+  /** Stamp the partner identity onto the user row so the existing referral rail works unchanged. */
+  setUserPartnerIdentity(userId: string, identity: { referralCode: string; partnerCompanyName: string }): Promise<void>;
+  /** Stage-only projection for the partner hub — mirrors getCpaReferralsForPortal. */
+  getPartnerReferralsForHub(partnerUserId: string): Promise<Array<{ displayName: string; stage: string; referredAt: Date | null }>>;
+  markPartnerWaitlistInvited(id: string): Promise<typeof partnerWaitlist.$inferSelect | undefined>;
 
   // Partner Providers & Orders
   createPartnerProvider(data: InsertPartnerProvider): Promise<PartnerProvider>;
@@ -3674,6 +3697,117 @@ export class DatabaseStorage implements IStorage {
       .where(eq(taxInsights.userId, userId))
       .returning({ id: taxInsights.id });
     return deleted.length;
+  }
+
+  // ===== PARTNERHUB IDENTITY SPINE (PH-1) =====
+
+  async listCpaPartners(): Promise<CpaPartner[]> {
+    return db.select().from(cpaPartners).orderBy(desc(cpaPartners.createdAt));
+  }
+
+  async createPartnerProfile(data: InsertPartnerProfile): Promise<PartnerProfile> {
+    const [row] = await db.insert(partnerProfiles).values(data).returning();
+    return row;
+  }
+
+  async getPartnerProfileByUserId(userId: string): Promise<PartnerProfile | undefined> {
+    const [row] = await db.select().from(partnerProfiles).where(eq(partnerProfiles.userId, userId)).limit(1);
+    return row;
+  }
+
+  async getPartnerProfileBySlug(slug: string): Promise<PartnerProfile | undefined> {
+    const [row] = await db.select().from(partnerProfiles).where(eq(partnerProfiles.referralSlug, slug)).limit(1);
+    return row;
+  }
+
+  async getPartnerProfileById(id: string): Promise<PartnerProfile | undefined> {
+    const [row] = await db.select().from(partnerProfiles).where(eq(partnerProfiles.id, id)).limit(1);
+    return row;
+  }
+
+  async listPartnerProfiles(): Promise<PartnerProfile[]> {
+    return db.select().from(partnerProfiles).orderBy(desc(partnerProfiles.createdAt));
+  }
+
+  async updatePartnerProfileReview(
+    id: string,
+    patch: { licenseVerificationStatus?: string; status?: string },
+  ): Promise<PartnerProfile | undefined> {
+    const [row] = await db
+      .update(partnerProfiles)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(partnerProfiles.id, id))
+      .returning();
+    return row;
+  }
+
+  async setUserPartnerIdentity(
+    userId: string,
+    identity: { referralCode: string; partnerCompanyName: string },
+  ): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        referralCode: identity.referralCode,
+        partnerCompanyName: identity.partnerCompanyName,
+        isPartner: true,
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async getPartnerReferralsForHub(
+    partnerUserId: string,
+  ): Promise<Array<{ displayName: string; stage: string; referredAt: Date | null }>> {
+    // The realtor rail is users.referred_by_user_id (written by /api/apply-referral).
+    const refs = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        referredAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.referredByUserId, partnerUserId))
+      .orderBy(desc(users.createdAt));
+
+    // Latest application status per referred user (stage only — no financials).
+    const userIds = refs.map((r) => r.id);
+    const stageByUser = new Map<string, string>();
+    if (userIds.length > 0) {
+      const apps = await db
+        .select({
+          userId: loanApplications.userId,
+          status: loanApplications.status,
+        })
+        .from(loanApplications)
+        .where(inArray(loanApplications.userId, userIds))
+        .orderBy(desc(loanApplications.createdAt));
+      for (const a of apps) {
+        if (!stageByUser.has(a.userId)) stageByUser.set(a.userId, a.status); // desc → first is latest
+      }
+    }
+
+    return refs.map((r) => {
+      // Privacy minimization, identical to the CPA portal projection: first
+      // name + last initial only. Never email, financials, or documents — a
+      // partner is an inviter, not a recipient of borrower data (charter §5-C6).
+      const initial = r.lastName ? `${r.lastName.charAt(0)}.` : "";
+      const displayName = [r.firstName, initial].filter(Boolean).join(" ") || "Client";
+      return {
+        displayName,
+        stage: stageByUser.get(r.id) ?? "exploring",
+        referredAt: r.referredAt,
+      };
+    });
+  }
+
+  async markPartnerWaitlistInvited(id: string): Promise<typeof partnerWaitlist.$inferSelect | undefined> {
+    const [row] = await db
+      .update(partnerWaitlist)
+      .set({ invitedAt: new Date() })
+      .where(eq(partnerWaitlist.id, id))
+      .returning();
+    return row;
   }
 
   // ===== PARTNER PROVIDERS =====

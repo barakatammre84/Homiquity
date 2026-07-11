@@ -32,6 +32,7 @@ import { registerLeadRoutes } from "./routes/leads";
 import { registerTaxInsightRoutes } from "./routes/taxInsights";
 import { registerTaxIntelligenceRoutes } from "./routes/taxIntelligence";
 import { registerCpaPartnerRoutes } from "./routes/cpaPartners";
+import { registerPartnerRoutes } from "./routes/partners";
 import { registerWebhookRoutes } from "./routes/webhooks";
 import { registerMonitoringRoutes } from "./routes/monitoring";
 import { registerSeoRoutes } from "./routes/seo";
@@ -99,6 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerTaxInsightRoutes(app, storage);
   registerTaxIntelligenceRoutes(app, storage);
   registerCpaPartnerRoutes(app, storage);
+  registerPartnerRoutes(app, storage);
   registerWebhookRoutes(app, storage);
   registerMonitoringRoutes(app);
   registerSeoRoutes(app);

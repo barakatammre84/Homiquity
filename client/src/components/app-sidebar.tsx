@@ -168,6 +168,16 @@ const cpaNavigation: NavSection[] = [
   },
 ];
 
+// Realtor partners (PH-1) — same inviter-only posture, PartnerHub home.
+const realtorNavigation: NavSection[] = [
+  {
+    section: "Partner",
+    items: [
+      { title: "Partner Hub", href: "/partners/hub", icon: LayoutDashboard, testId: "link-partners-hub" },
+    ],
+  },
+];
+
 const adminNavigation: NavSection[] = [
   {
     section: "Administration",
@@ -207,7 +217,7 @@ export function AppSidebar() {
   const userRole = user?.role || "";
   const isStaff = isStaffRole(userRole);
   const isInternalStaff = isInternalStaffRole(userRole);
-  const isCpa = isPartnerRole(userRole);
+  const isSelfServicePartner = isPartnerRole(userRole);
   const isAdmin = userRole === "admin";
   const isAspiringOwner = userRole === "aspiring_owner";
 
@@ -218,8 +228,8 @@ export function AppSidebar() {
     navigation = staffNavigation;
   } else if (isStaff) {
     navigation = partnerNavigation;
-  } else if (isCpa) {
-    navigation = cpaNavigation;
+  } else if (isSelfServicePartner) {
+    navigation = userRole === "realtor" ? realtorNavigation : cpaNavigation;
   } else if (isAspiringOwner) {
     navigation = aspiringOwnerNavigation;
   } else {
@@ -237,8 +247,8 @@ export function AppSidebar() {
         ? "Lender Portal"
         : isStaff
           ? "Staff Portal"
-          : isCpa
-            ? "CPA Partner"
+          : isSelfServicePartner
+            ? ROLE_DISPLAY_NAMES[userRole as keyof typeof ROLE_DISPLAY_NAMES] ?? "Partner"
             : isAspiringOwner
               ? "Aspiring Owner"
               : "Active Buyer";

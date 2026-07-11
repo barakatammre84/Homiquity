@@ -24,6 +24,7 @@ export default defineConfig({
       "tests/pricingUnderwriting.test.ts",
       "tests/taxInsightRoutes.test.ts",
       "tests/cpaPartnerRoutes.test.ts",
+      "tests/partnerRoutes.test.ts",
     ],
   },
   resolve: {

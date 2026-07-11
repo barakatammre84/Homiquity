@@ -41,6 +41,11 @@ describe("getPostAuthRoute — deferred pre-approval submit routing", () => {
     expect(getPostAuthRoute("admin")).toBe("/admin");
   });
 
+  it("routes self-service partners to their own homes, never a borrower or staff surface (PH-1)", () => {
+    expect(getRoleHomeRoute("cpa")).toBe("/cpa-portal");
+    expect(getRoleHomeRoute("realtor")).toBe("/partners/hub");
+  });
+
   it("ignores a non-'true' marker value", () => {
     localStorage.setItem(PREAPPROVAL_PENDING_SUBMIT_KEY, "false");
     expect(getPostAuthRoute("aspiring_owner")).toBe("/dashboard");
