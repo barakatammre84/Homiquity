@@ -10,6 +10,8 @@ export * from "./schema/intelligence";
 export * from "./schema/lookup";
 export * from "./schema/ai";
 export * from "./schema/decisions";
+export * from "./schema/incomePathEvaluations";
+export * from "./schema/review";
 export * from "./schema/leads";
 export * from "./schema/marketData";
 export * from "./schema/delivery";

@@ -76,6 +76,19 @@ export interface StageDerivationInputs {
     warningCount: number;
     notEvaluatedCount: number;
   };
+  /**
+   * Income-analysis readiness (UAL P6). Only gates files that actually need
+   * the income package — self-employment or a non-agency selected income path.
+   * A clean wage-earner file is unaffected.
+   */
+  incomeAnalysis: {
+    /** The file has SE employment or a selected non-agency income path. */
+    requiresIncomePackage: boolean;
+    /** A multi-path income evaluation has been produced (P3). */
+    hasCurrentEvaluation: boolean;
+    /** Open FLAGGED review-workbench items (P5) — contradictions a human must resolve. */
+    openFlaggedReviewItems: number;
+  };
   now?: Date;
 }
 
@@ -154,6 +167,21 @@ export function deriveSubmissionStages(inputs: StageDerivationInputs): Omit<Brok
   if (!inputs.consents.antiSteering) {
     pkgBlockers.push("Anti-steering loan-options disclosure (Reg Z §1026.36(e)(3)) has not been acknowledged");
   }
+  // Income analysis (UAL P6): a file that needs the cited income package must
+  // carry a current evaluation and have no unresolved flagged review items
+  // before it goes to a lender. Wage-earner files skip this entirely.
+  if (inputs.incomeAnalysis.requiresIncomePackage) {
+    if (!inputs.incomeAnalysis.hasCurrentEvaluation) {
+      pkgBlockers.push(
+        "Income analysis not yet run — a self-employed or non-agency file needs a multi-path income evaluation before the lender package can be assembled",
+      );
+    }
+    if (inputs.incomeAnalysis.openFlaggedReviewItems > 0) {
+      pkgBlockers.push(
+        `${inputs.incomeAnalysis.openFlaggedReviewItems} flagged income review item(s) still open — resolve the extraction/tie-out contradictions before submitting`,
+      );
+    }
+  }
   stages.push({
     key: "lenderPackage",
     label: "Wholesale lender package",
@@ -217,6 +245,34 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
   const { evaluateDeliveryReadiness } = await import("./loanDeliveryReadiness");
   const delivery = await evaluateDeliveryReadiness(applicationId);
 
+  // Income-analysis readiness (UAL P6): does this file need the income package,
+  // and is it complete? A file needs it when the borrower has self-employment,
+  // or the selected income path is non-agency (DSCR / bank-statement).
+  const { db } = await import("../db");
+  const { incomePathEvaluations, reviewItems } = await import("@shared/schema");
+  const { eq, and, desc } = await import("drizzle-orm");
+  const employment = await storage.getEmploymentHistory(applicationId);
+  const [latestEval] = await db
+    .select()
+    .from(incomePathEvaluations)
+    .where(eq(incomePathEvaluations.applicationId, applicationId))
+    .orderBy(desc(incomePathEvaluations.createdAt))
+    .limit(1);
+  const selectedNonAgency =
+    !!latestEval?.recommendedPathId &&
+    ["dscr", "bank_statement", "rental"].includes(latestEval.recommendedPathId);
+  const requiresIncomePackage = employment.some((e) => e.isSelfEmployed) || selectedNonAgency;
+  const openFlagged = await db
+    .select({ id: reviewItems.id })
+    .from(reviewItems)
+    .where(
+      and(
+        eq(reviewItems.applicationId, applicationId),
+        eq(reviewItems.status, "open"),
+        eq(reviewItems.tier, "flagged"),
+      ),
+    );
+
   const derived = deriveSubmissionStages({
     urla: {
       gseGatingFailed: urla.gseGatingFailed,
@@ -242,6 +298,11 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
       fatalCount: delivery.edits.fatal.length,
       warningCount: delivery.edits.warnings.length,
       notEvaluatedCount: delivery.edits.notEvaluated.length,
+    },
+    incomeAnalysis: {
+      requiresIncomePackage,
+      hasCurrentEvaluation: !!latestEval,
+      openFlaggedReviewItems: openFlagged.length,
     },
   });
 
