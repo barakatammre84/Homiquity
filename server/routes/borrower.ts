@@ -837,6 +837,18 @@ export function registerBorrowerRoutes(
           for (const emp of opts.employmentHistory) {
             if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
             const cleanEmp = pickTableFields(URLA_TABLES.employment, emp);
+            // The self-employment worksheet is a structured JSON object, so
+            // pickTableFields drops it (URLA tables are scalar-only by design).
+            // Validate it explicitly here and merge it back in. `null` clears it.
+            if (emp.selfEmploymentIncome === null) {
+              (cleanEmp as any).selfEmploymentIncome = null;
+            } else if (emp.selfEmploymentIncome !== undefined) {
+              const wk = selfEmploymentWorksheetSchema.safeParse(emp.selfEmploymentIncome);
+              if (!wk.success) {
+                return { ok: false, status: 400, error: "Invalid self-employment worksheet", results };
+              }
+              (cleanEmp as any).selfEmploymentIncome = wk.data;
+            }
             if (emp.id) {
               const existing = await storage.getEmploymentHistoryById(emp.id);
               if (!existing || existing.applicationId !== applicationId) return { ok: false, results };

@@ -8,6 +8,7 @@ import { US_STATES } from "@/lib/us-states";
 import { Plus, Trash2 } from "lucide-react";
 import type { EmploymentHistory, LoanApplication, OtherIncomeSource } from "@shared/schema";
 import { MoneyInput } from "./MoneyInput";
+import { SelfEmploymentIncomeWorksheet } from "./SelfEmploymentIncomeWorksheet";
 import { INCOME_SOURCES } from "./types";
 
 interface EmploymentSectionProps {
@@ -280,6 +281,21 @@ export function EmploymentSection({
                   />
                 </div>
               </div>
+
+              {(emp.isSelfEmployed || (activeSeq === 1 && app.employmentType === "self_employed")) && (
+                <>
+                  <hr />
+                  <SelfEmploymentIncomeWorksheet
+                    index={index}
+                    value={emp.selfEmploymentIncome}
+                    onChange={(next) => {
+                      const updated = [...employmentRecords];
+                      updated[index] = { ...updated[index], selfEmploymentIncome: next ?? undefined };
+                      onChange(updated);
+                    }}
+                  />
+                </>
+              )}
             </div>
           ))}
         </CardContent>
