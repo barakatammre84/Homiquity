@@ -33,9 +33,10 @@ The routine ("UX daily loop") does the following each run:
 
 ## Ground rules (inherited from the codebase)
 
-- **Design system:** "Charcoal Emerald" (user-authorized repaint 2026-07-06, PR #57 — superseded
-  the earlier "Obsidian Indigo"; dated artifacts in this folder from before that date still
-  reference the navy palette). Stark-white surfaces, a neutral charcoal→slate→white value ramp,
+- **Design system:** "Royal Blue Emerald" (2026-07-08 repaint of "Charcoal Emerald" PR #57,
+  which superseded the earlier "Obsidian Indigo"; dated artifacts in this folder from before
+  those dates still reference the older palettes). Stark-white surfaces, a neutral slate value ramp,
+  vivid royal-blue dark surfaces (sidebar, hero gradients),
   emerald `#047857` for conversion actions, and semantic pop colors (success/warning/danger)
   outside the ramp. Source of truth: `client/src/index.css` + `tailwind.config.ts` +
   `design_guidelines.md`. No new hues.
