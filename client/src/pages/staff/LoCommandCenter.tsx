@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { SubmissionReadinessDialog } from "@/components/SubmissionReadinessDialog";
 import { RateLockDialog } from "@/components/RateLockDialog";
+import { ScenarioSimulatorDialog } from "@/components/ScenarioSimulatorDialog";
 import { isInternalStaffRole } from "@shared/roles";
 import { getLoanAppStatusMeta } from "@shared/schema";
 import type { RateLock } from "@shared/schema";
@@ -368,6 +369,10 @@ export default function LoCommandCenter() {
                                 Open
                               </Link>
                             </Button>
+                            <ScenarioSimulatorDialog
+                              applicationId={file.applicationId}
+                              borrowerName={file.borrowerName}
+                            />
                             <SubmissionReadinessDialog
                               applicationId={file.applicationId}
                               borrowerName={file.borrowerName}

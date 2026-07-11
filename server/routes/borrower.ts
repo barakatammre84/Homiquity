@@ -31,7 +31,8 @@ import { firstQueryValue } from "./queryParams";
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
 // deal-team membership for processor/underwriter/closer.
 // External partner roles (broker, lender) are NOT permitted by this helper.
-async function verifyInternalStaffApplicationAccess(
+// Exported: the LO-2 scenario route reuses this gate (one access model, no forks).
+export async function verifyInternalStaffApplicationAccess(
   storage: IStorage,
   applicationId: string,
   userId: string,
