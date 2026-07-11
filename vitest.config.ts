@@ -13,6 +13,7 @@ export default defineConfig({
     include: [
       "tests/accessControl.test.ts",
       "tests/scenarioSimulator.test.ts",
+      "tests/cockpitScoping.test.ts",
       "tests/adversarialPersonas.test.ts",
       "tests/adverseActionNotice.test.ts",
       "tests/adverseActionDelivery.test.ts",
