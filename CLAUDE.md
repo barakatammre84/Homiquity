@@ -12,7 +12,7 @@ and point to the authoritative app-guide chapter (they don't duplicate it — th
 wins). Claude Code auto-loads a skill when its work matches:
 
 - **`api-routes`** — backend endpoints under `server/routes/` (auth gating, Zod, CSRF/webhooks, PII/audit, `inArray`).
-- **`ui-components`** — client UI/theming (Charcoal Emerald token guard, WCAG AA, Shadcn/TanStack Query).
+- **`ui-components`** — client UI/theming (Royal Blue Emerald token guard, WCAG AA, Shadcn/TanStack Query).
 - **`mortgage-calculations`** — affordability/pricing/underwriting math (determinism + no-citation-no-implementation).
 - **`seo-content`** — public marketing/SEO surfaces (Reg Z trigger terms, Reg N no-approval, TCPA, pre-license gate).
 

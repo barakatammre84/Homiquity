@@ -6,6 +6,7 @@ import { z } from "zod";
 import * as creditService from "../services/creditService";
 import { encryptToken } from "../services/piiVault";
 import { sendNotificationEmail } from "../services/emailService";
+import { firstQueryValue } from "./queryParams";
 
 export function registerComplianceRoutes(
   app: Express,
@@ -338,7 +339,7 @@ export function registerComplianceRoutes(
   // Get disclosure text for consent form
   app.get("/api/credit/disclosure", isAuthenticated, async (req, res) => {
     try {
-      const stateCode = req.query.state as string | undefined;
+      const stateCode = firstQueryValue(req.query.state);
       res.json({
         disclosureText: creditService.getCombinedDisclosure(stateCode),
         disclosureVersion: creditService.getDisclosureVersion(),
@@ -352,7 +353,7 @@ export function registerComplianceRoutes(
 
   app.get("/api/credit/state-rules", isAuthenticated, async (req, res) => {
     try {
-      const stateCode = req.query.state as string | undefined;
+      const stateCode = firstQueryValue(req.query.state);
       if (stateCode) {
         res.json({ rules: creditService.getStateDisclosureRules(stateCode) });
       } else {
@@ -997,7 +998,7 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const limit = parseInt(req.query.limit as string) || 100;
+      const limit = parseInt(firstQueryValue(req.query.limit) ?? "") || 100;
       const auditLog = await creditService.getCreditAuditLog(req.params.id, limit);
       res.json({ auditLog });
     } catch (error) {
@@ -1040,7 +1041,7 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const format = req.query.format as string || "json";
+      const format = firstQueryValue(req.query.format) || "json";
       
       if (format === "csv") {
         const csv = await creditService.generateCSVExport(req.params.id);
@@ -1191,8 +1192,9 @@ export function registerComplianceRoutes(
   app.get("/api/compliance/fair-lending/disparate-impact", requireRole("admin"), async (req, res) => {
     try {
       const { runDisparateImpactAnalysis } = await import("../services/fairLendingAnalysis");
-      const minSampleSize = req.query.minSampleSize
-        ? Math.max(1, parseInt(req.query.minSampleSize as string, 10) || 30)
+      const minSampleSizeStr = firstQueryValue(req.query.minSampleSize);
+      const minSampleSize = minSampleSizeStr
+        ? Math.max(1, parseInt(minSampleSizeStr, 10) || 30)
         : undefined;
       const report = await runDisparateImpactAnalysis({ minSampleSize });
 

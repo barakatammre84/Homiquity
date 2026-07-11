@@ -374,6 +374,17 @@
       "lastVerified": "2026-07-11",
       "reviewIntervalDays": 90,
       "notes": "Qualifying MINIMUM by tier is portal-gated and deliberately absent from code; the path reports the ratio and flags manual review. Transcription: docs/lender-programs/angel-oak/dscr-program-reference.md."
+    },
+    {
+      "id": "regz-1026-36e3-option-set",
+      "rule": "Anti-steering safe-harbor loan options per type of transaction: (A) the loan with the lowest interest rate; (B) the loan with the lowest interest rate without negative amortization, a prepayment penalty, interest-only payments, a balloon payment in the first 7 years of the life of the loan, a demand feature, shared equity, or shared appreciation; (C) the loan with the lowest total dollar amount of discount points, origination points or origination fees (ties broken by the lowest interest rate among them); originator must have a good faith belief the options are loans for which the consumer likely qualifies (e)(3)(ii)",
+      "value": "options A/B/C + good-faith qualification",
+      "citation": "Regulation Z, 12 CFR §1026.36(e)(2)-(3) (verified verbatim via eCFR API 2026-07-11)",
+      "sourceUrl": "https://www.ecfr.gov/current/title-12/chapter-X/part-1026/subpart-E/section-1026.36",
+      "codeRef": "server/services/antiSteeringOptions.ts deriveAntiSteeringOptions",
+      "lastVerified": "2026-07-11",
+      "reviewIntervalDays": 180,
+      "notes": "Option-set DERIVATION for the LO-2 scenario simulator; the borrower-facing disclosure template is the separate regz-1026-36e-anti-steering entry (consentGate.ts). (e)(3)(ii) good-faith qualification is satisfied structurally: the simulator runs deterministic qualification per offer. Catalog carries no prepayment-penalty/demand/shared-equity flags; the (B) leg derives risky features from amortizationType markers (IO/balloon/neg-am) — the PPE adapter must map real feature flags when the contract lands."
     }
   ]
 }

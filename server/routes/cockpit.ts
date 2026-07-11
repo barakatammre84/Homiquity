@@ -1,0 +1,210 @@
+import type { Express } from "express";
+import type { IStorage } from "../storage";
+import { requireRole } from "../auth";
+import { buildStaffSignals } from "../services/signalEngine";
+import { getLatestIncomePathEvaluation } from "../services/scenarioSimulator";
+import { getUserActivitySummary } from "../services/activitySummary";
+import { verifyInternalStaffApplicationAccess } from "./borrower";
+import type { User, DealTeamMember, LoanApplication } from "@shared/schema";
+
+/**
+ * LO Command Center cockpit routes (LO Advisor Program prompt LO-1).
+ *
+ * Two internal-staff, deal-team-scoped reads that turn the pipeline list into
+ * an advisory cockpit without navigating away from a file:
+ *   - GET /api/staff/signals — the prioritized "who needs attention" feed
+ *     (signalEngine, previously only wired to the notification cron), scoped to
+ *     the caller's book (admins see all).
+ *   - GET /api/staff/applications/:id/cockpit — the active-borrower panel + call
+ *     prep, composed in ONE access-checked read: operational summary, latest UAL
+ *     income evaluation, conditions, document checklist, recent messages, and
+ *     the borrower's activity digest.
+ *
+ * PII discipline (I4): this surface returns OPERATIONAL data only — status,
+ * derived income figures, conditions, document status, message snippets. No
+ * SSN/DOB/account numbers; full PII stays behind the deep-linked BorrowerFile's
+ * existing audited reveal path.
+ */
+
+const OPEN_CONDITION_CLOSED_STATUSES = new Set(["cleared", "waived", "not_applicable", "satisfied"]);
+const RECENT_MESSAGE_LIMIT = 6;
+const MESSAGE_SNIPPET_CHARS = 140;
+
+/** Statuses excluded from the "active" cockpit book (not in flight). */
+const INACTIVE_STATUSES = new Set(["draft", "funded", "denied"]);
+
+/**
+ * Deduplicated ids of the ACTIVE applications a staffer is on the deal team for.
+ * Pure over the membership rows so it can be unit-tested without a database.
+ */
+export function filterAccessibleActiveApplicationIds(
+  memberships: (DealTeamMember & { application?: LoanApplication })[],
+): string[] {
+  const ids = new Set<string>();
+  for (const m of memberships) {
+    if (m.application && !INACTIVE_STATUSES.has(m.application.status ?? "draft")) {
+      ids.add(m.application.id);
+    }
+  }
+  return [...ids];
+}
+
+/** Accessible active application ids for a staffer (admins: all active). */
+async function accessibleActiveApplicationIds(storage: IStorage, user: User): Promise<string[] | "all"> {
+  if (user.role === "admin") return "all";
+  const memberships = await storage.getTeamMembersByUser(user.id);
+  return filterAccessibleActiveApplicationIds(memberships);
+}
+
+export function registerCockpitRoutes(app: Express, storage: IStorage) {
+  // -------------------------------------------------------------------------
+  // Left rail — the prioritized attention feed, scoped to the caller's book.
+  // -------------------------------------------------------------------------
+  app.get(
+    "/api/staff/signals",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const user = req.user as User;
+        const scopeIds = await accessibleActiveApplicationIds(storage, user);
+        const signals =
+          scopeIds === "all"
+            ? await buildStaffSignals(40)
+            : await buildStaffSignals(40, { applicationIds: scopeIds });
+        res.json({ signals });
+      } catch (error) {
+        console.error("Get staff signals error:", error);
+        res.status(500).json({ error: "Failed to load signals" });
+      }
+    },
+  );
+
+  // -------------------------------------------------------------------------
+  // Center pane + call prep — one deal-team-scoped read for the active file.
+  // -------------------------------------------------------------------------
+  app.get(
+    "/api/staff/applications/:id/cockpit",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const user = req.user as User;
+        const applicationId = req.params.id;
+
+        // Assignment-scoped: the same gate the rate-lock desk and simulator use.
+        const allowed = await verifyInternalStaffApplicationAccess(storage, applicationId, user.id, user.role);
+        if (!allowed) {
+          return res.status(403).json({ error: "Access denied to this application" });
+        }
+
+        const application = await storage.getLoanApplication(applicationId);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const [borrower, incomeRow, conditions, documents, messages, activity] = await Promise.all([
+          storage.getUser(application.userId),
+          getLatestIncomePathEvaluation(applicationId),
+          storage.getLoanConditionsByApplication(applicationId),
+          storage.getDocumentsByApplication(applicationId),
+          storage.getMessages(user.id, application.userId),
+          getUserActivitySummary(application.userId),
+        ]);
+
+        const borrowerName =
+          [borrower?.firstName, borrower?.lastName].filter(Boolean).join(" ") ||
+          borrower?.email ||
+          "Borrower";
+
+        const openConditions = conditions.filter(
+          (c) => !OPEN_CONDITION_CLOSED_STATUSES.has(c.status),
+        );
+
+        // Recent thread with THIS staffer (newest first, trimmed to snippets).
+        const recentMessages = [...messages]
+          .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
+          .slice(0, RECENT_MESSAGE_LIMIT)
+          .map((m) => ({
+            id: m.id,
+            fromBorrower: m.senderId === application.userId,
+            snippet: (m.message ?? "").slice(0, MESSAGE_SNIPPET_CHARS),
+            createdAt: m.createdAt,
+          }));
+        const unreadFromBorrower = messages.filter(
+          (m) => m.senderId === application.userId && !m.isRead,
+        ).length;
+
+        // Document checklist: uploaded/verified rollup by document type (status
+        // only — the file bytes and any extracted PII stay in the vault).
+        const docByType = new Map<string, { status: string; fileName: string; createdAt: Date | null }>();
+        for (const d of documents) {
+          const key = d.documentType ?? "other";
+          const existing = docByType.get(key);
+          if (!existing || (d.createdAt && existing.createdAt && d.createdAt > existing.createdAt)) {
+            docByType.set(key, {
+              status: d.status ?? "uploaded",
+              fileName: d.fileName ?? "",
+              createdAt: d.createdAt ?? null,
+            });
+          }
+        }
+        const documentSummary = {
+          uploadedCount: documents.length,
+          verifiedCount: documents.filter((d) => d.status === "verified").length,
+          byType: [...docByType.entries()].map(([type, v]) => ({
+            type,
+            status: v.status,
+            fileName: v.fileName,
+          })),
+        };
+
+        res.json({
+          application: {
+            id: application.id,
+            borrowerUserId: application.userId,
+            borrowerName,
+            status: application.status,
+            loanPurpose: application.loanPurpose,
+            purchasePrice: application.purchasePrice,
+            downPayment: application.downPayment,
+            propertyState: application.propertyState,
+            propertyType: application.propertyType,
+            isVeteran: application.isVeteran ?? false,
+            closingDate: application.closingDate ?? null,
+            createdAt: application.createdAt,
+          },
+          income: incomeRow
+            ? {
+                evaluationId: incomeRow.id,
+                primaryMonthlyQualifyingIncome: Number(incomeRow.primaryMonthlyQualifyingIncome),
+                incomeBasis: incomeRow.incomeBasis,
+                recommendedPathId: incomeRow.recommendedPathId,
+                requiresManualReview: incomeRow.requiresManualReview,
+                evaluatedAt: incomeRow.createdAt,
+                paths: incomeRow.paths,
+              }
+            : null,
+          conditions: {
+            total: conditions.length,
+            open: openConditions.length,
+            items: openConditions.slice(0, 12).map((c) => ({
+              id: c.id,
+              title: c.title,
+              category: c.category,
+              status: c.status,
+              priority: c.priority,
+            })),
+          },
+          documents: documentSummary,
+          messages: {
+            unreadFromBorrower,
+            recent: recentMessages,
+          },
+          activity,
+        });
+      } catch (error) {
+        console.error("Get application cockpit error:", error);
+        res.status(500).json({ error: "Failed to load the cockpit view" });
+      }
+    },
+  );
+}

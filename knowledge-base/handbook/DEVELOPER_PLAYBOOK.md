@@ -32,7 +32,7 @@ This is a single workspace, not a multi-package monorepo. The blueprint concepts
 │   └── src/
 │       ├── main.tsx            Entry point; mounts <App/>
 │       ├── App.tsx             All routes (wouter). Pages are lazy-loaded.
-│       ├── index.css           Charcoal Emerald design tokens (CSS variables)
+│       ├── index.css           Royal Blue Emerald design tokens (CSS variables)
 │       ├── components/
 │       │   ├── ui/             shadcn/Radix primitives, restyled to tokens
 │       │   └── *.tsx           Cross-page components (HomeReadinessPassport, …)

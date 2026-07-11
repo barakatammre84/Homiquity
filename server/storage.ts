@@ -697,11 +697,13 @@ export interface IStorage {
 
   // Deal Rescue Escalations
   getDealRescueEscalations(filters?: { status?: string; reportedByUserId?: string }): Promise<DealRescueEscalation[]>;
+  getDealRescueEscalation(id: string): Promise<DealRescueEscalation | undefined>;
   createDealRescueEscalation(data: InsertDealRescueEscalation): Promise<DealRescueEscalation>;
   updateDealRescueEscalation(id: string, data: Partial<DealRescueEscalation>): Promise<DealRescueEscalation | undefined>;
 
   // Strategy Sessions
   getStrategySessions(agentUserId: string): Promise<StrategySession[]>;
+  getStrategySession(id: string): Promise<StrategySession | undefined>;
   createStrategySession(data: InsertStrategySession): Promise<StrategySession>;
   updateStrategySession(id: string, data: Partial<StrategySession>): Promise<StrategySession | undefined>;
 
@@ -4720,6 +4722,13 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(dealRescueEscalations.createdAt));
   }
 
+  async getDealRescueEscalation(id: string): Promise<DealRescueEscalation | undefined> {
+    const [escalation] = await db.select().from(dealRescueEscalations)
+      .where(eq(dealRescueEscalations.id, id))
+      .limit(1);
+    return escalation;
+  }
+
   async createDealRescueEscalation(data: InsertDealRescueEscalation): Promise<DealRescueEscalation> {
     const [escalation] = await db.insert(dealRescueEscalations).values(data).returning();
     return escalation;
@@ -4738,6 +4747,13 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(strategySessions)
       .where(eq(strategySessions.agentUserId, agentUserId))
       .orderBy(desc(strategySessions.createdAt));
+  }
+
+  async getStrategySession(id: string): Promise<StrategySession | undefined> {
+    const [session] = await db.select().from(strategySessions)
+      .where(eq(strategySessions.id, id))
+      .limit(1);
+    return session;
   }
 
   async createStrategySession(data: InsertStrategySession): Promise<StrategySession> {

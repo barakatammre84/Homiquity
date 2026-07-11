@@ -12,6 +12,8 @@ export default defineConfig({
     // vitest.integration.config.ts instead.
     include: [
       "tests/accessControl.test.ts",
+      "tests/scenarioSimulator.test.ts",
+      "tests/cockpitScoping.test.ts",
       "tests/adversarialPersonas.test.ts",
       "tests/adverseActionNotice.test.ts",
       "tests/adverseActionDelivery.test.ts",
@@ -81,6 +83,8 @@ export default defineConfig({
       "tests/documentTypeAliases.test.ts",
       "tests/localObjectStorage.test.ts",
       "tests/postAuthRoute.test.ts",
+      "tests/queryParams.test.ts",
+      "tests/vercelEntryHelpers.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
