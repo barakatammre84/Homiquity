@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, and, gte, lte, sql, or, ilike, asc, count, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, lte, sql, or, ilike, asc, count, inArray, ne, isNull } from "drizzle-orm";
 // SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
 // branch — main leaves account numbers plaintext).
 import { encryptPiiField, decryptPiiField } from "./services/piiVault";
@@ -536,6 +536,8 @@ export interface IStorage {
   updateDealTeamMember(id: string, data: Partial<DealTeamMember>): Promise<DealTeamMember | undefined>;
   removeDealTeamMember(id: string): Promise<void>;
   getTeamMembersByUser(userId: string): Promise<(DealTeamMember & { application?: LoanApplication })[]>;
+  assignLoanOfficer(applicationId: string, loanOfficerId: string | null, assignedBy: string): Promise<LoanApplication | undefined>;
+  getUnassignedApplications(): Promise<LoanApplication[]>;
 
   // Plaid Verifications
   createPlaidLinkToken(data: InsertPlaidLinkToken): Promise<PlaidLinkToken>;
@@ -2624,6 +2626,78 @@ export class DatabaseStorage implements IStorage {
       ...row.deal_team_members,
       application: row.loan_applications || undefined,
     }));
+  }
+
+  // Single chokepoint for putting a file on a loan officer's desk (or clearing it).
+  // Keeps the denormalized loanApplications.loanOfficerId pointer and the deal-team
+  // membership row — the authorization boundary used by getLoanApplicationWithAccess
+  // and scoped by the pipeline queue — in lockstep, so "assigned LO" always equals
+  // "the LO can open the file AND see it in their queue". Idempotent: assigning the
+  // same LO twice is a no-op on the membership row.
+  async assignLoanOfficer(
+    applicationId: string,
+    loanOfficerId: string | null,
+    assignedBy: string,
+  ): Promise<LoanApplication | undefined> {
+    const [application] = await db
+      .update(loanApplications)
+      .set({ loanOfficerId, updatedAt: new Date() })
+      .where(eq(loanApplications.id, applicationId))
+      .returning();
+    if (!application) return undefined;
+
+    // Deactivate any active primary loan_officer membership that isn't the new
+    // owner (reassignment/unassignment moves the desk). Other deal-team roles
+    // (processor, underwriter, closer, external partners) are left untouched.
+    await db
+      .update(dealTeamMembers)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(and(
+        eq(dealTeamMembers.applicationId, applicationId),
+        eq(dealTeamMembers.teamRole, "loan_officer"),
+        eq(dealTeamMembers.isActive, true),
+        loanOfficerId ? ne(dealTeamMembers.userId, loanOfficerId) : sql`true`,
+      ));
+
+    if (loanOfficerId) {
+      const [existing] = await db
+        .select({ id: dealTeamMembers.id })
+        .from(dealTeamMembers)
+        .where(and(
+          eq(dealTeamMembers.applicationId, applicationId),
+          eq(dealTeamMembers.userId, loanOfficerId),
+          eq(dealTeamMembers.teamRole, "loan_officer"),
+          eq(dealTeamMembers.isActive, true),
+        ))
+        .limit(1);
+      if (!existing) {
+        await db.insert(dealTeamMembers).values({
+          applicationId,
+          userId: loanOfficerId,
+          teamRole: "loan_officer",
+          isPrimary: true,
+          isActive: true,
+          assignedBy,
+          assignedAt: new Date(),
+        });
+      }
+    }
+
+    return application;
+  }
+
+  // Active applications with no loan officer on file — the intake "pool" an LO
+  // claims from. Keyed off the denormalized pointer (a file with no primary LO
+  // has loanOfficerId null); assignLoanOfficer keeps that pointer honest.
+  async getUnassignedApplications(): Promise<LoanApplication[]> {
+    return await db
+      .select()
+      .from(loanApplications)
+      .where(and(
+        isNull(loanApplications.loanOfficerId),
+        sql`${loanApplications.status} not in ('draft','funded','denied','withdrawn')`,
+      ))
+      .orderBy(desc(loanApplications.createdAt));
   }
 
   // Plaid Verifications

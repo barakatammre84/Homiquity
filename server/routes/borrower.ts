@@ -2229,9 +2229,13 @@ export function registerBorrowerRoutes(
         }
       }
 
-      const updated = await storage.updateLoanApplication(applicationId, {
-        loanOfficerId: result.data.loanOfficerId,
-      });
+      // Atomic: also keeps the deal-team membership row in lockstep so the
+      // assigned LO can actually open the file and see it in their queue.
+      const updated = await storage.assignLoanOfficer(
+        applicationId,
+        result.data.loanOfficerId,
+        user.id,
+      );
 
       await storage.createDealActivity({
         applicationId,
