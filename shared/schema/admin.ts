@@ -796,6 +796,8 @@ export const partnerWaitlist = pgTable("partner_waitlist", {
   // loan_officer | lender | cpa | real_estate_agent | other
   partnerType: varchar("partner_type", { length: 30 }).notNull(),
   message: text("message"),
+  // Stamped when an admin sends the PartnerHub join invite (PH-1 conversion).
+  invitedAt: timestamp("invited_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_partner_waitlist_email").on(table.email),

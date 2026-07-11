@@ -35,6 +35,7 @@ export const CLIENT_ROLES = [
 // ONLY through exact-role checks (requireRole("cpa", ...) / the /cpa-portal gate).
 export const PARTNER_ROLES = [
   "cpa",             // CPA Partner - Inviter-only referral source (never sees borrower data)
+  "realtor",         // Real-Estate Agent Partner - Inviter-only referral source (PartnerHub PH-1)
 ] as const;
 
 // All roles combined
@@ -52,6 +53,7 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   broker: "Mortgage Broker",
   lender: "Lender Representative",
   cpa: "CPA Partner",
+  realtor: "Real-Estate Agent Partner",
   aspiring_owner: "Aspiring Owner",
   active_buyer: "Active Buyer",
 };
@@ -67,6 +69,7 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   broker: "Loan origination, lender relationships, deal management",
   lender: "Loan product management, pricing, approvals",
   cpa: "Refer clients to check home-buying readiness; sees referral progress only",
+  realtor: "Refer buyers with a co-branded link; sees referral progress only",
   aspiring_owner: "Explore homeownership, sandbox mode, gap calculator",
   active_buyer: "Apply for mortgages, upload documents, track progress",
 };
