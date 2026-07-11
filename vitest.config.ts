@@ -58,6 +58,7 @@ export default defineConfig({
       "tests/specialFeatureCodes.test.ts",
       "tests/loanDeliveryEdits.test.ts",
       "tests/brokerSubmissionReadiness.test.ts",
+      "tests/incomeAnalysisPackage.test.ts",
       "tests/lenderSubmission.test.ts",
       "tests/pipelineEngineDocumentRequirements.test.ts",
       "tests/leadNotifications.test.ts",
