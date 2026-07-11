@@ -66,7 +66,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-sidebar-foreground/20 pt-8">
+        <div className="mt-12 border-t border-sidebar-border pt-8">
           {/* Broker-accurate legal copy (roadmap #33): Homiquity is a mortgage
               broker, not a direct lender — claiming "direct loans" would be a
               Reg N / UDAAP misrepresentation. The NMLS unique identifier
