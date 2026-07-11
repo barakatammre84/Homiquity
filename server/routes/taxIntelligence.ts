@@ -26,12 +26,48 @@ import { logFriction } from "../services/frictionLog";
  * the same reason as /api/tax-insights/process: the tax_document_use consent
  * that gates them is granted by the borrower for their own data, and keeping
  * the flow consumer-direct is what keeps IRC §7216 preparer-disclosure rules
- * from attaching. Internal staff may READ completed results (that use is named
- * in the consent text); every staff read is audited.
+ * from attaching.
+ *
+ * Staff READS (a use named in the consent text) follow the per-file
+ * assignment model, mirroring /api/predictions/staff/:userId: admin has
+ * blanket access; every other internal-staff role must be an active
+ * deal-team member on an application owned by the target borrower. Bare
+ * isInternalStaffRole is reserved for aggregate feeds — never a specific
+ * borrower's financial records. Every staff read is audited.
  *
  * Output is PROVISIONAL extraction — readiness/processing signal, never an
  * underwriting input (MR-2 / L2 I1: a human confirms values before they count).
  */
+
+/**
+ * Per-file assignment gate for non-owner reads: admin passes; any other
+ * internal-staff caller must name an application they are an active
+ * deal-team member of, and the target borrower must own that application.
+ */
+async function staffCanAccessBorrower(
+  caller: User,
+  borrowerUserId: string,
+  applicationId: string | undefined,
+  storage: IStorage,
+): Promise<{ allowed: boolean; reason?: string }> {
+  if (caller.role === "admin") return { allowed: true };
+  if (!isInternalStaffRole(caller.role)) return { allowed: false, reason: "Unauthorized" };
+  if (!applicationId) {
+    return {
+      allowed: false,
+      reason: "An applicationId is required for non-admin staff access",
+    };
+  }
+  const teamMembers = await storage.getDealTeamMembers(applicationId);
+  if (!teamMembers.some((m) => m.userId === caller.id)) {
+    return { allowed: false, reason: "Access denied" };
+  }
+  const application = await storage.getLoanApplication(applicationId);
+  if (!application || application.userId !== borrowerUserId) {
+    return { allowed: false, reason: "Access denied" };
+  }
+  return { allowed: true };
+}
 
 /** A run in flight recently enough that a second one would double-bill the model. */
 const RUN_IN_FLIGHT_WINDOW_MS = 5 * 60 * 1000;
@@ -152,9 +188,16 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         return res.status(404).json({ error: "Document not found" });
       }
       const isOwner = document.userId === user.id;
-      const isStaff = isInternalStaffRole(user.role);
-      if (!isOwner && !isStaff) {
-        return res.status(403).json({ error: "Unauthorized" });
+      if (!isOwner) {
+        const access = await staffCanAccessBorrower(
+          user,
+          document.userId,
+          document.applicationId ?? (req.query.applicationId as string | undefined),
+          storage,
+        );
+        if (!access.allowed) {
+          return res.status(403).json({ error: access.reason ?? "Unauthorized" });
+        }
       }
 
       const summary = await getLatestTaxIntelligence(document.id);
@@ -190,8 +233,16 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
       const requestedUserId =
         typeof req.query.userId === "string" && req.query.userId ? req.query.userId : user.id;
       const isOwner = requestedUserId === user.id;
-      if (!isOwner && !isInternalStaffRole(user.role)) {
-        return res.status(403).json({ error: "Unauthorized" });
+      if (!isOwner) {
+        const access = await staffCanAccessBorrower(
+          user,
+          requestedUserId,
+          req.query.applicationId as string | undefined,
+          storage,
+        );
+        if (!access.allowed) {
+          return res.status(403).json({ error: access.reason ?? "Unauthorized" });
+        }
       }
 
       const report = await buildTaxReconciliation(requestedUserId);
@@ -222,8 +273,16 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
       const requestedUserId =
         typeof req.query.userId === "string" && req.query.userId ? req.query.userId : user.id;
       const isOwner = requestedUserId === user.id;
-      if (!isOwner && !isInternalStaffRole(user.role)) {
-        return res.status(403).json({ error: "Unauthorized" });
+      if (!isOwner) {
+        const access = await staffCanAccessBorrower(
+          user,
+          requestedUserId,
+          req.query.applicationId as string | undefined,
+          storage,
+        );
+        if (!access.allowed) {
+          return res.status(403).json({ error: access.reason ?? "Unauthorized" });
+        }
       }
 
       let row = await getLatestSituationProfile(requestedUserId);

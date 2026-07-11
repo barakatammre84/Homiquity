@@ -41,9 +41,18 @@ function signalBadge(signal: IncomePathSignal["signal"]) {
   }
 }
 
-export function TaxIntelligencePanel({ borrowerUserId }: { borrowerUserId: string }) {
+export function TaxIntelligencePanel({
+  borrowerUserId,
+  applicationId,
+}: {
+  borrowerUserId: string;
+  /** Required for non-admin staff: the deal-team application proving assignment. */
+  applicationId?: string;
+}) {
   const { data, isLoading, isError } = useQuery<SituationResponse>({
-    queryKey: [`/api/tax-intelligence/situation?userId=${encodeURIComponent(borrowerUserId)}`],
+    queryKey: [
+      `/api/tax-intelligence/situation?userId=${encodeURIComponent(borrowerUserId)}${applicationId ? `&applicationId=${encodeURIComponent(applicationId)}` : ""}`,
+    ],
   });
 
   if (isLoading) {

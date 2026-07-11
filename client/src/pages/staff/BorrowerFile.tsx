@@ -1235,7 +1235,10 @@ export default function BorrowerFile() {
 
                 <TabsContent value="tax-intel" className="space-y-4">
                   {application?.userId ? (
-                    <TaxIntelligencePanel borrowerUserId={application.userId} />
+                    <TaxIntelligencePanel
+                      borrowerUserId={application.userId}
+                      applicationId={application.id}
+                    />
                   ) : (
                     <Card>
                       <CardContent className="py-6 text-sm text-muted-foreground">
