@@ -15,6 +15,7 @@ import type {
   UrlaPropertyInfo,
 } from "@shared/schema";
 import { lookupResolver } from "./services/lookupResolver";
+import { computeSelfEmploymentQualifyingIncome } from "./services/selfEmploymentIncome";
 
 export interface IncomeQualificationResult {
   baseMonthlyIncome: number;
@@ -41,6 +42,9 @@ export interface IncomeQualificationResult {
       addBacks: number;
       deductions: number;
       qualifyingIncome: number;
+      trend?: string;
+      requiresManualReview?: boolean;
+      notes?: string[];
     };
   };
 }
@@ -116,6 +120,29 @@ export function qualifyIncome(
 
   // Process employment income
   for (const emp of employment) {
+    // Self-employment: qualifying income comes from the Form 1084 worksheet
+    // (Fannie B3-3.5/B3-3.6), computed deterministically in
+    // computeSelfEmploymentQualifyingIncome — not from startDate/monthly boxes.
+    if (emp.isSelfEmployed) {
+      if (emp.selfEmploymentIncome) {
+        const se = computeSelfEmploymentQualifyingIncome(emp.selfEmploymentIncome);
+        result.selfEmploymentMonthlyIncome += se.monthlyQualifyingIncome;
+        const prev = result.details.selfEmployment;
+        result.details.selfEmployment = {
+          netProfitYear1: (prev?.netProfitYear1 ?? 0) + se.netProfitYear1,
+          netProfitYear2: (prev?.netProfitYear2 ?? 0) + se.netProfitYear2,
+          avgNetProfit: (prev?.avgNetProfit ?? 0) + se.avgAnnualCashFlow,
+          addBacks: (prev?.addBacks ?? 0) + se.addBacks,
+          deductions: (prev?.deductions ?? 0) + se.deductions,
+          qualifyingIncome: (prev?.qualifyingIncome ?? 0) + se.monthlyQualifyingIncome,
+          trend: se.trend,
+          requiresManualReview: (prev?.requiresManualReview ?? false) || se.requiresManualReview,
+          notes: [...(prev?.notes ?? []), ...se.notes],
+        };
+      }
+      continue;
+    }
+
     // Require 2-year continuous work history
     if (!emp.startDate) continue;
 
@@ -124,10 +151,7 @@ export function qualifyIncome(
 
     // Calculate monthly income
     let monthlyIncome = 0;
-    if (emp.isSelfEmployed) {
-      // Self-employment handled separately
-      continue;
-    } else if (emp.totalMonthlyIncome) {
+    if (emp.totalMonthlyIncome) {
       monthlyIncome = typeof emp.totalMonthlyIncome === 'string' 
         ? parseFloat(emp.totalMonthlyIncome) 
         : emp.totalMonthlyIncome;

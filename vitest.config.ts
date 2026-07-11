@@ -27,6 +27,7 @@ export default defineConfig({
       "tests/lifecycleEngine.test.ts",
       "tests/underwritingNuance.test.ts",
       "tests/underwritingEdgeCases.test.ts",
+      "tests/selfEmploymentIncome.test.ts",
       "tests/complianceInvariants.test.ts",
       "tests/scenarioCatalog.test.ts",
       "tests/statusVocabulary.test.ts",
