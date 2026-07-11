@@ -310,6 +310,8 @@ import {
   partnerProfiles,
   type PartnerProfile,
   type InsertPartnerProfile,
+  partnerProgressConsents,
+  type PartnerProgressConsent,
   partnerWaitlist,
   bankStatementAnalyses,
   type BankStatementAnalysis,
@@ -794,8 +796,16 @@ export interface IStorage {
   ): Promise<PartnerProfile | undefined>;
   /** Stamp the partner identity onto the user row so the existing referral rail works unchanged. */
   setUserPartnerIdentity(userId: string, identity: { referralCode: string; partnerCompanyName: string }): Promise<void>;
-  /** Stage-only projection for the partner hub — mirrors getCpaReferralsForPortal. */
-  getPartnerReferralsForHub(partnerUserId: string): Promise<Array<{ displayName: string; stage: string; referredAt: Date | null }>>;
+  /**
+   * Stage-only projection for the partner hub — mirrors getCpaReferralsForPortal.
+   * PH-2: real stages appear ONLY for borrowers who granted progress-sharing
+   * consent; non-consented rows return `shared:false` and the existence-only
+   * "invited" stage (charter §5-C6).
+   */
+  getPartnerReferralsForHub(partnerUserId: string): Promise<Array<{ displayName: string; stage: string; shared: boolean; referredAt: Date | null }>>;
+  // Partner progress-sharing consent (PH-2). Borrower-directed, default OFF.
+  getPartnerProgressConsent(borrowerUserId: string, partnerUserId: string): Promise<PartnerProgressConsent | undefined>;
+  setPartnerProgressConsent(borrowerUserId: string, partnerUserId: string, share: boolean, meta: { ipAddress?: string | null }): Promise<PartnerProgressConsent>;
   markPartnerWaitlistInvited(id: string): Promise<typeof partnerWaitlist.$inferSelect | undefined>;
 
   // Partner Providers & Orders
@@ -3757,7 +3767,7 @@ export class DatabaseStorage implements IStorage {
 
   async getPartnerReferralsForHub(
     partnerUserId: string,
-  ): Promise<Array<{ displayName: string; stage: string; referredAt: Date | null }>> {
+  ): Promise<Array<{ displayName: string; stage: string; shared: boolean; referredAt: Date | null }>> {
     // The realtor rail is users.referred_by_user_id (written by /api/apply-referral).
     const refs = await db
       .select({
@@ -3770,8 +3780,26 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.referredByUserId, partnerUserId))
       .orderBy(desc(users.createdAt));
 
-    // Latest application status per referred user (stage only — no financials).
     const userIds = refs.map((r) => r.id);
+
+    // PH-2 consent gate: which of these borrowers opted in to share progress
+    // with THIS partner. Batched (inArray) — no per-row query.
+    const sharedBorrowers = new Set<string>();
+    if (userIds.length > 0) {
+      const consents = await db
+        .select({ borrowerUserId: partnerProgressConsents.borrowerUserId })
+        .from(partnerProgressConsents)
+        .where(
+          and(
+            eq(partnerProgressConsents.partnerUserId, partnerUserId),
+            eq(partnerProgressConsents.shared, true),
+            inArray(partnerProgressConsents.borrowerUserId, userIds),
+          ),
+        );
+      for (const c of consents) sharedBorrowers.add(c.borrowerUserId);
+    }
+
+    // Latest application status per referred user (stage only — no financials).
     const stageByUser = new Map<string, string>();
     if (userIds.length > 0) {
       const apps = await db
@@ -3793,12 +3821,61 @@ export class DatabaseStorage implements IStorage {
       // partner is an inviter, not a recipient of borrower data (charter §5-C6).
       const initial = r.lastName ? `${r.lastName.charAt(0)}.` : "";
       const displayName = [r.firstName, initial].filter(Boolean).join(" ") || "Client";
-      return {
-        displayName,
-        stage: stageByUser.get(r.id) ?? "exploring",
-        referredAt: r.referredAt,
-      };
+      const shared = sharedBorrowers.has(r.id);
+      // Consent gate: real progression only when the borrower opted in;
+      // otherwise the existence-only "invited" the partner already knows.
+      const stage = shared ? (stageByUser.get(r.id) ?? "exploring") : "invited";
+      return { displayName, stage, shared, referredAt: r.referredAt };
     });
+  }
+
+  async getPartnerProgressConsent(
+    borrowerUserId: string,
+    partnerUserId: string,
+  ): Promise<PartnerProgressConsent | undefined> {
+    const [row] = await db
+      .select()
+      .from(partnerProgressConsents)
+      .where(
+        and(
+          eq(partnerProgressConsents.borrowerUserId, borrowerUserId),
+          eq(partnerProgressConsents.partnerUserId, partnerUserId),
+        ),
+      )
+      .limit(1);
+    return row;
+  }
+
+  async setPartnerProgressConsent(
+    borrowerUserId: string,
+    partnerUserId: string,
+    share: boolean,
+    meta: { ipAddress?: string | null },
+  ): Promise<PartnerProgressConsent> {
+    const now = new Date();
+    // Upsert the single current-state row for this borrower↔partner pair.
+    const [row] = await db
+      .insert(partnerProgressConsents)
+      .values({
+        borrowerUserId,
+        partnerUserId,
+        shared: share,
+        grantedAt: share ? now : null,
+        revokedAt: share ? null : now,
+        ipAddress: meta.ipAddress ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [partnerProgressConsents.borrowerUserId, partnerProgressConsents.partnerUserId],
+        set: {
+          shared: share,
+          grantedAt: share ? now : sql`${partnerProgressConsents.grantedAt}`,
+          revokedAt: share ? sql`${partnerProgressConsents.revokedAt}` : now,
+          ipAddress: meta.ipAddress ?? null,
+          updatedAt: now,
+        },
+      })
+      .returning();
+    return row;
   }
 
   async markPartnerWaitlistInvited(id: string): Promise<typeof partnerWaitlist.$inferSelect | undefined> {

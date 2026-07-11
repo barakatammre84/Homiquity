@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
-import { requireRole, hashPassword } from "../auth";
+import { isAuthenticated, requireRole, hashPassword } from "../auth";
 import { authStorage } from "../integrations/auth/storage";
 import { logAudit } from "../auditLog";
 import { sendEmail, emailTemplates } from "../services/emailService";
@@ -218,11 +218,84 @@ export function registerPartnerRoutes(app: Express, storage: IStorage) {
       }
       // Scoped to the caller's own attribution rail — the partner user id is
       // taken from the session, never from a parameter (no cross-partner path).
+      // Stages are consent-gated inside the storage read (PH-2, §5-C6).
       const referrals = await storage.getPartnerReferralsForHub(user.id);
+      // Audit every partner read of the pipeline (charter PH-2 done-when).
+      logAudit(req, "partner.pipeline_viewed", "partner_profile", profile.id, {
+        referralCount: referrals.length,
+        sharedCount: referrals.filter((r) => r.shared).length,
+      });
       res.json({ referrals });
     } catch (error) {
       console.error("Partner referrals error:", error);
       res.status(500).json({ error: "Failed to load referrals" });
+    }
+  });
+
+  // ---- Borrower: view + toggle progress-sharing with their referring partner --
+  // PH-2 consent spine. The consent is borrower-directed (never partner-initiated),
+  // default OFF, and only meaningful when the referrer is a self-registering
+  // partner (realtor) — an LO referrer is the borrower's own loan team, a
+  // different relationship with no partner hub.
+  app.get("/api/me/referring-partner", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const me = await storage.getUser(user.id);
+      if (!me?.referredByUserId) {
+        return res.json({ partner: null, shared: false });
+      }
+      const partnerProfile = await storage.getPartnerProfileByUserId(me.referredByUserId);
+      // Only surface the toggle for a partner-persona referrer (realtor), and
+      // only while that partner is active.
+      if (!partnerProfile || partnerProfile.status !== "active") {
+        return res.json({ partner: null, shared: false });
+      }
+      const consent = await storage.getPartnerProgressConsent(user.id, me.referredByUserId);
+      res.json({
+        partner: {
+          displayName: partnerProfile.contactName || partnerProfile.firmName,
+          firmName: partnerProfile.firmName,
+          persona: partnerProfile.persona,
+        },
+        shared: consent?.shared ?? false,
+        grantedAt: consent?.shared ? consent.grantedAt : null,
+      });
+    } catch (error) {
+      console.error("Referring-partner lookup error:", error);
+      res.status(500).json({ error: "Failed to load your referring partner" });
+    }
+  });
+
+  app.put("/api/me/referring-partner/consent", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const schema = z.object({ share: z.boolean() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "share (boolean) is required" });
+      }
+      const me = await storage.getUser(user.id);
+      if (!me?.referredByUserId) {
+        return res.status(404).json({ error: "You have no referring partner" });
+      }
+      // Guard: consent only applies to a partner-persona referrer. Never let a
+      // borrower create a share record against a non-partner (e.g. their LO).
+      const partnerProfile = await storage.getPartnerProfileByUserId(me.referredByUserId);
+      if (!partnerProfile || partnerProfile.status !== "active") {
+        return res.status(404).json({ error: "You have no active referring partner" });
+      }
+      const consent = await storage.setPartnerProgressConsent(
+        user.id,
+        me.referredByUserId,
+        parsed.data.share,
+        { ipAddress: req.ip ?? null },
+      );
+      logAudit(req, parsed.data.share ? "partner_progress.shared" : "partner_progress.revoked",
+        "partner_profile", partnerProfile.id, { share: parsed.data.share });
+      res.json({ shared: consent.shared, grantedAt: consent.shared ? consent.grantedAt : null });
+    } catch (error) {
+      console.error("Referring-partner consent error:", error);
+      res.status(500).json({ error: "Failed to update sharing" });
     }
   });
 

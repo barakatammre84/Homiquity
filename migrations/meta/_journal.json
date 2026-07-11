@@ -148,6 +148,13 @@
       "when": 1783593600016,
       "tag": "0021_partner_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1783593600017,
+      "tag": "0022_partner_progress_consents",
+      "breakpoints": true
     }
   ]
 }

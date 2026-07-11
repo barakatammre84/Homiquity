@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { HomeReadinessPassport } from "@/components/HomeReadinessPassport";
 import { TaxReturnInsightCard } from "@/components/TaxReturnInsightCard";
+import { PartnerSharingCard } from "@/components/PartnerSharingCard";
 import { formatCurrency } from "@/lib/formatters";
 import {
   ArrowRight,
@@ -122,6 +123,10 @@ export function RenterHome({
             </div>
           )}
         </div>
+
+        {/* Progress-sharing with a referring partner (PH-2). Self-hides when the
+            renter has no partner referrer. */}
+        <PartnerSharingCard />
 
         {/* Down-payment goal */}
         {goal && target ? (

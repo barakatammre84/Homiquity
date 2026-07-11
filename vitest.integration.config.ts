@@ -25,6 +25,7 @@ export default defineConfig({
       "tests/taxInsightRoutes.test.ts",
       "tests/cpaPartnerRoutes.test.ts",
       "tests/partnerRoutes.test.ts",
+      "tests/partnerConsent.test.ts",
     ],
   },
   resolve: {

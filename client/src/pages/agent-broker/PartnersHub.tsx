@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import CpaPortal, { stageLabel } from "@/pages/agent-broker/CpaPortal";
-import { Copy, Check, Link2, Users, ShieldCheck, Clock, ArrowRight } from "lucide-react";
+import { Copy, Check, Link2, Users, ShieldCheck, Clock, ArrowRight, Lock } from "lucide-react";
 
 /**
  * PartnerHub shell (/partners/hub — PH-1). One authenticated home for every
@@ -47,6 +47,7 @@ interface PartnerMe {
 interface HubReferral {
   displayName: string;
   stage: string;
+  shared: boolean;
   referredAt: string | null;
 }
 
@@ -180,7 +181,8 @@ function RealtorHub() {
             )}
           </CardTitle>
           <CardDescription>
-            Progress stages only — your clients' financial details stay private to them.
+            Progress stages appear only for clients who choose to share them — their financial
+            details always stay private to them.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -212,7 +214,19 @@ function RealtorHub() {
                     <TableRow key={`${r.displayName}-${i}`} data-testid={`row-referral-${i}`}>
                       <TableCell className="font-medium">{r.displayName}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{stageLabel(r.stage)}</Badge>
+                        {r.shared ? (
+                          <Badge variant="secondary" data-testid={`badge-stage-${i}`}>
+                            {stageLabel(r.stage)}
+                          </Badge>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground"
+                            data-testid={`text-stage-hidden-${i}`}
+                          >
+                            <Lock className="h-3.5 w-3.5" />
+                            Invited · progress private
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
                         {r.referredAt ? new Date(r.referredAt).toLocaleDateString() : "—"}
