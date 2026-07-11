@@ -754,9 +754,9 @@ export default function BorrowerFile() {
                           <span className="text-muted-foreground">Down Payment:</span>
                           <span>{formatCurrency(application.downPayment)}</span>
                           <span className="text-muted-foreground">LTV:</span>
-                          <span>{application.ltvRatio ? `${(Number(application.ltvRatio) * 100).toFixed(1)}%` : "N/A"}</span>
+                          <span>{application.ltvRatio ? `${Number(application.ltvRatio).toFixed(1)}%` : "N/A"}</span>
                           <span className="text-muted-foreground">DTI:</span>
-                          <span>{application.dtiRatio ? `${(Number(application.dtiRatio) * 100).toFixed(1)}%` : "N/A"}</span>
+                          <span>{application.dtiRatio ? `${Number(application.dtiRatio).toFixed(1)}%` : "N/A"}</span>
                         </div>
                       </CardContent>
                     </Card>
