@@ -590,6 +590,16 @@ export function registerBorrowerRoutes(
       if (!result) {
         return res.status(404).json({ error: "Employment record not found" });
       }
+
+      // P5 accuracy loop: a saved worksheet changes qualifying income — rerun
+      // the decision (and its income-path evaluation). A confirmed smart-fill
+      // draft is distinguishable in the snapshot trail by its trigger.
+      const { recalculateDecision } = await import("../services/decisionEngine");
+      void recalculateDecision(
+        record.applicationId,
+        parsed.data.confirmedByBorrowerAt ? "worksheet_confirmed" : "income_updated",
+      );
+
       res.json(result);
     } catch (error) {
       console.error("Save self-employment worksheet error:", error);
