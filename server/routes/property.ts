@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { isApprovedGradeLoanAppStatus, insertPropertySchema } from "@shared/schema";
+import { isApprovedGradeLoanAppStatus, insertPropertySchema, isStaffRole } from "@shared/schema";
 import type { IStorage } from "../storage";
 import { isAuthenticated } from "../auth";
 import { checkPropertyEligibility } from "../underwriting";
@@ -590,8 +590,17 @@ export function registerPropertyRoutes(
     try {
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
+
+      // Role gate in addition to the agent-profile requirement: listings appear in
+      // the public property search, and agent profiles were historically
+      // auto-provisioned for any authenticated caller, so a consumer account may
+      // still hold a stale profile. Only staff/partner roles may publish listings.
+      if (!isStaffRole(userRole)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
+
       const agentProfile = await storage.getAgentProfileByUserId(userId);
-      
+
       if (!agentProfile && userRole !== "admin") {
         return res.status(403).json({ error: "Agent profile required to create listings" });
       }
@@ -621,8 +630,13 @@ export function registerPropertyRoutes(
     try {
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
+
+      if (!isStaffRole(userRole)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
+
       const property = await storage.getProperty(req.params.id);
-      
+
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
       }
@@ -649,8 +663,13 @@ export function registerPropertyRoutes(
     try {
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
+
+      if (!isStaffRole(userRole)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
+
       const property = await storage.getProperty(req.params.id);
-      
+
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
       }

@@ -3497,6 +3497,15 @@ export function registerBorrowerRoutes(
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
+      // Object-level authorization: external partners (broker/lender) may only
+      // update escalations they reported; internal staff work the whole queue.
+      const existing = await storage.getDealRescueEscalation(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Escalation not found" });
+      }
+      if (!isInternalStaffRole(req.user!.role) && existing.reportedByUserId !== req.user!.id) {
+        return res.status(403).json({ error: "You may only update escalations you reported" });
+      }
       const escalation = await storage.updateDealRescueEscalation(req.params.id, req.body);
       if (!escalation) {
         return res.status(404).json({ error: "Escalation not found" });
@@ -3544,6 +3553,15 @@ export function registerBorrowerRoutes(
     try {
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
+      }
+      // Object-level authorization: sessions belong to the agent who booked
+      // them (agentUserId); internal staff may manage any session.
+      const existing = await storage.getStrategySession(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Strategy session not found" });
+      }
+      if (!isInternalStaffRole(req.user!.role) && existing.agentUserId !== req.user!.id) {
+        return res.status(403).json({ error: "You may only update your own strategy sessions" });
       }
       const session = await storage.updateStrategySession(req.params.id, req.body);
       if (!session) {

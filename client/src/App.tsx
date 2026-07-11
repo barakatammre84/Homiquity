@@ -175,6 +175,25 @@ function StaffPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"]}>{children}</PrivateLayout>;
 }
 
+// Internal operations pages. External partners (broker, lender) are staff *roles*
+// but not internal staff — they must not reach the internal cockpits. Mirrors the
+// server-side requireRole lists on the APIs these pages call.
+function InternalStaffPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer"]}>{children}</PrivateLayout>;
+}
+
+// Policy/pricing/SLA governance surfaces: server APIs behind these pages are
+// requireRole("admin", "underwriter") — the client gate must match.
+function UnderwriterOpsPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["admin", "underwriter"]}>{children}</PrivateLayout>;
+}
+
+// Application-invite tooling: POST /api/application-invites is admin/lo/loa only
+// (brokers/lenders refer via their referral codes instead).
+function LoTeamPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["admin", "lo", "loa"]}>{children}</PrivateLayout>;
+}
+
 function CpaPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={["cpa", "admin"]}>{children}</PrivateLayout>;
 }
@@ -409,7 +428,7 @@ function Router() {
           <StaffPage><StaffDashboard /></StaffPage>
         </Route>
         <Route path="/lo-command-center">
-          <StaffPage><LoCommandCenter /></StaffPage>
+          <InternalStaffPage><LoCommandCenter /></InternalStaffPage>
         </Route>
         <Route path="/pipeline-queue">
           <Redirect to="/staff-dashboard" />
@@ -433,7 +452,7 @@ function Router() {
           <CpaPage><CpaPortal /></CpaPage>
         </Route>
         <Route path="/invite-clients">
-          <StaffPage><InviteGenerator /></StaffPage>
+          <LoTeamPage><InviteGenerator /></LoTeamPage>
         </Route>
         <Route path="/analytics">
           <Redirect to="/staff-dashboard" />
@@ -460,13 +479,13 @@ function Router() {
           <StaffPage><ClosingGuarantee /></StaffPage>
         </Route>
         <Route path="/policy-ops">
-          <StaffPage><PolicyOps /></StaffPage>
+          <UnderwriterOpsPage><PolicyOps /></UnderwriterOpsPage>
         </Route>
         <Route path="/task-operations">
-          <StaffPage><TaskOperations /></StaffPage>
+          <UnderwriterOpsPage><TaskOperations /></UnderwriterOpsPage>
         </Route>
         <Route path="/pricing-matrices">
-          <StaffPage><PricingMatrices /></StaffPage>
+          <UnderwriterOpsPage><PricingMatrices /></UnderwriterOpsPage>
         </Route>
         <Route path="/accelerator">
           <BorrowerPage><AcceleratorProgram /></BorrowerPage>
