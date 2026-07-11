@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getRoleHomeRoute } from "@/lib/roleRoutes";
+import { getPostAuthRoute } from "@/lib/roleRoutes";
 import { SocialLoginButtons } from "@/components/SocialLoginButtons";
 
 export default function Login() {
@@ -32,7 +32,7 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate(getRoleHomeRoute(user.role));
+      navigate(getPostAuthRoute(user.role));
     }
   }, [isAuthenticated, user, navigate]);
 
@@ -51,7 +51,7 @@ export default function Login() {
       if (data.success) {
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         const role = data.user?.role || "aspiring_owner";
-        navigate(getRoleHomeRoute(role));
+        navigate(getPostAuthRoute(role));
       }
     } catch (error: any) {
       const message = error?.message?.includes("401")
@@ -123,7 +123,6 @@ export default function Login() {
                     size="icon" aria-label="Toggle password visibility"
                     className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
                     data-testid="button-toggle-password"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}

@@ -252,7 +252,7 @@ export default function CreditConsent() {
                   {consent?.consentTimestamp && format(new Date(consent.consentTimestamp), "MMMM d, yyyy 'at' h:mm a")}
                 </p>
                 {latestPull && (
-                  <div className="mt-4 p-4 bg-white rounded-lg">
+                  <div className="mt-4 p-4 bg-card rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <CreditCard className="h-4 w-4" />
                       <span className="font-medium">Credit Report Summary</span>

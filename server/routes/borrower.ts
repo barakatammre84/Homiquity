@@ -11,6 +11,7 @@ import {
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
   insertUrlaPersonalInfoSchema,
+  selfEmploymentWorksheetSchema,
   isStaffRole,
   isInternalStaffRole,
   LOAN_APP_TERMINAL_STATUSES,
@@ -559,6 +560,53 @@ export function registerBorrowerRoutes(
     }
   });
 
+  // Self-employment income worksheet (Form 1084 / B3-3.5 & B3-3.6). This is a
+  // structured JSON object, so it does NOT go through the generic employment
+  // save (pickTableFields drops JSON by design) — it has its own Zod-validated
+  // write path. Providing a worksheet marks the record self-employed.
+  app.put("/api/urla/employment/:id/self-employment", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getEmploymentHistoryById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const parsed = selfEmploymentWorksheetSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid self-employment worksheet",
+          details: parsed.error.flatten(),
+        });
+      }
+      const result = await storage.updateEmploymentHistory(id, {
+        selfEmploymentIncome: parsed.data,
+        isSelfEmployed: true,
+      } as any);
+      if (!result) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+
+      // P5 accuracy loop: a saved worksheet changes qualifying income — rerun
+      // the decision (and its income-path evaluation). A confirmed smart-fill
+      // draft is distinguishable in the snapshot trail by its trigger.
+      const { recalculateDecision } = await import("../services/decisionEngine");
+      void recalculateDecision(
+        record.applicationId,
+        parsed.data.confirmedByBorrowerAt ? "worksheet_confirmed" : "income_updated",
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Save self-employment worksheet error:", error);
+      res.status(500).json({ error: "Failed to save self-employment worksheet" });
+    }
+  });
+
   app.post("/api/urla/:applicationId/other-income", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
@@ -799,6 +847,18 @@ export function registerBorrowerRoutes(
           for (const emp of opts.employmentHistory) {
             if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
             const cleanEmp = pickTableFields(URLA_TABLES.employment, emp);
+            // The self-employment worksheet is a structured JSON object, so
+            // pickTableFields drops it (URLA tables are scalar-only by design).
+            // Validate it explicitly here and merge it back in. `null` clears it.
+            if (emp.selfEmploymentIncome === null) {
+              (cleanEmp as any).selfEmploymentIncome = null;
+            } else if (emp.selfEmploymentIncome !== undefined) {
+              const wk = selfEmploymentWorksheetSchema.safeParse(emp.selfEmploymentIncome);
+              if (!wk.success) {
+                return { ok: false, status: 400, error: "Invalid self-employment worksheet", results };
+              }
+              (cleanEmp as any).selfEmploymentIncome = wk.data;
+            }
             if (emp.id) {
               const existing = await storage.getEmploymentHistoryById(emp.id);
               if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
@@ -1425,7 +1485,18 @@ export function registerBorrowerRoutes(
 
       const withinDays = parseInt(req.query.days as string) || 7;
       const locks = await storage.getExpiringRateLocks(withinDays);
-      res.json(locks);
+
+      // Assignment-scoped, mirroring GET /api/pipeline/queue: an admin sees
+      // every expiring lock; every other internal-staff role sees only locks
+      // on files they are an active deal-team member of.
+      if (user.role === "admin") {
+        return res.json(locks);
+      }
+      const memberships = await storage.getTeamMembersByUser(user.id);
+      const allowedAppIds = new Set(
+        memberships.map((m) => m.application?.id).filter((id): id is string => Boolean(id)),
+      );
+      res.json(locks.filter((lock) => allowedAppIds.has(lock.applicationId)));
     } catch (error) {
       console.error("Get expiring locks error:", error);
       res.status(500).json({ error: "Failed to get expiring locks" });
@@ -4035,6 +4106,55 @@ export function registerBorrowerRoutes(
       res.json({ ok: true });
     } catch (error) {
       console.error("Email capture error:", error);
+      res.json({ ok: true });
+    }
+  });
+
+  // Pre-launch partner / center-of-influence waitlist. B2B interest capture for
+  // loan officers, lenders, CPAs, and real-estate agents — the referral network
+  // we'll service consumers through. Not a consumer mortgage lead: no TCPA/
+  // TrustedForm path, no rate/approval handling. Public + honeypot-guarded;
+  // rate-limited in app.ts alongside /api/email-capture.
+  const partnerWaitlistSchema = z.object({
+    name: z.string().trim().min(1, "Name is required").max(255),
+    email: z.string().email().max(255),
+    company: z.string().trim().max(255).optional(),
+    partnerType: z.enum(["loan_officer", "lender", "cpa", "real_estate_agent", "other"]),
+    message: z.string().trim().max(2000).optional(),
+    website: z.string().optional(), // honeypot
+  });
+
+  app.post("/api/partner-waitlist", async (req, res) => {
+    try {
+      const parsed = partnerWaitlistSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Please check the form and try again." });
+      }
+      if (parsed.data.website) {
+        return res.json({ ok: true }); // silently drop bots
+      }
+      const { partnerWaitlist } = await import("@shared/schema");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+
+      const existing = await db
+        .select({ id: partnerWaitlist.id })
+        .from(partnerWaitlist)
+        .where(eq(partnerWaitlist.email, parsed.data.email))
+        .limit(1);
+
+      if (existing.length === 0) {
+        await db.insert(partnerWaitlist).values({
+          name: parsed.data.name,
+          email: parsed.data.email,
+          company: parsed.data.company || null,
+          partnerType: parsed.data.partnerType,
+          message: parsed.data.message || null,
+        });
+      }
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Partner waitlist error:", error);
       res.json({ ok: true });
     }
   });

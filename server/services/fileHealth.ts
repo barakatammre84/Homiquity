@@ -44,6 +44,12 @@ export interface FileHealthInput {
   /** Amount fields for the stage-coherence check (shared/stageRequirements). */
   preApprovalAmount?: string | number | null;
   purchasePrice?: string | number | null;
+  /**
+   * Open income-review workbench items (UAL P5). Like conditions, these are an
+   * active file's work list — they tint the light yellow so the Command Center
+   * surfaces "N income items need review" without manufacturing a stall.
+   */
+  openReviewItems?: number;
 }
 
 /**
@@ -112,6 +118,12 @@ export function computeFileHealth(input: FileHealthInput): FileHealth {
   // band the pipeline engine escalates on.
   if (input.conditionsOutstanding > CONDITIONS_WARNING_COUNT) {
     yellowReasons.push(`${input.conditionsOutstanding} conditions outstanding`);
+  }
+
+  if ((input.openReviewItems ?? 0) > 0) {
+    yellowReasons.push(
+      `${input.openReviewItems} income review item${input.openReviewItems === 1 ? "" : "s"} need${input.openReviewItems === 1 ? "s" : ""} a human`,
+    );
   }
 
   if (redReasons.length > 0) {

@@ -307,6 +307,8 @@ import {
   type InsertCpaPartner,
   type CpaReferral,
   type InsertCpaReferral,
+  bankStatementAnalyses,
+  type BankStatementAnalysis,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -395,6 +397,8 @@ export interface IStorage {
   getDecryptedUrlaSsn(applicationId: string, borrowerSequenceNumber?: number): Promise<string | null>;
   
   getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]>;
+  /** Latest captured bank-statement deposit analysis (UAL P5), newest first. */
+  getLatestBankStatementAnalysis(applicationId: string): Promise<BankStatementAnalysis | undefined>;
   getEmploymentHistoryById(id: string): Promise<EmploymentHistory | undefined>;
   createEmploymentHistory(data: InsertEmploymentHistory): Promise<EmploymentHistory>;
   updateEmploymentHistory(id: string, data: Partial<EmploymentHistory>): Promise<EmploymentHistory | undefined>;
@@ -1530,6 +1534,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Employment History
+  async getLatestBankStatementAnalysis(applicationId: string): Promise<BankStatementAnalysis | undefined> {
+    const [row] = await db
+      .select()
+      .from(bankStatementAnalyses)
+      .where(eq(bankStatementAnalyses.applicationId, applicationId))
+      .orderBy(desc(bankStatementAnalyses.createdAt))
+      .limit(1);
+    return row;
+  }
+
   async getEmploymentHistory(applicationId: string): Promise<EmploymentHistory[]> {
     return await db
       .select()
@@ -3384,10 +3398,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveRateLock(applicationId: string): Promise<RateLock | undefined> {
+    // An extended lock is still a live lock — treat "extended" as active so the
+    // one-active-lock-per-application guard and lookups don't miss it after an
+    // extension flips the status.
     const [lock] = await db
       .select()
       .from(rateLocks)
-      .where(and(eq(rateLocks.applicationId, applicationId), eq(rateLocks.status, "active")));
+      .where(and(eq(rateLocks.applicationId, applicationId), inArray(rateLocks.status, ["active", "extended"])));
     return lock;
   }
 
@@ -3409,7 +3426,9 @@ export class DatabaseStorage implements IStorage {
       .from(rateLocks)
       .where(
         and(
-          eq(rateLocks.status, "active"),
+          // Extended locks still expire — include them, or the alert sweep
+          // misses the files most likely to be near expiry (already extended).
+          inArray(rateLocks.status, ["active", "extended"]),
           gte(rateLocks.expiresAt, now),
           lte(rateLocks.expiresAt, futureDate)
         )

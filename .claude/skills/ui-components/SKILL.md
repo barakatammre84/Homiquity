@@ -1,6 +1,6 @@
 ---
 name: ui-components
-description: Use when building or restyling any client UI — pages, components, layout, theming, forms — in client/src. Covers the Charcoal Emerald design tokens (enforced by design-token-guard), WCAG AA accessibility requirements, and the Shadcn/Radix + Tailwind + TanStack Query conventions.
+description: Use when building or restyling any client UI — pages, components, layout, theming, forms — in client/src. Covers the Royal Blue Emerald design tokens (enforced by design-token-guard), WCAG AA accessibility requirements, and the Shadcn/Radix + Tailwind + TanStack Query conventions.
 ---
 
 # UI components & design system
@@ -9,7 +9,7 @@ Fast-start router. **Authoritative reference:** [`kb/handbook/design/design_guid
 
 ## Non-negotiables
 - **No raw Tailwind palette classes** (`text-emerald-600`, `bg-amber-100`, …). `scripts/design-token-guard.cjs` (via `npm run checkup`) **fails CI** on them. Use semantic tokens and `<Badge>`/`<Alert>` variants.
-- **Charcoal Emerald** (2026-07-06, supersedes Obsidian Indigo): stark-white surfaces, neutral slate ramp, deep-charcoal type. **Emerald = forward action only** (`bg-primary` #047857, AA 5.49:1 — raw #10B981 must not carry white text). Hierarchy through the value ramp + whitespace, not hue. Cards = white + 1px slate-200 hairline, **no default shadow**.
+- **Royal Blue Emerald** (2026-07-08 repaint of Charcoal Emerald): stark-white surfaces, neutral slate ramp, near-black slate type (#0F172A), **vivid royal-blue dark surfaces** (sidebar via `--sidebar`, hero gradients via `precision.950/900/700`). **Emerald = forward action only** (`bg-primary` #047857, AA 5.49:1 — raw #10B981 must not carry white text). Hierarchy through the value ramp + whitespace, not hue. Cards = white + 1px slate-200 hairline, **no default shadow**.
 - **WCAG 2.1 AA (enforced):** status color as text-on-canvas is a fail → use the `*-subtle` pairs. Icon-only controls **require `aria-label`**. Labels always visible (no placeholder-only). Touch targets ≥44px. `<SkipLink/>` is the first focusable element; form errors announce via `role="alert"`.
 - **Icons:** `lucide-react` only (not Heroicons). No emoji/raster glyphs in UI.
 - **Data:** never `fetch()` in a component — use `queryClient`/`apiRequest` (TanStack Query) so auth, errors, and cache invalidation stay consistent. Forms use react-hook-form + the shared Zod schemas.

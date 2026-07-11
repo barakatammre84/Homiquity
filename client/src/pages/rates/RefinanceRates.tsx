@@ -11,6 +11,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import RatePageHeader, { RateRow } from "@/components/RatePageHeader";
+import { SEOHead } from "@/components/SEOHead";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { formatRateTerm, formatRatePoints } from "@/lib/formatters";
 import type { MortgageRateWithProgram } from "@/types/rates";
@@ -65,6 +66,11 @@ export default function RefinanceRates() {
 
   return (
     <>
+      <SEOHead
+        title="Refinance Mortgage Rates"
+        description="Compare current refinance mortgage rate and APR trends, with the loan assumptions behind every quote — no personal information required."
+        canonical="/rates/refinance"
+      />
       <RatePageHeader
         loanType="refinance"
         title="Refinance rates today"

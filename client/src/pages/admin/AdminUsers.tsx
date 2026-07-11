@@ -61,6 +61,7 @@ import {
   Copy,
   Check,
   Ticket,
+  Calculator,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
@@ -97,10 +98,19 @@ const ROLE_CONFIG: Record<string, { label: string; icon: typeof Shield }> = {
   closer: { label: "Closer/Funder", icon: Banknote },
   broker: { label: "Broker", icon: Briefcase },
   lender: { label: "Lender", icon: Building2 },
+  // Partner roles (self-registering external partners)
+  cpa: { label: "CPA", icon: Calculator },
   // Client roles
   aspiring_owner: { label: "Aspiring Owner", icon: Star },
   active_buyer: { label: "Active Buyer", icon: Home },
 };
+
+// Never index ROLE_CONFIG directly at a render site: a role present in ALL_ROLES
+// (or returned by the API) but missing here would evaluate `.icon`/`.label` on
+// undefined and blank the whole page via the error boundary. This helper always
+// returns a usable config, degrading to the raw role string + a neutral icon.
+const getRoleConfig = (role: string) =>
+  ROLE_CONFIG[role] ?? { label: role, icon: Users };
 
 const ROLES = ALL_ROLES;
 
@@ -402,7 +412,7 @@ export default function AdminUsers() {
                   <SelectItem value="all">All Roles</SelectItem>
                   {ROLES.map((role) => (
                     <SelectItem key={role} value={role}>
-                      {ROLE_CONFIG[role].label}
+                      {getRoleConfig(role).label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -430,7 +440,7 @@ export default function AdminUsers() {
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user) => {
-                  const roleConfig = ROLE_CONFIG[user.role] || ROLE_CONFIG.active_buyer;
+                  const roleConfig = getRoleConfig(user.role);
                   const RoleIcon = roleConfig.icon;
                   const isCurrentUser = user.id === currentUser?.id;
 
@@ -555,7 +565,7 @@ export default function AdminUsers() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">
-                          {(ROLE_CONFIG[invite.role]?.label) || invite.role}
+                          {getRoleConfig(invite.role).label}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
@@ -632,8 +642,7 @@ export default function AdminUsers() {
                   </SelectTrigger>
                   <SelectContent>
                     {STAFF_ROLES.filter(r => r !== "admin").map((role) => {
-                      const config = ROLE_CONFIG[role];
-                      if (!config) return null;
+                      const config = getRoleConfig(role);
                       const Icon = config.icon;
                       return (
                         <SelectItem key={role} value={role}>
@@ -699,7 +708,7 @@ export default function AdminUsers() {
                 </SelectTrigger>
                 <SelectContent>
                   {ROLES.map((role) => {
-                    const config = ROLE_CONFIG[role];
+                    const config = getRoleConfig(role);
                     const Icon = config.icon;
                     return (
                       <SelectItem key={role} value={role}>

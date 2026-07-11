@@ -34,6 +34,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DealTeam } from "@/components/DealTeam";
 import { DealTeamManagement } from "@/components/DealTeamManagement";
+import { TaxIntelligencePanel } from "@/components/staff/TaxIntelligencePanel";
+import { ReviewWorkbenchPanel } from "@/components/staff/ReviewWorkbenchPanel";
 import {
   FileText,
   User,
@@ -53,6 +55,7 @@ import {
   AlertOctagon,
   FileWarning,
   Users,
+  Brain,
 } from "lucide-react";
 import { format } from "date-fns";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
@@ -669,6 +672,10 @@ export default function BorrowerFile() {
                     <CreditCard className="mr-2 h-4 w-4" />
                     Credit
                   </TabsTrigger>
+                  <TabsTrigger value="tax-intel" data-testid="tab-tax-intel">
+                    <Brain className="mr-2 h-4 w-4" />
+                    Tax Intel
+                  </TabsTrigger>
                   <TabsTrigger value="team" data-testid="tab-team">
                     <Users className="mr-2 h-4 w-4" />
                     Team
@@ -754,9 +761,9 @@ export default function BorrowerFile() {
                           <span className="text-muted-foreground">Down Payment:</span>
                           <span>{formatCurrency(application.downPayment)}</span>
                           <span className="text-muted-foreground">LTV:</span>
-                          <span>{application.ltvRatio ? `${(Number(application.ltvRatio) * 100).toFixed(1)}%` : "N/A"}</span>
+                          <span>{application.ltvRatio ? `${Number(application.ltvRatio).toFixed(1)}%` : "N/A"}</span>
                           <span className="text-muted-foreground">DTI:</span>
-                          <span>{application.dtiRatio ? `${(Number(application.dtiRatio) * 100).toFixed(1)}%` : "N/A"}</span>
+                          <span>{application.dtiRatio ? `${Number(application.dtiRatio).toFixed(1)}%` : "N/A"}</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -1225,6 +1232,27 @@ export default function BorrowerFile() {
                       </ScrollArea>
                     </CardContent>
                   </Card>
+                </TabsContent>
+
+                <TabsContent value="tax-intel" className="space-y-4">
+                  {application?.userId ? (
+                    <>
+                      <ReviewWorkbenchPanel
+                        borrowerUserId={application.userId}
+                        applicationId={application.id}
+                      />
+                      <TaxIntelligencePanel
+                        borrowerUserId={application.userId}
+                        applicationId={application.id}
+                      />
+                    </>
+                  ) : (
+                    <Card>
+                      <CardContent className="py-6 text-sm text-muted-foreground">
+                        Borrower not loaded yet.
+                      </CardContent>
+                    </Card>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="team" className="space-y-4">

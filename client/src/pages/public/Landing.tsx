@@ -7,6 +7,10 @@ import { BuyingPowerEstimator } from "@/components/BuyingPowerEstimator";
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
+import { FramedPhoto } from "@/components/FramedPhoto";
+import { ImageTextSection } from "@/components/ImageTextSection";
+import { LifestyleImage } from "@/components/LifestyleImage";
+import { lifestyleImages } from "@/lib/lifestyleImages";
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 import { useQuery } from "@tanstack/react-query";
 import { usePageView } from "@/hooks/useActivityTracker";
@@ -19,11 +23,11 @@ import {
   TrendingUp,
   Scale,
   Bot,
-  Users,
   Building2,
   Briefcase,
   Key,
 } from "lucide-react";
+// Users icon replaced by a lifestyle photo in the founder-note band.
 
 // Monochromatic by design: differentiation comes from the icon, not a rainbow
 // of chip colors (Charcoal Emerald sweep — precision ramp only on this page).
@@ -86,32 +90,27 @@ export default function Landing() {
         title="Homiquity - Clarity for Every Stage of Homeownership"
         description="Homiquity gives you clarity, organization, and confidence in every stage of homeownership. Pre-approval, property search, AI coaching, and smart tools — all in one place."
         ogType="website"
+        ogImage={lifestyleImages.landingHero.src}
       />
       <SkipLink />
       <Navigation />
 
       <main id="main" tabIndex={-1} className="focus:outline-none">
-      <section className="relative overflow-hidden bg-gradient-to-br from-precision-950 via-precision-900 to-precision-700 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-precision-700/25 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-precision-500/15 blur-3xl" />
-
-        <div className="relative mx-auto max-w-6xl">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-10">
+      <section className="border-b bg-gradient-to-b from-primary/5 to-background px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
-                <Shield className="h-4 w-4 text-precision-300" />
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm">
+                <Shield className="h-4 w-4 text-primary" />
                 Built by a military veteran with 15+ years in banking
               </div>
 
-              <h1 className="text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl" data-testid="text-hero-title">
-                Clarity for every stage
-                <br />
-                <span className="bg-gradient-to-r from-precision-100 to-precision-300 bg-clip-text text-transparent">
-                  of homeownership.
-                </span>
+              <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl" data-testid="text-hero-title">
+                Clarity for every stage{" "}
+                <span className="text-primary">of homeownership.</span>
               </h1>
 
-              <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/80" data-testid="text-hero-subtitle">
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground" data-testid="text-hero-subtitle">
                 Whether you're buying your first home, refinancing, or investing,
                 Homiquity helps you understand your options and move forward with confidence.
               </p>
@@ -120,8 +119,7 @@ export default function Landing() {
                 <Link href="/apply" className="w-full sm:w-auto">
                   <Button
                     size="lg"
-                    variant="secondary"
-                    className="w-full gap-2 font-semibold shadow-lg sm:w-auto"
+                    className="w-full gap-2 font-semibold shadow-lg shadow-primary/25 sm:w-auto"
                     data-testid="button-hero-preapprove"
                   >
                     Start Your Pre-Approval
@@ -132,7 +130,7 @@ export default function Landing() {
                   <Button
                     variant="outline"
                     size="lg"
-                    className="w-full gap-2 border-white/25 bg-white/5 text-white backdrop-blur-sm sm:w-auto"
+                    className="w-full gap-2 sm:w-auto"
                     data-testid="button-hero-afford"
                   >
                     Can I Afford This Home?
@@ -140,48 +138,71 @@ export default function Landing() {
                 </Link>
               </div>
 
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/70 lg:justify-start">
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground lg:justify-start">
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-precision-300" />
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
                   No hard credit check
                 </span>
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-precision-300" />
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
                   Takes about 3 minutes
                 </span>
                 <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-precision-300" />
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
                   100% free
                 </span>
               </div>
             </div>
 
-            <BuyingPowerEstimator />
+            <FramedPhoto
+              src={lifestyleImages.landingHero.src}
+              alt={lifestyleImages.landingHero.alt}
+              testId="img-hero-landing"
+              position="center 25%"
+              loading="eager"
+              className="mx-auto w-full max-w-lg lg:max-w-none"
+            />
           </div>
+        </div>
+      </section>
 
-          <div className="relative mt-16 grid gap-4 sm:grid-cols-3 sm:gap-6">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm" data-testid="card-value-clarity">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                <CheckCircle2 className="h-5 w-5 text-precision-100" />
+      {/* Buying-power estimator — its own light band right under the hero */}
+      <section className="border-b bg-muted/30 px-4 py-16 sm:px-6 lg:px-8 lg:py-20" data-testid="section-estimator">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
+          <div>
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-primary">See your buying power</p>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Find out what you could afford — in about a minute
+            </h2>
+            <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
+              Answer a few quick questions and get a realistic estimate. No sign-up, no hard credit
+              check, and nothing leaves your device until you decide to continue.
+            </p>
+            <div className="mt-8 grid gap-6 sm:grid-cols-3">
+              <div data-testid="card-value-clarity">
+                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                </div>
+                <p className="font-semibold">Clarity</p>
+                <p className="mt-1 text-sm text-muted-foreground">Know exactly where you stand at every step</p>
               </div>
-              <p className="text-lg font-semibold text-white">Clarity</p>
-              <p className="mt-1 text-sm text-white/70">Know exactly where you stand at every step</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm" data-testid="card-value-organization">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                <FileText className="h-5 w-5 text-precision-100" />
+              <div data-testid="card-value-organization">
+                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <p className="font-semibold">Organization</p>
+                <p className="mt-1 text-sm text-muted-foreground">Documents, decisions, and progress — all in one place</p>
               </div>
-              <p className="text-lg font-semibold text-white">Organization</p>
-              <p className="mt-1 text-sm text-white/70">Documents, decisions, and progress — all in one place</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm" data-testid="card-value-confidence">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-                <Shield className="h-5 w-5 text-precision-100" />
+              <div data-testid="card-value-confidence">
+                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                  <Shield className="h-5 w-5 text-primary" />
+                </div>
+                <p className="font-semibold">Confidence</p>
+                <p className="mt-1 text-sm text-muted-foreground">Make better decisions with real data, not guesswork</p>
               </div>
-              <p className="text-lg font-semibold text-white">Confidence</p>
-              <p className="mt-1 text-sm text-white/70">Make better decisions with real data, not guesswork</p>
             </div>
           </div>
+          <BuyingPowerEstimator />
         </div>
       </section>
 
@@ -253,6 +274,26 @@ export default function Landing() {
         </div>
       </section>
 
+      <ImageTextSection
+        testId="section-know-afford"
+        eyebrow="Before you shop"
+        title="Know what you can afford — before you fall for a house"
+        image={lifestyleImages.learning.src}
+        imageAlt={lifestyleImages.learning.alt}
+        imagePosition="center 30%"
+        reverse
+        className="border-b"
+      >
+        <p>
+          Shopping without a number is how people fall for a home they can't get approved
+          for. Homiquity checks your income, debts, and goals against real lending
+          guidelines and shows you a clear range — before you tour a single house.
+        </p>
+        <p>
+          No hard credit check, no sales pressure. Just a straight answer you can plan around.
+        </p>
+      </ImageTextSection>
+
       <RatesTeaser />
 
       <section className="border-y bg-muted/30 px-4 py-16 sm:px-6 lg:px-8" data-testid="section-why-trust">
@@ -307,8 +348,13 @@ export default function Landing() {
 
           <div className="mt-12 rounded-2xl border bg-card p-8 sm:p-10" data-testid="card-founder-note">
             <div className="flex flex-col items-center text-center lg:flex-row lg:text-left lg:gap-8">
-              <div className="mb-6 flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/10 lg:mb-0">
-                <Users className="h-8 w-8 text-primary" />
+              <div className="mb-6 h-44 w-full shrink-0 overflow-hidden rounded-2xl sm:h-52 lg:mb-0 lg:h-40 lg:w-64">
+                <LifestyleImage
+                  src={lifestyleImages.founderNote.src}
+                  alt={lifestyleImages.founderNote.alt}
+                  testId="img-founder-note"
+                  position="center 30%"
+                />
               </div>
               <div>
                 <h3 className="text-lg font-semibold">A note from our team</h3>

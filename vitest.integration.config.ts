@@ -19,6 +19,7 @@ export default defineConfig({
       "tests/lookupMatrixCoverageGap.test.ts",
       "tests/lookupMatrixLifecycle.test.ts",
       "tests/loCommandCenter.test.ts",
+      "tests/rateLocks.test.ts",
       "tests/mismoExportAccess.test.ts",
       "tests/pricingUnderwriting.test.ts",
       "tests/taxInsightRoutes.test.ts",

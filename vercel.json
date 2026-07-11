@@ -12,10 +12,23 @@
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/sitemap.xml", "destination": "/api" },
+    {
+      "source": "/((?!api/|.*\\.).*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([Bb]ot|[Cc]rawler|[Ss]pider|facebookexternalhit|[Ff]acebot|[Tt]witterbot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Ww]hats[Aa]pp|[Tt]elegram[Bb]ot|[Dd]iscordbot|[Ee]mbedly|[Aa]pplebot|[Pp]interest|[Ss]kype[Uu]ri[Pp]review|[Bb]ingbot|[Gg]ooglebot|[Dd]uck[Dd]uck[Bb]ot|[Bb]aiduspider|[Yy]andex|[Rr]edditbot|[Mm]astodon|[Vv]k[Ss]hare|[Ww]3[Cc]_[Vv]alidator).*"
+        }
+      ],
+      "destination": "/api"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
     { "path": "/api/jobs/lifecycle", "schedule": "0 13 * * *" },
+    { "path": "/api/jobs/rate-lock-alerts", "schedule": "0 12 * * *" },
     { "path": "/api/jobs/adverse-action-delivery", "schedule": "0 14 * * *" },
     { "path": "/api/jobs/aggregate-data", "schedule": "17 11 * * 1" }
   ]

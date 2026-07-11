@@ -17,6 +17,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { getPresenceColor } from "@/lib/formatters";
 import { isStaffRole, isInternalStaffRole, isPartnerRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
@@ -50,6 +51,7 @@ import {
   ClipboardList,
   Palette,
   Gauge,
+  Handshake,
 } from "lucide-react";
 
 interface TeamMember {
@@ -172,6 +174,7 @@ const adminNavigation: NavSection[] = [
     items: [
       { title: "Admin Dashboard", href: "/admin", icon: LayoutDashboard, testId: "link-admin" },
       { title: "Manage Users", href: "/admin/users", icon: Users, testId: "link-admin-users" },
+      { title: "Partner Waitlist", href: "/admin/partners", icon: Handshake, testId: "link-admin-partners" },
       { title: "Manage Rates", href: "/admin/rates", icon: Percent, testId: "link-admin-rates" },
       { title: "Manage Content", href: "/admin/content", icon: PenSquare, testId: "link-admin-content" },
       { title: "Policy Operations", href: "/admin/policy-ops", icon: Scale, testId: "link-admin-policy-ops" },
@@ -185,7 +188,7 @@ export function AppSidebar() {
   const { user } = useAuth();
   const [isHelpExpanded, setIsHelpExpanded] = useState(false);
 
-  const { data: teamMembers = [] } = useQuery<TeamMember[]>({
+  const { data: teamMembers = [], isLoading: teamLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team-members"],
     enabled: !!user,
     refetchInterval: 30000,
@@ -330,7 +333,19 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                   {isHelpExpanded && (
                     <SidebarMenuSub>
-                      {teamMembers.length > 0 ? (
+                      {teamLoading && teamMembers.length === 0 ? (
+                        [1, 2].map((i) => (
+                          <SidebarMenuSubItem key={i}>
+                            <div className="flex items-center gap-2 px-2 py-1.5" data-testid="team-loading">
+                              <Skeleton className="h-6 w-6 rounded-full" />
+                              <div className="flex-1 space-y-1">
+                                <Skeleton className="h-3 w-20" />
+                                <Skeleton className="h-2.5 w-14" />
+                              </div>
+                            </div>
+                          </SidebarMenuSubItem>
+                        ))
+                      ) : teamMembers.length > 0 ? (
                         teamMembers.map((member) => (
                           <SidebarMenuSubItem key={member.id}>
                             <SidebarMenuSubButton asChild>

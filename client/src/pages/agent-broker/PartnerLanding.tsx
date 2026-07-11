@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
+import { PENDING_REFERRAL_CODE_KEY } from "@/lib/pendingAttribution";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,6 +35,7 @@ interface PublicProfile {
   serviceAreas: string[] | null;
   loName: string;
   loProfileImage: string | null;
+  referralCode: string | null;
 }
 
 const BENEFITS = [
@@ -50,6 +53,15 @@ export default function PartnerLanding() {
     queryKey: ['/api/co-brand/public', profileId],
     enabled: !!profileId,
   });
+
+  // Stash the LO's referral code so a consumer who lands on this co-branded page
+  // and signs up is attributed to that LO (usePendingAttribution applies it after
+  // auth). The bare /apply CTAs below can't carry attribution on their own.
+  useEffect(() => {
+    if (profile?.referralCode) {
+      localStorage.setItem(PENDING_REFERRAL_CODE_KEY, profile.referralCode);
+    }
+  }, [profile?.referralCode]);
 
   if (isLoading) {
     return (

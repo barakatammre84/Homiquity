@@ -1,9 +1,10 @@
 // Illinois DPA seed data — facts verified 2026-07-06 against the administering
 // agencies (IHDA, City of Chicago DOH / NHS Chicago, Cook County / Club 720).
 // Kept separate from seed.ts so tests can validate this content without
-// importing the database connection. Article content must stay renderer-safe
-// for ArticleDetail.tsx's line parser: headings, "- " lists, and plain
-// paragraphs only — no markdown links, bold, or tables.
+// importing the database connection. As of roadmap Phase 4, ArticleDetail.tsx
+// renders full markdown (headings, lists, GFM tables, and inline links/bold/
+// italic), so content here may use internal links; the bodies below remain plain
+// prose (they predate the renderer upgrade).
 import type { InsertArticle, InsertDpaProgram } from "@shared/schema";
 
 export const ILLINOIS_DPA_ARTICLES: InsertArticle[] = [

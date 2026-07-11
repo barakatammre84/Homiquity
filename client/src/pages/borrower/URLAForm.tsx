@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrackActivity, useTrackFormStart } from "@/hooks/useActivityTracker";
@@ -163,7 +164,13 @@ export default function URLAForm() {
   const track = useTrackActivity();
   const trackFormStart = useTrackFormStart();
 
-  const { data: dashboardData, isLoading: dashboardLoading } = useQuery<DashboardData>({
+  const {
+    data: dashboardData,
+    isLoading: dashboardLoading,
+    isError: dashboardIsError,
+    error: dashboardErrorObj,
+    refetch: refetchDashboard,
+  } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
     enabled: !authLoading,
   });
@@ -173,7 +180,13 @@ export default function URLAForm() {
     (app) => !isTerminalLoanAppStatus(app.status)
   );
 
-  const { data: urlaData, isLoading: urlaLoading } = useQuery<UrlaData>({
+  const {
+    data: urlaData,
+    isLoading: urlaLoading,
+    isError: urlaIsError,
+    error: urlaErrorObj,
+    refetch: refetchUrla,
+  } = useQuery<UrlaData>({
     queryKey: ['/api/urla', activeApplication?.id],
     enabled: !!activeApplication?.id,
   });
@@ -330,6 +343,25 @@ export default function URLAForm() {
           <Skeleton className="h-96" />
         </div>
       </PageShell>
+    );
+  }
+
+  // A load failure would otherwise fall through to "No application open yet"
+  // (masking a server error) or a blank 1003 the user could overwrite — show an
+  // honest error + retry first (ux-01).
+  if (dashboardIsError || urlaIsError) {
+    return (
+      <div className="p-8">
+        <QueryErrorState
+          error={dashboardErrorObj ?? urlaErrorObj}
+          onRetry={() => {
+            void refetchDashboard();
+            void refetchUrla();
+          }}
+          title="We couldn't load your loan file"
+          data-testid="urla-error"
+        />
+      </div>
     );
   }
 

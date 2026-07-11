@@ -6,6 +6,7 @@ import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
+import { hasPendingPreApprovalSubmit } from "@/lib/pendingAttribution";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -608,6 +609,17 @@ export default function Dashboard() {
     }
   }, [authLoading, isStaff, navigate]);
 
+  // Catch-all for OAuth sign-in: the password login/signup handlers already route
+  // a deferred pre-approval submit back to /apply, but an OAuth callback lands the
+  // user here on /dashboard. If a completed funnel is waiting to submit, bounce to
+  // /apply so the replay effect finishes it instead of stranding them on the
+  // incubator with their answers unsent.
+  useEffect(() => {
+    if (!authLoading && !isStaff && hasPendingPreApprovalSubmit()) {
+      navigate("/apply");
+    }
+  }, [authLoading, isStaff, navigate]);
+
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
     enabled: !authLoading && !isStaff,
@@ -762,7 +774,7 @@ export default function Dashboard() {
                 </h1>
                 {fileHealth === "healthy" && (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full bg-status-success/10 px-2 py-0.5 text-[11px] font-medium text-status-success"
+                    className="inline-flex items-center gap-1 rounded-full bg-success-subtle px-2 py-0.5 text-[11px] font-medium text-success-subtle-foreground"
                     title="Automated pre-underwriting review found no issues"
                     data-testid="chip-file-healthy"
                   >
@@ -772,7 +784,7 @@ export default function Dashboard() {
                 )}
                 {fileHealth === "action" && (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full bg-status-warning/10 px-2 py-0.5 text-[11px] font-medium text-status-warning"
+                    className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-medium text-warning-subtle-foreground"
                     title={activePreUw?.flags?.map((f) => f.reason).join(" ")}
                     data-testid="chip-file-action-needed"
                   >

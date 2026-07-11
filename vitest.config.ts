@@ -26,7 +26,12 @@ export default defineConfig({
       "tests/preUnderwriting.test.ts",
       "tests/lifecycleEngine.test.ts",
       "tests/underwritingNuance.test.ts",
+      "tests/incomeOrchestrator.test.ts",
+      "tests/incomeCutoverParity.test.ts",
+      "tests/nonQmProgramGate.test.ts",
+      "tests/accuracyLoop.test.ts",
       "tests/underwritingEdgeCases.test.ts",
+      "tests/selfEmploymentIncome.test.ts",
       "tests/complianceInvariants.test.ts",
       "tests/scenarioCatalog.test.ts",
       "tests/statusVocabulary.test.ts",
@@ -53,6 +58,7 @@ export default defineConfig({
       "tests/specialFeatureCodes.test.ts",
       "tests/loanDeliveryEdits.test.ts",
       "tests/brokerSubmissionReadiness.test.ts",
+      "tests/incomeAnalysisPackage.test.ts",
       "tests/lenderSubmission.test.ts",
       "tests/pipelineEngineDocumentRequirements.test.ts",
       "tests/leadNotifications.test.ts",
@@ -62,6 +68,9 @@ export default defineConfig({
       "tests/prelaunchGate.test.ts",
       "tests/taxInsight.test.ts",
       "tests/extractionService.test.ts",
+      "tests/taxDocumentIntelligence.test.ts",
+      "tests/taxReconciliation.test.ts",
+      "tests/situationClassifier.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/cpaPartners.test.ts",
       "tests/mismoXsdValidation.test.ts",
@@ -70,6 +79,7 @@ export default defineConfig({
       "tests/loanScenarioMatrix.test.ts",
       "tests/documentTypeAliases.test.ts",
       "tests/localObjectStorage.test.ts",
+      "tests/postAuthRoute.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
@@ -83,6 +93,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@shared": path.resolve(__dirname, "shared"),
+      "@": path.resolve(__dirname, "client", "src"),
     },
   },
 });

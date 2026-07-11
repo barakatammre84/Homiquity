@@ -14,6 +14,14 @@ export interface GlossaryTerm {
   related?: string[];
   /** For pure cross-reference entries ("See X"), the slug of the target term. */
   see?: string;
+  /**
+   * Inline-tooltip form, when this term is surfaced via <TermTooltip>. `key` is
+   * the identifier passed as <TermTooltip term="key">, `label` is the short
+   * visible text, and `short` is a plain-language blurb sized for a hover card.
+   * lib/glossary.ts derives the tooltip glossary from these, so the full (page)
+   * and short (tooltip) definitions live in one place and never drift.
+   */
+  tooltip?: { key: string; label: string; short: string };
 }
 
 /** Stable anchor/id derived from a term's display name. */
@@ -37,6 +45,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   },
   {
     term: "Annual percentage rate (APR)",
+    tooltip: { key: "apr", label: "APR", short: "Annual Percentage Rate — the yearly cost of the loan including the interest rate plus most fees. It's the best number for comparing loans." },
     definition:
       "The annual percentage rate (APR) is your interest rate plus ancillary charges and fees—such as closing costs and discount points—expressed as a yearly rate. By law, a loan's APR is always expressed as a percentage next to the interest rate. The APR gives the best indication of the total cost of your mortgage.",
   },
@@ -68,6 +77,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   },
   {
     term: "Cash to close",
+    tooltip: { key: "cashToClose", label: "cash to close", short: "The total money you bring on closing day: your down payment plus closing costs, minus any deposits or credits already applied." },
     definition:
       "Cash to close is the total amount needed to bring to the closing attorney's office on closing day. It typically includes down payment, fees, pre-paid taxes, homeowner's insurance, and any homeowners association fees that may be applicable. Cash to close is usually paid in the form of a wire transfer or a certified bank or cashier's check.",
     related: ["closing", "wire-transfer"],
@@ -83,6 +93,13 @@ export const glossaryTerms: GlossaryTerm[] = [
     definition:
       "Closing is the final step of the homebuying transaction. All outstanding fees listed in the closing disclosure are paid, the escrow funds are cleared to be delivered to the seller, and the buyer and seller sign documents to transfer ownership of the property. The buyer signs the mortgage loan, and the title company registers the title deed to the property in the buyer's name.",
     related: ["closing-disclosure", "cash-to-close"],
+  },
+  {
+    term: "Closing costs",
+    definition:
+      "Closing costs are the one-time fees you pay when your loan finalizes — things like the appraisal, title services, and lender fees. They're separate from your down payment and are usually a few percent of the loan amount, though the exact total varies by lender and location. Your Loan Estimate and Closing Disclosure both itemize them.",
+    tooltip: { key: "closingCosts", label: "closing costs", short: "One-time fees paid when the loan finalizes — things like appraisal, title, and lender fees. Often 2–5% of the loan." },
+    related: ["closing", "cash-to-close", "closing-disclosure"],
   },
   {
     term: "Closing disclosure",
@@ -169,6 +186,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   },
   {
     term: "Debt-to-income ratio (DTI)",
+    tooltip: { key: "dti", label: "DTI", short: "Debt-to-Income ratio — how much of your monthly income goes to debt payments. Lenders usually want this at or below 43%." },
     definition:
       "Your debt-to-income ratio (DTI) is a measure of your monthly debt compared to your monthly income, calculated by your monthly debt divided by your monthly gross (pre-tax) income. DTI is one of the factors used to determine how much you can afford in a monthly mortgage payment.",
     related: ["qualifying-ratios"],
@@ -204,6 +222,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   },
   {
     term: "Escrow/impounds",
+    tooltip: { key: "escrow", label: "escrow", short: "An account your lender uses to collect and pay your property taxes and insurance for you, spread across your monthly payment." },
     definition:
       "An escrow (also known as an impound account) is a third-party account where money between two or more parties is managed. Escrow accounts may be used to hold a buyer's deposits while a real estate transaction is being processed. Escrow accounts are also commonly used to hold property taxes and insurance premiums (collected as part of the monthly mortgage payment) until the payments are due.",
     related: ["close-of-escrow", "prepaid-costs"],
@@ -406,6 +425,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   },
   {
     term: "PITI",
+    tooltip: { key: "piti", label: "PITI", short: "Your full monthly housing payment: Principal, Interest, property Taxes, and homeowners Insurance." },
     definition:
       "PITI is short for Principal, Interest, Taxes, and Insurance—the four aspects of a monthly home loan payment. Principal and interest are based on the loan amount and terms of your mortgage. Taxes and insurance are directly related to the value of your property and the levies that your local government applies.",
     related: ["principal", "interest-rate", "qualifying-ratios"],
@@ -418,6 +438,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   },
   {
     term: "Points",
+    tooltip: { key: "points", label: "points", short: "An optional upfront fee you can pay to lower your interest rate. One point costs 1% of the loan amount." },
     definition:
       "Points (also known as discount points and mortgage points) are a way to lower the interest rate on your home loan by agreeing to pay more at closing. One mortgage point is equal to 1% of the mortgage amount and can lower your interest rate by up to 0.25%. The more points you pay, the lower your payment and rate will be. Points are the inverse of credits.",
     related: ["credits-lender-credits", "interest-rate"],
@@ -454,6 +475,7 @@ export const glossaryTerms: GlossaryTerm[] = [
   },
   {
     term: "Private mortgage insurance (PMI)",
+    tooltip: { key: "pmi", label: "PMI", short: "Private Mortgage Insurance — an added monthly cost when your down payment is under 20%. It protects the lender, not you, and can usually be removed later." },
     definition:
       "Private mortgage insurance (PMI) is insurance required by lenders when a borrower puts less than 20% down on a conventional loan. It's meant to protect the lender in the event that the borrower defaults. PMI can be cancelled once the borrower has at least 20% equity in the property. The PMI amount is determined by many different factors, similar to your interest rate—including FICO score, loan-to-value ratio, debt-to-income ratio, property type, and occupancy.",
     related: ["conventional-mortgage", "loan-to-value-ltv", "mortgage-insurance-premium-mip"],

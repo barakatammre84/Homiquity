@@ -127,6 +127,14 @@ export default function Waitlist() {
               </Button>
             </Link>
           </div>
+
+          <div className="mt-6">
+            <Link href="/partners">
+              <span className="text-sm font-medium text-primary hover:underline" data-testid="link-partner-waitlist">
+                Are you a loan officer, lender, CPA, or real-estate agent? Partner with us &rarr;
+              </span>
+            </Link>
+          </div>
         </div>
       </main>
 

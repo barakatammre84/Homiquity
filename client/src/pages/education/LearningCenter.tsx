@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LifestyleImage } from "@/components/LifestyleImage";
+import { lifestyleImages } from "@/lib/lifestyleImages";
 import {
   Search,
   BookOpen,
@@ -21,6 +23,8 @@ import {
   HelpCircle,
 } from "lucide-react";
 import type { Article, ContentCategory } from "@shared/schema";
+import { SEOHead } from "@/components/SEOHead";
+import { breadcrumbSchema } from "@/lib/structuredData";
 
 const iconMap: Record<string, React.ElementType> = {
   "book-open": BookOpen,
@@ -104,7 +108,11 @@ function CategoryCard({ category, articleCount }: { category: ContentCategory; a
 }
 
 export default function LearningCenter() {
-  const [searchQuery, setSearchQuery] = useState("");
+  // Initialize from ?search= so the WebSite SearchAction target (/learn?search=…)
+  // resolves to real results — deep links and search-engine query actions work.
+  const [searchQuery, setSearchQuery] = useState(
+    () => new URLSearchParams(window.location.search).get("search") ?? "",
+  );
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   usePageView("/learn");
@@ -134,6 +142,15 @@ export default function LearningCenter() {
 
   return (
     <>
+      <SEOHead
+        title="Mortgage Learning Center — Guides for Every Step of Homebuying"
+        description="Homiquity's Learning Center: clear, jargon-free guides on getting pre-approved, understanding mortgage types, improving your credit, and buying your first home."
+        canonical="/learn"
+        jsonLd={breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "Learning Center", path: "/learn" },
+        ])}
+      />
       <div className="border-b bg-gradient-to-br from-primary/5 to-primary/10 p-6 sm:p-8 lg:p-12">
             <div className="mx-auto max-w-4xl text-center">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
@@ -159,6 +176,17 @@ export default function LearningCenter() {
                 />
               </div>
             </div>
+      </div>
+
+      <div className="mx-auto max-w-5xl px-4 pt-8 sm:px-6 lg:px-8">
+        <div className="h-44 overflow-hidden rounded-2xl border shadow-sm sm:h-56">
+          <LifestyleImage
+            src={lifestyleImages.learning.src}
+            alt={lifestyleImages.learning.alt}
+            testId="img-learning-banner"
+            position="center 30%"
+          />
+        </div>
       </div>
 
       <div className="p-4 sm:p-6 lg:p-8">

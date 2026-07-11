@@ -17,6 +17,11 @@ import { US_STATES } from "@/lib/us-states";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
+import {
+  PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
+  PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
+  PREAPPROVAL_PENDING_SUBMIT_KEY as PENDING_SUBMIT_KEY,
+} from "@/lib/pendingAttribution";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
 import { 
@@ -277,6 +282,12 @@ interface AdvisoryPanelProps {
   currentStepId: string;
 }
 
+// Steps shown before any numbers are entered — the advisory panel has nothing
+// useful to show yet, so it (and the right-hand column the main content reserves
+// for it) is suppressed. Shared so the panel's visibility and the layout's
+// reserved space can never drift apart.
+const ADVISORY_HIDDEN_STEPS: string[] = ["intro", "loanPurpose", "propertyType"];
+
 function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
   // Payment estimates use the live advertised 30-year fixed rate — a payment
   // figure shown to a borrower must be reproducible from current pricing,
@@ -326,7 +337,7 @@ function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
     return { dti, estMortgage, loanAmount, ltv, downPaymentPercent, estRatePct };
   }, [formValues, advertised30YrRate]);
 
-  if (currentStepId === "intro" || currentStepId === "loanPurpose" || currentStepId === "propertyType") {
+  if (ADVISORY_HIDDEN_STEPS.includes(currentStepId)) {
     return null;
   }
 
@@ -614,9 +625,8 @@ function PreApprovalFunnel() {
     } catch {}
   }, []);
 
-  const AUTOSAVE_KEY = "homiquity_preapproval_draft";
-  const AUTOSAVE_STEP_KEY = "homiquity_preapproval_step";
-  const PENDING_SUBMIT_KEY = "homiquity_preapproval_pending_submit";
+  // Draft/step/pending-submit keys now live in @/lib/pendingAttribution so the
+  // post-auth router (getPostAuthRoute) can detect a deferred submit too.
   const [autosaveRestored, setAutosaveRestored] = useState(false);
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
@@ -1663,7 +1673,14 @@ function PreApprovalFunnel() {
       <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 pt-20 pb-0 w-full max-w-4xl mx-auto relative lg:pr-96">
+      <div
+        className={cn(
+          "flex-1 flex flex-col items-center justify-center p-6 pt-20 pb-0 w-full max-w-4xl mx-auto relative",
+          // Only reserve the right-hand column while the advisory panel is shown;
+          // on the opening steps it isn't, so the question stays centered.
+          !ADVISORY_HIDDEN_STEPS.includes(currentQ.id) && "lg:pr-96",
+        )}
+      >
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={stepId}
@@ -1756,13 +1773,18 @@ function PreApprovalFunnel() {
               One last step
             </h3>
             <p className="text-muted-foreground mb-6">
-              Sign in to see your pre-approval results. Your answers are already saved.
+              Create an account (or sign in) to see your pre-approval results. Your answers are already saved.
             </p>
             <div className="space-y-3">
-              <a href="/login" className="block">
-                <Button size="lg" className="w-full" data-testid="button-auth-gate-login">
-                  Sign In
+              <a href="/signup" className="block">
+                <Button size="lg" className="w-full" data-testid="button-auth-gate-signup">
+                  Create account
                   <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </a>
+              <a href="/login" className="block">
+                <Button size="lg" variant="outline" className="w-full" data-testid="button-auth-gate-login">
+                  Sign In
                 </Button>
               </a>
               <Button

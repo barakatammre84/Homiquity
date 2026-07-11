@@ -13,6 +13,7 @@ import { queryClient } from "@/lib/queryClient";
 import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
 import { canonicalDocumentType } from "@shared/documentTypes";
 import { PageShell } from "@/components/PageShell";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import {
   FileText,
   Download,
@@ -174,7 +175,13 @@ export default function Documents() {
   const { toast } = useToast();
   const { uploadFile, isUploading } = useUpload();
 
-  const { data, isLoading } = useQuery<DashboardData>({
+  const {
+    data,
+    isLoading,
+    isError: docsError,
+    error: docsErrorObj,
+    refetch: refetchDocs,
+  } = useQuery<DashboardData>({
     queryKey: ["/api/dashboard"],
     enabled: !authLoading,
   });
@@ -282,6 +289,21 @@ export default function Documents() {
           ))}
         </div>
       </div>
+    );
+  }
+
+  // A server failure on the dashboard query used to render the checklist as if
+  // nothing was submitted (all "pending") — show an honest error + retry (ux-01).
+  if (docsError) {
+    return (
+      <PageShell fullHeight width="wide" title="Document Checklist" subtitle="Submit required documents as requested — we may ask for more as your application progresses">
+        <QueryErrorState
+          error={docsErrorObj}
+          onRetry={() => refetchDocs()}
+          title="We couldn't load your documents"
+          data-testid="documents-error"
+        />
+      </PageShell>
     );
   }
 

@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Bell,
   MessageCircle,
@@ -162,7 +163,7 @@ export function NotificationsBell({ unreadCount, activities }: NotificationsBell
   // request for the whole shell) instead of a dedicated 15s poll here.
   const badges = useShellBadges();
 
-  const { data: notifData } = useQuery<{ notifications: RealNotification[] }>({
+  const { data: notifData, isLoading: notifLoading } = useQuery<{ notifications: RealNotification[] }>({
     queryKey: ["/api/notifications"],
     enabled: open,
   });
@@ -236,7 +237,19 @@ export function NotificationsBell({ unreadCount, activities }: NotificationsBell
           </div>
         </div>
         <ScrollArea className="max-h-80">
-          {allNotifications.length === 0 ? (
+          {notifLoading && allNotifications.length === 0 ? (
+            <div className="divide-y" data-testid="notifications-loading">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-start gap-3 p-3">
+                  <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-3.5 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : allNotifications.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground" data-testid="text-no-notifications">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-40" />
               No notifications yet

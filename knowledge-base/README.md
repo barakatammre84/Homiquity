@@ -52,6 +52,8 @@ doc-drift bug to fix):
 ### Specs — L3 feature specs · [`specs/`](specs/)
 - [_TEMPLATE.md](specs/_TEMPLATE.md) — the L3 spec skeleton (cite L1 loop + L2 invariants).
 - [FREE_DATA_MOAT.md](specs/FREE_DATA_MOAT.md) — HMDA + Fannie loan-performance data pipelines.
+- [LO_ADVISOR_PROGRAM.md](specs/LO_ADVISOR_PROGRAM.md) — LO Advisor program charter — six build prompts wiring the advisory cockpit (what-if simulator, client reports, proactive signals, comms lint, lock-desk completion) onto existing engines.
+- [PARTNER_HUB_PROGRAM.md](specs/PARTNER_HUB_PROGRAM.md) — COI PartnerHub program charter — six build prompts unifying the existing partner rails (CPA channel, agent co-branding, referral codes, waitlist) into one identity/attribution spine + persona toolkits, with binding doctrine corrections (§5) to the 2026-07-11 partner-tools draft.
 
 ### Feature Review — the durable QA program · [`feature-review/`](feature-review/)
 The re-runnable QA teams (agents in `.claude/agents/`) that review every feature vs intended use.

@@ -544,6 +544,20 @@ export function registerLendingRoutes(
           });
           if (invite) {
             console.log(`[Invite] Linked invite ${inviteId} to application ${application.id}`);
+            // Fold the inviting LO/LOA into the deal's own attribution. A client
+            // who arrived via a direct-apply invite never went through /ref, so
+            // referringBrokerId was null above; without this, attribution would
+            // live only on the invite row and be invisible to any pipeline logic
+            // reading the application. Only fill it if not already set (a real
+            // /ref attribution wins) and only for LO/LOA referrers.
+            if (
+              !referringBrokerId &&
+              (invite.referrerType === "lo" || invite.referrerType === "loa")
+            ) {
+              await storage.updateLoanApplication(application.id, {
+                referringBrokerId: invite.referrerId,
+              });
+            }
           }
         } catch (inviteErr) {
           console.warn(`[Invite] Failed to link invite ${inviteId}:`, inviteErr);

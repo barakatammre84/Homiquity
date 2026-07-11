@@ -58,6 +58,7 @@ const VerifyEmail = lazy(() => import("@/pages/public/VerifyEmail"));
 const AffordabilityCheck = lazy(() => import("@/pages/public/AffordabilityCheck"));
 const ApprovalStrength = lazy(() => import("@/pages/public/ApprovalStrength"));
 const Waitlist = lazy(() => import("@/pages/public/Waitlist"));
+const PartnerWaitlist = lazy(() => import("@/pages/public/PartnerWaitlist"));
 
 const PreApproval = lazy(() => import("@/pages/lending/PreApproval"));
 const LoanOptions = lazy(() => import("@/pages/lending/LoanOptions"));
@@ -148,6 +149,7 @@ const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
 const AdminRates = lazy(() => import("@/pages/admin/AdminRates"));
 const AdminContent = lazy(() => import("@/pages/admin/AdminContent"));
 const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
+const AdminPartnerWaitlist = lazy(() => import("@/pages/admin/AdminPartnerWaitlist"));
 
 import NotFound from "@/pages/not-found";
 
@@ -232,6 +234,9 @@ function Router() {
             invite landing is gated like /ref/:code so it funnels to the waitlist
             during prelaunch. */}
         <Route path="/for-cpas"><BareLayout><CpaPartnerLanding /></BareLayout></Route>
+        {/* Partner / center-of-influence waitlist — ungated. Pre-launch we recruit
+            the referral network (LOs, lenders, CPAs, agents), not consumer applicants. */}
+        <Route path="/partners"><BareLayout><PartnerWaitlist /></BareLayout></Route>
         <Route path="/cpa/:code">
           {(params) => <Gated><BareLayout><CpaInviteLanding /></BareLayout></Gated>}
         </Route>
@@ -505,6 +510,9 @@ function Router() {
         </Route>
         <Route path="/admin/users">
           <AdminPage><AdminUsers /></AdminPage>
+        </Route>
+        <Route path="/admin/partners">
+          <AdminPage><AdminPartnerWaitlist /></AdminPage>
         </Route>
         <Route path="/admin/policy-ops">
           <AdminPage><PolicyOps /></AdminPage>

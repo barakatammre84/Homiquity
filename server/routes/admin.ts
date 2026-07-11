@@ -51,6 +51,21 @@ export function registerAdminRoutes(
     }
   });
 
+  // Partner / center-of-influence waitlist signups — the recruitment queue the
+  // founder works pre-launch (loan officers, lenders, CPAs, agents). Newest first.
+  app.get("/api/admin/partner-waitlist", requireRole("admin"), async (req, res) => {
+    try {
+      const { partnerWaitlist } = await import("@shared/schema");
+      const { db } = await import("../db");
+      const { desc } = await import("drizzle-orm");
+      const rows = await db.select().from(partnerWaitlist).orderBy(desc(partnerWaitlist.createdAt));
+      res.json(rows);
+    } catch (error) {
+      console.error("Admin partner-waitlist error:", error);
+      res.status(500).json({ error: "Failed to get partner waitlist" });
+    }
+  });
+
   app.patch("/api/admin/users/:id/role", requireRole("admin"), async (req, res) => {
     try {
       const { role } = req.body;
