@@ -139,6 +139,7 @@ interface CreditSummary {
     primaryReason: string;
     noticeDate: string;
     deliveredAt: string | null;
+    deliveryMethod: string | null;
   } | null;
 }
 
@@ -325,6 +326,68 @@ export default function BorrowerFile() {
       toast({
         title: "Credit Pull Failed",
         description: error.message || "Failed to pull credit report",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Postal fallback for the ECOA/Reg B delivery window: download the notice as
+  // a mailable PDF, send it, then confirm delivery with the method used.
+  const [noticeDeliveryMethod, setNoticeDeliveryMethod] = useState<string>("mail");
+  const [downloadingNotice, setDownloadingNotice] = useState(false);
+
+  const handleDownloadAdverseActionPdf = async (adverseActionId: string) => {
+    setDownloadingNotice(true);
+    try {
+      const res = await fetch(`/api/credit/adverse-action/${adverseActionId}/letter-pdf`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to generate the notice PDF.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `adverse-action-${adverseActionId.substring(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Notice Downloaded",
+        description: "Print and mail the letter, then confirm delivery below.",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: error instanceof Error ? error.message : "Unexpected error.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingNotice(false);
+    }
+  };
+
+  const confirmNoticeDeliveryMutation = useMutation({
+    mutationFn: async ({ adverseActionId, method }: { adverseActionId: string; method: string }) => {
+      return apiRequest("POST", `/api/credit/adverse-action/${adverseActionId}/deliver`, {
+        deliveryMethod: method,
+      });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'] });
+      toast({
+        title: "Delivery Confirmed",
+        description: `Adverse-action notice recorded as delivered via ${variables.method.replace(/_/g, "-")}.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Delivery Confirmation Failed",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -1183,6 +1246,64 @@ export default function BorrowerFile() {
                             <p className="text-xs text-muted-foreground">
                               Generated: {format(new Date(creditData.latestAdverseAction.noticeDate), "MMM d, yyyy")}
                             </p>
+                            {creditData.latestAdverseAction.deliveredAt ? (
+                              <p className="text-xs text-muted-foreground" data-testid="text-notice-delivered">
+                                Delivered
+                                {creditData.latestAdverseAction.deliveryMethod
+                                  ? ` via ${creditData.latestAdverseAction.deliveryMethod.replace(/_/g, "-")}`
+                                  : ""}
+                                : {format(new Date(creditData.latestAdverseAction.deliveredAt), "MMM d, yyyy")}
+                              </p>
+                            ) : (
+                              <>
+                                <Separator />
+                                <p className="text-xs text-muted-foreground">
+                                  Reg B §1002.9 requires the applicant be notified within 30 days of the
+                                  decision. If the borrower hasn't seen the in-app notice, download the
+                                  letter, mail it, then confirm delivery here.
+                                </p>
+                              </>
+                            )}
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadAdverseActionPdf(creditData.latestAdverseAction!.id)}
+                                disabled={downloadingNotice}
+                                data-testid="button-download-adverse-action-pdf"
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                {downloadingNotice ? "Preparing…" : "Download for mailing"}
+                              </Button>
+                              {!creditData.latestAdverseAction.deliveredAt && (
+                                <>
+                                  <Select value={noticeDeliveryMethod} onValueChange={setNoticeDeliveryMethod}>
+                                    <SelectTrigger className="h-8 w-[120px]" data-testid="select-notice-delivery-method">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="mail">Mail</SelectItem>
+                                      <SelectItem value="email">Email</SelectItem>
+                                      <SelectItem value="in_app">In-app</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      confirmNoticeDeliveryMutation.mutate({
+                                        adverseActionId: creditData.latestAdverseAction!.id,
+                                        method: noticeDeliveryMethod,
+                                      })
+                                    }
+                                    disabled={confirmNoticeDeliveryMutation.isPending}
+                                    data-testid="button-confirm-notice-delivery"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                                    Confirm delivery
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         )}
                       </CardContent>
