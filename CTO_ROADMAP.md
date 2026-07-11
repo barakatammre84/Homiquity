@@ -29,6 +29,33 @@
 > everything commercial; **LS-2** (Vercel env vars) and **LS-6** (prod reseed) are founder-side;
 > **LS-10 slice 3** / **L6-fix** (MISMO XSD conformance) are the open engineering legs.
 
+> **Status update — 2026-07-11.** Two more waves landed since the box above: **(1)** the
+> **07-09 batch** (14 PRs, #86–#99): free-calculator suite + hub (#86–#88 — authorized
+> BUILD-1 deviation, counsel sign-off still open), **SEO foundation + blog engine** (#91),
+> Royal Blue Emerald repaint + lifestyle photography + QueryBoundary error states +
+> veteran-founded mark (#92–#95), partner/COI waitlist recruitment loop (#96–#98), and the
+> **LO Rate-Lock Desk** (#99). **(2)** the **07-11 batch** (11 PRs, #100–#118): the
+> **Complex-Borrower Income Engine** — UAL P1–P6 (#103/#108), with **prod migrations
+> `0013`–`0019` applied same day** (prod migration HEAD now `0019`) — the LO Advisor +
+> PartnerHub program charters (#109/#110 — see *Active build programs* below), the lender
+> demo kit (#113/#117), and staff/UI fixes (#111/#112/#116/#118). **(3)** An **11-PR merge
+> queue is open awaiting founder review** (every merge deploys): **#127** prod
+> Express-semantics fix (fixes a confirmed prod-only request-parsing divergence; no
+> migration), **#102** UAL charter doc, **#114** LO-2 scenario simulator (mig `0020`),
+> **#119** access-control hardening (the PR review is its §9 security gate), **#120**
+> wholesale-lender masking, **#121** PH-1 partner spine (mig `0021`), **#122** LO-1 cockpit
+> (*stacked on #114*), **#123** adverse-action mail PDF, **#124** LO-5 comms lint, **#125**
+> PH-2 consent pipeline (*stacked on #121*, mig `0022`), **#126** UAL P7 halal lane (mig
+> `0023`). Merge the migration-bearing PRs in numeric order (#114 → #121 → #125 → #126) and
+> apply each migration to prod post-merge (pg-client recipe,
+> [TEAM_PRACTICES](./knowledge-base/governance/TEAM_PRACTICES.md) §5); **the next new
+> migration number is `0024`** (`0020`–`0023` are claimed by the queue; two renumber
+> collisions already happened this week). **(4)** Launch blockers UNCHANGED: **F1 · LS-2 ·
+> LS-6 · LS-4** (founder) and **LS-10 slice 3 / L6-fix** (engineering). ⚠️ The
+> [CICD.md](./knowledge-base/runbooks/CICD.md) change ledger stops at #90 — the #91–#99 and
+> #100–#118 merges, **including the `0013`–`0019` prod migration apply, are unledgered**
+> (backfill flagged).
+
 **Founder (⛔ human — blocks everything commercial):**
 
 - [ ] **LS-1. F1 NMLS licensing (+ MERS org ID).** `server/config/company.ts` still says `PENDING`; no wholesale lender will credential an unlicensed broker. This is the single longest-lead item — everything else exists to be ready the day it clears.
@@ -48,6 +75,43 @@
 *(2026-07-04 launch-integration batch: all 13 PRs — #37, #39–#50 — merged in one integration push; the engineering sprint is fully landed. 2026-07-05: PR #51 (LS-10 slice 2, code) + PR #52 (docs: SDLC/security-review/DoD additions) merged in a second integration push. The private-beta Edge Middleware gate (PR #53) and the pre-license compliance gate (`prelaunchGate.ts`) were reconciled to **layer** — the beta gate is the front door, the pre-license gate hides the funnel inside, and the funnel lights up on F1 (decision + rollout in [ARMED_LAUNCH_CHARTER](./knowledge-base/governance/ARMED_LAUNCH_CHARTER_2026-07-07.md) §9). For everything that shipped 2026-07-05 → 07-08 and the current launch-blocker set, see the **Status update — 2026-07-08** box above. Fact/assumption register: [ASSUMPTIONS.md](./knowledge-base/governance/ASSUMPTIONS.md).)*
 
 Everything else in this file is explicitly **not** the sprint: CS\*, ARC-\*, CH-\*, G-B/G-C, LO-M16/M17, S-07+ wait until we are live or their blocker clears.
+
+---
+
+## Active build programs — engineering runs ahead while F1 pends (opened 2026-07-11)
+
+Three chartered programs (charters in `knowledge-base/specs/`) plus the beachhead plan carry
+the engineering lane between now and licensing; each prompt lands as its own PR through the
+normal gates. Queue/stack/migration detail is in the 2026-07-11 status box above.
+
+- **UAL — Complex-Borrower Income Engine** (charter = PR #102, open): **P1–P6 merged**
+  (#103/#108 — SE-1084 self-employment income, situation identification, multi-path income
+  orchestrator, Angel Oak non-QM simulation, accuracy loop, income package; prod migrations
+  `0013`–`0019` applied). **P7 halal lane built = PR #126** (funder-agnostic: research-corpus
+  citation authority, structure-translation calculators, `halalNeed` intake + gates, mig
+  `0023`). Channel go-live is gated on two founder calls (Ijara-CDC partner program;
+  CMG halal-via-TPO) + §5 counsel review — the calls, not code, are the critical path.
+- **LO Advisor Program** (charter merged #109 → `knowledge-base/specs/LO_ADVISOR_PROGRAM.md`;
+  order LO-2→1→5→3→4→6): **LO-2 what-if simulator = PR #114** (mig `0020`); **LO-1
+  three-pane cockpit = PR #122** (stacked on #114); **LO-5 deterministic comms lint =
+  PR #124** (Reg Z trigger-term block + Reg N promise-phrase warn on outbound messages).
+  **Next = LO-3 client Advisor Report** — wait for #120 (lender masking; reuse
+  `shared/borrowerOfferView.ts` for any borrower-facing offer surface) and LO-2's
+  `scenario_runs`. LO-6 lock desk builds on #99; live rates wait on the PPE contract (F11).
+- **PartnerHub COI Program** (charter merged #110 → `knowledge-base/specs/PARTNER_HUB_PROGRAM.md`;
+  binding counsel rails: no RESPA incentives, §7216 inviter-only, no partner pre-approval
+  letters, no rates pre-PPE+F1): **PH-1 identity spine = PR #121** (realtor partner role +
+  unified attribution + admin queue, mig `0021`); **PH-2 consent-first pipeline = PR #125**
+  (stacked on #121, mig `0022` — borrower opt-in, default OFF, gates what partners see;
+  consent copy is a counsel gate). **Next = PH-3 asset-compliance guard.**
+- **SE income beachhead** (application→LO→wholesale for self-employed borrowers): Workstream
+  B landed as UAL P1 (#103). Remaining: **Workstream A** — wire the orphaned decision engine
+  into the live path — and **Workstream C** — AUS-as-gate + XSD conformance (converges with
+  **L6-fix** below).
+- **Cross-cutting hardening in the same queue:** #119 role-separation enforcement (PR review
+  = its §9 security gate), #120 wholesale-lender masking (borrower-transparency doctrine),
+  #123 ECOA §1002.9 adverse-action postal-fallback PDF, #127 prod Express-request-semantics
+  fix.
 
 ---
 
@@ -107,12 +171,12 @@ Everything else in this file is explicitly **not** the sprint: CS\*, ARC-\*, CH-
 - [x] **L4. Auto-match uploads to conditions.** Document upload currently changes nothing — match the uploaded documentType against outstanding condition requiredDocumentTypes, mark them "submitted" for review (never auto-clear), notify assigned staff, and surface one-click stage advance when checkPipelineProgress says ready. Acceptance: uploading a W-2 flips its condition to submitted and staff sees a notification.
 - [x] **L5. Show the borrower why their rate is their rate.** calculateLLPA already returns the full base/adjustments/total breakdown — render it on LoanOptions ("760 FICO: −0.25 · 80% LTV: +0.125"). Acceptance: each loan option shows its adjustment decomposition.
 - [ ] **L6. XSD-validate the MISMO export + ULAD mapping audit.** The official schemas now live in-repo (docs/fannie-mae/schemas/, added 2026-07-04): ULDD Phase 5 extension XSD + MISMO base model, UCD v2.0 production schema + golden sample XMLs, and the official ULAD mapping workbook. Add an XSD-validation step for our generated MISMO 3.4 XML to the delivery test gate (tests/mismoExport.test.ts family + the midday Lender Delivery Gate routine) so exports are schema-valid, not just valid per our hand-built checks; then audit shared/mismo.ts field mapping against ulad-mapping-document.xlsx and file discrepancies as corrections. Owner: Claude. Est. 4-6h (validation step) + 3h (mapping audit). *(Done 2026-07-06 — validation-harness slice: `server/services/mismoXsdValidation.ts` shells out to `xmllint --schema` against `docs/fannie-mae/schemas/uldd-phase5-extension/MISMO_3_0.xsd` — the real MISMO base schema (not a stub), confirmed same namespace/root element as our generator's output — with a graceful `skipped` result when libxml2 isn't installed (never a false failure). ⛔ FINDING: the current MISMO 3.4 export does NOT conform to the official schema — `xmllint` finds real structural violations in both the underwriting- and loanDelivery-purpose output (SUBJECT_PROPERTY nesting, PARTY/EMPLOYMENT name-element shape, BorrowerSSNIdentifier placement, ASSETS/LIABILITIES/LOAN_IDENTIFIERS container placement). Fixing shared/mismo.ts field-by-field against the schema is real, compliance-sensitive rework — out of scope for one PR per the sprint-blitz one-PR rule — so `tests/mismoXsdValidation.test.ts` pins the exact current violations as a named regression baseline instead of silently skipping or asserting a false "valid": any NEW violation fails the gate immediately, any fix requires a deliberate, visible baseline update. Remediation itself is tracked as new item **L6-fix** below. Mapping audit vs. ulad-mapping-document.xlsx is unstarted.)*
-- [ ] **L6-fix. Correct MISMO export structural violations found by L6's XSD-validation harness.** `tests/mismoXsdValidation.test.ts` names the exact offending elements today: SUBJECT_PROPERTY, BorrowerSSNIdentifier, CONTACT_POINTS, EmployerName, FirstNameText, LOAN_DETAIL/LoanIdentifier/LOAN_IDENTIFIERS, ASSETS/LIABILITIES (loanDelivery only misses ASSETS since it's intentionally omitted there, LIABILITIES instead). Each is a real element-nesting or naming mismatch against `docs/fannie-mae/schemas/uldd-phase5-extension/MISMO_3_0.xsd` in `server/mismo.ts`'s node-builder functions (buildCollateralNode, buildPartyNode, buildLoanNode, etc.) — per CLAUDE.md's compliance-first rule, verify every corrected element name/path against the schema or the Loan Delivery job aid before changing it, do not guess from the error message alone. As each violation is fixed, shrink the corresponding baseline array in the test (that's the acceptance signal) until it reaches `[]` and the assertions can flip to `result.valid === true`. Owner: Claude. Est. unscoped — audit each violation individually before sizing.
+- [ ] **L6-fix. Correct MISMO export structural violations found by L6's XSD-validation harness.** `tests/mismoXsdValidation.test.ts` names the exact offending elements today: SUBJECT_PROPERTY, BorrowerSSNIdentifier, CONTACT_POINTS, EmployerName, FirstNameText, LOAN_DETAIL/LoanIdentifier/LOAN_IDENTIFIERS, ASSETS/LIABILITIES (loanDelivery only misses ASSETS since it's intentionally omitted there, LIABILITIES instead). Each is a real element-nesting or naming mismatch against `docs/fannie-mae/schemas/uldd-phase5-extension/MISMO_3_0.xsd` in `server/mismo.ts`'s node-builder functions (buildCollateralNode, buildPartyNode, buildLoanNode, etc.) — per CLAUDE.md's compliance-first rule, verify every corrected element name/path against the schema or the Loan Delivery job aid before changing it, do not guess from the error message alone. As each violation is fixed, shrink the corresponding baseline array in the test (that's the acceptance signal) until it reaches `[]` and the assertions can flip to `result.valid === true`. Owner: Claude. Est. unscoped — audit each violation individually before sizing. *(2026-07-11: converges with SE-beachhead Workstream C — AUS-as-gate + XSD conformance; see "Active build programs" above.)*
 
 ### Customer-success readiness (from kb/founder-routines/2026-07-04-customer-success.md)
 
 - [ ] **CS1. Seed `sla_class_configs` and `task_type_sla_mapping`.** Both tables are empty in the dev DB (verified via direct query, 2026-07-04) even though `server/services/taskEngine.ts` computes SLA due dates and breach escalation against them. Today every task silently falls back to `{ slaDueAt: null, slaClass: "S3" }` (`computeSlaDueAt`, `server/services/taskEngine.ts:111-123`) — no due date is ever set, so `checkSlaBreaches`/auto-escalation (`server/services/taskEngine.ts:549-569`) never fires. Acceptance: seed the S0–S5 target-hour configs (comments already document the intended targets: S0 0-1h/15m escalation … S4 72h/60h, `shared/schema/underwriting.ts:26-32`) and the `TASK_TYPE_CODES` → SLA-class mapping, then confirm a manually-aged task actually gets flagged as breached.
-- [ ] **CS2. Automated flag on discrimination/credit-error language in borrower messages.** No code today distinguishes a routine borrower message from one alleging discrimination or a credit-reporting error — both land in the assigned LO's normal inbox with no priority bump or founder visibility. Add a keyword/pattern check on `POST /api/messages` (`server/routes/borrower.ts:2607`) that flags matches for immediate founder notification, per `kb/support-playbooks/discrimination-credit-error-escalation.md`. Acceptance: sending a message containing a trigger phrase creates a flagged, founder-visible record distinct from normal message traffic.
+- [ ] **CS2. Automated flag on discrimination/credit-error language in borrower messages.** No code today distinguishes a routine borrower message from one alleging discrimination or a credit-reporting error — both land in the assigned LO's normal inbox with no priority bump or founder visibility. Add a keyword/pattern check on `POST /api/messages` (`server/routes/borrower.ts:2607`) that flags matches for immediate founder notification, per `kb/support-playbooks/discrimination-credit-error-escalation.md`. Acceptance: sending a message containing a trigger phrase creates a flagged, founder-visible record distinct from normal message traffic. *(Note 2026-07-11: LO-5 — PR #124 — ships a deterministic two-tier lexicon on the same `POST /api/messages` seam (`shared/compliance/loCommsLint.ts`) for OUTBOUND staff messages; CS2 is the inbound sibling — reuse that lexicon pattern rather than inventing a new matcher.)*
 
 ### Growth/acquisition wiring (growth/acquisition routine, 2026-07-04)
 
@@ -132,7 +196,7 @@ Everything else in this file is explicitly **not** the sprint: CS\*, ARC-\*, CH-
 
 - [ ] **ARC-1. `/api/leads` ships with zero client binding.** `server/routes/leads.ts` (public intake + staff views, roadmap #8) has no caller anywhere in `client/src` — no landing-page form, no partner-embed, nothing. Needs a product decision first (Amr): headless/partner-embed vs. a Homiquity-hosted intake form. Then Claude implements. Est: 0.5h decision + 3h build if a UI page is wanted.
 - [ ] **ARC-2. Bind the market-data moat endpoints to a staff view.** `server/routes/market-data.ts` (`competitor-benchmark`, `undercut-quote`, `risk-profile`) has zero client references — built but invisible to staff. Acceptance: a staff pricing-intelligence panel/page calls all three. Est: 4h.
-- [ ] **ARC-3. Wire `/api/scenario-calculator` into a borrower-facing what-if tool on LoanOptions.** The scenario engine (S-01..S-06) is fully implemented server-side but borrowers can't self-serve scenario comparisons anywhere in the UI — the highest-leverage orphaned endpoint since it directly touches conversion. Est: 4-6h.
+- [ ] **ARC-3. Wire `/api/scenario-calculator` into a borrower-facing what-if tool on LoanOptions.** The scenario engine (S-01..S-06) is fully implemented server-side but borrowers can't self-serve scenario comparisons anywhere in the UI — the highest-leverage orphaned endpoint since it directly touches conversion. Est: 4-6h. *(Update 2026-07-11: LO-2 — PR #114 — ships an LO-facing what-if simulator (`scenarioSimulator` + `scenario_runs`, anti-steering §1026.36(e)(3) disclosure). Before building this borrower surface, decide whether it wraps LO-2's engine or `/api/scenario-calculator` — do not ship two divergent what-if engines.)*
 
 ### Code health (from kb/founder-routines/2026-07-04-code-health.md)
 
