@@ -135,14 +135,24 @@ describe("orchestrator core", () => {
     expect(r.paths.find((p) => p.pathId === "rental")!.status).toBe("applicable");
   });
 
-  it("gates DSCR and bank-statement paths (P4) — surfaced, no figure", () => {
+  it("non-QM paths carry program authority (P4): DSCR ratio computed, bank-statement capture gap named", () => {
     const r = computeIncomePaths(input);
     const dscr = r.paths.find((p) => p.pathId === "dscr")!;
     const bank = r.paths.find((p) => p.pathId === "bank_statement")!;
-    expect(dscr.status).toBe("unavailable");
-    expect(dscr.unavailableReason).toBe("PROGRAM_REFERENCE_NOT_IN_REPO");
-    expect(bank.status).toBe("unavailable");
-    // No alternative is enabled, so no recommendation overrides full-doc.
+    // DSCR: rentals declared → cited Rent-Divided-PITIA ratio, always review
+    // (no in-repo qualifying threshold).
+    expect(dscr.status).toBe("applicable");
+    expect(dscr.kind).toBe("coverage_ratio");
+    if (dscr.kind === "coverage_ratio") {
+      // 75%-free program ratio: 1800 rent ÷ 1000 PITIA = 1.8
+      expect(dscr.coverageRatio).toBe(1.8);
+    }
+    expect(dscr.requiresManualReview).toBe(true);
+    // Bank statement: program enabled but no deposit analysis captured yet.
+    expect(bank.status).toBe("not_indicated");
+    expect(bank.notes[0]).toMatch(/no bank-statement deposit analysis/i);
+    // No enabled alternative produced a HIGHER dti_income figure, so no
+    // recommendation overrides full-doc.
     expect(r.recommendedPathId).toBeNull();
   });
 

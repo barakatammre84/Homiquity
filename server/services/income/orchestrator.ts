@@ -17,7 +17,8 @@ import { storage } from "../../storage";
 import { computeAgencyWageIncome } from "./paths/agencyWage";
 import { computeSelfEmploymentPath } from "./paths/selfEmployment";
 import { computeRentalPath } from "./paths/rental";
-import { computeDscrPath, computeBankStatementPath } from "./paths/nonQmGated";
+import { computeDscrPath } from "./paths/dscr";
+import { computeBankStatementPath } from "./paths/bankStatement";
 
 /**
  * Multi-path income orchestrator (UAL P3) — the SINGLE income producer.
@@ -30,9 +31,11 @@ import { computeDscrPath, computeBankStatementPath } from "./paths/nonQmGated";
  *
  * The "primary" DTI income fed to the deterministic engine is the sum of the
  * APPLIED component paths (agency wage + self-employment; rental is surfaced
- * but not auto-applied — see rental.ts). Alternative methods (bank-statement,
- * DSCR) are gated (P4) and surfaced without a figure. Same inputs → same
- * result → same evaluation fingerprint.
+ * but not auto-applied — see rental.ts). Alternative methods carry their own
+ * program authority (P4): DSCR computes the cited Rent-Divided-PITIA ratio
+ * over declared rentals (no in-repo qualifying threshold — always review);
+ * bank-statement math is cited and available but has no capture surface until
+ * P5. Same inputs → same result → same evaluation fingerprint.
  */
 
 export interface IncomePathsCoreInput {
@@ -52,8 +55,9 @@ export function computeIncomePaths(input: IncomePathsCoreInput): IncomeOrchestra
   const rentalPath = computeRentalPath(input.rentalProperties);
 
   const hasSelfEmployment = selfEmployment.path.status === "applicable";
-  const hasRental = rentalPath.status === "applicable";
-  const dscr = computeDscrPath(hasRental);
+  const dscr = computeDscrPath(input.rentalProperties);
+  // Bank-statement analysis has no capture surface yet (P5 workbench); the
+  // path reports the program as available and what is missing.
   const bankStatement = computeBankStatementPath(hasSelfEmployment);
 
   const paths: IncomePathResult[] = [
