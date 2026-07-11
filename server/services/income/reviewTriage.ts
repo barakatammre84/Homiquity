@@ -5,6 +5,7 @@ import {
   extractedFields,
   incomePathEvaluations,
   logicalDocuments,
+  loanApplications,
   type ReviewItem,
   type ReviewItemTier,
   type ReviewItemType,
@@ -174,14 +175,26 @@ export async function syncReviewItems(
   const candidates = [...triageExtractionAndTieOuts(instances, checks)];
 
   if (applicationId) {
-    const [evaluation] = await db
-      .select()
-      .from(incomePathEvaluations)
-      .where(eq(incomePathEvaluations.applicationId, applicationId))
-      .orderBy(desc(incomePathEvaluations.createdAt))
+    // Ownership guard: the income-path evaluation must belong to an application
+    // owned by `userId`. Without this, a caller could pass any applicationId
+    // (the route treats userId===self as "owner" and skips the deal-team gate)
+    // and read another borrower's income figures via their evaluation. The
+    // evaluations table has no userId, so verify through the application.
+    const [app] = await db
+      .select({ userId: loanApplications.userId })
+      .from(loanApplications)
+      .where(eq(loanApplications.id, applicationId))
       .limit(1);
-    if (evaluation) {
-      candidates.push(...triageIncomePaths(evaluation.paths as IncomePathResult[]));
+    if (app?.userId === userId) {
+      const [evaluation] = await db
+        .select()
+        .from(incomePathEvaluations)
+        .where(eq(incomePathEvaluations.applicationId, applicationId))
+        .orderBy(desc(incomePathEvaluations.createdAt))
+        .limit(1);
+      if (evaluation) {
+        candidates.push(...triageIncomePaths(evaluation.paths as IncomePathResult[]));
+      }
     }
   }
 
