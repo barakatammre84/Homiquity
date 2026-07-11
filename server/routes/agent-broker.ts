@@ -8,6 +8,7 @@ import { inArray } from "drizzle-orm";
 import {
   type User,
   isInternalStaffRole,
+  isStaffRole,
   insertAgentReferralRequestSchema,
   insertAgentProfileSchema,
   insertApplicationMilestoneSchema,
@@ -153,12 +154,19 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  // Current user agent profile routes
+  // Current user agent profile routes.
+  // Staff/partner roles only: this GET auto-provisions an agent profile, and an
+  // agent profile is the key that unlocks listing management (POST /api/properties)
+  // and public agent-directory presence — consumer and CPA accounts must never be
+  // able to mint one for themselves.
   app.get("/api/me/agent-profile", isAuthenticated, async (req, res) => {
     try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
       const userId = req.user!.id;
       let profile = await storage.getAgentProfileByUserId(userId);
-      
+
       if (!profile) {
         profile = await storage.createAgentProfile({ userId });
       }
@@ -176,6 +184,9 @@ export function registerAgentBrokerRoutes(
 
   app.patch("/api/me/agent-profile", isAuthenticated, async (req, res) => {
     try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
       const userId = req.user!.id;
       let profile = await storage.getAgentProfileByUserId(userId);
       
@@ -909,9 +920,15 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  // Create co-brand profile
+  // Create co-brand profile.
+  // Staff/partner roles only: co-brand profiles render on the PUBLIC
+  // /partner/:profileId landing page, so a consumer account must not be able
+  // to publish arbitrary branding/bio content under the platform's domain.
   app.post("/api/co-brand/profile", isAuthenticated, async (req, res) => {
     try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
       const existing = await storage.getCoBrandProfileByUser(req.user!.id);
       if (existing) {
         return res.status(409).json({ error: "Co-brand profile already exists", profile: existing });
@@ -948,6 +965,9 @@ export function registerAgentBrokerRoutes(
   // Update co-brand profile
   app.patch("/api/co-brand/profile/:id", isAuthenticated, async (req, res) => {
     try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
       const profile = await storage.getCoBrandProfile(req.params.id);
       if (!profile || profile.userId !== req.user!.id) {
         return res.status(404).json({ error: "Profile not found" });

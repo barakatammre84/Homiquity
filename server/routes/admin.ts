@@ -96,7 +96,7 @@ export function registerAdminRoutes(
   // --- Content Categories (Admin) ---
   
   // Get all categories (admin - includes inactive)
-  app.get("/api/admin/content-categories", requireRole("admin", "lo"), async (req, res) => {
+  app.get("/api/admin/content-categories", requireRole("admin"), async (req, res) => {
     try {
       const categories = await storage.getAllContentCategories();
       res.json(categories);
@@ -107,7 +107,7 @@ export function registerAdminRoutes(
   });
 
   // Create category (admin)
-  app.post("/api/admin/content-categories", requireRole("admin", "lo"), async (req, res) => {
+  app.post("/api/admin/content-categories", requireRole("admin"), async (req, res) => {
     try {
       const validatedData = insertContentCategorySchema.parse(req.body);
       const category = await storage.createContentCategory(validatedData);
@@ -122,7 +122,7 @@ export function registerAdminRoutes(
   });
 
   // Update category (admin)
-  app.patch("/api/admin/content-categories/:id", requireRole("admin", "lo"), async (req, res) => {
+  app.patch("/api/admin/content-categories/:id", requireRole("admin"), async (req, res) => {
     try {
       const data = parseBodyOr400(insertContentCategorySchema.partial(), req.body, res);
       if (data === undefined) return;
@@ -138,7 +138,7 @@ export function registerAdminRoutes(
   });
 
   // Delete category (admin)
-  app.delete("/api/admin/content-categories/:id", requireRole("admin", "lo"), async (req, res) => {
+  app.delete("/api/admin/content-categories/:id", requireRole("admin"), async (req, res) => {
     try {
       await storage.deleteContentCategory(req.params.id);
       res.status(204).send();
@@ -151,7 +151,7 @@ export function registerAdminRoutes(
   // --- Articles (Admin) ---
 
   // Get all articles (admin - includes drafts)
-  app.get("/api/admin/articles", requireRole("admin", "lo"), async (req, res) => {
+  app.get("/api/admin/articles", requireRole("admin"), async (req, res) => {
     try {
       const articles = await storage.getAllArticles();
       res.json(articles);
@@ -162,7 +162,7 @@ export function registerAdminRoutes(
   });
 
   // Get single article (admin)
-  app.get("/api/admin/articles/:id", requireRole("admin", "lo"), async (req, res) => {
+  app.get("/api/admin/articles/:id", requireRole("admin"), async (req, res) => {
     try {
       const article = await storage.getArticle(req.params.id);
       if (!article) {
@@ -176,7 +176,7 @@ export function registerAdminRoutes(
   });
 
   // Create article (admin)
-  app.post("/api/admin/articles", requireRole("admin", "lo"), async (req, res) => {
+  app.post("/api/admin/articles", requireRole("admin"), async (req, res) => {
     try {
       const validatedData = insertArticleSchema.parse({
         ...req.body,
@@ -195,7 +195,7 @@ export function registerAdminRoutes(
   });
 
   // Update article (admin)
-  app.patch("/api/admin/articles/:id", requireRole("admin", "lo"), async (req, res) => {
+  app.patch("/api/admin/articles/:id", requireRole("admin"), async (req, res) => {
     try {
       const data = parseBodyOr400(insertArticleSchema.omit({ authorId: true }).partial(), req.body, res);
       if (data === undefined) return;
@@ -220,7 +220,7 @@ export function registerAdminRoutes(
   });
 
   // Delete article (admin)
-  app.delete("/api/admin/articles/:id", requireRole("admin", "lo"), async (req, res) => {
+  app.delete("/api/admin/articles/:id", requireRole("admin"), async (req, res) => {
     try {
       await storage.deleteArticle(req.params.id);
       res.status(204).send();
@@ -233,7 +233,7 @@ export function registerAdminRoutes(
   // --- FAQs (Admin) ---
 
   // Get all FAQs (admin - includes drafts)
-  app.get("/api/admin/faqs", requireRole("admin", "lo"), async (req, res) => {
+  app.get("/api/admin/faqs", requireRole("admin"), async (req, res) => {
     try {
       const faqs = await storage.getAllFaqs();
       res.json(faqs);
@@ -244,7 +244,7 @@ export function registerAdminRoutes(
   });
 
   // Get single FAQ (admin)
-  app.get("/api/admin/faqs/:id", requireRole("admin", "lo"), async (req, res) => {
+  app.get("/api/admin/faqs/:id", requireRole("admin"), async (req, res) => {
     try {
       const faq = await storage.getFaq(req.params.id);
       if (!faq) {
@@ -258,7 +258,7 @@ export function registerAdminRoutes(
   });
 
   // Create FAQ (admin)
-  app.post("/api/admin/faqs", requireRole("admin", "lo"), async (req, res) => {
+  app.post("/api/admin/faqs", requireRole("admin"), async (req, res) => {
     try {
       const validatedData = insertFaqSchema.parse({
         ...req.body,
@@ -276,7 +276,7 @@ export function registerAdminRoutes(
   });
 
   // Update FAQ (admin)
-  app.patch("/api/admin/faqs/:id", requireRole("admin", "lo"), async (req, res) => {
+  app.patch("/api/admin/faqs/:id", requireRole("admin"), async (req, res) => {
     try {
       const data = parseBodyOr400(insertFaqSchema.omit({ authorId: true }).partial(), req.body, res);
       if (data === undefined) return;
@@ -292,7 +292,7 @@ export function registerAdminRoutes(
   });
 
   // Delete FAQ (admin)
-  app.delete("/api/admin/faqs/:id", requireRole("admin", "lo"), async (req, res) => {
+  app.delete("/api/admin/faqs/:id", requireRole("admin"), async (req, res) => {
     try {
       await storage.deleteFaq(req.params.id);
       res.status(204).send();
