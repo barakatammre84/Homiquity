@@ -52,6 +52,7 @@ doc-drift bug to fix):
 ### Specs — L3 feature specs · [`specs/`](specs/)
 - [_TEMPLATE.md](specs/_TEMPLATE.md) — the L3 spec skeleton (cite L1 loop + L2 invariants).
 - [FREE_DATA_MOAT.md](specs/FREE_DATA_MOAT.md) — HMDA + Fannie loan-performance data pipelines.
+- [UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md](specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md) — program charter + 8 build prompts: complex-tax-return intelligence, multi-path income engine, non-QM/halal product lanes (broker-safe).
 
 ### Feature Review — the durable QA program · [`feature-review/`](feature-review/)
 The re-runnable QA teams (agents in `.claude/agents/`) that review every feature vs intended use.
