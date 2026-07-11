@@ -38,6 +38,7 @@ import { COMPANY_CONFIG } from "../config/company";
 import { assertVerifiedForDecisioning, isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { assertStageRequirements } from "@shared/stageRequirements";
 import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
+import { toBorrowerOfferViews } from "@shared/borrowerOfferView";
 import { evaluateTridTrigger, tridHardStopError } from "../services/trid";
 import { intakePausedGate } from "../services/maintenanceMode";
 import { prelaunchGate } from "../services/prelaunchGate";
@@ -704,7 +705,7 @@ export function registerLendingRoutes(
 
       const base = { qualifier, indicative: qualifier === "PRELIMINARY", pricedAt, lockTermDays };
       if (missingItems.length > 0) {
-        return res.json({ ...base, status: "INSUFFICIENT_PROFILE", missingItems, offers: [], inputs: null, assumptions: [] });
+        return res.json({ ...base, status: "INSUFFICIENT_PROFILE", missingItems, offers: [], lenderCount: 0, inputs: null, assumptions: [] });
       }
 
       // VA products are only priced for VA-eligible borrowers.
@@ -735,14 +736,24 @@ export function registerLendingRoutes(
           status: "UNPRICEABLE_PROFILE",
           missingItems: ["Live pricing is not available for this loan profile yet — your loan team will quote it directly."],
           offers: [],
+          lenderCount: 0,
           inputs: null,
           assumptions: [],
         });
       }
 
+      // Borrower transparency doctrine: wholesale-lender identity never
+      // reaches a client-role caller. Staff (who work the lender relationships)
+      // get the raw ComputedOffer; borrowers get the whitelisted view with
+      // neutral "Option A/B/C" labels. Masking lives here, server-side — the
+      // client never receives what it must not show.
+      const revealLenderIdentity = isStaffRole(req.user!.role);
+      const lenderCount = new Set(offers.map((o) => o.lenderId)).size;
+
       res.json({
         ...base,
         status: offers.length > 0 ? "PRICED" : "NO_ACTIVE_RATE_SHEETS",
+        lenderCount,
         inputs: {
           creditScore: profile.creditScore,
           loanAmount,
@@ -760,7 +771,7 @@ export function registerLendingRoutes(
           "Taxes and insurance estimated; exact escrow set at Loan Estimate",
         ],
         missingItems: [],
-        offers,
+        offers: revealLenderIdentity ? offers : toBorrowerOfferViews(offers),
       });
     } catch (error) {
       console.error("Market offers error:", error);

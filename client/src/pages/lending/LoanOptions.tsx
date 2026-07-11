@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatCurrency, formatPercent, getLoanTypeLabel } from "@/lib/formatters";
 import type { LoanApplication, LoanOption } from "@shared/schema";
+import type { BorrowerOfferView } from "@shared/borrowerOfferView";
 import {
   CheckCircle2,
   Star,
@@ -197,40 +198,17 @@ function MonthlyPaymentPanel({ option }: { option: LoanOption }) {
   );
 }
 
-interface MarketOffer {
-  lenderName: string;
-  lenderCode: string;
-  lenderId: string;
-  productId: string;
-  productName: string;
-  productType: string;
-  loanTerm: number;
-  baseRate: number;
-  adjustedRate: number;
-  lockTerm: number;
-  pricingBreakdown: {
-    baseRate: number;
-    llpaAdjustment: number;
-    lockTermAdjustment: number;
-    lenderAdjustments: { name: string; value: number }[];
-    totalAdjustments: number;
-    finalRate: number;
-  };
-  estimatedMonthlyPI: number;
-  estimatedMonthlyMI: number;
-  estimatedMonthlyTotal: number;
-  labels: string[];
-}
-
 interface MarketOffersResponse {
   status: "PRICED" | "NO_ACTIVE_RATE_SHEETS" | "INSUFFICIENT_PROFILE" | "UNPRICEABLE_PROFILE";
   qualifier: "PRELIMINARY" | "VERIFIED";
   indicative: boolean;
   pricedAt: string;
   lockTermDays: number;
+  /** How many wholesale lenders priced this profile — aggregate only, never identity. */
+  lenderCount: number;
   assumptions: string[];
   missingItems: string[];
-  offers: MarketOffer[];
+  offers: BorrowerOfferView[];
 }
 
 const OFFER_LABELS: Record<string, string> = {
@@ -245,6 +223,10 @@ const fmtRatePts = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(3)}%`;
  * against active wholesale rate sheets, with the full deterministic rate
  * decomposition. Indicative until the profile is verified — locking stays
  * behind verification, so estimates are never dressed up as commitments.
+ *
+ * Borrower transparency doctrine: offers arrive from the server already
+ * masked (BorrowerOfferView) — neutral "Option A/B/C" labels, no wholesale
+ * lender identity. Which lender is behind an option is broker-side only.
  */
 function MarketPricingSection({ market }: { market: MarketOffersResponse }) {
   const [openOffer, setOpenOffer] = useState<string | null>(null);
@@ -257,7 +239,7 @@ function MarketPricingSection({ market }: { market: MarketOffersResponse }) {
     hour: "numeric",
     minute: "2-digit",
   });
-  const lenderCount = new Set(market.offers.map((o) => o.lenderId)).size;
+  const lenderCount = market.lenderCount;
 
   return (
     <div className="mb-12" data-testid="section-market-pricing">
@@ -272,7 +254,7 @@ function MarketPricingSection({ market }: { market: MarketOffersResponse }) {
             )}
           </div>
           <p className="text-muted-foreground">
-            Your profile priced against {lenderCount} wholesale lender rate sheets
+            Your profile priced against {lenderCount} wholesale rate sheet{lenderCount === 1 ? "" : "s"}
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -283,19 +265,19 @@ function MarketPricingSection({ market }: { market: MarketOffersResponse }) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {market.offers.map((offer) => {
-          const key = `${offer.lenderId}-${offer.productId}`;
+          const key = offer.optionId.toLowerCase();
           const bd = offer.pricingBreakdown;
           return (
             <Card
               key={key}
               className={offer.labels.includes("LOWEST_RATE") ? "ring-2 ring-primary" : ""}
-              data-testid={`card-market-offer-${offer.productType.toLowerCase()}`}
+              data-testid={`card-market-offer-${key}`}
             >
               <CardHeader className="pb-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <CardTitle className="text-lg">{offer.lenderName}</CardTitle>
-                    <CardDescription>{offer.productName}</CardDescription>
+                    <CardTitle className="text-lg">{offer.optionLabel}</CardTitle>
+                    <CardDescription>{offer.productLabel}</CardDescription>
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     {offer.labels.map((l) => (
