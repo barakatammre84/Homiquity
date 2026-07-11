@@ -216,6 +216,12 @@ export function registerPartnerRoutes(app: Express, storage: IStorage) {
       if (!profile) {
         return res.status(404).json({ error: "No partner profile for this account" });
       }
+      // A suspended partner's slug already 404s and their consent write path is
+      // blocked; close the read side too so suspension fully takes effect
+      // (mirrors the /api/p/:slug and consent-write active-status checks).
+      if (profile.status !== "active") {
+        return res.status(403).json({ error: "Your partner account is not active" });
+      }
       // Scoped to the caller's own attribution rail — the partner user id is
       // taken from the session, never from a parameter (no cross-partner path).
       // Stages are consent-gated inside the storage read (PH-2, §5-C6).
