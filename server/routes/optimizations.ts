@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { isAuthenticated, requireRole } from "../auth";
+import { firstQueryValue } from "./queryParams";
 import {
   detectStaleApplications,
   sendReEngagementEmails,
@@ -29,8 +30,10 @@ export function registerOptimizationRoutes(app: Express) {
   app.get("/api/optimizations/match-and-price", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const lockTermDays = req.query.lockTermDays ? parseInt(req.query.lockTermDays as string) : undefined;
-      const productTypes = req.query.productTypes ? (req.query.productTypes as string).split(",") : undefined;
+      const lockTermDaysParam = firstQueryValue(req.query.lockTermDays);
+      const lockTermDays = lockTermDaysParam ? parseInt(lockTermDaysParam) : undefined;
+      const productTypesParam = firstQueryValue(req.query.productTypes);
+      const productTypes = productTypesParam ? productTypesParam.split(",") : undefined;
 
       const result = await matchAndPriceBorrower(userId, { lockTermDays, productTypes });
       res.json(result);

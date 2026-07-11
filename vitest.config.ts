@@ -80,6 +80,7 @@ export default defineConfig({
       "tests/documentTypeAliases.test.ts",
       "tests/localObjectStorage.test.ts",
       "tests/postAuthRoute.test.ts",
+      "tests/queryParams.test.ts",
       "tests/vercelEntryHelpers.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to

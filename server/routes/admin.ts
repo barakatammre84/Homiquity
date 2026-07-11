@@ -16,6 +16,7 @@ import { requireRole } from "../auth";
 import { microCache } from "../middleware/httpCache";
 import { prelaunchGate } from "../services/prelaunchGate";
 import { parseBodyOr400 } from "./validate";
+import { firstQueryValue } from "./queryParams";
 
 export function registerAdminRoutes(
   app: Express,
@@ -444,10 +445,9 @@ export function registerAdminRoutes(
   // Get mortgage rates for a location (public)
   app.get("/api/mortgage-rates", prelaunchGate, microCache(60), async (req, res) => {
     try {
-      const { state, zipcode } = req.query;
       const rates = await storage.getMortgageRatesForLocation(
-        state as string | undefined,
-        zipcode as string | undefined
+        firstQueryValue(req.query.state),
+        firstQueryValue(req.query.zipcode)
       );
       res.json(rates);
     } catch (error) {

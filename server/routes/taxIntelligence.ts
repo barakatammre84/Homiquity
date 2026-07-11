@@ -28,6 +28,7 @@ import { syncReviewItems, resolveReviewItem } from "../services/income/reviewTri
 import { recalculateDecision } from "../services/decisionEngine";
 import { logAudit } from "../auditLog";
 import { logFriction } from "../services/frictionLog";
+import { firstQueryValue } from "./queryParams";
 
 /**
  * Tax Document Intelligence routes (UAL P2a — Situation Identification Engine).
@@ -202,7 +203,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         const access = await staffCanAccessBorrower(
           user,
           document.userId,
-          document.applicationId ?? (req.query.applicationId as string | undefined),
+          document.applicationId ?? firstQueryValue(req.query.applicationId),
           storage,
         );
         if (!access.allowed) {
@@ -247,7 +248,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         const access = await staffCanAccessBorrower(
           user,
           requestedUserId,
-          req.query.applicationId as string | undefined,
+          firstQueryValue(req.query.applicationId),
           storage,
         );
         if (!access.allowed) {
@@ -287,7 +288,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
         const access = await staffCanAccessBorrower(
           user,
           requestedUserId,
-          req.query.applicationId as string | undefined,
+          firstQueryValue(req.query.applicationId),
           storage,
         );
         if (!access.allowed) {
@@ -418,7 +419,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
       const access = await staffCanAccessBorrower(
         user,
         item.userId,
-        item.applicationId ?? (req.query.applicationId as string | undefined),
+        item.applicationId ?? firstQueryValue(req.query.applicationId),
         storage,
       );
       if (!access.allowed) {
