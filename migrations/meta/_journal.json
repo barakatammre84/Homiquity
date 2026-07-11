@@ -99,6 +99,13 @@
       "when": 1783593600008,
       "tag": "0013_self_employment_income",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783593600012,
+      "tag": "0017_income_path_evaluations",
+      "breakpoints": true
     }
   ]
 }

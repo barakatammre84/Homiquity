@@ -21,7 +21,6 @@ import {
   type LoanAppStatus,
 } from "@shared/schema";
 import {
-  qualifyIncome,
   verifyAssets,
   assessLiabilities,
   calculateDTI,

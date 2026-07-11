@@ -4,7 +4,14 @@ import { db } from "../db";
 import { consolidatedUnderwritingEngine, UnderwritingError, type UnderwritingInput, type AssetProfile, type ResolvedPolicy } from "../underwritingEngine";
 import { generateLoanEstimate } from "./loanEstimate";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
-import { decisionSnapshots, type LoanApplication } from "@shared/schema";
+import { decisionSnapshots, incomePathEvaluations, type LoanApplication, type IncomeSourceEntry } from "@shared/schema";
+import {
+  computeIncomePaths,
+  incomeInputsFingerprint,
+  incomeEvaluationFingerprint,
+  type IncomePathsCoreInput,
+} from "./income/orchestrator";
+import type { IncomeOrchestrationResult } from "@shared/incomePaths";
 
 // =============================================================================
 // INSTANT DECISION ORCHESTRATOR (Tinman-style)
@@ -36,6 +43,12 @@ export interface InstantDecision {
   missingItems: string[];
   /** Resolved thresholds/matrix cells + fingerprint for reproducibility (null pre-decision). */
   resolvedPolicy: ResolvedPolicy | null;
+  /** The multi-path income evaluation behind this decision (UAL P3). Present once financials are aggregated. */
+  income?: {
+    result: IncomeOrchestrationResult;
+    inputsFingerprint: string;
+    evaluationFingerprint: string;
+  };
   metrics: {
     ltv: number;
     dti: number;
@@ -125,6 +138,10 @@ interface AggregatedFinancials {
   borrowerCount: number;
   incomeBasis: "urla_line_items" | "application_summary";
   assets: AssetProfile[];
+  /** The full multi-path evaluation behind this income (UAL P3). */
+  income: IncomeOrchestrationResult;
+  incomeInputsFingerprint: string;
+  incomeEvaluationFingerprint: string;
 }
 
 /**
@@ -148,34 +165,25 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     .filter((a) => a.balance > 0);
 
   const borrowerSeqs = new Set<number>();
+  for (const e of employment) borrowerSeqs.add(e.borrowerSequenceNumber ?? 1);
 
-  // Income: base vs variable (overtime/bonus/commission/other), summed across all borrowers.
-  let base = 0;
-  let variable = 0;
-  let sawIncomeLineItem = false;
-  for (const e of employment) {
-    borrowerSeqs.add(e.borrowerSequenceNumber ?? 1);
-    const itemized = [e.baseIncome, e.overtimeIncome, e.bonusIncome, e.commissionIncome, e.otherIncome];
-    // Use itemized fields whenever ANY is present — including when they net to a
-    // loss. The prior `> 0` guard treated a net-negative K-1 as "no itemized
-    // data" and fell through to the rolled-up total (usually 0), deleting the
-    // business loss from qualifying income.
-    if (itemized.some(isPresentNumber)) {
-      base += safe(e.baseIncome);
-      variable += safe(e.overtimeIncome) + safe(e.bonusIncome) + safe(e.commissionIncome) + safe(e.otherIncome);
-      sawIncomeLineItem = true;
-    } else if (isPresentNumber(e.totalMonthlyIncome)) {
-      // Only a rolled-up total was captured for this job (which may be a loss).
-      base += safe(e.totalMonthlyIncome);
-      sawIncomeLineItem = true;
-    }
-  }
-  for (const o of otherIncome) {
-    if (isPresentNumber(o.monthlyAmount)) {
-      variable += safe(o.monthlyAmount);
-      sawIncomeLineItem = true;
-    }
-  }
+  // Income: the multi-path orchestrator (UAL P3) is the single income
+  // producer. It reconciles the wage math this function used to inline (agency
+  // wage path) AND — the fix this cutover lands — routes self-employment
+  // through the cited Form 1084 calculator instead of counting a raw captured
+  // figure, plus surfaces rental / gated non-QM paths. The engine only uses
+  // base+bonus as a sum, so the split is free; self-employment folds into base
+  // (stable income), keeping wage-only decisions byte-identical to before.
+  const rentalProperties = ((app.incomeSources as IncomeSourceEntry[] | null) ?? [])
+    .filter((s) => s.type === "rental")
+    .flatMap((s) => s.rentalProperties ?? []);
+  const incomeInput: IncomePathsCoreInput = {
+    employment,
+    otherIncome,
+    rentalProperties,
+    fallbackAnnualIncome: app.annualIncome,
+  };
+  const income = computeIncomePaths(incomeInput);
 
   // Debts: monthly payments not being paid off, summed across all borrowers.
   let monthlyDebts = 0;
@@ -184,30 +192,26 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     if (l.toBePaidOff) continue;
     monthlyDebts += safe(l.monthlyPayment);
   }
-
-  // Fall back to the app-summary income ONLY when no usable line item was
-  // captured at all. A net loss IS usable data — falling back on a negative
-  // total would launder a loss back into the self-reported summary figure.
-  const hasUrlaIncome = sawIncomeLineItem;
   const hasUrlaLiabilities = liabilities.length > 0;
-
-  if (!hasUrlaIncome) {
-    const annual = safe(app.annualIncome);
-    base = annual / 12;
-    variable = 0;
-  }
   if (!hasUrlaLiabilities) {
     monthlyDebts = safe(app.monthlyDebts);
   }
 
+  // Engine split (base+bonus, used only as a sum): agency variable is "bonus";
+  // agency base + self-employment are "base". For a wage-only file this is
+  // exactly the legacy split (self-employment = 0); the engine sees the same
+  // combined income either way.
   return {
-    baseMonthlyIncome: base,
-    variableMonthlyIncome: variable,
-    totalMonthlyIncome: base + variable,
+    baseMonthlyIncome: income.primaryBreakdown.agencyBase + income.primaryBreakdown.selfEmployment,
+    variableMonthlyIncome: income.primaryBreakdown.agencyVariable,
+    totalMonthlyIncome: income.primaryMonthlyQualifyingIncome,
     monthlyDebts,
     borrowerCount: Math.max(borrowerSeqs.size, 1),
-    incomeBasis: hasUrlaIncome ? "urla_line_items" : "application_summary",
+    incomeBasis: income.incomeBasis,
     assets,
+    income,
+    incomeInputsFingerprint: incomeInputsFingerprint(incomeInput),
+    incomeEvaluationFingerprint: incomeEvaluationFingerprint(income),
   };
 }
 
@@ -219,9 +223,21 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
 
   const isVerified = isDecisionGrade(app.financialDataProvenance as DataProvenance);
   const qualifier: InstantDecision["qualifier"] = isVerified ? "VERIFIED" : "PRELIMINARY";
-  const base: Pick<InstantDecision, "qualifier" | "isVerified"> = { qualifier, isVerified };
 
   const fin = await aggregateBorrowerFinancials(app);
+
+  // Every decision (including NEEDS_MORE_INFO) carries the income evaluation
+  // that produced its income figure, so recalculateDecision can persist it and
+  // link it to the snapshot.
+  const base: Pick<InstantDecision, "qualifier" | "isVerified" | "income"> = {
+    qualifier,
+    isVerified,
+    income: {
+      result: fin.income,
+      inputsFingerprint: fin.incomeInputsFingerprint,
+      evaluationFingerprint: fin.incomeEvaluationFingerprint,
+    },
+  };
 
   // Completeness — the "Need More Info" state, with the specific gaps.
   const purchasePrice = toNumber(app.purchasePrice);
@@ -358,6 +374,30 @@ export async function recalculateDecision(
 ): Promise<InstantDecision | null> {
   try {
     const d = await runInstantDecision(applicationId);
+
+    // Persist the multi-path income evaluation (UAL P3) first, so the decision
+    // snapshot can record which evaluation produced its income figure. This is
+    // append-only, exactly like the snapshot; a re-run with unchanged inputs
+    // makes a new row (the evaluationFingerprint identifies duplicates).
+    let incomePathEvaluationId: string | null = null;
+    if (d.income) {
+      const [evaluation] = await db
+        .insert(incomePathEvaluations)
+        .values({
+          applicationId,
+          trigger,
+          paths: d.income.result.paths,
+          primaryMonthlyQualifyingIncome: String(d.income.result.primaryMonthlyQualifyingIncome),
+          recommendedPathId: d.income.result.recommendedPathId,
+          incomeBasis: d.income.result.incomeBasis,
+          requiresManualReview: d.income.result.requiresManualReview,
+          inputsFingerprint: d.income.inputsFingerprint,
+          evaluationFingerprint: d.income.evaluationFingerprint,
+        })
+        .returning({ id: incomePathEvaluations.id });
+      incomePathEvaluationId = evaluation.id;
+    }
+
     await db.insert(decisionSnapshots).values({
       applicationId,
       trigger,
@@ -376,6 +416,7 @@ export async function recalculateDecision(
       missingItems: d.missingItems,
       resolvedPolicy: d.resolvedPolicy ?? null,
       policyFingerprint: d.resolvedPolicy?.fingerprint ?? null,
+      incomePathEvaluationId,
     });
     return d;
   } catch (err) {
