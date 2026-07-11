@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DealTeam } from "@/components/DealTeam";
 import { DealTeamManagement } from "@/components/DealTeamManagement";
@@ -333,7 +334,13 @@ export default function BorrowerFile() {
 
   // Postal fallback for the ECOA/Reg B delivery window: download the notice as
   // a mailable PDF, send it, then confirm delivery with the method used.
-  const [noticeDeliveryMethod, setNoticeDeliveryMethod] = useState<string>("mail");
+  // Confirmation goes through a dialog: marking a notice delivered records the
+  // Reg B §1002.9 obligation as met and there is no undo endpoint.
+  const [noticeDelivery, setNoticeDelivery] = useState<{ open: boolean; method: string; confirmation: string }>({
+    open: false,
+    method: "mail",
+    confirmation: "",
+  });
   const [downloadingNotice, setDownloadingNotice] = useState(false);
 
   const handleDownloadAdverseActionPdf = async (adverseActionId: string) => {
@@ -371,14 +378,16 @@ export default function BorrowerFile() {
   };
 
   const confirmNoticeDeliveryMutation = useMutation({
-    mutationFn: async ({ adverseActionId, method }: { adverseActionId: string; method: string }) => {
+    mutationFn: async ({ adverseActionId, method, confirmation }: { adverseActionId: string; method: string; confirmation?: string }) => {
       return apiRequest("POST", `/api/credit/adverse-action/${adverseActionId}/deliver`, {
         deliveryMethod: method,
+        deliveryConfirmation: confirmation || undefined,
       });
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'] });
+      setNoticeDelivery({ open: false, method: "mail", confirmation: "" });
       toast({
         title: "Delivery Confirmed",
         description: `Adverse-action notice recorded as delivered via ${variables.method.replace(/_/g, "-")}.`,
@@ -1276,32 +1285,78 @@ export default function BorrowerFile() {
                                 {downloadingNotice ? "Preparing…" : "Download for mailing"}
                               </Button>
                               {!creditData.latestAdverseAction.deliveredAt && (
-                                <>
-                                  <Select value={noticeDeliveryMethod} onValueChange={setNoticeDeliveryMethod}>
-                                    <SelectTrigger className="h-8 w-[120px]" data-testid="select-notice-delivery-method">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="mail">Mail</SelectItem>
-                                      <SelectItem value="email">Email</SelectItem>
-                                      <SelectItem value="in_app">In-app</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      confirmNoticeDeliveryMutation.mutate({
-                                        adverseActionId: creditData.latestAdverseAction!.id,
-                                        method: noticeDeliveryMethod,
-                                      })
-                                    }
-                                    disabled={confirmNoticeDeliveryMutation.isPending}
-                                    data-testid="button-confirm-notice-delivery"
-                                  >
-                                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                                    Confirm delivery
-                                  </Button>
-                                </>
+                                <Dialog
+                                  open={noticeDelivery.open}
+                                  onOpenChange={(o) => setNoticeDelivery(prev => ({ ...prev, open: o }))}
+                                >
+                                  <DialogTrigger asChild>
+                                    <Button size="sm" data-testid="button-confirm-notice-delivery">
+                                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                                      Confirm delivery
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Confirm notice delivery</DialogTitle>
+                                      <DialogDescription>
+                                        This records the adverse-action notice as delivered, satisfying the
+                                        Reg B §1002.9 notification requirement. It cannot be undone — confirm
+                                        only after the notice has actually been sent to the borrower.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                      <div className="space-y-2">
+                                        <Label>Delivery method</Label>
+                                        <Select
+                                          value={noticeDelivery.method}
+                                          onValueChange={(v) => setNoticeDelivery(prev => ({ ...prev, method: v }))}
+                                        >
+                                          <SelectTrigger data-testid="select-notice-delivery-method">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="mail">Mail</SelectItem>
+                                            <SelectItem value="email">Email</SelectItem>
+                                            <SelectItem value="in_app">In-app</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label>Delivery confirmation (optional)</Label>
+                                        <Input
+                                          value={noticeDelivery.confirmation}
+                                          onChange={(e) => setNoticeDelivery(prev => ({ ...prev, confirmation: e.target.value }))}
+                                          placeholder="e.g., certified-mail tracking number"
+                                          maxLength={255}
+                                          data-testid="input-notice-delivery-confirmation"
+                                        />
+                                      </div>
+                                    </div>
+                                    <DialogFooter>
+                                      <Button
+                                        variant="outline"
+                                        onClick={() => setNoticeDelivery({ open: false, method: "mail", confirmation: "" })}
+                                        data-testid="button-cancel-notice-delivery"
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        onClick={() =>
+                                          confirmNoticeDeliveryMutation.mutate({
+                                            adverseActionId: creditData.latestAdverseAction!.id,
+                                            method: noticeDelivery.method,
+                                            confirmation: noticeDelivery.confirmation.trim() || undefined,
+                                          })
+                                        }
+                                        disabled={confirmNoticeDeliveryMutation.isPending}
+                                        data-testid="button-confirm-notice-delivery-submit"
+                                      >
+                                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                                        {confirmNoticeDeliveryMutation.isPending ? "Confirming…" : "Confirm delivery"}
+                                      </Button>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
                               )}
                             </div>
                           </div>
