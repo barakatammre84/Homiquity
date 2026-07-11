@@ -613,6 +613,123 @@ export const insertUrlaPersonalInfoSchema = createInsertSchema(urlaPersonalInfo)
 export type InsertUrlaPersonalInfo = z.infer<typeof insertUrlaPersonalInfoSchema>;
 export type UrlaPersonalInfo = typeof urlaPersonalInfo.$inferSelect;
 
+// ---------------------------------------------------------------------------
+// Self-employment income worksheet (Fannie Mae Form 1084 / Selling Guide
+// B3-3.5 & B3-3.6). Captured per self-employed business — one worksheet hangs
+// off one employment_history row. This is analysis data derived from the
+// borrower's tax returns; it is re-verified from source documents downstream.
+// Every field cites the section it implements; see
+// docs/fannie-mae/self-employment-income-reference.md. Do NOT add a rule or
+// figure that is not verified there.
+// ---------------------------------------------------------------------------
+
+/** Business structures. Sole-prop/LLC → Schedule C (B3-3.6-03); partnership/
+ *  S-corp → K-1 (B3-3.6-07). C-corp ordinary income is not the borrower's
+ *  qualifying income — kept for completeness, no launch math. */
+export const SELF_EMPLOYMENT_BUSINESS_STRUCTURES = [
+  "sole_proprietorship",
+  "single_member_llc",
+  "partnership",
+  "s_corporation",
+  "c_corporation",
+] as const;
+export type SelfEmploymentBusinessStructure =
+  (typeof SELF_EMPLOYMENT_BUSINESS_STRUCTURES)[number];
+
+/** One tax year of Schedule C figures (B3-3.6-03). Add-backs and subtractions
+ *  are the recurring/non-recurring items the Selling Guide enumerates. */
+const scheduleCYearSchema = z.object({
+  taxYear: z.number().int().min(1980).max(2100).optional(),
+  netProfitOrLoss: z.number(),
+  // Add-backs (recurring, non-cash) — B3-3.6-03
+  depreciation: z.number().min(0).default(0),
+  depletion: z.number().min(0).default(0),
+  amortizationOrCasualtyLoss: z.number().min(0).default(0),
+  businessUseOfHome: z.number().min(0).default(0),
+  // Subtractions (non-recurring / non-cash benefit) — B3-3.6-03
+  mealsExclusion: z.number().min(0).default(0),
+  nonRecurringIncome: z.number().min(0).default(0),
+});
+
+/** One tax year of Schedule K-1 figures (B3-3.6-07). */
+const k1YearSchema = z.object({
+  taxYear: z.number().int().min(1980).max(2100).optional(),
+  ordinaryBusinessIncome: z.number().default(0),
+  netRentalRealEstateIncome: z.number().default(0),
+  otherNetRentalIncome: z.number().default(0),
+  guaranteedPayments: z.number().default(0),
+  distributionsReceived: z.number().min(0).default(0),
+});
+
+/** Business liquidity (B3-3.6-07): quick ratio = (current assets − inventory) /
+ *  current liabilities; current ratio = current assets / current liabilities.
+ *  ≥ 1 is generally sufficient to use ordinary income beyond distributions. */
+const businessLiquiditySchema = z.object({
+  currentAssets: z.number().min(0),
+  currentLiabilities: z.number().min(0),
+  inventory: z.number().min(0).default(0),
+});
+
+export const selfEmploymentWorksheetSchema = z
+  .object({
+    version: z.literal(1).default(1),
+    businessStructure: z.enum(SELF_EMPLOYMENT_BUSINESS_STRUCTURES),
+    // 25%+ ownership = self-employed (B3-3.5-01)
+    ownershipPercent: z.number().min(0).max(100).optional(),
+    yearsSelfEmployed: z.number().min(0).max(80).optional(),
+    // Sole proprietorship / single-member LLC (Schedule C):
+    scheduleC: z
+      .object({
+        currentYear: scheduleCYearSchema,
+        priorYear: scheduleCYearSchema.optional(),
+      })
+      .optional(),
+    // Partnership (1065) / S corporation (1120S) (Schedule K-1):
+    k1: z
+      .object({
+        currentYear: k1YearSchema,
+        priorYear: k1YearSchema.optional(),
+        /** Guaranteed payments received continuously for two years may be used
+         *  without additional liquidity documentation (B3-3.6-07). */
+        hasTwoYearGuaranteedPayments: z.boolean().default(false),
+        liquidity: businessLiquiditySchema.optional(),
+        /** W-2 the borrower draws from their own S-corp. Captured but NOT auto-
+         *  added by the calculator until the business-return subsection is
+         *  in-repo (flagged in the reference doc). */
+        w2FromBusiness: z.number().min(0).default(0),
+      })
+      .optional(),
+    /** Set when the borrower reviews and affirms a smart-filled draft (B2). */
+    confirmedByBorrowerAt: z.string().datetime().optional(),
+    /** Provenance link to the tax-return insight the draft came from (B2). */
+    sourceTaxInsightId: z.string().max(64).optional(),
+  })
+  .strict()
+  .superRefine((wk, ctx) => {
+    const isScheduleC =
+      wk.businessStructure === "sole_proprietorship" ||
+      wk.businessStructure === "single_member_llc";
+    const isK1 =
+      wk.businessStructure === "partnership" ||
+      wk.businessStructure === "s_corporation";
+    if (isScheduleC && wk.k1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Schedule C business must not carry K-1 figures",
+        path: ["k1"],
+      });
+    }
+    if (isK1 && wk.scheduleC) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "K-1 business must not carry Schedule C figures",
+        path: ["scheduleC"],
+      });
+    }
+  });
+
+export type SelfEmploymentWorksheet = z.infer<typeof selfEmploymentWorksheetSchema>;
+
 // Employment History (Sections 1b, 1c, 1d)
 export const employmentHistory = pgTable("employment_history", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -653,7 +770,13 @@ export const employmentHistory = pgTable("employment_history", {
   totalMonthlyIncome: decimal("total_monthly_income", { precision: 12, scale: 2 }),
   
   monthlyIncomeOrLoss: decimal("monthly_income_or_loss", { precision: 12, scale: 2 }),
-  
+
+  // Self-employment income worksheet (Form 1084 / B3-3.5 & B3-3.6). Populated
+  // only for self-employed records; drives server/services/selfEmploymentIncome.ts.
+  // Structured object — written via the dedicated Zod-validated endpoint, never
+  // the generic pickTableFields employment save (which drops JSON by design).
+  selfEmploymentIncome: jsonb("self_employment_income").$type<SelfEmploymentWorksheet>(),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });

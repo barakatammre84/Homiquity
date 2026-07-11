@@ -67,6 +67,15 @@ gate (see the roadmap ticket) instead of relying solely on the hand-built valida
 - `schemas/UCD v2.0 Critical_Edits_Matrix_v1.4 as of 4 2 2026.xlsx` — UCD critical edits
   matrix (v1.4, 2026-04-02)
 
+### Self-employment income (Income Assessment, Chapter B3-3)
+- `self-employment-income-reference.md` — verified capture of the current Selling Guide
+  self-employment sections (**B3-3.5** Self-Employment Income + **B3-3.6** Self-Employment
+  Documentation), including the 03/04/2026 Income-Assessment reorganization that moved SE income
+  off the old "B3-3.2/B3-3.4" numbering. Grounds the deterministic SE income calculator
+  (`server/services/selfEmploymentIncome.ts`). Records two artifacts still to be **downloaded
+  manually** (Cloudflare blocks scripted fetch): **Form 1084 (Cash Flow Analysis)** and the
+  business-return analysis subsections — see that file's "Missing artifacts" section.
+
 ### Other
 - `Wire Instruction Reference ID_final_05202025.pdf`
 
@@ -81,6 +90,7 @@ gate (see the roadmap ticket) instead of relying solely on the hand-built valida
 | Special Feature Codes (05-06-26) | `shared/fannieMae/specialFeatureCodes.ts` |
 | ULDD Implementation Guide — delivery LOAN states (Table 5), no ASSET container (Table 4) | `server/mismo.ts` (`purpose: "loanDelivery"`) |
 | Combined pre-delivery workflow | `server/services/loanDeliveryReadiness.ts` |
+| Self-employment income (B3-3.5 / B3-3.6) — Schedule C add-backs, K-1 distributions/liquidity, 2-yr averaging | `server/services/selfEmploymentIncome.ts` _(planned)_, `server/underwriting.ts` (`qualifyIncome`) |
 
 Reviewed with no code impact: the **Loan Delivery Edit Dashboard** job aid (Fannie Mae
 Connect navigation), **ULDD Phase 5 Resources** (link index), **URLA Rendering Design

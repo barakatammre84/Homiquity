@@ -11,6 +11,7 @@ import {
   insertDocumentPackageSchema,
   insertDocumentPackageItemSchema,
   insertUrlaPersonalInfoSchema,
+  selfEmploymentWorksheetSchema,
   isStaffRole,
   isInternalStaffRole,
   LOAN_APP_TERMINAL_STATUSES,
@@ -559,6 +560,43 @@ export function registerBorrowerRoutes(
     }
   });
 
+  // Self-employment income worksheet (Form 1084 / B3-3.5 & B3-3.6). This is a
+  // structured JSON object, so it does NOT go through the generic employment
+  // save (pickTableFields drops JSON by design) — it has its own Zod-validated
+  // write path. Providing a worksheet marks the record self-employed.
+  app.put("/api/urla/employment/:id/self-employment", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getEmploymentHistoryById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const parsed = selfEmploymentWorksheetSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid self-employment worksheet",
+          details: parsed.error.flatten(),
+        });
+      }
+      const result = await storage.updateEmploymentHistory(id, {
+        selfEmploymentIncome: parsed.data,
+        isSelfEmployed: true,
+      } as any);
+      if (!result) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Save self-employment worksheet error:", error);
+      res.status(500).json({ error: "Failed to save self-employment worksheet" });
+    }
+  });
+
   app.post("/api/urla/:applicationId/other-income", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
@@ -799,6 +837,18 @@ export function registerBorrowerRoutes(
           for (const emp of opts.employmentHistory) {
             if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
             const cleanEmp = pickTableFields(URLA_TABLES.employment, emp);
+            // The self-employment worksheet is a structured JSON object, so
+            // pickTableFields drops it (URLA tables are scalar-only by design).
+            // Validate it explicitly here and merge it back in. `null` clears it.
+            if (emp.selfEmploymentIncome === null) {
+              (cleanEmp as any).selfEmploymentIncome = null;
+            } else if (emp.selfEmploymentIncome !== undefined) {
+              const wk = selfEmploymentWorksheetSchema.safeParse(emp.selfEmploymentIncome);
+              if (!wk.success) {
+                return { ok: false, status: 400, error: "Invalid self-employment worksheet", results };
+              }
+              (cleanEmp as any).selfEmploymentIncome = wk.data;
+            }
             if (emp.id) {
               const existing = await storage.getEmploymentHistoryById(emp.id);
               if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
