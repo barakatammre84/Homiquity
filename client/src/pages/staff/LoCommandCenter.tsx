@@ -12,6 +12,7 @@ import { SubmissionReadinessDialog } from "@/components/SubmissionReadinessDialo
 import { isInternalStaffRole } from "@shared/roles";
 import { getLoanAppStatusMeta } from "@shared/schema";
 import { AlertCircle, Download, ExternalLink, Gauge, Loader2, Users } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 // -----------------------------------------------------------------------------
 // LO Command Center — the loan officer's start-of-day pipeline view.
@@ -214,7 +215,7 @@ export default function LoCommandCenter() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-8" data-testid="lo-command-center">
+    <PageShell width="full" contentClassName="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
@@ -346,6 +347,6 @@ export default function LoCommandCenter() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageShell>
   );
 }
