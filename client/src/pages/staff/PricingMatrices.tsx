@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   Lock,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 type LifecycleStatus = "DRAFT" | "ACTIVE" | "RETIRED";
 
@@ -167,25 +168,25 @@ export default function PricingMatrices() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-pricing-matrices-title">
-            Pricing Matrices
-          </h1>
-          <p className="text-muted-foreground">
-            {canManage
-              ? "Publish, schedule, activate, and retire versioned pricing & underwriting matrices"
-              : "Review versioned pricing & underwriting matrices and their cells"}
-          </p>
-        </div>
-        {canManage && (
+    <PageShell
+      width="full"
+      title="Pricing Matrices"
+      titleTestId="text-pricing-matrices-title"
+      subtitle={
+        canManage
+          ? "Publish, schedule, activate, and retire versioned pricing & underwriting matrices"
+          : "Review versioned pricing & underwriting matrices and their cells"
+      }
+      contentClassName="space-y-6"
+      headerAction={
+        canManage && (
           <Button onClick={() => setPublishOpen(true)} data-testid="button-open-publish">
             <Plus className="h-4 w-4 mr-2" />
             Publish New Version
           </Button>
-        )}
-      </div>
+        )
+      }
+    >
 
       <div className="grid gap-6 md:grid-cols-4">
         <Card>
@@ -391,7 +392,7 @@ export default function PricingMatrices() {
         knownCodes={knownCodes}
         toast={toast}
       />
-    </div>
+    </PageShell>
   );
 }
 

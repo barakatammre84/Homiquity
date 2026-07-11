@@ -62,6 +62,7 @@ import {
   Check,
   Ticket,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
 import { 
   ALL_ROLES, 
@@ -250,13 +251,13 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold" data-testid="text-page-title">User Management</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage user accounts and assign roles
-        </p>
-      </div>
+    <PageShell
+      width="full"
+      title="User Management"
+      subtitle="Manage user accounts and assign roles"
+      titleTestId="text-page-title"
+      contentClassName="space-y-6"
+    >
 
       {/* Summary Stats */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -727,6 +728,6 @@ export default function AdminUsers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

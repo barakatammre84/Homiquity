@@ -43,6 +43,7 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 type PolicyAuthority = "FANNIE" | "FREDDIE" | "FHA" | "VA" | "BROKER";
 type PolicyStatus = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "ACTIVE" | "RETIRED";
@@ -171,14 +172,13 @@ function PolicyOpsDashboard() {
   const draftPolicies = policies.filter((p) => p.status === "DRAFT");
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" data-testid="text-policy-ops-title">Policy Operations</h1>
-          <p className="text-muted-foreground">
-            Manage GSE-aligned underwriting policies without code changes
-          </p>
-        </div>
+    <PageShell
+      width="full"
+      title="Policy Operations"
+      subtitle="Manage GSE-aligned underwriting policies without code changes"
+      titleTestId="text-policy-ops-title"
+      contentClassName="space-y-6"
+      headerAction={
         <div className="flex gap-2">
           <Button variant="outline" data-testid="button-refresh-policies">
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -188,7 +188,8 @@ function PolicyOpsDashboard() {
             Create Policy Draft
           </Button>
         </div>
-      </div>
+      }
+    >
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
@@ -378,7 +379,7 @@ function PolicyOpsDashboard() {
           <AuditTrail selectedPolicyId={selectedPolicy?.id || null} />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }
 
