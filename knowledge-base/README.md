@@ -52,6 +52,7 @@ doc-drift bug to fix):
 ### Specs — L3 feature specs · [`specs/`](specs/)
 - [_TEMPLATE.md](specs/_TEMPLATE.md) — the L3 spec skeleton (cite L1 loop + L2 invariants).
 - [FREE_DATA_MOAT.md](specs/FREE_DATA_MOAT.md) — HMDA + Fannie loan-performance data pipelines.
+- [LO_ADVISOR_PROGRAM.md](specs/LO_ADVISOR_PROGRAM.md) — LO Advisor program charter — six build prompts wiring the advisory cockpit (what-if simulator, client reports, proactive signals, comms lint, lock-desk completion) onto existing engines.
 
 ### Feature Review — the durable QA program · [`feature-review/`](feature-review/)
 The re-runnable QA teams (agents in `.claude/agents/`) that review every feature vs intended use.
