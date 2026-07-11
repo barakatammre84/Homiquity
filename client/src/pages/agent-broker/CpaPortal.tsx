@@ -36,6 +36,7 @@ interface CpaStats {
 }
 
 const STAGE_LABELS: Record<string, string> = {
+  invited: "Invited",
   exploring: "Exploring",
   submitted: "Applied",
   analyzing: "In review",

@@ -181,11 +181,22 @@ describe("PartnerHub identity spine (PH-1)", () => {
     expect(suspended.status).toBe(200);
     const deadSlug = await apiGet(`/api/p/${agentA.partner.referralSlug}`, { headers: HTTPS });
     expect(deadSlug.status).toBe(404);
+<<<<<<< HEAD
+    // Suspension takes effect on the read side too: the hub pipeline is refused.
+    const suspendedHub = await apiGet("/api/partners/me/referrals", { headers: { Cookie: agentA.cookie, ...HTTPS } });
+    expect(suspendedHub.status).toBe(403);
+=======
+>>>>>>> origin/main
 
     const reactivated = await apiPost(`/api/admin/partners/${agentA.partner.id}/status`, { status: "active" }, h);
     expect(reactivated.status).toBe(200);
     const liveSlug = await apiGet(`/api/p/${agentA.partner.referralSlug}`, { headers: HTTPS });
     expect(liveSlug.status).toBe(200);
+<<<<<<< HEAD
+    const liveHub = await apiGet("/api/partners/me/referrals", { headers: { Cookie: agentA.cookie, ...HTTPS } });
+    expect(liveHub.status).toBe(200);
+=======
+>>>>>>> origin/main
   });
 
   it("waitlist invite stamps invited_at and reports email delivery honestly", async () => {

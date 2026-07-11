@@ -3,6 +3,7 @@ import {
   pgTable,
   varchar,
   timestamp,
+  boolean,
   index,
   unique,
 } from "drizzle-orm/pg-core";
@@ -95,3 +96,45 @@ export const insertPartnerProfileSchema = createInsertSchema(partnerProfiles, {
 
 export type InsertPartnerProfile = z.infer<typeof insertPartnerProfileSchema>;
 export type PartnerProfile = typeof partnerProfiles.$inferSelect;
+
+/**
+ * Progress-sharing consent (PH-2 of knowledge-base/specs/PARTNER_HUB_PROGRAM.md).
+ *
+ * Borrower-directed opt-in to share loan *progress stages* (never financials,
+ * documents, or amounts — charter §5-C6) with the partner who referred them.
+ * DEFAULT OFF: PH-1's hub shows every referred borrower's stage; PH-2 gates
+ * that so a partner sees real progression only for borrowers who explicitly
+ * opted in — non-consented referrals collapse to an existence-only "Invited".
+ *
+ * This is a togglable GLBA/Reg P-style privacy preference, deliberately kept
+ * OUT of the regulated-consent ledger (`borrower_consents`, which is immutable
+ * point-in-time credit/TRID consent with signatures + template versioning).
+ * One current-state row per (borrower, partner) pair, toggled in place; every
+ * transition also writes a server/auditLog.ts entry for the immutable trail.
+ *
+ * NOTE: the final borrower-facing consent copy is a counsel gate (charter §8);
+ * the wording here and in the UI is a conservative placeholder pending sign-off.
+ */
+export const partnerProgressConsents = pgTable("partner_progress_consents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // The borrower granting (or withholding) the share.
+  borrowerUserId: varchar("borrower_user_id").notNull().references(() => users.id),
+  // The referring partner the progress would be shared WITH.
+  partnerUserId: varchar("partner_user_id").notNull().references(() => users.id),
+  // Current state. False = withheld/revoked (existence-only in the hub).
+  shared: boolean("shared").default(false).notNull(),
+  grantedAt: timestamp("granted_at"),
+  revokedAt: timestamp("revoked_at"),
+  // Light GLBA-style capture (not the signature-grade compliance ledger).
+  consentMethod: varchar("consent_method", { length: 30 }).default("toggle").notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  // One consent record per borrower↔partner pair; toggled in place.
+  unique("uq_partner_progress_consent").on(table.borrowerUserId, table.partnerUserId),
+  index("idx_partner_progress_consent_partner").on(table.partnerUserId, table.shared),
+  index("idx_partner_progress_consent_borrower").on(table.borrowerUserId),
+]);
+
+export type PartnerProgressConsent = typeof partnerProgressConsents.$inferSelect;
