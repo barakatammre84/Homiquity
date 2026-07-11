@@ -18,3 +18,4 @@ export * from "./schema/delivery";
 export * from "./schema/taxInsights";
 export * from "./schema/cpaPartners";
 export * from "./schema/partners";
+export * from "./schema/scenarioRuns";

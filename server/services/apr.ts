@@ -109,8 +109,9 @@ export function calculateMortgageAPR(params: MortgageAPRParams): number {
 // Representative fee model for ADVERTISED rates.
 //
 // Advertised APRs must reflect fees a borrower would actually incur. This
-// mirrors the platform fee schedule in services/loanEstimate.ts — if that
-// schedule changes, change this with it. Prepaid interest assumes 15 days.
+// mirrors the platform fee schedule in services/loanCosts.ts (shared by the
+// Loan Estimate and the scenario simulator) — if that schedule changes,
+// change this with it. Prepaid interest assumes 15 days.
 // ---------------------------------------------------------------------------
 
 export interface AdvertisedFeeModelOptions {
