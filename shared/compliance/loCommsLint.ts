@@ -46,6 +46,14 @@ export interface LexiconRule {
   guidance: string;
   /** Tier-2 only: a compliant rewrite the composer can offer. */
   suggestedRewrite?: string;
+  /**
+   * When true, an affirmative (non-negated) match hard-blocks the send outright
+   * — no override — because the phrasing is a prohibited misrepresentation with
+   * no legitimate affirmative form (e.g. guaranteeing approval, Reg N
+   * §1014.3(i)). A negated match ("approval is NOT guaranteed") is compliant and
+   * is skipped by the negation guard in lintOutboundText.
+   */
+  hardBlock?: boolean;
 }
 
 export interface LintMatch {
@@ -63,12 +71,17 @@ export interface LintResult {
   triggerMatches: LintMatch[];
   /** Tier-2 promise phrases — presence warns (overridable, logged). */
   promiseMatches: LintMatch[];
+  /** Reg N phrases flagged hardBlock that matched affirmatively (e.g. an
+   *  approval guarantee) — these block the send outright, no override. A subset
+   *  of promiseMatches. */
+  hardBlockMatches: LintMatch[];
   hasTriggerTerms: boolean;
   hasPromisePhrases: boolean;
-  /** True when nothing forces a block (no Tier-1). Tier-2 does not clear this
-   *  flag — it warns — but callers use requiresOverride to gate the send. */
+  /** True when the send must be blocked outright: any Tier-1 trigger term OR any
+   *  affirmative hard-block Reg N phrase (e.g. guaranteed approval). */
   blocked: boolean;
-  /** True when a Tier-2 warning is present and must be acknowledged to send. */
+  /** True when a Tier-2 warning that is NOT itself a hard block is present and
+   *  must be acknowledged to send. */
   requiresOverride: boolean;
 }
 
@@ -142,15 +155,23 @@ export const REG_N_PROMISE_LEXICON: LexiconRule[] = [
     id: "regn-guaranteed-approval",
     tier: 2,
     category: "approval_guarantee",
-    citation: "12 CFR §1014.3(i)",
+    // §1014.3(q) — "ability or likelihood to obtain any mortgage credit product
+    // or term". (Not (i), which is product *type* / amortization.) Subsection
+    // letter per compliance-auditor resolution; pending counsel verbatim
+    // confirmation — see data/regulatory/regulatory-ledger.json sign-off item.
+    citation: "12 CFR §1014.3(q)",
     // "guaranteed approval", "approval is guaranteed", "you're guaranteed to be approved",
     // "assured approval", "approval assured", "guaranteed to qualify"
     pattern:
       /\b(guarantee[ds]?|assured?)\b[^.!?]{0,40}\b(approv\w+|qualif\w+|financ\w+|loan)\b|\b(approv\w+|qualif\w+)\b[^.!?]{0,20}\b(guarantee[ds]?|assured?|certain)\b/i,
     guidance:
-      "Reg N §1014.3(i) prohibits misrepresenting the likelihood of approval. Approval is never guaranteed before underwriting.",
+      "Reg N §1014.3(q) prohibits misrepresenting the likelihood of approval. Approval is never guaranteed before underwriting.",
     suggestedRewrite:
       "Based on what you've shared, your file looks strong — final approval depends on verification and underwriting.",
+    // A guaranteed/assured approval has no compliant affirmative form — block it
+    // outright (no override). The negation guard in lintOutboundText lets the
+    // compliant negated form ("approval is NOT guaranteed") through untouched.
+    hardBlock: true,
   },
   {
     id: "regn-superlative-rate",
@@ -209,6 +230,36 @@ When we quote specific loan terms, federal law requires we also state:
 
 Your Loan Estimate states these terms for your specific loan. Ask your loan officer to send it, or view your Advisor Report, rather than relying on figures quoted in a message.`;
 
+// Negation cues that make an otherwise-flagged phrase compliant — e.g.
+// "approval is NOT guaranteed", "we can't guarantee approval", "no guaranteed
+// approval". Applied only to hard-block rules, where a negated match is the
+// compliant statement, not a violation.
+const NEGATION_CUE =
+  /\b(not|no|never|without|cannot|can\s?not|none|nothing|isn'?t|aren'?t|wasn'?t|weren'?t|won'?t|don'?t|doesn'?t|didn'?t|can'?t|couldn'?t|wouldn'?t|shouldn'?t)\b|n['’]t\b/i;
+
+function isNegatedMatch(text: string, m: RegExpExecArray): boolean {
+  // Scope the negation to the CURRENT clause: look back only as far as the last
+  // clause boundary before the match. An in-clause negation ("approval is NOT
+  // guaranteed", "we can't guarantee approval") flips the meaning to a compliant
+  // statement; a negation in a NEIGHBORING clause ("I won't lie — approval is
+  // guaranteed", "you can't lose: approval is guaranteed") must NOT relax the
+  // block. Proximity alone can't tell these apart — clause scoping can.
+  const before = text.slice(0, m.index);
+  const clauseStart =
+    Math.max(
+      before.lastIndexOf(","),
+      before.lastIndexOf(";"),
+      before.lastIndexOf(":"),
+      before.lastIndexOf("—"),
+      before.lastIndexOf("–"),
+      before.lastIndexOf("."),
+      before.lastIndexOf("!"),
+      before.lastIndexOf("?"),
+      before.lastIndexOf("\n"),
+    ) + 1;
+  return NEGATION_CUE.test(text.slice(clauseStart, m.index + m[0].length));
+}
+
 /**
  * Lint an outbound LO communication. Pure and deterministic.
  * Rules are evaluated in a fixed order so findings are stable.
@@ -216,11 +267,18 @@ Your Loan Estimate states these terms for your specific loan. Ask your loan offi
 export function lintOutboundText(text: string): LintResult {
   const triggerMatches: LintMatch[] = [];
   const promiseMatches: LintMatch[] = [];
+  const hardBlockMatches: LintMatch[] = [];
 
   for (const rule of ALL_RULES) {
     // Non-global regex: one representative match per rule keeps output stable.
     const m = rule.pattern.exec(text);
     if (!m) continue;
+    // A clause-scoped negation of a hard-block phrase ("approval is NOT
+    // guaranteed") is the compliant statement — skip it entirely so we neither
+    // block nor warn on good language. A negation in a neighboring clause does
+    // not qualify (see isNegatedMatch), so "I won't lie — approval is guaranteed"
+    // still hard-blocks below.
+    if (rule.hardBlock && isNegatedMatch(text, m)) continue;
     const match: LintMatch = {
       ruleId: rule.id,
       tier: rule.tier,
@@ -230,19 +288,28 @@ export function lintOutboundText(text: string): LintResult {
       guidance: rule.guidance,
       suggestedRewrite: rule.suggestedRewrite,
     };
-    if (rule.tier === 1) triggerMatches.push(match);
-    else promiseMatches.push(match);
+    if (rule.tier === 1) {
+      triggerMatches.push(match);
+    } else {
+      promiseMatches.push(match);
+      if (rule.hardBlock) hardBlockMatches.push(match);
+    }
   }
 
   const hasTriggerTerms = triggerMatches.length > 0;
   const hasPromisePhrases = promiseMatches.length > 0;
+  // Block outright on any Reg Z trigger term OR any affirmative hard-block Reg N
+  // phrase (e.g. guaranteed approval). Remaining Tier-2 phrases are overridable.
+  const blocked = hasTriggerTerms || hardBlockMatches.length > 0;
+  const requiresOverride = promiseMatches.some((pm) => !hardBlockMatches.includes(pm));
 
   return {
     triggerMatches,
     promiseMatches,
+    hardBlockMatches,
     hasTriggerTerms,
     hasPromisePhrases,
-    blocked: hasTriggerTerms,
-    requiresOverride: hasPromisePhrases,
+    blocked,
+    requiresOverride,
   };
 }

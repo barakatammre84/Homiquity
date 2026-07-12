@@ -2807,16 +2807,23 @@ export function registerBorrowerRoutes(
       if (senderIsStaff && messageType === "text") {
         const lint = lintOutboundText(message);
         if (lint.blocked) {
+          const blockMatches = [...lint.triggerMatches, ...lint.hardBlockMatches];
           logAudit(req, "comms_lint.blocked", "loan_application", applicationId ?? undefined, {
             recipientId,
-            categories: lint.triggerMatches.map((m) => m.category),
-            citations: lint.triggerMatches.map((m) => m.citation),
+            categories: blockMatches.map((m) => m.category),
+            citations: blockMatches.map((m) => m.citation),
           });
+          // A prohibited Reg N misrepresentation (e.g. guaranteed approval) has no
+          // "disclose it instead" path — it simply cannot be sent, with no
+          // override. A Reg Z trigger term routes to the disclosed channels.
+          const hasRegNPromise = lint.hardBlockMatches.length > 0;
           return res.status(422).json({
-            error: "This message states specific loan terms that require federal disclosures. Send the figures via the borrower's Loan Estimate or Advisor Report instead.",
+            error: hasRegNPromise
+              ? "This message states or implies a guaranteed approval, which federal law (Regulation N, 12 CFR §1014.3) prohibits. Approval can't be guaranteed before underwriting — please rephrase without promising an outcome."
+              : "This message states specific loan terms that require federal disclosures. Send the figures via the borrower's Loan Estimate or Advisor Report instead.",
             complianceBlock: true,
             lint,
-            disclosureBlock: REG_Z_ADVERTISING_DISCLOSURE_BLOCK,
+            ...(lint.hasTriggerTerms ? { disclosureBlock: REG_Z_ADVERTISING_DISCLOSURE_BLOCK } : {}),
           });
         }
         if (lint.requiresOverride && !parsed.data.acknowledgeComplianceWarning) {
