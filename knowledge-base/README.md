@@ -47,6 +47,7 @@ doc-drift bug to fix):
 - [CICD.md](runbooks/CICD.md) · [ROLLBACK.md](runbooks/ROLLBACK.md) · [LOCAL_DEV.md](runbooks/LOCAL_DEV.md)
   · [TEST_ACCOUNTS.md](runbooks/TEST_ACCOUNTS.md) · [PRE_PRODUCTION_OPS_ROUTINES.md](runbooks/PRE_PRODUCTION_OPS_ROUTINES.md)
   · [PROD_ACCEPTANCE_TEST.md](runbooks/PROD_ACCEPTANCE_TEST.md) — the F1 launch-gate checklist
+  · [BETA_GO_LIVE_READINESS.md](runbooks/BETA_GO_LIVE_READINESS.md) — dated beta-readiness snapshot (verified workflows + founder decisions)
 - [support-playbooks/](runbooks/support-playbooks/) — locked-out user, discrimination/credit-error escalation.
 
 ### Specs — L3 feature specs · [`specs/`](specs/)
