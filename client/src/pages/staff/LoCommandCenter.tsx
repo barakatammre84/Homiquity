@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { RateLockDialog } from "@/components/RateLockDialog";
 import { ScenarioSimulatorDialog } from "@/components/ScenarioSimulatorDialog";
+import { SubmissionReadinessDialog } from "@/components/SubmissionReadinessDialog";
 import { isInternalStaffRole } from "@shared/roles";
 import { getLoanAppStatusMeta } from "@shared/schema";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -565,6 +566,11 @@ function ActionsRail({
   return (
     <div className="space-y-2" data-testid="actions-rail">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actions</p>
+
+      {/* Terminal money-path action: submission-readiness → run AUS → push the
+          compliant MISMO package to a wholesale lender. (Re-wired into the
+          cockpit — the LO-1 three-pane consolidation dropped it.) */}
+      <SubmissionReadinessDialog applicationId={applicationId} borrowerName={borrowerName} />
 
       <ScenarioSimulatorDialog applicationId={applicationId} borrowerName={borrowerName} />
 

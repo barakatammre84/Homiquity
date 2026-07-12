@@ -150,9 +150,14 @@ export function SubmissionReadinessDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" data-testid={`submission-readiness-${applicationId}`}>
-          <Send className="mr-1 h-4 w-4" aria-hidden="true" />
-          Lender
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start"
+          data-testid={`submission-readiness-${applicationId}`}
+        >
+          <Send className="mr-2 h-4 w-4" aria-hidden="true" />
+          Submit to lender
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
