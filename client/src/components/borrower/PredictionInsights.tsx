@@ -82,6 +82,13 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
   const statusColor = likelihoodPct >= 70 ? "text-success-subtle-foreground" : likelihoodPct >= 40 ? "text-warning-subtle-foreground" : "text-destructive";
   const statusLabel = likelihoodPct >= 70 ? "Strong" : likelihoodPct >= 40 ? "Moderate" : "Needs Attention";
 
+  // Borrower surface shows a QUALITATIVE outlook + a typical WEEK RANGE, never a
+  // bold odds % or a single "days to funding" integer — a precise per-file number
+  // reads as a representation / promised date on a pre-underwriting file (UDAAP;
+  // compliance decision recorded in PR #137). The heuristic still drives the band.
+  const outlookWeeks = Math.max(3, Math.round(prediction.estimatedDaysToFund / 7));
+  const timelineRange = `${outlookWeeks - 1}–${outlookWeeks + 1} weeks`;
+
   return (
     <Card data-testid="prediction-insights">
       <CardHeader className="pb-3">
@@ -93,22 +100,22 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="space-y-1" data-testid="metric-likelihood">
-            <p className="text-xs text-muted-foreground">Likelihood</p>
+            <p className="text-xs text-muted-foreground">Outlook</p>
             <div className="flex items-center gap-1">
               <Target className={`h-4 w-4 ${statusColor}`} />
-              <span className={`text-lg font-bold ${statusColor}`}>{likelihoodPct}%</span>
+              <span className={`text-lg font-bold ${statusColor}`}>{statusLabel}</span>
             </div>
-            <Badge variant="secondary">{statusLabel}</Badge>
-            {/* Prominence: the caveat sits directly under the number, not only in the footer (UDAAP net-impression). */}
+            {/* Qualitative status only — the numeric closing-odds % is intentionally
+                not shown to the borrower (UDAAP; PR #137). */}
             <p className="text-[10px] leading-tight text-muted-foreground">estimate, not a decision</p>
           </div>
           <div className="space-y-1" data-testid="metric-timeline">
-            <p className="text-xs text-muted-foreground">Est. Timeline</p>
+            <p className="text-xs text-muted-foreground">Typical timeline</p>
             <div className="flex items-center gap-1">
               <Clock className="h-4 w-4 text-info" />
-              <span className="text-lg font-bold">{prediction.estimatedDaysToFund}d</span>
+              <span className="text-base font-bold">{timelineRange}</span>
             </div>
-            <p className="text-xs text-muted-foreground">to funding</p>
+            <p className="text-xs text-muted-foreground">after full submission</p>
             <p className="text-[10px] leading-tight text-muted-foreground">typical, not a closing date</p>
           </div>
           {benchmark?.percentiles?.creditScorePercentile != null && (
