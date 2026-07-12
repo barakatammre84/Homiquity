@@ -130,6 +130,28 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
     const engine = read("server/underwritingEngine.ts");
     expect(engine).toContain("Math.min(familySize, VA_EXTRA_MEMBER_FAMILY_CAP)");
   });
+
+  // UAL P7: the alternative-structure translation math is regulated
+  // calculation surface. The research doc (§3) requires the author to extend
+  // this guard to the new file — citations must be present, and the
+  // equivalent rate must come from the SHARED Appendix J solver, never a
+  // forked one (same rule as the VA-residual case above).
+  it("structureTranslation cites its authority and shares the Appendix J solver", () => {
+    const source = read("server/services/structureTranslation.ts");
+    expect(source).toContain("UNIVERSAL_ADAPTATION_LAYER.md");
+    expect(source).toContain("§1026.22");
+    expect(source).toMatch(/import \{[^}]*solveAPRFromStream[^}]*\} from "\.\/apr"/);
+    // No forked solver: the file must not implement its own root-finding.
+    expect(source).not.toMatch(/presentValue|bisection|while\s*\(/i);
+  });
+
+  it("structureTranslation stays translation-only — no pricing or Shariah judgment", () => {
+    const source = read("server/services/structureTranslation.ts");
+    // Every economic input comes from the funder's term sheet; the module
+    // must not carry its own rate/markup defaults.
+    expect(source).not.toMatch(/DEFAULT_(RATE|YIELD|MARKUP)/);
+    expect(source).toContain("TRANSLATION ONLY");
+  });
 });
 
 describe("Reg B: the intake decision path is fully deterministic", () => {

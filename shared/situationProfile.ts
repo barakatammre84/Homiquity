@@ -71,6 +71,13 @@ export const situationProfileSchema = z.object({
   summary: z.string(),
   taxYears: z.array(z.number()),
   entityCount: z.number(),
+  /**
+   * UAL P7: borrower-declared intake answer ("Do you require financing that
+   * avoids interest?"). A funder-ROUTING signal only — never an underwriting
+   * input, never a faith classification. null = not asked/answered (also the
+   * value for profiles persisted before this field existed).
+   */
+  halalNeed: z.boolean().nullable().default(null),
   flags: z.array(situationFlagSchema),
   incomePaths: z.array(incomePathSignalSchema),
   documentRequests: z.array(documentRequestSchema),
