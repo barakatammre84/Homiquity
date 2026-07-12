@@ -17,6 +17,7 @@ export default defineConfig({
       "tests/adversarialPersonas.test.ts",
       "tests/adverseActionNotice.test.ts",
       "tests/adverseActionDelivery.test.ts",
+      "tests/adverseActionPdf.test.ts",
       "tests/apr.test.ts",
       "tests/aprValidation.test.ts",
       "tests/structureTranslation.test.ts",
