@@ -135,6 +135,31 @@ describe("intake → LO handoff: pool + claim", () => {
   });
 });
 
+describe("intake → LO handoff: deal-team access matches the queue", () => {
+  it("a deal-team LO (not the assigned loanOfficerId) can open the cockpit", async () => {
+    const borrower = await loginAs("buyer@test.com");
+    const admin = await loginAs("admin@test.com");
+    const lo = await loginAs("lo@test.com");
+    const app = await createSelfServeApp(borrower);
+
+    // Add the LO as a deal-team member WITHOUT assigning them as loan officer —
+    // loanOfficerId stays null, so only the deal-team row grants access. Before
+    // the fix, verifyInternalStaffApplicationAccess gated lo/loa on loanOfficerId
+    // alone and 403'd here even though the file would show in the LO's queue.
+    const add = await fetch(`${BASE_URL}/api/applications/${app.id}/team`, {
+      method: "POST",
+      headers: { ...JSON_HTTPS, Cookie: admin },
+      body: JSON.stringify({ userId: "test-lo", teamRole: "loan_officer" }),
+    });
+    expect(add.status, "admin adds LO to the deal team").toBe(201);
+
+    const cockpit = await fetch(`${BASE_URL}/api/staff/applications/${app.id}/cockpit`, {
+      headers: { Cookie: lo, ...HTTPS },
+    });
+    expect(cockpit.status, "deal-team LO can open the cockpit").toBe(200);
+  });
+});
+
 describe("intake → LO handoff: admin assign/unassign chokepoint", () => {
   it("assign grants access + queue; unassign revokes and returns to the pool", async () => {
     const borrower = await loginAs("buyer@test.com");
