@@ -23,6 +23,7 @@ import {
 } from "../services/borrowerStateMachine";
 import type { BorrowerState, TransitionTrigger } from "@shared/schema";
 import { matchBorrowerToLenders, getTopMatches } from "../services/lenderMatchingEngine";
+import { firstQueryValue } from "./queryParams";
 import {
   trackIntent,
   getIntentSummary,
@@ -185,7 +186,7 @@ export function registerIntelligenceRoutes(
   app.get("/api/intelligence/lender-matches/top", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const limit = parseInt(req.query.limit as string) || 5;
+      const limit = parseInt(firstQueryValue(req.query.limit) ?? "") || 5;
       const matches = await getTopMatches(user.id, limit);
       res.json(matches);
     } catch (error) {
@@ -226,7 +227,7 @@ export function registerIntelligenceRoutes(
   app.get("/api/intelligence/intent-summary", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const days = parseInt(req.query.days as string) || 30;
+      const days = parseInt(firstQueryValue(req.query.days) ?? "") || 30;
       const summary = await getIntentSummary(user.id, days);
       res.json(summary);
     } catch (error) {

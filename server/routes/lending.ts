@@ -484,6 +484,8 @@ export function registerLendingRoutes(
         loanPurpose: formData.loanPurpose,
         isVeteran: formData.isVeteran,
         isFirstTimeBuyer: formData.isFirstTimeBuyer,
+        // UAL P7 routing signal; null = not answered (never defaulted).
+        avoidsInterestFinancing: formData.avoidsInterestFinancing ?? null,
         propertyState: formData.propertyState,
         // Schema-validated numeric strings → integer columns.
         householdFamilySize: formData.householdFamilySize ? parseInt(formData.householdFamilySize) : null,

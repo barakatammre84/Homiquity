@@ -143,6 +143,15 @@ export const lenderSubmissions = pgTable(
     /** sha256 hex digest of mismoPackageXml, for tamper-evident audit. */
     mismoPackageHash: varchar("mismo_package_hash", { length: 64 }),
     mismoPackageGeneratedAt: timestamp("mismo_package_generated_at"),
+    /**
+     * The income analysis package (UAL P6) assembled and sent alongside the
+     * MISMO package — the broker's cited income narrative (per-path math,
+     * confirmed worksheet, SituationProfile, document manifest). Same
+     * immutable-snapshot + tamper-evident-hash discipline as the MISMO trio.
+     */
+    incomePackageJson: jsonb("income_package_json"),
+    incomePackageHash: varchar("income_package_hash", { length: 64 }),
+    incomePackageGeneratedAt: timestamp("income_package_generated_at"),
     /** Staff user who performed the submission. */
     submittedBy: varchar("submitted_by").notNull(),
     submittedAt: timestamp("submitted_at").defaultNow().notNull(),

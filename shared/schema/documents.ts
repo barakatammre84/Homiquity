@@ -9,6 +9,7 @@ import {
   decimal,
   jsonb,
   index,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -116,12 +117,17 @@ export const DOCUMENT_TYPE_TAXONOMY = [
   "1099_nec",
   // Income - Tax Returns
   "tax_return_1040",
+  "schedule_1",
+  "schedule_b",
   "schedule_c",
+  "schedule_d",
   "schedule_e",
   "schedule_k1",
   "business_tax_return_1120",
   "business_tax_return_1120s",
   "business_tax_return_1065",
+  "form_8825",
+  "form_4562",
   // Income - Self-Employed
   "profit_loss_statement",
   "social_security_award_letter",
@@ -266,10 +272,38 @@ export const logicalDocuments = pgTable("logical_documents", {
   periodEnd: timestamp("period_end"),
   taxYear: integer("tax_year"),
   
-  // Institution/employer info (extracted)
+  // Institution/employer info (extracted). For tax forms, institution_name
+  // holds the business-entity name read off the form (P2b entity resolution
+  // resolves it against borrower_business_entities).
   institutionName: varchar("institution_name", { length: 255 }),
   accountNumberMasked: varchar("account_number_masked", { length: 50 }),
-  
+
+  // --- Bridge to the live upload flow (UAL P2a) ------------------------------
+  // The page-image pipeline (document_uploads/document_pages) needs
+  // rasterization infra that doesn't exist yet; until it does, a logical
+  // document is produced directly from a `documents` row by the tax-form
+  // extractor. source_document_id + extraction_run_id carry that provenance.
+  sourceDocumentId: varchar("source_document_id").references(() => documents.id),
+  extractionRunId: varchar("extraction_run_id").references(() => taxExtractionRuns.id),
+  // Resolved business entity this form belongs to (P2b entity resolution).
+  businessEntityId: varchar("business_entity_id").references(() => borrowerBusinessEntities.id),
+  // Page attribution from the classification pass (1-indexed, inclusive).
+  pageStart: integer("page_start"),
+  pageEnd: integer("page_end"),
+  // K-1 flavor when documentType = schedule_k1 ("1065" | "1120s").
+  k1Variant: varchar("k1_variant", { length: 10 }),
+
+  // Extraction lineage for THIS form instance (mirrors documents.extraction_*):
+  // model/prompt ids plus the encrypted raw model response of the per-form
+  // extraction call, so an auditor can tie every stored field to exact output.
+  modelId: varchar("model_id", { length: 100 }),
+  promptVersion: varchar("prompt_version", { length: 50 }),
+  rawResponseHash: varchar("raw_response_hash", { length: 64 }),
+  rawResponseEncrypted: text("raw_response_encrypted"),
+  rawResponseIv: varchar("raw_response_iv", { length: 32 }),
+  rawResponseKeyId: varchar("raw_response_key_id", { length: 20 }),
+
+
   // Completeness
   expectedPageCount: integer("expected_page_count"),
   actualPageCount: integer("actual_page_count"),
@@ -287,6 +321,9 @@ export const logicalDocuments = pgTable("logical_documents", {
   index("idx_logical_docs_borrower").on(table.borrowerId),
   index("idx_logical_docs_type").on(table.documentType),
   index("idx_logical_docs_status").on(table.status),
+  index("idx_logical_docs_source_doc").on(table.sourceDocumentId),
+  index("idx_logical_docs_run").on(table.extractionRunId),
+  index("idx_logical_docs_entity").on(table.businessEntityId),
 ]);
 
 // Link table: Logical Document to Pages
@@ -310,8 +347,12 @@ export const logicalDocumentPages = pgTable("logical_document_pages", {
 export const extractedFields = pgTable("extracted_fields", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   logicalDocumentId: varchar("logical_document_id").references(() => logicalDocuments.id),
-  pageId: varchar("page_id").references(() => documentPages.id).notNull(),
-  
+  // Nullable since UAL P2a: fields produced by the whole-document tax extractor
+  // carry page_number attribution instead of a rasterized page row. When the
+  // page-image pipeline lands, page_id becomes populated again.
+  pageId: varchar("page_id").references(() => documentPages.id),
+  pageNumber: integer("page_number"), // 1-indexed page attribution from classification
+
   // Field identification
   fieldName: varchar("field_name", { length: 255 }).notNull(), // e.g., "grossMonthlyIncome", "employerName"
   fieldCategory: varchar("field_category", { length: 100 }), // income, asset, liability, identity, property
@@ -379,6 +420,89 @@ export const completenessChecks = pgTable("completeness_checks", {
   index("idx_completeness_status").on(table.status),
 ]);
 
+// H. Tax Extraction Run (UAL P2a — Situation Identification Engine)
+// One row per full multi-form extraction of an uploaded tax document:
+// classification pass + N per-form extraction passes. Append-only — a re-run
+// inserts a new row and produces fresh logical_documents; readers use the
+// latest completed run for a source document. The classification pass's raw
+// model response is kept encrypted here (per-form raw responses live on their
+// logical_documents rows).
+export const taxExtractionRuns = pgTable("tax_extraction_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id").references(() => documents.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+
+  status: varchar("status", { length: 20 }).default("running").notNull(), // running, completed, failed
+  // I10: simulated output must be unmistakable wherever it lands.
+  simulated: boolean("simulated").default(false).notNull(),
+  error: text("error"),
+
+  // Lineage for the classification pass
+  modelId: varchar("model_id", { length: 100 }),
+  promptVersion: varchar("prompt_version", { length: 50 }),
+  classificationResponseHash: varchar("classification_response_hash", { length: 64 }),
+  classificationRawEncrypted: text("classification_raw_encrypted"),
+  classificationRawIv: varchar("classification_raw_iv", { length: 32 }),
+  classificationRawKeyId: varchar("classification_raw_key_id", { length: 20 }),
+
+  // Run shape
+  pageCount: integer("page_count"),
+  formCount: integer("form_count"),
+  // Conservative aggregate of per-field confidences (bottom-half mean; see
+  // shared/taxFormExtraction.ts aggregateFieldConfidence).
+  overallConfidence: decimal("overall_confidence", { precision: 5, scale: 4 }),
+
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_tax_extraction_runs_document").on(table.documentId),
+  index("idx_tax_extraction_runs_user").on(table.userId),
+  index("idx_tax_extraction_runs_status").on(table.status),
+]);
+
+// I. Borrower Business Entities (UAL P2b — entity resolution)
+// One row per distinct business entity resolved from a borrower's extracted
+// tax forms. identity_key is deterministic ('ein:<last4>' when an EIN was
+// read, else 'name:<normalized>'); auto-resolved rows refresh by upsert on
+// (user_id, identity_key); a human-confirmed row (auto_resolved=false, set by
+// the P5 workbench) is never overwritten by re-resolution.
+export const BUSINESS_ENTITY_TYPES = [
+  "sole_proprietorship",
+  "single_member_llc",
+  "partnership",
+  "s_corporation",
+  "c_corporation",
+] as const;
+export type BusinessEntityType = (typeof BUSINESS_ENTITY_TYPES)[number];
+
+export const borrowerBusinessEntities = pgTable("borrower_business_entities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+
+  identityKey: varchar("identity_key", { length: 300 }).notNull(),
+  entityType: varchar("entity_type", { length: 30 }).notNull(), // BUSINESS_ENTITY_TYPES
+  name: varchar("name", { length: 255 }),
+  // Last-4 only, PII-minimized at the extraction schema — a full EIN never
+  // reaches this table.
+  einLast4: varchar("ein_last4", { length: 4 }),
+  ownershipPercent: decimal("ownership_percent", { precision: 5, scale: 2 }),
+
+  firstTaxYear: integer("first_tax_year"),
+  lastTaxYear: integer("last_tax_year"),
+  sourceFormCount: integer("source_form_count").default(0).notNull(),
+  resolutionNotes: text("resolution_notes"),
+
+  autoResolved: boolean("auto_resolved").default(true).notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  unique("uq_borrower_entities_user_identity").on(table.userId, table.identityKey),
+  index("idx_borrower_entities_user").on(table.userId),
+]);
+
 // Insert schemas
 export const insertDocumentUploadSchema = createInsertSchema(documentUploads).omit({
   id: true,
@@ -422,3 +546,51 @@ export type InsertExtractedField = z.infer<typeof insertExtractedFieldSchema>;
 export type ExtractedField = typeof extractedFields.$inferSelect;
 export type InsertCompletenessCheck = z.infer<typeof insertCompletenessCheckSchema>;
 export type CompletenessCheck = typeof completenessChecks.$inferSelect;
+
+export const insertTaxExtractionRunSchema = createInsertSchema(taxExtractionRuns).omit({
+  id: true,
+  startedAt: true,
+});
+export type InsertTaxExtractionRun = z.infer<typeof insertTaxExtractionRunSchema>;
+export type TaxExtractionRun = typeof taxExtractionRuns.$inferSelect;
+
+export const insertBorrowerBusinessEntitySchema = createInsertSchema(borrowerBusinessEntities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertBorrowerBusinessEntity = z.infer<typeof insertBorrowerBusinessEntitySchema>;
+export type BorrowerBusinessEntity = typeof borrowerBusinessEntities.$inferSelect;
+
+// J. Situation Profiles (UAL P2c — Situation Identification Engine output)
+// Append-only; latest row per user wins; inputs_fingerprint dedupes no-op
+// re-classifications. The profile jsonb is Zod-typed in
+// shared/situationProfile.ts; the flag columns exist for staff-feed queries.
+export const situationProfiles = pgTable("situation_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  applicationId: varchar("application_id").references(() => loanApplications.id),
+
+  profile: jsonb("profile").notNull(),
+  inputsFingerprint: varchar("inputs_fingerprint", { length: 64 }).notNull(),
+
+  entityCount: integer("entity_count").default(0).notNull(),
+  selfEmployed: boolean("self_employed").default(false).notNull(),
+  multiEntity: boolean("multi_entity").default(false).notNull(),
+  rentalPresent: boolean("rental_present").default(false).notNull(),
+  k1Present: boolean("k1_present").default(false).notNull(),
+  varianceCount: integer("variance_count").default(0).notNull(),
+  documentRequestCount: integer("document_request_count").default(0).notNull(),
+
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_situation_profiles_user").on(table.userId, table.generatedAt),
+  index("idx_situation_profiles_flags").on(table.selfEmployed, table.rentalPresent, table.generatedAt),
+]);
+
+export const insertSituationProfileSchema = createInsertSchema(situationProfiles).omit({
+  id: true,
+  generatedAt: true,
+});
+export type InsertSituationProfile = z.infer<typeof insertSituationProfileSchema>;
+export type SituationProfileRow = typeof situationProfiles.$inferSelect;

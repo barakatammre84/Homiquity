@@ -45,7 +45,8 @@ import {
   Plus,
   Trash2,
   LogIn,
-  HelpCircle
+  HelpCircle,
+  Percent
 } from "lucide-react";
 
 import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
@@ -126,7 +127,11 @@ const QUESTIONS: Question[] = [
     icon: Shield,
     booleanFields: [
       { field: "isVeteran", label: "I am a U.S. military veteran or active duty", icon: Shield },
-      { field: "isFirstTimeBuyer", label: "I am a first-time home buyer", icon: Home }
+      { field: "isFirstTimeBuyer", label: "I am a first-time home buyer", icon: Home },
+      // UAL P7 routing signal. Product-preference wording only (marketing-
+      // integrity rules: any certification is the funder's — never claim our
+      // own, never use faith terms). Routes the file; promises nothing.
+      { field: "avoidsInterestFinancing", label: "I require financing that avoids interest", icon: Percent }
     ]
   },
   {
@@ -587,6 +592,7 @@ function PreApprovalFunnel() {
       // borrowers aren't asked twice (checkboxes stay editable at their step).
       isVeteran: urlType === "va",
       isFirstTimeBuyer: urlType === "first-time",
+      avoidsInterestFinancing: false,
       propertyState: urlState || "",
       hasAdditionalIncome: false,
       incomeSources: [],
@@ -633,7 +639,7 @@ function PreApprovalFunnel() {
 
   const hasMeaningfulData = useCallback((values: PreApprovalFormData) => {
     return Object.entries(values).some(([k, v]) => {
-      if (k === "isVeteran" || k === "isFirstTimeBuyer") return false;
+      if (k === "isVeteran" || k === "isFirstTimeBuyer" || k === "avoidsInterestFinancing") return false;
       if (k === "employmentType" && v === "employed") return false;
       if (k === "propertyType" && v === "single_family") return false;
       if (k === "loanPurpose" && v === defaultLoanPurpose) return false;
@@ -745,6 +751,7 @@ function PreApprovalFunnel() {
         downPayment: draft.downPayment || "",
         isVeteran: !!draft.isVeteran,
         isFirstTimeBuyer: !!draft.isFirstTimeBuyer,
+        avoidsInterestFinancing: !!draft.avoidsInterestFinancing,
         propertyState: draft.propertyState || "",
         hasAdditionalIncome: Array.isArray(draft.incomeSources) && draft.incomeSources.length > 0,
         incomeSources: Array.isArray(draft.incomeSources) ? draft.incomeSources : [],

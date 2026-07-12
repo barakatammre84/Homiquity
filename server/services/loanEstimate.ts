@@ -2,6 +2,7 @@ import { storage } from "../storage";
 import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
+import { computeClosingCosts, calculatePMI } from "./loanCosts";
 import type { LoanApplication } from "@shared/schema";
 
 export interface LoanEstimateData {
@@ -133,35 +134,16 @@ function calculateMonthlyPayment(principal: number, annualRate: number, termMont
     (Math.pow(1 + monthlyRate, termMonths) - 1);
 }
 
-function calculatePMI(loanAmount: number, propertyValue: number, creditScore: number): number {
-  const ltv = (loanAmount / propertyValue) * 100;
-  if (ltv <= 80) return 0;
-  
-  let rate = 0;
-  if (creditScore >= 760) {
-    rate = ltv > 95 ? 1.05 : ltv > 90 ? 0.80 : ltv > 85 ? 0.52 : 0.35;
-  } else if (creditScore >= 720) {
-    rate = ltv > 95 ? 1.35 : ltv > 90 ? 1.05 : ltv > 85 ? 0.68 : 0.45;
-  } else if (creditScore >= 680) {
-    rate = ltv > 95 ? 1.85 : ltv > 90 ? 1.40 : ltv > 85 ? 0.95 : 0.65;
-  } else {
-    rate = ltv > 95 ? 2.45 : ltv > 90 ? 1.90 : ltv > 85 ? 1.35 : 0.95;
-  }
-  
-  return (loanAmount * rate / 100) / 12;
-}
-
 function estimateClosingDate(): Date {
   const closingDate = new Date();
   closingDate.setDate(closingDate.getDate() + 30);
   return closingDate;
 }
 
-function calculatePrepaidInterest(loanAmount: number, rate: number, closingDate: Date): number {
+/** Days of prepaid interest at closing: the days remaining in the closing month. */
+function prepaidInterestDaysFor(closingDate: Date): number {
   const daysInMonth = new Date(closingDate.getFullYear(), closingDate.getMonth() + 1, 0).getDate();
-  const daysRemaining = daysInMonth - closingDate.getDate();
-  const dailyInterest = (loanAmount * (rate / 100)) / 365;
-  return dailyInterest * daysRemaining;
+  return daysInMonth - closingDate.getDate();
 }
 
 export async function generateLoanEstimate(applicationId: string): Promise<LoanEstimateData> {
@@ -236,57 +218,33 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   const termMonths = 360;
   const monthlyPandI = calculateMonthlyPayment(loanAmount, interestRate, termMonths);
   const monthlyPMI = isVaLoan ? 0 : calculatePMI(loanAmount, purchasePrice, creditScore);
-  
-  const annualPropertyTax = purchasePrice * 0.012;
-  const monthlyPropertyTax = annualPropertyTax / 12;
-  const annualHomeownersInsurance = Math.max(1200, purchasePrice * 0.003);
-  const monthlyHomeownersInsurance = annualHomeownersInsurance / 12;
-  
-  const monthlyEscrow = monthlyPropertyTax + monthlyHomeownersInsurance;
-  const monthlyTotal = monthlyPandI + monthlyPMI + monthlyEscrow;
-  
-  const originationFee = loanAmount * 0.01;
-  const points = 0;
-  const applicationFee = 500;
-  const underwritingFee = 1500;
-  const appraisalFee = 650;
-  const creditReportFee = 75;
-  const floodDeterminationFee = 25;
-  const taxServiceFee = 100;
-  const titleInsurance = loanAmount * 0.005;
-  const titleSearch = 350;
-  const surveyFee = 450;
-  const pestInspectionFee = 150;
-  const recordingFees = 150;
-  const transferTaxes = purchasePrice * 0.001;
-  
+
+  // Fee schedule + cost structure from the shared platform model
+  // (services/loanCosts.ts) — the LO-2 scenario simulator reads the same
+  // function, so a scenario's cash-to-close matches the LE for equal inputs.
   const closingDate = estimateClosingDate();
-  const prepaidInterest = calculatePrepaidInterest(loanAmount, interestRate, closingDate);
-  const prepaidHomeownersInsurance = annualHomeownersInsurance;
-  const prepaidMortgageInsurance = monthlyPMI * 2;
-  const prepaidPropertyTaxes = monthlyPropertyTax * 2;
-  
-  const escrowHomeownersInsurance = monthlyHomeownersInsurance * 3;
-  const escrowMortgageInsurance = monthlyPMI * 2;
-  const escrowPropertyTaxes = monthlyPropertyTax * 3;
-  
-  const ownersTitleInsurance = purchasePrice * 0.003;
-  
-  const loanCostsTotal = originationFee + points + applicationFee + underwritingFee +
-    appraisalFee + creditReportFee + floodDeterminationFee + taxServiceFee +
-    titleInsurance + titleSearch + surveyFee + pestInspectionFee;
-  
-  const otherCostsTotal = recordingFees + transferTaxes +
-    prepaidHomeownersInsurance + prepaidMortgageInsurance + prepaidInterest + prepaidPropertyTaxes +
-    escrowHomeownersInsurance + escrowMortgageInsurance + escrowPropertyTaxes +
-    ownersTitleInsurance;
-  
-  const totalClosingCosts = loanCostsTotal + otherCostsTotal;
-  
-  const lenderCredits = llpaResult.fthbWaiver > 0 ? llpaResult.fthbWaiver * loanAmount / 100 : 0;
-  
-  const cashToClose = totalClosingCosts + downPayment - lenderCredits;
-  
+  const costs = computeClosingCosts({
+    purchasePrice,
+    downPayment,
+    loanAmount,
+    interestRate,
+    monthlyPMI,
+    prepaidInterestDays: prepaidInterestDaysFor(closingDate),
+    lenderCredits: llpaResult.fthbWaiver > 0 ? llpaResult.fthbWaiver * loanAmount / 100 : 0,
+  });
+  const {
+    originationFee, points, applicationFee, underwritingFee,
+    appraisalFee, creditReportFee, floodDeterminationFee, taxServiceFee,
+    titleInsurance, titleSearch, surveyFee, pestInspectionFee,
+    recordingFees, transferTaxes, ownersTitleInsurance,
+    annualPropertyTax, annualHomeownersInsurance, monthlyEscrow,
+    prepaidInterest, prepaidHomeownersInsurance, prepaidMortgageInsurance, prepaidPropertyTaxes,
+    escrowHomeownersInsurance, escrowMortgageInsurance, escrowPropertyTaxes,
+    loanCostsTotal, otherCostsTotal, totalClosingCosts, lenderCredits, cashToClose,
+  } = costs;
+
+  const monthlyTotal = monthlyPandI + monthlyPMI + monthlyEscrow;
+
   const totalPaidIn5Years = (monthlyTotal * 60) + totalClosingCosts;
   
   let principalPaidOff = 0;
@@ -303,20 +261,15 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   const totalInterestPercentage = (totalInterest / loanAmount) * 100;
   
   // Actuarial APR (§1026.22 / Appendix J): solve the payment stream against
-  // the amount financed. Prepaid finance charges per §1026.4 — origination,
-  // points, application/underwriting fees, tax service, prepaid interest,
-  // and upfront MI. Appraisal, credit report, title, survey, pest, and
-  // recording/transfer charges are excluded (§1026.4(c)(7), (e)).
-  const prepaidFinanceCharges =
-    originationFee + points + applicationFee + underwritingFee + taxServiceFee +
-    prepaidInterest + prepaidMortgageInsurance;
+  // the amount financed. Prepaid finance charges per §1026.4 come from the
+  // shared cost model (services/loanCosts.ts).
   const apr = calculateMortgageAPR({
     loanAmount,
     noteRatePct: interestRate,
     termMonths,
     monthlyMI: monthlyPMI,
     propertyValue: purchasePrice,
-    prepaidFinanceCharges,
+    prepaidFinanceCharges: costs.prepaidFinanceCharges,
   });
 
   // TRID timing (§1026.19(e)(1)(iii)): the clock anchors to tridTriggeredAt —

@@ -28,6 +28,7 @@ import {
   getBorrowerBenchmark,
 } from "../services/predictiveEngine";
 import type { AnalyticsDomain } from "@shared/schema";
+import { firstQueryValue } from "./queryParams";
 
 export function registerDataIntelligenceRoutes(app: Express) {
 
@@ -47,7 +48,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin", "lo", "loa", "processor", "underwriter"),
     async (req, res) => {
       try {
-        const daysBack = parseInt(req.query.days as string) || 30;
+        const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 30;
         const metrics = await getAutomationMetrics(daysBack);
         res.json(metrics);
       } catch (error) {
@@ -62,7 +63,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     async (req, res) => {
       try {
         const domain = req.params.domain as AnalyticsDomain;
-        const daysBack = parseInt(req.query.days as string) || 30;
+        const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 30;
         const insights = await getDomainInsights(domain, daysBack);
         res.json(insights);
       } catch (error) {
@@ -76,13 +77,16 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin"),
     async (req, res) => {
       try {
-        const { domain, applicationId, userId, limit, daysBack } = req.query;
+        const applicationId = firstQueryValue(req.query.applicationId);
+        const userId = firstQueryValue(req.query.userId);
+        const limit = firstQueryValue(req.query.limit);
+        const daysBack = firstQueryValue(req.query.daysBack);
         const events = await getRecentEvents({
-          domain: domain as AnalyticsDomain | undefined,
-          applicationId: applicationId as string | undefined,
-          userId: userId as string | undefined,
-          limit: limit ? parseInt(limit as string) : 50,
-          daysBack: daysBack ? parseInt(daysBack as string) : 30,
+          domain: firstQueryValue(req.query.domain) as AnalyticsDomain | undefined,
+          applicationId,
+          userId,
+          limit: limit ? parseInt(limit) : 50,
+          daysBack: daysBack ? parseInt(daysBack) : 30,
         });
         res.json(events);
       } catch (error) {
@@ -96,7 +100,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin", "lo", "loa", "processor", "underwriter"),
     async (req, res) => {
       try {
-        const daysBack = parseInt(req.query.days as string) || 90;
+        const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 90;
         const funnel = await getConversionFunnel(daysBack);
         res.json(funnel);
       } catch (error) {
@@ -110,7 +114,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin", "lo", "loa", "processor", "underwriter"),
     async (req, res) => {
       try {
-        const daysBack = parseInt(req.query.days as string) || 90;
+        const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 90;
         const accuracy = await getEstimateAccuracy(daysBack);
         res.json(accuracy);
       } catch (error) {
@@ -125,7 +129,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     async (req, res) => {
       try {
         const field = req.params.field as "creditScoreBucket" | "loanPurpose" | "productType" | "propertyState";
-        const daysBack = parseInt(req.query.days as string) || 90;
+        const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 90;
         const segments = await getOutcomesBySegment(field, daysBack);
         res.json(segments);
       } catch (error) {
@@ -152,7 +156,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin", "lo", "loa", "processor", "underwriter"),
     async (req, res) => {
       try {
-        const daysBack = parseInt(req.query.days as string) || 90;
+        const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 90;
         const accuracy = await getAccuracyByDocType(daysBack);
         res.json(accuracy);
       } catch (error) {
@@ -168,8 +172,8 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin", "lo", "loa", "processor", "underwriter"),
     async (req, res) => {
       try {
-        const daysBack = parseInt(req.query.days as string) || 30;
-        const minReviews = parseInt(req.query.minReviews as string) || 10;
+        const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 30;
+        const minReviews = parseInt(firstQueryValue(req.query.minReviews) ?? "") || 10;
         const report = await getExtractionAccuracyReport(daysBack, minReviews);
         res.json(report);
       } catch (error) {
@@ -196,7 +200,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin", "lo", "loa", "processor", "underwriter"),
     async (req, res) => {
       try {
-        const daysBack = parseInt(req.query.days as string) || 90;
+        const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 90;
         const trend = await getConfidenceTrend(req.params.docType, daysBack);
         res.json(trend);
       } catch (error) {
@@ -229,7 +233,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
   app.get("/api/predictions/me", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const applicationId = req.query.applicationId as string | undefined;
+      const applicationId = firstQueryValue(req.query.applicationId);
       const prediction = await computePrediction(user.id, applicationId);
       res.json(prediction);
     } catch (error) {
@@ -255,7 +259,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
       try {
         const caller = req.user as User;
         const { userId } = req.params;
-        const applicationId = req.query.applicationId as string | undefined;
+        const applicationId = firstQueryValue(req.query.applicationId);
 
         if (caller.role !== "admin") {
           // Non-admin staff must supply an applicationId and must be an active
@@ -292,7 +296,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin"),
     async (req, res) => {
       try {
-        const daysBack = parseInt(req.query.days as string) || 30;
+        const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 30;
         const [automation, funnel, docAccuracy, accuracy] = await Promise.all([
           getAutomationMetrics(daysBack),
           getConversionFunnel(daysBack),

@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
+import { isPartnerRole } from "@shared/roles";
 import { z } from "zod";
 import crypto from "crypto";
 import { db } from "../db";
@@ -8,12 +9,14 @@ import { inArray } from "drizzle-orm";
 import {
   type User,
   isInternalStaffRole,
+  isStaffRole,
   insertAgentReferralRequestSchema,
   insertAgentProfileSchema,
   insertApplicationMilestoneSchema,
   loanApplications,
 } from "@shared/schema";
 import { parseBodyOr400 } from "./validate";
+import { firstQueryValue } from "./queryParams";
 
 export function registerAgentBrokerRoutes(
   app: Express,
@@ -32,10 +35,9 @@ export function registerAgentBrokerRoutes(
 
   app.get("/api/agents/search", async (req, res) => {
     try {
-      const { location, specialty } = req.query;
       const agents = await storage.searchAgentProfiles({
-        location: location as string | undefined,
-        specialty: specialty as string | undefined,
+        location: firstQueryValue(req.query.location),
+        specialty: firstQueryValue(req.query.specialty),
       });
       const enriched = await Promise.all(
         agents.map(async (agent) => {
@@ -153,12 +155,19 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  // Current user agent profile routes
+  // Current user agent profile routes.
+  // Staff/partner roles only: this GET auto-provisions an agent profile, and an
+  // agent profile is the key that unlocks listing management (POST /api/properties)
+  // and public agent-directory presence — consumer and CPA accounts must never be
+  // able to mint one for themselves.
   app.get("/api/me/agent-profile", isAuthenticated, async (req, res) => {
     try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
       const userId = req.user!.id;
       let profile = await storage.getAgentProfileByUserId(userId);
-      
+
       if (!profile) {
         profile = await storage.createAgentProfile({ userId });
       }
@@ -176,6 +185,9 @@ export function registerAgentBrokerRoutes(
 
   app.patch("/api/me/agent-profile", isAuthenticated, async (req, res) => {
     try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
       const userId = req.user!.id;
       let profile = await storage.getAgentProfileByUserId(userId);
       
@@ -643,7 +655,7 @@ export function registerAgentBrokerRoutes(
   // Get historical snapshots
   app.get("/api/analytics/history", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
-      const days = parseInt(req.query.days as string) || 30;
+      const days = parseInt(firstQueryValue(req.query.days) ?? "") || 30;
       const snapshots = await storage.getAnalyticsSnapshots(days);
       res.json(snapshots);
     } catch (error) {
@@ -799,6 +811,14 @@ export function registerAgentBrokerRoutes(
   app.get("/api/my-referral-stats", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
+      // Self-registering partners (cpa, realtor) are inviter-only: they read
+      // their own minimized surfaces (/api/cpa/*, /api/partners/me/*), never
+      // this LO rail, which joins full borrower rows. Without this gate a
+      // realtor whose slug attributed a buyer via users.referred_by_user_id
+      // could reach the borrower data below.
+      if (isPartnerRole(user.role)) {
+        return res.status(403).json({ error: "Not available for partner accounts" });
+      }
       const stats = await storage.getReferralStats(user.id);
       res.json(stats);
     } catch (error) {
@@ -806,23 +826,31 @@ export function registerAgentBrokerRoutes(
       res.status(500).json({ error: "Failed to get referral stats" });
     }
   });
-  
+
   // Get list of users referred by current LO
   app.get("/api/my-referrals", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
+      // See /api/my-referral-stats: external partner roles are inviter-only and
+      // must not reach this borrower-data rail.
+      if (isPartnerRole(user.role)) {
+        return res.status(403).json({ error: "Not available for partner accounts" });
+      }
       const referrals = await storage.getReferralsByUser(user.id);
-      
+
       // Get applications for each referred user
       const referralsWithApps = await Promise.all(referrals.map(async (referredUser) => {
         const apps = await storage.getLoanApplicationsByUser(referredUser.id);
+        // Never egress auth-sensitive columns from a full users row, even to an
+        // LO: passwordHash and lockout state have no business in an API response.
+        const { passwordHash, failedLoginAttempts, lockoutUntil, ...safeUser } = referredUser;
         return {
-          ...referredUser,
+          ...safeUser,
           applicationCount: apps.length,
           latestApplication: apps[0] || null,
         };
       }));
-      
+
       res.json(referralsWithApps);
     } catch (error) {
       console.error("Get referrals error:", error);
@@ -909,9 +937,15 @@ export function registerAgentBrokerRoutes(
     }
   });
 
-  // Create co-brand profile
+  // Create co-brand profile.
+  // Staff/partner roles only: co-brand profiles render on the PUBLIC
+  // /partner/:profileId landing page, so a consumer account must not be able
+  // to publish arbitrary branding/bio content under the platform's domain.
   app.post("/api/co-brand/profile", isAuthenticated, async (req, res) => {
     try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
       const existing = await storage.getCoBrandProfileByUser(req.user!.id);
       if (existing) {
         return res.status(409).json({ error: "Co-brand profile already exists", profile: existing });
@@ -948,6 +982,9 @@ export function registerAgentBrokerRoutes(
   // Update co-brand profile
   app.patch("/api/co-brand/profile/:id", isAuthenticated, async (req, res) => {
     try {
+      if (!isStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
       const profile = await storage.getCoBrandProfile(req.params.id);
       if (!profile || profile.userId !== req.user!.id) {
         return res.status(404).json({ error: "Profile not found" });
@@ -1182,7 +1219,7 @@ export function registerAgentBrokerRoutes(
   app.get("/api/pre-approval-letters/:id/co-brand-preview", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
-      const agentProfileId = req.query.agentProfileId as string;
+      const agentProfileId = firstQueryValue(req.query.agentProfileId);
 
       if (!agentProfileId) {
         return res.status(400).json({ error: "agentProfileId query parameter is required" });

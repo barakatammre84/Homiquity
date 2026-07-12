@@ -3,6 +3,7 @@ import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import { isStaffRole, isInternalStaffRole, insertTaskSchema } from "@shared/schema";
 import { parseBodyOr400 } from "./validate";
+import { firstQueryValue } from "./queryParams";
 
 // Internal-only staff roles that have global task access.
 // Partner roles (broker, lender) are scoped to their referred applications only.
@@ -553,7 +554,7 @@ export async function registerTaskEngineRoutes(
       }
       // Normalize to owner-role form (e.g. "underwriter" -> "UW") so the lookup is
       // correct regardless of the casing/alias the client sends.
-      const status = req.query.status as string | undefined;
+      const status = firstQueryValue(req.query.status);
       const tasks = await taskEngine.getTasksByOwnerRole(userRoleToOwnerRole(req.params.role), status);
       res.json(tasks);
     } catch (error) {
@@ -566,7 +567,7 @@ export async function registerTaskEngineRoutes(
   app.get("/api/task-engine/my-tasks", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const status = req.query.status as string | undefined;
+      const status = firstQueryValue(req.query.status);
       const tasks = await taskEngine.getTasksForUser(userId, status);
       res.json(tasks);
     } catch (error) {

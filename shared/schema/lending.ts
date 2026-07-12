@@ -224,6 +224,10 @@ export const loanApplications = pgTable("loan_applications", {
   preferredLoanType: varchar("preferred_loan_type", { length: 50 }),
   isVeteran: boolean("is_veteran").default(false),
   isFirstTimeBuyer: boolean("is_first_time_buyer").default(false),
+  // UAL P7: borrower-declared answer to "Do you require financing that avoids
+  // interest?" — a product-preference ROUTING signal (SituationProfile.halalNeed),
+  // never an underwriting input or a faith classification. NULL = not asked.
+  avoidsInterestFinancing: boolean("avoids_interest_financing"),
 
   // VA residual-income inputs (38 CFR 36.4340(e): family size drives the
   // regional residual table; square footage drives the $0.14/sqft utility
@@ -1106,6 +1110,9 @@ const preApprovalFormBaseSchema = z.object({
 
   isVeteran: z.boolean(),
   isFirstTimeBuyer: z.boolean(),
+  // UAL P7 routing preference ("financing that avoids interest"). Optional in
+  // the form base so non-funnel callers are unaffected; the funnel supplies it.
+  avoidsInterestFinancing: z.boolean().optional(),
   propertyState: z.string()
     .min(1, "Property state is required")
     .refine(
@@ -1268,6 +1275,10 @@ export const loanApplicationIntakeSchema = z.preprocess(
       // it can't fabricate data (it just doesn't claim VA/FTHB benefits).
       isVeteran: z.boolean().optional().default(false),
       isFirstTimeBuyer: z.boolean().optional().default(false),
+      // UAL P7 routing preference. Deliberately NOT defaulted: omitting the
+      // question is "not asked" (null), which must stay distinct from an
+      // explicit "no" — defaulting would fabricate an answer.
+      avoidsInterestFinancing: z.boolean().optional(),
     })
     .superRefine(downPaymentWithinPurchasePrice)
     .transform(normalizeIntakeValues),

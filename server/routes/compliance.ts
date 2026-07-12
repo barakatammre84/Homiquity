@@ -6,6 +6,7 @@ import { z } from "zod";
 import * as creditService from "../services/creditService";
 import { encryptToken } from "../services/piiVault";
 import { sendNotificationEmail } from "../services/emailService";
+import { firstQueryValue } from "./queryParams";
 
 export function registerComplianceRoutes(
   app: Express,
@@ -338,7 +339,7 @@ export function registerComplianceRoutes(
   // Get disclosure text for consent form
   app.get("/api/credit/disclosure", isAuthenticated, async (req, res) => {
     try {
-      const stateCode = req.query.state as string | undefined;
+      const stateCode = firstQueryValue(req.query.state);
       res.json({
         disclosureText: creditService.getCombinedDisclosure(stateCode),
         disclosureVersion: creditService.getDisclosureVersion(),
@@ -352,7 +353,7 @@ export function registerComplianceRoutes(
 
   app.get("/api/credit/state-rules", isAuthenticated, async (req, res) => {
     try {
-      const stateCode = req.query.state as string | undefined;
+      const stateCode = firstQueryValue(req.query.state);
       if (stateCode) {
         res.json({ rules: creditService.getStateDisclosureRules(stateCode) });
       } else {
@@ -936,6 +937,83 @@ export function registerComplianceRoutes(
     }
   });
 
+  // Download the adverse-action notice as a mailable PDF (internal staff only —
+  // must be assigned to the application). This is the artifact for the postal
+  // fallback channel when a borrower is unresponsive in-app: staff download the
+  // letter, mail it, then confirm via the /deliver endpoint with deliveryMethod
+  // "mail". The PDF renders the stored notice_text verbatim — the legal wording
+  // was generated once (creditService.generateAdverseActionNotice) and is never
+  // re-derived here. The buffer is streamed in the response only; it is never
+  // written to disk or object storage.
+  app.get("/api/credit/adverse-action/:actionId/letter-pdf", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff access required" });
+      }
+
+      // Resolve the adverse action to its parent application before authorizing.
+      const action = await creditService.getAdverseActionById(req.params.actionId);
+      if (!action) {
+        return res.status(404).json({ error: "Adverse action not found" });
+      }
+
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(action.applicationId);
+        const isMember = teamMembers.some(m => m.userId === user.id);
+        if (!isMember) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
+      }
+
+      const borrower = await storage.getUser(action.userId);
+      const borrowerName = [borrower?.firstName, borrower?.lastName].filter(Boolean).join(" ") || "Applicant";
+
+      // Mailing block from URLA section 1a's current address, when on file.
+      const personalInfo = await storage.getUrlaPersonalInfo(action.applicationId);
+      const addressLines: string[] = [];
+      if (personalInfo?.currentStreet) {
+        addressLines.push([personalInfo.currentStreet, personalInfo.currentUnit].filter(Boolean).join(", "));
+        const cityLine = [
+          personalInfo.currentCity,
+          [personalInfo.currentState, personalInfo.currentZip].filter(Boolean).join(" "),
+        ].filter(Boolean).join(", ");
+        if (cityLine) addressLines.push(cityLine);
+      }
+
+      const { generateAdverseActionPDF } = await import("../services/pdfLetterGenerator");
+      const { COMPANY_CONFIG } = await import("../config/company");
+      const pdfBuffer = await generateAdverseActionPDF({
+        noticeId: action.id,
+        actionType: action.actionType,
+        noticeDate: action.noticeDate,
+        noticeText: action.noticeText,
+        borrowerName,
+        borrowerAddressLines: addressLines.length > 0 ? addressLines : undefined,
+        companyLegalName: COMPANY_CONFIG.legalName,
+        companyNmlsId: COMPANY_CONFIG.nmlsId,
+        companyContactInfo: COMPANY_CONFIG.contactInfo,
+      });
+
+      // ECOA/FCRA audit trail: the letter carries credit-decision data, so
+      // record every staff download of the artifact.
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "adverse_action.letter_downloaded", "loan_application", action.applicationId, {
+        adverseActionId: action.id,
+        downloadedBy: user.id,
+        purpose: "mail_delivery",
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="adverse-action-${action.id.substring(0, 8)}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Adverse action letter PDF error:", error);
+      res.status(500).json({ error: "Failed to generate the adverse action letter PDF" });
+    }
+  });
+
   // Mark adverse action as delivered (internal staff only — must be assigned to the application)
   app.post("/api/credit/adverse-action/:actionId/deliver", isAuthenticated, async (req, res) => {
     try {
@@ -997,7 +1075,7 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const limit = parseInt(req.query.limit as string) || 100;
+      const limit = parseInt(firstQueryValue(req.query.limit) ?? "") || 100;
       const auditLog = await creditService.getCreditAuditLog(req.params.id, limit);
       res.json({ auditLog });
     } catch (error) {
@@ -1040,7 +1118,7 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const format = req.query.format as string || "json";
+      const format = firstQueryValue(req.query.format) || "json";
       
       if (format === "csv") {
         const csv = await creditService.generateCSVExport(req.params.id);
@@ -1191,8 +1269,9 @@ export function registerComplianceRoutes(
   app.get("/api/compliance/fair-lending/disparate-impact", requireRole("admin"), async (req, res) => {
     try {
       const { runDisparateImpactAnalysis } = await import("../services/fairLendingAnalysis");
-      const minSampleSize = req.query.minSampleSize
-        ? Math.max(1, parseInt(req.query.minSampleSize as string, 10) || 30)
+      const minSampleSizeStr = firstQueryValue(req.query.minSampleSize);
+      const minSampleSize = minSampleSizeStr
+        ? Math.max(1, parseInt(minSampleSizeStr, 10) || 30)
         : undefined;
       const report = await runDisparateImpactAnalysis({ minSampleSize });
 

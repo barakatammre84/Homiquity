@@ -99,6 +99,76 @@
       "when": 1783593600008,
       "tag": "0013_self_employment_income",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783593600009,
+      "tag": "0014_tax_intelligence",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1783593600010,
+      "tag": "0015_borrower_business_entities",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1783593600011,
+      "tag": "0016_situation_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783593600012,
+      "tag": "0017_income_path_evaluations",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1783593600013,
+      "tag": "0018_income_review_workbench",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783593600014,
+      "tag": "0019_income_analysis_package",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1783593600015,
+      "tag": "0020_scenario_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1783593600016,
+      "tag": "0021_partner_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1783593600017,
+      "tag": "0022_partner_progress_consents",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1783593600018,
+      "tag": "0023_avoids_interest_financing",
+      "breakpoints": true
     }
   ]
 }

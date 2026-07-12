@@ -3,8 +3,9 @@
   "configurations": [
     {
       "name": "homiquity-dev",
-      "runtimeExecutable": "pnpm",
+      "runtimeExecutable": "npm",
       "runtimeArgs": [
+        "run",
         "dev"
       ],
       "port": 5002,
