@@ -711,6 +711,57 @@ export function registerUnderwritingRoutes(
     }
   });
 
+  // The intake "pool": active applications with no loan officer yet. Any LO/LOA
+  // (and admins) can see it and claim a file, so a self-serve applicant who
+  // arrived without a referral is never stranded waiting on an admin assignment.
+  // Same summary shape as the queue.
+  app.get("/api/pipeline/unassigned", requireRole("admin", "lo", "loa"), async (req, res) => {
+    try {
+      const unassigned = await storage.getUnassignedApplications();
+      const { getPipelineSummaries } = await import("../pipelineEngine");
+      const summaries = await getPipelineSummaries(unassigned);
+      const queue = summaries.sort((a, b) => b.daysInPipeline - a.daysInPipeline);
+      res.json({ total: queue.length, queue });
+    } catch (error) {
+      console.error("Get unassigned pool error:", error);
+      res.status(500).json({ error: "Failed to get unassigned applications" });
+    }
+  });
+
+  // An LO/LOA claims an unassigned file from the intake pool onto their own desk.
+  // Refuses to take a file already owned by another LO (409); re-claiming your
+  // own file is an idempotent success. assignLoanOfficer atomically grants file
+  // access + queue visibility.
+  app.post("/api/loan-applications/:applicationId/claim", requireRole("lo", "loa"), async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+      if (application.loanOfficerId && application.loanOfficerId !== user.id) {
+        return res.status(409).json({ error: "This file is already assigned to another loan officer." });
+      }
+      const updated = await storage.assignLoanOfficer(applicationId, user.id, user.id);
+      await storage.createDealActivity({
+        applicationId,
+        activityType: "team_updated",
+        title: "Loan officer assigned",
+        description: "A loan officer claimed this file from the intake pool.",
+        performedBy: user.id,
+      });
+      const { logAudit } = await import("../auditLog");
+      logAudit(req, "loan_application.lo_claimed", "loan_application", applicationId, {
+        loanOfficerId: user.id,
+      });
+      res.json({ success: true, application: updated });
+    } catch (error) {
+      console.error("Claim application error:", error);
+      res.status(500).json({ error: "Failed to claim application" });
+    }
+  });
+
   // Staff-scoped applications listing for the internal dashboard.
   // Admin sees every application; every other internal-staff role sees only the
   // applications they are an active deal-team member on — mirroring the scoping

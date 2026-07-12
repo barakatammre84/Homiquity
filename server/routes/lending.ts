@@ -567,6 +567,29 @@ export function registerLendingRoutes(
         }
       }
 
+      // Route a referred/invited applicant straight onto the referring loan
+      // officer's desk — full file access + pipeline queue visibility — with no
+      // admin step. Reads the final referringBrokerId (the invite block may have
+      // just folded an inviting LO into it). Only lo/loa may own a file; broker
+      // and other referrers stay attribution-only. Non-fatal: a routing failure
+      // must not lose the application (it simply falls to the unassigned pool).
+      try {
+        const finalApp = await storage.getLoanApplication(application.id);
+        const referrerId = finalApp?.referringBrokerId ?? referringBrokerId ?? null;
+        if (referrerId) {
+          const referrer = await storage.getUser(referrerId);
+          if (referrer && (referrer.role === "lo" || referrer.role === "loa")) {
+            await storage.assignLoanOfficer(application.id, referrerId, userId);
+            logAudit(req, "loan_application.lo_auto_assigned", "loan_application", application.id, {
+              loanOfficerId: referrerId,
+              source: "referral",
+            });
+          }
+        }
+      } catch (assignErr) {
+        console.warn("[Intake] LO auto-assignment skipped (non-fatal):", assignErr);
+      }
+
       await storage.createDealActivity({
         applicationId: application.id,
         activityType: "status_change",

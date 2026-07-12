@@ -44,11 +44,14 @@ export async function verifyInternalStaffApplicationAccess(
   const application = await storage.getLoanApplication(applicationId);
   if (!application) return false;
 
-  if (userRole === "lo" || userRole === "loa") {
-    return application.loanOfficerId === userId;
-  }
-
-  if (userRole === "processor" || userRole === "underwriter" || userRole === "closer") {
+  // Internal staff (lo/loa/processor/underwriter/closer): access if they are the
+  // assigned loan officer (denormalized pointer) OR an active deal-team member.
+  // This matches the deal-team scoping used by getLoanApplicationWithAccess and
+  // the pipeline queue, so any file surfaced in an LO's queue is actually
+  // openable in the cockpit/scenarios/task views (previously lo/loa were gated on
+  // loanOfficerId alone and could 403 on a file that was in their own queue).
+  if (isInternalStaffRole(userRole)) {
+    if (application.loanOfficerId === userId) return true;
     const teamMembers = await storage.getDealTeamMembers(applicationId);
     return teamMembers.some(m => m.userId === userId);
   }
@@ -2229,9 +2232,13 @@ export function registerBorrowerRoutes(
         }
       }
 
-      const updated = await storage.updateLoanApplication(applicationId, {
-        loanOfficerId: result.data.loanOfficerId,
-      });
+      // Atomic: also keeps the deal-team membership row in lockstep so the
+      // assigned LO can actually open the file and see it in their queue.
+      const updated = await storage.assignLoanOfficer(
+        applicationId,
+        result.data.loanOfficerId,
+        user.id,
+      );
 
       await storage.createDealActivity({
         applicationId,

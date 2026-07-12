@@ -124,14 +124,40 @@ export function SubmissionReadinessDialog({
     },
   });
 
+  // Run the dual AUS (DU + LPA, simulated behind the adapter) so the AUS stage
+  // can be satisfied from the UI. Refreshes the readiness report on success.
+  const runAusMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/underwrite/submit-gse", { applicationId });
+      return res.json();
+    },
+    onSuccess: (data: { recommendation?: string; findings?: { simulated?: boolean } }) => {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/loan-applications/${applicationId}/submission-readiness`],
+      });
+      toast({
+        title: "Automated underwriting complete (DU + LPA)",
+        description: `DU recommendation: ${data.recommendation ?? "—"}${data.findings?.simulated ? " (simulated)" : ""}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Automated underwriting could not run", description: error.message, variant: "destructive" });
+    },
+  });
+
   const lenderName = (id: string) => lenders?.find(l => l.id === id)?.name ?? id;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" data-testid={`submission-readiness-${applicationId}`}>
-          <Send className="mr-1 h-4 w-4" aria-hidden="true" />
-          Lender
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start"
+          data-testid={`submission-readiness-${applicationId}`}
+        >
+          <Send className="mr-2 h-4 w-4" aria-hidden="true" />
+          Submit to lender
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
@@ -171,6 +197,19 @@ export function SubmissionReadinessDialog({
                           <li key={w} className="list-disc">{w}</li>
                         ))}
                       </ul>
+                    )}
+                    {stage.key === "aus" && (
+                      <div className="mt-2 pl-6">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => runAusMutation.mutate()}
+                          disabled={runAusMutation.isPending}
+                          data-testid="run-aus"
+                        >
+                          {runAusMutation.isPending ? "Running DU / LPA…" : "Run DU / LPA"}
+                        </Button>
+                      </div>
                     )}
                   </li>
                 );

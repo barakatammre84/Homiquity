@@ -7,7 +7,9 @@ import {
   users,
   verificationReports,
 } from "@shared/schema";
+import type { User } from "@shared/schema";
 import { requireRole } from "../auth";
+import { storage } from "../storage";
 import {
   buildCommitmentLetter,
   parsePlaidAssetReport,
@@ -142,11 +144,12 @@ export function registerAusRoutes(app: Express) {
         }
         const { applicationId } = parsed.data;
 
-        const [application] = await db
-          .select()
-          .from(loanApplications)
-          .where(eq(loanApplications.id, applicationId))
-          .limit(1);
+        // Object-level access: a non-admin staffer may only run AUS on a file
+        // they are on the deal team for (getLoanApplicationWithAccess returns
+        // undefined for both "not found" and "no access" — 404 either way so we
+        // don't leak which applications exist).
+        const user = req.user as User;
+        const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
         if (!application) return res.status(404).json({ error: "Application not found" });
 
         const [borrower] = await db
