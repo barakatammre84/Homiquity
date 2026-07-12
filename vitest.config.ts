@@ -87,6 +87,7 @@ export default defineConfig({
       "tests/documentTypeAliases.test.ts",
       "tests/localObjectStorage.test.ts",
       "tests/postAuthRoute.test.ts",
+      "tests/borrowerOfferView.test.ts",
       "tests/queryParams.test.ts",
       "tests/vercelEntryHelpers.test.ts",
     ],
