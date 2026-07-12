@@ -46,6 +46,7 @@ import {
   Filter,
   RefreshCw
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 interface TaskWithSlaStatus {
   id: string;
@@ -407,39 +408,36 @@ export default function TaskOperations() {
   };
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold" data-testid="text-page-title">
-              Task Operations
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Monitor SLAs, manage escalations, and track task progress
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              data-testid="button-refresh"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => runEscalationMutation.mutate()}
-              disabled={runEscalationMutation.isPending}
-              data-testid="button-run-escalation"
-            >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Run Escalation Check
-            </Button>
-          </div>
+    <PageShell
+      width="full"
+      title="Task Operations"
+      subtitle="Monitor SLAs, manage escalations, and track task progress"
+      titleTestId="text-page-title"
+      contentClassName="space-y-6"
+      headerAction={
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            data-testid="button-refresh"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runEscalationMutation.mutate()}
+            disabled={runEscalationMutation.isPending}
+            data-testid="button-run-escalation"
+          >
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Run Escalation Check
+          </Button>
         </div>
+      }
+    >
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <MetricsCard
@@ -660,7 +658,6 @@ export default function TaskOperations() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </div>
+    </PageShell>
   );
 }

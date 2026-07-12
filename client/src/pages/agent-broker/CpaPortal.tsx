@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageShell } from "@/components/PageShell";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Copy, Check, Users, ShieldCheck, ReceiptText } from "lucide-react";
 
@@ -82,7 +83,7 @@ export default function CpaPortal() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
+    <PageShell width="content" contentClassName="space-y-6">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10">
           <Building2 className="h-6 w-6 text-primary" />
@@ -179,6 +180,6 @@ export default function CpaPortal() {
           details. Homiquity does not pay referral fees; this portal is provided at no cost.
         </p>
       </div>
-    </div>
+    </PageShell>
   );
 }

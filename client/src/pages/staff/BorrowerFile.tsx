@@ -58,6 +58,7 @@ import {
   Users,
   Brain,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -406,15 +407,13 @@ export default function BorrowerFile() {
 
   if (isLoading) {
     return (
-      <div className="overflow-y-auto p-6">
-        <div className="mx-auto max-w-6xl space-y-6">
+      <PageShell width="wide" contentClassName="space-y-6">
           <Skeleton className="h-12 w-64" />
           <div className="grid gap-4 md:grid-cols-4">
             {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
           </div>
           <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -503,8 +502,7 @@ export default function BorrowerFile() {
         </div>
       </div>
 
-      <div className="p-6">
-            <div className="mx-auto max-w-6xl space-y-6">
+      <PageShell width="wide" contentClassName="space-y-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h1 className="text-2xl font-bold" data-testid="text-borrower-name">
@@ -1439,8 +1437,7 @@ export default function BorrowerFile() {
                   )}
                 </TabsContent>
               </Tabs>
-            </div>
-          </div>
+      </PageShell>
 
       <Dialog
         open={!!conditionAction.condition && !!conditionAction.action}

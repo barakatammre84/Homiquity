@@ -34,6 +34,7 @@ import {
   PiggyBank,
   Building,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 interface QualificationBreakdown {
   meetsGuidelines: boolean;
@@ -204,31 +205,29 @@ export default function PropertyDetail() {
 
   if (propertyLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-6xl px-4 py-8">
-          <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
+      <PageShell width="wide">
+        <Skeleton className="h-96 w-full" />
+      </PageShell>
     );
   }
 
   if (!property) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-6xl px-4 py-16 text-center">
+      <PageShell width="wide" className="py-16 text-center">
+        <div>
           <Home className="mx-auto h-16 w-16 text-muted-foreground" />
           <h1 className="mt-4 text-2xl font-bold">Property Not Found</h1>
           <Link href="/buy">
             <Button className="mt-4">Browse Properties</Button>
           </Link>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageShell width="wide">
         {/* Back Button */}
         <Link href="/buy">
           <Button variant="ghost" className="mb-4 gap-2">
@@ -548,7 +547,7 @@ export default function PropertyDetail() {
             </Card>
           </div>
         </div>
-      </div>
+      </PageShell>
 
       <Footer />
     </div>

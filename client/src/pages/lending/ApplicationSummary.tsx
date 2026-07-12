@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageShell } from "@/components/PageShell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QueryBoundary } from "@/components/ui/query-boundary";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,19 +52,13 @@ export default function ApplicationSummary() {
   );
 
   return (
-    <div className="min-h-full">
-      <div className="border-b bg-background">
-        <div className="p-6 max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
-            Application summary
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            See your application details here
-          </p>
-        </div>
-      </div>
-
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <PageShell
+      width="narrow"
+      title="Application summary"
+      subtitle="See your application details here"
+      titleTestId="text-page-title"
+      contentClassName="space-y-6"
+    >
         <QueryBoundary query={query} loading={loadingSkeleton} data-testid="application-summary">
           {(data) => {
             const applications = data.applications || [];
@@ -252,7 +247,6 @@ export default function ApplicationSummary() {
             );
           }}
         </QueryBoundary>
-      </div>
-    </div>
+    </PageShell>
   );
 }

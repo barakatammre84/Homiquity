@@ -21,6 +21,7 @@ import {
   Calendar,
   Shield,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { format, formatDistanceToNow } from "date-fns";
 
 interface DealRescueEscalation {
@@ -350,19 +351,18 @@ export default function DealRescue() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="deal-rescue-page">
-      <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2" data-testid="text-page-title">
-            <AlertTriangle className="h-6 w-6 text-destructive" />
-            Deal Rescue Hotline
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-subtitle">Urgent escalation for at-risk deals</p>
-        </div>
+    <PageShell
+      width="content"
+      icon={<AlertTriangle className="h-6 w-6 text-destructive" />}
+      title="Deal Rescue Hotline"
+      subtitle="Urgent escalation for at-risk deals"
+      titleTestId="text-page-title"
+      headerAction={
         <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-report-issue">
           <Plus className="h-4 w-4 mr-1" /> Report Issue
         </Button>
-      </div>
+      }
+    >
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <Card data-testid="card-stat-open">
@@ -501,6 +501,6 @@ export default function DealRescue() {
           onOpenChange={(v) => { if (!v) setResolveTarget(null); }}
         />
       )}
-    </div>
+    </PageShell>
   );
 }

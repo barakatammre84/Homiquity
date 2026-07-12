@@ -24,6 +24,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { format } from "date-fns";
+import { PageShell } from "@/components/PageShell";
 
 interface DashboardData {
   applications: LoanApplication[];
@@ -233,14 +234,14 @@ export default function VerificationPage() {
 
   if (authLoading || dashboardLoading) {
     return (
-      <div className="p-8">
+      <PageShell width="content">
         <Skeleton className="mb-8 h-8 w-48" />
         <div className="space-y-6">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -248,17 +249,12 @@ export default function VerificationPage() {
   const totalRequired = verificationTypes.filter((v) => v.required).length;
 
   return (
-    <>
-      <div className="border-b p-4 sm:p-6 lg:p-8">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" data-testid="text-verification-title">
-              Verification Center
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Verify your employment and identity to speed up your loan approval
-            </p>
-          </div>
-
-          <div className="p-4 sm:p-6 lg:p-8">
+    <PageShell
+      width="content"
+      title="Verification Center"
+      subtitle="Verify your employment and identity to speed up your loan approval"
+      titleTestId="text-verification-title"
+    >
             {!activeApplication ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
@@ -457,7 +453,6 @@ export default function VerificationPage() {
           </div>
         </CardContent>
       </Card>
-          </div>
-    </>
+    </PageShell>
   );
 }

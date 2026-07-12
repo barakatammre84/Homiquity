@@ -24,6 +24,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
+import { PageShell } from "@/components/PageShell";
 
 interface TaskWithDocs extends Task {
   documents: (TaskDocument & { document: Document })[];
@@ -143,10 +144,10 @@ export default function TaskDetail() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="p-8">
+      <PageShell width="wide">
         <Skeleton className="mb-8 h-8 w-48" />
         <Skeleton className="h-64" />
-      </div>
+      </PageShell>
     );
   }
 
@@ -176,37 +177,34 @@ export default function TaskDetail() {
   const canVerify = isStaff && task.status === "submitted";
 
   return (
-    <>
-      <div className="border-b p-4 sm:p-6 lg:p-8">
-            <Button
-              variant="ghost"
-              onClick={() => navigate(isStaff ? "/staff-dashboard" : "/tasks")}
-              className="mb-4"
-              data-testid="button-back"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" data-testid="text-task-title">
-                  {task.title}
-                </h1>
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  {getStatusBadge(task.status)}
-                  {getPriorityBadge(task.priority || "normal")}
-                  {task.dueDate && (
-                    <span className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      Due: {format(new Date(task.dueDate), "MMMM d, yyyy")}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 sm:p-6 lg:p-8">
+    <PageShell
+      width="wide"
+      title={task.title}
+      titleTestId="text-task-title"
+      headerLead={
+        <Button
+          variant="ghost"
+          onClick={() => navigate(isStaff ? "/staff-dashboard" : "/tasks")}
+          className="-ml-2"
+          data-testid="button-back"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+      }
+      headerMeta={
+        <div className="flex flex-wrap items-center gap-2">
+          {getStatusBadge(task.status)}
+          {getPriorityBadge(task.priority || "normal")}
+          {task.dueDate && (
+            <span className="text-sm text-muted-foreground flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              Due: {format(new Date(task.dueDate), "MMMM d, yyyy")}
+            </span>
+          )}
+        </div>
+      }
+    >
             <div className="grid gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2 space-y-6">
                 {task.documentInstructions && (
@@ -467,7 +465,6 @@ export default function TaskDetail() {
                 )}
               </div>
             </div>
-          </div>
-    </>
+    </PageShell>
   );
 }

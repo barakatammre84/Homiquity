@@ -38,6 +38,7 @@ import {
   BarChart3,
   Bot,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 interface SimilarHome {
   property_id: string;
@@ -199,8 +200,7 @@ export default function LivePropertyDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-6xl px-4 py-8">
+      <PageShell width="wide">
           <Skeleton className="mb-4 h-10 w-40" />
           <Skeleton className="mb-6 h-96 w-full rounded-xl" />
           <div className="grid gap-8 lg:grid-cols-3">
@@ -214,15 +214,14 @@ export default function LivePropertyDetailPage() {
               <Skeleton className="h-48 w-full" />
             </div>
           </div>
-        </div>
-      </div>
+      </PageShell>
     );
   }
 
   if (error || !property) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-6xl px-4 py-16 text-center">
+      <PageShell width="wide" className="py-16 text-center">
+        <div>
           <Home className="mx-auto h-16 w-16 text-muted-foreground" />
           <h1 className="mt-4 text-2xl font-bold">Property Not Found</h1>
           <p className="mt-2 text-muted-foreground">We couldn't load the details for this listing.</p>
@@ -230,7 +229,7 @@ export default function LivePropertyDetailPage() {
             <Button className="mt-4" data-testid="button-back-browse">Browse Properties</Button>
           </Link>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -241,7 +240,7 @@ export default function LivePropertyDetailPage() {
     <div className="min-h-screen bg-background">
       <SEOHead title="Property Details" description="View detailed property information including photos, price history, mortgage estimates, schools, and neighborhood data." />
 
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageShell width="wide">
         <Link href="/properties">
           <Button variant="ghost" className="mb-4 gap-2" data-testid="button-back-search">
             <ChevronLeft className="h-4 w-4" />
@@ -629,7 +628,7 @@ export default function LivePropertyDetailPage() {
             )}
           </div>
         </div>
-      </div>
+      </PageShell>
 
       <SimilarHomes propertyId={propertyId} />
 

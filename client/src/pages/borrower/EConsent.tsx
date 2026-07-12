@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 interface ConsentTemplate {
   id: string;
@@ -125,12 +126,13 @@ export default function EConsent() {
   const completedConsents = templates?.filter(t => isConsentGiven(t.consentType)) || [];
 
   return (
-    <div className="p-6 space-y-6 overflow-auto">
-      <div>
-        <h1 className="text-2xl font-bold" data-testid="text-econsent-title">Electronic Consent</h1>
-        <p className="text-muted-foreground">Review and provide required consents for your mortgage application</p>
-      </div>
-
+    <PageShell
+      width="wide"
+      title="Electronic Consent"
+      subtitle="Review and provide required consents for your mortgage application"
+      titleTestId="text-econsent-title"
+      contentClassName="space-y-6"
+    >
       <div className="grid gap-4 md:grid-cols-3">
         <Card data-testid="card-pending-consents">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
@@ -292,6 +294,6 @@ export default function EConsent() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageShell>
   );
 }

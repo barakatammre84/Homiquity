@@ -50,6 +50,21 @@ Shadcn primitives).
   progress steppers, collapsible secondary content. Fonts: Geist → Inter. Tokens are enforced by the
   design-token guard — see [design_guidelines.md](../design/design_guidelines.md)
   (authoritative).
+- **Page scaffold**: every authed page wraps its content in
+  [`PageShell`](../../../client/src/components/PageShell.tsx) — it owns the
+  max-width, centering, horizontal padding, and vertical rhythm so pages don't
+  hand-roll `min-h-screen` / `container mx-auto` wrappers (which drifted apart:
+  the shell was at 7/99 adoption, see finding `ux-03`). New authed pages **must**
+  use it. Widths are semantic (`narrow` 2xl / `content` 4xl / `wide` 6xl / `full`
+  7xl). The header is optional and non-flattening: pass `title`/`subtitle` for the
+  standard block, plus `icon`, `eyebrow`, `headerLead` (e.g. a back link),
+  `headerMeta` (status badges), and `headerAction` (right-aligned) to preserve a
+  bespoke header instead of dropping it. Pass `titleTestId` to keep a page's
+  existing `data-testid`. Omit every header field for a container-only shell (keep
+  your own header as the first child). `fullHeight` is only for pages rendered
+  outside `PrivateLayout` (which already supplies `bg-background`); inside it,
+  don't set it. Full-bleed marketing/hero pages and centered spinner/empty states
+  are legitimate exceptions.
 - **Aliases**: `@/` → `client/src/`, `@shared/` → `shared/` (defined in
   `vite.config.ts` + `tsconfig.json`).
 

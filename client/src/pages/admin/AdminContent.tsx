@@ -54,6 +54,7 @@ import {
   FolderOpen,
   AlertCircle,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 interface ContentCategory {
   id: string;
@@ -449,13 +450,13 @@ export default function AdminContent() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold" data-testid="text-page-title">Content Management</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage articles, FAQs, and categories for the Learning Center
-        </p>
-      </div>
+    <PageShell
+      width="full"
+      title="Content Management"
+      subtitle="Manage articles, FAQs, and categories for the Learning Center"
+      titleTestId="text-page-title"
+      contentClassName="space-y-6"
+    >
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -1016,6 +1017,6 @@ export default function AdminContent() {
           </Form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   );
 }

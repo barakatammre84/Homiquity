@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { FileText, AlertTriangle, Printer, ArrowLeft } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 
 interface AdverseAction {
   id: string;
@@ -41,31 +42,29 @@ export default function AdverseActionNotice() {
   const notices = data?.adverseActions ?? [];
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between print:hidden">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="sm" data-testid="button-back-dashboard">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to dashboard
-          </Button>
-        </Link>
-        {notices.length > 0 && (
-          <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print-notice">
-            <Printer className="h-4 w-4 mr-2" />
-            Print / Save PDF
-          </Button>
-        )}
-      </div>
-
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2" data-testid="text-page-title">
-          <FileText className="h-6 w-6 text-primary" />
-          Adverse Action Notice
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Issued under the Fair Credit Reporting Act (FCRA) and the Equal Credit Opportunity Act (ECOA).
-        </p>
-      </div>
+    <PageShell
+      width="content"
+      icon={<FileText className="h-6 w-6 text-primary" />}
+      title="Adverse Action Notice"
+      subtitle="Issued under the Fair Credit Reporting Act (FCRA) and the Equal Credit Opportunity Act (ECOA)."
+      titleTestId="text-page-title"
+      headerLead={
+        <div className="flex items-center justify-between print:hidden">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm" data-testid="button-back-dashboard">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to dashboard
+            </Button>
+          </Link>
+          {notices.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print-notice">
+              <Printer className="h-4 w-4 mr-2" />
+              Print / Save PDF
+            </Button>
+          )}
+        </div>
+      }
+    >
 
       {isLoading && (
         <Card>
@@ -165,6 +164,6 @@ export default function AdverseActionNotice() {
           </Card>
         ))}
       </div>
-    </div>
+    </PageShell>
   );
 }

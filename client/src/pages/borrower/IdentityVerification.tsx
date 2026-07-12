@@ -23,6 +23,7 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface KycStatus {
@@ -311,14 +312,14 @@ export default function IdentityVerification() {
 
   if (isLoading) {
     return (
-      <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
+      <PageShell width="content" contentClassName="space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-96" />
         <div className="grid gap-4 md:grid-cols-2">
           <Skeleton className="h-64" />
           <Skeleton className="h-64" />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -355,18 +356,17 @@ export default function IdentityVerification() {
   ];
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="identity-verification-page">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <Shield className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground md:text-2xl" data-testid="text-idv-title">Identity Verification</h1>
-            <p className="text-sm text-muted-foreground">Secure, automated verification to protect your identity and meet regulatory requirements.</p>
-          </div>
+    <PageShell
+      width="content"
+      icon={
+        <div className="p-2 bg-primary/10 rounded-lg">
+          <Shield className="h-5 w-5 text-primary" />
         </div>
-      </div>
+      }
+      title="Identity Verification"
+      subtitle="Secure, automated verification to protect your identity and meet regulatory requirements."
+      titleTestId="text-idv-title"
+    >
 
       <Card className="mb-6" data-testid="card-progress-overview">
         <CardContent className="pt-5 pb-4">
@@ -497,6 +497,6 @@ export default function IdentityVerification() {
         </CardContent>
       </Card>
 
-    </div>
+    </PageShell>
   );
 }
