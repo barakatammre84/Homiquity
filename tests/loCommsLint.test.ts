@@ -55,9 +55,6 @@ describe("lintOutboundText — Tier 1 (Reg Z §1026.24 trigger terms → BLOCK)"
 
 describe("lintOutboundText — Tier 2 (Reg N §1014.3 promise phrases → WARN)", () => {
   const TIER2_WARNS: Array<[string, string]> = [
-    ["Your approval is guaranteed once you apply", "approval_guarantee"],
-    ["You're guaranteed to qualify for this", "approval_guarantee"],
-    ["We offer assured approval for veterans", "approval_guarantee"],
     ["I'll get you the lowest rate around", "superlative_rate"],
     ["We have the best rates in the state", "superlative_rate"],
     ["There are no fees with this loan", "no_fees"],
@@ -89,6 +86,57 @@ describe("lintOutboundText — Tier 2 (Reg N §1014.3 promise phrases → WARN)"
     const r = lintOutboundText(text);
     expect(r.hasPromisePhrases).toBe(false);
     expect(r.requiresOverride).toBe(false);
+  });
+});
+
+describe("lintOutboundText — Reg N §1014.3(i) approval guarantee → HARD BLOCK (no override)", () => {
+  const HARD_BLOCKS: string[] = [
+    "Your approval is guaranteed once you apply",
+    "You're guaranteed to qualify for this",
+    "We offer assured approval for veterans",
+    "Guaranteed approval for everyone who applies",
+  ];
+
+  it.each(HARD_BLOCKS)("hard-blocks %j with no override path", (text) => {
+    const r = lintOutboundText(text);
+    expect(r.blocked).toBe(true);
+    expect(r.hardBlockMatches.length).toBeGreaterThan(0);
+    expect(r.hardBlockMatches[0].category).toBe("approval_guarantee");
+    // A hard block is never a mere overridable warning.
+    expect(r.requiresOverride).toBe(false);
+  });
+
+  // An in-clause negation is the compliant statement — it must pass fully clean
+  // (no block AND no warn), or LOs get alert-fatigued on good disclaimers.
+  const NEGATED_CLEAN: string[] = [
+    "Final approval is not guaranteed until underwriting",
+    "We can't guarantee approval before underwriting",
+    "There's no guaranteed approval — it depends on verification",
+    "Approval isn't guaranteed; it depends on your file",
+    // False-positive the clause scoping fixes: "never" scopes "tell", not the
+    // guarantee, and stays in-clause — still a compliant sentence.
+    "We would never tell a borrower their approval is guaranteed",
+  ];
+
+  it.each(NEGATED_CLEAN)("passes an in-clause negated guarantee clean: %j", (text) => {
+    const r = lintOutboundText(text);
+    expect(r.blocked).toBe(false);
+    expect(r.hardBlockMatches).toEqual([]);
+    expect(r.requiresOverride).toBe(false);
+  });
+
+  // Adversarial: a negation in a NEIGHBORING clause does not scope the guarantee,
+  // so these still hard-block — clause scoping (not raw proximity) is what makes
+  // the guarantee un-sendable rather than silently slipping through.
+  const ADVERSARIAL_STILL_BLOCKED: string[] = [
+    "I won't lie — approval is guaranteed here",
+    "You can't lose: approval is guaranteed once you apply",
+  ];
+
+  it.each(ADVERSARIAL_STILL_BLOCKED)("hard-blocks a neighboring-clause negation dodge: %j", (text) => {
+    const r = lintOutboundText(text);
+    expect(r.blocked).toBe(true);
+    expect(r.hardBlockMatches.map((mm) => mm.category)).toContain("approval_guarantee");
   });
 });
 

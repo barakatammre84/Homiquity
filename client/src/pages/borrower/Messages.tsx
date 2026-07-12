@@ -441,9 +441,12 @@ export default function Messages() {
     // Tier 1 (Reg Z §1026.24 trigger terms) is a hard block — route figures
     // through the Loan Estimate / Advisor Report, not a message.
     if (outboundLint?.blocked) {
+      const blockMatch = outboundLint.hardBlockMatches[0] ?? outboundLint.triggerMatches[0];
       toast({
-        title: "Can't send loan figures in a message",
-        description: outboundLint.triggerMatches[0]?.guidance,
+        title: outboundLint.hardBlockMatches.length > 0
+          ? "This message can't be sent"
+          : "Can't send loan figures in a message",
+        description: blockMatch?.guidance,
         variant: "destructive",
       });
       return;
@@ -748,8 +751,12 @@ export default function Messages() {
             <AlertDescription>
               {outboundLint.blocked ? (
                 <>
-                  <span className="font-medium">Loan figures can't go in a message.</span>{" "}
-                  {outboundLint.triggerMatches[0]?.guidance}
+                  <span className="font-medium">
+                    {outboundLint.hardBlockMatches.length > 0
+                      ? "This message can't be sent."
+                      : "Loan figures can't go in a message."}
+                  </span>{" "}
+                  {(outboundLint.hardBlockMatches[0] ?? outboundLint.triggerMatches[0])?.guidance}
                 </>
               ) : (
                 <>
