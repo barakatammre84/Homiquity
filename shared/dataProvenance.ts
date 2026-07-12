@@ -58,3 +58,19 @@ export const PRESALES_DISCLAIMER =
   "been verified. This is not a commitment to lend, a Loan Estimate, or an " +
   "approval. Actual terms depend on verification of your income, assets, credit, " +
   "and the property.";
+
+/**
+ * Non-binding disclaimer for borrower-facing PREDICTIVE insights (likelihood to
+ * close, estimated days to funding). These are a deterministic heuristic over
+ * self-reported data — surfacing them without a caveat risks reading as a
+ * representation about the loan outcome (UDAAP, 12 U.S.C. §5531(d)/§5536; keep
+ * consistent with the pre-approval funnel footnote). The explicit "not a
+ * promised closing or funding date" clause covers the days-to-funding figure,
+ * the sharpest exposure. Do not soften without compliance/counsel review.
+ */
+export const PREDICTION_INSIGHTS_DISCLAIMER =
+  "These figures are estimates based on the information you've provided and " +
+  "typical processing timelines — not a credit decision, an approval, a " +
+  "guarantee that your loan will close, a promised closing or funding date, or a " +
+  "commitment to lend. Your loan remains subject to full underwriting, " +
+  "verification of your information, and property approval.";
