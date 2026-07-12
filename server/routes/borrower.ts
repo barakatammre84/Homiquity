@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { InvalidSsnError, type IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import { logAudit } from "../auditLog";
+import { lintOutboundText, REG_Z_ADVERTISING_DISCLOSURE_BLOCK } from "@shared/compliance/loCommsLint";
 import {
   insertCalculatorResultSchema,
   insertHomeownershipGoalSchema,
@@ -2715,6 +2716,9 @@ export function registerBorrowerRoutes(
     message: z.string().trim().min(1).max(2000),
     applicationId: z.string().optional(),
     messageType: z.enum(["text", "document_request"]).default("text"),
+    // Set by the composer when the LO consciously sends past a Tier-2 (Reg N
+    // §1014.3) compliance warning; the override is audit-logged (LO-5).
+    acknowledgeComplianceWarning: z.boolean().optional(),
     documentRequestData: z
       .object({
         documentType: z.string().min(1).max(100),
@@ -2784,6 +2788,48 @@ export function registerBorrowerRoutes(
       } else {
         const apps = await storage.getLoanApplicationsByUser(borrowerParty.id);
         applicationId = apps[0]?.id ?? null; // newest first; null pre-application
+      }
+
+      // LO-5 comms compliance lint on STAFF → borrower outbound free text.
+      // Tier 1 (Reg Z §1026.24 trigger terms) is a hard block routed to the
+      // disclosed channels (Loan Estimate / Advisor Report); Tier 2 (Reg N
+      // §1014.3 promise phrases) warns and needs an explicit, logged override
+      // to send. Borrower → staff inbound and structured document requests are
+      // not advertising and are not linted. Enforcement is server-side, so the
+      // block holds even if the composer is bypassed.
+      if (senderIsStaff && messageType === "text") {
+        const lint = lintOutboundText(message);
+        if (lint.blocked) {
+          logAudit(req, "comms_lint.blocked", "loan_application", applicationId ?? undefined, {
+            recipientId,
+            categories: lint.triggerMatches.map((m) => m.category),
+            citations: lint.triggerMatches.map((m) => m.citation),
+          });
+          return res.status(422).json({
+            error: "This message states specific loan terms that require federal disclosures. Send the figures via the borrower's Loan Estimate or Advisor Report instead.",
+            complianceBlock: true,
+            lint,
+            disclosureBlock: REG_Z_ADVERTISING_DISCLOSURE_BLOCK,
+          });
+        }
+        if (lint.requiresOverride && !parsed.data.acknowledgeComplianceWarning) {
+          logAudit(req, "comms_lint.warned", "loan_application", applicationId ?? undefined, {
+            recipientId,
+            categories: lint.promiseMatches.map((m) => m.category),
+          });
+          return res.status(422).json({
+            error: "This message may contain a prohibited representation. Review the suggested rewrite, or send anyway to record an override.",
+            complianceWarning: true,
+            lint,
+          });
+        }
+        if (lint.requiresOverride && parsed.data.acknowledgeComplianceWarning) {
+          logAudit(req, "comms_lint.override", "loan_application", applicationId ?? undefined, {
+            recipientId,
+            categories: lint.promiseMatches.map((m) => m.category),
+            citations: lint.promiseMatches.map((m) => m.citation),
+          });
+        }
       }
 
       const newMessage = await storage.sendMessage({

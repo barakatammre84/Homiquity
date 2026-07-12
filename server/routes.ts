@@ -18,6 +18,7 @@ import { registerUnderwritingRulesRoutes } from "./routes/underwriting-rules";
 import { registerPolicyOpsRoutes } from "./routes/policy-ops";
 import { registerLookupMatrixRoutes } from "./routes/lookup-matrix";
 import { registerRateSheetRoutes } from "./routes/rate-sheets";
+import { registerCommsRoutes } from "./routes/comms";
 import { registerScenarioRoutes } from "./routes/scenarios";
 import { registerCockpitRoutes } from "./routes/cockpit";
 import { registerIntelligenceRoutes } from "./routes/intelligence";
@@ -88,6 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerPolicyOpsRoutes(app, storage);
   registerLookupMatrixRoutes(app, storage);
   registerRateSheetRoutes(app, storage);
+  registerCommsRoutes(app);
   registerScenarioRoutes(app, storage);
   registerCockpitRoutes(app, storage);
   registerIntelligenceRoutes(app, storage);

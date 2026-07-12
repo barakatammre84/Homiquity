@@ -376,6 +376,28 @@
       "notes": "Qualifying MINIMUM by tier is portal-gated and deliberately absent from code; the path reports the ratio and flags manual review. Transcription: docs/lender-programs/angel-oak/dscr-program-reference.md."
     },
     {
+      "id": "regz-1026-24d-trigger-terms",
+      "rule": "Reg Z advertising: (d)(1) triggering terms = (i) amount/percentage of any downpayment, (ii) number of payments or period of repayment, (iii) amount of any payment, (iv) amount of any finance charge; when any is stated, (d)(2) requires stating (i) the downpayment amount/%, (ii) the terms of repayment over the full term incl. any balloon, and (iii) the 'annual percentage rate' using that term, and if the rate may increase after consummation, that fact",
+      "value": "trigger-term -> disclosure lexicon v1 (Tier 1, BLOCK+route)",
+      "citation": "Regulation Z, 12 CFR §1026.24(d)(1)-(2) (verified verbatim via eCFR API 2026-07-11)",
+      "sourceUrl": "https://www.ecfr.gov/current/title-12/part-1026/section-1026.24",
+      "codeRef": "shared/compliance/loCommsLint.ts REG_Z_TRIGGER_LEXICON / REG_Z_ADVERTISING_DISCLOSURE_BLOCK",
+      "lastVerified": "2026-07-11",
+      "reviewIntervalDays": 180,
+      "notes": "LO-5 comms lint. Deterministic lexicon, NOT NLP (I1). Enforcement = BLOCK a free-text send stating a specific rate/payment/downpayment figure and route to the Loan Estimate / LO-3 Advisor Report, because (d)(2)(iii) requires the borrower-specific APR which a generic appended block cannot supply; blocking is stricter than the rule and therefore compliant. SCOPING (compliance sign-off item): a bare product period like '30-year fixed' is intentionally NOT a standalone trigger — the (d)(1)(ii) leg fires only on an explicit payment COUNT ('360 payments'). The disclosure block is the reference text the disclosed channels carry, not appended to messages."
+    },
+    {
+      "id": "regn-1014-3-promise-phrases",
+      "rule": "Reg N (MAP Rule) prohibits material misrepresentations in commercial communications about any mortgage term, including the interest rate / whether 'fixed', the existence/nature/amount of fees or costs, payment amounts, whether the consumer has been or will be approved ('preapproved or guaranteed'), and government affiliation/endorsement",
+      "value": "promise-phrase -> warn+rewrite lexicon v1 (Tier 2, WARN not block)",
+      "citation": "Regulation N, 12 CFR §1014.3 (MAP Rule; verified verbatim via eCFR API 2026-07-11)",
+      "sourceUrl": "https://www.ecfr.gov/current/title-12/part-1014/section-1014.3",
+      "codeRef": "shared/compliance/loCommsLint.ts REG_N_PROMISE_LEXICON",
+      "lastVerified": "2026-07-11",
+      "reviewIntervalDays": 180,
+      "notes": "LO-5 comms lint Tier 2. Deterministic lexicon, NOT NLP (I1). WARN-not-block: flags guaranteed/assured approval, superlative rate claims, no-fees, and false government affiliation, each with a compliant rewrite; a send-anyway is an override the server audit-logs. Subsection letters in the per-rule citations are approximate to the eCFR enumeration and are a compliance sign-off item."
+    },
+    {
       "id": "regz-1026-36e3-option-set",
       "rule": "Anti-steering safe-harbor loan options per type of transaction: (A) the loan with the lowest interest rate; (B) the loan with the lowest interest rate without negative amortization, a prepayment penalty, interest-only payments, a balloon payment in the first 7 years of the life of the loan, a demand feature, shared equity, or shared appreciation; (C) the loan with the lowest total dollar amount of discount points, origination points or origination fees (ties broken by the lowest interest rate among them); originator must have a good faith belief the options are loans for which the consumer likely qualifies (e)(3)(ii)",
       "value": "options A/B/C + good-faith qualification",
