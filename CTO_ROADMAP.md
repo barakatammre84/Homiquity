@@ -14,6 +14,27 @@
 
 **Goal: live production — take real borrower applications and deliver complete files to wholesale lenders for approval and closing.** Maintained nightly by the evening triage routine (sole append authority; keep it under ~12 items — anything not launch-blocking belongs in the sections below, not here). The 16-routine executive suite was consolidated to 4 launch routines the same day (see [kb/PRE_PRODUCTION_OPS_ROUTINES.md](./knowledge-base/runbooks/PRE_PRODUCTION_OPS_ROUTINES.md)).
 
+> **Status update — 2026-07-12.** Two large waves have landed and deployed since the 07-08 box
+> below (authoritative per-deploy record: the production change ledger in
+> [CICD.md](./knowledge-base/runbooks/CICD.md)):
+> **(1)** the **07-11 program wave** — the Complex-Borrower **Income Engine** (UAL P1–P6, PRs
+> #103/#108, migrations `0013`–`0019`); the **LO Advisor** and **PartnerHub COI** programs
+> (charters #109/#110; LO-1 cockpit consolidation #133, LO-2, LO-5 #124; PH-1 #121, PH-2 #134 —
+> migrations `0020`–`0023`); **PageShell** page-scaffold convergence #131; a KB staleness pass
+> #132; and the ledger catch-up #130. **Prod migration HEAD is now `0023`** (0000–0023 applied).
+> **(2)** the **07-12 money-path merge train** (#135 → #136 → #138 → #137 → #139) made the
+> applicant → LO → wholesale-lender path **fully functioning for a gated live beta** — intake→LO
+> handoff chokepoint + claim, Run-DU/LPA, XSD recording, re-wired Submit-to-lender, demo seed —
+> and fixed two compliance items (Reg N approval-guarantee hard-block; UDAAP-safe borrower
+> insights) plus a `passwordHash` leak. All merged & deployed; prod `/api/health` 200; no
+> migration. Beta-readiness detail:
+> [BETA_GO_LIVE_READINESS.md](./knowledge-base/runbooks/BETA_GO_LIVE_READINESS.md).
+> **The launch-blocker set below is unchanged:** **LS-1 (F1 NMLS + MERS org id)** still gates
+> everything commercial and is the single regulatory flip between an invited human and submitting
+> an application (`shared/companyIdentity.ts` + `server/config/company.ts` still `PENDING`);
+> **LS-2** (Vercel env/ops) is founder-side; the simulated lender/AUS/credit adapters and the
+> MISMO XSD-conformance gap (`L6`) stay as noted.
+
 > **Status update — 2026-07-08.** Since this sprint opened, three pushes landed (authoritative
 > record: the production change ledger in [CICD.md](./knowledge-base/runbooks/CICD.md), and
 > [ASSUMPTIONS.md](./knowledge-base/governance/ASSUMPTIONS.md) for what's real vs. simulated):
