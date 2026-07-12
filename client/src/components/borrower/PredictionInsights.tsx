@@ -11,6 +11,7 @@ import {
   BarChart3,
   Target,
 } from "lucide-react";
+import { PREDICTION_INSIGHTS_DISCLAIMER } from "@shared/dataProvenance";
 
 interface Prediction {
   likelihoodToClose: number;
@@ -98,6 +99,8 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
               <span className={`text-lg font-bold ${statusColor}`}>{likelihoodPct}%</span>
             </div>
             <Badge variant="secondary">{statusLabel}</Badge>
+            {/* Prominence: the caveat sits directly under the number, not only in the footer (UDAAP net-impression). */}
+            <p className="text-[10px] leading-tight text-muted-foreground">estimate, not a decision</p>
           </div>
           <div className="space-y-1" data-testid="metric-timeline">
             <p className="text-xs text-muted-foreground">Est. Timeline</p>
@@ -106,6 +109,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
               <span className="text-lg font-bold">{prediction.estimatedDaysToFund}d</span>
             </div>
             <p className="text-xs text-muted-foreground">to funding</p>
+            <p className="text-[10px] leading-tight text-muted-foreground">typical, not a closing date</p>
           </div>
           {benchmark?.percentiles?.creditScorePercentile != null && (
             <div className="space-y-1" data-testid="metric-credit-percentile">
@@ -165,6 +169,20 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
             ))}
           </div>
         )}
+
+        {/*
+          Non-binding-estimate disclaimer (canonical wording in @shared/dataProvenance).
+          Rendered as a clear/conspicuous callout, not a de-emphasized footnote: a
+          bold "Likelihood 87%" / "22d to funding" is a headline claim a footnote
+          alone struggles to cure (UDAAP net-impression, 12 U.S.C. §5531(d)/§5536).
+          Do not soften without compliance/counsel review.
+        */}
+        <p
+          className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs leading-relaxed text-foreground/80"
+          data-testid="prediction-disclaimer"
+        >
+          {PREDICTION_INSIGHTS_DISCLAIMER}
+        </p>
       </CardContent>
     </Card>
   );
