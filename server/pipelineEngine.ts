@@ -565,6 +565,19 @@ export async function updatePipelineStage(
 
   await storage.updateLoanApplication(applicationId, applicationUpdate);
 
+  // Record the pipeline-stage timestamp for the outcomes/analytics tables
+  // (conversion funnel, estimate accuracy, cycle-time dashboards). Upserts the
+  // loanOutcomes row; best-effort by design — an analytics write must never
+  // block or fail a stage transition. This is the wiring that populates
+  // loanOutcomes (previously the writers had zero callers, so those dashboards
+  // rendered off an always-empty table — F-002).
+  try {
+    const { recordStageTimestamp } = await import("./services/outcomeTracker");
+    await recordStageTimestamp(applicationId, newStage);
+  } catch (outcomeErr) {
+    console.warn("[PipelineEngine] Outcome timestamp record failed (non-fatal):", outcomeErr);
+  }
+
   // Keep the borrower journey state machine in lockstep with the pipeline —
   // previously synced only at creation, which froze Intelligence surfaces at
   // pre-qualification for any loan that progressed. Best-effort by design.

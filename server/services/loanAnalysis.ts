@@ -403,6 +403,17 @@ export async function finalizeIntake(applicationId: string): Promise<void> {
       aiAnalyzedAt: new Date(),
     });
 
+    // The automated intake decision sets pre_approved directly (not via
+    // updatePipelineStage), so record the outcome timestamp here too — otherwise
+    // the conversion funnel would miss the whole auto-pre-approval path
+    // ("under_review" is a no-op in the recorder). Best-effort (F-002 wiring).
+    try {
+      const { recordStageTimestamp } = await import("./outcomeTracker");
+      await recordStageTimestamp(applicationId, newStatus);
+    } catch (outcomeErr) {
+      console.warn("[Analysis] Outcome stamp failed (non-fatal):", outcomeErr);
+    }
+
     // Clear then recreate options so a re-drive never duplicates scenarios.
     try {
       await storage.deleteLoanOptionsByApplication(applicationId);

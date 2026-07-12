@@ -16,6 +16,7 @@ import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataP
 import { assertStageRequirements } from "@shared/stageRequirements";
 import { tridHardStopError } from "../services/trid";
 import * as creditService from "../services/creditService";
+import { updateConditionMetrics } from "../services/outcomeTracker";
 
 /**
  * Checks whether a staff user is authorized to mutate a specific loan application.
@@ -428,6 +429,9 @@ export function registerUnderwritingRoutes(
           metadata: { conditionId: id, notes: clearanceNotes },
         });
 
+        // Refresh the outcomes condition metrics (issued/cleared/waived counts,
+        // avg clearance days) — self-guarded, never throws (F-002 wiring).
+        await updateConditionMetrics(condition.applicationId);
         return res.json(updated);
       }
 
@@ -448,6 +452,7 @@ export function registerUnderwritingRoutes(
           metadata: { conditionId: id, notes: clearanceNotes },
         });
 
+        await updateConditionMetrics(condition.applicationId);
         return res.json(updated);
       }
 
@@ -472,10 +477,12 @@ export function registerUnderwritingRoutes(
           metadata: { conditionId: id, notes: clearanceNotes },
         });
 
+        await updateConditionMetrics(condition.applicationId);
         return res.json(updated);
       }
 
       const updated = await storage.updateLoanCondition(id, { status, clearanceNotes });
+      await updateConditionMetrics(condition.applicationId);
       res.json(updated);
     } catch (error) {
       console.error("Update condition error:", error);
