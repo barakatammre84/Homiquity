@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -12,7 +14,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Handshake, Search, Mail, AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { friendlyApiError } from "@/lib/errorMessage";
+import { Handshake, Search, Mail, AlertCircle, Send } from "lucide-react";
 import { format } from "date-fns";
 
 interface PartnerWaitlistEntry {
@@ -22,6 +26,7 @@ interface PartnerWaitlistEntry {
   company: string | null;
   partnerType: string;
   message: string | null;
+  invitedAt: string | null;
   createdAt: string | null;
 }
 
@@ -33,11 +38,37 @@ const PARTNER_TYPE_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-export default function AdminPartnerWaitlist() {
+export default function AdminPartnerWaitlist({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState("");
+  const { toast } = useToast();
 
   const { data, isLoading, isError } = useQuery<PartnerWaitlistEntry[]>({
     queryKey: ["/api/admin/partner-waitlist"],
+  });
+
+  // PH-1 waitlist → activation conversion: emails a /partners/join link and
+  // stamps invited_at so the queue shows who has already been converted.
+  const invite = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("POST", `/api/admin/partner-waitlist/${id}/invite`, {});
+      return res.json();
+    },
+    onSuccess: (result: { emailSent: boolean }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/partner-waitlist"] });
+      toast({
+        title: result.emailSent ? "Invite sent" : "Marked invited",
+        description: result.emailSent
+          ? "They received a link to create their partner account."
+          : "Email delivery is not configured in this environment; the entry is marked invited.",
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Couldn't send invite",
+        description: friendlyApiError(err, "Please try again."),
+        variant: "destructive",
+      });
+    },
   });
 
   const entries = useMemo(() => {
@@ -54,20 +85,22 @@ export default function AdminPartnerWaitlist() {
   }, [data, search]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-6">
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-          <Handshake className="h-5 w-5 text-primary" />
+    <div className={embedded ? "space-y-6" : "mx-auto max-w-6xl px-4 py-8 sm:px-6 space-y-6"}>
+      {!embedded && (
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+            <Handshake className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight" data-testid="text-admin-partners-title">
+              Partner Waitlist
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Loan officers, lenders, CPAs, and agents who asked to partner — your pre-launch recruitment queue.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-admin-partners-title">
-            Partner Waitlist
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Loan officers, lenders, CPAs, and agents who asked to partner — your pre-launch recruitment queue.
-          </p>
-        </div>
-      </div>
+      )}
 
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -123,6 +156,7 @@ export default function AdminPartnerWaitlist() {
                     <TableHead>Company</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Invite</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -154,6 +188,24 @@ export default function AdminPartnerWaitlist() {
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
                         {r.createdAt ? format(new Date(r.createdAt), "MMM d, yyyy") : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {r.invitedAt ? (
+                          <span className="text-xs text-muted-foreground" data-testid={`text-invited-${r.id}`}>
+                            Invited {format(new Date(r.invitedAt), "MMM d")}
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={invite.isPending}
+                            onClick={() => invite.mutate(r.id)}
+                            data-testid={`button-invite-${r.id}`}
+                          >
+                            <Send className="mr-1 h-3.5 w-3.5" />
+                            Invite
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

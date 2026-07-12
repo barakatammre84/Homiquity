@@ -480,8 +480,8 @@ async function build() {
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: M, y: 5.15, w: 8.4, h: 1.5, rectRadius: 0.12, fill: { color: WHITE } });
     s.addText([
       { text: "Homiquity Mortgage Corporation", options: { bold: true, color: INK, fontSize: 16, breakLine: true } },
-      { text: "[Founder name — TODO]", options: { color: SLATE, fontSize: 13, breakLine: true } },
-      { text: "support@homiquity.com  ·  [phone — TODO]  ·  homiquity.com", options: { color: ROYAL, fontSize: 13, bold: true } },
+      { text: "Ammre Barakat, Founder", options: { color: SLATE, fontSize: 13, breakLine: true } },
+      { text: "support@homiquity.com  ·  (224) 400-0531  ·  homiquity.com", options: { color: ROYAL, fontSize: 13, bold: true } },
     ], { x: M + 0.35, y: 5.35, w: 7.8, h: 1.1, fontFace: FB, valign: "middle", margin: 0 });
     s.addText("NMLS # prints here once issued.", { x: M + 0.35, y: 6.62, w: 6, h: 0.3, fontFace: FB, italic: true, fontSize: 10, color: SLATE, margin: 0 });
     await veteranMark(s, 9.0, 5.5, true);

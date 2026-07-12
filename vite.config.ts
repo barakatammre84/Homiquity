@@ -4,6 +4,11 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  // Concurrent dev servers on this checkout (multiple Claude/dev sessions) race
+  // on the shared node_modules/.vite dep cache and corrupt each other's
+  // optimized chunks ("Invalid hook call" / two copies of React). A session can
+  // opt into a private cache with VITE_CACHE_DIR; default behavior is unchanged.
+  ...(process.env.VITE_CACHE_DIR ? { cacheDir: path.resolve(process.env.VITE_CACHE_DIR) } : {}),
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

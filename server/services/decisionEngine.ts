@@ -74,7 +74,8 @@ export interface InstantDecision {
 }
 
 // Map free-text URLA account types to the engine's asset buckets.
-function classifyAsset(accountType: string): AssetProfile["type"] {
+// Exported: the LO-2 scenario simulator buckets the same URLA assets.
+export function classifyAsset(accountType: string): AssetProfile["type"] {
   const t = (accountType || "").toLowerCase();
   if (/retire|ira|401|403b|pension|annuity/.test(t)) return "RETIREMENT_IRA_401K";
   if (/stock|bond|mutual|brokerage|investment|securit|equity/.test(t)) return "STOCK_INVESTMENT";
@@ -123,6 +124,25 @@ function describeEngineGap(err: unknown): string[] {
   if (/VALUE INPUT/i.test(msg)) return ["Property value"];
   if (/unrecognized state/i.test(msg)) return ["Valid property state"];
   return ["Additional information required to complete the decision"];
+}
+
+/**
+ * Monthly payments on liabilities not being paid off at closing, summed across
+ * all borrowers; falls back to the application-level summary figure when no
+ * URLA line items exist. Shared by the instant decision and the LO-2 scenario
+ * simulator so the two can never quote different debt pictures.
+ */
+export function sumOpenMonthlyLiabilities(
+  liabilities: Array<{ toBePaidOff: boolean | null; monthlyPayment: unknown }>,
+  fallbackMonthlyDebts: unknown,
+): number {
+  if (liabilities.length === 0) return safe(fallbackMonthlyDebts);
+  let total = 0;
+  for (const liability of liabilities) {
+    if (liability.toBePaidOff) continue;
+    total += safe(liability.monthlyPayment);
+  }
+  return total;
 }
 
 /** True when a value is present and parses to a real number (incl. negatives). */
@@ -189,16 +209,8 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
   const income = computeIncomePaths(incomeInput);
 
   // Debts: monthly payments not being paid off, summed across all borrowers.
-  let monthlyDebts = 0;
-  for (const l of liabilities) {
-    borrowerSeqs.add(l.borrowerSequenceNumber ?? 1);
-    if (l.toBePaidOff) continue;
-    monthlyDebts += safe(l.monthlyPayment);
-  }
-  const hasUrlaLiabilities = liabilities.length > 0;
-  if (!hasUrlaLiabilities) {
-    monthlyDebts = safe(app.monthlyDebts);
-  }
+  for (const l of liabilities) borrowerSeqs.add(l.borrowerSequenceNumber ?? 1);
+  const monthlyDebts = sumOpenMonthlyLiabilities(liabilities, app.monthlyDebts);
 
   // Engine split (base+bonus, used only as a sum): agency variable is "bonus";
   // agency base + self-employment are "base". For a wage-only file this is

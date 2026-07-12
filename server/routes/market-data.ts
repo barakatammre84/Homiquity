@@ -6,6 +6,7 @@ import {
   getRiskProfile,
   getUndercutQuote,
 } from "../services/competitorRateService";
+import { firstQueryValue } from "./queryParams";
 
 // =============================================================================
 // MARKET DATA ROUTES (staff-only)
@@ -25,12 +26,15 @@ export function registerMarketDataRoutes(app: Express) {
   // Median competitor rate for a geography (county → state → national fallback).
   app.get("/api/market-data/competitor-benchmark", requireRole(...STAFF), async (req, res) => {
     try {
+      const loanType = firstQueryValue(req.query.loanType);
+      const loanPurpose = firstQueryValue(req.query.loanPurpose);
+      const year = firstQueryValue(req.query.year);
       const benchmark = await getCompetitorBenchmark({
-        state: (req.query.state as string) || undefined,
-        countyFips: (req.query.countyFips as string) || undefined,
-        loanType: req.query.loanType ? parseInt(req.query.loanType as string, 10) : undefined,
-        loanPurpose: req.query.loanPurpose ? parseInt(req.query.loanPurpose as string, 10) : undefined,
-        activityYear: req.query.year ? parseInt(req.query.year as string, 10) : undefined,
+        state: firstQueryValue(req.query.state) || undefined,
+        countyFips: firstQueryValue(req.query.countyFips) || undefined,
+        loanType: loanType ? parseInt(loanType, 10) : undefined,
+        loanPurpose: loanPurpose ? parseInt(loanPurpose, 10) : undefined,
+        activityYear: year ? parseInt(year, 10) : undefined,
       });
       if (!benchmark) {
         return res.status(404).json({
@@ -47,9 +51,9 @@ export function registerMarketDataRoutes(app: Express) {
   // Our best executable rate vs. the competitor median for a borrower profile.
   app.get("/api/market-data/undercut-quote", requireRole(...STAFF), async (req, res) => {
     try {
-      const creditScore = parseInt(req.query.creditScore as string, 10);
-      const loanAmount = parseFloat(req.query.loanAmount as string);
-      const propertyValue = parseFloat(req.query.propertyValue as string);
+      const creditScore = parseInt(firstQueryValue(req.query.creditScore) ?? "", 10);
+      const loanAmount = parseFloat(firstQueryValue(req.query.loanAmount) ?? "");
+      const propertyValue = parseFloat(firstQueryValue(req.query.propertyValue) ?? "");
       if (!creditScore || !loanAmount || !propertyValue) {
         return res.status(400).json({ error: "creditScore, loanAmount and propertyValue are required" });
       }
@@ -57,9 +61,9 @@ export function registerMarketDataRoutes(app: Express) {
         creditScore,
         loanAmount,
         propertyValue,
-        loanPurpose: (req.query.loanPurpose as any) || "purchase",
-        state: (req.query.state as string) || undefined,
-        countyFips: (req.query.countyFips as string) || undefined,
+        loanPurpose: (firstQueryValue(req.query.loanPurpose) as any) || "purchase",
+        state: firstQueryValue(req.query.state) || undefined,
+        countyFips: firstQueryValue(req.query.countyFips) || undefined,
       });
       res.json(quote);
     } catch (error) {
@@ -71,15 +75,16 @@ export function registerMarketDataRoutes(app: Express) {
   // Historical default/prepay rates (Fannie Mae) for a borrower's risk band.
   app.get("/api/market-data/risk-profile", requireRole(...STAFF), async (req, res) => {
     try {
-      const creditScore = parseInt(req.query.creditScore as string, 10);
-      const ltv = parseFloat(req.query.ltv as string);
+      const creditScore = parseInt(firstQueryValue(req.query.creditScore) ?? "", 10);
+      const ltv = parseFloat(firstQueryValue(req.query.ltv) ?? "");
       if (!creditScore || !ltv) {
         return res.status(400).json({ error: "creditScore and ltv are required" });
       }
+      const dti = firstQueryValue(req.query.dti);
       const profile = await getRiskProfile({
         creditScore,
         ltv,
-        dti: req.query.dti ? parseFloat(req.query.dti as string) : undefined,
+        dti: dti ? parseFloat(dti) : undefined,
       });
       if (!profile) {
         return res.status(404).json({

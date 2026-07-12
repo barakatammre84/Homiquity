@@ -24,6 +24,24 @@ depth.
 | `../pipelineEngine.ts` | Loan pipeline stage logic for staff views; `PipelineSummary` carries `daysIdle` + `fileHealth` for the LO Command Center |
 | `fileHealth.ts` | Pure, deterministic green/yellow/red "No-Stall" light per file (48h-idle stall, 30-day pipeline age, stage-amount coherence, condition pile-up); Reg B — no model input |
 
+## Income engine (UAL P1–P6, merged 2026-07-11)
+
+The complex-borrower income engine: AI reads documents (provisional), deterministic
+cited math qualifies, a human confirms before anything reaches a lender package.
+Charter: [`specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md`](../../specs/) (PR #102).
+
+| Service | Does |
+|---------|------|
+| `income/orchestrator.ts` | **The single income producer** (P3): pure `computeIncomePaths` core + IO loader; runs every applicable path in one pass; primary DTI income = sum of applied component paths; SHA-256 fingerprints persisted to `income_path_evaluations` |
+| `income/paths/*` | One module per path: `agencyWage` (reconciles the two legacy income impls), `selfEmployment` (wraps the 1084 calculator), `rental` (cited, advisory — never auto-applied), `dscr` + `bankStatement` (non-QM; enabled only with `docs/lender-programs/` citations per the P4 gate; DSCR is ratio-only — no in-repo qualifying threshold) |
+| `selfEmploymentIncome.ts` | Deterministic Fannie Form 1084 self-employment calculator (B3-3.5 / B3-3.6 cited): Schedule C add-backs, K-1 distribution/liquidity gate, 2-yr averaging with conservative declining/single-year handling (P1) |
+| `situationClassifier.ts` | `SituationProfile` (P2c): deterministic structural FACTS over resolved entities + tie-outs — flags, income-path signals, document requests; append-only with an inputs fingerprint; a processing/readiness signal, **never** an underwriting input |
+| `borrowerEntityResolution.ts` | Resolves the borrower's business entities across uploaded tax forms (P2b) |
+| `taxReconciliation.ts` | Deterministic cross-form tie-out checks cited to `docs/irs-forms/` (P2b); tolerances are pure rounding bounds — no invented thresholds |
+| `worksheetPrefill.ts` | Smart-fill drafts for the SE worksheet from document extractions with per-field provenance; confirm-only write path — a draft is never persisted as truth (P5) |
+| `income/reviewTriage.ts` | Deterministic exception-triage tiers feeding the `review_items` workbench; confirmations stamp `humanVerified` + trigger recalc (P5) |
+| `incomeAnalysisPackage.ts` | The cited income narrative shipped to wholesale lenders alongside the MISMO package (P6): per-path math + citations, confirmed worksheets, hash-only document manifest; per-lender non-QM shaping via `wholesaleLenders.nonQm` |
+
 ## Documents & AI
 
 | Service | Does |

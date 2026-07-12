@@ -16,6 +16,7 @@ import { BorrowerRequests } from "@/components/BorrowerRequests";
 import { TermTooltip } from "@/components/TermTooltip";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
+import { PartnerSharingCard } from "@/components/PartnerSharingCard";
 import { TrustLayer } from "@/components/TrustLayer";
 import { RenterHome } from "@/pages/borrower/RenterHome";
 import { isStaffRole } from "@shared/roles";
@@ -852,6 +853,10 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* Progress-sharing with a referring partner (PH-2). Self-hides when the
+            borrower has no partner referrer. */}
+        <PartnerSharingCard />
 
         {/* Section 3: One dominant action — the "next step" hero */}
         <Card className="shadow-md hover-elevate border-2 border-accent/40" data-testid="card-dominant-action">
