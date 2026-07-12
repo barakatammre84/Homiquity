@@ -44,8 +44,11 @@ export function registerAdminRoutes(
 
   app.get("/api/admin/users", requireRole("admin"), async (req, res) => {
     try {
+      // Never serialize the password hash to the client, even on an admin-gated
+      // route (defense-in-depth — the column has no business leaving the server).
       const users = await storage.getAllUsers();
-      res.json(users);
+      const safeUsers = users.map(({ passwordHash: _ph, ...rest }) => rest);
+      res.json(safeUsers);
     } catch (error) {
       console.error("Admin users error:", error);
       res.status(500).json({ error: "Failed to get users" });

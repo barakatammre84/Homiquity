@@ -497,6 +497,17 @@ export function registerLendingRoutes(
       const application = await storage.createLoanApplication(applicationData);
       logAudit(req, "loan_application.created", "loan_application", application.id);
 
+      // Seed the outcomes/analytics row at funnel entry (the "submitted" stamp
+      // the conversion-funnel dashboard counts). createLoanApplication writes
+      // status "submitted" directly, bypassing updatePipelineStage, so the
+      // intake stamp is recorded here. Best-effort — never blocks the response.
+      try {
+        const { recordStageTimestamp } = await import("../services/outcomeTracker");
+        await recordStageTimestamp(application.id, "submitted");
+      } catch (outcomeErr) {
+        console.warn("[Intake] Outcome submitted-stamp failed (non-fatal):", outcomeErr);
+      }
+
       // TRID §1026.2(a)(3): intake may have just supplied the 6th piece of
       // application information — evaluate the Loan Estimate trigger.
       // Non-fatal: a trigger-bookkeeping failure must not lose the application.
