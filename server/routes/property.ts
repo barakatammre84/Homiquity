@@ -1,11 +1,12 @@
 import type { Express } from "express";
-import { isApprovedGradeLoanAppStatus, insertPropertySchema } from "@shared/schema";
+import { isApprovedGradeLoanAppStatus, insertPropertySchema, isStaffRole } from "@shared/schema";
 import type { IStorage } from "../storage";
 import { isAuthenticated } from "../auth";
 import { checkPropertyEligibility } from "../underwriting";
 import { lookupResolver } from "../services/lookupResolver";
 import { parseValueEstimate } from "../services/valueEstimate";
 import { parseBodyOr400 } from "./validate";
+import { firstQueryValue } from "./queryParams";
 
 export function registerPropertyRoutes(
   app: Express,
@@ -70,21 +71,27 @@ export function registerPropertyRoutes(
         return res.json({ properties: [], total: 0, source: "no_key" });
       }
 
+      const sortByStr = firstQueryValue(sortBy);
+      const minPriceStr = firstQueryValue(minPrice);
+      const maxPriceStr = firstQueryValue(maxPrice);
+      const typeStr = firstQueryValue(type);
+      const pageStr = firstQueryValue(page);
+
       const params = new URLSearchParams();
       params.set("location", location);
-      params.set("sortBy", (sortBy as string) || "relevance");
-      if (minPrice) params.set("priceMin", minPrice as string);
-      if (maxPrice) params.set("priceMax", maxPrice as string);
-      if (type && type !== "all") {
+      params.set("sortBy", sortByStr || "relevance");
+      if (minPriceStr) params.set("priceMin", minPriceStr);
+      if (maxPriceStr) params.set("priceMax", maxPriceStr);
+      if (typeStr && typeStr !== "all") {
         const typeMap: Record<string, string> = {
           single_family: "single_family",
           condo: "condo",
           townhouse: "townhomes",
           multi_family: "multi_family",
         };
-        if (typeMap[type as string]) params.set("home_type", typeMap[type as string]);
+        if (typeMap[typeStr]) params.set("home_type", typeMap[typeStr]);
       }
-      if (page) params.set("offset", String((parseInt(page as string) - 1) * 20));
+      if (pageStr) params.set("offset", String((parseInt(pageStr) - 1) * 20));
 
       const response = await fetch(
         `https://realty-us.p.rapidapi.com/properties/search-buy?${params.toString()}`,
@@ -369,21 +376,27 @@ export function registerPropertyRoutes(
         return res.json({ properties: [], total: 0, source: "no_key" });
       }
 
+      const sortByStr = firstQueryValue(sortBy);
+      const minPriceStr = firstQueryValue(minPrice);
+      const maxPriceStr = firstQueryValue(maxPrice);
+      const typeStr = firstQueryValue(type);
+      const pageStr = firstQueryValue(page);
+
       const params = new URLSearchParams();
       params.set("location", location);
-      params.set("sortBy", (sortBy as string) || "sold_date");
-      if (minPrice) params.set("priceMin", minPrice as string);
-      if (maxPrice) params.set("priceMax", maxPrice as string);
-      if (type && type !== "all") {
+      params.set("sortBy", sortByStr || "sold_date");
+      if (minPriceStr) params.set("priceMin", minPriceStr);
+      if (maxPriceStr) params.set("priceMax", maxPriceStr);
+      if (typeStr && typeStr !== "all") {
         const typeMap: Record<string, string> = {
           single_family: "single_family",
           condo: "condo",
           townhouse: "townhomes",
           multi_family: "multi_family",
         };
-        if (typeMap[type as string]) params.set("home_type", typeMap[type as string]);
+        if (typeMap[typeStr]) params.set("home_type", typeMap[typeStr]);
       }
-      if (page) params.set("offset", String((parseInt(page as string) - 1) * 20));
+      if (pageStr) params.set("offset", String((parseInt(pageStr) - 1) * 20));
 
       const response = await fetch(
         `https://realty-us.p.rapidapi.com/properties/search-sold?${params.toString()}`,
@@ -445,12 +458,14 @@ export function registerPropertyRoutes(
   app.get("/api/properties", async (req, res) => {
     try {
       const { search, type, minPrice, maxPrice } = req.query;
+      const minPriceStr = firstQueryValue(minPrice);
+      const maxPriceStr = firstQueryValue(maxPrice);
       
       const properties = await storage.getAllProperties({
-        search: search as string,
-        type: type as string,
-        minPrice: minPrice ? parseFloat(minPrice as string) : undefined,
-        maxPrice: maxPrice ? parseFloat(maxPrice as string) : undefined,
+        search: firstQueryValue(search),
+        type: firstQueryValue(type),
+        minPrice: minPriceStr ? parseFloat(minPriceStr) : undefined,
+        maxPrice: maxPriceStr ? parseFloat(maxPriceStr) : undefined,
       });
       
       res.json(properties);
@@ -575,8 +590,17 @@ export function registerPropertyRoutes(
     try {
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
+
+      // Role gate in addition to the agent-profile requirement: listings appear in
+      // the public property search, and agent profiles were historically
+      // auto-provisioned for any authenticated caller, so a consumer account may
+      // still hold a stale profile. Only staff/partner roles may publish listings.
+      if (!isStaffRole(userRole)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
+
       const agentProfile = await storage.getAgentProfileByUserId(userId);
-      
+
       if (!agentProfile && userRole !== "admin") {
         return res.status(403).json({ error: "Agent profile required to create listings" });
       }
@@ -606,8 +630,13 @@ export function registerPropertyRoutes(
     try {
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
+
+      if (!isStaffRole(userRole)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
+
       const property = await storage.getProperty(req.params.id);
-      
+
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
       }
@@ -634,8 +663,13 @@ export function registerPropertyRoutes(
     try {
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
+
+      if (!isStaffRole(userRole)) {
+        return res.status(403).json({ error: "Staff or partner access required" });
+      }
+
       const property = await storage.getProperty(req.params.id);
-      
+
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
       }

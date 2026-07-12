@@ -76,7 +76,23 @@ const DOC_FRESHNESS_DAYS = 30;
 const DOC_WARNING_DAYS = 25;
 const STALL_DAYS = 3;
 
-export async function buildStaffSignals(limit = 30): Promise<StaffSignal[]> {
+/**
+ * Optional deal-team scope. When supplied (a non-admin staffer's cockpit), the
+ * feed is restricted to those applications and the cross-borrower DSCR/investor
+ * lead signals are omitted — a loan officer must never see signals for files
+ * they are not on the deal team for (IDOR). Omit the scope for the platform-wide
+ * feed (admin cockpit, notification cron).
+ */
+export interface StaffSignalScope {
+  applicationIds: string[];
+}
+
+export async function buildStaffSignals(limit = 30, scope?: StaffSignalScope): Promise<StaffSignal[]> {
+  // A scoped caller with no accessible applications gets an empty feed — never
+  // the platform-wide query.
+  if (scope && scope.applicationIds.length === 0) return [];
+
+  const statusFilter = inArray(loanApplications.status, [...ACTIVE_STATUSES]);
   const activeApps = await db
     .select({
       id: loanApplications.id,
@@ -86,11 +102,17 @@ export async function buildStaffSignals(limit = 30): Promise<StaffSignal[]> {
       preUwFlags: loanApplications.preUwFlags,
     })
     .from(loanApplications)
-    .where(inArray(loanApplications.status, [...ACTIVE_STATUSES]));
+    .where(
+      scope
+        ? and(statusFilter, inArray(loanApplications.id, scope.applicationIds))
+        : statusFilter,
+    );
 
   // DSCR candidates come from tax_insights, not applications — they must
-  // surface even when the active-application pipeline is empty.
-  const dscrSignals = await buildDscrSignals();
+  // surface even when the active-application pipeline is empty, but only in the
+  // platform-wide feed: they are cross-borrower incubator leads with no deal
+  // team, so a scoped (non-admin) caller never sees them.
+  const dscrSignals = scope ? [] : await buildDscrSignals();
   if (activeApps.length === 0) return dscrSignals.slice(0, limit);
   const appIds = activeApps.map((a) => a.id);
   const appById = new Map(activeApps.map((a) => [a.id, a]));

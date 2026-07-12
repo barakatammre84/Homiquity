@@ -40,10 +40,13 @@ import {
   AlertCircle,
   CheckCircle2,
   FileUp,
+  ShieldAlert,
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isStaffRole } from "@shared/schema";
+import { lintOutboundText } from "@shared/compliance/loCommsLint";
 import type { TeamMessage, DocumentRequestData } from "@shared/schema";
 import {
   UploadDocumentDialog,
@@ -365,7 +368,11 @@ export default function Messages() {
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async (data: { recipientId: string; message: string }) => {
+    mutationFn: async (data: {
+      recipientId: string;
+      message: string;
+      acknowledgeComplianceWarning?: boolean;
+    }) => {
       const response = await apiRequest("POST", "/api/messages", data);
       return response.json();
     },
@@ -422,12 +429,32 @@ export default function Messages() {
     }
   }, [messages]);
 
+  // LO-5 comms lint: live feedback on STAFF outbound free text, mirroring the
+  // server enforcement in POST /api/messages. Borrower (inbound) messages are
+  // not advertising, so they're never linted. Deterministic — same text in,
+  // same findings out.
+  const outboundLint = isStaff && message.trim() ? lintOutboundText(message.trim()) : null;
+
   const handleSendMessage = () => {
     if (!message.trim() || !memberId) return;
-    
+
+    // Tier 1 (Reg Z §1026.24 trigger terms) is a hard block — route figures
+    // through the Loan Estimate / Advisor Report, not a message.
+    if (outboundLint?.blocked) {
+      toast({
+        title: "Can't send loan figures in a message",
+        description: outboundLint.triggerMatches[0]?.guidance,
+        variant: "destructive",
+      });
+      return;
+    }
+
     sendMessageMutation.mutate({
       recipientId: memberId,
       message: message.trim(),
+      // Tier 2 (Reg N §1014.3) warns with the banner visible above; sending
+      // with it shown is a conscious, server-logged override.
+      acknowledgeComplianceWarning: outboundLint?.requiresOverride ? true : undefined,
     });
     setMessage("");
   };
@@ -711,6 +738,33 @@ export default function Messages() {
         {!isStaff && (
           <DocumentNeedsSummary applicationId={threadApplicationId} recipientId={memberId!} />
         )}
+        {outboundLint && (outboundLint.blocked || outboundLint.requiresOverride) && (
+          <Alert
+            variant={outboundLint.blocked ? "destructive" : "default"}
+            className="mb-3 max-w-3xl mx-auto"
+            data-testid="comms-lint-alert"
+          >
+            <ShieldAlert className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>
+              {outboundLint.blocked ? (
+                <>
+                  <span className="font-medium">Loan figures can't go in a message.</span>{" "}
+                  {outboundLint.triggerMatches[0]?.guidance}
+                </>
+              ) : (
+                <>
+                  <span className="font-medium">Compliance check:</span>{" "}
+                  {outboundLint.promiseMatches[0]?.guidance}
+                  {outboundLint.promiseMatches[0]?.suggestedRewrite && (
+                    <span className="mt-1 block italic">
+                      Try: “{outboundLint.promiseMatches[0].suggestedRewrite}”
+                    </span>
+                  )}
+                </>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="flex items-center gap-2 max-w-3xl mx-auto">
           {isStaff && (
             <DocumentRequestDialog
@@ -726,10 +780,11 @@ export default function Messages() {
             className="flex-1"
             data-testid="input-message"
           />
-          <Button 
-            size="icon" aria-label="Send message" 
+          <Button
+            size="icon"
+            aria-label={outboundLint?.requiresOverride ? "Send anyway (override compliance warning)" : "Send message"}
             onClick={handleSendMessage}
-            disabled={!message.trim() || sendMessageMutation.isPending}
+            disabled={!message.trim() || sendMessageMutation.isPending || (outboundLint?.blocked ?? false)}
             data-testid="button-send"
           >
             <Send className="h-5 w-5" />

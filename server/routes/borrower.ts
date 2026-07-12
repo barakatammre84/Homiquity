@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { InvalidSsnError, type IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import { logAudit } from "../auditLog";
+import { lintOutboundText, REG_Z_ADVERTISING_DISCLOSURE_BLOCK } from "@shared/compliance/loCommsLint";
 import {
   insertCalculatorResultSchema,
   insertHomeownershipGoalSchema,
@@ -25,12 +26,14 @@ import { pickTableFields, sanitizePersonalInfoBody, URLA_TABLES } from "./urlaVa
 import { stripEncryptedFields } from "../services/piiVault";
 import { sendNotificationEmail } from "../services/emailService";
 import { evaluateTridTrigger } from "../services/trid";
+import { firstQueryValue } from "./queryParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
 // deal-team membership for processor/underwriter/closer.
 // External partner roles (broker, lender) are NOT permitted by this helper.
-async function verifyInternalStaffApplicationAccess(
+// Exported: the LO-2 scenario route reuses this gate (one access model, no forks).
+export async function verifyInternalStaffApplicationAccess(
   storage: IStorage,
   applicationId: string,
   userId: string,
@@ -1483,7 +1486,7 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Internal staff only" });
       }
 
-      const withinDays = parseInt(req.query.days as string) || 7;
+      const withinDays = parseInt(firstQueryValue(req.query.days) ?? "") || 7;
       const locks = await storage.getExpiringRateLocks(withinDays);
 
       // Assignment-scoped, mirroring GET /api/pipeline/queue: an admin sees
@@ -1597,10 +1600,9 @@ export function registerBorrowerRoutes(
   // Get consent templates
   app.get("/api/consent-templates", isAuthenticated, async (req, res) => {
     try {
-      const { type, state } = req.query;
       const templates = await storage.getActiveConsentTemplates(
-        type as string | undefined,
-        state as string | undefined
+        firstQueryValue(req.query.type),
+        firstQueryValue(req.query.state)
       );
       res.json(templates);
     } catch (error) {
@@ -1810,10 +1812,10 @@ export function registerBorrowerRoutes(
         return res.status(403).json({ error: "Staff only" });
       }
 
-      const { serviceType } = req.query;
+      const serviceType = firstQueryValue(req.query.serviceType);
       let providers;
       if (serviceType) {
-        providers = await storage.getPartnerProvidersByServiceType(serviceType as string);
+        providers = await storage.getPartnerProvidersByServiceType(serviceType);
       } else {
         providers = await storage.getAllPartnerProviders();
       }
@@ -2714,6 +2716,9 @@ export function registerBorrowerRoutes(
     message: z.string().trim().min(1).max(2000),
     applicationId: z.string().optional(),
     messageType: z.enum(["text", "document_request"]).default("text"),
+    // Set by the composer when the LO consciously sends past a Tier-2 (Reg N
+    // §1014.3) compliance warning; the override is audit-logged (LO-5).
+    acknowledgeComplianceWarning: z.boolean().optional(),
     documentRequestData: z
       .object({
         documentType: z.string().min(1).max(100),
@@ -2783,6 +2788,48 @@ export function registerBorrowerRoutes(
       } else {
         const apps = await storage.getLoanApplicationsByUser(borrowerParty.id);
         applicationId = apps[0]?.id ?? null; // newest first; null pre-application
+      }
+
+      // LO-5 comms compliance lint on STAFF → borrower outbound free text.
+      // Tier 1 (Reg Z §1026.24 trigger terms) is a hard block routed to the
+      // disclosed channels (Loan Estimate / Advisor Report); Tier 2 (Reg N
+      // §1014.3 promise phrases) warns and needs an explicit, logged override
+      // to send. Borrower → staff inbound and structured document requests are
+      // not advertising and are not linted. Enforcement is server-side, so the
+      // block holds even if the composer is bypassed.
+      if (senderIsStaff && messageType === "text") {
+        const lint = lintOutboundText(message);
+        if (lint.blocked) {
+          logAudit(req, "comms_lint.blocked", "loan_application", applicationId ?? undefined, {
+            recipientId,
+            categories: lint.triggerMatches.map((m) => m.category),
+            citations: lint.triggerMatches.map((m) => m.citation),
+          });
+          return res.status(422).json({
+            error: "This message states specific loan terms that require federal disclosures. Send the figures via the borrower's Loan Estimate or Advisor Report instead.",
+            complianceBlock: true,
+            lint,
+            disclosureBlock: REG_Z_ADVERTISING_DISCLOSURE_BLOCK,
+          });
+        }
+        if (lint.requiresOverride && !parsed.data.acknowledgeComplianceWarning) {
+          logAudit(req, "comms_lint.warned", "loan_application", applicationId ?? undefined, {
+            recipientId,
+            categories: lint.promiseMatches.map((m) => m.category),
+          });
+          return res.status(422).json({
+            error: "This message may contain a prohibited representation. Review the suggested rewrite, or send anyway to record an override.",
+            complianceWarning: true,
+            lint,
+          });
+        }
+        if (lint.requiresOverride && parsed.data.acknowledgeComplianceWarning) {
+          logAudit(req, "comms_lint.override", "loan_application", applicationId ?? undefined, {
+            recipientId,
+            categories: lint.promiseMatches.map((m) => m.category),
+            citations: lint.promiseMatches.map((m) => m.citation),
+          });
+        }
       }
 
       const newMessage = await storage.sendMessage({
@@ -2978,12 +3025,15 @@ export function registerBorrowerRoutes(
   // Get DPA programs with optional filters
   app.get("/api/dpa-programs", async (req, res) => {
     try {
-      const { state, firstTimeBuyer, minCreditScore, maxIncome } = req.query;
+      const state = firstQueryValue(req.query.state);
+      const firstTimeBuyer = firstQueryValue(req.query.firstTimeBuyer);
+      const minCreditScore = firstQueryValue(req.query.minCreditScore);
+      const maxIncome = firstQueryValue(req.query.maxIncome);
       const filters: any = {};
-      if (state) filters.state = state as string;
+      if (state) filters.state = state;
       if (firstTimeBuyer === "true") filters.firstTimeBuyer = true;
-      if (minCreditScore) filters.minCreditScore = parseInt(minCreditScore as string);
-      if (maxIncome) filters.maxIncome = parseFloat(maxIncome as string);
+      if (minCreditScore) filters.minCreditScore = parseInt(minCreditScore);
+      if (maxIncome) filters.maxIncome = parseFloat(maxIncome);
 
       const programs = await storage.getDpaPrograms(Object.keys(filters).length > 0 ? filters : undefined);
 
@@ -3450,7 +3500,7 @@ export function registerBorrowerRoutes(
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
-      const status = req.query.status as string | undefined;
+      const status = firstQueryValue(req.query.status);
       const escalations = await storage.getDealRescueEscalations({
         status,
         reportedByUserId: req.user!.id,
@@ -3493,6 +3543,15 @@ export function registerBorrowerRoutes(
     try {
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
+      }
+      // Object-level authorization: external partners (broker/lender) may only
+      // update escalations they reported; internal staff work the whole queue.
+      const existing = await storage.getDealRescueEscalation(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Escalation not found" });
+      }
+      if (!isInternalStaffRole(req.user!.role) && existing.reportedByUserId !== req.user!.id) {
+        return res.status(403).json({ error: "You may only update escalations you reported" });
       }
       const escalation = await storage.updateDealRescueEscalation(req.params.id, req.body);
       if (!escalation) {
@@ -3541,6 +3600,15 @@ export function registerBorrowerRoutes(
     try {
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
+      }
+      // Object-level authorization: sessions belong to the agent who booked
+      // them (agentUserId); internal staff may manage any session.
+      const existing = await storage.getStrategySession(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Strategy session not found" });
+      }
+      if (!isInternalStaffRole(req.user!.role) && existing.agentUserId !== req.user!.id) {
+        return res.status(403).json({ error: "You may only update your own strategy sessions" });
       }
       const session = await storage.updateStrategySession(req.params.id, req.body);
       if (!session) {
@@ -4184,7 +4252,7 @@ export function registerBorrowerRoutes(
   app.get("/api/borrower-graph/affordability", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const price = parseFloat(req.query.price as string);
+      const price = parseFloat(firstQueryValue(req.query.price) ?? "");
       if (!price || isNaN(price) || price <= 0) {
         return res.status(400).json({ error: "Valid price parameter required" });
       }

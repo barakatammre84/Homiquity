@@ -62,8 +62,9 @@ false positive:
   hardening on §9 trigger surfaces.
 - **`grep-only` compliance tests give false confidence** — `complianceInvariants.test.ts` (F-014)
   executes nothing. A green run there ≠ correct regulated math.
-- **Branch note:** this branch is Obsidian Indigo (navy); Charcoal Emerald (PR #57) is on `main`
-  — the branch trails `main` (also 2 migrations behind). Rebase before treating as a baseline.
+- **Branch note:** this branch is Obsidian Indigo (navy); `main` has since moved to Charcoal
+  Emerald (PR #57) and then **Royal Blue Emerald** (2026-07-08 repaint) — the branch trails
+  `main` (also multiple migrations behind). Rebase before treating as a baseline.
 
 ## Severity scale
 

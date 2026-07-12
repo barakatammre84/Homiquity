@@ -124,8 +124,10 @@ const staffNavigation: NavSection[] = [
     items: [
       { title: "Dashboard", href: "/staff-dashboard", icon: LayoutDashboard, testId: "link-staff-overview" },
       { title: "LO Command Center", href: "/lo-command-center", icon: Gauge, testId: "link-lo-command-center" },
-      { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations" },
-      { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops" },
+      // Task/Policy/Pricing governance is requireRole("admin","underwriter") on the
+      // server — only show the links to roles that can actually load the pages.
+      { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations", roles: ["admin", "underwriter"] },
+      { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops", roles: ["admin", "underwriter"] },
       { title: "Pricing Matrices", href: "/pricing-matrices", icon: Grid3x3, testId: "link-pricing-matrices", roles: ["admin", "underwriter"] },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
@@ -135,7 +137,8 @@ const staffNavigation: NavSection[] = [
     items: [
       { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
       { title: "Client Pipeline", href: "/agent-pipeline", icon: ClipboardList, testId: "link-agent-pipeline" },
-      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
+      // Application invites are an LO-team tool (POST is admin/lo/loa on the server).
+      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients", roles: ["admin", "lo", "loa"] },
       { title: "Co-Branding", href: "/co-branding", icon: Palette, testId: "link-co-branding" },
     ],
   },
@@ -143,13 +146,14 @@ const staffNavigation: NavSection[] = [
 
 // External partners (broker, lender) get a partner-only nav — the internal
 // operations links (Task/Policy Operations, Pricing Matrices) don't apply to them.
+// No "Invite Clients" here either: application invites are an LO-team tool;
+// partners refer clients through their referral code on the Broker Dashboard.
 const partnerNavigation: NavSection[] = [
   {
     section: "Partner",
     items: [
       { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
       { title: "Client Pipeline", href: "/agent-pipeline", icon: ClipboardList, testId: "link-agent-pipeline" },
-      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients" },
       { title: "Co-Branding", href: "/co-branding", icon: Palette, testId: "link-co-branding" },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
@@ -164,6 +168,16 @@ const cpaNavigation: NavSection[] = [
     section: "Partner",
     items: [
       { title: "CPA Dashboard", href: "/cpa-portal", icon: LayoutDashboard, testId: "link-cpa-portal" },
+    ],
+  },
+];
+
+// Realtor partners (PH-1) — same inviter-only posture, PartnerHub home.
+const realtorNavigation: NavSection[] = [
+  {
+    section: "Partner",
+    items: [
+      { title: "Partner Hub", href: "/partners/hub", icon: LayoutDashboard, testId: "link-partners-hub" },
     ],
   },
 ];
@@ -207,7 +221,7 @@ export function AppSidebar() {
   const userRole = user?.role || "";
   const isStaff = isStaffRole(userRole);
   const isInternalStaff = isInternalStaffRole(userRole);
-  const isCpa = isPartnerRole(userRole);
+  const isSelfServicePartner = isPartnerRole(userRole);
   const isAdmin = userRole === "admin";
   const isAspiringOwner = userRole === "aspiring_owner";
 
@@ -218,8 +232,8 @@ export function AppSidebar() {
     navigation = staffNavigation;
   } else if (isStaff) {
     navigation = partnerNavigation;
-  } else if (isCpa) {
-    navigation = cpaNavigation;
+  } else if (isSelfServicePartner) {
+    navigation = userRole === "realtor" ? realtorNavigation : cpaNavigation;
   } else if (isAspiringOwner) {
     navigation = aspiringOwnerNavigation;
   } else {
@@ -237,8 +251,8 @@ export function AppSidebar() {
         ? "Lender Portal"
         : isStaff
           ? "Staff Portal"
-          : isCpa
-            ? "CPA Partner"
+          : isSelfServicePartner
+            ? ROLE_DISPLAY_NAMES[userRole as keyof typeof ROLE_DISPLAY_NAMES] ?? "Partner"
             : isAspiringOwner
               ? "Aspiring Owner"
               : "Active Buyer";

@@ -208,3 +208,36 @@ describe("situationInputsFingerprint", () => {
     expect(situationInputsFingerprint(classifierInput(mutated))).not.toBe(base);
   });
 });
+
+describe("halalNeed routing signal (UAL P7)", () => {
+  it("defaults to null when the intake answer is absent (and on pre-P7 profiles)", () => {
+    const profile = classifySituation(classifierInput());
+    expect(profile.halalNeed).toBeNull();
+  });
+
+  it("copies the declared answer through to the profile verbatim", () => {
+    expect(classifySituation({ ...classifierInput(), halalNeed: true }).halalNeed).toBe(true);
+    expect(classifySituation({ ...classifierInput(), halalNeed: false }).halalNeed).toBe(false);
+  });
+
+  it("is a routing signal only — it changes no flags, paths, or document requests", () => {
+    const without = classifySituation(classifierInput());
+    const withNeed = classifySituation({ ...classifierInput(), halalNeed: true });
+    expect(withNeed.flags).toEqual(without.flags);
+    expect(withNeed.incomePaths).toEqual(without.incomePaths);
+    expect(withNeed.documentRequests).toEqual(without.documentRequests);
+    expect(withNeed.summary).toBe(without.summary);
+  });
+
+  it("a changed answer is a changed situation (fingerprint moves)", () => {
+    const base = situationInputsFingerprint(classifierInput());
+    const declared = situationInputsFingerprint({ ...classifierInput(), halalNeed: true });
+    const answeredNo = situationInputsFingerprint({ ...classifierInput(), halalNeed: false });
+    expect(declared).not.toBe(base);
+    expect(answeredNo).not.toBe(base);
+    expect(declared).not.toBe(answeredNo);
+    // Explicit null must hash identically to "not asked" (pre-P7 rows re-run
+    // without churning new profile rows).
+    expect(situationInputsFingerprint({ ...classifierInput(), halalNeed: null })).toBe(base);
+  });
+});

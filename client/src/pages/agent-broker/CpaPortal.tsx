@@ -37,6 +37,7 @@ interface CpaStats {
 }
 
 const STAGE_LABELS: Record<string, string> = {
+  invited: "Invited",
   exploring: "Exploring",
   submitted: "Applied",
   analyzing: "In review",
@@ -48,7 +49,9 @@ const STAGE_LABELS: Record<string, string> = {
   closed: "Closed",
 };
 
-function stageLabel(stage: string): string {
+// Exported for the PartnerHub referral table (PH-1) — one stage vocabulary
+// across every partner persona.
+export function stageLabel(stage: string): string {
   return STAGE_LABELS[stage] ?? stage.replace(/_/g, " ");
 }
 

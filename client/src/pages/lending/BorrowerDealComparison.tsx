@@ -47,11 +47,16 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-interface LenderOffer {
+/**
+ * Borrower transparency doctrine: this borrower surface identifies offers by
+ * neutral option labels only — the wholesale lender behind each option is
+ * broker-side information and never reaches this page's data shape.
+ */
+interface BorrowerOffer {
   id: string;
   offerId: string;
-  lenderName: string;
-  lenderCode: string;
+  /** "Option A" — the borrower-facing identity of this offer. */
+  optionLabel: string;
   productName: string;
   rate: number;
   apr: number;
@@ -97,12 +102,11 @@ const mockEligibility: EligibilityContext = {
   lastUpdated: "2026-01-25T14:30:00Z",
 };
 
-const mockOffers: LenderOffer[] = [
+const mockOffers: BorrowerOffer[] = [
   {
     id: "offer-1",
     offerId: "OFF-2026-0001",
-    lenderName: "United Wholesale Mortgage",
-    lenderCode: "UWM",
+    optionLabel: "Option A",
     productName: "Conventional 30-Year Fixed",
     rate: 6.625,
     apr: 6.782,
@@ -120,8 +124,7 @@ const mockOffers: LenderOffer[] = [
   {
     id: "offer-2",
     offerId: "OFF-2026-0002",
-    lenderName: "Rocket Mortgage",
-    lenderCode: "RKT",
+    optionLabel: "Option B",
     productName: "Conventional 30-Year Fixed",
     rate: 6.500,
     apr: 6.891,
@@ -139,8 +142,7 @@ const mockOffers: LenderOffer[] = [
   {
     id: "offer-3",
     offerId: "OFF-2026-0003",
-    lenderName: "PennyMac",
-    lenderCode: "PNY",
+    optionLabel: "Option C",
     productName: "Conventional 30-Year Fixed",
     rate: 6.750,
     apr: 6.824,
@@ -158,8 +160,7 @@ const mockOffers: LenderOffer[] = [
   {
     id: "offer-4",
     offerId: "OFF-2026-0004",
-    lenderName: "loanDepot",
-    lenderCode: "LDI",
+    optionLabel: "Option D",
     productName: "Conventional 30-Year Fixed",
     rate: 6.375,
     apr: 6.952,
@@ -196,7 +197,7 @@ export default function BorrowerDealComparison() {
   const [showPoints, setShowPoints] = useState(false);
   const [expandedOffers, setExpandedOffers] = useState<Set<string>>(new Set());
   const [compareOffers, setCompareOffers] = useState<string[]>([]);
-  const [selectedOffer, setSelectedOffer] = useState<LenderOffer | null>(null);
+  const [selectedOffer, setSelectedOffer] = useState<BorrowerOffer | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [attestationChecked, setAttestationChecked] = useState(false);
   const [offerLocked, setOfferLocked] = useState(false);
@@ -229,7 +230,7 @@ export default function BorrowerDealComparison() {
     }
   };
 
-  const handleSelectOffer = (offer: LenderOffer) => {
+  const handleSelectOffer = (offer: BorrowerOffer) => {
     if (eligibility.cocStatus === "PENDING") {
       toast({
         title: "Selection Not Available",
@@ -395,7 +396,7 @@ export default function BorrowerDealComparison() {
                       <th className="text-left py-2 pr-4">Feature</th>
                       {comparedOffers.map((offer) => (
                         <th key={offer.id} className="text-center py-2 px-4">
-                          {offer.lenderCode}
+                          {offer.optionLabel}
                         </th>
                       ))}
                     </tr>
@@ -482,7 +483,24 @@ export default function BorrowerDealComparison() {
                 >
                   <CardHeader className="pb-2">
                     <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="flex items-center gap-3">
+                      <div>
+                        <CardTitle className="text-lg" data-testid={`text-option-label-${offer.id}`}>
+                          {offer.optionLabel}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">{offer.productName}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          checked={isComparing}
+                          onCheckedChange={() => toggleCompare(offer.id)}
+                          disabled={isDisabled || (compareOffers.length >= 2 && !isComparing)}
+                          data-testid={`checkbox-compare-${offer.id}`}
+                        />
+                        <Label className="text-sm text-muted-foreground">Compare</Label>
+                      </div>
+                    </div>
+                    {(labelInfo || isSelected) && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
                         {labelInfo && (
                           <Badge className={labelInfo.color} data-testid={`badge-label-${offer.id}`}>
                             <LabelIcon className="h-3 w-3 mr-1" />
@@ -496,16 +514,7 @@ export default function BorrowerDealComparison() {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={isComparing}
-                          onCheckedChange={() => toggleCompare(offer.id)}
-                          disabled={isDisabled || (compareOffers.length >= 2 && !isComparing)}
-                          data-testid={`checkbox-compare-${offer.id}`}
-                        />
-                        <Label className="text-sm text-muted-foreground">Compare</Label>
-                      </div>
-                    </div>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -617,11 +626,6 @@ export default function BorrowerDealComparison() {
                             ))}
                           </ul>
                         </div>
-                        <Separator />
-                        <div>
-                          <p className="text-sm font-medium mb-2">Lender</p>
-                          <p className="text-sm text-muted-foreground">{offer.lenderName}</p>
-                        </div>
                       </CollapsibleContent>
                     </Collapsible>
                   </CardContent>
@@ -698,6 +702,9 @@ export default function BorrowerDealComparison() {
           {selectedOffer && (
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-lg">
+                <p className="mb-3 font-medium" data-testid="text-confirm-option-label">
+                  {selectedOffer.optionLabel} — {selectedOffer.productName}
+                </p>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-muted-foreground">Interest Rate</p>

@@ -521,6 +521,41 @@ export const emailTemplates = {
       `, `Your application status is now: ${statusLabel}`),
     };
   },
+
+  /**
+   * Partner-waitlist → PartnerHub activation invite (PH-1). B2B recruitment
+   * mail to a professional who asked to hear from us — same compliance rails
+   * as leadReceived: NO rate/payment/APR figures (Reg Z trigger terms) and NO
+   * approval/eligibility language (Reg N). It invites them to create a partner
+   * account, nothing more.
+   */
+  partnerWaitlistInvite(name: string, joinUrl: string): EmailOptions {
+    return {
+      to: "",
+      subject: "Your Homiquity partner invitation",
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">You're invited to PartnerHub</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${name},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Thanks for joining the Homiquity partner waitlist. Partner onboarding is
+          now open: create your account to get your personal referral link and a
+          dashboard that shows where each client you refer stands — without you
+          ever having to chase an update.
+        </p>
+        <p style="margin:24px 0">
+          <a href="${joinUrl}" style="background:#047857;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;display:inline-block">
+            Create your partner account
+          </a>
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
+          If you didn't request this, you can ignore this email — no account will
+          be created and no one will contact you about it.
+        </p>
+      `, "Partner onboarding is open — create your Homiquity partner account"),
+    };
+  },
 };
 
 export type NotificationType =

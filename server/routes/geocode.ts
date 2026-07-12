@@ -1,4 +1,5 @@
 import { Express, Request, Response } from "express";
+import { firstQueryValue } from "./queryParams";
 
 const autocompleteCache = new Map<string, { data: any; expires: number }>();
 const detailsCache = new Map<string, { data: any; expires: number }>();
@@ -24,8 +25,8 @@ export function registerGeocodeRoutes(app: Express) {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
   app.get("/api/geocode/autocomplete", async (req: Request, res: Response) => {
-    const input = (req.query.input as string || "").trim();
-    const mode = (req.query.mode as string || "address").trim();
+    const input = (firstQueryValue(req.query.input) || "").trim();
+    const mode = (firstQueryValue(req.query.mode) || "address").trim();
     if (input.length < 3) {
       return res.json([]);
     }
@@ -78,7 +79,7 @@ export function registerGeocodeRoutes(app: Express) {
   });
 
   app.get("/api/geocode/details", async (req: Request, res: Response) => {
-    const placeId = (req.query.placeId as string || "").trim();
+    const placeId = (firstQueryValue(req.query.placeId) || "").trim();
     if (!placeId) {
       return res.status(400).json({ error: "placeId is required" });
     }
@@ -137,7 +138,7 @@ export function registerGeocodeRoutes(app: Express) {
   });
 
   app.get("/api/geocode/validate", async (req: Request, res: Response) => {
-    const address = (req.query.address as string || "").trim();
+    const address = (firstQueryValue(req.query.address) || "").trim();
     if (!address) {
       return res.status(400).json({ error: "address is required" });
     }

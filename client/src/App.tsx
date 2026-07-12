@@ -104,6 +104,9 @@ const FindAnAgent = lazy(() => import("@/pages/agent-broker/FindAnAgent"));
 const CpaPartnerLanding = lazy(() => import("@/pages/agent-broker/CpaPartnerLanding"));
 const CpaInviteLanding = lazy(() => import("@/pages/agent-broker/CpaInviteLanding"));
 const CpaPortal = lazy(() => import("@/pages/agent-broker/CpaPortal"));
+const PartnersJoin = lazy(() => import("@/pages/agent-broker/PartnersJoin"));
+const PartnersHub = lazy(() => import("@/pages/agent-broker/PartnersHub"));
+const PartnerReferralLanding = lazy(() => import("@/pages/agent-broker/PartnerReferralLanding"));
 
 const ScenarioDesk = lazy(() => import("@/pages/realtor-engine/ScenarioDesk"));
 const DealRescue = lazy(() => import("@/pages/realtor-engine/DealRescue"));
@@ -150,6 +153,7 @@ const AdminRates = lazy(() => import("@/pages/admin/AdminRates"));
 const AdminContent = lazy(() => import("@/pages/admin/AdminContent"));
 const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
 const AdminPartnerWaitlist = lazy(() => import("@/pages/admin/AdminPartnerWaitlist"));
+const AdminPartners = lazy(() => import("@/pages/admin/AdminPartners"));
 
 import NotFound from "@/pages/not-found";
 
@@ -175,8 +179,33 @@ function StaffPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"]}>{children}</PrivateLayout>;
 }
 
+// Internal operations pages. External partners (broker, lender) are staff *roles*
+// but not internal staff — they must not reach the internal cockpits. Mirrors the
+// server-side requireRole lists on the APIs these pages call.
+function InternalStaffPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer"]}>{children}</PrivateLayout>;
+}
+
+// Policy/pricing/SLA governance surfaces: server APIs behind these pages are
+// requireRole("admin", "underwriter") — the client gate must match.
+function UnderwriterOpsPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["admin", "underwriter"]}>{children}</PrivateLayout>;
+}
+
+// Application-invite tooling: POST /api/application-invites is admin/lo/loa only
+// (brokers/lenders refer via their referral codes instead).
+function LoTeamPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["admin", "lo", "loa"]}>{children}</PrivateLayout>;
+}
+
 function CpaPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={["cpa", "admin"]}>{children}</PrivateLayout>;
+}
+
+// PartnerHub (PH-1): self-registering partner personas + admin. Exact roles
+// only — partners are never staff (shared/roles.ts PARTNER_ROLES).
+function PartnerPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={["realtor", "cpa", "admin"]}>{children}</PrivateLayout>;
 }
 
 function AdminPage({ children }: { children: React.ReactNode }) {
@@ -237,6 +266,12 @@ function Router() {
         {/* Partner / center-of-influence waitlist — ungated. Pre-launch we recruit
             the referral network (LOs, lenders, CPAs, agents), not consumer applicants. */}
         <Route path="/partners"><BareLayout><PartnerWaitlist /></BareLayout></Route>
+        {/* PartnerHub self-service onboarding (PH-1) — ungated B2B, like /for-cpas. */}
+        <Route path="/partners/join"><BareLayout><PartnersJoin /></BareLayout></Route>
+        {/* Partner co-brand landing — consumer-facing, so prelaunch-gated like /ref/:code. */}
+        <Route path="/p/:slug">
+          {(params) => <Gated><BareLayout><PartnerReferralLanding /></BareLayout></Gated>}
+        </Route>
         <Route path="/cpa/:code">
           {(params) => <Gated><BareLayout><CpaInviteLanding /></BareLayout></Gated>}
         </Route>
@@ -409,7 +444,7 @@ function Router() {
           <StaffPage><StaffDashboard /></StaffPage>
         </Route>
         <Route path="/lo-command-center">
-          <StaffPage><LoCommandCenter /></StaffPage>
+          <InternalStaffPage><LoCommandCenter /></InternalStaffPage>
         </Route>
         <Route path="/pipeline-queue">
           <Redirect to="/staff-dashboard" />
@@ -432,8 +467,11 @@ function Router() {
         <Route path="/cpa-portal">
           <CpaPage><CpaPortal /></CpaPage>
         </Route>
+        <Route path="/partners/hub">
+          <PartnerPage><PartnersHub /></PartnerPage>
+        </Route>
         <Route path="/invite-clients">
-          <StaffPage><InviteGenerator /></StaffPage>
+          <LoTeamPage><InviteGenerator /></LoTeamPage>
         </Route>
         <Route path="/analytics">
           <Redirect to="/staff-dashboard" />
@@ -460,13 +498,13 @@ function Router() {
           <StaffPage><ClosingGuarantee /></StaffPage>
         </Route>
         <Route path="/policy-ops">
-          <StaffPage><PolicyOps /></StaffPage>
+          <UnderwriterOpsPage><PolicyOps /></UnderwriterOpsPage>
         </Route>
         <Route path="/task-operations">
-          <StaffPage><TaskOperations /></StaffPage>
+          <UnderwriterOpsPage><TaskOperations /></UnderwriterOpsPage>
         </Route>
         <Route path="/pricing-matrices">
-          <StaffPage><PricingMatrices /></StaffPage>
+          <UnderwriterOpsPage><PricingMatrices /></UnderwriterOpsPage>
         </Route>
         <Route path="/accelerator">
           <BorrowerPage><AcceleratorProgram /></BorrowerPage>
@@ -512,7 +550,7 @@ function Router() {
           <AdminPage><AdminUsers /></AdminPage>
         </Route>
         <Route path="/admin/partners">
-          <AdminPage><AdminPartnerWaitlist /></AdminPage>
+          <AdminPage><AdminPartners /></AdminPage>
         </Route>
         <Route path="/admin/policy-ops">
           <AdminPage><PolicyOps /></AdminPage>

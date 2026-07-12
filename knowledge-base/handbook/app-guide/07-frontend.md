@@ -43,10 +43,11 @@ Shadcn primitives).
 - **Data fetching**: never `fetch` directly in components — use the existing
   TanStack Query helpers (`queryClient`, `apiRequest` in `client/src/lib/`)
   so auth, errors, and cache invalidation stay consistent.
-- **Design language**: **Charcoal Emerald** (2026-07-06, supersedes Obsidian
-  Indigo) — stark-white surfaces, neutral slate ramp, deep-charcoal type, emerald
-  reserved for conversion actions; one dominant CTA per screen, progress steppers,
-  collapsible secondary content. Fonts: Geist → Inter. Tokens are enforced by the
+- **Design language**: **Royal Blue Emerald** (2026-07-08 repaint of Charcoal
+  Emerald, which superseded Obsidian Indigo) — stark-white surfaces, neutral slate
+  ramp, near-black slate type, vivid royal-blue dark surfaces (sidebar, hero
+  gradients), emerald reserved for conversion actions; one dominant CTA per screen,
+  progress steppers, collapsible secondary content. Fonts: Geist → Inter. Tokens are enforced by the
   design-token guard — see [design_guidelines.md](../design/design_guidelines.md)
   (authoritative).
 - **Page scaffold**: every authed page wraps its content in
