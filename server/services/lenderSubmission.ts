@@ -158,6 +158,28 @@ export async function submitToWholesaleLender(
     );
   }
 
+  // Non-blocking schema diagnostic: validate the exact package against the
+  // official MISMO 3.4 XSD (docs/fannie-mae/schemas/) via xmllint, and record
+  // the result on the immutable submission snapshot. This is deliberately NOT a
+  // blocker: the generator has a known, tracked conformance gap (CTO_ROADMAP L6
+  // / F-025) whose remaining element fixes are pending MISMO data-dictionary
+  // confirmation, and xmllint is absent in serverless (→ skipped). The
+  // structural validateMISMOXML gate above stays the hard gate. A violation here
+  // is captured (auditable, shown to staff), not silently swallowed.
+  const { validateAgainstXsd, MISMO_BASE_XSD, extractOffendingElements } = await import("./mismoXsdValidation");
+  const xsd = validateAgainstXsd(pkg.xml, MISMO_BASE_XSD);
+  const xsdConformance = {
+    valid: xsd.valid,
+    skipped: xsd.skipped,
+    offendingElements: xsd.skipped ? [] : extractOffendingElements(xsd.errors),
+  };
+  if (!xsd.skipped && !xsd.valid) {
+    console.warn(
+      `[lender-submission] MISMO XSD non-conformance for ${applicationId} ` +
+        `(tracked L6/F-025): ${xsdConformance.offendingElements.join(", ")}`,
+    );
+  }
+
   const ack = await submitToLenderPortal(lender, applicationId);
 
   // The income analysis package (UAL P6) — the broker's cited income narrative
@@ -179,7 +201,7 @@ export async function submitToWholesaleLender(
     status: "submitted",
     simulated: ack.simulated,
     confirmationId: ack.confirmationId,
-    readinessSnapshot: readiness as unknown as Record<string, unknown>,
+    readinessSnapshot: { ...(readiness as unknown as Record<string, unknown>), xsdConformance },
     mismoPackageXml: pkg.xml,
     mismoPackageHash: pkg.hash,
     mismoPackageGeneratedAt: submittedAt,
