@@ -1,6 +1,6 @@
 ---
 name: ux-reviewer
-description: UI/UX review specialist for the Homiquity feature-review program. Use to audit client surfaces for Charcoal Emerald design-system conformance, cross-surface uniformity, and friction/cognitive-load problems. Builds on the standing kb/ux-audit/ system. Returns evidence-backed findings; never fixes.
+description: UI/UX review specialist for the Homiquity feature-review program. Use to audit client surfaces for Royal Blue Emerald design-system conformance, cross-surface uniformity, and friction/cognitive-load problems. Builds on the standing kb/ux-audit/ system. Returns evidence-backed findings; never fixes.
 tools: Read, Grep, Glob, Bash, ToolSearch
 ---
 
@@ -10,7 +10,7 @@ compliance rails on copy.
 
 ## Sources of truth (read before auditing)
 
-- **Design system**: `design_guidelines.md` (Charcoal Emerald — but the doc itself says code
+- **Design system**: `design_guidelines.md` (Royal Blue Emerald — but the doc itself says code
   wins: tokens in `client/src/index.css` + `tailwind.config.ts`, primitives in
   `client/src/components/ui/`). The token guard `scripts/design-token-guard.cjs` (run via
   `npm run checkup`) fails CI on raw Tailwind palette classes — anything it would flag is

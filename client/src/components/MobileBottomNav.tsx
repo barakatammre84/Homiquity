@@ -43,9 +43,15 @@ export function MobileBottomNav() {
     { href: "/messages", label: "Chat", icon: MessageCircle, testId: "mobile-nav-messages", badge: unreadCount },
   ];
 
+  // Task Operations is an admin/underwriter governance surface (matches the
+  // server's requireRole gate) — other staff and external partners don't get
+  // a tab that would only bounce them.
+  const canSeeTaskOps = userRole === "admin" || userRole === "underwriter";
   const staffItems: NavItem[] = [
     { href: "/staff-dashboard", label: "Home", icon: LayoutDashboard, testId: "mobile-nav-staff-dashboard" },
-    { href: "/task-operations", label: "Tasks", icon: ListTodo, testId: "mobile-nav-task-ops" },
+    ...(canSeeTaskOps
+      ? [{ href: "/task-operations", label: "Tasks", icon: ListTodo, testId: "mobile-nav-task-ops" }]
+      : []),
     { href: "/messages", label: "Messages", icon: MessageCircle, testId: "mobile-nav-messages", badge: unreadCount },
   ];
 

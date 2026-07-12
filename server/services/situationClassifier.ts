@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { desc, eq } from "drizzle-orm";
-import { situationProfiles, type SituationProfileRow } from "@shared/schema";
+import { loanApplications, situationProfiles, type SituationProfileRow } from "@shared/schema";
 import {
   situationProfileSchema,
   type IncomePathSignal,
@@ -41,6 +41,13 @@ export interface SituationClassifierInput {
   instances: PublicTaxFormInstance[];
   entities: ResolvedEntity[];
   checks: TieOutCheck[];
+  /**
+   * UAL P7: borrower-declared intake answer ("financing that avoids
+   * interest"). Copied into the profile as a funder-ROUTING signal; part of
+   * the inputs fingerprint (a changed answer is a changed situation).
+   * Omitted/null = not asked.
+   */
+  halalNeed?: boolean | null;
 }
 
 const num = (i: PublicTaxFormInstance, field: string): number | undefined => {
@@ -305,6 +312,7 @@ export function classifySituation(input: SituationClassifierInput): SituationPro
     summary: parts.join(" "),
     taxYears,
     entityCount: entities.length,
+    halalNeed: input.halalNeed ?? null,
     flags,
     incomePaths,
     documentRequests,
@@ -339,6 +347,7 @@ export function situationInputsFingerprint(input: SituationClassifierInput): str
       p: e.ownershipPercent,
     })),
     checks: input.checks.map((c) => ({ id: c.checkId, y: c.taxYear, s: c.status, v: c.varianceAmount })),
+    halalNeed: input.halalNeed ?? null,
   };
   return computeHash(JSON.stringify(canonical));
 }
@@ -351,7 +360,20 @@ export async function classifyAndPersistSituation(userId: string): Promise<Situa
   const instances = await getLatestInstancesForUser(userId);
   const entities = resolveBusinessEntities(instances);
   const checks = runTieOuts(instances);
-  const input: SituationClassifierInput = { instances, entities, checks };
+  // UAL P7: join the borrower's declared routing preference from their most
+  // recent application (null when never asked/answered).
+  const [latestApplication] = await db
+    .select({ avoidsInterestFinancing: loanApplications.avoidsInterestFinancing })
+    .from(loanApplications)
+    .where(eq(loanApplications.userId, userId))
+    .orderBy(desc(loanApplications.createdAt))
+    .limit(1);
+  const input: SituationClassifierInput = {
+    instances,
+    entities,
+    checks,
+    halalNeed: latestApplication?.avoidsInterestFinancing ?? null,
+  };
 
   const fingerprint = situationInputsFingerprint(input);
   const [latest] = await db

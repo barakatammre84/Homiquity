@@ -5,6 +5,7 @@ import { insertWholesaleLenderSchema, insertRateSheetSchema, insertRateSheetProd
 import { computeOffers, type BorrowerPricingProfile } from "../services/pricingAdapter";
 import { requireRole } from "../auth";
 import { parseBodyOr400 } from "./validate";
+import { firstQueryValue } from "./queryParams";
 
 export function registerRateSheetRoutes(
   app: Express,
@@ -16,10 +17,9 @@ export function registerRateSheetRoutes(
 
   app.get("/api/wholesale-lenders", requireRole("admin"), async (req, res) => {
     try {
-      const { status, integrationTier } = req.query;
       const lenders = await storage.getWholesaleLenders({
-        status: status as string | undefined,
-        integrationTier: integrationTier as string | undefined,
+        status: firstQueryValue(req.query.status),
+        integrationTier: firstQueryValue(req.query.integrationTier),
       });
       res.json(lenders);
     } catch (err) {
@@ -83,10 +83,9 @@ export function registerRateSheetRoutes(
 
   app.get("/api/rate-sheets", requireRole("admin"), async (req, res) => {
     try {
-      const { lenderId, status } = req.query;
       const sheets = await storage.getRateSheets({
-        lenderId: lenderId as string | undefined,
-        status: status as string | undefined,
+        lenderId: firstQueryValue(req.query.lenderId),
+        status: firstQueryValue(req.query.status),
       });
       res.json(sheets);
     } catch (err) {
@@ -273,10 +272,9 @@ export function registerRateSheetRoutes(
 
   app.get("/api/lender-pricing-adjustments", requireRole("admin"), async (req, res) => {
     try {
-      const { lenderId, adjustmentType } = req.query;
       const adjustments = await storage.getLenderPricingAdjustments({
-        lenderId: lenderId as string | undefined,
-        adjustmentType: adjustmentType as string | undefined,
+        lenderId: firstQueryValue(req.query.lenderId),
+        adjustmentType: firstQueryValue(req.query.adjustmentType),
       });
       res.json(adjustments);
     } catch (err) {
@@ -329,11 +327,10 @@ export function registerRateSheetRoutes(
 
   app.get("/api/lender-offers", requireRole("admin"), async (req, res) => {
     try {
-      const { applicationId, lenderId, status } = req.query;
       const offers = await storage.getLenderOffers({
-        applicationId: applicationId as string | undefined,
-        lenderId: lenderId as string | undefined,
-        status: status as string | undefined,
+        applicationId: firstQueryValue(req.query.applicationId),
+        lenderId: firstQueryValue(req.query.lenderId),
+        status: firstQueryValue(req.query.status),
       });
       res.json(offers);
     } catch (err) {

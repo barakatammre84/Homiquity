@@ -52,6 +52,7 @@ doc-drift bug to fix):
 ### Specs — L3 feature specs · [`specs/`](specs/)
 - [_TEMPLATE.md](specs/_TEMPLATE.md) — the L3 spec skeleton (cite L1 loop + L2 invariants).
 - [FREE_DATA_MOAT.md](specs/FREE_DATA_MOAT.md) — HMDA + Fannie loan-performance data pipelines.
+- [UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md](specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md) — program charter + 8 build prompts: complex-tax-return intelligence, multi-path income engine, non-QM/halal product lanes (broker-safe).
 - [LO_ADVISOR_PROGRAM.md](specs/LO_ADVISOR_PROGRAM.md) — LO Advisor program charter — six build prompts wiring the advisory cockpit (what-if simulator, client reports, proactive signals, comms lint, lock-desk completion) onto existing engines.
 - [PARTNER_HUB_PROGRAM.md](specs/PARTNER_HUB_PROGRAM.md) — COI PartnerHub program charter — six build prompts unifying the existing partner rails (CPA channel, agent co-branding, referral codes, waitlist) into one identity/attribution spine + persona toolkits, with binding doctrine corrections (§5) to the 2026-07-11 partner-tools draft.
 
@@ -70,6 +71,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 ### Research — scratch + strategy collateral · [`research/`](research/)
 - [research/my-research/](research/my-research/) — scratch (nothing load-bearing).
 - [research/gtm/](research/gtm/) — GTM battlecards + competitive briefs.
+- [research/islamic-finance/](research/islamic-finance/) — alternative / Shariah-compliant (Musharaka/Ijara/Murabaha) "Universal Adaptation Layer" as a **broker-triage** lane: feasibility + compliance-gap map (§3 payment-decomposition table = the citation authority for the P7 translation calculators) + lender-channel validation (route is the Ijara-CDC/CMG ecosystem; the 2 founder calls are the channel gates) + Shariah-governance validation (structure cert = the funder's). Productized as UAL program prompt P7 — funder-agnostic build only until a founder-call "yes".
 
 ### Archive — obsolete, quarantined · [`archive/`](./archive/)
 Superseded docs kept for provenance. Never act on these. Includes the launch-era
