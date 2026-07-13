@@ -31,7 +31,18 @@ import {
 // Model lineage, persisted with every extraction so a past result can be traced
 // to the exact model + prompt that produced it. Bump EXTRACTION_PROMPT_VERSION
 // whenever any extraction prompt text changes.
-export const EXTRACTION_MODEL_ID = "claude-opus-4-8";
+//
+// Extraction is tiered by task. Single-document reads (pay stub, bank statement,
+// lease, single-pass tax return) are bounded, high-volume, and vision-bound but
+// not reasoning-heavy — Sonnet 5 has the same high-res vision as Opus at lower
+// cost, and everything downstream is Zod-validated + confidence-capped. The
+// multi-form tax-package pass (UAL P2a: classify every form, then tie the forms
+// out across entities and years) is the one genuinely hard reasoning task and it
+// feeds the income engine — it stays on Opus. Lineage records the actual model.
+export const EXTRACTION_MODEL_SINGLE_DOC = "claude-sonnet-5";
+export const EXTRACTION_MODEL_TAX_PACKAGE = "claude-opus-4-8";
+/** @deprecated Use the task-specific constants above; retained for back-compat. */
+export const EXTRACTION_MODEL_ID = EXTRACTION_MODEL_TAX_PACKAGE;
 export const EXTRACTION_PROMPT_VERSION = "2026-07-v3";
 /** Lineage marker for deterministic simulated extractions (I10: unmistakable). */
 export const SIMULATED_MODEL_ID = "simulated";
@@ -214,9 +225,10 @@ async function generateExtractionText(
   mimeType: string,
   base64: string,
   prompt: string,
+  model: string,
 ): Promise<string> {
   const response = await client.messages.create({
-    model: EXTRACTION_MODEL_ID,
+    model,
     max_tokens: 16000,
     thinking: { type: "adaptive" },
     messages: [
@@ -455,7 +467,10 @@ function checkLeaseConsistency(data: ExtractedLeaseData): void {
   }
 }
 
-const LINEAGE = { modelId: EXTRACTION_MODEL_ID, promptVersion: EXTRACTION_PROMPT_VERSION } as const;
+/** Bare model/prompt lineage — used for fallbacks where there is no raw output. */
+function lineageFor(model: string): ExtractionLineage {
+  return { modelId: model, promptVersion: EXTRACTION_PROMPT_VERSION };
+}
 const VALIDATION_FAILED_WARNING =
   "Model output failed schema validation - values discarded, manual review required";
 
@@ -464,10 +479,10 @@ const VALIDATION_FAILED_WARNING =
  * model response and the raw response itself, encrypted (it can carry PII).
  * Lets an auditor later confirm the stored fields came from that exact output.
  */
-function rawLineage(rawText: string): ExtractionLineage {
+function rawLineage(rawText: string, model: string): ExtractionLineage {
   const enc = encryptSensitiveData(rawText);
   return {
-    ...LINEAGE,
+    ...lineageFor(model),
     rawResponseHash: computeHash(rawText),
     rawResponseEncrypted: enc.encryptedContent,
     rawResponseIv: enc.iv,
@@ -531,6 +546,7 @@ export async function extractTaxReturnData(
   filePath: string,
   documentYear?: string
 ): Promise<ExtractedTaxReturnData> {
+  const model = EXTRACTION_MODEL_SINGLE_DOC;
   if (!anthropic) {
     if (process.env.EXTRACTION_SIMULATE === "true") {
       return simulatedTaxReturnExtraction(filePath, documentYear);
@@ -585,14 +601,14 @@ propertyCount as the number of property columns with data.
 Only include fields that are clearly visible. Return null for any unclear values.
 If Schedule C, D, or E are not present, omit those sections.`;
 
-    const text = await generateExtractionText(anthropic, mimeType, base64, prompt);
+    const text = await generateExtractionText(anthropic, mimeType, base64, prompt, model);
     const validated = validateExtraction(taxReturnSchema, text, "Tax return");
 
     if (validated) {
       const extracted: ExtractedTaxReturnData = {
         ...validated,
         documentYear: validated.documentYear || documentYear || new Date().getFullYear().toString(),
-        ...rawLineage(text),
+        ...rawLineage(text, model),
       };
       checkTaxReturnConsistency(extracted);
       return extracted;
@@ -603,7 +619,7 @@ If Schedule C, D, or E are not present, omit those sections.`;
       confidence: "low",
       extractedFields: [],
       warnings: [VALIDATION_FAILED_WARNING],
-      ...LINEAGE,
+      ...lineageFor(model),
     };
   } catch (error) {
     console.error("Tax return extraction error:", error);
@@ -614,7 +630,7 @@ If Schedule C, D, or E are not present, omit those sections.`;
     confidence: "low",
     extractedFields: [],
     warnings: ["Failed to extract data from tax return"],
-    ...LINEAGE,
+    ...lineageFor(model),
   };
 }
 
@@ -622,6 +638,7 @@ If Schedule C, D, or E are not present, omit those sections.`;
  * Extract pay stub data using Claude vision
  */
 export async function extractPayStubData(filePath: string): Promise<ExtractedPayStubData> {
+  const model = EXTRACTION_MODEL_SINGLE_DOC;
   if (!anthropic) {
     return {
       confidence: "low",
@@ -659,11 +676,11 @@ Return ONLY valid JSON with this structure:
 
 Only include fields that are clearly visible. Return null for any unclear values.`;
 
-    const text = await generateExtractionText(anthropic, mimeType, base64, prompt);
+    const text = await generateExtractionText(anthropic, mimeType, base64, prompt, model);
     const validated = validateExtraction(payStubSchema, text, "Pay stub");
 
     if (validated) {
-      const extracted: ExtractedPayStubData = { ...validated, ...rawLineage(text) };
+      const extracted: ExtractedPayStubData = { ...validated, ...rawLineage(text, model) };
       checkPayStubConsistency(extracted);
       return extracted;
     }
@@ -672,7 +689,7 @@ Only include fields that are clearly visible. Return null for any unclear values
       confidence: "low",
       extractedFields: [],
       warnings: [VALIDATION_FAILED_WARNING],
-      ...LINEAGE,
+      ...lineageFor(model),
     };
   } catch (error) {
     console.error("Pay stub extraction error:", error);
@@ -682,7 +699,7 @@ Only include fields that are clearly visible. Return null for any unclear values
     confidence: "low",
     extractedFields: [],
     warnings: ["Failed to extract data from pay stub"],
-    ...LINEAGE,
+    ...lineageFor(model),
   };
 }
 
@@ -690,6 +707,7 @@ Only include fields that are clearly visible. Return null for any unclear values
  * Extract bank statement data using Claude vision
  */
 export async function extractBankStatementData(filePath: string): Promise<ExtractedBankStatementData> {
+  const model = EXTRACTION_MODEL_SINGLE_DOC;
   if (!anthropic) {
     return {
       confidence: "low",
@@ -729,11 +747,11 @@ Return ONLY valid JSON with this structure:
 Only include fields that are clearly visible. Return null for any unclear values.
 Limit transactions array to first 10 most significant transactions.`;
 
-    const text = await generateExtractionText(anthropic, mimeType, base64, prompt);
+    const text = await generateExtractionText(anthropic, mimeType, base64, prompt, model);
     const validated = validateExtraction(bankStatementSchema, text, "Bank statement");
 
     if (validated) {
-      const extracted: ExtractedBankStatementData = { ...validated, ...rawLineage(text) };
+      const extracted: ExtractedBankStatementData = { ...validated, ...rawLineage(text, model) };
       checkBankStatementConsistency(extracted);
       return extracted;
     }
@@ -742,7 +760,7 @@ Limit transactions array to first 10 most significant transactions.`;
       confidence: "low",
       extractedFields: [],
       warnings: [VALIDATION_FAILED_WARNING],
-      ...LINEAGE,
+      ...lineageFor(model),
     };
   } catch (error) {
     console.error("Bank statement extraction error:", error);
@@ -752,7 +770,7 @@ Limit transactions array to first 10 most significant transactions.`;
     confidence: "low",
     extractedFields: [],
     warnings: ["Failed to extract data from bank statement"],
-    ...LINEAGE,
+    ...lineageFor(model),
   };
 }
 
@@ -765,6 +783,7 @@ export async function extractLeaseData(
   source: string | Buffer,
   storedMimeType?: string
 ): Promise<ExtractedLeaseData> {
+  const model = EXTRACTION_MODEL_SINGLE_DOC;
   if (!anthropic) {
     return {
       confidence: "low",
@@ -798,11 +817,11 @@ Important:
 - If only an annual or weekly amount is shown, convert it to a monthly figure and add a warning.
 - Only include fields that are clearly visible. Return null for any unclear values.`;
 
-    const text = await generateExtractionText(anthropic, mimeType, base64, prompt);
+    const text = await generateExtractionText(anthropic, mimeType, base64, prompt, model);
     const validated = validateExtraction(leaseSchema, text, "Lease");
 
     if (validated) {
-      const extracted: ExtractedLeaseData = { ...validated, ...rawLineage(text) };
+      const extracted: ExtractedLeaseData = { ...validated, ...rawLineage(text, model) };
       checkLeaseConsistency(extracted);
       return extracted;
     }
@@ -811,7 +830,7 @@ Important:
       confidence: "low",
       extractedFields: [],
       warnings: [VALIDATION_FAILED_WARNING],
-      ...LINEAGE,
+      ...lineageFor(model),
     };
   } catch (error) {
     console.error("Lease extraction error:", error);
@@ -821,7 +840,7 @@ Important:
     confidence: "low",
     extractedFields: [],
     warnings: ["Failed to extract data from lease agreement"],
-    ...LINEAGE,
+    ...lineageFor(model),
   };
 }
 
@@ -1245,6 +1264,7 @@ export async function classifyTaxDocument(
   filePath: string,
   storedMimeType?: string,
 ): Promise<TaxFormClassificationResult> {
+  const model = EXTRACTION_MODEL_TAX_PACKAGE;
   if (!anthropic) {
     if (process.env.EXTRACTION_SIMULATE === "true") {
       const sim = buildSimulatedTaxScenario(filePath);
@@ -1252,7 +1272,7 @@ export async function classifyTaxDocument(
     }
     return {
       classification: null,
-      lineage: LINEAGE,
+      lineage: lineageFor(model),
       simulated: false,
       failureReason: "Anthropic API not configured - tax document classification unavailable",
     };
@@ -1262,16 +1282,16 @@ export async function classifyTaxDocument(
     const base64 = await fileToBase64(filePath);
     const mimeType = getMimeType(filePath, storedMimeType);
     const text = await withCallTimeout(
-      generateExtractionText(anthropic, mimeType, base64, buildClassificationPrompt()),
+      generateExtractionText(anthropic, mimeType, base64, buildClassificationPrompt(), model),
       "Tax document classification",
     );
     const validated = validateExtraction(taxDocumentClassificationSchema, text, "Tax document classification");
     if (validated) {
-      return { classification: validated, lineage: rawLineage(text), simulated: false };
+      return { classification: validated, lineage: rawLineage(text, model), simulated: false };
     }
     return {
       classification: null,
-      lineage: rawLineage(text),
+      lineage: rawLineage(text, model),
       simulated: false,
       failureReason: VALIDATION_FAILED_WARNING,
     };
@@ -1279,7 +1299,7 @@ export async function classifyTaxDocument(
     console.error("Tax document classification error:", error);
     return {
       classification: null,
-      lineage: LINEAGE,
+      lineage: lineageFor(model),
       simulated: false,
       failureReason: "Tax document classification call failed",
     };
@@ -1304,6 +1324,7 @@ export async function extractTaxFormInstanceFields(
   instance: ClassifiedFormInstance,
   storedMimeType?: string,
 ): Promise<TaxFormInstanceExtraction> {
+  const model = EXTRACTION_MODEL_TAX_PACKAGE;
   if (!anthropic) {
     if (process.env.EXTRACTION_SIMULATE === "true") {
       const sim = buildSimulatedTaxScenario(filePath);
@@ -1325,7 +1346,7 @@ export async function extractTaxFormInstanceFields(
       entityName: instance.entityName ?? null,
       fields: {},
       warnings: ["Anthropic API not configured - form extraction unavailable"],
-      lineage: LINEAGE,
+      lineage: lineageFor(model),
       simulated: false,
     };
   }
@@ -1334,7 +1355,7 @@ export async function extractTaxFormInstanceFields(
     const base64 = await fileToBase64(filePath);
     const mimeType = getMimeType(filePath, storedMimeType);
     const text = await withCallTimeout(
-      generateExtractionText(anthropic, mimeType, base64, buildFormExtractionPrompt(instance)),
+      generateExtractionText(anthropic, mimeType, base64, buildFormExtractionPrompt(instance), model),
       `Form extraction (${instance.formType})`,
     );
     const schema = buildFormExtractionResponseSchema(instance.formType);
@@ -1345,7 +1366,7 @@ export async function extractTaxFormInstanceFields(
         entityName: instance.entityName ?? null,
         fields: {},
         warnings: [VALIDATION_FAILED_WARNING],
-        lineage: rawLineage(text),
+        lineage: rawLineage(text, model),
         simulated: false,
       };
     }
@@ -1372,7 +1393,7 @@ export async function extractTaxFormInstanceFields(
       entityName: validated.entityName ?? instance.entityName ?? null,
       fields,
       warnings,
-      lineage: rawLineage(text),
+      lineage: rawLineage(text, model),
       simulated: false,
     };
   } catch (error) {
@@ -1382,7 +1403,7 @@ export async function extractTaxFormInstanceFields(
       entityName: instance.entityName ?? null,
       fields: {},
       warnings: [`Failed to extract ${instance.formType} fields`],
-      lineage: LINEAGE,
+      lineage: lineageFor(model),
       simulated: false,
     };
   }
