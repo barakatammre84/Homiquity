@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, Percent, Bot, ArrowRight, Users, Gauge } from "lucide-react";
+import { LayoutDashboard, Menu, X, Phone, ChevronDown, Home, Calculator, FileText, Percent, Bot, ArrowRight, Users, Gauge, CircleUser } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
@@ -268,6 +268,12 @@ export function Navigation() {
                     <Link href="/ai-coach" className="w-full cursor-pointer" data-testid="menu-ai-coach">
                       <Bot className="mr-2 h-4 w-4" />
                       AI Coach
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="w-full cursor-pointer" data-testid="menu-my-profile">
+                      <CircleUser className="mr-2 h-4 w-4" />
+                      My Profile
                     </Link>
                   </DropdownMenuItem>
                   {user.role === "admin" && (

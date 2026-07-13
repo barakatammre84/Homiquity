@@ -52,6 +52,8 @@ import {
   Palette,
   Gauge,
   Handshake,
+  Bot,
+  CircleUser,
 } from "lucide-react";
 
 interface TeamMember {
@@ -84,6 +86,8 @@ const aspiringOwnerNavigation: NavSection[] = [
     section: "Explore",
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
+      { title: "AI Coach", href: "/ai-coach", icon: Bot, testId: "link-ai-coach" },
+      { title: "My Profile", href: "/profile", icon: CircleUser, testId: "link-my-profile" },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
@@ -105,6 +109,7 @@ const activeBuyerNavigation: NavSection[] = [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, testId: "link-borrower-dashboard" },
       { title: "To-Do", href: "/tasks", icon: CheckSquare, testId: "link-tasks", showBadge: true },
       { title: "Documents", href: "/documents", icon: Upload, testId: "link-documents" },
+      { title: "AI Coach", href: "/ai-coach", icon: Bot, testId: "link-ai-coach" },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
@@ -112,6 +117,7 @@ const activeBuyerNavigation: NavSection[] = [
     section: "Progress",
     items: [
       { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
+      { title: "My Profile", href: "/profile", icon: CircleUser, testId: "link-my-profile" },
       { title: "Application Details", href: "/application-summary", icon: FileText, testId: "link-application-summary" },
       { title: "Verification", href: "/verification", icon: Shield, testId: "link-verification" },
     ],

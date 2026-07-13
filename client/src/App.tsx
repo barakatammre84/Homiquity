@@ -126,6 +126,7 @@ const FAQ = lazy(() => import("@/pages/education/FAQ"));
 const Resources = lazy(() => import("@/pages/education/Resources"));
 const AcceleratorProgram = lazy(() => import("@/pages/education/AcceleratorProgram"));
 const AICoach = lazy(() => import("@/pages/education/AICoach"));
+const Profile = lazy(() => import("@/pages/profile/Profile"));
 const Glossary = lazy(() => import("@/pages/education/Glossary"));
 
 const HomeownerDashboard = lazy(() => import("@/pages/homeowner/HomeownerDashboard"));
@@ -511,6 +512,9 @@ function Router() {
         </Route>
         <Route path="/ai-coach">
           <AnyAuthPage><AICoach /></AnyAuthPage>
+        </Route>
+        <Route path="/profile">
+          <AnyAuthPage><Profile /></AnyAuthPage>
         </Route>
         <Route path="/homeowner-dashboard">
           <BorrowerPage><HomeownerDashboard /></BorrowerPage>
