@@ -19,8 +19,9 @@ even reaches the prompt, so a short timeout looks like a hang mid-"Pulling schem
 **Rule:** Do NOT run `drizzle-kit push --force` to get past it — that auto-accepts
 every pending change including the unrelated truncate, destroying real rows.
 
-**How to apply:** Apply only your own objects with idempotent SQL via the
-executeSql sandbox callback: `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` for
+**How to apply:** Apply only your own objects with idempotent SQL via a direct
+`psql` / `pg` client (or a versioned `migrations/00NN_*.sql` applied with
+`pnpm db:migrate`): `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` for
 columns (nullable/defaulted so the add is non-destructive), or
 `CREATE TABLE IF NOT EXISTS ...` / `CREATE TYPE` guarded by a `pg_type`/`pg_class`
 existence check for whole tables/enums. Match the Drizzle column types exactly.
