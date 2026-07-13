@@ -75,7 +75,6 @@
     "lucide-react": "^0.453.0",
     "multer": "^2.0.2",
     "nodemailer": "^9.0.3",
-    "openai": "^6.21.0",
     "passport": "^0.7.0",
     "pdfkit": "^0.17.2",
     "pg": "^8.13.1",

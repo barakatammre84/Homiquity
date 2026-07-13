@@ -141,8 +141,8 @@ app won't boot or a core feature dies without it.
 ### Feature-gated (optional; feature off/degraded without it)
 | Variable | Feature |
 |----------|---------|
-| `ANTHROPIC_API_KEY` (or `AI_INTEGRATIONS_ANTHROPIC_API_KEY`) | Document AI extraction (Anthropic Claude) |
-| `AI_INTEGRATIONS_OPENAI_API_KEY` / `AI_INTEGRATIONS_OPENAI_BASE_URL` | AI Coach |
+| `ANTHROPIC_API_KEY` | Document AI extraction (Claude) + AI Coach (Claude Sonnet 5; coach degrades to labeled offline-guidance mode without it) |
+| `AI_INTEGRATIONS_ANTHROPIC_API_KEY` | Optional — read first by document extraction; falls back to `ANTHROPIC_API_KEY` |
 | `EXTRACTION_SIMULATE` | Set `true` to run deterministic simulated extraction with no Anthropic key (dev/test) |
 | `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` | Income/employment/asset verification |
 | `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` | Document storage (GCS) |

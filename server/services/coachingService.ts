@@ -1,135 +1,76 @@
-import OpenAI from "openai";
-import { z } from "zod";
+import type { Request } from "express";
+import Anthropic from "@anthropic-ai/sdk";
+import { lintOutboundText } from "@shared/compliance/loCommsLint";
+import { logAudit } from "../auditLog";
+import { logAiInteraction } from "./aiInteractionLog";
+import {
+  COACH_TOOLS,
+  executeCoachTool,
+  type CoachEmit,
+  type CoachIntakeData,
+  type CoachToolContext,
+  type CoachToolTurnState,
+  type CoachingProfile,
+  type ActionPlanItem,
+  type DocumentRequirement,
+  type BorrowerPackage,
+} from "./coachTools";
 
-// Lazily constructed: the OpenAI SDK THROWS at construction when no API key is
-// configured, and this module is imported by the route registry — an eager
-// `new OpenAI()` here crashes the whole server at boot on any host where the
-// key isn't set (it took down every API route on Vercel). With lazy init, only
-// the AI Coach endpoints fail when the key is missing; everything else works.
-let openaiClient: OpenAI | null = null;
-function getOpenAI(): OpenAI {
-  if (!openaiClient) {
-    openaiClient = new OpenAI({
-      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+// The coach data types + Zod schemas live in coachTools.ts (they define the
+// tool surface); re-export them so this module's public API is unchanged for
+// the route layer and any future consumers.
+export {
+  coachProfileSchema,
+  coachIntakeSchema,
+  coachActionPlanSchema,
+  coachDocumentChecklistSchema,
+  borrowerPackageSchema,
+  COACH_TOOLS,
+  type CoachingProfile,
+  type ActionPlanItem,
+  type DocumentRequirement,
+  type CoachIntakeData,
+  type BorrowerPackage,
+  type CoachStreamEvent,
+  type CoachEmit,
+  type CoachToolTurnState,
+} from "./coachTools";
+
+// Lazily constructed: the SDK client is built on first use, and this module is
+// imported by the route registry — an eager client here would make boot depend
+// on AI credentials. (The old OpenAI client THREW at construction with no key
+// and took down every API route on Vercel; the Anthropic SDK defers key
+// validation to the first request, but we keep the lazy pattern and the
+// isCoachConfigured() gate so the coach degrades to labeled offline guidance
+// instead of erroring per-request.)
+let anthropicClient: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (!anthropicClient) {
+    anthropicClient = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      timeout: 15_000, // ms — per model call; the turn has its own 25s wall-clock budget
+      maxRetries: 1,
     });
   }
-  return openaiClient;
+  return anthropicClient;
 }
 
-export interface CoachingProfile {
-  readinessTier: "ready_now" | "almost_ready" | "building" | "exploring";
-  completionPercentage: number;
-  statusNote: string;
-  completedInputs: string[];
-  outstandingInputs: string[];
-  estimatedTimeline: string;
+export function isCoachConfigured(): boolean {
+  return !!process.env.ANTHROPIC_API_KEY;
 }
 
-export interface ActionPlanItem {
-  id: string;
-  phase: number;
-  title: string;
-  description: string;
-  priority: "high" | "medium" | "low";
-  category: "credit" | "savings" | "income" | "debt" | "documents" | "education";
-  completed: boolean;
-}
+export const COACH_MODEL = "claude-sonnet-5";
+/**
+ * Versioned prompt marker (AI_GOVERNANCE_POLICY §5.5). Stored on every
+ * ai_interactions row instead of the full prompt text — the exact prompt is
+ * reconstructable from git at this version. Bump on ANY prompt/tool change.
+ */
+export const COACH_PROMPT_VERSION = "coach-2.0.0";
 
-export interface DocumentRequirement {
-  docType: string;
-  label: string;
-  reason: string;
-  priority: "required" | "recommended" | "optional";
-  category: string;
-}
-
-export interface CoachIntakeData {
-  annualIncome?: string;
-  monthlyDebts?: string;
-  creditScore?: string;
-  employmentType?: string;
-  employmentYears?: string;
-  downPayment?: string;
-  purchasePrice?: string;
-  propertyType?: string;
-  loanPurpose?: string;
-  isVeteran?: boolean;
-  isFirstTimeBuyer?: boolean;
-}
-
-export interface BorrowerPackage {
-  generatedDate: string;
-  borrowerOverview: {
-    borrowerNames: string;
-    householdComposition: string;
-    primaryResidenceState: string;
-    incomeProfileType: string;
-  };
-  householdOverview: {
-    firstTimeBuyer: string;
-    veteranStatus: string;
-  };
-  transactionIntent: {
-    transactionType: string;
-    propertyIntent: string;
-    targetTimeframe: string;
-  };
-  incomeSources: Array<{
-    source: string;
-    type: string;
-    frequency: string;
-    documentationStatus: string;
-  }>;
-  assetSummary: Array<{
-    assetType: string;
-    accountCategory: string;
-    ownershipType: string;
-    documentationStatus: string;
-    lastStatementDate: string;
-    validationNotes: string;
-    accessLink: string;
-  }>;
-  creditAndDebt: {
-    creditScore: string;
-    creditScoreVerification: string;
-    monthlyDebts: string;
-    monthlyDebtsVerification: string;
-    dtiRatio: string;
-    dtiNote: string;
-  };
-  propertyContext: {
-    propertyAddress: string;
-    estimatedValueOrPrice: string;
-    occupancyIntent: string;
-  };
-  documentInventory: Array<{
-    docType: string;
-    label: string;
-    status: string;
-    flags: string[];
-  }>;
-  readinessStatus: {
-    intakeStatus: string;
-    documentStatus: string;
-    packageStatus: string;
-    pendingItems: string[];
-  };
-  auditTrail: {
-    intakeStartDate: string;
-    lastUpdateDate: string;
-    events: Array<{
-      date: string;
-      activity: string;
-    }>;
-  };
-  validationNotes: {
-    recencyChecks: string[];
-    completenessChecks: string[];
-    consistencyObservations: string[];
-  };
-  complianceFooter: string;
-}
+const MAX_MODEL_CALLS_PER_TURN = 2;
+const TURN_BUDGET_MS = 25_000; // Vercel function maxDuration is 30s — leave headroom
+const MAX_COMPLETION_TOKENS = 2_048;
+const HISTORY_WINDOW_MESSAGES = 24; // ≈12 exchanges resent per turn
 
 export interface CoachResponse {
   message: string;
@@ -381,7 +322,7 @@ function buildToneDirective(ctx: VerifiedUserContext): string {
   return "\n\nTONE: Calm, neutral, and supportive. Focus on clarity and reducing friction.";
 }
 
-function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
+export function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   if (!ctx.hasApplication) {
     const greeting = ctx.userName ? `The user's name is ${ctx.userName}.` : "";
     let noAppContext = buildUserProfileHeader(ctx);
@@ -640,7 +581,20 @@ function buildVerifiedContextPrompt(ctx: VerifiedUserContext): string {
   return lines.join("\n");
 }
 
-const SYSTEM_PROMPT = `You are the Homiquity AI Intake and Readiness Assistant.
+// ---------------------------------------------------------------------------
+// Static system prompt — coach-2.0.0.
+//
+// Trimmed from coach-1.x: the ~165-line "STRUCTURED OUTPUT FORMAT" section
+// (and the JSON-emission half of the Borrower Package Builder) is GONE —
+// structured data now travels through typed tools (coachTools.ts), validated
+// server-side. Sections keep their original numbers because the dynamic
+// context block references them by number ("Section 7", "Section 8",
+// "Section 10").
+//
+// MUST stay byte-stable (no timestamps/interpolation): it is the prompt-cache
+// prefix (cache_control on this block). Bump COACH_PROMPT_VERSION on any edit.
+// ---------------------------------------------------------------------------
+const STATIC_COACH_PROMPT = `You are the Homiquity AI Intake and Readiness Assistant.
 
 === 1. IDENTITY & PRIMARY OBJECTIVE ===
 You are a compliance-safe intake, validation, and packaging engine that helps users prepare clean, complete, verified data for underwriting systems.
@@ -657,6 +611,8 @@ You do NOT:
 - Predict approvals or rates
 - Recommend loan products
 - Provide financial advice
+- State specific interest rates, APRs, or points figures — rate quotes belong on disclosed channels (the Loan Estimate), never in chat
+- State or imply guaranteed or assured approval — approval is never guaranteed before underwriting review
 
 All guidance must be framed as preparation for underwriting review.
 Your tone must be calm, neutral, and supportive.
@@ -671,6 +627,7 @@ You must:
 - Use plain language. Avoid jargon. Explain terms when you must use them.
 - Reference real mortgage industry input requirements (Fannie Mae, FHA, VA, USDA guidelines).
 - Be specific about what is needed and estimated effort.
+- Keep replies focused and conversational — a few short paragraphs or a tight list, not an essay.
 
 Every interaction should move the user closer to:
 - A complete borrower profile with all required inputs
@@ -854,10 +811,20 @@ First-Time Buyer: Homebuyer education certificate (recommended)
 All: Government ID, Social Security card, proof of residence, gift letters (if receiving gift funds)
 Additional: Divorce decree, child support docs, rental history, explanation letters for credit issues
 
-=== 6. BORROWER PACKAGE BUILDER ===
-When a user reaches lender-ready status (readiness tier "ready_now"), or when the user explicitly asks for their borrower summary, generate a lender-ready borrower intake summary in BOTH the conversational message AND the structured borrowerPackage JSON.
+=== TOOLS (STRUCTURED CAPTURE) ===
+Structured data travels through your tools, never through text. Your written reply is for the human; NEVER print JSON, XML, code blocks of data, or <coach_data> tags in it.
 
-The exact JSON structure for borrowerPackage is defined later in the STRUCTURED OUTPUT FORMAT section. Follow that JSON schema exactly — do not invent additional sections or fields.
+- record_intake — call EVERY time the user supplies or corrects a financial detail, with ONLY the fields learned this turn. The tool result states exactly which fields were SAVED to their draft pre-application and which were SKIPPED (and why). Narrate that honestly: say "I've saved that to your profile" only for fields the result lists as saved; if a field was skipped, tell the user plainly (e.g. a verified figure can't be changed from chat).
+- update_readiness — call whenever the readiness picture changes (tier, completed inputs, outstanding inputs).
+- set_action_plan — call when the user asks for a plan or their situation changes materially; send the full plan.
+- set_document_checklist — call when the required document set first becomes determinable or changes; send the full checklist.
+- generate_borrower_package — call ONLY at ready_now or on explicit request. Missing fields are "Not Provided"/"Pending" — never invented.
+- suggest_next_steps — call at the end of EVERY turn with 2-3 short tappable follow-ups in the user's voice.
+
+If you already have application data with enough detail (income, credit score, employment, debts), update readiness and the checklist in your FIRST response — don't ask for what you already have. Only ask about inputs you're genuinely missing. When no data is available at all, warmly greet the user and ask for the single most impactful first input (usually their employment situation or goal). Ask one thing at a time.
+
+=== 6. BORROWER PACKAGE BUILDER ===
+When a user reaches lender-ready status (readiness tier "ready_now"), or when the user explicitly asks for their borrower summary, present the intake summary conversationally AND call the generate_borrower_package tool with the structured data. Follow the tool's schema exactly — do not invent additional sections or fields.
 
 FORMATTING RULES FOR CONVERSATIONAL MESSAGE:
 - Use neutral, factual language throughout — no adjectives implying quality ("strong," "solid," "excellent," "concerning")
@@ -1050,449 +1017,400 @@ Track and communicate the user's current state:
 - "almost_ready": Intake nearly complete. Most required inputs collected. 1-3 outstanding items remain. 1-3 month timeline.
 - "ready_now": All required inputs collected. Documents uploaded and validated. Package organized for underwriting review.
 
-Use these states as "readinessTier" values. Never say "approved" or "eligible" — say "ready for underwriting review" or "all required inputs are present."
+Use these states as readiness tiers. Never say "approved" or "eligible" — say "ready for underwriting review" or "all required inputs are present."`;
 
-=== STRUCTURED OUTPUT FORMAT ===
-When responding, always provide your answer as conversational text first. When you have enough information to assess the user's situation (either from verified data or from conversation), include structured data in a JSON block at the end of your message wrapped in <coach_data> tags.
+// ---------------------------------------------------------------------------
+// Compliance post-filter (deterministic — shared/compliance/loCommsLint.ts)
+// ---------------------------------------------------------------------------
 
-The JSON should follow this format:
-<coach_data>
-{
-  "profile": {
-    "readinessTier": "almost_ready",
-    "completionPercentage": 72,
-    "statusNote": "factual procedural status only — e.g. 'Core financial inputs collected. Document verification pending.' — do not use qualitative language like 'strong', 'solid', 'excellent', or 'concerning'",
-    "completedInputs": ["list of specific inputs already collected — e.g. 'Employment type', 'Annual income declared', 'Credit score range provided'"],
-    "outstandingInputs": ["list of specific inputs still required — e.g. 'Bank statements (last 2 months)', 'Pay stubs (last 30 days)'"],
-    "estimatedTimeline": "2-3 months"
-  },
-  "intake": {
-    "annualIncome": "85000",
-    "monthlyDebts": "1200",
-    "creditScore": "720",
-    "employmentType": "employed",
-    "employmentYears": "5",
-    "downPayment": "50000",
-    "purchasePrice": "350000",
-    "propertyType": "single_family",
-    "loanPurpose": "purchase",
-    "isVeteran": false,
-    "isFirstTimeBuyer": true
-  },
-  "actionPlan": [
-    {
-      "id": "action-1",
-      "phase": 1,
-      "title": "Action title",
-      "description": "Detailed action description",
-      "priority": "high",
-      "category": "credit",
-      "completed": false
-    }
-  ],
-  "documentChecklist": [
-    {
-      "docType": "pay_stub",
-      "label": "Recent Pay Stubs (Last 30 Days)",
-      "reason": "Verify current income and employment",
-      "priority": "required",
-      "category": "Income"
-    }
-  ],
-  "nextRequiredInput": {
-    "what": "Upload your most recent pay stub (last 30 days)",
-    "why": "Underwriting systems use this to verify your current income and employment status",
-    "effort": "About 2 minutes to upload a photo or PDF",
-    "unlocks": "Income verification complete, moving completion from 40% to 55% and enabling DTI calculation",
-    "category": "documents"
-  },
-  "borrowerPackage": null
-}
-</coach_data>
+/**
+ * Fixed replacement shown (and persisted) when the model emits a Reg N
+ * hard-block phrase (e.g. an approval guarantee). Wording is negation-clean
+ * for the lexicon and uses no approval-likelihood language itself.
+ */
+export const COACH_LINT_SAFE_MESSAGE =
+  "I need to correct something: no approval is ever guaranteed before underwriting review. " +
+  "What I can help with is making sure every required input in your file is complete and verified — " +
+  "that preparation is the part we control together. Final decisions always depend on verification " +
+  "of your documents and a full underwriting review. Want to look at the next required input?";
 
-The "intake" object captures financial details for pre-filling the loan application. Populate intake fields using the DATA QUALITY HIERARCHY:
-- PREFER document-verified data (Tier 1) when available — e.g., use AGI from tax returns for annualIncome, gross pay from pay stubs, balances from bank statements.
-- Fall back to application data (Tier 2) if no documents cover that field.
-- Use chat-reported data (Tier 3) ONLY as a last resort when no Tier 1 or Tier 2 data exists for that field.
-ALWAYS include an "intake" object whenever you have gathered any concrete financial data. Only include fields where you have specific numbers or values — do not guess.
-Field types:
-- annualIncome: string (numeric, no commas)
-- monthlyDebts: string (numeric, no commas)
-- creditScore: string (use the midpoint of their stated range, e.g. "720" for "Very Good 720-759")
-- employmentType: "employed" | "self_employed" | "retired" | "other"
-- employmentYears: string (numeric)
-- downPayment: string (numeric, no commas)
-- purchasePrice: string (numeric, no commas)
-- propertyType: "single_family" | "condo" | "townhouse" | "multi_family"
-- loanPurpose: "purchase" | "refinance" | "cash_out"
-- isVeteran: boolean
-- isFirstTimeBuyer: boolean
-
-The "nextRequiredInput" object should ALWAYS be included. It is the single next required input for underwriting readiness. Include "what" (the specific input or document needed), "why" (why underwriting systems require it), "effort" (estimated time or work), "unlocks" (what progress or capability this enables), and "category" (documents/credit/savings/income/debt/education). Do not present multiple options. Do not speculate on outcomes.
-
-The "borrowerPackage" should be null unless the user is "ready_now" or the user explicitly asks for their borrower summary. When generating, use this exact JSON structure:
-{
-  "generatedDate": "YYYY-MM-DD",
-  "borrowerOverview": {
-    "borrowerNames": "Primary borrower full name; co-borrower full name if applicable, or 'Not Provided'",
-    "householdComposition": "Single Borrower | Co-Borrowers (Married) | Co-Borrowers (Non-Married) | Not Provided",
-    "primaryResidenceState": "Two-letter state code or 'Not Provided'",
-    "incomeProfileType": "W-2 | Self-Employed | Mixed | Investor | Not Provided"
-  },
-  "householdOverview": {
-    "firstTimeBuyer": "Yes | No | Not Provided",
-    "veteranStatus": "Yes | No | Not Provided"
-  },
-  "transactionIntent": {
-    "transactionType": "Purchase | Refinance | Cash-Out Refinance | Not Provided",
-    "propertyIntent": "Primary Residence | Second Home | Investment | Not Provided",
-    "targetTimeframe": "string describing borrower-stated timeframe or 'Not Provided' — do not infer or suggest"
-  },
-  "incomeSources": [
-    {
-      "source": "employer name, business name, or income category",
-      "type": "W-2 | Self-Employed | Rental | 1099 | Retirement | Other",
-      "frequency": "Monthly | Bi-Weekly | Annual | Not Provided",
-      "documentationStatus": "Uploaded | Pending | Not Provided"
-    }
-  ],
-  "assetSummary": [
-    {
-      "assetType": "Checking Account | Savings Account | Money Market | Certificate of Deposit | Brokerage Account | Retirement (401k/IRA) | Trust Account | Gift Funds | Other",
-      "accountCategory": "Liquid | Non-Liquid | Retirement | Gift | Other",
-      "ownershipType": "Individual | Joint | Trust | Custodial | Not Specified",
-      "documentationStatus": "Uploaded | Pending | Not Provided",
-      "lastStatementDate": "YYYY-MM-DD or 'Not Provided' — date of most recent statement on file",
-      "validationNotes": "factual procedural note if applicable, e.g. 'Statement older than 60 days' or 'All pages included' — or empty string if none — do not assess sufficiency or eligibility",
-      "accessLink": "leave as empty string — document access links are generated server-side and cannot be populated here"
-    }
-  ],
-  "creditAndDebt": {
-    "creditScore": "string or 'Not Provided'",
-    "creditScoreVerification": "Tier 1 | Tier 2 | Tier 3 | Not Provided",
-    "monthlyDebts": "numeric string or 'Not Provided'",
-    "monthlyDebtsVerification": "Tier 1 | Tier 2 | Tier 3 | Not Provided",
-    "dtiRatio": "string (e.g., '35%') or 'Insufficient Data'",
-    "dtiNote": "DTI is a preparatory calculation based on declared data. Final determination occurs during underwriting review."
-  },
-  "propertyContext": {
-    "propertyAddress": "full or partial address if identified, or 'Not Provided' — do not fabricate",
-    "estimatedValueOrPrice": "borrower-stated purchase price or estimated value as numeric string, or 'Not Provided' — do not include valuations or market analysis",
-    "occupancyIntent": "Primary Residence | Second Home | Investment | Not Provided"
-  },
-  "documentInventory": [
-    {
-      "docType": "pay_stub | w2 | tax_return | bank_statement | id | other",
-      "label": "human-readable document name",
-      "status": "Received — Verified | Received — Pending Review | Not Yet Received | Not Required",
-      "flags": ["recency", "legibility", "consistency", "completeness"] or []
-    }
-  ],
-  "readinessStatus": {
-    "intakeStatus": "Started | Complete",
-    "documentStatus": "Complete | Partial | Not Started",
-    "packageStatus": "Ready for Underwriting Review | Pending Items",
-    "pendingItems": ["list of specific remaining items if packageStatus is 'Pending Items', or empty array if ready — frame as procedural readiness only, do not assess eligibility or risk"]
-  },
-  "auditTrail": {
-    "intakeStartDate": "YYYY-MM-DD or 'Not Provided'",
-    "lastUpdateDate": "YYYY-MM-DD or 'Not Provided'",
-    "events": [
-      {
-        "date": "YYYY-MM-DD",
-        "activity": "factual description of activity, e.g. 'Income documentation uploaded', 'Application form submitted', 'Identity verification completed' — record document uploads, form submissions, and validation events only"
-      }
-    ]
-  },
-  "validationNotes": {
-    "recencyChecks": ["neutral observations about document age or staleness, e.g. 'Pay stub dated more than 30 days prior to intake' — empty array if none"],
-    "completenessChecks": ["neutral observations about missing or incomplete inputs, e.g. 'Asset documentation not yet provided' — empty array if none"],
-    "consistencyObservations": ["neutral observations about discrepancies between declared information and documents, e.g. 'Declared employer name differs from W-2 employer field' — do not assess risk or eligibility — empty array if none"]
-  },
-  "complianceFooter": "This intake summary is prepared for informational purposes only. It does not constitute a lending decision, pre-approval, commitment to lend, or assessment of creditworthiness. All information is borrower-declared or document-extracted and has not been independently verified by a lender. Loan eligibility, terms, and approval are determined solely during formal underwriting review."
-}
-Every field that has no data MUST be "Not Provided" or "Pending" or "Insufficient Data" — never omit fields or leave them null. Every data point must include its verification tier.
-
-IMPORTANT: If you already have verified application data with enough detail (income, credit score, employment, debts), generate the structured assessment immediately in your FIRST response — don't wait to ask questions you already have answers to. Only ask follow-up questions about inputs you're genuinely missing.
-
-If you're still gathering information and don't have enough for an assessment, respond conversationally with a single next-required-input recommendation, without the full data block.
-
-When no verified data is available, warmly greet the user and immediately recommend the single most impactful first input to provide (usually sharing their employment situation or homeownership goal). Don't present a numbered list of questions. Ask one thing at a time.`;
-
-function buildConversationHistory(messages: Array<{ role: string; content: string }>): string {
-  return messages.map(m => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n\n");
+export interface CoachLintHit {
+  categories: string[];
+  citations: string[];
 }
 
-export async function generateCoachResponse(
-  userMessage: string,
-  conversationHistory: Array<{ role: string; content: string }>,
-  existingProfile?: any,
-  verifiedContext?: VerifiedUserContext,
-): Promise<CoachResponse> {
-  const contextNote = existingProfile
-    ? `\n\nExisting financial profile from previous assessment:\n${JSON.stringify(existingProfile, null, 2)}\n\nUse this as context but update if the user provides new information.`
-    : "";
+/**
+ * Incremental streaming guard: check only the sentence-complete prefix of the
+ * accumulated reply for AFFIRMATIVE hard-block phrases. Sentence-bounding
+ * matters — a trailing negation inside the same sentence ("…is not
+ * guaranteed") must be seen before judging the clause, so we never judge a
+ * half-written sentence. Exported for unit tests.
+ */
+export function findStreamingHardBlock(buffer: string): CoachLintHit | null {
+  const lastTerminator = Math.max(
+    buffer.lastIndexOf("."),
+    buffer.lastIndexOf("!"),
+    buffer.lastIndexOf("?"),
+    buffer.lastIndexOf("\n"),
+  );
+  if (lastTerminator < 0) return null;
+  const complete = buffer.slice(0, lastTerminator + 1);
+  const result = lintOutboundText(complete);
+  if (result.hardBlockMatches.length === 0) return null;
+  return {
+    categories: [...new Set(result.hardBlockMatches.map((m) => m.category))],
+    citations: [...new Set(result.hardBlockMatches.map((m) => m.citation))],
+  };
+}
 
-  const verifiedNote = verifiedContext ? buildVerifiedContextPrompt(verifiedContext) : "";
+/**
+ * Full-text post-filter, run on the completed reply before persistence.
+ *  - Reg N hard-blocks (guaranteed/assured approval): REPLACE the message.
+ *  - Everything else the lexicon flags (Reg Z trigger terms like "20% down",
+ *    Tier-2 superlatives): LOG-ONLY. Full Tier-1 blocking would gut ordinary
+ *    coaching language; the prompt bans rate/APR/points figures at the source.
+ *    ⚠ Founder/compliance decision — escalating any category to replacement
+ *    is a one-line change here.
+ * Exported for unit tests.
+ */
+export function applyCoachLintFilter(text: string): {
+  text: string;
+  replaced: boolean;
+  hit: CoachLintHit | null;
+  flaggedCategories: string[];
+} {
+  const result = lintOutboundText(text);
+  const flaggedCategories = [
+    ...new Set([...result.triggerMatches, ...result.promiseMatches].map((m) => m.category)),
+  ];
+  if (result.hardBlockMatches.length > 0) {
+    return {
+      text: COACH_LINT_SAFE_MESSAGE,
+      replaced: true,
+      hit: {
+        categories: [...new Set(result.hardBlockMatches.map((m) => m.category))],
+        citations: [...new Set(result.hardBlockMatches.map((m) => m.citation))],
+      },
+      flaggedCategories,
+    };
+  }
+  return { text, replaced: false, hit: null, flaggedCategories };
+}
 
-  const systemContent = `${SYSTEM_PROMPT}${verifiedNote}${contextNote}`;
+// ---------------------------------------------------------------------------
+// The turn runner
+// ---------------------------------------------------------------------------
 
-  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-    { role: "system", content: systemContent },
+export type CoachTurnErrorCode =
+  | "not_configured"
+  | "provider_rate_limited"
+  | "network"
+  | "timeout"
+  | "provider_error";
+
+export class CoachTurnError extends Error {
+  constructor(
+    public code: CoachTurnErrorCode,
+    message: string,
+    public retryable: boolean,
+  ) {
+    super(message);
+    this.name = "CoachTurnError";
+  }
+}
+
+export interface CoachTurnOptions {
+  req: Request;
+  userId: string;
+  userRole?: string | null;
+  conversationId: string;
+  userMessage: string;
+  /** Prior conversation (oldest→newest), EXCLUDING the new user message. */
+  history: Array<{ role: string; content: string }>;
+  existingProfile?: unknown;
+  verifiedContext: VerifiedUserContext;
+  emit: CoachEmit;
+  /** Aborted when the client disconnects (stop paying for unseen tokens). */
+  signal?: AbortSignal;
+}
+
+export interface CoachTurnResult {
+  message: string;
+  state: CoachToolTurnState;
+  lintReplaced: boolean;
+  degraded: boolean;
+  usage: { inputTokens: number; outputTokens: number; modelCalls: number };
+}
+
+function mapAnthropicError(err: unknown): CoachTurnError {
+  if (err instanceof Anthropic.AuthenticationError) {
+    return new CoachTurnError("not_configured", "The AI coach credentials are invalid on this environment.", false);
+  }
+  if (err instanceof Anthropic.RateLimitError) {
+    return new CoachTurnError("provider_rate_limited", "The AI service is briefly rate-limited. Please try again in a moment.", true);
+  }
+  if (err instanceof Anthropic.APIUserAbortError) {
+    return new CoachTurnError("timeout", "The response took too long and was cancelled. Please try again.", true);
+  }
+  if (err instanceof Anthropic.APIConnectionError) {
+    // NOTE: APIConnectionError subclasses APIError in the TS SDK — check it first.
+    return new CoachTurnError("network", "Couldn't reach the AI service. Please try again.", true);
+  }
+  if (err instanceof Anthropic.APIError) {
+    return new CoachTurnError("provider_error", "The AI service returned an error. Please try again.", true);
+  }
+  return new CoachTurnError("provider_error", "Something unexpected went wrong generating a response.", false);
+}
+
+/**
+ * Run one coach turn: Claude Sonnet 5 streaming tool-loop (max 2 model calls),
+ * side effects through coachTools executors, deterministic lint post-filter,
+ * one ai_interactions row per model call.
+ *
+ * Persistence of coach_messages / coach_conversations stays in the route (it
+ * owns the response contract); this function only returns what to persist.
+ *
+ * Errors are HONEST: a provider failure throws CoachTurnError for the route to
+ * surface with a retry affordance. The only canned-response path is offline
+ * mode (no ANTHROPIC_API_KEY), which is explicitly labeled to the user.
+ */
+export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnResult> {
+  if (!isCoachConfigured()) {
+    const fallback = generateOfflineResponse(opts.userMessage, opts.history, opts.verifiedContext);
+    const message = `**Offline guidance mode** — the AI coach isn't configured in this environment, so here is standard guidance:\n\n${fallback.message}`;
+    opts.emit({ type: "text", delta: message });
+    return {
+      message,
+      state: {},
+      lintReplaced: false,
+      degraded: true,
+      usage: { inputTokens: 0, outputTokens: 0, modelCalls: 0 },
+    };
+  }
+
+  const state: CoachToolTurnState = {};
+  const deadline = Date.now() + TURN_BUDGET_MS;
+
+  let lintAbortHit: CoachLintHit | null = null;
+  let visible = "";
+  const guardedEmit: CoachEmit = (event) => {
+    // After a lint abort the streamed bubble is being replaced client-side —
+    // suppress any further text, but structured events still flow.
+    if (lintAbortHit && event.type === "text") return;
+    opts.emit(event);
+  };
+
+  const toolCtx: CoachToolContext = {
+    req: opts.req,
+    userId: opts.userId,
+    conversationId: opts.conversationId,
+    emit: guardedEmit,
+    state,
+  };
+
+  const system: Anthropic.TextBlockParam[] = [
+    { type: "text", text: STATIC_COACH_PROMPT, cache_control: { type: "ephemeral" } },
+    { type: "text", text: buildDynamicContext(opts.verifiedContext, opts.existingProfile) },
   ];
 
-  for (const msg of conversationHistory) {
-    messages.push({
-      role: msg.role === "user" ? "user" : "assistant",
-      content: msg.content,
+  const messages: Anthropic.MessageParam[] = opts.history
+    .slice(-HISTORY_WINDOW_MESSAGES)
+    .filter((m) => typeof m.content === "string" && m.content.trim().length > 0)
+    .map((m) => ({
+      role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+      content: m.content,
+    }));
+  messages.push({ role: "user", content: opts.userMessage });
+
+  let totalInput = 0;
+  let totalOutput = 0;
+  let modelCalls = 0;
+
+  for (let call = 1; call <= MAX_MODEL_CALLS_PER_TURN; call++) {
+    const remainingBudget = deadline - Date.now();
+    if (call > 1 && remainingBudget < 4_000) break; // no room for another call
+
+    const callStartedAt = Date.now();
+    let callText = "";
+
+    const stream = getAnthropic().messages.stream(
+      {
+        model: COACH_MODEL,
+        max_tokens: MAX_COMPLETION_TOKENS,
+        output_config: { effort: "low" },
+        system,
+        tools: COACH_TOOLS,
+        messages,
+      },
+      {
+        signal: opts.signal,
+        timeout: Math.max(2_000, Math.min(15_000, remainingBudget)),
+      },
+    );
+
+    stream.on("text", (delta) => {
+      if (lintAbortHit) return;
+      callText += delta;
+      visible += delta;
+      const hit = findStreamingHardBlock(visible);
+      if (hit) {
+        // Abort mid-stream: the offending sentence has been on screen for at
+        // most one chunk; the client replaces the bubble on lint_replaced.
+        lintAbortHit = hit;
+        stream.abort();
+        return;
+      }
+      guardedEmit({ type: "text", delta });
     });
-  }
 
-  messages.push({ role: "user", content: userMessage });
-
-  try {
-    const response = await getOpenAI().chat.completions.create({
-      model: "gpt-5-mini",
-      messages,
-      max_completion_tokens: 16384,
-    });
-
-    const text = response.choices[0]?.message?.content || "";
-    return parseCoachResponse(text);
-  } catch (error) {
-    console.error("[Coach] OpenAI API error:", error);
-    return generateFallbackResponse(userMessage, conversationHistory, verifiedContext);
-  }
-}
-
-const coachProfileSchema = z.object({
-  readinessTier: z.enum(["ready_now", "almost_ready", "building", "exploring"]).catch("exploring"),
-  completionPercentage: z.number().min(0).max(100).catch(0),
-  statusNote: z.string().catch(""),
-  completedInputs: z.array(z.string()).catch([]),
-  outstandingInputs: z.array(z.string()).catch([]),
-  estimatedTimeline: z.string().catch(""),
-}).passthrough();
-
-const coachIntakeSchema = z.object({
-  annualIncome: z.string().optional(),
-  monthlyDebts: z.string().optional(),
-  creditScore: z.string().optional(),
-  employmentType: z.string().optional(),
-  employmentYears: z.string().optional(),
-  downPayment: z.string().optional(),
-  purchasePrice: z.string().optional(),
-  propertyType: z.string().optional(),
-  loanPurpose: z.string().optional(),
-  isVeteran: z.boolean().optional(),
-  isFirstTimeBuyer: z.boolean().optional(),
-}).strict();
-
-const actionPlanItemSchema = z.object({
-  id: z.string().min(1),
-  phase: z.number().int().min(1),
-  title: z.string().min(1),
-  description: z.string(),
-  priority: z.enum(["high", "medium", "low"]),
-  category: z.enum(["credit", "savings", "income", "debt", "documents", "education"]),
-  completed: z.boolean(),
-});
-const coachActionPlanSchema = z.array(actionPlanItemSchema);
-
-const documentRequirementSchema = z.object({
-  docType: z.string().min(1),
-  label: z.string().min(1),
-  reason: z.string(),
-  priority: z.enum(["required", "recommended", "optional"]),
-  category: z.string().min(1),
-});
-const coachDocumentChecklistSchema = z.array(documentRequirementSchema);
-
-const borrowerPackageSchema = z.object({
-  generatedDate: z.string().min(1),
-  borrowerOverview: z.object({
-    borrowerNames: z.string().min(1),
-    householdComposition: z.string().min(1),
-    primaryResidenceState: z.string().min(1),
-    incomeProfileType: z.string().min(1),
-  }),
-  householdOverview: z.object({
-    firstTimeBuyer: z.string().min(1),
-    veteranStatus: z.string().min(1),
-  }),
-  transactionIntent: z.object({
-    transactionType: z.string().min(1),
-    propertyIntent: z.string().min(1),
-    targetTimeframe: z.string().min(1),
-  }),
-  incomeSources: z.array(z.object({
-    source: z.string(),
-    type: z.string(),
-    frequency: z.string(),
-    documentationStatus: z.string(),
-  })),
-  assetSummary: z.array(z.object({
-    assetType: z.string(),
-    accountCategory: z.string(),
-    ownershipType: z.string(),
-    documentationStatus: z.string(),
-    lastStatementDate: z.string(),
-    validationNotes: z.string(),
-    accessLink: z.string(),
-  })),
-  creditAndDebt: z.object({
-    creditScore: z.string(),
-    creditScoreVerification: z.string(),
-    monthlyDebts: z.string(),
-    monthlyDebtsVerification: z.string(),
-    dtiRatio: z.string(),
-    dtiNote: z.string(),
-  }),
-  propertyContext: z.object({
-    propertyAddress: z.string(),
-    estimatedValueOrPrice: z.string(),
-    occupancyIntent: z.string(),
-  }),
-  documentInventory: z.array(z.object({
-    docType: z.string(),
-    label: z.string(),
-    status: z.string(),
-    flags: z.array(z.string()),
-  })),
-  readinessStatus: z.object({
-    intakeStatus: z.string(),
-    documentStatus: z.string(),
-    packageStatus: z.string(),
-    pendingItems: z.array(z.string()),
-  }),
-  auditTrail: z.object({
-    intakeStartDate: z.string(),
-    lastUpdateDate: z.string(),
-    events: z.array(z.object({
-      date: z.string(),
-      activity: z.string(),
-    })),
-  }),
-  validationNotes: z.object({
-    recencyChecks: z.array(z.string()),
-    completenessChecks: z.array(z.string()),
-    consistencyObservations: z.array(z.string()),
-  }),
-  complianceFooter: z.string().min(1),
-});
-
-export {
-  coachProfileSchema,
-  coachIntakeSchema,
-  coachActionPlanSchema,
-  coachDocumentChecklistSchema,
-  borrowerPackageSchema,
-};
-
-const FALLBACK_PROFILE: CoachingProfile = {
-  readinessTier: "exploring",
-  completionPercentage: 0,
-  statusNote: "",
-  completedInputs: [],
-  outstandingInputs: [],
-  estimatedTimeline: "",
-};
-
-function migrateProfileFields(raw: any): any {
-  if (!raw || typeof raw !== "object") return raw;
-  const migrated = { ...raw };
-  if ("readinessScore" in migrated && !("completionPercentage" in migrated)) {
-    migrated.completionPercentage = migrated.readinessScore;
-  }
-  if ("summary" in migrated && !("statusNote" in migrated)) {
-    migrated.statusNote = migrated.summary;
-  }
-  if ("strengths" in migrated && !("completedInputs" in migrated)) {
-    migrated.completedInputs = migrated.strengths;
-  }
-  if ("gaps" in migrated && !("outstandingInputs" in migrated)) {
-    migrated.outstandingInputs = migrated.gaps;
-  }
-  delete migrated.readinessScore;
-  delete migrated.summary;
-  delete migrated.strengths;
-  delete migrated.gaps;
-  delete migrated.recommendedLoanTypes;
-  return migrated;
-}
-
-function parseCoachResponse(text: string): CoachResponse {
-  const dataMatch = text.match(/<coach_data>\s*([\s\S]*?)\s*<\/coach_data>/);
-  let message = text.replace(/<coach_data>[\s\S]*?<\/coach_data>/g, "").trim();
-
-  const result: CoachResponse = { message };
-
-  if (dataMatch) {
+    let message: Anthropic.Message;
     try {
-      const data = JSON.parse(dataMatch[1]);
-      if (data.profile) {
-        const migrated = migrateProfileFields(data.profile);
-        const parsed = coachProfileSchema.safeParse(migrated);
-        if (parsed.success) {
-          result.profile = {
-            readinessTier: parsed.data.readinessTier,
-            completionPercentage: parsed.data.completionPercentage,
-            statusNote: parsed.data.statusNote,
-            completedInputs: parsed.data.completedInputs,
-            outstandingInputs: parsed.data.outstandingInputs,
-            estimatedTimeline: parsed.data.estimatedTimeline,
-          };
-        } else {
-          console.warn("[Coach] Profile validation failed, using fallback:", parsed.error.issues);
-          result.profile = { ...FALLBACK_PROFILE };
-        }
-      }
-      if (data.intake) {
-        const intakeParsed = coachIntakeSchema.safeParse(data.intake);
-        if (intakeParsed.success) {
-          result.intake = intakeParsed.data;
-        } else {
-          console.warn("[Coach] Intake validation failed, rejecting malformed intake:", intakeParsed.error.issues);
-        }
-      }
-      if (data.actionPlan) {
-        const planParsed = coachActionPlanSchema.safeParse(data.actionPlan);
-        if (planParsed.success) {
-          result.actionPlan = planParsed.data;
-        } else {
-          console.warn("[Coach] ActionPlan validation failed, rejecting malformed plan:", planParsed.error.issues);
-        }
-      }
-      if (data.documentChecklist) {
-        const checklistParsed = coachDocumentChecklistSchema.safeParse(data.documentChecklist);
-        if (checklistParsed.success) {
-          result.documentChecklist = checklistParsed.data;
-        } else {
-          console.warn("[Coach] DocumentChecklist validation failed, rejecting malformed checklist:", checklistParsed.error.issues);
-        }
-      }
-      if (data.borrowerPackage) {
-        const pkg = data.borrowerPackage;
-        if (pkg.assetSummary && Array.isArray(pkg.assetSummary)) {
-          pkg.assetSummary = pkg.assetSummary.map((a: any) => ({
-            ...a,
-            accessLink: "",
-          }));
-        }
-        const pkgParsed = borrowerPackageSchema.safeParse(pkg);
-        if (pkgParsed.success) {
-          result.borrowerPackage = pkgParsed.data;
-        } else {
-          console.warn("[Coach] BorrowerPackage validation failed, rejecting malformed package:", pkgParsed.error.issues);
-        }
-      }
-    } catch (e) {
-      console.error("[Coach] Failed to parse structured data:", e);
+      message = await stream.finalMessage();
+    } catch (err) {
+      if (lintAbortHit) break; // our own lint abort — handled after the loop
+
+      const mapped = mapAnthropicError(err);
+      void logAiInteraction({
+        userId: opts.userId,
+        applicationId: state.syncedApplicationId ?? null,
+        workflow: "ai_coach",
+        userRole: opts.userRole ?? null,
+        provider: "claude",
+        model: COACH_MODEL,
+        systemPrompt: COACH_PROMPT_VERSION,
+        prompt: opts.userMessage,
+        response: callText || null,
+        classification: "borrower_facing_guardrailed",
+        latencyMs: Date.now() - callStartedAt,
+        isError: "true",
+        errorMessage: `${mapped.code}: ${err instanceof Error ? err.message : String(err)}`.slice(0, 1000),
+        metadata: { promptVersion: COACH_PROMPT_VERSION, call },
+      });
+      throw mapped;
+    }
+
+    modelCalls++;
+    totalInput += message.usage.input_tokens;
+    totalOutput += message.usage.output_tokens;
+
+    const toolUses = message.content.filter(
+      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
+    );
+
+    void logAiInteraction({
+      userId: opts.userId,
+      applicationId: state.syncedApplicationId ?? null,
+      workflow: "ai_coach",
+      userRole: opts.userRole ?? null,
+      provider: "claude",
+      model: COACH_MODEL,
+      systemPrompt: COACH_PROMPT_VERSION,
+      prompt: opts.userMessage,
+      response: callText || null,
+      classification: "borrower_facing_guardrailed",
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens,
+      latencyMs: Date.now() - callStartedAt,
+      metadata: {
+        promptVersion: COACH_PROMPT_VERSION,
+        call,
+        stopReason: message.stop_reason,
+        toolCalls: toolUses.map((t) => t.name),
+        cacheReadInputTokens: message.usage.cache_read_input_tokens ?? null,
+        cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? null,
+      },
+    });
+
+    if (message.stop_reason !== "tool_use" || toolUses.length === 0) break;
+
+    // Execute EVERY requested tool (even at the call cap — captured data must
+    // never be dropped), then return all results in a single user message.
+    messages.push({ role: "assistant", content: message.content });
+    const results: Anthropic.ToolResultBlockParam[] = [];
+    for (const toolUse of toolUses) {
+      const result = await executeCoachTool(toolCtx, toolUse.name, toolUse.input);
+      results.push({
+        type: "tool_result",
+        tool_use_id: toolUse.id,
+        content: result.content,
+        ...(result.isError ? { is_error: true } : {}),
+      });
+    }
+    messages.push({ role: "user", content: results });
+  }
+
+  // completionPercentage is server-derived — the model never controls it.
+  if (state.profile) {
+    state.profile = {
+      ...state.profile,
+      completionPercentage: deriveCompletionPercentage(opts.verifiedContext),
+    };
+    guardedEmit({ type: "panel", profile: state.profile });
+  }
+
+  // Deterministic compliance post-filter on the full reply.
+  let finalMessage = visible.trim();
+  let lintReplaced = false;
+  let lintHit: CoachLintHit | null = null;
+
+  if (lintAbortHit) {
+    lintReplaced = true;
+    lintHit = lintAbortHit;
+  } else if (finalMessage.length > 0) {
+    const filtered = applyCoachLintFilter(finalMessage);
+    if (filtered.replaced) {
+      lintReplaced = true;
+      lintHit = filtered.hit;
+    } else if (filtered.flaggedCategories.length > 0) {
+      void logAudit(opts.req, "coach.lint_flagged", "coach_conversation", opts.conversationId, {
+        categories: filtered.flaggedCategories,
+      });
     }
   }
 
-  return result;
+  if (lintReplaced && lintHit) {
+    finalMessage = COACH_LINT_SAFE_MESSAGE;
+    opts.emit({ type: "lint_replaced", categories: lintHit.categories, citations: lintHit.citations });
+    void logAudit(opts.req, "coach.lint_replaced", "coach_conversation", opts.conversationId, {
+      categories: lintHit.categories,
+      citations: lintHit.citations,
+    });
+  }
+
+  // The model can end a capped turn with tools executed but no prose — never
+  // persist an empty assistant message.
+  if (finalMessage.length === 0) {
+    finalMessage =
+      state.intake || state.profile || state.actionPlan || state.documentChecklist
+        ? "I've updated your profile and panels with what you shared — take a look on the right. What would you like to do next?"
+        : "I didn't finish composing a reply — please try sending that again.";
+    guardedEmit({ type: "text", delta: finalMessage });
+  }
+
+  return {
+    message: finalMessage,
+    state,
+    lintReplaced,
+    degraded: false,
+    usage: { inputTokens: totalInput, outputTokens: totalOutput, modelCalls },
+  };
 }
+
+function buildDynamicContext(ctx: VerifiedUserContext, existingProfile?: unknown): string {
+  const verifiedNote = buildVerifiedContextPrompt(ctx);
+  const profileNote = existingProfile
+    ? `\n\nExisting financial profile from previous assessment:\n${JSON.stringify(existingProfile, null, 2)}\n\nUse this as context but update if the user provides new information.`
+    : "";
+  const combined = `${verifiedNote}${profileNote}`.trim();
+  return combined.length > 0 ? combined : "No verified borrower context is available yet.";
+}
+
+// ---------------------------------------------------------------------------
+// Offline mode — deterministic guidance used ONLY when no ANTHROPIC_API_KEY is
+// configured (mirrors the repo's simulated-vendor convention). This is NOT an
+// error fallback: provider failures surface as CoachTurnError instead of
+// silently degrading to canned text.
+// ---------------------------------------------------------------------------
 
 function formatNextRequiredInput(what: string, why: string, effort: string, unlocks: string): string {
   return `**What's needed:** ${what}\n**Why:** ${why}\n**Effort:** ${effort}\n**What it unlocks:** ${unlocks}`;
@@ -1561,7 +1479,7 @@ function getNextMissingInput(ctx?: VerifiedUserContext): { what: string; why: st
   return null;
 }
 
-function generateFallbackResponse(
+export function generateOfflineResponse(
   userMessage: string,
   history: Array<{ role: string; content: string }>,
   verifiedContext?: VerifiedUserContext,
@@ -1575,7 +1493,7 @@ function generateFallbackResponse(
     parts.push(`Welcome back! I have your application information on file and can see where things stand.`);
 
     if (app.annualIncome || app.creditScore || app.employmentType) {
-      parts.push("\nHere's what's already verified in your profile:");
+      parts.push("\nHere's what's already on file in your profile:");
       if (app.annualIncome) parts.push(`- **Annual Income:** $${parseFloat(app.annualIncome).toLocaleString()}`);
       if (app.creditScore) parts.push(`- **Credit Score:** ${app.creditScore}`);
       if (app.employmentType) parts.push(`- **Employment:** ${app.employmentType === "self_employed" ? "Self-Employed" : app.employmentType.charAt(0).toUpperCase() + app.employmentType.slice(1)}`);
@@ -1709,4 +1627,3 @@ ${formatNextRequiredInput(
     ),
   };
 }
-

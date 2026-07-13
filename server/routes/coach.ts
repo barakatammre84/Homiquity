@@ -1,10 +1,11 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
-import { generateCoachResponse, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData, deriveUserType, deriveReadinessState, deriveCompletionPercentage, deriveCompletedSteps, coachIntakeSchema, coachActionPlanSchema, coachDocumentChecklistSchema, coachProfileSchema, borrowerPackageSchema } from "../services/coachingService";
+import { runCoachTurn, CoachTurnError, isCoachConfigured, type CoachTurnResult, type CoachEmit, type VerifiedUserContext, type CoachIntakeData, type DocumentExtractedData, deriveUserType, deriveReadinessState, deriveCompletionPercentage, deriveCompletedSteps, coachIntakeSchema, coachActionPlanSchema, coachDocumentChecklistSchema, coachProfileSchema } from "../services/coachingService";
 import { buildBorrowerGraph } from "../services/borrowerGraph";
 import { getCoachIntakeSnapshots } from "../services/coachIntake";
-import type { User } from "@shared/schema";
+import { beginSse, writeSse } from "../sse";
+import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
 
 const messageSchema = z.object({
@@ -300,151 +301,292 @@ export function registerCoachRoutes(app: Express) {
     }
   });
 
+  const DAILY_COACH_MESSAGE_LIMIT = 30;
+
+  interface PreparedCoachTurn {
+    user: User;
+    message: string;
+    conversation: CoachConversation;
+    history: Array<{ role: string; content: string }>;
+    userMessageId: string;
+    remaining: number;
+    verifiedContext: VerifiedUserContext;
+  }
+
+  // Shared pre-flight for both message endpoints: validate, enforce the daily
+  // cap, resolve/create the conversation, snapshot history BEFORE persisting
+  // the new user message (the old flow inserted first and re-fetched, so the
+  // model saw the user's message twice), then persist it and build context.
+  // Writes the error response itself and returns null when the turn must not run.
+  async function prepareCoachTurn(req: Request, res: Response): Promise<PreparedCoachTurn | null> {
+    const user = req.user as User;
+    const parsed = messageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid message", details: parsed.error.errors });
+      return null;
+    }
+
+    const { message, conversationId, propertyPrice, propertyAddress } = parsed.data;
+    const propertyCtx = propertyPrice && propertyAddress
+      ? { price: propertyPrice, address: propertyAddress }
+      : null;
+
+    const todayCount = await storage.countUserCoachMessagesToday(user.id);
+    if (todayCount >= DAILY_COACH_MESSAGE_LIMIT) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      res.status(429).json({
+        error: "Daily message limit reached",
+        remaining: 0,
+        dailyLimit: DAILY_COACH_MESSAGE_LIMIT,
+        resetsAt: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+      return null;
+    }
+
+    let conversation: CoachConversation | undefined;
+    if (conversationId) {
+      conversation = await storage.getCoachConversation(conversationId);
+      if (!conversation || conversation.userId !== user.id) {
+        res.status(404).json({ error: "Conversation not found" });
+        return null;
+      }
+    } else {
+      conversation = await storage.createCoachConversation({
+        userId: user.id,
+        title: message.substring(0, 100),
+        status: "active",
+      });
+    }
+
+    const existingMessages = await storage.getCoachMessages(conversation.id);
+    const history = existingMessages.map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    const userMsg = await storage.createCoachMessage({
+      conversationId: conversation.id,
+      role: "user",
+      content: message,
+    });
+
+    const verifiedContext = await buildVerifiedContext(user.id, user, propertyCtx);
+
+    if (conversation.readinessTier) {
+      verifiedContext.previousReadinessTier = conversation.readinessTier as string;
+    }
+    if (conversation.financialProfile && typeof conversation.financialProfile === "object") {
+      const prevProfile = conversation.financialProfile as any;
+      if (prevProfile.completionPercentage !== undefined && prevProfile.completionPercentage !== null) {
+        verifiedContext.previousCompletionPercentage = prevProfile.completionPercentage;
+      }
+    }
+
+    return {
+      user,
+      message,
+      conversation,
+      history,
+      userMessageId: userMsg.id,
+      remaining: Math.max(0, DAILY_COACH_MESSAGE_LIMIT - todayCount - 1),
+      verifiedContext,
+    };
+  }
+
+  // Persist the assistant turn. coach_messages.structuredData keeps EXACTLY
+  // the legacy shape (borrowerGraph readiness, GET /api/coach/intake/latest,
+  // and the Pre-Approval prefill all read it), and the conversation-level
+  // jsonb merge mirrors the pre-rebuild logic — with one deliberate change:
+  // completionPercentage is now ALWAYS the server-derived figure (runCoachTurn
+  // stamps it on state.profile); the model never controls it.
+  async function persistAssistantTurn(
+    conversation: CoachConversation,
+    verifiedContext: VerifiedUserContext,
+    result: CoachTurnResult,
+  ) {
+    const state = result.state;
+    const hasStructuredData = !!(
+      state.profile || state.intake || state.actionPlan || state.documentChecklist || state.borrowerPackage
+    );
+
+    const assistantMsg = await storage.createCoachMessage({
+      conversationId: conversation.id,
+      role: "assistant",
+      content: result.message,
+      structuredData: hasStructuredData
+        ? {
+            profile: state.profile || null,
+            intake: state.intake || null,
+            actionPlan: state.actionPlan || null,
+            documentChecklist: state.documentChecklist || null,
+            borrowerPackage: state.borrowerPackage || null,
+          }
+        : null,
+    });
+
+    const updateData: Record<string, any> = {};
+
+    if (verifiedContext.readinessTier) {
+      updateData.readinessTier = verifiedContext.readinessTier;
+    }
+
+    if (state.profile) {
+      updateData.financialProfile = state.profile;
+      if (state.profile.readinessTier) {
+        updateData.readinessTier = state.profile.readinessTier;
+      }
+      updateData.completionPercentage = state.profile.completionPercentage;
+    } else if (verifiedContext.completionPercentage !== undefined) {
+      const existingProfile = (conversation.financialProfile as any) || {};
+      updateData.financialProfile = {
+        ...existingProfile,
+        completionPercentage: verifiedContext.completionPercentage,
+      };
+    }
+    if (state.actionPlan) {
+      updateData.actionPlan = state.actionPlan;
+    }
+    if (state.documentChecklist) {
+      updateData.documentChecklist = state.documentChecklist;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await storage.updateCoachConversation(conversation.id, updateData);
+    }
+
+    return assistantMsg;
+  }
+
+  // Streaming variant. SSE protocol (one JSON object per frame):
+  //   meta  {conversationId, userMessageId, remaining, degraded?}
+  //   text  {delta}
+  //   captured {applicationId, created, applied[], skipped[]}
+  //   panel {profile? | actionPlan? | documentChecklist? | borrowerPackage? | suggestions?}
+  //   lint_replaced {categories, citations}
+  //   done  {messageId, usage, remaining}
+  //   error {code, message, retryable}
+  app.post("/api/coach/message/stream", isAuthenticated, async (req, res) => {
+    let streaming = false;
+    try {
+      const prep = await prepareCoachTurn(req, res);
+      if (!prep) return;
+
+      beginSse(res);
+      streaming = true;
+
+      // Client gone → stop paying for tokens nobody sees. (Side effects the
+      // turn already applied — user message, intake sync — stay applied.)
+      const abortController = new AbortController();
+      req.on("close", () => abortController.abort());
+
+      writeSse(res, "meta", {
+        conversationId: prep.conversation.id,
+        userMessageId: prep.userMessageId,
+        remaining: prep.remaining,
+        ...(isCoachConfigured() ? {} : { degraded: true }),
+      });
+
+      const emit: CoachEmit = (event) => {
+        const { type, ...data } = event;
+        writeSse(res, type, data);
+      };
+
+      const result = await runCoachTurn({
+        req,
+        userId: prep.user.id,
+        userRole: prep.user.role,
+        conversationId: prep.conversation.id,
+        userMessage: prep.message,
+        history: prep.history,
+        existingProfile: prep.conversation.financialProfile ?? undefined,
+        verifiedContext: prep.verifiedContext,
+        emit,
+        signal: abortController.signal,
+      });
+
+      const assistantMsg = await persistAssistantTurn(prep.conversation, prep.verifiedContext, result);
+
+      writeSse(res, "done", {
+        messageId: assistantMsg.id,
+        usage: result.usage,
+        remaining: prep.remaining,
+      });
+      res.end();
+    } catch (error) {
+      console.error("Coach stream error:", error);
+      const payload = error instanceof CoachTurnError
+        ? { code: error.code, message: error.message, retryable: error.retryable }
+        : { code: "internal", message: "Failed to process message", retryable: true };
+      // Once the stream is open the global error handler can't fire
+      // (headersSent) — errors must be emitted in-stream. No assistant
+      // message is persisted on error: the client shows a retry affordance.
+      if (streaming) {
+        writeSse(res, "error", payload);
+        res.end();
+      } else if (!res.headersSent) {
+        res.status(502).json({ error: payload.message, ...payload });
+      }
+    }
+  });
+
+  // Non-streaming variant — same core turn, buffered. The response keeps the
+  // pre-rebuild JSON contract (plus additive captured/suggestions/degraded)
+  // so older clients keep working and the new client can fall back to it when
+  // an intermediary buffers SSE.
   app.post("/api/coach/message", isAuthenticated, async (req, res) => {
     try {
-      const user = req.user as User;
-      const parsed = messageSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid message", details: parsed.error.errors });
-      }
+      const prep = await prepareCoachTurn(req, res);
+      if (!prep) return;
 
-      const { message, conversationId, propertyPrice, propertyAddress } = parsed.data;
-      const propertyCtx = propertyPrice && propertyAddress
-        ? { price: propertyPrice, address: propertyAddress }
-        : null;
-
-      const dailyLimit = 30;
-      const todayCount = await storage.countUserCoachMessagesToday(user.id);
-      if (todayCount >= dailyLimit) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return res.status(429).json({
-          error: "Daily message limit reached",
-          remaining: 0,
-          dailyLimit,
-          resetsAt: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-        });
-      }
-
-      let conversation;
-
-      if (conversationId) {
-        conversation = await storage.getCoachConversation(conversationId);
-        if (!conversation || conversation.userId !== user.id) {
-          return res.status(404).json({ error: "Conversation not found" });
+      let lastCaptured: Record<string, unknown> | null = null;
+      const emit: CoachEmit = (event) => {
+        if (event.type === "captured") {
+          const { type, ...data } = event;
+          lastCaptured = data;
         }
-      } else {
-        conversation = await storage.createCoachConversation({
-          userId: user.id,
-          title: message.substring(0, 100),
-          status: "active",
-        });
-      }
+      };
 
-      await storage.createCoachMessage({
-        conversationId: conversation.id,
-        role: "user",
-        content: message,
+      const abortController = new AbortController();
+      req.on("close", () => abortController.abort());
+
+      const result = await runCoachTurn({
+        req,
+        userId: prep.user.id,
+        userRole: prep.user.role,
+        conversationId: prep.conversation.id,
+        userMessage: prep.message,
+        history: prep.history,
+        existingProfile: prep.conversation.financialProfile ?? undefined,
+        verifiedContext: prep.verifiedContext,
+        emit,
+        signal: abortController.signal,
       });
 
-      const existingMessages = await storage.getCoachMessages(conversation.id);
-      const history = existingMessages.map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      const verifiedContext = await buildVerifiedContext(user.id, user, propertyCtx);
-
-      if (conversation.readinessTier) {
-        verifiedContext.previousReadinessTier = conversation.readinessTier as string;
-      }
-      if (conversation.financialProfile && typeof conversation.financialProfile === "object") {
-        const prevProfile = conversation.financialProfile as any;
-        if (prevProfile.completionPercentage !== undefined && prevProfile.completionPercentage !== null) {
-          verifiedContext.previousCompletionPercentage = prevProfile.completionPercentage;
-        }
-      }
-
-      const coachResponse = await generateCoachResponse(
-        message,
-        history,
-        conversation.financialProfile,
-        verifiedContext,
-      );
-
-      const hasStructuredData = coachResponse.profile || coachResponse.intake || coachResponse.actionPlan || coachResponse.documentChecklist || coachResponse.borrowerPackage;
-
-      const assistantMsg = await storage.createCoachMessage({
-        conversationId: conversation.id,
-        role: "assistant",
-        content: coachResponse.message,
-        structuredData: hasStructuredData
-          ? {
-              profile: coachResponse.profile || null,
-              intake: coachResponse.intake || null,
-              actionPlan: coachResponse.actionPlan || null,
-              documentChecklist: coachResponse.documentChecklist || null,
-              borrowerPackage: coachResponse.borrowerPackage || null,
-            }
-          : null,
-      });
-
-      const updateData: Record<string, any> = {};
-
-      if (verifiedContext.readinessTier) {
-        updateData.readinessTier = verifiedContext.readinessTier;
-      }
-
-      if (hasStructuredData) {
-        if (coachResponse.profile) {
-          const profileWithCompletion = {
-            ...coachResponse.profile,
-            completionPercentage: verifiedContext.completionPercentage ?? null,
-          };
-          updateData.financialProfile = profileWithCompletion;
-          if (coachResponse.profile.readinessTier) {
-            updateData.readinessTier = coachResponse.profile.readinessTier;
-          }
-          updateData.completionPercentage = coachResponse.profile.completionPercentage;
-        } else if (verifiedContext.completionPercentage !== undefined) {
-          const existingProfile = (conversation.financialProfile as any) || {};
-          updateData.financialProfile = {
-            ...existingProfile,
-            completionPercentage: verifiedContext.completionPercentage,
-          };
-        }
-        if (coachResponse.actionPlan) {
-          updateData.actionPlan = coachResponse.actionPlan;
-        }
-        if (coachResponse.documentChecklist) {
-          updateData.documentChecklist = coachResponse.documentChecklist;
-        }
-      } else if (verifiedContext.completionPercentage !== undefined) {
-        const existingProfile = (conversation.financialProfile as any) || {};
-        updateData.financialProfile = {
-          ...existingProfile,
-          completionPercentage: verifiedContext.completionPercentage,
-        };
-      }
-
-      if (Object.keys(updateData).length > 0) {
-        await storage.updateCoachConversation(conversation.id, updateData);
-      }
-
-      const existingIntake = getLatestIntakeFromConversation(conversation, coachResponse);
+      const assistantMsg = await persistAssistantTurn(prep.conversation, prep.verifiedContext, result);
+      const state = result.state;
+      const existingIntake = getLatestIntakeFromConversation(prep.conversation, { intake: state.intake });
 
       res.json({
-        conversationId: conversation.id,
+        conversationId: prep.conversation.id,
         message: assistantMsg,
-        profile: coachResponse.profile || conversation.financialProfile || null,
+        profile: state.profile || prep.conversation.financialProfile || null,
         intake: existingIntake,
-        actionPlan: coachResponse.actionPlan || conversation.actionPlan || null,
-        documentChecklist: coachResponse.documentChecklist || conversation.documentChecklist || null,
-        borrowerPackage: coachResponse.borrowerPackage || null,
+        actionPlan: state.actionPlan || prep.conversation.actionPlan || null,
+        documentChecklist: state.documentChecklist || prep.conversation.documentChecklist || null,
+        borrowerPackage: state.borrowerPackage || null,
+        captured: lastCaptured,
+        suggestions: state.suggestions || null,
+        ...(result.degraded ? { degraded: true } : {}),
       });
     } catch (error) {
       console.error("Coach message error:", error);
-      res.status(500).json({ error: "Failed to process message" });
+      if (res.headersSent) return;
+      if (error instanceof CoachTurnError) {
+        res.status(502).json({ error: error.message, code: error.code, retryable: error.retryable });
+      } else {
+        res.status(500).json({ error: "Failed to process message" });
+      }
     }
   });
 
