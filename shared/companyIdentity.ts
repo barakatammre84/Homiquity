@@ -12,10 +12,10 @@
 export const COMPANY_IDENTITY = {
   legalName: "Homiquity Mortgage Corporation",
   shortName: "Homiquity Mortgage Corp.",
-  /** NMLS unique identifier — "PENDING" until licensing (roadmap F1) lands. */
-  nmlsId: "PENDING",
+  /** NMLS unique identifier — issued at F1 licensing (SAFE Act 12 CFR 1008). */
+  nmlsId: "427468",
   contactEmail: "support@homiquity.com",
-  contactPhone: "(555) 123-4567",
+  contactPhone: "(224) 400-0531",
   /**
    * Canonical public web address — the single source for absolute canonical
    * tags, OG/Twitter URLs, and the sitemap host. Matches client/public/
