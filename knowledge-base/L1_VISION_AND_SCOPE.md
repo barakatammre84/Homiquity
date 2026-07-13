@@ -38,7 +38,9 @@ loop every MVP decision serves. What each link MUST do:
   human, and never take adverse action without the required notice.
 - **Package** MUST produce MISMO 3.4 / ULDD-valid output — it is rejected at the lender if it isn't.
 - **Delivery** MUST gate submission until intake, AUS, and lender-package stages are clean, and
-  carry an audit trail.
+  carry an audit trail. The platform packages, validates, hashes, and tracks every submission
+  in-app; transmission itself is a staff hand-off through the lender's own portal until broker
+  agreements unlock the direct integration (`CTO_ROADMAP.md` LS-10 slice 3).
 
 Agents, sellers, listings, and homeowner tools are **peripheral** (they feed or extend the loop);
 they are never on the critical path to a funded loan.
@@ -62,6 +64,11 @@ For work already in flight, the MVP scope is locked:
 > Parenthetical `PR #NN` are GitHub pull-request numbers (not `CTO_ROADMAP.md` line items — that
 > file uses its own `LS-`/`F-`/`G-` numbering). Live status for any of them: the
 > [CICD.md](runbooks/CICD.md) production change ledger.
+>
+> "Rate Sheets" in the deferred cell means the unused admin rate-sheet/lender-offer authoring API
+> (`server/routes/rate-sheets.ts` — no client callers), **not** the live demo pricing tables (the
+> `1.0-demo` sheets seeded by `server/seedMarketPricing.ts` that feed the quote, anti-steering,
+> and scenario paths). Those are IN — the clearly-marked simulation behind roadmap F11.
 
 ## 4. What the platform IS (modules, prescriptively)
 

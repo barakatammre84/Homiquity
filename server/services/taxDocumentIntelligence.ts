@@ -246,7 +246,7 @@ export async function runTaxDocumentIntelligence(document: Document): Promise<Ta
               valueBoolean: valueType === "boolean" ? Boolean(fv.value) : null,
               valueType,
               confidence: fv.confidence.toFixed(4),
-              extractionMethod: extraction.simulated ? "simulated" : "gemini",
+              extractionMethod: extraction.simulated ? "simulated" : "claude",
               modelVersion: extraction.lineage.modelId ?? null,
             };
           });
@@ -291,7 +291,7 @@ export async function runTaxDocumentIntelligence(document: Document): Promise<Ta
       ),
       fileSize: document.fileSize ?? undefined,
       pageCount: cls.classification.pageCount ?? undefined,
-      extractionEngine: simulated ? "simulated" : "gemini",
+      extractionEngine: simulated ? "simulated" : "claude",
       extractionVersion: EXTRACTION_PROMPT_VERSION,
     });
 

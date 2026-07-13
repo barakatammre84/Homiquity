@@ -46,7 +46,7 @@ Charter: [`specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md`](../../specs/) (PR #102)
 
 | Service | Does |
 |---------|------|
-| `../extractionService.ts` | Runs AI extraction on uploaded docs (paystub/W-2/bank statement/tax return) — **owns its own Gemini client**; there is no separate pluggable AI-gateway module (the old `aiGateway.ts` was removed) |
+| `../extractionService.ts` | Runs AI extraction on uploaded docs (paystub/W-2/bank statement/tax return) — **owns its own Anthropic (Claude) client**; there is no separate pluggable AI-gateway module (the old `aiGateway.ts` was removed) |
 | `documentConfidence.ts` | Scores extraction trustworthiness |
 | `taxInsightService.ts` | Derives readiness signals from consumer-uploaded tax returns (the §7216-safe consumer-direct path; routes in `server/routes/taxInsights.ts`) |
 | `coachingService.ts` + `coachTools.ts` + `coachIntake.ts` | AI Homebuyer Coach (Claude Sonnet 5, streaming tool-use) + its structured intake; replies pass the deterministic `loCommsLint` hard-block rail and every model call is logged to `ai_interactions` |

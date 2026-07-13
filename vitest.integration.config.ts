@@ -21,6 +21,7 @@ export default defineConfig({
       "tests/loCommandCenter.test.ts",
       "tests/intakeHandoff.test.ts",
       "tests/rateLocks.test.ts",
+      "tests/lenderConditions.test.ts",
       "tests/cocRoutes.test.ts",
       "tests/mismoExportAccess.test.ts",
       "tests/roleSeparation.test.ts",

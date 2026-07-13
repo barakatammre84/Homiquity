@@ -141,9 +141,9 @@ app won't boot or a core feature dies without it.
 ### Feature-gated (optional; feature off/degraded without it)
 | Variable | Feature |
 |----------|---------|
-| `GEMINI_API_KEY` (or `AI_INTEGRATIONS_GEMINI_API_KEY`) | Document AI extraction |
-| `ANTHROPIC_API_KEY` | AI Coach (Claude Sonnet 5; labeled offline-guidance mode without it) |
-| `EXTRACTION_SIMULATE` | Set `true` to run deterministic simulated extraction with no Gemini key (dev/test) |
+| `ANTHROPIC_API_KEY` | Document AI extraction (Claude) + AI Coach (Claude Sonnet 5; coach degrades to labeled offline-guidance mode without it) |
+| `AI_INTEGRATIONS_ANTHROPIC_API_KEY` | Optional — read first by document extraction; falls back to `ANTHROPIC_API_KEY` |
+| `EXTRACTION_SIMULATE` | Set `true` to run deterministic simulated extraction with no Anthropic key (dev/test) |
 | `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` | Income/employment/asset verification |
 | `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` | Document storage (GCS) |
 | `GOOGLE_MAPS_API_KEY` | Address autocomplete/geocoding/maps |

@@ -18,8 +18,8 @@ import type { PublicTaxFormInstance } from "../server/services/taxDocumentIntell
 let svc: typeof import("../server/extractionService");
 
 beforeAll(async () => {
-  delete process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-  delete process.env.GEMINI_API_KEY;
+  delete process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
   process.env.EXTRACTION_SIMULATE = "true";
   svc = await import("../server/extractionService");
 });

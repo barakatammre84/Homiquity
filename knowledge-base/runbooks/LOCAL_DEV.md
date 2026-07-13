@@ -51,7 +51,7 @@ echo "PII_HASH_SALT=$(openssl rand -hex 32)"
 echo "SESSION_SECRET=$(openssl rand -hex 32)"
 ```
 Paste those lines into `.env`, add your `DATABASE_URL`, and (optionally) a
-`GEMINI_API_KEY` for AI features and a `DEV_TEST_PASSWORD` for the dev login.
+`ANTHROPIC_API_KEY` for AI features (or `EXTRACTION_SIMULATE=true`) and a `DEV_TEST_PASSWORD` for the dev login.
 
 ## 5. Create the tables
 ```bash
@@ -157,7 +157,7 @@ pnpm build          # vite build + esbuild server -> dist/
 pnpm start              # NODE_ENV=production node dist/index.js
 ```
 Set the same env vars in the host's dashboard (`DATABASE_URL`, `CREDIT_ENCRYPTION_KEY`,
-`PII_HASH_SALT`, `SESSION_SECRET`, `GEMINI_API_KEY`, `PORT`). The host provides
+`PII_HASH_SALT`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `PORT`). The host provides
 `PORT`; the server already reads it.
 
 **The app has no Replit dependencies** — it deploys to Vercel today (see

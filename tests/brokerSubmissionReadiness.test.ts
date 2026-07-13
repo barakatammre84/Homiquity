@@ -23,7 +23,9 @@ function cleanInputs(overrides: Partial<StageDerivationInputs> = {}): StageDeriv
       ...(overrides.urla ?? {}),
     },
     uldd: { valid: true, errors: [], warnings: [], ...(overrides.uldd ?? {}) },
-    aus: { casefileId: "CF-123", recommendation: "Approve/Eligible", lpaAssessed: true, ...(overrides.aus ?? {}) },
+    // recommendation uses the production enum from ausSubmission.ts (persisted
+    // verbatim by routes/aus.ts) — not the "Approve/Eligible" display form.
+    aus: { casefileId: "CF-123", recommendation: "approve_eligible", lpaAssessed: true, ...(overrides.aus ?? {}) },
     consents: { eDisclosure: true, antiSteering: true, ...(overrides.consents ?? {}) },
     changeOfCircumstance: {
       openCount: 0,
@@ -118,17 +120,37 @@ describe("stage 2 — AUS", () => {
     expect(r.readyToSubmitToLender).toBe(false);
   });
 
-  it("flags a file that has never been run through DU", () => {
+  it("blocks a file that has never been run through AUS (L1: delivery gates on a clean AUS stage)", () => {
     const r = deriveSubmissionStages(cleanInputs({ aus: { casefileId: null, recommendation: null, lpaAssessed: false } }));
-    expect(stage(r, "aus").status).toBe("attention");
-    expect(stage(r, "aus").warnings.some(w => w.includes("No DU casefile"))).toBe(true);
+    expect(stage(r, "aus").status).toBe("blocked");
+    expect(stage(r, "aus").blockers.some(b => b.includes("No AUS run recorded"))).toBe(true);
+    expect(r.readyToSubmitToLender).toBe(false);
+    expect(r.nextActions.some(a => a.includes("No AUS run recorded"))).toBe(true);
+  });
+
+  it("blocks a casefile whose recommendation was never captured", () => {
+    const r = deriveSubmissionStages(cleanInputs({ aus: { casefileId: "CF-123", recommendation: null, lpaAssessed: false } }));
+    expect(stage(r, "aus").status).toBe("blocked");
+    expect(stage(r, "aus").blockers.some(b => b.includes("no recommendation captured"))).toBe(true);
+    expect(r.readyToSubmitToLender).toBe(false);
+  });
+
+  it("warns — never blocks — on refer / ineligible recommendations (manual broker placement stays open)", () => {
+    for (const rec of ["refer", "refer_with_caution", "approve_ineligible"]) {
+      const r = deriveSubmissionStages(cleanInputs({ aus: { casefileId: "CF-123", recommendation: rec, lpaAssessed: true } }));
+      expect(stage(r, "aus").status).toBe("attention");
+      expect(stage(r, "aus").blockers).toEqual([]);
+      expect(stage(r, "aus").warnings.some(w => w.includes("manual broker decision"))).toBe(true);
+      expect(r.readyToSubmitToLender).toBe(true);
+    }
   });
 
   it("flags DU-only casefiles until the LPA leg has run (dual-AUS doctrine)", () => {
     const duOnly = deriveSubmissionStages(cleanInputs({
-      aus: { casefileId: "CF-123", recommendation: "Approve/Eligible", lpaAssessed: false },
+      aus: { casefileId: "CF-123", recommendation: "approve_eligible", lpaAssessed: false },
     }));
     expect(stage(duOnly, "aus").warnings.some(w => w.includes("LPA leg has not run"))).toBe(true);
+    expect(stage(duOnly, "aus").status).toBe("attention");
 
     const dual = deriveSubmissionStages(cleanInputs());
     expect(stage(dual, "aus").warnings).toEqual([]);

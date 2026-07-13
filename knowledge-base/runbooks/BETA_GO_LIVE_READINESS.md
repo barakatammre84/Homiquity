@@ -59,7 +59,7 @@ These are founder actions — prod env, credentials, counsel. `[GATE]` = regulat
 - [ ] `[DECISION]` **Credit-vendor mode** — recommend leaving `CREDIT_VENDOR_MODE` **unset**:
   real credit pulls refuse (no bureau contract yet) rather than deciding on fabricated
   scores. `=simulation` fabricates bureau data — not appropriate for real applicants.
-- [ ] `[DECISION]` **Document-extraction mode** — set a Gemini key **or**
+- [ ] `[DECISION]` **Document-extraction mode** — set an Anthropic key (`ANTHROPIC_API_KEY`) **or**
   `EXTRACTION_SIMULATE=true`. Without either, uploads still succeed and reach the LO, but
   AI extraction returns empty. `EXTRACTION_SIMULATE=true` is the clean demo choice.
 - [ ] `[ENV]` **Invite gate** — set `BETA_ACCESS_CODE`; confirm the `/?beta=<code>` → cookie

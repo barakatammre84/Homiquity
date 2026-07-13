@@ -56,7 +56,7 @@ const documents = [
     fileName: "2025-tax-return.pdf",
     documentType: "tax_return",
     extractionResponseHash: "c".repeat(64),
-    notes: JSON.stringify({ modelId: "gemini-2.0-flash", promptVersion: "2026-07-v3", responseHash: "c".repeat(64) }),
+    notes: JSON.stringify({ modelId: "claude-opus-4-8", promptVersion: "2026-07-v3", responseHash: "c".repeat(64) }),
   },
   { id: "doc-2", fileName: "id.png", documentType: "government_id", extractionResponseHash: null, notes: null },
 ] as unknown as Document[];
@@ -129,7 +129,7 @@ describe("assembleIncomePackage", () => {
     const taxDoc = pkg.documentManifest.find((d) => d.documentId === "doc-1")!;
     expect(taxDoc.label).toBe("machine-read; human-confirmed");
     expect(taxDoc.contentHash).toBe("c".repeat(64));
-    expect(taxDoc.extraction?.modelId).toBe("gemini-2.0-flash");
+    expect(taxDoc.extraction?.modelId).toBe("claude-opus-4-8");
     const idDoc = pkg.documentManifest.find((d) => d.documentId === "doc-2")!;
     expect(idDoc.extraction).toBeNull(); // not machine-read
   });

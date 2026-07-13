@@ -859,8 +859,10 @@ export interface IStorage {
   getLoanMilestones(applicationId: string): Promise<LoanMilestone | undefined>;
   updateLoanMilestones(applicationId: string, data: Partial<LoanMilestone>): Promise<LoanMilestone | undefined>;
   createLoanCondition(data: InsertLoanCondition): Promise<LoanCondition>;
+  createLoanConditions(data: InsertLoanCondition[]): Promise<LoanCondition[]>;
   getLoanCondition(id: string): Promise<LoanCondition | undefined>;
   getLoanConditionsByApplication(applicationId: string): Promise<LoanCondition[]>;
+  getLoanConditionsBySubmissionIds(submissionIds: string[]): Promise<LoanCondition[]>;
   updateLoanCondition(id: string, data: Partial<LoanCondition>): Promise<LoanCondition | undefined>;
   deleteLoanCondition(id: string): Promise<void>;
   clearLoanCondition(id: string, userId: string, notes?: string): Promise<LoanCondition | undefined>;
@@ -2397,6 +2399,12 @@ export class DatabaseStorage implements IStorage {
     return condition;
   }
 
+  // Single batched insert (never insert in a loop).
+  async createLoanConditions(data: InsertLoanCondition[]): Promise<LoanCondition[]> {
+    if (data.length === 0) return [];
+    return await db.insert(loanConditions).values(data).returning();
+  }
+
   async getLoanCondition(id: string): Promise<LoanCondition | undefined> {
     const [condition] = await db
       .select()
@@ -2412,6 +2420,17 @@ export class DatabaseStorage implements IStorage {
       .from(loanConditions)
       .where(eq(loanConditions.applicationId, applicationId))
       .orderBy(loanConditions.priority, desc(loanConditions.createdAt));
+  }
+
+  // One batched fetch for per-submission condition rollups (inArray — never
+  // query per submission in a loop).
+  async getLoanConditionsBySubmissionIds(submissionIds: string[]): Promise<LoanCondition[]> {
+    if (submissionIds.length === 0) return [];
+    return await db
+      .select()
+      .from(loanConditions)
+      .where(inArray(loanConditions.lenderSubmissionId, submissionIds))
+      .orderBy(desc(loanConditions.createdAt));
   }
 
   async updateLoanCondition(id: string, data: Partial<LoanCondition>): Promise<LoanCondition | undefined> {

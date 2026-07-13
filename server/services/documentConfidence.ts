@@ -36,7 +36,7 @@ export async function recordExtractionConfidence(options: {
       documentId: options.documentId,
       documentType: options.documentType,
       applicationId: options.applicationId || null,
-      extractionEngine: options.extractionEngine || "gemini",
+      extractionEngine: options.extractionEngine || "claude",
       extractionVersion: options.extractionVersion || null,
       overallConfidence: options.overallConfidence.toFixed(4),
       fieldConfidences: options.fieldConfidences,

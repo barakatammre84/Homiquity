@@ -7,7 +7,8 @@
  * loan delivery. The stages below reflect that division of labor:
  *
  *   1. intake            — URLA gating sections, TRID clock, e-disclosure
- *   2. aus               — DU submission gate + findings captured
+ *   2. aus               — a recorded dual-AUS run (DU + LPA) gates submission;
+ *                          findings captured, recommendation quality advisory
  *   3. lenderPackage     — MISMO export validity, outstanding docs, QM
  *                          pre-flight, anti-steering disclosure (Reg Z
  *                          §1026.36(e)(3)) before options are locked
@@ -148,24 +149,31 @@ export function deriveSubmissionStages(inputs: StageDerivationInputs): Omit<Brok
   if (inputs.urla.criticalErrors.length > 0) {
     ausBlockers.push(`${inputs.urla.criticalErrors.length} critical URLA/regulatory error(s) block AUS submission`);
   }
+  // L1 §2: delivery gates submission until the AUS stage is clean — a file
+  // with no recorded AUS run never goes to a wholesale lender.
   if (!inputs.aus.casefileId) {
-    ausWarnings.push("No DU casefile yet — run AUS before selecting a wholesale lender");
+    ausBlockers.push("No AUS run recorded — run DU / LPA before this file can go to a wholesale lender");
   } else if (!inputs.aus.recommendation) {
-    ausWarnings.push("DU casefile created but no recommendation captured yet");
+    ausBlockers.push("AUS casefile created but no recommendation captured — re-run DU / LPA to completion");
   }
   // Broker doctrine is dual AUS: flag DU-only casefiles (files run before
   // the LPA leg landed re-run through AUS to pick it up).
   if (inputs.aus.recommendation && !inputs.aus.lpaAssessed) {
     ausWarnings.push("LPA leg has not run for this casefile — re-run AUS for the dual-AUS view");
   }
+  // Recommendation quality never blocks: a broker can still place refer /
+  // ineligible files manually (non-QM lanes, manual underwrite) — L1 routes
+  // ambiguity to humans, so the LO makes that call deliberately.
+  const nonApproveRecommendations = ["approve_ineligible", "refer", "refer_with_caution"];
+  if (inputs.aus.recommendation && nonApproveRecommendations.includes(inputs.aus.recommendation)) {
+    ausWarnings.push(
+      `AUS recommendation is ${inputs.aus.recommendation.replace(/_/g, " ")} — not Approve/Eligible; lender placement is a manual broker decision`,
+    );
+  }
   stages.push({
     key: "aus",
-    label: "Automated underwriting (DU)",
-    status: ausBlockers.length > 0
-      ? "blocked"
-      : inputs.aus.recommendation
-        ? (ausWarnings.length > 1 ? "attention" : "ready")
-        : "attention",
+    label: "Automated underwriting (DU + LPA)",
+    status: ausBlockers.length > 0 ? "blocked" : ausWarnings.length > 0 ? "attention" : "ready",
     blockers: ausBlockers,
     warnings: ausWarnings,
   });
