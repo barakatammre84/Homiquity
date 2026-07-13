@@ -190,6 +190,13 @@
       "when": 1783959681557,
       "tag": "0026_household_property_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1783960701745,
+      "tag": "0027_reconcile_dbpush_drift",
+      "breakpoints": true
     }
   ]
 }
