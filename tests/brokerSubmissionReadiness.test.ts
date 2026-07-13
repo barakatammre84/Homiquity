@@ -25,6 +25,11 @@ function cleanInputs(overrides: Partial<StageDerivationInputs> = {}): StageDeriv
     uldd: { valid: true, errors: [], warnings: [], ...(overrides.uldd ?? {}) },
     aus: { casefileId: "CF-123", recommendation: "Approve/Eligible", lpaAssessed: true, ...(overrides.aus ?? {}) },
     consents: { eDisclosure: true, antiSteering: true, ...(overrides.consents ?? {}) },
+    changeOfCircumstance: {
+      openCount: 0,
+      overdueRevisedLe: false,
+      ...(overrides.changeOfCircumstance ?? {}),
+    },
     deliveryEdits: {
       deliverable: true,
       fatalCount: 0,
@@ -84,6 +89,25 @@ describe("stage 1 — intake & disclosures", () => {
     const r = deriveSubmissionStages(cleanInputs({ consents: { eDisclosure: false, antiSteering: true } }));
     expect(stage(r, "intake").status).toBe("attention");
     expect(stage(r, "intake").blockers).toEqual([]);
+  });
+
+  it("blocks when an open change of circumstance is past its revised-LE deadline (Reg Z §1026.19(e)(4)(i))", () => {
+    const r = deriveSubmissionStages(cleanInputs({
+      changeOfCircumstance: { openCount: 1, overdueRevisedLe: true },
+    }));
+    expect(stage(r, "intake").status).toBe("blocked");
+    expect(stage(r, "intake").blockers.some(b => b.includes("revised Loan Estimate"))).toBe(true);
+    expect(r.readyToSubmitToLender).toBe(false);
+  });
+
+  it("warns (not blocks) while an open change of circumstance is within its revised-LE window", () => {
+    const r = deriveSubmissionStages(cleanInputs({
+      changeOfCircumstance: { openCount: 2, overdueRevisedLe: false },
+    }));
+    expect(stage(r, "intake").status).toBe("attention");
+    expect(stage(r, "intake").blockers).toEqual([]);
+    expect(stage(r, "intake").warnings.some(w => w.includes("change(s) of circumstance"))).toBe(true);
+    expect(r.readyToSubmitToLender).toBe(true);
   });
 });
 

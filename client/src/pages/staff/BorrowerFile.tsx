@@ -60,6 +60,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
+import { ChangeOfCircumstancePanel } from "@/components/staff/ChangeOfCircumstancePanel";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { LoanApplication, Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
@@ -838,6 +839,8 @@ export default function BorrowerFile() {
                       </CardContent>
                     </Card>
                   </div>
+
+                  <ChangeOfCircumstancePanel applicationId={application.id} />
                 </TabsContent>
 
                 <TabsContent value="documents" className="space-y-4">

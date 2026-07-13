@@ -169,6 +169,13 @@
       "when": 1783593600018,
       "tag": "0023_avoids_interest_financing",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1783915531496,
+      "tag": "0025_change_of_circumstances",
+      "breakpoints": true
     }
   ]
 }

@@ -77,6 +77,15 @@ export interface StageDerivationInputs {
     notEvaluatedCount: number;
   };
   /**
+   * TRID change-of-circumstance state (Reg Z §1026.19(e)(3)(iv) / (e)(4)(i)).
+   * An OPEN record past its revised-LE due date is a redisclosure failure —
+   * the same hard-stop posture as an overdue original Loan Estimate.
+   */
+  changeOfCircumstance: {
+    openCount: number;
+    overdueRevisedLe: boolean;
+  };
+  /**
    * Income-analysis readiness (UAL P6). Only gates files that actually need
    * the income package — self-employment or a non-agency selected income path.
    * A clean wage-earner file is unaffected.
@@ -112,6 +121,18 @@ export function deriveSubmissionStages(inputs: StageDerivationInputs): Omit<Brok
   }
   if (!inputs.consents.eDisclosure) {
     intakeWarnings.push("No e-disclosure (ESIGN) consent on file — disclosures must go out on paper until captured");
+  }
+  // Change-of-circumstance redisclosure (Reg Z §1026.19(e)(4)(i)): an open
+  // record past its 3-business-day revised-LE deadline blocks submission —
+  // the same TRID posture as an overdue original LE above.
+  if (inputs.changeOfCircumstance.overdueRevisedLe) {
+    intakeBlockers.push(
+      "TRID: a changed circumstance requires a revised Loan Estimate and its 3-business-day deadline has passed (Reg Z §1026.19(e)(4)(i)) — deliver the revised LE before this file can go to a wholesale lender",
+    );
+  } else if (inputs.changeOfCircumstance.openCount > 0) {
+    intakeWarnings.push(
+      `${inputs.changeOfCircumstance.openCount} open change(s) of circumstance — the revised Loan Estimate is due within 3 business days of the establishing information`,
+    );
   }
   stages.push({
     key: "intake",
@@ -293,6 +314,10 @@ export async function evaluateBrokerSubmissionReadiness(applicationId: string): 
       lpaAssessed: !!(application.ausFindings as { lpa?: unknown } | null)?.lpa,
     },
     consents: { eDisclosure, antiSteering },
+    changeOfCircumstance: await (async () => {
+      const { getCocReadinessSummary } = await import("./changeOfCircumstance");
+      return getCocReadinessSummary(applicationId);
+    })(),
     deliveryEdits: {
       deliverable: delivery.edits.deliverable,
       fatalCount: delivery.edits.fatal.length,

@@ -15,6 +15,8 @@ import { calculateLLPA, getAreaMedianIncome } from "../pricing";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 import { assertStageRequirements } from "@shared/stageRequirements";
 import { tridHardStopError } from "../services/trid";
+import { z } from "zod";
+import { COC_REASON_TYPES } from "@shared/compliance/changeOfCircumstance";
 import * as creditService from "../services/creditService";
 import { updateConditionMetrics } from "../services/outcomeTracker";
 
@@ -1130,6 +1132,21 @@ export function registerUnderwritingRoutes(
         });
       }
 
+      // Revised-LE delivery (Reg Z §1026.19(e)(4)): the LE is regenerated from
+      // current file data on every fetch, so a borrower retrieval also
+      // satisfies any open change-of-circumstance redisclosures — same ESIGN
+      // electronic-delivery rationale as the leIssuedDate stamp above.
+      if (application.userId === req.user!.id) {
+        const { markRevisedLeDelivered } = await import("../services/changeOfCircumstance");
+        const stamped = await markRevisedLeDelivered(id);
+        if (stamped.length > 0) {
+          const { logAudit } = await import("../auditLog");
+          logAudit(req, "trid.revised_le_delivered", "loan_application", id, {
+            cocIds: stamped.map(c => c.id),
+          });
+        }
+      }
+
       const formatted = formatLoanEstimateForDisplay(le);
       res.json(formatted);
     } catch (error) {
@@ -1137,6 +1154,117 @@ export function registerUnderwritingRoutes(
       res.status(500).json({ error: "Failed to generate loan estimate" });
     }
   });
+
+  // --- TRID change of circumstance (Reg Z §1026.19(e)(3)(iv) / (e)(4)(i)) ---
+  // Staff record the changed circumstance; the 3-business-day revised-LE
+  // clock starts from when the establishing information was received. An
+  // open record past its due date blocks wholesale submission (readiness
+  // stage 1). Fee-tolerance impact stays manual review (counsel item §6).
+  const recordCocSchema = z.object({
+    reasonType: z.enum(COC_REASON_TYPES),
+    description: z.string().trim().min(1).max(2000),
+    /** ISO date/datetime when the establishing information was received; defaults to now; never in the future. */
+    informationReceivedAt: z.coerce.date().optional(),
+  });
+
+  app.get(
+    "/api/loan-applications/:id/change-of-circumstances",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        const rows = await storage.getChangeOfCircumstancesByApplication(id);
+        res.json(rows);
+      } catch (error) {
+        console.error("List change-of-circumstances error:", error);
+        res.status(500).json({ error: "Failed to list changes of circumstance" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/loan-applications/:id/change-of-circumstances",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const parsed = recordCocSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ error: "Invalid change-of-circumstance payload", details: parsed.error.flatten() });
+        }
+        const now = new Date();
+        const informationReceivedAt = parsed.data.informationReceivedAt ?? now;
+        if (informationReceivedAt.getTime() > now.getTime()) {
+          return res.status(400).json({ error: "informationReceivedAt cannot be in the future" });
+        }
+
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { recordChangeOfCircumstance } = await import("../services/changeOfCircumstance");
+        const coc = await recordChangeOfCircumstance(
+          id,
+          { reasonType: parsed.data.reasonType, description: parsed.data.description, informationReceivedAt },
+          req.user!.id,
+        );
+
+        const { logAudit } = await import("../auditLog");
+        logAudit(req, "trid.change_of_circumstance_recorded", "loan_application", id, {
+          cocId: coc.id,
+          reasonType: coc.reasonType,
+          revisedLeDueDate: coc.revisedLeDueDate,
+        });
+
+        res.status(201).json(coc);
+      } catch (error) {
+        console.error("Record change-of-circumstance error:", error);
+        res.status(500).json({ error: "Failed to record change of circumstance" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/change-of-circumstances/:cocId/void",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const voidSchema = z.object({ reason: z.string().trim().min(1).max(500) });
+        const parsed = voidSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ error: "A void reason is required", details: parsed.error.flatten() });
+        }
+        const { cocId } = req.params;
+        const coc = await storage.getChangeOfCircumstance(cocId);
+        if (!coc) {
+          return res.status(404).json({ error: "Change of circumstance not found" });
+        }
+        const application = await storage.getLoanApplicationWithAccess(coc.applicationId, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(403).json({ error: "Access denied to this application" });
+        }
+        const { voidChangeOfCircumstance } = await import("../services/changeOfCircumstance");
+        const updated = await voidChangeOfCircumstance(cocId, parsed.data.reason, req.user!.id);
+        if (!updated) {
+          return res.status(409).json({ error: "Only open changes of circumstance can be voided" });
+        }
+        const { logAudit } = await import("../auditLog");
+        logAudit(req, "trid.change_of_circumstance_voided", "loan_application", coc.applicationId, {
+          cocId,
+          reason: parsed.data.reason,
+        });
+        res.json(updated);
+      } catch (error) {
+        console.error("Void change-of-circumstance error:", error);
+        res.status(500).json({ error: "Failed to void change of circumstance" });
+      }
+    },
+  );
 
   app.get("/api/compliance/dashboard", isAuthenticated, async (req, res) => {
     try {
