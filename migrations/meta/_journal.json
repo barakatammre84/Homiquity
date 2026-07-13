@@ -183,6 +183,13 @@
       "when": 1783915531496,
       "tag": "0025_change_of_circumstances",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1783959681557,
+      "tag": "0026_household_property_fields",
+      "breakpoints": true
     }
   ]
 }
