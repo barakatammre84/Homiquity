@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -66,6 +68,8 @@ interface LenderSubmissionRow {
   confirmationId: string | null;
   simulated: boolean;
   submittedAt: string;
+  /** Rollup of loan_conditions rows linked to this submission (lender-issued). */
+  conditionStats?: { total: number; open: number; cleared: number };
 }
 
 const STAGE_ICON: Record<StageStatus, { icon: typeof CheckCircle2; className: string; label: string }> = {
@@ -84,6 +88,9 @@ export function SubmissionReadinessDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [lenderId, setLenderId] = useState<string>("");
+  // Which submission's "log lender conditions" form is expanded, if any.
+  const [logConditionsFor, setLogConditionsFor] = useState<string | null>(null);
+  const [conditionText, setConditionText] = useState("");
   const { toast } = useToast();
 
   const { data: readiness, isLoading } = useQuery<ReadinessReport>({
@@ -144,6 +151,47 @@ export function SubmissionReadinessDialog({
       toast({ title: "Automated underwriting could not run", description: error.message, variant: "destructive" });
     },
   });
+
+  // Staff transcribe lender-issued conditions (one per line) from the lender's
+  // portal; rows land in loan_conditions and are cleared in the existing
+  // conditions UI. Refreshes both the submission rollups and the conditions list.
+  const logConditionsMutation = useMutation({
+    mutationFn: async ({ submissionId, lines }: { submissionId: string; lines: string[] }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/loan-applications/${applicationId}/lender-submissions/${submissionId}/conditions`,
+        { conditions: lines.map(title => ({ title: title.slice(0, 255) })) },
+      );
+      return res.json();
+    },
+    onSuccess: (data: { conditions: unknown[] }) => {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/loan-applications/${applicationId}/lender-submissions`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/loan-applications/${applicationId}/conditions`],
+      });
+      setLogConditionsFor(null);
+      setConditionText("");
+      toast({
+        title: "Lender conditions logged",
+        description: `${data.conditions.length} condition(s) added to the file's conditions list for clearing.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not log conditions", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const submitLoggedConditions = (submissionId: string) => {
+    const lines = conditionText
+      .split("\n")
+      .map(l => l.trim())
+      .filter(Boolean)
+      .slice(0, 50);
+    if (lines.length === 0) return;
+    logConditionsMutation.mutate({ submissionId, lines });
+  };
 
   const lenderName = (id: string) => lenders?.find(l => l.id === id)?.name ?? id;
 
@@ -219,15 +267,75 @@ export function SubmissionReadinessDialog({
             {(submissions?.length ?? 0) > 0 && (
               <div className="rounded-md bg-muted/50 p-3 text-sm">
                 <p className="mb-1 font-medium">Submissions</p>
-                <ul className="space-y-1">
-                  {submissions!.map(s => (
-                    <li key={s.id} className="flex items-center justify-between gap-2">
-                      <span>{lenderName(s.lenderId)}</span>
-                      <span className="text-muted-foreground">
-                        {s.confirmationId} · {s.status.replace(/_/g, " ")}
-                      </span>
-                    </li>
-                  ))}
+                <ul className="space-y-2">
+                  {submissions!.map(s => {
+                    const stats = s.conditionStats ?? { total: 0, open: 0, cleared: 0 };
+                    return (
+                      <li key={s.id} className="space-y-1" data-testid={`submission-row-${s.id}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span>{lenderName(s.lenderId)}</span>
+                          <span className="text-muted-foreground">
+                            {s.confirmationId} · {s.status.replace(/_/g, " ")}
+                            {stats.total > 0 && ` · ${stats.open}/${stats.total} condition(s) open`}
+                          </span>
+                        </div>
+                        {s.status === "conditions_issued" && stats.total > 0 && stats.open === 0 && (
+                          <p className="text-xs text-success" data-testid={`conditions-cleared-hint-${s.id}`}>
+                            All logged conditions cleared — confirm with the lender, then advance the
+                            submission to conditions cleared.
+                          </p>
+                        )}
+                        {logConditionsFor === s.id ? (
+                          <div className="space-y-2">
+                            <Label htmlFor={`conditions-input-${s.id}`} className="text-xs">
+                              Lender conditions (one per line, as issued in the lender's portal)
+                            </Label>
+                            <Textarea
+                              id={`conditions-input-${s.id}`}
+                              rows={3}
+                              value={conditionText}
+                              onChange={e => setConditionText(e.target.value)}
+                              data-testid={`conditions-input-${s.id}`}
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => submitLoggedConditions(s.id)}
+                                disabled={logConditionsMutation.isPending || conditionText.trim().length === 0}
+                                data-testid={`save-conditions-${s.id}`}
+                              >
+                                {logConditionsMutation.isPending ? "Saving…" : "Save conditions"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setLogConditionsFor(null);
+                                  setConditionText("");
+                                }}
+                                data-testid={`cancel-conditions-${s.id}`}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => {
+                              setLogConditionsFor(s.id);
+                              setConditionText("");
+                            }}
+                            data-testid={`log-conditions-${s.id}`}
+                          >
+                            Log lender conditions
+                          </Button>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
