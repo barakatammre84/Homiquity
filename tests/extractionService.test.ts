@@ -4,7 +4,7 @@ import type { ExtractedTaxReturnData } from "../server/extractionService";
 
 /**
  * Unit tests for the tax-return cross-field consistency hardening. This runs in
- * the real Gemini path only (after schema validation), where it caps the model's
+ * the real model path only (after schema validation), where it caps the model's
  * self-reported confidence when our own arithmetic contradicts it — a garbled or
  * adversarial extraction must not present itself as high-confidence downstream.
  * The schema-validation and simulate paths are covered in taxInsight.test.ts;

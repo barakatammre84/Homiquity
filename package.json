@@ -34,7 +34,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
     "@google-cloud/storage": "^7.19.0",
-    "@google/genai": "^1.30.0",
     "@hookform/resolvers": "^3.10.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@neondatabase/serverless": "^0.10.4",

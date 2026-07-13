@@ -18,18 +18,18 @@ import {
  * Unit tests for the Situation Identification Engine's extraction contract
  * (UAL P2a): the untrusted-model-output schemas, the single-source field
  * catalog, and the deterministic simulated scenario the dev/test environment
- * runs on. Pure in-process — no HTTP server, no database, no Gemini.
+ * runs on. Pure in-process — no HTTP server, no database, no Anthropic.
  *
  * The simulate-path tests import server/extractionService dynamically AFTER
- * clearing the Gemini env vars, because the module captures its API key at
+ * clearing the Anthropic env vars, because the module captures its API key at
  * import time.
  */
 
 let svc: typeof import("../server/extractionService");
 
 beforeAll(async () => {
-  delete process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
-  delete process.env.GEMINI_API_KEY;
+  delete process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
   process.env.EXTRACTION_SIMULATE = "true";
   svc = await import("../server/extractionService");
 });
@@ -302,7 +302,7 @@ describe("buildSimulatedTaxScenario", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Adapter simulate paths (no Gemini key + EXTRACTION_SIMULATE=true)
+// Adapter simulate paths (no Anthropic key + EXTRACTION_SIMULATE=true)
 // ---------------------------------------------------------------------------
 
 describe("classifyTaxDocument (simulate path)", () => {
