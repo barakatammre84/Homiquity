@@ -67,6 +67,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 ### Logs — dated, immutable snapshots · [`logs/`](logs/)
 > Point-in-time records. Never rewritten; supersession goes in a top banner (TEAM_PRACTICES §2).
 - [logs/ux-audit/](logs/ux-audit/) — dated UX audit + design routine runs.
+- [logs/2026-07-12-external-strategy-adjudication.md](logs/2026-07-12-external-strategy-adjudication.md) — external L1 critique + broker-bottleneck memo adjudicated against code: verdicts, the AUS-gate fix, the Reg N binding correction, and what stays deliberately unbuilt.
 > The launch-era operational logs (founder-routines, lo-audit) and one-time platform assessments (2026-07-02 → 07-06) were archived 2026-07-08 — see the Archive section below.
 
 ### Research — scratch + strategy collateral · [`research/`](research/)
