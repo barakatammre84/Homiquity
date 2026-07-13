@@ -315,6 +315,9 @@ import {
   partnerWaitlist,
   bankStatementAnalyses,
   type BankStatementAnalysis,
+  changeOfCircumstances,
+  type ChangeOfCircumstance,
+  type InsertChangeOfCircumstance,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -925,6 +928,14 @@ export interface IStorage {
     count: number;
     atRisk: number;
   }[]>;
+
+  // TRID change of circumstance (Reg Z §1026.19(e)(3)(iv) / (e)(4)(i))
+  createChangeOfCircumstance(data: InsertChangeOfCircumstance): Promise<ChangeOfCircumstance>;
+  getChangeOfCircumstance(id: string): Promise<ChangeOfCircumstance | undefined>;
+  getChangeOfCircumstancesByApplication(applicationId: string): Promise<ChangeOfCircumstance[]>;
+  getOpenChangeOfCircumstances(applicationId: string): Promise<ChangeOfCircumstance[]>;
+  updateChangeOfCircumstance(id: string, data: Partial<ChangeOfCircumstance>): Promise<ChangeOfCircumstance | undefined>;
+  markChangeOfCircumstancesRedisclosed(ids: string[], deliveredAt: Date): Promise<ChangeOfCircumstance[]>;
 
   // Notifications
   createNotification(data: InsertNotification): Promise<Notification>;
@@ -5033,6 +5044,53 @@ export class DatabaseStorage implements IStorage {
   async createEquitySnapshot(data: InsertEquitySnapshot): Promise<EquitySnapshot> {
     const [snapshot] = await db.insert(equitySnapshots).values(data).returning();
     return snapshot;
+  }
+
+  // TRID change of circumstance (Reg Z §1026.19(e)(3)(iv) / (e)(4)(i))
+  async createChangeOfCircumstance(data: InsertChangeOfCircumstance): Promise<ChangeOfCircumstance> {
+    const [coc] = await db.insert(changeOfCircumstances).values(data).returning();
+    return coc;
+  }
+
+  async getChangeOfCircumstance(id: string): Promise<ChangeOfCircumstance | undefined> {
+    const [coc] = await db.select().from(changeOfCircumstances).where(eq(changeOfCircumstances.id, id)).limit(1);
+    return coc;
+  }
+
+  async getChangeOfCircumstancesByApplication(applicationId: string): Promise<ChangeOfCircumstance[]> {
+    return db
+      .select()
+      .from(changeOfCircumstances)
+      .where(eq(changeOfCircumstances.applicationId, applicationId))
+      .orderBy(desc(changeOfCircumstances.createdAt));
+  }
+
+  async getOpenChangeOfCircumstances(applicationId: string): Promise<ChangeOfCircumstance[]> {
+    return db
+      .select()
+      .from(changeOfCircumstances)
+      .where(and(eq(changeOfCircumstances.applicationId, applicationId), eq(changeOfCircumstances.status, "open")))
+      .orderBy(desc(changeOfCircumstances.createdAt));
+  }
+
+  async updateChangeOfCircumstance(id: string, data: Partial<ChangeOfCircumstance>): Promise<ChangeOfCircumstance | undefined> {
+    const { createdAt, updatedAt, id: cocId, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(changeOfCircumstances)
+      .set({ ...cleanData, updatedAt: new Date() })
+      .where(eq(changeOfCircumstances.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Single batched update (never update in a loop).
+  async markChangeOfCircumstancesRedisclosed(ids: string[], deliveredAt: Date): Promise<ChangeOfCircumstance[]> {
+    if (ids.length === 0) return [];
+    return db
+      .update(changeOfCircumstances)
+      .set({ status: "redisclosed", revisedLeDeliveredAt: deliveredAt, updatedAt: new Date() })
+      .where(inArray(changeOfCircumstances.id, ids))
+      .returning();
   }
 
   // Notifications

@@ -176,6 +176,13 @@
       "when": 1783914731911,
       "tag": "0024_lender_condition_link",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1783915531496,
+      "tag": "0025_change_of_circumstances",
+      "breakpoints": true
     }
   ]
 }

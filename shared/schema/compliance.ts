@@ -682,3 +682,48 @@ export const insertVerificationReportSchema = createInsertSchema(verificationRep
 });
 export type InsertVerificationReport = z.infer<typeof insertVerificationReportSchema>;
 export type VerificationReport = typeof verificationReports.$inferSelect;
+
+// =============================================================================
+// TRID CHANGE OF CIRCUMSTANCE (Reg Z §1026.19(e)(3)(iv) / §1026.19(e)(4))
+//
+// One row per recorded changed circumstance / revision event on a file. The
+// revised Loan Estimate must be provided within 3 business days of receiving
+// the information establishing the change (§1026.19(e)(4)(i)); the due date
+// is computed by server/services/changeOfCircumstance.ts and an overdue open
+// row blocks wholesale submission (broker readiness stage 1). Delivery is
+// stamped when the borrower next retrieves the (regenerated) LE — the same
+// ESIGN electronic-delivery mechanism as the original leIssuedDate stamp.
+// Reason ids come from shared/compliance/changeOfCircumstance.ts.
+// =============================================================================
+
+export const changeOfCircumstances = pgTable(
+  "change_of_circumstances",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+    /** One of COC_REASON_TYPES (§1026.19(e)(3)(iv)(A)–(F)). */
+    reasonType: varchar("reason_type", { length: 50 }).notNull(),
+    description: text("description").notNull(),
+    /** When the creditor received information sufficient to establish the change. */
+    informationReceivedAt: timestamp("information_received_at").notNull(),
+    /** informationReceivedAt + 3 business days (§1026.19(e)(4)(i)). */
+    revisedLeDueDate: timestamp("revised_le_due_date").notNull(),
+    /** Stamped on the borrower's first LE retrieval after the record was opened. */
+    revisedLeDeliveredAt: timestamp("revised_le_delivered_at"),
+    /** open | redisclosed | voided (COC_STATUSES). */
+    status: varchar("status", { length: 20 }).notNull().default("open"),
+    createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
+    voidReason: text("void_reason"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
+  },
+  (table) => [index("change_of_circumstances_app_idx").on(table.applicationId, table.status)],
+);
+
+export const insertChangeOfCircumstanceSchema = createInsertSchema(changeOfCircumstances).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertChangeOfCircumstance = z.infer<typeof insertChangeOfCircumstanceSchema>;
+export type ChangeOfCircumstance = typeof changeOfCircumstances.$inferSelect;

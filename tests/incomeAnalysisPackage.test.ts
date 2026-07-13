@@ -167,6 +167,7 @@ function cleanStage(over: Partial<StageDerivationInputs> = {}): StageDerivationI
     uldd: { valid: true, errors: [], warnings: [] },
     aus: { casefileId: "CF-1", recommendation: "Approve/Eligible", lpaAssessed: true },
     consents: { eDisclosure: true, antiSteering: true },
+    changeOfCircumstance: { openCount: 0, overdueRevisedLe: false },
     deliveryEdits: { deliverable: true, fatalCount: 0, warningCount: 0, notEvaluatedCount: 0 },
     incomeAnalysis: { requiresIncomePackage: false, hasCurrentEvaluation: false, openFlaggedReviewItems: 0 },
     ...over,
