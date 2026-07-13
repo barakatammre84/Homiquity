@@ -128,6 +128,18 @@ const extractionLimiter = rateLimit({
   message: { error: "Too many document extraction requests, please try again later" },
 });
 
+// Paid-LLM chat endpoints (AI Coach). Same cost-DoS rationale as extraction:
+// every message invokes a paid model. The per-user 30/day cap in the route is
+// the primary ceiling; this per-IP limiter blunts bursts and scripted abuse.
+const aiCoachLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many coach messages, please try again in a few minutes" },
+  skip: () => isRateLimitRelaxed(),
+});
+
 // Unauthenticated proxies to paid third-party APIs (Google geocoding, live
 // property/listing data vendors). Tighter than the general limiter because
 // each request is billable and requires no login — a cheap cost-DoS vector.
@@ -164,6 +176,8 @@ app.use("/api/documents/extract-tax-return", extractionLimiter);
 app.use("/api/documents/extract-paystub", extractionLimiter);
 app.use("/api/documents/extract-bank-statement", extractionLimiter);
 app.use("/api/calculators/extract-lease", extractionLimiter);
+// Prefix mount covers both /api/coach/message and /api/coach/message/stream.
+app.use("/api/coach/message", aiCoachLimiter);
 app.use("/api/geocode", vendorProxyLimiter);
 app.use("/api/properties/auto-complete", vendorProxyLimiter);
 app.use("/api/properties/search-live", vendorProxyLimiter);

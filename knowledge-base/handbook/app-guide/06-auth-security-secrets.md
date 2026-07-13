@@ -142,7 +142,7 @@ app won't boot or a core feature dies without it.
 | Variable | Feature |
 |----------|---------|
 | `GEMINI_API_KEY` (or `AI_INTEGRATIONS_GEMINI_API_KEY`) | Document AI extraction |
-| `AI_INTEGRATIONS_OPENAI_API_KEY` / `AI_INTEGRATIONS_OPENAI_BASE_URL` | AI Coach |
+| `ANTHROPIC_API_KEY` | AI Coach (Claude Sonnet 5; labeled offline-guidance mode without it) |
 | `EXTRACTION_SIMULATE` | Set `true` to run deterministic simulated extraction with no Gemini key (dev/test) |
 | `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` | Income/employment/asset verification |
 | `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` | Document storage (GCS) |

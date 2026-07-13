@@ -188,9 +188,14 @@ describe("TRID (Reg Z §1026.19): the LE clock is triggered, business-day based,
   it("only the trid service writes tridTriggeredAt", () => {
     const trid = read("server/services/trid.ts");
     expect(trid).toMatch(/updateLoanApplication\([^)]*tridTriggeredAt/s);
-    for (const route of ["server/routes/lending.ts", "server/routes/borrower.ts", "server/routes/underwriting.ts"]) {
+    for (const route of ["server/routes/lending.ts", "server/routes/borrower.ts", "server/routes/underwriting.ts", "server/services/coachProfileSync.ts"]) {
       expect(read(route)).not.toMatch(/tridTriggeredAt\s*:/);
     }
+  });
+
+  it("the AI-coach intake writeback evaluates the trigger too (it can supply the last of the six items)", () => {
+    const sync = read("server/services/coachProfileSync.ts");
+    expect(sync).toMatch(/evaluateTridTrigger\(/);
   });
 
   it("LE timing math is business-day based — never calendar setDate arithmetic", () => {
@@ -270,6 +275,29 @@ describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice"
     expect(email).not.toMatch(/unable to issue/i);
     expect(email).not.toMatch(/we're unable|not approved|has been denied/i);
     expect(email).toMatch(/There's an update on your mortgage application/);
+  });
+});
+
+describe("Reg N / UDAAP: borrower-facing AI coach output rides the deterministic lint rail", () => {
+  it("coach replies pass through the shared loCommsLint hard-block filter before display/persistence", () => {
+    const svc = read("server/services/coachingService.ts");
+    expect(svc).toMatch(/from\s+["']@shared\/compliance\/loCommsLint["']/);
+    expect(svc).toContain("hardBlockMatches");
+    expect(svc).toContain("COACH_LINT_SAFE_MESSAGE");
+  });
+
+  it("the coach writeback keeps chat data self_reported — it never touches provenance or verification flags", () => {
+    const sync = read("server/services/coachProfileSync.ts");
+    expect(sync).not.toMatch(/financialDataProvenance\s*:/);
+    expect(sync).not.toMatch(/(incomeVerified|assetsVerified|creditVerified)\s*:\s*true/);
+    expect(sync).not.toMatch(/status\s*:\s*"(?!draft)/);
+  });
+
+  it("every coach model call lands in the ai_interactions governance log", () => {
+    const svc = read("server/services/coachingService.ts");
+    expect(svc).toContain("logAiInteraction");
+    expect(svc).toMatch(/workflow:\s*"ai_coach"/);
+    expect(svc).toMatch(/provider:\s*"claude"/);
   });
 });
 
