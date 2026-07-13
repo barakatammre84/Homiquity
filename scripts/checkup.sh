@@ -50,6 +50,7 @@ check "unit tests"                    pnpm test --silent
 check "production build"              pnpm build --silent
 check "dependency vulnerabilities"    pnpm audit --audit-level=moderate
 check "no orphaned files"             node scripts/orphan-scan.cjs
+check "schema ↔ migrations synced"    node scripts/schema-migration-guard.cjs
 check "design tokens (no raw colors)" node scripts/design-token-guard.cjs
 check "knowledge base indexed"        node scripts/kb-index-guard.cjs
 check "regulatory ledger fresh"       node scripts/regulatory-freshness.cjs

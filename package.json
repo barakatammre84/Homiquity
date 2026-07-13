@@ -27,6 +27,7 @@
     "db:push": "drizzle-kit push",
     "data:hmda": "tsx server/scripts/ingestHmdaCompetitors.ts",
     "data:fannie": "tsx server/scripts/ingestFannieMaePerformance.ts",
+    "guard:schema": "node scripts/schema-migration-guard.cjs",
     "db:start": "docker start homiquity-db 2>/dev/null || docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16",
     "sync": "git pull --no-edit origin main && git push origin main",
     "save": "git add -A && git commit -m \"checkpoint: $(date '+%Y-%m-%d %H:%M')\" && npm run sync"
