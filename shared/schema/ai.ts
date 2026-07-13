@@ -22,10 +22,16 @@ import { loanApplications } from "./lending";
 //   internal_only                    → checklists, summaries, staff guidance
 //   borrower_facing_review_required  → must be approved by a licensed LO/compliance before sending
 //   borrower_facing_approved_template → template where the model only swapped variables
+//   borrower_facing_guardrailed      → real-time borrower chat where pre-send human review is
+//                                      impossible; shown only after passing the deterministic
+//                                      compliance rails (loCommsLint hard-block post-filter +
+//                                      prompt-level prohibitions). Added for the AI Coach
+//                                      (MODEL_RISK_GOVERNANCE.md M-5).
 export const AI_OUTPUT_CLASSIFICATIONS = [
   "internal_only",
   "borrower_facing_review_required",
   "borrower_facing_approved_template",
+  "borrower_facing_guardrailed",
 ] as const;
 
 export const aiInteractions = pgTable(

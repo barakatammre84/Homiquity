@@ -32,6 +32,7 @@
     "save": "git add -A && git commit -m \"checkpoint: $(date '+%Y-%m-%d %H:%M')\" && npm run sync"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@google-cloud/storage": "^7.19.0",
     "@google/genai": "^1.30.0",
     "@hookform/resolvers": "^3.10.0",
@@ -75,7 +76,6 @@
     "lucide-react": "^0.453.0",
     "multer": "^2.0.2",
     "nodemailer": "^9.0.3",
-    "openai": "^6.21.0",
     "passport": "^0.7.0",
     "pdfkit": "^0.17.2",
     "pg": "^8.13.1",
