@@ -1,6 +1,6 @@
 # LO Advisor Program — Charter & Build Prompts (L3 program spec)
 
-**Status:** approved · **Owner:** Amr (founder/PM) · **Roadmap:** extends the LO Command Center line (PR #33 → Rate-Lock Desk PR #99) and consumes the UAL income engine (PR #108); CTO_ROADMAP entry to be added on adoption · **Last updated:** 2026-07-11
+**Status:** in flight — **LO-1 merged (#133)**, **LO-2 merged (#114**, migration `0020`), **LO-5 merged (#124)**; **next: LO-3 Advisor Report** (deps satisfied); LO-4 + LO-6 open · **Owner:** Amr (founder/PM) · **Roadmap:** tracked in CTO_ROADMAP "Active program tracks"; extends the LO Command Center line (PR #33 → Rate-Lock Desk PR #99) and consumes the UAL income engine (#108, merged) · **Last updated:** 2026-07-12
 
 > This is a *program* spec: six sequenced build prompts, each of which becomes its own
 > one-page L3 spec (copy [`_TEMPLATE.md`](_TEMPLATE.md)) when a team member claims it. It
@@ -70,11 +70,11 @@ Recorded so no prompt reinvents an engine. **Code wins over this table on any st
 
 | Capability | Where it lives today | State |
 |---|---|---|
-| Pipeline queue + Rate-Lock Desk | [`client/src/pages/staff/LoCommandCenter.tsx`](../../client/src/pages/staff/LoCommandCenter.tsx) (PR #33, #99) | Live; two queries (pipeline, expiring locks) |
+| Pipeline queue + Rate-Lock Desk | [`client/src/pages/staff/LoCommandCenter.tsx`](../../client/src/pages/staff/LoCommandCenter.tsx) (PR #33, #99) | Live — superseded by the LO-1 three-pane rewrite (#133) |
 | Prioritized "who needs attention" feed | [`server/services/signalEngine.ts`](../../server/services/signalEngine.ts) | Built; **not wired into the cockpit** |
-| Borrower 360 | [`client/src/pages/staff/BorrowerFile.tsx`](../../client/src/pages/staff/BorrowerFile.tsx) + PR #108 Tax Intel tab / SituationProfile / review workbench | Built (108 pending merge) |
+| Borrower 360 | [`client/src/pages/staff/BorrowerFile.tsx`](../../client/src/pages/staff/BorrowerFile.tsx) + PR #108 Tax Intel tab / SituationProfile / review workbench | Built (#108 merged 2026-07-11) |
 | Multi-lender pricing w/ LLPA, lock-term, fees, eligibility | [`server/services/pricingAdapter.ts`](../../server/services/pricingAdapter.ts) + rate-sheets routes + `PricingMatrices.tsx` | Built; simulated sheets (I10) |
-| Multi-path qualifying income | UAL orchestrator + `income_path_evaluations` (PR #108) | Pending merge — hard dependency |
+| Multi-path qualifying income | UAL orchestrator + `income_path_evaluations` (PR #108) | Merged 2026-07-11 — dependency satisfied |
 | APR (Appendix J) / LE cost structure / TRID clocks | [`server/services/apr.ts`](../../server/services/apr.ts), [`loanEstimate.ts`](../../server/services/loanEstimate.ts), [`trid.ts`](../../server/services/trid.ts) | Built |
 | Pre-approval letters / PDF generation | [`server/services/pdfLetterGenerator.ts`](../../server/services/pdfLetterGenerator.ts), `PreApproval.tsx` | Built |
 | Rate-lock expiry alerts (cron) | [`server/services/rateLockAlerts.ts`](../../server/services/rateLockAlerts.ts) (PR #99) | Live |
@@ -110,7 +110,7 @@ Record them so nobody rebuilds them by accident; each lists its reopen gate:
 Recommended order: **LO-2 → LO-1 → LO-5 → LO-3 → LO-4 → LO-6.** The simulator is the
 centerpiece and everything client-facing hangs off its audit trail; the lint is cheap
 protection wanted before any new outbound surface; LO-3 waits on the lender-masking fix and
-the licensing gate; LO-4's best signals need PR #108 merged.
+the licensing gate; LO-4's best signals need the #108 income engine (merged 2026-07-11).
 
 ### LO-0 — Program framing (directive to: everyone)
 
@@ -260,12 +260,13 @@ validations.
 ## 7. Sequencing, dependencies, risks & escalations
 
 **Dependencies (hard):**
-- **PR #108 (UAL income engine) merges first.** LO-1 embeds its surfaces; LO-2 reads its
-  orchestrator; LO-4's best signals are its events. Building against pre-108 main creates
-  guaranteed conflicts. Migration numbers: 0014–0019 claimed by #108; this program claims at
-  build time (expect 0020+), checking live worktrees for collisions first.
-- **Lender-masking fix** (task `task_fc63d240`, running separately) lands before LO-3 ships
-  anything borrower-visible.
+- **PR #108 (UAL income engine) merges first** — *satisfied 2026-07-11 (merged).* LO-1 embeds its
+  surfaces; LO-2 reads its orchestrator; LO-4's best signals are its events. Migration numbers:
+  0014–0019 claimed by #108; LO-2 claimed `0020`; next free number per the cross-program ledger —
+  re-check at PR time.
+- **Lender-masking fix** — *satisfied 2026-07-11 (merged as #120, `shared/borrowerOfferView.ts`
+  whitelist mapper — reuse it for any borrower-facing offer surface).* Was the LO-3 blocker;
+  LO-3's remaining gate is licensure (I9).
 - **PPE contract** (Lender Price + Mortech — founder) converts LO-2/LO-4 from simulated to
   live rate data; until then I10's `simulated` discipline applies everywhere.
 

@@ -18,8 +18,8 @@ to the SPA.
 
 Each file in [`server/routes/`](../../../server/routes/) registers one domain in
 `registerRoutes()` ([`server/routes.ts`](../../../server/routes.ts)). Endpoint
-counts give you a sense of surface area (~490 total across 34 route files; counts are
-approximate — grep a file to confirm):
+counts give you a sense of surface area (~523 total across 41 route files, 2026-07-12
+recount; counts are approximate — grep a file to confirm):
 
 | File | ~Endpoints | Domain |
 |------|-----------:|--------|
@@ -37,7 +37,9 @@ approximate — grep a file to confirm):
 | `property.ts` | 12 | Properties CRUD, affordability analysis |
 | `optimizations.ts` | 12 | Optimization engine (recommendations) |
 | `underwriting-rules.ts` | 10 | Rules DSL CRUD/testing |
+| `partners.ts` | 10 | PartnerHub (PH-1/PH-2): realtor registration + admin approval queue, unified attribution, masked partner pipeline behind borrower consent |
 | `coach.ts` | 8 | AI coach conversations |
+| `taxIntelligence.ts` | 8 | UAL income engine (P2–P6): situation profile, income-path evaluations, review workbench, income analysis package |
 | `aus.ts` | 2 | GSE/AUS orchestration: Plaid asset webhook -> verification_reports; DU casefile submit -> Day 1 Certainty + commitment letter |
 | `documents.ts` | 7 | Upload URL issuance, document metadata, extraction triggers |
 | `lookup-matrix.ts` | 6 | Lookup grid management |
@@ -50,10 +52,14 @@ approximate — grep a file to confirm):
 | `cpaPartners.ts` | 6 | CPA partner portal: self-registration, referral-code validate/apply, partner self-view (inviter-only) |
 | `leads.ts` | 4 | Public lead intake (`POST /api/leads`, TrustedForm-gated + rate-limited) + staff list/detail + admin delete |
 | `market-data.ts` | 3 | Market-data moat: competitor benchmark, undercut quote, risk profile |
+| `seo.ts` | 3 | SEO engine: DB-driven sitemap, bot head-injection/meta, JSON-LD (#91) |
 | `taxInsights.ts` | 2 | Tax Return Insight pipeline: consumer-direct upload → readiness signals |
+| `cockpit.ts` | 2 | LO Command Center (LO-1): `/api/staff/signals` feed + per-application cockpit hydration |
 | `webhooks.ts` | 1 | Inbound provider webhooks (SMS STOP/opt-out; provider-agnostic) |
 | `monitoring.ts` | 1 | Client error intake (`/api/client-errors`) → server-side Sentry reporter |
 | `shell.ts` | 1 | Consolidated badge counts for the authenticated app shell |
+| `scenarios.ts` | 1 | LO-2 What-If Scenario Simulator: deterministic scenario runs (`scenario_runs`) |
+| `comms.ts` | 1 | LO-5 comms compliance lint (deterministic Reg Z/Reg N lexicon) |
 
 To enumerate a domain's exact endpoints, grep it:
 

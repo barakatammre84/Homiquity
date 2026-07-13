@@ -1,5 +1,11 @@
 # UX Implementation Roadmap — prioritized backlog
 
+> ⚠️ **Dated snapshot — largely executed (banner added 2026-07-12).** Much of this backlog
+> shipped via #93/#95 (repaint + QueryBoundary), #112 (token guard ratchet), #131 (PageShell,
+> ux-03 closed) and the roadmap #23 accessibility pass. Treat unchecked items here as
+> candidates to re-verify, not as a live queue — the live queue is `CTO_ROADMAP.md` and the
+> feature-review `FINDINGS.md` register (ux-01/ux-02/ux-04/ux-05 remain open).
+
 Effort: S ≤ half day · M ≈ 1 day · L ≈ 2–3 days. Order within a tier matters.
 Redesign items follow the house rule: **one route/component per commit, no logic changes.**
 

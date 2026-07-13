@@ -14,19 +14,27 @@ is expected locally; an unhandled error is a finding.
 > analytics feedback loop, etc.) are lower-priority and scripted on demand. The **Wiring** column
 > records the audit verdict so the verifier knows which flows it can prove live vs which are
 > broken (a broken flow is a finding to confirm, not a "verification").
+>
+> **Update 2026-07-12:** the money-path merge train (#135–#139) closed the wiring gaps — the
+> AUS leg has a UI trigger (F-003), adverse-action generation is a blocking chokepoint on the
+> deny seam (F-004), and the `loanOutcomes` writers are wired (F-002). Both former
+> broken-from-UI flows are now wired; the F-018/F-019 P0 export bugs are fixed (residual
+> XSD conformance = roadmap L6-fix). The founder walkthrough recorded in
+> [BETA_GO_LIVE_READINESS.md](../runbooks/BETA_GO_LIVE_READINESS.md) §1 stands as the first
+> live run of workflows 2, 4 and 5 (and most of 1).
 
 Status ledger:
 
 | # | Workflow | Wiring (audit) | Last run | Verdict |
 |---|---|---|---|---|
-| 1 | Pre-approval / instant decision | FULLY (via cascade, N-002) | — | not yet run |
-| 2 | Intake → AUS → lender package → wholesale submission | PARTIAL — AUS leg broken-from-UI (F-003); wholesale submission wired | — | not yet run |
-| 3 | GSE loan-delivery readiness | FULLY — **but 2 P0 export bugs (F-018/F-019)** | — | not yet run |
-| 4 | Document upload → extraction → qualification | FULLY | — | not yet run |
-| 5 | Credit consent → pull → denial → adverse action | PARTIAL — adverse-action *generation* has no UI trigger (F-004) | — | not yet run |
+| 1 | Pre-approval / instant decision | FULLY (via cascade, N-002) | 2026-07-12 founder walkthrough (#139) — funnel + dashboard legs only | ✅ partial (LE/APR + letter steps not yet driven by a verifier) |
+| 2 | Intake → AUS → lender package → wholesale submission | FULLY — AUS UI trigger + re-wired Submit-to-lender shipped in #135 (was PARTIAL, F-003) | 2026-07-12 founder walkthrough (#139) | ✅ pass (incl. claim/handoff + DU/LPA + hashed MISMO package) |
+| 3 | GSE loan-delivery readiness | FULLY — F-018/F-019 fixed; remaining XSD baseline tracked as L6-fix/U-1 | — | not yet run |
+| 4 | Document upload → extraction → qualification | FULLY | 2026-07-12 founder walkthrough (#139) | ✅ pass (presigned-only, magic-byte check, cross-borrower 403) |
+| 5 | Credit consent → pull → denial → adverse action | FULLY — generation is a blocking deny-seam chokepoint (was PARTIAL, F-004) | 2026-07-12 founder walkthrough (#139) | ✅ pass (never auto-denies; denial blocked without a compliant notice) |
 | 6 | Verification-driven provenance promotion | FULLY (via cascade) | — | not yet run |
 | 7 | Lifecycle / evergreen re-engagement | PARTIAL — lifecycle sweep is cron-only | — | not yet run |
-| + | Analytics feedback loop (outcomes → predictive) | **BROKEN — `loanOutcomes` never written (F-002)** | — | not yet run |
+| + | Analytics feedback loop (outcomes → predictive) | WIRED — `loanOutcomes` writers wired in #136 (was BROKEN, F-002) | — | not yet run |
 
 > **Before first run:** the verifier expands each outline below into exact route + payload
 > steps by reading the client code (the UI's actual requests are the spec) and records the
@@ -122,5 +130,6 @@ Status ledger:
 ## Baseline
 
 Alongside workflow runs, `npm run test:integration` (73 tests as of 07-04) runs against the
-same server as a regression baseline; failures are findings unless already known
-(`lenderSubmission` determinism flake is known/pre-existing).
+same server as a regression baseline; failures are findings. *(The formerly-known
+`lenderSubmission` determinism flake was fixed via an injectable generation clock —
+`d5b8b54`, finding F-005 closed — so it is no longer an expected failure.)*

@@ -17,5 +17,5 @@ Fast-start router. **Authoritative reference:** [`kb/L2_COMPLIANCE_AND_LOGIC.md`
 ## Where it lives
 - **Persona LPs:** `client/src/pages/public/{Refinance,VALoans,SelfEmployed,FirstTimeBuyer,ApprovalStrength,AffordabilityCheck}.tsx` (wordmark-only, no global nav).
 - **Education / blog:** `client/src/pages/education/` (LearningCenter, ArticleDetail, Glossary, DownPaymentWizard, FAQ, Resources).
-- **SEO infra:** `client/src/components/SEOHead.tsx` (per-page meta), `client/public/sitemap.xml`.
+- **SEO infra:** `client/src/components/SEOHead.tsx` (per-page meta); sitemap is **DB-driven** via `server/routes/seo.ts` (#91 — there is no static `client/public/sitemap.xml`); bot head-injection + JSON-LD live in the same route family. Gotcha: `vercel.json` rewrites need the BARE `/api` destination.
 - **Data moat (content backing):** [`kb/specs/FREE_DATA_MOAT.md`](../../../knowledge-base/specs/FREE_DATA_MOAT.md).

@@ -86,6 +86,13 @@ just supporting detail.
 - `server/services/pdfLetterGenerator.ts` + `loanEstimate.ts` — branded PDFs.
 - `server/services/taskEngine.ts` — rules-driven staff task creation
   (assignments, SLAs) surfacing in the Staff Dashboard pipeline.
+- **LO handoff & claim (added #135, 2026-07-12):** a submitted application with no
+  assigned LO lands in the LO Command Center's **intake pool**; an LO/LOA claims it
+  via `POST /api/loan-applications/:applicationId/claim`
+  (`server/routes/underwriting.ts`), which routes through the single
+  `assignLoanOfficer` chokepoint in `server/storage.ts` (atomic claim +
+  deal-team visibility). The cockpit reads `server/routes/cockpit.ts`
+  (`/api/staff/signals`, `/api/staff/applications/:id/cockpit`).
 - `server/services/emailService.ts` — notifications (console-logged until an
   SMTP/SendGrid provider is configured).
 

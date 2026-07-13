@@ -22,6 +22,10 @@ returns 404 in prod; 503 if `DEV_TEST_PASSWORD` is unset).
 | renter@test.com | `aspiring_owner` | Incubator surface (RenterHome) |
 | buyer@test.com | `active_buyer` | Borrower engine (Dashboard) — integration tests use this account |
 
+> Note (2026-07-12): the `realtor` partner role (PartnerHub PH-1, #121) deliberately has **no
+> fixture account** — realtor accounts are created through the PH-1 registration + admin
+> approval queue, which is itself part of what needs testing.
+
 ## Usage
 
 UI: navigate to `/test-login` for one-click login buttons.

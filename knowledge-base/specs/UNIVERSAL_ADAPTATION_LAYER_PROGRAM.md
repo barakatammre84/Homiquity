@@ -1,6 +1,6 @@
 # Universal Adaptation Layer — Program Charter & Build Prompts (L3 program spec)
 
-**Status:** approved · **Owner:** Amr (founder/PM) · **Roadmap:** extends the SE-income beachhead (the active launch-priority program); CTO_ROADMAP entry to be added on adoption · **Last updated:** 2026-07-11
+**Status:** executed — **P1–P7 all merged** (P1 = #103; P2–P6 = #108; P7 halal lane = #126; prod migrations `0013`–`0019` + `0023` applied). Remaining: the **P7 channel gates** — two founder calls (Ijara-CDC / CMG ecosystem) + the §5 counsel review before any halal-lane marketing; until then the lane stays funder-agnostic math only · **Owner:** Amr (founder/PM) · **Roadmap:** tracked in CTO_ROADMAP "Active program tracks"; extended the SE-income beachhead · **Last updated:** 2026-07-12
 
 > This is a *program* spec: eight sequenced build prompts, each of which becomes its own
 > one-page L3 spec (copy [`_TEMPLATE.md`](_TEMPLATE.md)) when a team member claims it. It

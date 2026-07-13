@@ -57,6 +57,11 @@ Ship with `pnpm save` (commit-all + pull + push) or plain `git push`.
   change is destructive. Full recipe: [03-database.md](./03-database.md); ledger it
   in [CICD.md](../../runbooks/CICD.md).
 - **Seeding**: happens automatically at boot, idempotent (existence-checked).
+- **Scheduled jobs** (`vercel.json` crons, authenticated via `CRON_SECRET`; each also
+  admin-triggerable): `/api/jobs/lifecycle` daily 13:00 UTC (refi/equity scans, graduation) ·
+  `/api/jobs/rate-lock-alerts` daily 12:00 (expiring-lock sweep, #99) ·
+  `/api/jobs/adverse-action-delivery` daily 14:00 (ECOA 30-day watchdog) ·
+  `/api/jobs/aggregate-data` Mondays 11:17 (anonymized cohort aggregation, OPT-9).
 
 ## Serverless caveats (accepted trade-offs, revisit as traffic grows)
 

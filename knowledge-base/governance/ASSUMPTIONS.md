@@ -8,8 +8,11 @@ date in the same commit. If you find a claim here that the code contradicts, the
 fix this file.
 
 Last full verification pass: **2026-07-04** (source-of-truth audit). Spot-updated **2026-07-08**
-for migration HEAD (`0011`) and the pre-license gated-launch state; entries still dated
-`2026-07-04` were not re-verified in the spot-update — trust the
+for migration HEAD and the pre-license gated-launch state, and **2026-07-12** (docs-hygiene pass)
+for: prod migration HEAD now **`0023`** (0000–0023 applied), the gated-beta money path (intake →
+LO claim → DU/LPA → wholesale package) verified live and deployed (#135–#139 — see
+[BETA_GO_LIVE_READINESS.md](../runbooks/BETA_GO_LIVE_READINESS.md)), and the CI-branch
+correction in §2. Entries still dated `2026-07-04` were not re-verified — trust the
 [CICD.md](../runbooks/CICD.md) production change ledger and [CTO_ROADMAP.md](../../CTO_ROADMAP.md)
 for anything that has moved since.
 
@@ -24,7 +27,7 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 | Capability | Reality | Where |
 |---|---|---|
 | Credit pulls (tri-bureau, scores, debt ledger) | Simulated; the adapter **deliberately throws** if a real key is set before a real implementation exists | `server/mcp/vendors.ts` (F3) |
-| DU (Fannie) AUS submission | Simulated response, DU-12.1-shaped | `server/services/ausSubmission.ts` (F6) |
+| DU (Fannie) AUS submission | Simulated response, DU-12.1-shaped — the Run-DU/LPA **UI trigger** + XSD-conformance recording are wired (#135); the vendor leg stays simulated | `server/services/ausSubmission.ts` (F6) |
 | LPA (Freddie) AUS leg | Simulated (dual-AUS strategy decided 2026-07-04) | `server/services/ausSubmission.ts` (F6) |
 | Asset/income verification (Plaid, Truv) | Wiring + webhooks exist; no production keys | `server/plaid.ts` (F4, F5) |
 | Property valuation (AVM) | Simulated; realty-us/RealEstimate live endpoints exist but `RAPIDAPI_KEY` is Vercel-only (503 locally) | `server/services/rateService.ts`, property services (F7) |
@@ -40,7 +43,7 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 | "The app sends email" | **False in prod.** Code is complete (SendGrid + SMTP fallback) but no `SENDGRID_API_KEY` in Vercel → emails log to console | LS-2 |
 | "Production errors are visible" | **False.** Sentry-style reporter built, no-op until `SENTRY_DSN` is set; no uptime monitor | LS-2 |
 | "Uploaded documents persist in prod" | **False until LS-2.** Code side done (merged 2026-07-04, PR #44): the multer disk path is deleted, presigned-URL flow is the only path, and `request-url` returns a deliberate 503 `UPLOADS_UNCONFIGURED` until storage exists. Remaining = GCS bucket + credentials in Vercel, then the prod acceptance test | LS-2 |
-| "CI runs on every push" | **False on `main`.** `.github/` does not exist on `main`. A finished `ci.yml` exists on local branch `claude/inspiring-faraday-86b6b2` (commit `4fa08ad`) but the automation token lacks `workflow` scope — **a human must push it**. Until then all checks are manual (`npm run check`, `npm test`) | Roadmap #5 |
+| "CI runs on every push" | **False on `main`.** `.github/` does not exist on `main`. *(Corrected 2026-07-12: the standby branches that carried the finished `ci.yml` — commit `4fa08ad` — were deleted in the 07-11 branch cleanup; the workflow must be **re-created**, and the automation token still lacks `workflow` scope, so **a human must push it**.)* Until then all checks are manual (`pnpm check`, `pnpm test`) | Roadmap #5 |
 | "Live mortgage rates" | Real vendor (realty-us RapidAPI) but key exists only in Vercel; local/dev sees simulated survey | — |
 
 ## 3. Uncited policy values — live code, unverified provenance
@@ -66,17 +69,19 @@ items; the "no citation → not implemented" contract in kb/UNDERWRITING_SCENARI
 - Encryption **fails closed in production**: startup refuses to boot without
   `CREDIT_ENCRYPTION_KEY`; SSNs go through `ssnVault.ts`. The Feb-2026
   INFRASTRUCTURE_RISKS findings are resolved (doc archived).
-- Migrations `0000`–`0011` are versioned SQL on `main` and applied to prod — prod HEAD
-  confirmed `0011` (12/12 `drizzle.__drizzle_migrations` rows) on **2026-07-08**; `0009`–`0011`
-  (lender package, tax_insights, cpa_partners) were applied via the Neon-pooler raw-`pg`
-  workaround (see [CICD.md](../runbooks/CICD.md) ledger).
+- Migrations `0000`–`0023` are versioned SQL on `main` and applied to prod — prod HEAD
+  confirmed **`0023`** on **2026-07-11** (`0013`–`0023`: income engine, scenario_runs, partner
+  spine/consents, halal lane — applied via the Neon-pooler raw-`pg` workaround; per-wave rows in
+  the [CICD.md](../runbooks/CICD.md) ledger). After any main merge, diff
+  `drizzle.__drizzle_migrations` against the journal — migrations slip silently.
 - The public site deploys in **pre-license gated mode**: `server/services/prelaunchGate.ts`
   fail-safes to gated in prod while the company NMLS id is `PENDING`, so a stranger sees only
   educational content + a waitlist. The full commercial funnel is built and behind the flag
   (roadmap armed-launch state).
-- Dev test login: **11 role accounts** (one per role, incl. `cpa`), single shared
-  `DEV_TEST_PASSWORD` env var, endpoint 404s in production. No credentials live in the repo
-  (TEST_ACCOUNTS.md matches `setupDevTestLogin`).
+- Dev test login: **11 fixture accounts**, single shared `DEV_TEST_PASSWORD` env var, endpoint
+  404s in production. No credentials live in the repo (TEST_ACCOUNTS.md matches
+  `setupDevTestLogin`). Note (2026-07-12): the `realtor` partner role added by PH-1 has **no
+  fixture** — realtor accounts come from the PH-1 registration/admin-queue path.
 - Dark mode is **unreachable by users** (no ThemeProvider/toggle) — decided unsupported
   (roadmap #21).
 - The underwriting engine is deterministic with no vendor calls inside it

@@ -15,36 +15,31 @@ re-discovered on re-runs.
 
 ## Open findings
 
+> Status pass 2026-07-12 (docs-hygiene session): nine findings verified fixed in code and
+> moved to **Closed** below (F-002/003/004/005/007/018/019/025, ux-03); every remaining row
+> below was re-confirmed still-open against `main` @ `e3604d8`.
+
 | id | domain | type | sev | compliance | summary | evidence | status |
 |---|---|---|---|---|---|---|---|
-| F-018 | 8 | defect | **P0** | yes (ULDD) | MISMO core points mis-nested under `LOAN_DETAIL` vs `TERMS_OF_LOAN`/`AMORTIZATION_RULE` → XSD-invalid, delivery rejected | `server/mismo.ts:617-668`, `shared/mismo.ts:1126` vs local ULDD XSD + golden UCD samples | open |
-| F-019 | 8 | defect | **P0** | yes (ULDD) | Invalid `LoanPurposeType` enums (`CashOutRefinance`/`ConstructionToPermanent`); should be `Refinance` + `RefinanceCashOutDeterminationType` → every refi/construction loan | `server/mismo.ts:157-160` | open |
-| F-002 | 10 | defect | P1 | no | Analytics/predictive dashboards render off an empty `loanOutcomes` — its writers are never called | `outcomeTracker.ts:113,146` have zero callers | open |
-| F-003 | 7 | defect | P1 | no | AUS DU/LPA dual-submission has no UI trigger (workflow #9 broken-from-UI) | `server/routes/aus.ts:134` zero client callers | open |
-| F-004 | 9 | defect | P1 | yes (ECOA) | Adverse-action *generation* has no UI trigger — only cron watchdog + reader wired; launch-gate if the MVP can deny | `server/routes/compliance.ts:827` | open |
-| F-005 | 7/8 | defect | P1 | no | MISMO XML non-deterministic (ms `CreatedDatetime` stamped into hashed XML) — root cause of the lenderSubmission flake; = PRs #64/#65 | `server/mismo.ts:1034,989` | open |
-| F-020 | 8 | defect | P1 | yes (MISMO) | Invalid `LiabilityType` enums (`Mortgage`→`MortgageLoan`, `Other`→`OtherLiability`; child-support/alimony aren't `LiabilityType`) | `server/mismo.ts:208-216` | open |
-| F-021 | 8 | defect | P1 | yes (MISMO) | `MortgageType` `USDA`→`USDARuralHousing` (see U-3) | `server/mismo.ts:148` | open |
+| F-020 | 8 | defect | P1 | yes (MISMO) | Invalid `LiabilityType` enums (`Mortgage`→`MortgageLoan`, `Other`→`OtherLiability`; child-support/alimony aren't `LiabilityType`) | `server/mismo.ts:208-216` (re-verified 2026-07-12) | open |
+| F-021 | 8 | defect | P1 | yes (MISMO) | `MortgageType` `USDA`→`USDARuralHousing` (see U-3) | `server/mismo.ts:148` (re-verified 2026-07-12) | open |
 | F-022 | 8 | defect | P1 | yes (MISMO) | `AssetType` `Other`→`OtherLiquidAssets`/`OtherNonLiquidAssets` | `server/mismo.ts:196,198` | open |
 | F-023 | 8 | defect | P1 | yes (ULAD) | URLA §5 declaration data-point names drift (13 of 19) vs ULAD Map v1.8 (see U-4) | `server/mismo.ts:335-366` | open |
 | F-024 | 6/8 | defect | P1 | yes (TRID) | CD "3 business days before consummation" uses the general (Sat-excluded) def; §1026.19(f)(1)(ii) uses the precise def (Sat counts) | `server/services/mismoValidation.ts:667` | open |
 | F-014 | 5 | coverage-gap | P1 | yes (multi) | `complianceInvariants.test.ts` is 100% source-grep — passes on wrong logic, breaks on renames (false confidence) | `tests/complianceInvariants.test.ts` | open |
 | F-008 | 9 | defect | P1* | yes (TCPA) | SMS webhook has no signature verification → forged START re-subscribes an opted-out number; *blocker only if SMS live at launch* | `server/routes/webhooks.ts:21` | open |
-| ux-01 | UX | ux-refinement | P1 | no | 41/68 data pages don't handle query-*error* state → server failure renders a misleading "empty" screen | `lending/ApplicationSummary.tsx:49`, `borrower/Documents.tsx:163` | open |
-| F-025 | 8 | coverage-gap | P2 | yes (ULDD) | In-app MISMO "validation" is a substring check — can't catch enum/xpath errors; add an XSD gate (= roadmap L6) | `server/mismo.ts:1073-1118` | open |
+| ux-01 | UX | ux-refinement | P1 | no | Data pages without query-*error* handling render a misleading "empty" screen on server failure (was 41/68 at audit) | `lending/ApplicationSummary.tsx:49`, `borrower/Documents.tsx:163` | open — partially addressed (QueryBoundary error+retry rollout #93/#95 batch 1; PageShell restructure #131); residual count unmeasured, re-count on next UX run |
 | F-026 | 6 | defect | P2 | yes (Reg Z) | APR solver omits Appendix J odd-first-period handling (fine for estimates, not a final TILA APR) | `server/services/apr.ts:57-94` | open |
 | F-006 | 13 | defect | P2 | yes (audit) | SSN/account-number *writes* aren't audited (reveal is) — violates "every PII mutation gets an audit entry" | `server/routes/borrower.ts:419`, `server/storage.ts:1461,1600+` | open |
-| F-007 | 13 | defect | P2 | no | `GET /api/admin/users` serializes `passwordHash` (admin-gated, but should project columns) | `server/routes/admin.ts:47`, `server/storage.ts:1007` | open |
 | F-009 | 13 | defect | P2 | yes (PII) | `stripEncryptedFields` doesn't strip a legacy plaintext `ssn` column; verify prod backfill ran | `server/services/piiVault.ts:69` | open |
 | F-010 | 13 | defect | P2 | no | Presigned-upload endpoint trusts client-declared type/size; skips type check when omitted | `server/routes/documents.ts:43` | open |
 | F-011 | 4/13 | defect | P2 | no | Plaid webhook compares a static shared secret, not Plaid's JWT/HMAC (fails closed in prod — OK for sim phase) | `server/routes/aus.ts:46` | open |
 | F-012 | 4 | defect | P2 | no | Credit-pull responses return raw ciphertext columns (inconsistent with URLA stripping; not a plaintext leak) | `server/routes/compliance.ts:648,666` | open |
-| F-013 | 11 | coverage-gap | P2 | no | `maintenanceMode.test.ts` runs in NEITHER vitest config → 0 executed despite a green-looking file | `tests/maintenanceMode.test.ts`, both vitest configs | open |
-| F-015 | 8/2 | coverage-gap | P2 | yes (multi) | Leaf-tested/caller-untested: `loanDeliveryReadiness`, `loanAnalysis.finalizeIntake` (ECOA locus), `pipelineEngine.updatePipelineStage` are grep-only | those files + their callers | open |
+| F-013 | 11 | coverage-gap | P2 | no | `maintenanceMode.test.ts` runs in NEITHER vitest config → 0 executed despite a green-looking file | `tests/maintenanceMode.test.ts`, both vitest configs (re-verified 2026-07-12) | open |
+| F-015 | 8/2 | coverage-gap | P2 | yes (multi) | Leaf-tested/caller-untested: `loanDeliveryReadiness`, `loanAnalysis.finalizeIntake` (ECOA locus), `pipelineEngine.updatePipelineStage` are grep-only | those files + their callers (`determineDocumentRequirements` got a unit file; the rest unchanged) | open |
 | F-016 | UX | coverage-gap | P2 | no | Zero frontend/e2e test harness — 88 UI surfaces unverified; tooling not even a dependency | `package.json`, `tests/` | open |
 | D-008 | 4 | defect | P2 | no | `creditService` credit sim uses `Math.random` — violates the deterministic-simulation ground rule | `server/services/creditService.ts:666` | open |
-| ux-02 | UX | ux-refinement | P2 | no | Design-token guard blind spot: 157 `text-white`/`bg-white`/`bg-black` literals bypass the shade-only regex; guard not in CI | `scripts/design-token-guard.cjs:32`, 27 client files | open |
-| ux-03 | UX | ux-refinement | P2 | no | `PageShell`/`PageHeader` at 7/99 adoption; 40 pages hand-roll `min-h-screen` → header/spacing drift | `client/src/components/PageShell.tsx` + callers | resolved (branch `claude/pageshell-convergence`: shell hardened w/ icon/eyebrow/headerLead/headerMeta slots; 31 pages converged + live-verified; deliberate exceptions documented in app-guide/07-frontend.md — hero dashboards already centered w/ `-mt-6` overlap, Messages chat, PreApproval funnel, marketing-hero pages, and the LO-1 three-pane LoCommandCenter rewrite which superseded its earlier container-only conversion at merge time — wrap it in a follow-up if desired) |
+| ux-02 | UX | ux-refinement | P2 | no | Design-token guard: the white/black-literal blind spot is FIXED — `whiteBlackLiterals` is now a ratcheted guard metric (#112; baseline 97). Remaining leg: the guard runs in `npm run checkup` only, not CI (CI itself = roadmap #5) | `scripts/design-token-guard.cjs`, `scripts/design-token-baseline.json` | open — narrowed 2026-07-12 |
 | ux-04 | UX | ux-refinement | P2 | no | 12/14 property/street-view `<img>` lack `alt` (a11y + SEO) | `pages/property/*`, `BuyerProperties.tsx:441` | open |
 | ux-05 | UX/1 | ux-refinement | P2 | yes (Reg Z) | Rate-advertising disclosure is thin; confirm §1026.24(d)(2) completeness (legal review, not asserted violation) | `pages/rates/PurchaseRates.tsx:200-203` | open |
 
@@ -66,6 +61,7 @@ re-discovered on re-runs.
 | U-4 | Exact ULAD v1.8 names for the 13 F-023 declaration indicators | ULAD mapping workbook |
 | U-5 | UCD 3xxx edit IDs not in the local Critical-Edits matrix | job aids |
 | U-6 | Underwriting constants (VA 26-7 residual table, 1% deferred-student-loan, 43% DTI) cited but the Selling Guide / VA Pamphlet 26-7 PDFs aren't in `docs/fannie-mae/` — add them | `underwritingNuance.ts` |
+| U-7 | Base ULDD XSD has no `Construction` LoanPurposeType value — the generator now fails loud on construction loans until the correct mapping is source-confirmed (added with the F-019 fix) | `server/mismo.ts` `mapLoanPurpose` |
 
 ## Closed
 
@@ -79,3 +75,12 @@ re-discovered on re-runs.
 | D-006 | 2026-07-08 md-organization pass (`README.md`) | Root README Tier map now lists `SAFE_MLO_COMPLIANCE_MAP`, `COMPLIANCE_COUNSEL_REVIEW`, `docs/nmls/`, `docs/nmls-safe/` (Tier 2) and the `ARMED_LAUNCH_CHARTER` (Tier 4) |
 | D-007 | 2026-07-08 md-organization pass | `threat_model.md` deleted-`replit_integrations` ref corrected to `server/integrations/auth/`; `LOCAL_DEV.md` Node "20+" → pinned "24.x"; the table-count conflict (`02-architecture` 158 vs `03-database` 160) reconciled to the verified **168 tables / 17 schema files** |
 | F-001 | 2026-07-08 md-organization pass (`08-services.md`); completed corpus-wide 2026-07-08 bloat pass | Deleted `documentEngine.ts`/`aiGateway.ts` rows removed; table now reflects `extractionService.ts` owning its own Gemini client + `taxInsightService.ts`. The bloat pass caught 4 residual dead refs the first pass missed (`01-start-here`, `05-data-flow` ×2, `06-auth-security-secrets`, `09-integrations`) — the removed "pluggable AI gateway (Gemini⇄Claude)" module and its `AI_GATEWAY_*`/`ANTHROPIC_API_KEY` env vars are gone from code; docs now cite `extractionService.ts` + `GEMINI_API_KEY`/`EXTRACTION_SIMULATE` only |
+| F-018 (was P0) | `723cc7d` + follow-through `68467de` | 2026-07-12 hygiene pass — `LOAN_DETAIL`/`LOAN_IDENTIFIERS` violations no longer in the XSD baseline (`tests/mismoXsdValidation.test.ts` records the fix and the newly unmasked UNDERWRITING names → escalation U-1); residual conformance = roadmap **L6-fix** |
+| F-019 (was P0) | `21c4a4b` (ledger `uldd-loanpurposetype-enum`) | 2026-07-12 — `mapLoanPurpose` emits only valid ULDD enums; cash-out variants → `Refinance` (the `RefinanceCashOutDeterminationType` container is a tracked follow-up under L6-fix); construction fails loud (escalation U-7) |
+| F-002 | [#136](https://github.com/barakatammre84/MortgageStream/pull/136) | 2026-07-12 — `outcomeTracker` writers now called from `pipelineEngine`, `lending`, `underwriting`, `data-intelligence`, `loanAnalysis` |
+| F-003 | [#135](https://github.com/barakatammre84/MortgageStream/pull/135) | 2026-07-12 — `SubmissionReadinessDialog.tsx` → `POST /api/underwrite/submit-gse` (Run-DU/LPA); verified live in the beta walkthrough (`BETA_GO_LIVE_READINESS.md` §1) |
+| F-004 | pre-existing `ensureAdverseActionForDenial` chokepoint + [#123](https://github.com/barakatammre84/MortgageStream/pull/123) delivery card; close recorded by the #135–#139 walkthrough | 2026-07-12 — a denial is **blocked** unless a compliant notice generates (`server/routes/lending.ts` deny seam + underwriting advance-stage path); staff BorrowerFile card delivers/mails the PDF; 30-day watchdog de-dups |
+| F-005 | `d5b8b54` | Injectable generation clock — `CreatedDatetime` no longer stamps wall-clock ms into hashed XML; lenderSubmission determinism flake gone |
+| F-007 | [#136](https://github.com/barakatammre84/MortgageStream/pull/136) | 2026-07-12 — `server/routes/admin.ts:50` projects `passwordHash` out of `/api/admin/users` |
+| F-025 | L6 harness (2026-07-06) + [#135](https://github.com/barakatammre84/MortgageStream/pull/135) | The asked-for XSD gate exists: `tests/mismoXsdValidation.test.ts` known-violations baseline + non-blocking XSD-conformance **recording** at lender submission; remediating the remaining baseline = roadmap **L6-fix** |
+| ux-03 | [#131](https://github.com/barakatammre84/MortgageStream/pull/131) | 2026-07-11 — 32 pages converged on `PageShell`; deliberate exceptions documented in `app-guide/07-frontend.md` (hero dashboards, Messages chat, PreApproval funnel, marketing heroes, LO-1 three-pane cockpit) |

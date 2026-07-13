@@ -1,5 +1,11 @@
 # Page-by-Page UI Audit
 
+> ⚠️ **Dated snapshot — heavily superseded (banner added 2026-07-12).** Since this audit:
+> the Royal Blue Emerald repaint (#93), QueryBoundary error-state rollout (#95), white-literal
+> retokenization + guard ratchet (#112), and PageShell convergence across 32 pages (#131) all
+> landed. Per-page statuses below describe 2026-07-04 reality — re-verify against code before
+> acting (the ux-audit README's daily loop re-verifies sections in rotation).
+
 Audited 2026-07-04 against `main` (42eb5c3). Status legend:
 ✅ on-system · 🟡 partially migrated / minor issues · 🔴 off-system or blocking issues.
 Severity: **S1** blocks trust/conversion or compliance · **S2** visible quality gap · **S3** polish.

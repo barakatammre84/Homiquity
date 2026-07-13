@@ -4,7 +4,7 @@
 
 - **PostgreSQL**, accessed through **Drizzle ORM**.
 - Schema is defined in TypeScript under [`shared/schema/`](../../../shared/schema/)
-  (17 schema files, **168 tables** as of 2026-07-08), re-exported through
+  (21 schema files, **178 tables** as of 2026-07-12), re-exported through
   [`shared/schema.ts`](../../../shared/schema.ts). Because it lives in `shared/`,
   the client gets the same types and Zod validators (via `drizzle-zod`).
 - **Driver selection** ([`server/db.ts`](../../../server/db.ts)): a

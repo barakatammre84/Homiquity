@@ -1,10 +1,12 @@
 # COI PartnerHub Program — Charter & Build Prompts (L3 program spec)
 
-**Status:** draft — pending founder adoption · **Owner:** Amr (founder/PM) · **Roadmap:** executes
-the partner/COI GTM pivot (partner waitlist PRs #96–#98) and the agent-B2B2C lane of the
-borrower-acquisition playbook; consumes the UAL income engine (PR #108); CTO_ROADMAP entry to be
-added on adoption; resolves roadmap **ARC-1** (leads API has no client binding — the embed
-decision) in PH-6 · **Last updated:** 2026-07-11
+**Status:** in flight (adopted by execution) — **PH-1 merged (#121**, migration `0021`),
+**PH-2 merged (#134**, migration `0022`; its consent copy is a standing counsel gate);
+**next: PH-3**; PH-4/PH-5/PH-6 open · **Owner:** Amr (founder/PM) · **Roadmap:** tracked in
+CTO_ROADMAP "Active program tracks"; executes the partner/COI GTM pivot (partner waitlist PRs
+#96–#98) and the agent-B2B2C lane of the borrower-acquisition playbook; consumes the UAL income
+engine (#108, merged); resolves roadmap **ARC-1** (leads API has no client binding — the embed
+decision) in PH-6 · **Last updated:** 2026-07-12
 
 > This is a *program* spec: six sequenced build prompts, each of which becomes its own one-page
 > L3 spec (copy [`_TEMPLATE.md`](_TEMPLATE.md)) when claimed. It executes under

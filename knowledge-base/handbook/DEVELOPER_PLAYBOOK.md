@@ -64,7 +64,10 @@ This is a single workspace, not a multi-package monorepo. The blueprint concepts
 │   │   ├── aus.ts              Plaid webhook + DU submission (Workflow 2 & 3)
 │   │   ├── compliance.ts       Plaid Link, credit consent/disclosure (Workflow 1 & 2)
 │   │   ├── borrower.ts         borrower-graph, homeownership-goal, rate locks
-│   │   └── …                   admin, documents, task-engine, rate-sheets, etc.
+│   │   └── …                   admin, documents, task-engine, rate-sheets, cockpit
+│   │                           (LO-1), scenarios (LO-2), comms (LO-5 lint), partners
+│   │                           (PH), seo, taxIntelligence, etc. — 41 files total
+│   │                           (inventory: app-guide/04-api-routes.md)
 │   ├── services/               Business logic (ausSubmission, creditService,
 │   │                           pricingAdapter, mismoValidation, encryptionService…)
 │   ├── integrations/auth/      Session + passport setup
@@ -96,8 +99,9 @@ This is a single workspace, not a multi-package monorepo. The blueprint concepts
 │                               by `pnpm vercel-build` — never edit by hand)
 │
 ├── tests/                      Vitest suites (unit + integration configs)
-├── migrations/                 drizzle-kit output directory
-├── kb/                         Knowledge base: my-research/ + app-guide/
+├── migrations/                 Hand-authored versioned SQL (never drizzle-kit generate)
+├── knowledge-base/             All documentation, indexed in its README (handbook/,
+│                               specs/, runbooks/, compliance/, governance/, logs/, archive/)
 ├── drizzle.config.ts           Points at shared/schema.ts
 ├── vercel.json                 pnpm install --frozen-lockfile, function config
 └── .env.example                Copy to .env — documents every variable
@@ -190,7 +194,7 @@ We run an **internal pricing engine**, not Optimal Blue. `server/services/pricin
 P_borrower = R_investor + M_base + ΔM_risk + ΔM_geography
 ```
 
-`M_base` defaults to 25 bps and is tunable via `PRICING_MARGIN_BASE_BPS`. Production has no rate sheets loaded yet, so the tool returns a clean "no products" error there until real sheets exist (local dev has seeded UWM demo fixtures).
+`M_base` defaults to 25 bps and is tunable via `PRICING_MARGIN_BASE_BPS`. Rate sheets everywhere are the clearly-marked, self-refreshing **demo** sheets (`version = "1.0-demo"`, re-seeded idempotently at boot — roadmap #11) until real vendor sheets supersede them via the staff upload flow or the F11 PPE contract.
 
 **Rate locks** (`rate_locks` table: `lock_period_days`, `locked_at`, `lock_expires_at`, `locked_by`, indexed by application):
 - `POST /api/rate-locks` — create a lock
@@ -238,16 +242,20 @@ Honesty matters more than aspiration here. New engineers must know which guardra
 - **Role guards:** staff-only actions use `requireRole(…)` (e.g., GSE submission, verification status changes). Never gate by hiding UI alone.
 - **CSRF:** enabled app-wide with a single carve-out for `/api/webhooks/*`; webhook receivers authenticate with shared-secret headers instead.
 - **Audit trail:** `server/auditLog.ts` — PII-touching mutations should write an entry.
+- **TCPA quiet hours:** `server/services/quietHours.ts` — ZIP→timezone resolution, 8 AM–9 PM recipient-local window, fail-safe on unknown/non-US ZIPs (roadmap #24; `tests/quietHours.test.ts`).
+- **SMS STOP / opt-out ledger:** `POST /api/webhooks/sms` (`server/routes/webhooks.ts`) records STOP/START/HELP into the canonical `sms_opt_outs` ledger and flips matching leads to do-not-contact; `server/services/smsCompliance.ts`'s `evaluateOutboundSms` is the single guard (opt-out + quiet hours) every future sender must pass (roadmap #25). The webhook's **signature verification is still stubbed** (finding F-008) — a blocker only if SMS goes live.
 
-### Not built yet — required before outbound messaging or state expansion ships
+### Not built yet — required before state expansion ships
+
+> Corrected 2026-07-12: this table previously also listed the quiet-hours gate and the SMS
+> STOP webhook as unbuilt — both shipped 2026-07-03 (roadmap #24/#25) and now appear in the
+> enforced-today list above.
 
 | Guardrail | Status | Intended shape |
 |---|---|---|
-| **Quiet-hours gate** (TCPA 8 AM–9 PM recipient-local) | ❌ none | A middleware/service used by any future dialer/SMS queue: resolve recipient timezone from ZIP (we already geocode via `server/routes/geocode.ts`), block sends outside the window, and re-queue rather than drop. |
-| **SMS STOP / consent revocation webhook** | ❌ none | `/api/webhooks/sms-optout` receiver: set the opt-out on the lead/user, purge them from any active outreach queues, and record the revocation timestamp (regulatory clock: honored immediately, fully purged within 10 business days). |
-| **NMLS state-licensing routing gate** | ❌ none — `server/config/company.ts` literally has `nmlsId: "PENDING"` | When LO assignment is built: a lookup table of licensed states per LO; the assignment engine must refuse to route an application in a regulated state (e.g., Illinois/IRMLA) to an unlicensed LO, and refuse to originate at all in states where the company isn't licensed. |
+| **NMLS state-licensing routing gate** | ❌ none — `server/config/company.ts` literally has `nmlsId: "PENDING"` (roadmap F2) | When LO assignment is built: a lookup table of licensed states per LO; the assignment engine must refuse to route an application in a regulated state (e.g., Illinois/IRMLA) to an unlicensed LO, and refuse to originate at all in states where the company isn't licensed. |
 
-**Rule for contributors:** if you build any feature that sends an outbound message or assigns a human to a borrower, the corresponding row in this table becomes your blocker. Do not ship around it.
+**Rule for contributors:** if you build any feature that sends an outbound message or assigns a human to a borrower, the corresponding guardrail above becomes your blocker (for outbound messages: route through `evaluateOutboundSms` / the quiet-hours gate). Do not ship around it.
 
 ---
 
@@ -284,4 +292,4 @@ Prereqs: Node 24.x (corepack ships with it), and either Docker **or** a local/ho
    ```
 8. **MCP server (stdio):** registered for Claude Code in `.mcp.json` as `homiquity`; run manually with `pnpm mcp`. Smoke test by piping newline-delimited JSON-RPC (`initialize` → `notifications/initialized` → `tools/list` → `tools/call`) into `npx tsx server/mcp/index.ts`. Tools: `run_soft_credit_pull`, `get_best_execution_rates`, `retrieve_property_valuation`. **Never** add a `console.log` to the MCP import graph — stdout is the protocol; `bootstrap.ts` rebinds logging to stderr and must remain the first import.
 9. **Ship:** commit to `main` and push — Vercel builds (`pnpm install --frozen-lockfile`, `pnpm vercel-build`) and deploys automatically. Verify `https://mortgage-stream.vercel.app/api/health` after deploy. Roll back with `git revert <sha> && git push`.
-10. **Read next:** [`kb/app-guide/01-start-here.md`](./app-guide/01-start-here.md) and the rest of the handbook for architecture, data flow, schema, and secrets deep-dives.
+10. **Read next:** [`app-guide/01-start-here.md`](./app-guide/01-start-here.md) and the rest of the handbook for architecture, data flow, schema, and secrets deep-dives.

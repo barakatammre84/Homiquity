@@ -16,15 +16,15 @@ hits the server (as a serverless function).
                                      ▼
 ┌─────────────────────────────── server/ ────────────────────────────────┐
 │ app.ts        — express app: helmet, rate limits, CSRF, logging          │
-│ routes.ts     — registerRoutes(): health, auth, seeding, 22 route domains │
+│ routes.ts     — registerRoutes(): health, auth, seeding, 38 route domains │
 │ routes/*.ts   — HTTP handlers per domain (borrower, lending, admin, …)    │
 │ services/*.ts — business logic (underwriting, pricing, borrower graph, …) │
-│ storage.ts    — the data-access layer (IStorage, ~4,700 lines)            │
+│ storage.ts    — the data-access layer (IStorage, ~5,600 lines)            │
 │ db.ts         — Drizzle + driver selection (Neon serverless vs local pg)  │
 └───────────────────┬──────────────────────────────┬─────────────────────┘
                     ▼                              ▼
              PostgreSQL (Drizzle)          External services
-             168 tables, 17 files          (Plaid, Gemini, OpenAI, GCS,
+             178 tables, 21 files          (Plaid, Gemini, OpenAI, GCS,
              shared/schema/*               Google Maps, RapidAPI, SMTP)
 ```
 
