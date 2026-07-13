@@ -89,7 +89,27 @@ Full rules in [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK
   wrong output in this repo.
 - **Never run `pnpm db:push` from a worktree** against the shared dev database: it drops
   columns belonging to other branches. Use targeted `ALTER TABLE` statements instead.
-- Apply migrations with `pnpm db:migrate`.
+- Apply migrations locally with `pnpm db:migrate`.
+
+### Schema changes are migration-gated and auto-applied to prod (non-negotiable)
+
+Prod is migrate-only. A schema change that reaches `main` without a migration — or with a
+migration that is never applied — takes prod down (this is exactly the 2026-07-13 outage:
+migrations 0026/0027). So:
+
+1. **Same-PR migration.** Any PR that touches `shared/schema/**` MUST include a hand-authored
+   `migrations/NNNN_*.sql` + `migrations/meta/_journal.json` entry in the **same PR**.
+2. **Expand/contract, idempotent.** New columns use `ADD COLUMN IF NOT EXISTS` so the change is
+   backward-compatible — the currently-deployed app tolerates the new DB and vice-versa. Never
+   ship a destructive migration in the same PR as the code that depends on the new shape.
+3. **The gate enforces #1.** `pnpm guard:schema` ([`scripts/schema-migration-guard.cjs`](scripts/schema-migration-guard.cjs))
+   runs in the `gate` job of [`.github/workflows/ci.yml`](.github/workflows/ci.yml); a
+   schema-without-migration PR goes RED and cannot merge.
+4. **Auto-apply on merge.** The `migrate-prod` job applies pending migrations to prod on merge
+   to `main` via [`scripts/migrate-prod.cjs`](scripts/migrate-prod.cjs) (plain `pg` over the Neon
+   DIRECT URL — sidesteps the pooler gotcha). Never hand-apply, never `db:push` to prod.
+
+Full flow and the one-time secret/branch-protection setup: [DB_MIGRATIONS.md](knowledge-base/runbooks/DB_MIGRATIONS.md).
 
 ## Commands
 

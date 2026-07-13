@@ -24,6 +24,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:adopt": "tsx server/scripts/markMigrationsApplied.ts",
+    "db:migrate:prod": "node scripts/migrate-prod.cjs",
     "db:push": "drizzle-kit push",
     "data:hmda": "tsx server/scripts/ingestHmdaCompetitors.ts",
     "data:fannie": "tsx server/scripts/ingestFannieMaePerformance.ts",

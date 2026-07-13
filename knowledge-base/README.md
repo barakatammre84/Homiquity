@@ -44,7 +44,7 @@ doc-drift bug to fix):
   · [ASSUMPTIONS.md](governance/ASSUMPTIONS.md) · [ARMED_LAUNCH_CHARTER_2026-07-07.md](governance/ARMED_LAUNCH_CHARTER_2026-07-07.md)
 
 ### Runbooks — operational how-to · [`runbooks/`](runbooks/)
-- [CICD.md](runbooks/CICD.md) · [ROLLBACK.md](runbooks/ROLLBACK.md) · [LOCAL_DEV.md](runbooks/LOCAL_DEV.md)
+- [CICD.md](runbooks/CICD.md) · [DB_MIGRATIONS.md](runbooks/DB_MIGRATIONS.md) — schema-gated, auto-applied to prod · [ROLLBACK.md](runbooks/ROLLBACK.md) · [LOCAL_DEV.md](runbooks/LOCAL_DEV.md)
   · [TEST_ACCOUNTS.md](runbooks/TEST_ACCOUNTS.md) · [PRE_PRODUCTION_OPS_ROUTINES.md](runbooks/PRE_PRODUCTION_OPS_ROUTINES.md)
   · [PROD_ACCEPTANCE_TEST.md](runbooks/PROD_ACCEPTANCE_TEST.md) — the F1 launch-gate checklist
   · [BETA_GO_LIVE_READINESS.md](runbooks/BETA_GO_LIVE_READINESS.md) — dated beta-readiness snapshot (verified workflows + founder decisions)

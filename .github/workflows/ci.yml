@@ -1,0 +1,62 @@
+name: CI
+
+# Two roles:
+#   gate         — on every PR to main: typecheck + unit tests + schema↔migration
+#                  drift guard. This is the required check for the auto-merge-green
+#                  policy; a schema change without a migration goes RED and cannot merge.
+#   migrate-prod — on merge to main: apply any pending migrations to PROD so the
+#                  database is never left behind the code (the 2026-07-13 outage cause).
+#
+# Prereqs (one-time, done in GitHub, not by Claude):
+#   • Repo secret PROD_DATABASE_URL = the Neon DIRECT (unpooled) URL, sslmode=require.
+#   • Branch protection on `main` requiring the "gate" check (makes the gate binding).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: gate (typecheck · tests · schema guard)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prod=false
+      - name: Typecheck
+        run: pnpm check
+      - name: Unit tests
+        run: pnpm test
+      - name: Schema ↔ migration drift guard
+        run: pnpm guard:schema
+
+  migrate-prod:
+    name: migrate-prod (apply pending migrations)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # Never run two migrations against prod at once; don't cancel one in flight.
+    concurrency:
+      group: migrate-prod
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --prod=false
+      - name: Apply pending migrations to prod
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: node scripts/migrate-prod.cjs
