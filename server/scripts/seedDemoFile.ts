@@ -1,7 +1,10 @@
 /**
- * Demo/beta seed: build ONE fully-complete, lender-submittable borrower file so
- * the founder can walk a wholesale lender from readiness → MISMO package →
- * lender submission live, without hand-entering a full URLA.
+ * Demo/beta seed: build ONE fully-complete borrower file so the founder can
+ * walk a wholesale lender from readiness → MISMO package → lender submission
+ * live, without hand-entering a full URLA. The file seeds everything except
+ * the AUS run — the submission gate requires a recorded DU/LPA run, so the
+ * walkthrough includes one "Run DU / LPA" click in the readiness dialog
+ * (the seeded profile simulates to approve_eligible).
  *
  * Self-contained: creates a demo borrower + application, assigns the dev test
  * loan officer (test-lo), then populates every URLA section, the loan-level
@@ -174,6 +177,11 @@ async function main() {
   for (const s of readiness.stages) {
     console.log(`  [${s.status}] ${s.label}`);
     for (const b of s.blockers) console.log(`      BLOCKER: ${b}`);
+  }
+  if (!readiness.readyToSubmitToLender) {
+    console.log(
+      `\nNote: stage 2 needs a recorded AUS run — open the submission dialog in the LO Command Center and click "Run DU / LPA" to clear it.`,
+    );
   }
   console.log(`\nDEMO_APP_ID=${applicationId}`);
 }
