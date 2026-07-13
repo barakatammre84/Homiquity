@@ -110,7 +110,7 @@
 |---|---|
 | **Screen / route** | `/lo-command-center` → open the **Submission Readiness** dialog |
 | **Role** | Loan Officer / staff |
-| **On-screen** | Open the readiness dialog; show the four stages — **File intake & disclosures · Automated underwriting (DU) · Wholesale lender package · Delivery pre-flight (lender's-eye view)** — then the submit action, the Target-5 lender list, and the status flow. |
+| **On-screen** | Open the readiness dialog; show the four stages — **File intake & disclosures · Automated underwriting (DU + LPA) · Wholesale lender package · Delivery pre-flight (lender's-eye view)** — click **Run DU / LPA** to clear stage 2 (the gate requires a recorded AUS run) — then the submit action, the Target-5 lender list, and the status flow. |
 | **Narration (VO)** | "Delivery is gated. The file can't be submitted until intake, automated underwriting, and the lender package are all clean. Then we submit to a wholesale partner — and track it through a real status machine, from submitted to acknowledged to underwriting to clear-to-close to funded. Every submission carries a snapshot of exactly what we believed about the file when we sent it. The submission adapter is a simulation until a broker agreement exists — and it goes live the day you credential us." |
 | **Capture** | Overlay: *Readiness-gated · Target-5 · full status machine.* |
 
@@ -143,4 +143,4 @@
 - **Honesty check before publishing:** scrub the VO for the words "approved," "qualified," or any live-vendor claim — replace with "validated / pre-approval read / behind a production adapter." Confirm no NMLS number is shown (it prints only once issued).
 
 ## One-page shot checklist
-1. `/` hero — 2. `/first-time-buyer`, `/va-loans`, `/calculators`, `/approval-strength` — 3. `/test-login`→Borrower, `/dashboard`, `/onboarding`, `/urla-form` — 4. `/documents`, `/verification`, `/identity-verification` — 5. `/apply`, `/application-summary` — 6. `/loan-options/<id>`, `/compare-offers/<id>`, `/loan-estimate/<id>` — 7. `/test-login`→LO, `/staff-dashboard`, `/pipeline-queue`, `/lo-command-center` — 8. `/borrower-file/<id>` → **Export MISMO** → open XML — 9. `/lo-command-center` → Submission Readiness dialog → submit → status — 10. `/compliance` — 11. `/` end card.
+1. `/` hero — 2. `/first-time-buyer`, `/va-loans`, `/calculators`, `/approval-strength` — 3. `/test-login`→Borrower, `/dashboard`, `/onboarding`, `/urla-form` — 4. `/documents`, `/verification`, `/identity-verification` — 5. `/apply`, `/application-summary` — 6. `/loan-options/<id>`, `/compare-offers/<id>`, `/loan-estimate/<id>` — 7. `/test-login`→LO, `/staff-dashboard`, `/pipeline-queue`, `/lo-command-center` — 8. `/borrower-file/<id>` → **Export MISMO** → open XML — 9. `/lo-command-center` → Submission Readiness dialog → **Run DU / LPA** → submit → status — 10. `/compliance` — 11. `/` end card.
