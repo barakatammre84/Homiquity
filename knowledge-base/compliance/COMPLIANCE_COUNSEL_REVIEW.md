@@ -177,6 +177,30 @@ blocks forward movement of a file whose LE is overdue.
 
 ---
 
+## 6. Change of circumstance → revised Loan Estimate (Reg Z §1026.19(e)(3)(iv), §1026.19(e)(4)) — added 2026-07-12
+
+**Built:** staff record a changed circumstance from the six-reason catalog
+(`shared/compliance/changeOfCircumstance.ts`, §1026.19(e)(3)(iv)(A)–(F)); the server computes the
+revised-LE due date as 3 business days from receipt of the establishing information
+(§1026.19(e)(4)(i), `server/services/changeOfCircumstance.ts`); an open record past its deadline
+blocks wholesale submission (broker readiness stage 1); the borrower's next retrieval of the
+regenerated LE stamps delivery (same ESIGN mechanism as §5.2).
+
+**Deliberately not built:** fee-tolerance / good-faith cure math. Every recorded change carries a
+manual-review posture — no automated tolerance-baseline reset or charge comparison.
+
+**For counsel:**
+1. Confirm the manual-review posture for tolerance analysis is acceptable pre-launch, and what
+   tooling (if any) counsel wants before volume.
+2. Confirm treating the borrower's retrieval of the *regenerated* LE as the §1026.19(e)(4)
+   "provision" of the revised estimate (electronic delivery under the existing `e_disclosure`
+   consent), given the LE is always generated from current file data.
+3. §1026.19(e)(4)(ii) (revised LE no later than 4 business days before consummation; CD interplay)
+   is treated as the wholesale lender's closing-side obligation and is not enforced pre-submission —
+   confirm for the broker model.
+
+---
+
 ## Counsel checklist
 
 - [ ] §1 — reason descriptions acceptable; "Other" specificity; incompleteness vs. denial
@@ -190,3 +214,4 @@ blocks forward movement of a file whose LE is overdue.
 - [ ] §4 — representative fees match actual charges; assumption disclosures adequate
 - [ ] §5 — six-piece definition and ESIGN consent confirmed
 - [ ] §0 — the `trid_triggered_at` migration applied to production (founder-supervised, per [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)) and recorded in CICD.md's change ledger
+- [ ] §6 — COC manual-tolerance posture, regenerated-LE delivery treatment, and the (e)(4)(ii) closing-side boundary confirmed (added 2026-07-12)
