@@ -16,7 +16,6 @@ import { calculateLLPA, getAreaMedianIncome } from "../pricing";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 import { assertStageRequirements } from "@shared/stageRequirements";
 import { tridHardStopError } from "../services/trid";
-import { z } from "zod";
 import { COC_REASON_TYPES } from "@shared/compliance/changeOfCircumstance";
 import * as creditService from "../services/creditService";
 import { updateConditionMetrics } from "../services/outcomeTracker";
