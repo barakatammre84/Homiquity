@@ -172,6 +172,17 @@ describe("mapIntakeToApplicationFields", () => {
     expect(result.applied.annualIncome).toBe("95000");
   });
 
+  it("keeps decimal employment years intact (1.5 must never become 15)", () => {
+    const decimal = mapIntakeToApplicationFields({ employmentYears: "1.5" }, null);
+    expect(decimal.applied.employmentYears).toBe(1); // schema floors the decimal
+
+    const wordy = mapIntakeToApplicationFields({ employmentYears: "about 5 years" }, null);
+    expect(wordy.applied.employmentYears).toBe(5);
+
+    const nonNumeric = mapIntakeToApplicationFields({ employmentYears: "five" }, null);
+    expect(nonNumeric.skipped).toEqual([{ field: "employmentYears", reason: "invalid_value" }]);
+  });
+
   it("normalizes enum synonyms and rejects unknown enum values", () => {
     const ok = mapIntakeToApplicationFields({ employmentType: "Self Employed" }, null);
     expect(ok.applied.employmentType).toBe("self_employed");

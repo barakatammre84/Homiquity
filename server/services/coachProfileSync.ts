@@ -225,8 +225,10 @@ export function mapIntakeToApplicationFields(
         continue;
       }
     } else if (field === "employmentYears") {
-      const digits = String(raw).replace(/[^0-9]/g, "");
-      candidate = digits.length > 0 ? digits : null;
+      // First numeric token, decimals preserved — a bare digit-strip would
+      // corrupt "1.5" into "15". The shared schema floors to an integer.
+      const numeric = String(raw).match(/\d+(\.\d+)?/);
+      candidate = numeric ? numeric[0] : null;
     } else if (field in ENUM_FIELDS) {
       const v = String(raw).trim().toLowerCase().replace(/[\s-]+/g, "_");
       candidate = ENUM_FIELDS[field].includes(v) ? v : null;
