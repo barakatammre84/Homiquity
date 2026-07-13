@@ -6,6 +6,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry, type IncomeSourceEntry } from "@shared/schema";
+import { COMPANY_IDENTITY } from "@shared/companyIdentity";
 import type { MortgageRateWithProgram } from "@/types/rates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1831,8 +1832,8 @@ function PreApprovalFunnel() {
               <div>
                 <p className="font-medium text-foreground mb-2">Contact Us</p>
                 <div className="space-y-1 text-xs text-muted-foreground">
-                  <p>support@homiquity.com</p>
-                  <p>(555) 123-4567</p>
+                  <p>{COMPANY_IDENTITY.contactEmail}</p>
+                  <p>{COMPANY_IDENTITY.contactPhone}</p>
                 </div>
                 <div className="mt-3 space-y-1">
                   <p className="font-medium text-foreground text-xs">Resources</p>

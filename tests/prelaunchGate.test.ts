@@ -1,17 +1,26 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import type { Request, Response } from "express";
+import { isCompanyNmlsPending } from "@shared/companyIdentity";
 import {
   isPrelaunchGated,
   prelaunchGate,
   PRELAUNCH_GATED_MESSAGE,
 } from "../server/services/prelaunchGate";
 
+// Default behavior delegates to the real constant (now an issued NMLS id → not
+// pending); individual tests override to exercise the pending fail-safe branch.
+vi.mock("@shared/companyIdentity", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@shared/companyIdentity")>();
+  return { ...actual, isCompanyNmlsPending: vi.fn(actual.isCompanyNmlsPending) };
+});
+
 // The pre-license launch gate (PRELAUNCH_GATED) must block the soliciting
 // server surfaces (public rate displays, new-application creation) until the
 // company is licensed (roadmap F1). It reads the env per-request, and when the
 // var is UNSET it fails safe: gated in production while the company NMLS id is
 // still PENDING — so we can never serve the soliciting surface unlicensed by
-// simply forgetting the flag. shared/companyIdentity.ts ships nmlsId "PENDING".
+// simply forgetting the flag. The nmlsId is now issued (F1), so the fail-safe's
+// pending branch is exercised via a mock below.
 
 const ORIGINAL_FLAG = process.env.PRELAUNCH_GATED;
 const ORIGINAL_ENV = process.env.NODE_ENV;
@@ -55,10 +64,18 @@ describe("isPrelaunchGated", () => {
     }
   });
 
+  it("opens once licensed: unset + production + NMLS issued → not gated", () => {
+    delete process.env.PRELAUNCH_GATED;
+    process.env.NODE_ENV = "production";
+    // shared/companyIdentity.ts nmlsId is issued (F1) → the interlock is satisfied.
+    expect(isPrelaunchGated()).toBe(false);
+  });
+
   it("fails safe: unset + production + NMLS pending → gated", () => {
     delete process.env.PRELAUNCH_GATED;
     process.env.NODE_ENV = "production";
-    // shared/companyIdentity.ts nmlsId is "PENDING" — the interlock engages.
+    // Interlock must re-engage if the NMLS id ever regresses to pending.
+    vi.mocked(isCompanyNmlsPending).mockReturnValueOnce(true);
     expect(isPrelaunchGated()).toBe(true);
   });
 
