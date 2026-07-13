@@ -10,7 +10,10 @@ the code blocks the demo path today. Go-live is gated on operational config (env
 migrations) plus **one** regulatory decision — flipping the pre-license gate so real humans
 can submit an application, which needs the issued NMLS id and counsel sign-off.
 
-Verified live against the worktree dev server (`:5002`). Findings shipped as PRs #135–#138.
+Verified live against the worktree dev server (`:5002`). All findings are now **merged to
+`main` and deployed to prod (2026-07-12)** — PRs #135–#138 (this snapshot itself shipped as
+#139). Current prod = `dpl_ApJzgcLUuf2mJZUTG2hoHBeBVC19` **READY**, `GET /api/health` → 200;
+see the [CICD ledger](CICD.md) row for the per-PR deploy evidence.
 
 ---
 
@@ -28,17 +31,20 @@ gates. Two required a code fix (shipped in §2).
 | Document upload → extraction | ✅ verified | Presigned-only; magic-byte content check rejects spoofed files; cross-borrower download 403; extraction never auto-verifies and encrypts the raw model response; fails loud (503) in prod if storage is unconfigured. |
 | Credit consent → denial → adverse action | ✅ verified | Pull refused without FCRA consent; intake **never auto-denies** (ECOA locus); a denial is **blocked unless a compliant adverse-action notice generates** (§1002.9 + FCRA §615); borrower reads the notice; staff mails the PDF; 30-day watchdog de-dups. Closes `F-004`. |
 
-## 2. Ships awaiting merge (each = prod deploy)
+## 2. Ships merged & deployed — 2026-07-12 (each = prod deploy)
 
-Recommended order top-to-bottom; **#135** is the money path and has passed its §9 security
-review (net-positive — it closes an IDOR).
+Merged in order **#135 → #136 → #138 → #137 → #139** (all squash commits); prod is healthy
+(`/api/health` 200). #137/#138's individual deploys auto-CANCELED — superseded within seconds
+by the next merge in the rapid-succession train — so their content reached prod via the #139
+deploy, which is now current prod. No migration (HEAD stays `0023`).
 
-| PR | Summary |
-|---|---|
-| [#135](https://github.com/barakatammre84/MortgageStream/pull/135) | Money path — intake pool/claim + handoff, Run-DU/LPA button, XSD conformance recording, demo seed, re-wired Submit-to-lender action. |
-| [#136](https://github.com/barakatammre84/MortgageStream/pull/136) | Project `passwordHash` out of `/admin/users` (F-007); wire the `loanOutcomes` writers so dashboards stop rendering off an empty table (F-002). |
-| [#137](https://github.com/barakatammre84/MortgageStream/pull/137) | Borrower predictive insights — UDAAP-safe: drop the closing-odds % and single "days to funding" from the borrower surface (qualitative outlook + typical range + disclaimer). Compliance-auditor validated. |
-| [#138](https://github.com/barakatammre84/MortgageStream/pull/138) | Hard-block LO "approval guaranteed" messages (Reg N §1014.3(q)), clause-scoped negation guard, cite fix, + scrub of the one existing prohibited message. Compliance-auditor validated. |
+| PR | Summary | Prod deploy |
+|---|---|---|
+| [#135](https://github.com/barakatammre84/MortgageStream/pull/135) | Money path — intake pool/claim + handoff, Run-DU/LPA button, XSD conformance recording, demo seed, re-wired Submit-to-lender action. §9-reviewed (net-positive — closes an IDOR). | `dpl_5CEDU…` READY |
+| [#136](https://github.com/barakatammre84/MortgageStream/pull/136) | Project `passwordHash` out of `/admin/users` (F-007); wire the `loanOutcomes` writers so dashboards stop rendering off an empty table (F-002). | `dpl_HEjwh…` READY |
+| [#138](https://github.com/barakatammre84/MortgageStream/pull/138) | Hard-block LO "approval guaranteed" messages (Reg N §1014.3(q)), clause-scoped negation guard, cite fix, + scrub of the one existing prohibited message. Compliance-auditor validated. | via #139 (own deploy superseded) |
+| [#137](https://github.com/barakatammre84/MortgageStream/pull/137) | Borrower predictive insights — UDAAP-safe: drop the closing-odds % and single "days to funding" from the borrower surface (qualitative outlook + typical range + disclaimer). Compliance-auditor validated. | via #139 (own deploy superseded) |
+| [#139](https://github.com/barakatammre84/MortgageStream/pull/139) | This readiness snapshot. | `dpl_ApJzg…` READY = current prod |
 
 ## 3. Go-live checklist (founder actions)
 
