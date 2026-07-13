@@ -216,7 +216,7 @@ export const documentPages = pgTable("document_pages", {
   // Raw OCR text (before field extraction)
   rawOcrText: text("raw_ocr_text"),
   ocrConfidence: decimal("ocr_confidence", { precision: 5, scale: 4 }), // 0.0-1.0
-  ocrEngine: varchar("ocr_engine", { length: 50 }), // gemini, tesseract, etc.
+  ocrEngine: varchar("ocr_engine", { length: 50 }), // claude, gemini (legacy rows), tesseract, etc.
   
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
@@ -372,7 +372,7 @@ export const extractedFields = pgTable("extracted_fields", {
   mismoPath: varchar("mismo_path", { length: 500 }), // e.g., "MISMO.Income.EmploymentIncome.GrossMonthlyIncome"
   
   // Extraction metadata
-  extractionMethod: varchar("extraction_method", { length: 50 }).notNull(), // regex, ml_extraction, template_match, gemini
+  extractionMethod: varchar("extraction_method", { length: 50 }).notNull(), // regex, ml_extraction, template_match, claude, gemini (legacy rows)
   modelVersion: varchar("model_version", { length: 100 }),
   
   // Human verification

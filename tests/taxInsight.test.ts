@@ -9,7 +9,7 @@ import type { ExtractedTaxReturnData } from "../server/extractionService";
  * no HTTP server, no database writes.
  */
 
-const geminiResponse = (overrides: Record<string, unknown> = {}) =>
+const modelResponse = (overrides: Record<string, unknown> = {}) =>
   JSON.stringify({
     documentYear: "2025",
     taxpayerName: "Jordan Sample",
@@ -34,7 +34,7 @@ const geminiResponse = (overrides: Record<string, unknown> = {}) =>
 
 describe("tax return schema validation (Schedule E + W-2)", () => {
   it("parses a full response including Schedule E and W-2 wages", () => {
-    const parsed = validateTaxReturnResponse(geminiResponse());
+    const parsed = validateTaxReturnResponse(modelResponse());
     expect(parsed).not.toBeNull();
     expect(parsed!.w2Wages).toBe(68000);
     expect(parsed!.scheduleE?.netRentalIncomeLoss).toBe(12000);
@@ -44,7 +44,7 @@ describe("tax return schema validation (Schedule E + W-2)", () => {
 
   it("coerces currency-formatted strings to numbers", () => {
     const parsed = validateTaxReturnResponse(
-      geminiResponse({ scheduleE: { grossRents: "$36,000.00", netRentalIncomeLoss: "12,000" } }),
+      modelResponse({ scheduleE: { grossRents: "$36,000.00", netRentalIncomeLoss: "12,000" } }),
     );
     expect(parsed!.scheduleE?.grossRents).toBe(36000);
     expect(parsed!.scheduleE?.netRentalIncomeLoss).toBe(12000);
@@ -52,7 +52,7 @@ describe("tax return schema validation (Schedule E + W-2)", () => {
 
   it("drops out-of-range values instead of trusting them (prompt-injection posture)", () => {
     const parsed = validateTaxReturnResponse(
-      geminiResponse({
+      modelResponse({
         w2Wages: 2_000_000_000_000, // > MAX_MONEY — dropped
         scheduleE: { propertyCount: 999, grossRents: 36000 }, // count > 50 — dropped
       }),
@@ -134,11 +134,11 @@ describe("deriveTaxInsight", () => {
   });
 });
 
-// Simulation runs only when no Gemini key is configured — with a real key the
+// Simulation runs only when no Anthropic key is configured — with a real key the
 // service would attempt a network call, which unit tests must never do.
-const hasGeminiKey = !!(process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY);
+const hasAnthropicKey = !!(process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY);
 
-describe.skipIf(hasGeminiKey)("simulated extraction (EXTRACTION_SIMULATE)", () => {
+describe.skipIf(hasAnthropicKey)("simulated extraction (EXTRACTION_SIMULATE)", () => {
   it("is deterministic per file path, internally consistent, and clearly flagged", async () => {
     process.env.EXTRACTION_SIMULATE = "true";
     try {

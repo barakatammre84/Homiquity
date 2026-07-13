@@ -7,7 +7,7 @@ the code lives.
 |-------------|---------|----------|------|------------|
 | **Neon** (Postgres) | Production database | `DATABASE_URL` | `server/db.ts` | App won't function (health check 503s) |
 | **Plaid** | Income, employment, identity, asset verification | `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` | `server/plaid.ts`, `services/verification.ts`, client `react-plaid-link` | Verification features disabled; manual documents only |
-| **Google Gemini** | Document OCR/data extraction (paystubs, W-2s, bank statements, tax returns) | `GEMINI_API_KEY` | `server/extractionService.ts` | Uploads still work; no auto-extraction |
+| **Anthropic Claude** | Document OCR/data extraction (paystubs, W-2s, bank statements, tax returns) | `ANTHROPIC_API_KEY` | `server/extractionService.ts` | Uploads still work; no auto-extraction |
 | **OpenAI** | AI Homebuyer Coach | `AI_INTEGRATIONS_OPENAI_API_KEY` (+ optional `..._BASE_URL`) | `services/coachingService.ts` | Coach chat unavailable |
 | **Google Cloud Storage** | Document/file storage via signed URLs | `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` | `server/integrations/object_storage/` | Document upload/download broken |
 | **Google Maps Platform** | Address autocomplete, geocoding, address validation, maps, street view | `GOOGLE_MAPS_API_KEY` | `server/routes/geocode.ts`; client `AddressInput`, `PropertyMap`, `StreetView` | Manual address entry; no maps |

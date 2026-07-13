@@ -19,7 +19,7 @@ async function loginCookie(email: string, password: string): Promise<string> {
 
 /**
  * Tax Return Insight routes. Run the server with EXTRACTION_SIMULATE=true so
- * extraction is deterministic without Gemini credentials; the suite still
+ * extraction is deterministic without Anthropic credentials; the suite still
  * passes without the flag (the empty low-confidence path also persists a row).
  *
  * renter@test.com is the incubator persona (no application) — exactly the

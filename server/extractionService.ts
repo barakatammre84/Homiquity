@@ -1,7 +1,8 @@
 /**
- * AI Document Extraction Service — the Gemini vendor adapter. Every model call
- * in the codebase lives here (vendor-adapter rule); orchestration/persistence
- * live in the services that consume it.
+ * AI Document Extraction Service — the Anthropic (Claude) vendor adapter.
+ * Every document-extraction model call in the codebase lives here
+ * (vendor-adapter rule); orchestration/persistence live in the services that
+ * consume it.
  *
  * Extracts structured financial data from:
  * - Tax Returns — single-pass summary (legacy) AND multi-form classification +
@@ -11,7 +12,7 @@
  * - Lease agreements (rent auto-fill)
  */
 
-import { GoogleGenAI } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
@@ -30,13 +31,15 @@ import {
 // Model lineage, persisted with every extraction so a past result can be traced
 // to the exact model + prompt that produced it. Bump EXTRACTION_PROMPT_VERSION
 // whenever any extraction prompt text changes.
-export const EXTRACTION_MODEL_ID = "gemini-2.0-flash";
+export const EXTRACTION_MODEL_ID = "claude-opus-4-8";
 export const EXTRACTION_PROMPT_VERSION = "2026-07-v3";
 /** Lineage marker for deterministic simulated extractions (I10: unmistakable). */
 export const SIMULATED_MODEL_ID = "simulated";
 
-const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
+// Captured at import time (tests rely on this): construct the client only when
+// a key exists — the Anthropic SDK throws at construction with no API key.
+const apiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY;
+const anthropic = apiKey ? new Anthropic({ apiKey }) : null;
 const objectStorageService = new ObjectStorageService();
 
 export interface ExtractionLineage {
@@ -179,10 +182,61 @@ function getMimeType(source: string | Buffer, storedMimeType?: string): string {
   return mimeTypes[ext] || "application/octet-stream";
 }
 
+/**
+ * Wrap an uploaded file as the correct Anthropic content block: images go in
+ * an image block, everything else (uploads are constrained to pdf/jpg/png) is
+ * treated as a PDF document block.
+ */
+function mediaBlock(mimeType: string, base64: string): Anthropic.ContentBlockParam {
+  if (mimeType.startsWith("image/")) {
+    return {
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+        data: base64,
+      },
+    };
+  }
+  return {
+    type: "document",
+    source: { type: "base64", media_type: "application/pdf", data: base64 },
+  };
+}
+
+/**
+ * One vision/document call: file + prompt in, raw model text out. A safety
+ * refusal (stop_reason "refusal") returns "" so the caller's low-confidence
+ * fallback handles it like any other unusable response.
+ */
+async function generateExtractionText(
+  client: Anthropic,
+  mimeType: string,
+  base64: string,
+  prompt: string,
+): Promise<string> {
+  const response = await client.messages.create({
+    model: EXTRACTION_MODEL_ID,
+    max_tokens: 16000,
+    thinking: { type: "adaptive" },
+    messages: [
+      {
+        role: "user",
+        content: [mediaBlock(mimeType, base64), { type: "text", text: prompt }],
+      },
+    ],
+  });
+  if (response.stop_reason === "refusal") return "";
+  return response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === "text")
+    .map((block) => block.text)
+    .join("");
+}
+
 // ---------------------------------------------------------------------------
 // Model-output validation.
 //
-// Gemini's JSON is untrusted input: it can be malformed, out of range, or
+// The model's JSON is untrusted input: it can be malformed, out of range, or
 // steered by adversarial text embedded in an uploaded document (prompt
 // injection). Nothing the model returns is trusted until it passes these
 // schemas: numeric fields are clamped to sane document ranges (out-of-range
@@ -345,7 +399,7 @@ function capConfidence(
 }
 
 // Exported as a test seam: this cross-field hardening runs only in the real
-// Gemini path (after schema validation), so the unit tests exercise it directly.
+// model path (after schema validation), so the unit tests exercise it directly.
 export function checkTaxReturnConsistency(data: ExtractedTaxReturnData): void {
   if (data.taxableIncome !== undefined && data.grossIncome !== undefined && data.taxableIncome > data.grossIncome) {
     capConfidence(data, "medium", "Consistency check: taxable income exceeds gross income");
@@ -422,7 +476,7 @@ function rawLineage(rawText: string): ExtractionLineage {
 }
 
 /**
- * Deterministic simulated extraction (EXTRACTION_SIMULATE=true, no Gemini key):
+ * Deterministic simulated extraction (EXTRACTION_SIMULATE=true, no Anthropic key):
  * same file path → same figures, internally consistent so the confidence caps
  * don't fire. Always includes a Schedule E block so downstream DSCR flagging
  * is exercisable in tests and local dev. Clearly flagged via warnings.
@@ -466,18 +520,18 @@ function simulatedTaxReturnExtraction(
       "scheduleC",
       "scheduleE",
     ],
-    warnings: ["Simulated extraction - no Gemini credentials (EXTRACTION_SIMULATE)"],
+    warnings: ["Simulated extraction - no Anthropic credentials (EXTRACTION_SIMULATE)"],
   };
 }
 
 /**
- * Extract tax return data using Gemini vision
+ * Extract tax return data using Claude vision
  */
 export async function extractTaxReturnData(
   filePath: string,
   documentYear?: string
 ): Promise<ExtractedTaxReturnData> {
-  if (!genAI) {
+  if (!anthropic) {
     if (process.env.EXTRACTION_SIMULATE === "true") {
       return simulatedTaxReturnExtraction(filePath, documentYear);
     }
@@ -485,7 +539,7 @@ export async function extractTaxReturnData(
       documentYear: documentYear || new Date().getFullYear().toString(),
       confidence: "low",
       extractedFields: [],
-      warnings: ["Gemini API not configured - returning empty extraction"],
+      warnings: ["Anthropic API not configured - returning empty extraction"],
     };
   }
 
@@ -531,27 +585,7 @@ propertyCount as the number of property columns with data.
 Only include fields that are clearly visible. Return null for any unclear values.
 If Schedule C, D, or E are not present, omit those sections.`;
 
-    const response = await genAI.models.generateContent({
-      model: EXTRACTION_MODEL_ID,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64,
-              },
-            },
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    });
-
-    const text = response.text || "";
+    const text = await generateExtractionText(anthropic, mimeType, base64, prompt);
     const validated = validateExtraction(taxReturnSchema, text, "Tax return");
 
     if (validated) {
@@ -585,14 +619,14 @@ If Schedule C, D, or E are not present, omit those sections.`;
 }
 
 /**
- * Extract pay stub data using Gemini vision
+ * Extract pay stub data using Claude vision
  */
 export async function extractPayStubData(filePath: string): Promise<ExtractedPayStubData> {
-  if (!genAI) {
+  if (!anthropic) {
     return {
       confidence: "low",
       extractedFields: [],
-      warnings: ["Gemini API not configured"],
+      warnings: ["Anthropic API not configured"],
     };
   }
 
@@ -625,27 +659,7 @@ Return ONLY valid JSON with this structure:
 
 Only include fields that are clearly visible. Return null for any unclear values.`;
 
-    const response = await genAI.models.generateContent({
-      model: EXTRACTION_MODEL_ID,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64,
-              },
-            },
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    });
-
-    const text = response.text || "";
+    const text = await generateExtractionText(anthropic, mimeType, base64, prompt);
     const validated = validateExtraction(payStubSchema, text, "Pay stub");
 
     if (validated) {
@@ -673,14 +687,14 @@ Only include fields that are clearly visible. Return null for any unclear values
 }
 
 /**
- * Extract bank statement data using Gemini vision
+ * Extract bank statement data using Claude vision
  */
 export async function extractBankStatementData(filePath: string): Promise<ExtractedBankStatementData> {
-  if (!genAI) {
+  if (!anthropic) {
     return {
       confidence: "low",
       extractedFields: [],
-      warnings: ["Gemini API not configured"],
+      warnings: ["Anthropic API not configured"],
     };
   }
 
@@ -715,27 +729,7 @@ Return ONLY valid JSON with this structure:
 Only include fields that are clearly visible. Return null for any unclear values.
 Limit transactions array to first 10 most significant transactions.`;
 
-    const response = await genAI.models.generateContent({
-      model: EXTRACTION_MODEL_ID,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64,
-              },
-            },
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    });
-
-    const text = response.text || "";
+    const text = await generateExtractionText(anthropic, mimeType, base64, prompt);
     const validated = validateExtraction(bankStatementSchema, text, "Bank statement");
 
     if (validated) {
@@ -763,19 +757,19 @@ Limit transactions array to first 10 most significant transactions.`;
 }
 
 /**
- * Extract lease agreement data using Gemini vision.
+ * Extract lease agreement data using Claude vision.
  * Used by the public Rent-to-Own Readiness calculator to auto-fill monthly rent.
- * Degrades gracefully (low confidence) when Gemini is unavailable or parsing fails.
+ * Degrades gracefully (low confidence) when Claude is unavailable or parsing fails.
  */
 export async function extractLeaseData(
   source: string | Buffer,
   storedMimeType?: string
 ): Promise<ExtractedLeaseData> {
-  if (!genAI) {
+  if (!anthropic) {
     return {
       confidence: "low",
       extractedFields: [],
-      warnings: ["Gemini API not configured"],
+      warnings: ["Anthropic API not configured"],
     };
   }
 
@@ -804,27 +798,7 @@ Important:
 - If only an annual or weekly amount is shown, convert it to a monthly figure and add a warning.
 - Only include fields that are clearly visible. Return null for any unclear values.`;
 
-    const response = await genAI.models.generateContent({
-      model: EXTRACTION_MODEL_ID,
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64,
-              },
-            },
-            {
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    });
-
-    const text = response.text || "";
+    const text = await generateExtractionText(anthropic, mimeType, base64, prompt);
     const validated = validateExtraction(leaseSchema, text, "Lease");
 
     if (validated) {
@@ -987,7 +961,7 @@ Return ONLY valid JSON:
 }
 
 // ---------------------------------------------------------------------------
-// Deterministic simulation (EXTRACTION_SIMULATE=true, no Gemini key). One
+// Deterministic simulation (EXTRACTION_SIMULATE=true, no Anthropic key). One
 // coherent multi-entity, multi-year self-employed scenario, seeded by file
 // path: two Schedule C businesses (one profitable, one loss), a rental on
 // Schedule E, a 50% partnership K-1 tied to its Form 1065 (with Schedule L
@@ -1079,7 +1053,7 @@ export function buildSimulatedTaxScenario(filePath: string): {
   const lOtherCurrent = r(4_000 + frac * 1_500);
 
   const person = "Alex Simworth";
-  const simWarning = "Simulated extraction - no Gemini credentials (EXTRACTION_SIMULATE)";
+  const simWarning = "Simulated extraction - no Anthropic credentials (EXTRACTION_SIMULATE)";
 
   const instances: SimulatedTaxInstance[] = [
     {
@@ -1271,7 +1245,7 @@ export async function classifyTaxDocument(
   filePath: string,
   storedMimeType?: string,
 ): Promise<TaxFormClassificationResult> {
-  if (!genAI) {
+  if (!anthropic) {
     if (process.env.EXTRACTION_SIMULATE === "true") {
       const sim = buildSimulatedTaxScenario(filePath);
       return { classification: sim.classification, lineage: simulatedLineage(), simulated: true };
@@ -1280,27 +1254,17 @@ export async function classifyTaxDocument(
       classification: null,
       lineage: LINEAGE,
       simulated: false,
-      failureReason: "Gemini API not configured - tax document classification unavailable",
+      failureReason: "Anthropic API not configured - tax document classification unavailable",
     };
   }
 
   try {
     const base64 = await fileToBase64(filePath);
     const mimeType = getMimeType(filePath, storedMimeType);
-    const response = await withCallTimeout(
-      genAI.models.generateContent({
-        model: EXTRACTION_MODEL_ID,
-        contents: [
-          {
-            role: "user",
-            parts: [{ inlineData: { mimeType, data: base64 } }, { text: buildClassificationPrompt() }],
-          },
-        ],
-        config: { responseMimeType: "application/json" },
-      }),
+    const text = await withCallTimeout(
+      generateExtractionText(anthropic, mimeType, base64, buildClassificationPrompt()),
       "Tax document classification",
     );
-    const text = response.text || "";
     const validated = validateExtraction(taxDocumentClassificationSchema, text, "Tax document classification");
     if (validated) {
       return { classification: validated, lineage: rawLineage(text), simulated: false };
@@ -1340,7 +1304,7 @@ export async function extractTaxFormInstanceFields(
   instance: ClassifiedFormInstance,
   storedMimeType?: string,
 ): Promise<TaxFormInstanceExtraction> {
-  if (!genAI) {
+  if (!anthropic) {
     if (process.env.EXTRACTION_SIMULATE === "true") {
       const sim = buildSimulatedTaxScenario(filePath);
       const match = sim.instances.find((i) => matchesSimInstance(i, instance));
@@ -1360,7 +1324,7 @@ export async function extractTaxFormInstanceFields(
       taxYear: instance.taxYear ?? null,
       entityName: instance.entityName ?? null,
       fields: {},
-      warnings: ["Gemini API not configured - form extraction unavailable"],
+      warnings: ["Anthropic API not configured - form extraction unavailable"],
       lineage: LINEAGE,
       simulated: false,
     };
@@ -1369,23 +1333,10 @@ export async function extractTaxFormInstanceFields(
   try {
     const base64 = await fileToBase64(filePath);
     const mimeType = getMimeType(filePath, storedMimeType);
-    const response = await withCallTimeout(
-      genAI.models.generateContent({
-        model: EXTRACTION_MODEL_ID,
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { inlineData: { mimeType, data: base64 } },
-              { text: buildFormExtractionPrompt(instance) },
-            ],
-          },
-        ],
-        config: { responseMimeType: "application/json" },
-      }),
+    const text = await withCallTimeout(
+      generateExtractionText(anthropic, mimeType, base64, buildFormExtractionPrompt(instance)),
       `Form extraction (${instance.formType})`,
     );
-    const text = response.text || "";
     const schema = buildFormExtractionResponseSchema(instance.formType);
     const validated = validateExtraction(schema, text, `Form extraction (${instance.formType})`);
     if (!validated) {
