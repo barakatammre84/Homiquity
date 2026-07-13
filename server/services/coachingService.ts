@@ -1217,10 +1217,7 @@ export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnRes
     state,
   };
 
-  const system: Anthropic.TextBlockParam[] = [
-    { type: "text", text: STATIC_COACH_PROMPT, cache_control: { type: "ephemeral" } },
-    { type: "text", text: buildDynamicContext(opts.verifiedContext, opts.existingProfile) },
-  ];
+  const system = buildCoachSystemPrompt(opts.verifiedContext, opts.existingProfile);
 
   const messages: Anthropic.MessageParam[] = opts.history
     .slice(-HISTORY_WINDOW_MESSAGES)
@@ -1403,6 +1400,21 @@ export async function runCoachTurn(opts: CoachTurnOptions): Promise<CoachTurnRes
     degraded: false,
     usage: { inputTokens: totalInput, outputTokens: totalOutput, modelCalls },
   };
+}
+
+/**
+ * The exact `system` blocks a coach turn sends: the cache-anchored static
+ * prompt plus the per-borrower dynamic context. Exported so evaluation harnesses
+ * (e.g. the Haiku↔Sonnet model A/B) exercise the identical prompt runCoachTurn uses.
+ */
+export function buildCoachSystemPrompt(
+  ctx: VerifiedUserContext,
+  existingProfile?: unknown,
+): Anthropic.TextBlockParam[] {
+  return [
+    { type: "text", text: STATIC_COACH_PROMPT, cache_control: { type: "ephemeral" } },
+    { type: "text", text: buildDynamicContext(ctx, existingProfile) },
+  ];
 }
 
 function buildDynamicContext(ctx: VerifiedUserContext, existingProfile?: unknown): string {
