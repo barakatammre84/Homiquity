@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import { Composer } from "@/components/coach/Composer";
 import { CapturePanel } from "@/components/coach/CapturePanel";
 import { ConversationSidebar } from "@/components/coach/ConversationSidebar";
 import { InsightsBanner, WelcomeState } from "@/components/coach/WelcomeState";
-import { ActionPlanPanel, DocumentChecklistPanel, ReadinessPanel } from "@/components/coach/panels";
+import { ActionPlanPanel, DocumentChecklistInline, DocumentChecklistPanel, ReadinessPanel } from "@/components/coach/panels";
 import type {
   ActionPlanItem,
   CoachConversation,
@@ -159,6 +159,14 @@ export default function AICoach() {
   const profile = (turn.panel.profile ?? activeConv?.financialProfile ?? null) as CoachProfile | null;
   const actionPlan = (turn.panel.actionPlan ?? activeConv?.actionPlan ?? null) as ActionPlanItem[] | null;
   const documentChecklist = (turn.panel.documentChecklist ?? activeConv?.documentChecklist ?? null) as DocumentRequirement[] | null;
+  // Application to attach a Plaid connection to — surfaced by record_intake's
+  // captured events; null until the coach has saved intake this session.
+  const capturedAppId = useMemo(() => {
+    let id: string | null = null;
+    for (const e of turn.captured) if (e.applicationId) id = e.applicationId;
+    return id;
+  }, [turn.captured]);
+  const hasChecklist = !!documentChecklist && documentChecklist.length > 0;
 
   const insights = insightsData?.insights ?? [];
   // First-message fix: an in-flight turn counts as an active chat, so the
@@ -179,7 +187,9 @@ export default function AICoach() {
       {actionPlan && actionPlan.length > 0 && (
         <ActionPlanPanel plan={actionPlan} onToggle={(itemId) => toggleActionItem.mutate(itemId)} />
       )}
-      {documentChecklist && documentChecklist.length > 0 && <DocumentChecklistPanel docs={documentChecklist} />}
+      {documentChecklist && documentChecklist.length > 0 && (
+        <DocumentChecklistPanel docs={documentChecklist} applicationId={capturedAppId} />
+      )}
     </div>
   );
 
@@ -273,6 +283,10 @@ export default function AICoach() {
             )}
             <MessageList messages={messages} turn={turn} onRetry={retry} onDismissError={dismissError} />
           </>
+        )}
+
+        {hasActiveChat && hasChecklist && (
+          <DocumentChecklistInline docs={documentChecklist!} applicationId={capturedAppId} />
         )}
 
         {hasActiveChat && (
