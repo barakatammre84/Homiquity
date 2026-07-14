@@ -85,7 +85,7 @@ export function PageShell({
   const hasHeader =
     title != null || subtitle != null || eyebrow != null || headerLead != null;
   const inner = (
-    <div className={cn("mx-auto w-full px-4 py-8 sm:py-10", WIDTHS[width], className)}>
+    <div className={cn("mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-10", WIDTHS[width], className)}>
       {hasHeader && (
         <PageHeader
           title={title}

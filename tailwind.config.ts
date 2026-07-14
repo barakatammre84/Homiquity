@@ -10,6 +10,16 @@ export default {
         md: "calc(var(--radius) - 4px)", /* 8px — inputs, selects, buttons */
         sm: "calc(var(--radius) - 8px)", /* 4px — small chips, badges */
       },
+      /* Card elevation scale — wires the near-flat neutral --shadow-* vars
+         (index.css) so surfaces use a named, tunable card shadow instead of
+         Tailwind's stock shadows. A content card on bg-surface uses shadow-card;
+         hover lifts to shadow-card-hover; hero/emphasis uses shadow-card-lg.
+         Overlays keep Radix's own shadows. See design_guidelines.md → elevation. */
+      boxShadow: {
+        card: "var(--shadow-sm)",
+        "card-hover": "var(--shadow-md)",
+        "card-lg": "var(--shadow-lg)",
+      },
       colors: {
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
@@ -40,6 +50,13 @@ export default {
           DEFAULT: "hsl(var(--muted) / <alpha-value>)",
           foreground: "hsl(var(--muted-foreground) / <alpha-value>)",
           border: "var(--muted-border)",
+        },
+        // Layer 0-surface: light-gray app/dashboard page ground (bg-surface).
+        // White cards sit on it so their shadow-card reads. Public/reading
+        // surfaces stay on bg-background.
+        surface: {
+          DEFAULT: "hsl(var(--surface) / <alpha-value>)",
+          foreground: "hsl(var(--surface-foreground) / <alpha-value>)",
         },
         accent: {
           DEFAULT: "hsl(var(--accent) / <alpha-value>)",
