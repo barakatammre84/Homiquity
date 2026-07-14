@@ -53,6 +53,11 @@
      (~6.2:1 on white, ~5.8:1 on the #F8FAFC panels — was 4.83:1). Still clearly
      recessive vs the near-black primary type (~16:1). */
   --muted-foreground: 215 24% 37%;
+  /* Layer 0-surface: light-gray app/dashboard ground (one hair deeper than
+     --muted #F8FAFC) that white cards sit ON so their shadow-card reads.
+     Public/reading surfaces stay on the white --background. */
+  --surface: 210 40% 97%;
+  --surface-foreground: 222 47% 11%;
   /* Accent: deep royal-blue chip — quieter than the emerald primary */
   --accent: 224 60% 24%;
   --accent-foreground: 0 0% 100%;
@@ -190,6 +195,9 @@
   --muted: 0 0% 12%;
   /* Secondary Text: slate-400 */
   --muted-foreground: 215 20% 65%;
+  /* Layer 0-surface (dark): between --background 7% and --card 10% */
+  --surface: 0 0% 9%;
+  --surface-foreground: 210 40% 98%;
   --accent: 0 0% 22%;
   --accent-foreground: 210 40% 98%;
   /* Semantic pop: danger (red-600, matches light mode for AA on the fill) */

@@ -14,7 +14,12 @@ import { Card, CardContent } from "@/components/ui/card";
 //     action={<Button asChild><Link href="/apply">Start</Link></Button>} />
 
 export interface EmptyStateProps {
-  /** Optional lucide icon. */
+  /**
+   * Optional spot illustration (from components/illustrations) — the preferred,
+   * branded zero-state visual. Wins over `icon` when both are given.
+   */
+  illustration?: React.ReactNode;
+  /** Optional lucide icon (fallback when no illustration is provided). */
   icon?: LucideIcon;
   title: string;
   description?: string;
@@ -27,6 +32,7 @@ export interface EmptyStateProps {
 }
 
 export function EmptyState({
+  illustration,
   icon: Icon,
   title,
   description,
@@ -37,7 +43,11 @@ export function EmptyState({
 }: EmptyStateProps) {
   const content = (
     <>
-      {Icon && <Icon className="mb-3 h-10 w-10 text-muted-foreground" aria-hidden="true" />}
+      {illustration ? (
+        <div className="mb-4" aria-hidden="true">{illustration}</div>
+      ) : (
+        Icon && <Icon className="mb-3 h-10 w-10 text-muted-foreground" aria-hidden="true" />
+      )}
       <p className="font-medium text-foreground">{title}</p>
       {description && (
         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>

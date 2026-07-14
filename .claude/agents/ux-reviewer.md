@@ -12,9 +12,21 @@ compliance rails on copy.
 
 - **Design system**: `design_guidelines.md` (Royal Blue Emerald — but the doc itself says code
   wins: tokens in `client/src/index.css` + `tailwind.config.ts`, primitives in
-  `client/src/components/ui/`). The token guard `scripts/design-token-guard.cjs` (run via
-  `npm run checkup`) fails CI on raw Tailwind palette classes — anything it would flag is
-  automatically a finding.
+  `client/src/components/ui/`) + its operational companion
+  `design/visual-consistency-standard.md` (the canonical spacing/elevation scales, icon registry,
+  `<Logo>`/white-label mechanism, empty-state + PageShell adoption checklists). The token guard
+  `scripts/design-token-guard.cjs` (run via `npm run checkup`) fails CI on raw Tailwind palette
+  classes — anything it would flag is automatically a finding.
+- **Consistency-program rules (2026-07-14, ⏳ rolling out)** — check against the standard:
+  canonical **spacing** (PageShell widths 2xl/4xl/6xl/7xl, gutter `px-4 sm:px-6 lg:px-8`, section
+  `space-y-6`, card `p-6`/`p-4`) with **no hand-rolled `min-h-screen` page wrappers**; **elevation**
+  = `shadow-card`/`-hover`/`-lg` on `bg-surface`, **not** ad-hoc `shadow-2xl`/`shadow-lg border-0`/
+  colored shadows on content cards; **icons** imported by semantic name from `client/src/lib/icons.ts`
+  (flag **direct `lucide-react` imports** in pages, and one concept drawn with multiple glyphs);
+  **zero-states** via `<EmptyState>` (+ `components/illustrations/`), not icon-in-a-gray-circle;
+  **brand** via `<Logo>` + `BrandingProvider` brandable tokens, never a hardcoded `homiquity` span or
+  inline hex; a tenant override must touch only brandable tokens (`--primary`/`--accent`/`--sidebar`/
+  `--ring`), never fixed/semantic-status tokens.
 - **Standing UX audit system**: `kb/ux-audit/` — `page-audit.md` (page-by-page status; do NOT
   re-report issues already logged there — cross-reference them), `psychology-patterns.md`
   (trust/completion patterns with paste-ready copy), `ux-roadmap.md`, `component-inventory.csv`,
