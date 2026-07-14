@@ -30,6 +30,8 @@ import { sendEmail } from "./emailService";
 import type { IncomeSourceEntry } from "@shared/schema";
 import { toNum as toNumber } from "@shared/lib/number";
 import { COMPANY_CONFIG } from "../config/company";
+import { isAutopilotEnabled, canGenerateFollowUps } from "./autopilot/config";
+import { materializeFlagsToFollowUps } from "./autopilot/followUps";
 import {
   adjustLiabilities,
   assessIncomeSeasoning,
@@ -494,6 +496,19 @@ export async function runPreUnderwriting(
         sourceRule: "PRE_UW_LOW_RESERVES",
       });
     }
+  }
+
+  // Autopilot: give the remaining flags teeth. runPreUnderwriting only
+  // materializes LOW_RESERVES above; when Autopilot is active this converts the
+  // other cited flags into idempotent loan_conditions (packaging follow-ups —
+  // never a decision). No-op when the kill switch is off, so today's behavior is
+  // unchanged for any lender who hasn't activated the agent.
+  if (
+    flags.length > 0 &&
+    (await isAutopilotEnabled(application.loanOfficerId)) &&
+    (await canGenerateFollowUps())
+  ) {
+    await materializeFlagsToFollowUps(applicationId, flags);
   }
 
   let notified = false;
