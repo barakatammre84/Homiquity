@@ -4,6 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { PlaidConnectButton } from "@/components/PlaidConnectButton";
+
+/** Bank/asset items verify as "assets"; income/employment docs as "income". */
+function plaidVerificationType(doc: DocumentRequirement): "assets" | "income" {
+  return /income|employ|pay.?stub|w-?2|1099|profit|salary/i.test(`${doc.docType} ${doc.category} ${doc.label}`)
+    ? "income"
+    : "assets";
+}
 import {
   CATEGORY_ICONS,
   TIER_CONFIG,
@@ -185,7 +193,13 @@ export function ActionPlanPanel({
   );
 }
 
-export function DocumentChecklistPanel({ docs }: { docs: DocumentRequirement[] }) {
+export function DocumentChecklistPanel({
+  docs,
+  applicationId,
+}: {
+  docs: DocumentRequirement[];
+  applicationId?: string | null;
+}) {
   const grouped = docs.reduce((acc, d) => {
     const cat = d.category || "Other";
     if (!acc[cat]) acc[cat] = [];
@@ -222,17 +236,27 @@ export function DocumentChecklistPanel({ docs }: { docs: DocumentRequirement[] }
                       </div>
                       <p className="text-xs text-muted-foreground">{doc.reason}</p>
                       {doc.plaidEligible && (
-                        <Link href="/verification">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="mt-1.5 h-7 gap-1.5 text-xs"
-                            data-testid={`button-plaid-connect-${doc.docType}`}
-                          >
-                            <Landmark className="h-3.5 w-3.5" />
-                            Connect with Plaid instead
-                          </Button>
-                        </Link>
+                        applicationId ? (
+                          <PlaidConnectButton
+                            applicationId={applicationId}
+                            verificationType={plaidVerificationType(doc)}
+                            label="Connect with Plaid instead"
+                            className="mt-1.5 h-7 text-xs"
+                            testId={`button-plaid-connect-${doc.docType}`}
+                          />
+                        ) : (
+                          <Link href="/verification">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-1.5 h-7 gap-1.5 text-xs"
+                              data-testid={`button-plaid-connect-${doc.docType}`}
+                            >
+                              <Landmark className="h-3.5 w-3.5" />
+                              Connect with Plaid instead
+                            </Button>
+                          </Link>
+                        )
                       )}
                     </div>
                   </div>
@@ -243,5 +267,33 @@ export function DocumentChecklistPanel({ docs }: { docs: DocumentRequirement[] }
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Inline "connect your bank" prompt shown in the chat stream (not just the side
+ * panel) when the checklist has a Plaid-eligible item and we have an application
+ * to attach the connection to — so the borrower can act without hunting for it.
+ */
+export function ConnectBankInlineCTA({ applicationId }: { applicationId: string }) {
+  return (
+    <div
+      className="mx-auto mb-2 flex max-w-2xl items-center gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2"
+      data-testid="coach-plaid-inline-cta"
+    >
+      <Landmark className="h-4 w-4 text-primary shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-foreground">Connect your bank to verify assets in seconds</p>
+        <p className="text-[11px] text-muted-foreground">
+          Faster than uploading statements — lenders accept it for asset verification.
+        </p>
+      </div>
+      <PlaidConnectButton
+        applicationId={applicationId}
+        verificationType="assets"
+        label="Connect with Plaid"
+        testId="button-plaid-connect-inline"
+      />
+    </div>
   );
 }
