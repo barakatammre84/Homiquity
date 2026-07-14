@@ -1112,6 +1112,18 @@ export function registerUnderwritingRoutes(
         const { updateSubmissionStatus, SubmissionBlockedError } = await import("../services/lenderSubmission");
         try {
           const updated = await updateSubmissionStatus(submissionId, toStatus, notes, req.user!.id);
+
+          // Autopilot decision relay: on a terminal lender decision, tell the
+          // borrower they're approved / funded (Reg N), or flag the deal team
+          // for the ECOA §1002.9 adverse-action notice on a denial. Gated by the
+          // kill switch and non-fatal — never break the status update.
+          try {
+            const { relayLenderDecision } = await import("../services/autopilot/decisionRelay");
+            await relayLenderDecision({ application, toStatus, performedBy: req.user!.id });
+          } catch (relayErr) {
+            console.warn("[Autopilot] Decision relay failed (non-fatal):", relayErr);
+          }
+
           const { logAudit } = await import("../auditLog");
           logAudit(req, "broker.lender_submission_status", "loan_application", submission.applicationId, {
             submissionId,
