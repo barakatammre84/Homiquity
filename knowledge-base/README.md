@@ -29,7 +29,10 @@ doc-drift bug to fix):
   - [04 — API Surface](handbook/app-guide/04-api-routes.md) · [05 — Data Flow: A Loan's Journey](handbook/app-guide/05-data-flow.md) · [06 — Auth, Security & Secrets](handbook/app-guide/06-auth-security-secrets.md)
   - [07 — Frontend](handbook/app-guide/07-frontend.md) · [08 — Service Catalog](handbook/app-guide/08-services.md) · [09 — External Integrations](handbook/app-guide/09-integrations.md)
   - [10 — Deploy & Operations](handbook/app-guide/10-deploy-ops.md) · [11 — Mortgage Domain Glossary](handbook/app-guide/11-domain-glossary.md)
-- [design/design_guidelines.md](handbook/design/design_guidelines.md) — the design system.
+- [design/design_guidelines.md](handbook/design/design_guidelines.md) — the design system (the *language*).
+- [design/visual-consistency-standard.md](handbook/design/visual-consistency-standard.md) — the operational
+  *checklist*: spacing/elevation scales, the icon registry (one glyph per concept), the brand/`<Logo>`/
+  white-label mechanism, empty-state + illustration standards, and the PageShell adoption checklist.
 
 ### Compliance — regulated-logic doctrine (L2 detail) · [`compliance/`](compliance/)
 - [UNDERWRITING_SCENARIOS.md](compliance/UNDERWRITING_SCENARIOS.md) — scenario catalog + the
