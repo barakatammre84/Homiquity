@@ -53,6 +53,8 @@ export interface DocumentRequirement {
   reason: string;
   priority: "required" | "recommended" | "optional";
   category: string;
+  /** True when this item can be satisfied by securely connecting the account via Plaid (bank/assets, and for W-2 borrowers income/employment) — the capture panel renders a "Connect with Plaid" CTA linking to /verification. */
+  plaidEligible?: boolean;
 }
 
 export interface CoachIntakeData {
@@ -186,6 +188,7 @@ const documentRequirementSchema = z.object({
   reason: z.string(),
   priority: z.enum(["required", "recommended", "optional"]),
   category: z.string().min(1),
+  plaidEligible: z.boolean().optional(),
 });
 export const coachDocumentChecklistSchema = z.array(documentRequirementSchema);
 
@@ -387,7 +390,7 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
   {
     name: "set_document_checklist",
     description:
-      "Replace the borrower's document checklist shown in their side panel. Call when the required document set first becomes determinable (e.g. once employment type is known) or when it changes. Always send the FULL checklist.",
+      'Replace the borrower\'s document checklist shown in their side panel. Call when the required document set first becomes determinable (e.g. once employment type is known) or when it changes. Always send the FULL checklist. Set plaidEligible: true on items the borrower can satisfy by connecting an account via Plaid — bank statements, assets/reserves, and (for W-2 borrowers) income/employment — so the panel shows a "Connect with Plaid" button. Leave it false/unset for tax returns, P&L, IDs, and other true document uploads.',
     input_schema: {
       type: "object" as const,
       additionalProperties: false,
@@ -403,6 +406,7 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
               reason: { type: "string", description: "Why underwriting systems require it." },
               priority: { type: "string", enum: ["required", "recommended", "optional"] },
               category: { type: "string", description: 'Grouping, e.g. "Income", "Assets", "Identity".' },
+              plaidEligible: { type: "boolean", description: "True if the borrower can satisfy this by connecting an account via Plaid (bank statements, assets/reserves, or W-2 income/employment). False/omit for tax returns, P&L, IDs, and other real uploads." },
             },
             required: ["docType", "label", "reason", "priority", "category"],
           },
