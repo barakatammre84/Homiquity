@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Brain, FileSearch, ListChecks, FolderKanban, Clock, Power, BadgeCheck, AlertTriangle } from "lucide-react";
 
 interface AutopilotConfigResp {
@@ -67,13 +68,34 @@ function StatCard(props: { icon: React.ElementType; label: string; value: string
   );
 }
 
+const RANGE_OPTIONS: { value: string; label: string; days: number }[] = [
+  { value: "7", label: "Last 7 days", days: 7 },
+  { value: "30", label: "Last 30 days", days: 30 },
+  { value: "90", label: "Last 90 days", days: 90 },
+  { value: "365", label: "Last 12 months", days: 365 },
+];
+
 export default function AutopilotConsole() {
   const { toast } = useToast();
+  const [rangeValue, setRangeValue] = useState("30");
+  const rangeDays = RANGE_OPTIONS.find((r) => r.value === rangeValue)?.days ?? 30;
+
   const { data: config, isLoading: configLoading } = useQuery<AutopilotConfigResp>({
     queryKey: ["/api/autopilot/config"],
   });
   const { data: metrics, isLoading: metricsLoading } = useQuery<AutopilotMetricsResp>({
-    queryKey: ["/api/autopilot/metrics"],
+    // Re-fetches when the range changes (rangeDays is part of the key).
+    queryKey: ["/api/autopilot/metrics", rangeDays],
+    queryFn: async () => {
+      const to = new Date();
+      const from = new Date(to.getTime() - rangeDays * 24 * 60 * 60 * 1000);
+      const res = await fetch(
+        `/api/autopilot/metrics?from=${from.toISOString()}&to=${to.toISOString()}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) throw new Error("Failed to load metrics");
+      return res.json();
+    },
   });
 
   const [enabled, setEnabled] = useState(false);
@@ -220,11 +242,20 @@ export default function AutopilotConsole() {
 
       {/* Value / ROI */}
       <div>
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-base font-semibold">Agent value (last 30 days)</h2>
-          <span className="text-xs text-muted-foreground">
-            {metrics ? `~${metrics.minutesSavedPerReview} min saved per manual review` : ""}
-          </span>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-base font-semibold">Agent value</h2>
+          <Select value={rangeValue} onValueChange={setRangeValue}>
+            <SelectTrigger className="h-8 w-[150px] text-xs" data-testid="select-autopilot-range">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RANGE_OPTIONS.map((r) => (
+                <SelectItem key={r.value} value={r.value} className="text-xs">
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {metricsLoading ? (
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
