@@ -7,6 +7,11 @@ describe("autopilot config PATCH validation", () => {
     expect(r.success).toBe(true);
   });
 
+  it("accepts the decisionRelayEnabled toggle", () => {
+    expect(configPatchSchema.safeParse({ decisionRelayEnabled: true }).success).toBe(true);
+    expect(configPatchSchema.safeParse({ decisionRelayEnabled: "on" }).success).toBe(false);
+  });
+
   it("accepts an LO allowlist and a null allowlist", () => {
     expect(configPatchSchema.safeParse({ loanOfficerAllowlist: ["lo_1", "lo_2"] }).success).toBe(true);
     expect(configPatchSchema.safeParse({ loanOfficerAllowlist: null }).success).toBe(true);
