@@ -35,6 +35,7 @@ export const configPatchSchema = z
     enabled: z.boolean().optional(),
     followUpGenerationEnabled: z.boolean().optional(),
     applicationDataUpdatesEnabled: z.boolean().optional(),
+    decisionRelayEnabled: z.boolean().optional(),
     loanOfficerAllowlist: z.array(z.string().min(1)).nullable().optional(),
     guidelineMode: z.enum(AUTOPILOT_GUIDELINE_MODES).optional(),
   })
@@ -54,6 +55,7 @@ export function registerAutopilotAdminRoutes(app: Express) {
         enabled: row.enabled,
         followUpGenerationEnabled: row.followUpGenerationEnabled,
         applicationDataUpdatesEnabled: row.applicationDataUpdatesEnabled,
+        decisionRelayEnabled: row.decisionRelayEnabled,
         loanOfficerAllowlist: (row.loanOfficerAllowlist as string[] | null) ?? null,
         guidelineMode: row.guidelineMode,
         updatedAt: row.updatedAt,
@@ -80,6 +82,7 @@ export function registerAutopilotAdminRoutes(app: Express) {
       if (d.enabled !== undefined) updates.enabled = d.enabled;
       if (d.followUpGenerationEnabled !== undefined) updates.followUpGenerationEnabled = d.followUpGenerationEnabled;
       if (d.applicationDataUpdatesEnabled !== undefined) updates.applicationDataUpdatesEnabled = d.applicationDataUpdatesEnabled;
+      if (d.decisionRelayEnabled !== undefined) updates.decisionRelayEnabled = d.decisionRelayEnabled;
       if (d.loanOfficerAllowlist !== undefined) {
         updates.loanOfficerAllowlist = d.loanOfficerAllowlist && d.loanOfficerAllowlist.length > 0 ? d.loanOfficerAllowlist : null;
       }
@@ -95,6 +98,7 @@ export function registerAutopilotAdminRoutes(app: Express) {
         enabled: fresh!.enabled,
         followUpGenerationEnabled: fresh!.followUpGenerationEnabled,
         applicationDataUpdatesEnabled: fresh!.applicationDataUpdatesEnabled,
+        decisionRelayEnabled: fresh!.decisionRelayEnabled,
         loanOfficerAllowlist: (fresh!.loanOfficerAllowlist as string[] | null) ?? null,
         guidelineMode: fresh!.guidelineMode,
         updatedAt: fresh!.updatedAt,

@@ -15,6 +15,7 @@ interface AutopilotConfigResp {
   enabled: boolean;
   followUpGenerationEnabled: boolean;
   applicationDataUpdatesEnabled: boolean;
+  decisionRelayEnabled: boolean;
   loanOfficerAllowlist: string[] | null;
   guidelineMode: string;
   updatedAt: string | null;
@@ -76,6 +77,7 @@ export default function AutopilotConsole() {
   const [enabled, setEnabled] = useState(false);
   const [followUp, setFollowUp] = useState(true);
   const [appData, setAppData] = useState(true);
+  const [decisionRelay, setDecisionRelay] = useState(false);
   const [allowlist, setAllowlist] = useState("");
 
   useEffect(() => {
@@ -83,6 +85,7 @@ export default function AutopilotConsole() {
       setEnabled(config.enabled);
       setFollowUp(config.followUpGenerationEnabled);
       setAppData(config.applicationDataUpdatesEnabled);
+      setDecisionRelay(config.decisionRelayEnabled);
       setAllowlist((config.loanOfficerAllowlist ?? []).join(", "));
     }
   }, [config]);
@@ -94,6 +97,7 @@ export default function AutopilotConsole() {
         enabled,
         followUpGenerationEnabled: followUp,
         applicationDataUpdatesEnabled: appData,
+        decisionRelayEnabled: decisionRelay,
         loanOfficerAllowlist: list.length ? list : null,
       });
       return res.json();
@@ -110,6 +114,7 @@ export default function AutopilotConsole() {
     (enabled !== config.enabled ||
       followUp !== config.followUpGenerationEnabled ||
       appData !== config.applicationDataUpdatesEnabled ||
+      decisionRelay !== config.decisionRelayEnabled ||
       allowlist !== (config.loanOfficerAllowlist ?? []).join(", "));
 
   return (
@@ -171,6 +176,13 @@ export default function AutopilotConsole() {
                 checked={appData}
                 onChange={setAppData}
                 testId="switch-autopilot-appdata"
+              />
+              <ToggleRow
+                label="Decision Relay"
+                description="Relay a lender's decision — approval to the borrower (Reg N), denial to staff for the ECOA §1002.9 adverse-action notice. Borrower-facing: enable only after counsel sign-off."
+                checked={decisionRelay}
+                onChange={setDecisionRelay}
+                testId="switch-autopilot-decision-relay"
               />
               <div className="py-3 space-y-1.5">
                 <Label htmlFor="autopilot-allowlist" className="text-sm font-medium">
