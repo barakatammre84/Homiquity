@@ -29,6 +29,7 @@ import { registerListingsRoutes } from "./routes/listings";
 import { registerGeocodeRoutes } from "./routes/geocode";
 import { registerCalculatorRoutes } from "./routes/calculators";
 import { registerAusRoutes } from "./routes/aus";
+import { registerAutopilotRoutes } from "./routes/autopilot";
 import { registerJobRoutes } from "./routes/jobs";
 import { registerShellRoutes } from "./routes/shell";
 import { registerMarketDataRoutes } from "./routes/market-data";
@@ -101,6 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerGeocodeRoutes(app);
   registerCalculatorRoutes(app, storage);
   registerAusRoutes(app);
+  registerAutopilotRoutes(app);
   registerJobRoutes(app);
   registerShellRoutes(app, storage);
   registerMarketDataRoutes(app);

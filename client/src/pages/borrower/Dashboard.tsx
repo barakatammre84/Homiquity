@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import { useAutopilotStatus } from "@/hooks/useAutopilotStatus";
+import { AutopilotBanner } from "@/components/AutopilotBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
@@ -653,6 +655,15 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
+  // Rules of Hooks: the Autopilot status hook must run before the early returns
+  // below. Resolve the active application id the same way activeApplication does
+  // (tolerant of not-yet-loaded data); the hook re-subscribes when the id changes.
+  const statusApps = data?.applications || [];
+  const statusActiveApp = selectedAppId
+    ? statusApps.find((a) => a.id === selectedAppId) || statusApps.find((a) => !isTerminalLoanAppStatus(a.status))
+    : statusApps.find((a) => !isTerminalLoanAppStatus(a.status));
+  const autopilotStatus = useAutopilotStatus(statusActiveApp?.id);
+
   if (authLoading || isLoading || isStaff) {
     return (
       <div className="p-8 max-w-xl mx-auto space-y-6">
@@ -939,6 +950,10 @@ export default function Dashboard() {
             {activeApplication && <LoanTeamCard applicationId={activeApplication.id} />}
           </div>
         </div>
+
+        {/* Autopilot live status banner (Phase 4) — three real-time states +
+            package-readiness meter. Renders only when a status exists. */}
+        {activeApplication && <AutopilotBanner status={autopilotStatus} />}
 
         {/* SECONDARY — full-width detail stack below the grid (collapsed by default) */}
         <div className="mt-6 space-y-4">
