@@ -7,6 +7,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import type { TooltipProps } from "recharts";
 
 export interface TrendPoint {
   date: string; // YYYY-MM-DD
@@ -29,6 +30,22 @@ const fmtFull = (d: string): string => {
   const dt = new Date(`${d}T00:00:00Z`);
   return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 };
+
+/** Custom hover tooltip — the date plus the exact activity count for that day.
+ *  Text wears text tokens, not the series color. */
+function TrendTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+  const count = Number(payload[0].value ?? 0);
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-sm">
+      <div className="font-medium text-foreground">{fmtFull(String(label))}</div>
+      <div className="text-muted-foreground">
+        <span className="font-semibold tabular-nums text-foreground">{count}</span>{" "}
+        {count === 1 ? "activity" : "activities"}
+      </div>
+    </div>
+  );
+}
 
 export default function AutopilotTrendChart({ data }: { data: TrendPoint[] }) {
   return (
@@ -58,14 +75,8 @@ export default function AutopilotTrendChart({ data }: { data: TrendPoint[] }) {
             className="text-xs"
           />
           <Tooltip
-            labelFormatter={(d: string) => fmtFull(d)}
-            formatter={(value: number) => [value, "Activity"]}
-            contentStyle={{
-              backgroundColor: "hsl(var(--card))",
-              border: "1px solid hsl(var(--border))",
-              borderRadius: "8px",
-              fontSize: "12px",
-            }}
+            content={<TrendTooltip />}
+            cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
           />
           <Area
             type="monotone"
