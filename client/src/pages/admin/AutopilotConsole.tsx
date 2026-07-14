@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Lazy so recharts (~150KB) code-splits out of the console's main chunk.
+const AutopilotTrendChart = lazy(() => import("./AutopilotTrendChart"));
+interface AutopilotTrendResp {
+  buckets: { date: string; count: number }[];
+}
 import { Brain, FileSearch, ListChecks, FolderKanban, Clock, Power, BadgeCheck, AlertTriangle } from "lucide-react";
 
 interface AutopilotConfigResp {
@@ -98,17 +104,25 @@ export default function AutopilotConsole() {
   const { data: config, isLoading: configLoading } = useQuery<AutopilotConfigResp>({
     queryKey: ["/api/autopilot/config"],
   });
+  const rangeParams = () => {
+    const to = new Date();
+    const from = new Date(to.getTime() - rangeDays * 24 * 60 * 60 * 1000);
+    return `from=${from.toISOString()}&to=${to.toISOString()}`;
+  };
   const { data: metrics, isLoading: metricsLoading } = useQuery<AutopilotMetricsResp>({
     // Re-fetches when the range changes (rangeDays is part of the key).
     queryKey: ["/api/autopilot/metrics", rangeDays],
     queryFn: async () => {
-      const to = new Date();
-      const from = new Date(to.getTime() - rangeDays * 24 * 60 * 60 * 1000);
-      const res = await fetch(
-        `/api/autopilot/metrics?from=${from.toISOString()}&to=${to.toISOString()}`,
-        { credentials: "include" },
-      );
+      const res = await fetch(`/api/autopilot/metrics?${rangeParams()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load metrics");
+      return res.json();
+    },
+  });
+  const { data: trend, isLoading: trendLoading } = useQuery<AutopilotTrendResp>({
+    queryKey: ["/api/autopilot/metrics/trend", rangeDays],
+    queryFn: async () => {
+      const res = await fetch(`/api/autopilot/metrics/trend?${rangeParams()}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load trend");
       return res.json();
     },
   });
@@ -293,6 +307,21 @@ export default function AutopilotConsole() {
             />
           </div>
         )}
+
+        {/* Daily activity trend — single series, so the title names it (no legend). */}
+        <Card className="mt-4">
+          <CardContent className="p-4 sm:p-5">
+            <h3 className="text-sm font-semibold">Agent activity</h3>
+            <p className="mb-3 text-xs text-muted-foreground">Reviews, follow-ups, and relays per day.</p>
+            {trendLoading ? (
+              <Skeleton className="h-52 w-full" />
+            ) : (
+              <Suspense fallback={<Skeleton className="h-52 w-full" />}>
+                <AutopilotTrendChart data={trend?.buckets ?? []} />
+              </Suspense>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
