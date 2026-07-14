@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { PlaidConnectButton } from "@/components/PlaidConnectButton";
+import { DocumentUploadButton } from "@/components/DocumentUploadButton";
 
 /** Bank/asset items verify as "assets"; income/employment docs as "income". */
 function plaidVerificationType(doc: DocumentRequirement): "assets" | "income" {
@@ -193,6 +194,78 @@ export function ActionPlanPanel({
   );
 }
 
+function groupByCategory(docs: DocumentRequirement[]): Record<string, DocumentRequirement[]> {
+  return docs.reduce((acc, d) => {
+    const cat = d.category || "Other";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(d);
+    return acc;
+  }, {} as Record<string, DocumentRequirement[]>);
+}
+
+/**
+ * One checklist document with its action row. EVERY item gets a direct "Upload"
+ * button so the borrower can attach it without leaving the conversation; bank/
+ * asset items ALSO offer the faster Plaid connect (upload becomes the fallback).
+ * Shared by the side panel and the in-chat checklist so both stay actionable.
+ */
+function ChecklistItemRow({
+  doc,
+  applicationId,
+}: {
+  doc: DocumentRequirement;
+  applicationId?: string | null;
+}) {
+  return (
+    <div className="flex items-start gap-2.5 p-2 rounded-lg hover-elevate" data-testid={`doc-item-${doc.docType}`}>
+      <Circle className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-foreground">{doc.label}</span>
+          <Badge
+            variant={doc.priority === "required" ? "destructive" : doc.priority === "recommended" ? "default" : "secondary"}
+            className="text-[10px] px-1.5 py-0"
+          >
+            {doc.priority}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">{doc.reason}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {doc.plaidEligible &&
+            (applicationId ? (
+              <PlaidConnectButton
+                applicationId={applicationId}
+                verificationType={plaidVerificationType(doc)}
+                label="Connect with Plaid"
+                className="h-7 text-xs"
+                testId={`button-plaid-connect-${doc.docType}`}
+              />
+            ) : (
+              <Link href="/verification">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1.5 text-xs"
+                  data-testid={`button-plaid-connect-${doc.docType}`}
+                >
+                  <Landmark className="h-3.5 w-3.5" />
+                  Connect with Plaid
+                </Button>
+              </Link>
+            ))}
+          <DocumentUploadButton
+            docType={doc.docType}
+            label={doc.plaidEligible ? "Upload instead" : "Upload"}
+            applicationId={applicationId}
+            className="h-7 text-xs"
+            testId={`button-upload-${doc.docType}`}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DocumentChecklistPanel({
   docs,
   applicationId,
@@ -200,12 +273,7 @@ export function DocumentChecklistPanel({
   docs: DocumentRequirement[];
   applicationId?: string | null;
 }) {
-  const grouped = docs.reduce((acc, d) => {
-    const cat = d.category || "Other";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(d);
-    return acc;
-  }, {} as Record<string, DocumentRequirement[]>);
+  const grouped = groupByCategory(docs);
 
   return (
     <Card data-testid="card-document-checklist">
@@ -222,44 +290,7 @@ export function DocumentChecklistPanel({
               <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">{category}</p>
               <div className="space-y-1.5">
                 {items.map((doc, i) => (
-                  <div key={i} className="flex items-start gap-2.5 p-2 rounded-lg hover-elevate" data-testid={`doc-item-${doc.docType}`}>
-                    <Circle className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-foreground">{doc.label}</span>
-                        <Badge
-                          variant={doc.priority === "required" ? "destructive" : doc.priority === "recommended" ? "default" : "secondary"}
-                          className="text-[10px] px-1.5 py-0"
-                        >
-                          {doc.priority}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{doc.reason}</p>
-                      {doc.plaidEligible && (
-                        applicationId ? (
-                          <PlaidConnectButton
-                            applicationId={applicationId}
-                            verificationType={plaidVerificationType(doc)}
-                            label="Connect with Plaid instead"
-                            className="mt-1.5 h-7 text-xs"
-                            testId={`button-plaid-connect-${doc.docType}`}
-                          />
-                        ) : (
-                          <Link href="/verification">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="mt-1.5 h-7 gap-1.5 text-xs"
-                              data-testid={`button-plaid-connect-${doc.docType}`}
-                            >
-                              <Landmark className="h-3.5 w-3.5" />
-                              Connect with Plaid instead
-                            </Button>
-                          </Link>
-                        )
-                      )}
-                    </div>
-                  </div>
+                  <ChecklistItemRow key={i} doc={doc} applicationId={applicationId} />
                 ))}
               </div>
             </div>
@@ -271,29 +302,43 @@ export function DocumentChecklistPanel({
 }
 
 /**
- * Inline "connect your bank" prompt shown in the chat stream (not just the side
- * panel) when the checklist has a Plaid-eligible item and we have an application
- * to attach the connection to — so the borrower can act without hunting for it.
+ * The actionable document checklist rendered INLINE in the chat stream (not just
+ * the side panel) — so the borrower can upload each document, or Plaid-connect
+ * bank items, right where the coach asks for them. This is what makes the chat
+ * feel like a rep walking them through: every item has a one-tap action here.
  */
-export function ConnectBankInlineCTA({ applicationId }: { applicationId: string }) {
+export function DocumentChecklistInline({
+  docs,
+  applicationId,
+}: {
+  docs: DocumentRequirement[];
+  applicationId?: string | null;
+}) {
+  const grouped = groupByCategory(docs);
+
   return (
     <div
-      className="mx-auto mb-2 flex max-w-2xl items-center gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2"
-      data-testid="coach-plaid-inline-cta"
+      className="mx-auto mb-2 w-full max-w-2xl rounded-xl border border-border bg-muted/30 px-3 py-2.5"
+      data-testid="coach-checklist-inline"
     >
-      <Landmark className="h-4 w-4 text-primary shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-foreground">Connect your bank to verify assets in seconds</p>
-        <p className="text-[11px] text-muted-foreground">
-          Faster than uploading statements — lenders accept it for asset verification.
+      <div className="mb-1.5 flex items-center gap-2">
+        <FileText className="h-4 w-4 text-primary shrink-0" />
+        <p className="text-xs font-medium text-foreground">
+          Upload right here — tap any item and I'll add it to your file
         </p>
       </div>
-      <PlaidConnectButton
-        applicationId={applicationId}
-        verificationType="assets"
-        label="Connect with Plaid"
-        testId="button-plaid-connect-inline"
-      />
+      <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
+        {Object.entries(grouped).map(([category, items]) => (
+          <div key={category}>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{category}</p>
+            <div className="space-y-1">
+              {items.map((doc, i) => (
+                <ChecklistItemRow key={i} doc={doc} applicationId={applicationId} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

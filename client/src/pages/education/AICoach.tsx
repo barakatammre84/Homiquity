@@ -13,7 +13,7 @@ import { Composer } from "@/components/coach/Composer";
 import { CapturePanel } from "@/components/coach/CapturePanel";
 import { ConversationSidebar } from "@/components/coach/ConversationSidebar";
 import { InsightsBanner, WelcomeState } from "@/components/coach/WelcomeState";
-import { ActionPlanPanel, ConnectBankInlineCTA, DocumentChecklistPanel, ReadinessPanel } from "@/components/coach/panels";
+import { ActionPlanPanel, DocumentChecklistInline, DocumentChecklistPanel, ReadinessPanel } from "@/components/coach/panels";
 import type {
   ActionPlanItem,
   CoachConversation,
@@ -166,7 +166,7 @@ export default function AICoach() {
     for (const e of turn.captured) if (e.applicationId) id = e.applicationId;
     return id;
   }, [turn.captured]);
-  const hasPlaidEligibleDoc = !!documentChecklist?.some((d) => d.plaidEligible);
+  const hasChecklist = !!documentChecklist && documentChecklist.length > 0;
 
   const insights = insightsData?.insights ?? [];
   // First-message fix: an in-flight turn counts as an active chat, so the
@@ -285,8 +285,8 @@ export default function AICoach() {
           </>
         )}
 
-        {hasActiveChat && hasPlaidEligibleDoc && capturedAppId && (
-          <ConnectBankInlineCTA applicationId={capturedAppId} />
+        {hasActiveChat && hasChecklist && (
+          <DocumentChecklistInline docs={documentChecklist!} applicationId={capturedAppId} />
         )}
 
         {hasActiveChat && (
