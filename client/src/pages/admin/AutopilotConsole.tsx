@@ -74,10 +74,25 @@ const RANGE_OPTIONS: { value: string; label: string; days: number }[] = [
   { value: "90", label: "Last 90 days", days: 90 },
   { value: "365", label: "Last 12 months", days: 365 },
 ];
+const DEFAULT_RANGE = "30";
+
+/** Read a valid range from the URL (?range=), falling back to the default. */
+function rangeFromUrl(): string {
+  const r = new URLSearchParams(window.location.search).get("range");
+  return RANGE_OPTIONS.some((o) => o.value === r) ? (r as string) : DEFAULT_RANGE;
+}
 
 export default function AutopilotConsole() {
   const { toast } = useToast();
-  const [rangeValue, setRangeValue] = useState("30");
+  // Persist the selected range in the URL (?range=) so a reload or a shared link
+  // keeps it. replaceState keeps filter changes out of the back-button history.
+  const [rangeValue, setRangeRaw] = useState<string>(rangeFromUrl);
+  const setRangeValue = (v: string) => {
+    setRangeRaw(v);
+    const sp = new URLSearchParams(window.location.search);
+    sp.set("range", v);
+    window.history.replaceState(null, "", `${window.location.pathname}?${sp.toString()}`);
+  };
   const rangeDays = RANGE_OPTIONS.find((r) => r.value === rangeValue)?.days ?? 30;
 
   const { data: config, isLoading: configLoading } = useQuery<AutopilotConfigResp>({
