@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, FileSearch, ListChecks, FolderKanban, Clock, Power, Megaphone } from "lucide-react";
+import { Brain, FileSearch, ListChecks, FolderKanban, Clock, Power, BadgeCheck, AlertTriangle } from "lucide-react";
 
 interface AutopilotConfigResp {
   enabled: boolean;
@@ -27,7 +27,8 @@ interface AutopilotMetricsResp {
   agentActions: number;
   followUpsCreated: number;
   applicationsTouched: number;
-  decisionsRelayed: number;
+  approvalsRelayed: number;
+  adverseActionFlags: number;
   hoursSaved: number;
   minutesSavedPerReview: number;
 }
@@ -226,17 +227,18 @@ export default function AutopilotConsole() {
           </span>
         </div>
         {metricsLoading ? (
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => (
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-24 w-full" />
             ))}
           </div>
         ) : (
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <StatCard icon={FileSearch} label="Documents reviewed" value={metrics?.documentsReviewed ?? 0} />
             <StatCard icon={ListChecks} label="Follow-ups created" value={metrics?.followUpsCreated ?? 0} />
             <StatCard icon={FolderKanban} label="Applications touched" value={metrics?.applicationsTouched ?? 0} />
-            <StatCard icon={Megaphone} label="Decisions relayed" value={metrics?.decisionsRelayed ?? 0} />
+            <StatCard icon={BadgeCheck} label="Approvals relayed" value={metrics?.approvalsRelayed ?? 0} />
+            <StatCard icon={AlertTriangle} label="Adverse-action flags" value={metrics?.adverseActionFlags ?? 0} />
             <StatCard
               icon={Clock}
               label="Hours saved"

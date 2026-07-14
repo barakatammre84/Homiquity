@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { z } from "zod";
-import { and, eq, gte, lte, like, sql } from "drizzle-orm";
+import { and, eq, gte, lte, like, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   autopilotConfig,
@@ -121,7 +121,7 @@ export function registerAutopilotAdminRoutes(app: Express) {
         return res.status(400).json({ error: "Invalid from/to date" });
       }
 
-      const [[documents], [actions], [followUps], [apps], [relayed]] = await Promise.all([
+      const [[documents], [actions], [followUps], [apps], [approvals], [adverse]] = await Promise.all([
         // Documents the agent reviewed — one ai_interactions row per extraction.
         db
           .select({ n: sql<number>`count(*)::int` })
@@ -171,15 +171,28 @@ export function registerAutopilotAdminRoutes(app: Express) {
               lte(dealActivities.createdAt, to),
             ),
           ),
-        // Lender decisions relayed — the relay tags each notification with
-        // metadata.source; counts approvals to borrowers + adverse-action flags
-        // to staff (both are the agent surfacing a lender decision).
+        // Approvals relayed to borrowers (clear-to-close + funded). The relay
+        // tags each notification with metadata.source, so the count is
+        // Autopilot-attributable.
         db
           .select({ n: sql<number>`count(*)::int` })
           .from(notifications)
           .where(
             and(
               sql`${notifications.metadata}->>'source' = 'autopilot_decision_relay'`,
+              inArray(notifications.type, ["loan_approved", "loan_funded"]),
+              gte(notifications.createdAt, from),
+              lte(notifications.createdAt, to),
+            ),
+          ),
+        // Adverse-action flags raised to staff on a lender denial (ECOA §1002.9).
+        db
+          .select({ n: sql<number>`count(*)::int` })
+          .from(notifications)
+          .where(
+            and(
+              sql`${notifications.metadata}->>'source' = 'autopilot_decision_relay'`,
+              eq(notifications.type, "adverse_action_required"),
               gte(notifications.createdAt, from),
               lte(notifications.createdAt, to),
             ),
@@ -193,7 +206,8 @@ export function registerAutopilotAdminRoutes(app: Express) {
         agentActions: actions?.n ?? 0,
         followUpsCreated: followUps?.n ?? 0,
         applicationsTouched: apps?.n ?? 0,
-        decisionsRelayed: relayed?.n ?? 0,
+        approvalsRelayed: approvals?.n ?? 0,
+        adverseActionFlags: adverse?.n ?? 0,
         hoursSaved: Math.round(((documentsReviewed * MINUTES_SAVED_PER_REVIEW) / 60) * 10) / 10,
         minutesSavedPerReview: MINUTES_SAVED_PER_REVIEW,
       });
