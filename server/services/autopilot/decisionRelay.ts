@@ -1,5 +1,5 @@
 import { storage } from "../../storage";
-import { isAutopilotEnabled } from "./config";
+import { isAutopilotEnabled, canRelayDecisions } from "./config";
 import type { LoanApplication } from "@shared/schema";
 
 /**
@@ -104,7 +104,10 @@ export async function relayLenderDecision(params: DecisionRelayParams): Promise<
   try {
     const plan = planDecisionRelay(toStatus);
     if (!plan) return;
+    // Gated by the master kill switch AND its own capability toggle — the relay
+    // stays dark until an operator explicitly turns it on (Reg N / ECOA).
     if (!(await isAutopilotEnabled(application.loanOfficerId))) return;
+    if (!(await canRelayDecisions())) return;
 
     // Borrower relays go to the borrower; denial relays go to the deal team
     // (the loan officer) — never a "denied" ping to the borrower.
