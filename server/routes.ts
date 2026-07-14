@@ -41,6 +41,7 @@ import { registerPartnerRoutes } from "./routes/partners";
 import { registerWebhookRoutes } from "./routes/webhooks";
 import { registerMonitoringRoutes } from "./routes/monitoring";
 import { registerSeoRoutes } from "./routes/seo";
+import { registerAutopilotAdminRoutes } from "./routes/autopilotAdmin";
 import { seedDatabase } from "./seed";
 import { pool } from "./db";
 import { assertEncryptionConfig, initEncryption } from "./services/encryptionService";
@@ -114,6 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerWebhookRoutes(app, storage);
   registerMonitoringRoutes(app);
   registerSeoRoutes(app);
+  registerAutopilotAdminRoutes(app);
 
   app.all("/api/*", (_req, res) => {
     res.status(404).json({ error: "Not found" });
