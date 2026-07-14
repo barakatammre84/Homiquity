@@ -216,4 +216,47 @@ export function registerAutopilotAdminRoutes(app: Express) {
       return res.status(500).json({ error: "Failed to compute Autopilot metrics" });
     }
   });
+
+  // Daily agent-activity trend (autopilot_review deal activities per day) over
+  // the range, zero-filled so the chart is continuous.
+  app.get("/api/autopilot/metrics/trend", requireRole("admin"), async (req, res) => {
+    try {
+      const to = req.query.to ? new Date(String(req.query.to)) : new Date();
+      const from = req.query.from
+        ? new Date(String(req.query.from))
+        : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+        return res.status(400).json({ error: "Invalid from/to date" });
+      }
+
+      const rows = await db
+        .select({
+          day: sql<string>`to_char(date_trunc('day', ${dealActivities.createdAt}), 'YYYY-MM-DD')`,
+          n: sql<number>`count(*)::int`,
+        })
+        .from(dealActivities)
+        .where(
+          and(
+            eq(dealActivities.activityType, "autopilot_review"),
+            gte(dealActivities.createdAt, from),
+            lte(dealActivities.createdAt, to),
+          ),
+        )
+        .groupBy(sql`date_trunc('day', ${dealActivities.createdAt})`);
+
+      const byDay = new Map(rows.map((r) => [r.day, r.n]));
+      const buckets: { date: string; count: number }[] = [];
+      const cursor = new Date(from);
+      cursor.setUTCHours(0, 0, 0, 0);
+      while (cursor <= to) {
+        const key = cursor.toISOString().slice(0, 10);
+        buckets.push({ date: key, count: byDay.get(key) ?? 0 });
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+      return res.json({ buckets });
+    } catch (err) {
+      console.error("[autopilot-admin] metrics trend error:", err);
+      return res.status(500).json({ error: "Failed to compute Autopilot trend" });
+    }
+  });
 }
