@@ -11,6 +11,11 @@ import { recordCoarseExtraction } from "../documentConfidence";
 import { logAiInteraction } from "../aiInteractionLog";
 import { recalculateDecision } from "../decisionEngine";
 import { evaluateBrokerSubmissionReadiness } from "../brokerSubmissionReadiness";
+import {
+  getBorrowerProfileFromApplication,
+  determineDocumentRequirements,
+  generateConditionsFromRequirements,
+} from "../../pipelineEngine";
 import { isAutopilotEnabled, canGenerateFollowUps } from "./config";
 import { materializeFlagsToFollowUps } from "./followUps";
 import type { PreUwFlag } from "../preUnderwriting";
@@ -137,6 +142,62 @@ function buildNarration(p: {
   }
   if (p.readinessLine) parts.push(p.readinessLine);
   return parts.join(" ");
+}
+
+/**
+ * Autopilot section-completion reaction (Phase 3) — the proactive needs list.
+ *
+ * The moment a borrower saves their URLA/intake sections, generate the initial
+ * document needs from their STATED data (before any upload), so the dead time
+ * between "submitted" and "here's what we need" disappears. Reuses the
+ * deterministic requirement rules (pipelineEngine.determineDocumentRequirements)
+ * and the now-idempotent condition generator, so re-saves and the later intake
+ * pipeline init converge on one set instead of duplicating. Narrates only when
+ * new needs were added, to stay quiet on no-op re-saves. Never throws.
+ */
+export async function runAutopilotForSection(params: {
+  applicationId: string;
+  triggeredBy: string;
+}): Promise<void> {
+  const { applicationId } = params;
+  try {
+    const application = await storage.getLoanApplication(applicationId);
+    if (!application) return;
+    if (!(await isAutopilotEnabled(application.loanOfficerId))) return;
+    if (!(await canGenerateFollowUps())) return;
+
+    const profile = getBorrowerProfileFromApplication(application);
+    const requirements = determineDocumentRequirements(profile);
+    const created = await generateConditionsFromRequirements(applicationId, requirements);
+
+    // Refresh the pre-qualification snapshot from the newly-stated data.
+    await recalculateDecision(applicationId, "autopilot_section");
+
+    if (created.length === 0) return; // idempotent no-op → don't narrate
+
+    let readinessLine: string | null = null;
+    try {
+      const readiness = await evaluateBrokerSubmissionReadiness(applicationId);
+      readinessLine = readiness.readyToSubmitToLender
+        ? "File is packaging-complete — ready to submit to a wholesale lender."
+        : `${readiness.nextActions.length} item(s) remain before this file is lender-ready.`;
+    } catch {
+      /* readiness is advisory */
+    }
+
+    const needsList = created.map((c) => c.title).slice(0, 8).join(", ");
+    await storage.createDealActivity({
+      applicationId,
+      activityType: "autopilot_review",
+      title: "Autopilot built your document needs list",
+      description:
+        `Based on your stated details, we'll need ${created.length} item(s): ${needsList}.` +
+        (readinessLine ? ` ${readinessLine}` : ""),
+      performedBy: application.userId,
+    });
+  } catch (err) {
+    console.error(`[Autopilot] Section run failed for ${params.applicationId} (non-fatal):`, err);
+  }
 }
 
 export async function runAutopilotForDocument(params: AutopilotDocumentParams): Promise<void> {
