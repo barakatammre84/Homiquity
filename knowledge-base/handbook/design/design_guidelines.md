@@ -8,6 +8,20 @@
 > The `design-token guard` (`scripts/design-token-guard.cjs`, run by
 > `npm run checkup`) **fails CI on any raw Tailwind palette class**, so the rules
 > below are enforced, not aspirational.
+>
+> **Companion:** the detailed, operational catalogs — the icon registry (one glyph per
+> concept), the brand/`<Logo>`/illustration system, the empty-state standard, the
+> reference-surface spec, and the PageShell adoption checklist — live in
+> [`visual-consistency-standard.md`](./visual-consistency-standard.md). This file is the
+> narrative *language*; that file is the *checklist* you build against.
+>
+> **⏳ Consistency program (adopted 2026-07-14).** An app-wide uniformity pass is in
+> flight (spacing · depth · icons · graphics). Two rules below change from the prior
+> doctrine and are marked **⏳ rolling out** — they are the adopted target, wired in the
+> foundations phase and rolled out surface-by-surface (borrower dashboard first), not yet
+> true on every page: (1) **elevation** moves from near-flat to soft-shadow-on-a-gray-
+> surface; (2) **branding** becomes tenant-overridable on private surfaces (white-label).
+> Until a surface is converted, its current near-flat / Homiquity-only styling is correct.
 
 ## Design approach — "Royal Blue Emerald" (Better.com-style conversion clarity)
 
@@ -26,8 +40,9 @@ blue. **Neutral light ramp** (`precision.500→50`): `500 #64748B` Muted Slate
 slate `#0F172A`. Sidebar: deep royal blue.
 
 **Core principles**
-1. **Hierarchy through VALUE, not hue.** Depth comes from the neutral ramp +
-   whitespace; no harsh borders.
+1. **Hierarchy through VALUE, not hue.** Depth comes from the neutral ramp, whitespace,
+   and — on app surfaces — a soft neutral card shadow over a light-gray ground (⏳ see
+   *elevation*); never from harsh borders or colored shadows.
 2. **Emerald = action.** `bg-primary` is #047857 (emerald-700, AA-safe with white
    text at 5.49:1 — raw #10B981 is only 2.49:1 and must not carry white text);
    `--ring` is emerald-600. Non-action green stays in the success tokens.
@@ -37,9 +52,15 @@ slate `#0F172A`. Sidebar: deep royal blue.
 ## Color system
 
 ### Layers
-- **Layer 0** `bg-background` — Stark White canvas; `bg-muted` (#F8FAFC) separates
-  data sections (e.g. PITI panels).
-- **Layer 1** — white cards + 1px slate-200 hairline (`border-card-border`), **no default shadow**.
+- **Layer 0** `bg-background` — Stark White canvas (public/marketing, forms, reading
+  surfaces); `bg-muted` (#F8FAFC) separates data sections (e.g. PITI panels).
+- **Layer 0-surface** `bg-surface` (⏳ rolling out) — the light-gray **app/dashboard page
+  ground** (`--surface`, one hair deeper than `--muted`) that white cards sit *on* so
+  their shadow reads. Used by authenticated dashboards; Layer 0 white stays for public
+  and reading surfaces. See *Radii, elevation, motion*.
+- **Layer 1** — white cards + 1px slate-200 hairline (`border-card-border`). On the white
+  canvas they stay near-flat (hairline only); on `bg-surface` a content card carries
+  `shadow-card` (⏳ rolling out). The hairline is always kept as a second separation cue.
 - **Layer 2** — Emerald conversion actions (`bg-primary`), hover deepens via the elevate system.
 - **Sidebar** — deep royal-blue dark nav container.
 
@@ -72,22 +93,55 @@ hues. For a single ordered metric, use the neutral value ramp instead.
   Geist Mono for code/figures. Loaded via `--font-sans/-serif/-mono`.
 - Headings: weight 600–700, tight tracking (−0.02em). Body: 400, line-height 1.6.
   Financial figures: 500–600, `tabular-nums`.
-- Scale: hero `text-4xl`→`text-6xl`, section `text-2xl`→`text-3xl`, `CardTitle`
-  `text-2xl`, body `text-base`, caption/labels `text-sm`.
-- **Gap:** no shared `<Heading>/<Text>` component yet — heading sizes are chosen
-  ad-hoc. Prefer promoting to a component so the scale is enforced.
+- Scale (canonical): **page `<h1>` = `text-2xl sm:text-3xl`** (one rung — the audit
+  found bespoke h1s at `text-xl`→`text-5xl`), section `text-2xl`, `CardTitle` `text-2xl`,
+  hero (marketing only) `text-4xl`→`text-6xl`, body `text-base`, caption/labels `text-sm`.
+- **Eyebrow/section label:** `text-xs font-semibold uppercase tracking-wider
+  text-muted-foreground` (the standard small-caps label; apply it consistently, not ad hoc).
+- **`<Heading>`/`<Text>` (⏳ rolling out):** promote the scale to shared components so h1
+  size is enforced, not hand-picked per page. Closes the long-standing gap; new pages use
+  them, existing pages migrate in the propagation sweep.
 
 ## Layout & spacing
-- Spacing primitives: Tailwind `2, 4, 6, 8, 12, 16`. Component padding `p-6`–`p-8`;
-  section spacing `py-12`(mobile)/`py-16`(desktop); form field `space-y-4`.
-- Max-width `max-w-7xl` main content; `max-w-2xl` centered forms.
-- Grids: dashboards `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`; comparisons `lg:grid-cols-3`.
+
+**[`PageShell`](../../../client/src/components/PageShell.tsx) owns page geometry.** Every
+authed page wraps its content in it; it sets the width, centering, gutter, and vertical
+rhythm so pages don't hand-roll `min-h-screen` / `mx-auto max-w-…` wrappers (which drifted
+across `max-w-xl`→`7xl`, three gutters, and `py-8`→`py-24` — finding `ux-03`). New authed
+pages **must** use it; the 57% that opt out migrate in the propagation sweep. Full-bleed
+marketing/hero pages and centered spinner/empty states are the only legitimate exceptions.
+
+- **Container width — semantic set only:** `narrow` `max-w-2xl` (forms) · `content`
+  `max-w-4xl` (default reading) · `wide` `max-w-6xl` (dashboards) · `full` `max-w-7xl`
+  (data/marketing). **Retire page-level `max-w-xl / 3xl / 5xl`.**
+- **Gutter — one convention:** `px-4 sm:px-6 lg:px-8` (owned by PageShell). ⏳ PageShell
+  applies flat `px-4` today; Phase 2 upgrades its gutter to this three-step so every page
+  inherits it.
+- **Page vertical padding:** owned by PageShell (`py-8 sm:py-10`); don't set your own.
+- **Section rhythm:** default `space-y-6`; `space-y-4` (compact) and `space-y-8` (generous)
+  are the only other sanctioned tiers.
+- **Card padding:** default `p-6`; `p-4` for dense dashboard cards. **Retire `p-2/p-3/p-8`.**
+- **Spacing primitives:** Tailwind `2, 4, 6, 8, 12, 16`; form field `space-y-4`.
+- **Grids:** dashboards `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`; comparisons `lg:grid-cols-3`.
 
 ## Radii, elevation, motion
 - **Radii:** `--radius` .75rem → `rounded-lg` 12px (cards/modals), `rounded-md` 8px
   (inputs/buttons), `rounded-sm` 4px (chips).
-- **Elevation:** `--shadow-2xs`…`--shadow-2xl` (neutral tinted). **Cards default
-  to no shadow + hairline**; reach for shadow only for true overlays (popover/toast).
+- **Elevation (⏳ rolling out — this reverses the prior "cards default to no shadow"
+  doctrine).** The neutral-tinted `--shadow-2xs`…`--shadow-2xl` vars (in `index.css`) are
+  wired into Tailwind as a named card scale: `shadow-card` (= `--shadow-sm`),
+  `shadow-card-hover` (= `--shadow-md`), `shadow-card-lg` (= `--shadow-lg`). Rules:
+  - A **content card on `bg-surface`** carries `shadow-card` (+ its hairline). On the white
+    canvas (Layer 0), cards stay near-flat (hairline only) — shadow needs the gray ground to read.
+  - **Interaction depth:** clickable cards/rows use `hover-elevate` (pair with
+    `shadow-card-hover` for a lift); `active-elevate-2` is the pressed state (buttons and
+    other pressables). Don't mix raw `hover:shadow-*` on cards — that's one of the drifts
+    being retired.
+  - **Overlays** (popover/dropdown/dialog/toast/sheet) keep their existing Radix shadows.
+  - **Retire ad-hoc surface shadows:** no `shadow-2xl` / `shadow-lg border-0` / one-off
+    `shadow-primary/25` on content cards — they fought the flat-card design. Use the card scale.
+  - The `Card` primitive stays shadow-less by default; a surface opts in with `shadow-card`
+    (so nothing changes until a page is converted).
 - **Motion:** `transition-all duration-150 ease-in-out` on interactive atoms;
   the elevate system (`hover-elevate`/`active-elevate-2`) supplies hover/active
   tints. Loading = `<Skeleton>` (`animate-skeleton-precision`, slate-200→slate-50),
@@ -99,14 +153,50 @@ hues. For a single ordered metric, use the neutral value ramp instead.
   `focus-visible:ring-ring`. `size="icon"` **requires an `aria-label`**.
 - **Badge** — `default, secondary, destructive, success, warning, info, outline`.
 - **Alert** — `default, destructive, success, warning, info`.
-- **Card** — `rounded-lg bg-card border border-card-border`, no shadow.
+- **Card** — `rounded-lg bg-card border border-card-border`, shadow-less by default;
+  a surface opts into `shadow-card` on `bg-surface` (see *Radii, elevation, motion*).
 - All 30 primitives consume tokens. **Gap:** zero Storybook stories / component
   tests despite ~1,900 `data-testid`s ready for visual-regression.
 
 ## Iconography
-- **Library: `lucide-react`** (not Heroicons — that's stale). Outline for
-  nav/secondary; size 16px (`[&_svg]:size-4` in buttons) / 20–24px prominent.
-- No emoji or raster glyphs for UI. Icon-only controls **must** have `aria-label`.
+- **Library: `lucide-react`** (not Heroicons — that's stale). No emoji or raster glyphs
+  for UI. Icon-only controls **must** have `aria-label`.
+- **One glyph per concept (⏳ rolling out).** The audit found 178 ad-hoc import sites and
+  the same concept drawn 3–6 ways (e.g. "done" as `CheckCircle2` / `CheckCircle` /
+  `CircleCheckBig`). Import icons **from the registry** `client/src/lib/icons.ts` (added in
+  Phase 2) by semantic name, not directly from `lucide-react`. The concept→glyph table lives in
+  [`visual-consistency-standard.md`](./visual-consistency-standard.md).
+- **Size rungs (`h-N w-N` form only — retire the `size-4` shorthand):** inline `h-4 w-4`
+  (default) · emphasis `h-5 w-5` · badge/dense `h-3.5 w-3.5` · feature `h-6`/`h-8` ·
+  empty-state `h-10`. Buttons keep `[&_svg]:size-4` internally.
+
+## Branding & white-label (⏳ rolling out)
+
+The **private/authenticated app** (broker dashboard, LO dashboard, consumer/borrower
+portal + chrome — the licensed "engine, CRM & tools") is **white-labeled to the LO/broker's
+brand**; the **public marketing site stays Homiquity**. This is delivered by overriding a
+small set of *brandable* tokens per tenant — never by inline hex or raw palette classes (so
+the design-token guard still holds). Detailed mechanism + `<Logo>` spec in
+[`visual-consistency-standard.md`](./visual-consistency-standard.md).
+
+- **Brandable tokens (tenant-overridable, private surfaces only):** the brand hue —
+  `--primary`, `--accent` (hero), `--sidebar`, `--ring` — plus the `<Logo>` source
+  (tenant logo/brandName). A tenant's `primaryColor`/`accentColor`/logo drive these via CSS
+  variables set on the private-layout root; because components use `bg-primary`/`bg-accent`
+  semantically, the portal re-skins automatically.
+- **Fixed tokens (NEVER tenant-overridable):** the neutral slate ramp/structure, `--surface`
+  + the elevation scale, and **all semantic status tokens** (success/warning/info/
+  destructive) — these carry meaning and AA guarantees and must stay constant across tenants.
+- **Surface boundary:** overrides apply on **`PrivateLayout` only**; public layouts pin to
+  Homiquity. (The pre-existing public co-brand landing `/partner/:profileId` applies its own
+  inline colors — separate existing feature, left as-is.)
+- **Contrast is not optional:** a tenant may pick any brand color, so a readable
+  `--primary-foreground` must be **derived from the chosen color's luminance (or validated
+  for AA on save)** — white text is not assumed to pass. The house emerald #047857 was
+  hand-verified at 5.49:1; tenant colors get no such guarantee for free.
+- **Compliance gate:** white-labeling a *licensed mortgage* portal (broker/LO brand + NMLS
+  on the surface) raises advertising/NMLS questions — route the feature through compliance
+  review before ship; never fabricate NMLS/brand data.
 
 ## Accessibility (WCAG 2.1 AA)
 - **Skip link:** `<SkipLink />` is the first focusable element in every layout;

@@ -49,7 +49,13 @@ Shadcn primitives).
   gradients), emerald reserved for conversion actions; one dominant CTA per screen,
   progress steppers, collapsible secondary content. Fonts: Geist → Inter. Tokens are enforced by the
   design-token guard — see [design_guidelines.md](../design/design_guidelines.md)
-  (authoritative).
+  (authoritative) and its operational companion
+  [visual-consistency-standard.md](../design/visual-consistency-standard.md)
+  (spacing/elevation scales, icon registry, `<Logo>`/white-label, empty-state + adoption
+  checklists). **⏳ Consistency program (2026-07-14):** app surfaces are moving to
+  soft-shadow cards on a light-gray `bg-surface`, one canonical glyph per concept, and
+  **tenant-overridable branding on private pages** (white-label; public stays Homiquity) —
+  rolled out surface-by-surface (borrower dashboard first).
 - **Page scaffold**: every authed page wraps its content in
   [`PageShell`](../../../client/src/components/PageShell.tsx) — it owns the
   max-width, centering, horizontal padding, and vertical rhythm so pages don't
@@ -64,7 +70,9 @@ Shadcn primitives).
   your own header as the first child). `fullHeight` is only for pages rendered
   outside `PrivateLayout` (which already supplies `bg-background`); inside it,
   don't set it. Full-bleed marketing/hero pages and centered spinner/empty states
-  are legitimate exceptions.
+  are legitimate exceptions. Converting one of the ~57% opt-out pages: follow the
+  PageShell adoption checklist in
+  [visual-consistency-standard.md](../design/visual-consistency-standard.md) §8.
 - **Aliases**: `@/` → `client/src/`, `@shared/` → `shared/` (defined in
   `vite.config.ts` + `tsconfig.json`).
 
