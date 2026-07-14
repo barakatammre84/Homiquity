@@ -69,6 +69,8 @@ export interface DocumentRequirement {
   reason: string;
   priority: string;
   category: string;
+  /** True when the item can be satisfied by connecting an account via Plaid — the panel shows a "Connect with Plaid" CTA. */
+  plaidEligible?: boolean;
 }
 
 export interface CoachInsight {

@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowRight, CheckCircle2, Circle, FileText, Sparkles, Target } from "lucide-react";
+import { ArrowRight, CheckCircle2, Circle, FileText, Landmark, Sparkles, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -221,6 +221,19 @@ export function DocumentChecklistPanel({ docs }: { docs: DocumentRequirement[] }
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">{doc.reason}</p>
+                      {doc.plaidEligible && (
+                        <Link href="/verification">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-1.5 h-7 gap-1.5 text-xs"
+                            data-testid={`button-plaid-connect-${doc.docType}`}
+                          >
+                            <Landmark className="h-3.5 w-3.5" />
+                            Connect with Plaid instead
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 ))}
