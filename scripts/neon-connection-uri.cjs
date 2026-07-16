@@ -20,8 +20,9 @@
  *
  * API: GET /projects/{project_id}/connection_uri
  *      (query: database_name, role_name required; branch_id optional — defaults
- *      to the project's default branch; `pooled` omitted ⇒ DIRECT host, which is
- *      what migrate-prod requires — the pooler does not migrate reliably.)
+ *      to the project's default branch; `pooled=false` REQUIRED for the direct
+ *      host — omitting it returns the -pooler host, and the pooler does not
+ *      migrate reliably.)
  *
  * Everything except the URI goes to stderr.
  */
@@ -86,11 +87,13 @@ async function main() {
     fail("could not resolve the database/role name — set NEON_DATABASE and NEON_ROLE.");
   }
 
-  // 4. Mint the URI. `pooled` omitted on purpose ⇒ direct host.
+  // 4. Mint the URI. `pooled=false` must be explicit: omitting it yields the
+  // -pooler host, which migrate-prod cannot use (CI run 29542431438).
   const q = new URLSearchParams({
     database_name: dbName,
     role_name: roleName,
     branch_id: branch.id,
+    pooled: "false",
   });
   const payload = await api(`/projects/${projectId}/connection_uri?${q}`);
 
