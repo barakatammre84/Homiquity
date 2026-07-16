@@ -39,29 +39,39 @@ PR touches shared/schema/**
   migrations over a plain `pg` client (NOT the Neon serverless pool — that has the pooler gotcha).
   Idempotent: a no-op when nothing is pending, safe to re-run on every merge.
 
-## One-time setup (done in GitHub — not by Claude, involves a prod credential)
+## One-time setup (done in GitHub)
 
-1. **Add the secret.** Repo → Settings → Secrets and variables → Actions → New repository secret:
-   - Name: `PROD_DATABASE_URL`
-   - Value: the Neon **DIRECT (unpooled)** connection URL with `sslmode=require`
-     (the host **without** the `-pooler` suffix). The pooled URL will not migrate reliably.
-   Until this secret exists, the `migrate-prod` job fails loudly on merge (visible in Actions) —
+1. **Connect Neon ↔ GitHub.** The integration provisions the repo secret `NEON_API_KEY`.
+   That is the *only* credential CI needs: `migrate-prod` mints a fresh Neon **DIRECT
+   (unpooled)** connection string at run time via
+   [`scripts/neon-connection-uri.cjs`](../../scripts/neon-connection-uri.cjs), so **no prod DB
+   password is ever stored in GitHub** and rotating the Neon password never breaks CI.
+   Until `NEON_API_KEY` exists, `migrate-prod` fails loudly on merge (visible in Actions) —
    by design, so a missing config is never a silent slip.
+   - **`NEON_PROJECT_ID` repo *variable*** (Settings → Secrets and variables → Actions →
+     Variables) is needed **only** when the API key can see more than one Neon project — the
+     script fails with the list of project ids when it's ambiguous. A project id is not secret.
+   - The connection string is piped straight into the migrator by command substitution; it is
+     never echoed, never written to `GITHUB_ENV`, and neither script prints it.
 2. **Make the gate binding.** Settings → Branches → branch protection on `main` → require the
    `gate` status check to pass before merge. Without this, "green" is advisory and auto-merge could
    merge a red PR.
-3. **Pre-flight the first auto-run (mandatory).** Pending-detection is journal-based (hash OR
-   `created_at`). Before trusting the auto-job, confirm the first run is a clean no-op against
-   prod's actual journal:
-   ```
-   DATABASE_URL=<prod-direct-url> pnpm db:migrate:prod --dry-run
-   ```
-   It must report **"up to date — no pending migrations"** (prod is already at the current
-   migration HEAD). If instead it lists migrations prod already has (journal drift from the
-   old raw-pg apply recipe), reconcile the journal first — `tsx server/scripts/markMigrationsApplied.ts --apply`
-   against prod — then re-run the dry-run until it's clean. Only then let a merge trigger the real apply.
-   (Re-running is idempotent for the current `ADD COLUMN IF NOT EXISTS` migrations, but the first
-   auto-apply should still be a verified no-op.)
+3. **Pre-flight before trusting the auto-run (mandatory).** Pending-detection is journal-based
+   (hash OR `created_at`), so confirm what it *thinks* is pending before it applies anything.
+   Run it from GitHub — **no local credential needed**:
+
+   **Actions → CI → Run workflow → `dry_run: true`** (the default). This runs `migrate-prod.cjs
+   --dry-run`: it lists pending migrations and applies nothing.
+
+   Read the output against reality:
+   - **"up to date — no pending migrations"** — prod is at HEAD. Expected in steady state.
+   - **Lists migrations prod genuinely lacks** — correct; let a merge (or `dry_run: false`) apply them.
+   - **Lists migrations prod *already has*** — journal drift (from the old raw-pg apply recipe).
+     Reconcile first — `tsx server/scripts/markMigrationsApplied.ts --apply` against prod — then
+     re-run the dry-run until it's clean.
+
+   (Re-running is idempotent for `ADD COLUMN IF NOT EXISTS` / `CREATE TABLE IF NOT EXISTS`
+   migrations, but the first real apply should still follow a read dry-run.)
 
 ## Adding a migration (every schema PR)
 
