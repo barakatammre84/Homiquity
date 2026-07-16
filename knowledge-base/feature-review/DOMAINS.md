@@ -8,7 +8,8 @@ Program rules: `CHARTER.md`.
 > **Census (verified this session, supersedes the old "37 subsystems / 40 surfaces / 7
 > workflows"):** ~**95 backend subsystems** · **88 routed client pages** (95 routes across 13
 > nested `client/src/pages/` dirs) · ~**14 end-to-end workflows** (8 fully wired / 4 partial / 2
-> broken-from-UI). The prior 9-domain taxonomy left ~⅓ of the code unowned — the added domains
+> broken-from-UI at the 07-08 audit — **both broken flows are wired as of 2026-07-12**, see the
+> WORKFLOWS.md ledger). The prior 9-domain taxonomy left ~⅓ of the code unowned — the added domains
 > (3 AI Coach/extraction, 4 Verification & credit, 9 Compliance analytics, 10 Borrower graph &
 > data intelligence, 12 Property/listings/homeowner) close that gap.
 
@@ -43,7 +44,7 @@ Status ledger (updated by the orchestrator after each run):
 - **Intended use**: persona-siloed conversion pages feeding the funnel; prelaunch/waitlist
   gating of soliciting routes; calculators as lead tools.
 - **Source docs**: `kb/` landing-page conversion research + GTM battlecards, borrower-acquisition
-  playbook, `PRODUCT_SPINE.md`, `knowledge-base/handbook/app-guide/01-start-here.md`.
+  playbook, `L1_VISION_AND_SCOPE.md` (was PRODUCT_SPINE), `knowledge-base/handbook/app-guide/01-start-here.md`.
 - **Owned tests**: `tests/leads*`, calculator/APR-adjacent units. **Reg Z trigger-term risk** on
   any rate/payment displayed → compliance flag.
 - **Wiring note (audit):** #61 Approval Strength + #63 Buying Power/SEO land here (MVP).
@@ -62,7 +63,7 @@ Status ledger (updated by the orchestrator after each run):
   runs as a server cascade on `POST /api/loan-applications`** (N-002) — assert on the cascade
   outputs, not the dead `instant-decision`/`calculate-*`/`advance-stage` endpoints.
 - **Source docs**: `knowledge-base/handbook/app-guide/05-data-flow.md`, `DEVELOPER_PLAYBOOK.md` §2.1–2.2,
-  `PRODUCT_SPINE.md`, `docs/fannie-mae/` URLA documents.
+  `L1_VISION_AND_SCOPE.md` (was PRODUCT_SPINE), `docs/fannie-mae/` URLA documents.
 - **Owned tests**: `tests/preApprovalMachine*`, `tests/trid*`, `tests/intakeSchema*`,
   `tests/stageRequirements*`. **Coverage gap (F-015):** `loanAnalysis.finalizeIntake` (the ECOA
   decision locus) is grep-only, never executed.
@@ -146,9 +147,10 @@ Status ledger (updated by the orchestrator after each run):
   `pages/lending/LoanPipeline.tsx`.
 - **Intended use**: broker flow — intake/AUS/lenderPackage/deliveryPreflight gates → submission
   blocked until stages 1–3 clean; one adapter seam per lender; sims flagged.
-- **Wiring note (audit):** **F-003 — AUS DU/LPA submission (`aus.ts:134`) has no UI trigger**
-  (workflow #9 broken-from-UI). MVP delivery is the wholesale-lender submission (workflow #10,
-  wired). Confirm with Target-5 lenders whether a DU casefile is required at submission.
+- **Wiring note:** ~~F-003 — AUS DU/LPA submission has no UI trigger~~ **fixed in #135**
+  (`SubmissionReadinessDialog.tsx` → `POST /api/underwrite/submit-gse`; Run-DU/LPA verified in
+  the 07-12 walkthrough). Still open: confirm with Target-5 lenders whether a DU casefile is
+  required at submission.
 - **Source docs**: broker/MISMO/PPE strategy docs, `DEVELOPER_PLAYBOOK.md` §2.3.
 - **Owned tests**: `tests/lenderSubmission*` (**F-005: determinism flake is a real product bug —
   `mismo.ts:1034` ms timestamp in hashed XML; = PRs #64/#65**), `tests/brokerSubmissionReadiness*`.
@@ -162,10 +164,11 @@ Status ledger (updated by the orchestrator after each run):
 - **Client**: MISMO export from `LoCommandCenter.tsx`, delivery-readiness in `BorrowerFile.tsx`.
 - **Intended use**: valid ULDD Phase 5 MISMO 3.4 XML; single delivery-readiness report; SSN
   decrypted only at the delivery seam.
-- **P0 launch-blockers (audit):** **F-018** core points mis-nested `LOAN_DETAIL` vs
-  `TERMS_OF_LOAN` (`mismo.ts:617-668`); **F-019** invalid `LoanPurposeType` enums
-  (`mismo.ts:157-160`). Both → delivery rejection. **F-025:** in-app validation is a substring
-  check (no XSD gate). Escalations **U-1…U-6** need founder source confirmation.
+- **Status (2026-07-12):** the two audit P0s are **fixed** — F-018 container nesting
+  (`723cc7d`) and F-019 `LoanPurposeType` enums (`21c4a4b`); F-025's asked-for XSD gate exists
+  (baseline test + non-blocking conformance recording at submission, #135). **Still open here:**
+  F-020/021/022 enum corrections, F-023 URLA §5 names, and the L6-fix baseline remediation.
+  Escalations **U-1…U-7** need founder source confirmation.
 - **Source docs**: `docs/fannie-mae/` (spec PDFs + XSDs + golden samples — validate against the
   XSDs), Loan Delivery job aid, `CLAUDE.md` compliance section.
 - **Owned tests**: `tests/mismo*`, `tests/loanDeliveryEdits*`, `tests/specialFeatureCodes*`,
@@ -181,10 +184,11 @@ Status ledger (updated by the orchestrator after each run):
 - **Client**: `AdverseActionNotice.tsx`, `HmdaDemographics.tsx`.
 - **Intended use**: adverse-action sweep meets ECOA 30-day; STOP/quiet-hours gate all outbound
   SMS; fair-lending/HMDA analytics.
-- **Launch-critical (audit):** **F-004 — adverse-action *generation* has no UI trigger**
-  (`compliance.ts:827`; only cron + reader wired). If the MVP can deny, ECOA requires the notice
-  — resolve before launch. **F-008\*:** SMS webhook has no signature verification (blocker only
-  if SMS is live — TCPA).
+- **Launch-critical:** ~~F-004 — adverse-action generation has no UI trigger~~ **closed
+  2026-07-12** — generation is a blocking chokepoint on the deny seam
+  (`ensureAdverseActionForDenial`; a denial cannot proceed without a compliant notice) plus the
+  #123 staff delivery card. **F-008\*** stays open: SMS webhook has no signature verification
+  (blocker only if SMS is live — TCPA).
 - **Source docs**: `docs/nmls/`, `knowledge-base/governance/TEAM_PRACTICES.md` §9, FCRA/ECOA/TCPA references.
 - **Owned tests**: `tests/adverseAction*`, `tests/fairLendingAnalysis*`, `tests/smsCompliance*`,
   `tests/quietHours*`.
@@ -199,10 +203,11 @@ Status ledger (updated by the orchestrator after each run):
 - **Client**: `pages/staff/IntelligenceTab.tsx`, `PredictionInsights` surfaces.
 - **Intended use**: unified 3-tier-trust borrower profile; staff attention-priority feed;
   closed-loop outcomes → predictions/optimizations.
-- **Wiring note (audit):** **F-002 — the feedback loop is broken: `loanOutcomes` writers
-  (`outcomeTracker.ts:113,146`) are never called → the analytics/prediction dashboards render
-  off an empty table.** Most of `intelligence.ts`/`optimizations.ts` (35+ endpoints) are dead
-  (no client caller) — decide wire/defer/delete per the dead-surface map.
+- **Wiring note:** ~~F-002 — `loanOutcomes` writers never called~~ **fixed in #136** (writers
+  wired from `pipelineEngine`/`lending`/`underwriting`/`data-intelligence`/`loanAnalysis`).
+  Still true (re-verified 2026-07-12): most of `intelligence.ts`/`optimizations.ts` (35+
+  endpoints) are dead (no client caller) — decide wire/defer/delete per the dead-surface map;
+  the wired client surface (`IntelligenceTab.tsx`) reads `data-intelligence.ts` endpoints.
 - **Source docs**: `knowledge-base/handbook/app-guide/08-services.md`, `MODEL_RISK_GOVERNANCE.md`.
 - **Owned tests**: **zero** across this cluster (QA priority).
 
@@ -218,7 +223,7 @@ Status ledger (updated by the orchestrator after each run):
 - **Intended use**: LO start-of-day prioritization; pipeline transitions validated with
   materialized conditions; SLA tasks escalate; two staff scoping models (internal-unrestricted
   vs team-scoped); **client gates must match server gates** (`isInternalStaffRole` vs
-  `isStaffRole` — D-002 the app-guide role doc is stale).
+  `isStaffRole` — D-002 closed 2026-07-08; #119 enforced the separation app-wide).
 - **Source docs**: `knowledge-base/handbook/app-guide/08-services.md`, `knowledge-base/logs/lo-audit/*`, access-control notes,
   `knowledge-base/runbooks/support-playbooks/`.
 - **Owned tests**: integration `loCommandCenter`, `tests/borrowerStateMachine*`,
@@ -248,7 +253,7 @@ Status ledger (updated by the orchestrator after each run):
   `ssnVault.ts` + `piiVault.ts`, `server/auditLog.ts`, `server/auth.ts` + `server/integrations/auth/*`
   + `socialAuth.ts`, `loginLockout.ts` + `accountRecovery.ts`, `rateLimitPolicy.ts`,
   `maintenanceMode.ts` + `prelaunchGate.ts`, `server/services/errorMonitoring.ts` +
-  `server/routes/monitoring.ts`, `server/storage.ts` (5,134-line sole PII write path — concentration
+  `server/routes/monitoring.ts`, `server/storage.ts` (~5,600-line sole PII write path — concentration
   risk), `server/mcp/*` (AG-1 audit chain, AG-2 identity), `shared/roles.ts`.
 - **Client**: auth pages, role-gated layout wrappers (`PrivateLayout` requiredRoles vs server gates).
 - **Intended use**: SSNs/accounts ciphertext + last4 only, decryption only at MISMO/AUS seams +
@@ -273,14 +278,15 @@ Runs over every surface from teams 1–12, on three axes:
 - **Uniformity**: design-system conformance (tokens in `client/src/index.css` /
   `tailwind.config.ts`; guard `scripts/design-token-guard.cjs` — anything it flags is a finding),
   consistent shadcn/ui usage, nav/shell coherence, spacing/type drift, responsive
-  (375px/tablet/desktop). **Branch note:** this branch is Obsidian Indigo (navy); Charcoal
-  Emerald (PR #57) is on `main` — verify after rebase. **Guard blind spot:** 157
-  `text-white`/`bg-white`/`bg-black` literals bypass the shade-only regex; ~106 lines of dead
-  dark-mode CSS.
-- **Friction & psychology**: funnel drop-off, CTA clarity, **loading/empty/error states — P1:
-  41/68 data pages don't handle query-*error* (server failure renders a misleading "empty")**,
-  trust signals near sensitive asks, reassurance at anxiety moments, dashboard speed-to-value.
-  `PageShell` is at 7/99 adoption (40 pages hand-roll layout).
+  (375px/tablet/desktop). The live design system is **Royal Blue Emerald** (2026-07-08 repaint,
+  #93). ~~Guard blind spot: 157 white/black literals bypass the regex~~ — fixed: the guard now
+  ratchets a `whiteBlackLiterals` metric (#112, baseline 97; ux-02 narrowed to the no-CI leg).
+- **Friction & psychology**: funnel drop-off, CTA clarity, **loading/empty/error states —
+  ux-01, partially addressed** (QueryBoundary error+retry #93/#95 batch 1 + PageShell #131;
+  residual count unmeasured — re-count on the next UX run), trust signals near sensitive asks,
+  reassurance at anxiety moments, dashboard speed-to-value.
+  `PageShell` adoption: 32 pages converged (#131, ux-03 closed); deliberate exceptions in
+  `app-guide/07-frontend.md`.
 - **Compliance rails on copy**: Reg Z trigger terms (flag to compliance-auditor), no consent
   dark patterns (**audit: consent UX is exemplary — 0 pre-checked boxes**), Reg B denial tone.
 - **Builds on the standing system**: cross-reference `knowledge-base/logs/ux-audit/page-audit.md` ids; use

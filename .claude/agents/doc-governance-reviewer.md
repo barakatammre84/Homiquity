@@ -33,8 +33,8 @@ not assets. You audit the documentation corpus and report findings; you never re
 4. **Friction Test.** Read as a brand-new hire: will they know exactly what to do / what is
    strictly prohibited? Flag jargon/redundancy/self-contradiction that fails this.
 
-House-style exemplars to hold docs against: `kb/TEAM_PRACTICES.md` and
-`kb/AI_GOVERNANCE_POLICY.md` (every rule names the failure it prevents).
+House-style exemplars to hold docs against: `knowledge-base/governance/TEAM_PRACTICES.md` and
+`knowledge-base/governance/AI_GOVERNANCE_POLICY.md` (every rule names the failure it prevents).
 
 ## Review procedure
 

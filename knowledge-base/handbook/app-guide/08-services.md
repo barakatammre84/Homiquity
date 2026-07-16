@@ -84,7 +84,7 @@ Charter: [`specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md`](../../specs/) (PR #102)
 | `intentTracker.ts` | Borrower intent signal capture |
 | `lookupResolver.ts` | Lookup-matrix grid resolution (unit-tested) |
 | `../propertyAnalyzer.ts` | Property affordability analysis |
-| `../storage.ts` | The `IStorage` data-access layer (~4,700 lines) used by most routes |
+| `../storage.ts` | The `IStorage` data-access layer (~5,600 lines) used by most routes |
 
 ## Pre-flight checklist — underwriting engine & regulated math
 
@@ -92,7 +92,7 @@ Charter: [`specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md`](../../specs/) (PR #102)
    inside `underwritingEngine.ts` / `decisionEngine.ts` / `ruleEngine.ts` —
    same inputs → same outcome, typed error classification preserved
    ([CLAUDE.md](../../../CLAUDE.md) ground rules).
-2. Regulated-math changes carry a `kb/regulatory-ledger.json` citation **in the
+2. Regulated-math changes carry a `data/regulatory/regulatory-ledger.json` citation **in the
    same commit** — no citation, no code change
    ([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §5.5).
 3. `tests/complianceInvariants.test.ts` and `tests/scenarioCatalog.test.ts`

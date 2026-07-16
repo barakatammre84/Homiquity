@@ -4,15 +4,18 @@ An AI-native mortgage **brokerage** platform: borrower intake (digital 1003), do
 collection, deterministic underwriting, MISMO 3.4 packaging, and delivery of complete
 loan files to wholesale lenders. Deployed at <https://mortgage-stream.vercel.app>.
 
-**Current status (2026-07-08): deployed in pre-license gated mode.** The public site is live
-in production behind a **pre-license gate** (`server/services/prelaunchGate.ts`; fail-safe —
-gated whenever the company NMLS id is `PENDING`), so a stranger reaches educational content and
-a waitlist, never a mortgage-solicitation surface. The full commercial machine — intake,
-deterministic pre-approval, MISMO packaging, wholesale delivery — is **built and proven behind
-the gate against simulated vendors**, one config flip from going live the day **F1 (NMLS
-licensing)** clears. Nothing commercial is legally real until then — see
-[ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) for what is real, simulated, or
-pending, and [CTO_ROADMAP.md](CTO_ROADMAP.md) for the live work queue.
+**Current status (2026-07-12): deployed in pre-license gated mode; gated-beta money path
+verified end-to-end.** The public site is live in production behind a **pre-license gate**
+(`server/services/prelaunchGate.ts`; fail-safe — gated whenever the company NMLS id is
+`PENDING`), so a stranger reaches educational content and a waitlist, never a
+mortgage-solicitation surface. The full commercial machine — intake, deterministic
+pre-approval, LO claim/handoff, dual-AUS run, MISMO packaging, wholesale delivery — is
+**built and verified end-to-end behind the gate against simulated vendors** (2026-07-12
+founder walkthrough, PRs #135–#139; see
+[BETA_GO_LIVE_READINESS.md](knowledge-base/runbooks/BETA_GO_LIVE_READINESS.md)), one config
+flip from going live the day **F1 (NMLS licensing)** clears. Nothing commercial is legally
+real until then — see [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) for what is
+real, simulated, or pending, and [CTO_ROADMAP.md](CTO_ROADMAP.md) for the live work queue.
 
 ## Quick start
 

@@ -1,5 +1,11 @@
 # Executive Summary — UX Audit
 
+> ⚠️ **Dated snapshot (banner added 2026-07-12).** Risk #1 below (accessibility) was
+> substantially addressed by the roadmap #23 a11y pass (aria-labels 2 → 60, skip links,
+> landmarks, AA contrast + token-guard ratchet); error-state and layout risks were reduced by
+> #93/#95/#131. Read as history; current open UX findings live in
+> `knowledge-base/feature-review/FINDINGS.md`.
+
 ## Top 5 UX risks (ranked)
 
 1. **Accessibility is near-zero** — 2 `aria-label`s in the whole client; icon buttons, progress

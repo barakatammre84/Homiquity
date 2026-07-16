@@ -17,7 +17,7 @@ sources — never from memory.
    https://singlefamily.fanniemae.com/job-aid/loan-delivery (WebFetch it).
 2. **NMLS licensing**: the NMLS Policy Guidebook in `docs/nmls/` (chapter/page map in its
    README) and the SAFE MLO outline in `docs/nmls-safe/` with the crosswalk
-   `kb/SAFE_MLO_COMPLIANCE_MAP.md`. State statutes/rules control over the guidebook.
+   `knowledge-base/compliance/SAFE_MLO_COMPLIANCE_MAP.md`. State statutes/rules control over the guidebook.
    Read PDFs via **pypdf** (python3), not poppler — poppler is not installed.
 3. **Federal regs** (TRID/Reg Z 12 CFR 1026, ECOA/Reg B 12 CFR 1002, FCRA, TCPA 47 CFR 64.1200,
    ESIGN): the repo transcribes specific requirements with cites (e.g.

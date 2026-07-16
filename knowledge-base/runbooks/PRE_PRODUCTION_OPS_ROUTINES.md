@@ -32,7 +32,7 @@ Clear the hurdles that can physically prevent launch before doing anything else.
    ```
    33 tests: AI never in the credit-decision path, intake decisioning fully deterministic, denial cannot outrun its adverse-action notice, ECOA §1002.9 block present. Baseline 2026-07-04: **33/33 green**. ⚠️ Medical-collections handling is *not* among them — verified 2026-07-04 as agency policy (not a federal rule), engine build ships with F3 (roadmap #28). Note the invariants are unaffected by the 2026-07-21 Reg B disparate-impact amendment — they enforce determinism, not the effects test.
 3. **Adverse Action audit:** generate one test denial (staff → `POST /api/loan-applications/:id/credit/adverse-action`). Verify: the notice renders at `/adverse-action/:id` with reasons + bureau contact + dispute rights; the reason is deterministic (never "AI decision" — enforced by the invariant tests, `AI_GOVERNANCE_POLICY.md`); the borrower got the in-app notification **and** the deliberately neutral email (console-logged until `SENDGRID_API_KEY` is set).
-4. **Regulatory freshness:** `npm run checkup` runs `scripts/regulatory-freshness.cjs` — fails if any `kb/regulatory-ledger.json` entry is overdue for re-verification.
+4. **Regulatory freshness:** `npm run checkup` runs `scripts/regulatory-freshness.cjs` — fails if any `data/regulatory/regulatory-ledger.json` entry is overdue for re-verification.
 
 ## Routine 2 — Mid-Day: Lender Liquidity & Concierge Sales (offense)
 

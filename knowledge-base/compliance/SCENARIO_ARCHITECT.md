@@ -48,7 +48,7 @@ Markdown in the registry or strict JSON — both accepted; fields are identical:
 
 Follow the registry's "The process" section exactly, plus:
 1. Update `server/services/scenarioCatalog.ts` with the entry (typed against `PreUwFlagCode`; `tests/scenarioCatalog.test.ts` enforces registry↔catalog sync).
-2. New statutory constants get a `kb/regulatory-ledger.json` entry in the same commit.
+2. New statutory constants get a `data/regulatory/regulatory-ledger.json` entry in the same commit.
 3. The worked example in the Rule field becomes a literal unit test.
 
 ## When analyzing friction logs (`GET /api/jobs/friction-summary`)

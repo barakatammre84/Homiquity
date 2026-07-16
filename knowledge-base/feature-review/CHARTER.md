@@ -58,13 +58,14 @@ false positive:
 - **~100 dead endpoints / 5 server-only subsystems** (Borrower Intelligence, Underwriting Rules,
   Rate Sheets, Optimization, Market-data) — unshipped surface; don't review as features or write
   tests against endpoints nothing calls. Decide wire/defer/delete per the dead-surface map.
-- **Security posture is STRONG** — no P0, no IDOR, PII-at-rest sound (N-001). Findings are P1/P2
-  hardening on §9 trigger surfaces.
+- **Security posture is STRONG** — no P0, PII-at-rest sound (N-001). Findings are P1/P2
+  hardening on §9 trigger surfaces. *(Correction 2026-07-12: one AUS-route IDOR was found after
+  the audit and closed in #135's §9 review — the "no IDOR" line predates that discovery.)*
 - **`grep-only` compliance tests give false confidence** — `complianceInvariants.test.ts` (F-014)
   executes nothing. A green run there ≠ correct regulated math.
-- **Branch note:** this branch is Obsidian Indigo (navy); `main` has since moved to Charcoal
-  Emerald (PR #57) and then **Royal Blue Emerald** (2026-07-08 repaint) — the branch trails
-  `main` (also multiple migrations behind). Rebase before treating as a baseline.
+- **Design system:** `main` is **Royal Blue Emerald** (2026-07-08 repaint #93; PageShell
+  scaffold #131). Audit artifacts referencing Obsidian Indigo or Charcoal Emerald predate it —
+  don't file color findings from them.
 
 ## Severity scale
 

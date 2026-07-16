@@ -1,5 +1,11 @@
 # Free Data Moat — HMDA competitor pricing + Fannie Mae loan performance
 
+**Status (2026-07-12 hygiene pass):** spec/backlog — not scheduled. Partially overlapped by
+built code: the HMDA leg has a working ingest (`server/services/hmdaIngestService.ts` →
+`hmda_competitor_loans`) and benchmark endpoints (`server/routes/market-data.ts`) with **no
+client wiring** (roadmap ARC-2); the Fannie loan-performance pipeline is unbuilt. Check the
+code before building from this spec.
+
 Zero-cost market intelligence from public datasets. Two ingestion pipelines
 feed three Postgres tables; the app reads them through indexed point lookups
 (milliseconds) — never through the raw data.

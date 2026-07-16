@@ -1,6 +1,6 @@
 # LO-2 — Deterministic What-If Scenario Simulator — Spec (L3)
 
-**Status:** claimed/in build · **Owner:** Amr (founder/PM) · **Roadmap:** [LO Advisor Program](LO_ADVISOR_PROGRAM.md) prompt LO-2 (extends LO Command Center line) · **Last updated:** 2026-07-11
+**Status:** shipped — merged as **#114** (migration `0020` `scenario_runs`) plus address-first intake · **Owner:** Amr (founder/PM) · **Roadmap:** [LO Advisor Program](LO_ADVISOR_PROGRAM.md) prompt LO-2 (extends LO Command Center line) · **Last updated:** 2026-07-12
 
 ## 1. Business Intent
 

@@ -32,7 +32,8 @@ Any file a session generates (reports, research notes, extracted data) is **comm
 before the session ends** — in the sanctioned lane for its type (routine reports commit
 to local main; evening triage publishes docs-only). An untracked file in one checkout is
 invisible to every worktree and every other session. Code changes never ride along with a
-report commit. *(Prevents: the `kb/lo-audit/2026-07-04-pm.md` stranding.)*
+report commit. *(Prevents: the 2026-07-04 lo-audit report stranding — that report now lives
+at `knowledge-base/archive/lo-audit/2026-07-04-pm.md`.)*
 
 ## 4. Branch and worktree lifecycle
 
@@ -55,8 +56,8 @@ report commit. *(Prevents: the `kb/lo-audit/2026-07-04-pm.md` stranding.)*
    server restart between (restarts clear the in-memory counters).
 4. Live verification on the worktree port (5002+) when a running server proves the
    behavior — capture the evidence in the PR body.
-5. Regulated math changes carry a `kb/regulatory-ledger.json` citation **in the same
-   commit** — no citation, no code change. Never invent MISMO names (see
+5. Regulated math changes carry a `data/regulatory/regulatory-ledger.json` citation **in the
+   same commit** — no citation, no code change. Never invent MISMO names (see
    [CLAUDE.md](../../CLAUDE.md) compliance-first rules).
 6. Schema changes are **hand-authored** SQL in `migrations/` (drizzle-kit generate has
    snapshot drift). Never `npm run db:push` from a worktree — the shared dev DB serves

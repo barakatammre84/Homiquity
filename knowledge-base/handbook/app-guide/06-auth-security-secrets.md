@@ -34,9 +34,10 @@ truth, importable by the client without dragging in the ORM:
 
 - **Internal staff** (`INTERNAL_STAFF_ROLES`): `admin`, `lo`, `loa`, `processor`, `underwriter`,
   `closer` — platform-wide staff.
-- **External partners**: `broker` and `lender` (staff-typed but deal-team-scoped), plus `cpa`
-  (self-registering, inviter-only — deliberately **not** in `STAFF_ROLES`, so it can't reach
-  any `isStaffRole()`-gated surface).
+- **External partners**: `broker` and `lender` (staff-typed but deal-team-scoped), plus the
+  `PARTNER_ROLES` pair `cpa` and `realtor` (added by PartnerHub PH-1, #121) — self-registering,
+  inviter-only, deliberately **not** in `STAFF_ROLES`, so they can't reach any
+  `isStaffRole()`-gated surface; access only via exact-role checks.
 - **Clients** (`CLIENT_ROLES`): `aspiring_owner` (sandbox) and `active_buyer` (applying).
 
 Middleware in `server/auth.ts`: `isAuthenticated`, `isAdmin`, `requireRole(...roles)`; the role
