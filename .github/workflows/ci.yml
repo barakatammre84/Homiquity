@@ -6,9 +6,19 @@ name: CI
 #                  policy; a schema change without a migration goes RED and cannot merge.
 #   migrate-prod — on merge to main: apply any pending migrations to PROD so the
 #                  database is never left behind the code (the 2026-07-13 outage cause).
+#                  Also runnable manually (workflow_dispatch) — defaults to a DRY RUN,
+#                  which is the runbook's mandatory pre-flight.
+#
+# Credentials: NO prod DB password is stored in GitHub. migrate-prod mints a fresh
+# Neon DIRECT (unpooled) connection string at run time from NEON_API_KEY (provisioned
+# by the Neon↔GitHub integration) via scripts/neon-connection-uri.cjs. A rotated
+# Neon password therefore never breaks CI, and there is no second copy of the
+# credential to leak.
 #
 # Prereqs (one-time, done in GitHub, not by Claude):
-#   • Repo secret PROD_DATABASE_URL = the Neon DIRECT (unpooled) URL, sslmode=require.
+#   • Repo secret NEON_API_KEY — added automatically by the Neon↔GitHub integration.
+#   • Repo variable NEON_PROJECT_ID — ONLY if the key can see more than one Neon
+#     project (the script fails with the list of ids when it's ambiguous).
 #   • Branch protection on `main` requiring the "gate" check (makes the gate binding).
 
 on:
@@ -16,6 +26,12 @@ on:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — list pending migrations without applying them"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -42,7 +58,7 @@ jobs:
 
   migrate-prod:
     name: migrate-prod (apply pending migrations)
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # Never run two migrations against prod at once; don't cancel one in flight.
     concurrency:
@@ -58,5 +74,15 @@ jobs:
       - run: pnpm install --frozen-lockfile --prod=false
       - name: Apply pending migrations to prod
         env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-        run: node scripts/migrate-prod.cjs
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          # Only needed when the API key can see more than one Neon project.
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="--dry-run"
+          fi
+          # The connection string is piped straight into migrate-prod's env via
+          # command substitution: never echoed, never written to GITHUB_ENV, and
+          # neither script ever prints it.
+          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" node scripts/migrate-prod.cjs $ARGS

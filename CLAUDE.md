@@ -107,7 +107,10 @@ migrations 0026/0027). So:
    schema-without-migration PR goes RED and cannot merge.
 4. **Auto-apply on merge.** The `migrate-prod` job applies pending migrations to prod on merge
    to `main` via [`scripts/migrate-prod.cjs`](scripts/migrate-prod.cjs) (plain `pg` over the Neon
-   DIRECT URL — sidesteps the pooler gotcha). Never hand-apply, never `db:push` to prod.
+   DIRECT URL — sidesteps the pooler gotcha). The URL is minted at run time from `NEON_API_KEY`
+   by [`scripts/neon-connection-uri.cjs`](scripts/neon-connection-uri.cjs) — **no prod DB
+   password is stored in GitHub**. Never hand-apply, never `db:push` to prod. To pre-flight,
+   run the CI workflow manually with `dry_run: true`.
 
 Full flow and the one-time secret/branch-protection setup: [DB_MIGRATIONS.md](knowledge-base/runbooks/DB_MIGRATIONS.md).
 
