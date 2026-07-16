@@ -1046,6 +1046,8 @@ export default function BorrowerFile() {
                                       <Shield className="h-4 w-4 text-primary" />
                                     ) : activity.activityType === "document_uploaded" ? (
                                       <Upload className="h-4 w-4 text-primary" />
+                                    ) : activity.activityType === "autopilot_review" ? (
+                                      <Brain className="h-4 w-4 text-primary" />
                                     ) : (
                                       <MessageSquare className="h-4 w-4 text-primary" />
                                     )}

@@ -197,6 +197,13 @@
       "when": 1783960701745,
       "tag": "0027_reconcile_dbpush_drift",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1784220000000,
+      "tag": "0028_autopilot_config",
+      "breakpoints": true
     }
   ]
 }
