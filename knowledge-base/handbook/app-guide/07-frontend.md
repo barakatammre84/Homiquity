@@ -67,9 +67,11 @@ Shadcn primitives).
   `headerMeta` (status badges), and `headerAction` (right-aligned) to preserve a
   bespoke header instead of dropping it. Pass `titleTestId` to keep a page's
   existing `data-testid`. Omit every header field for a container-only shell (keep
-  your own header as the first child). `fullHeight` is only for pages rendered
-  outside `PrivateLayout` (which already supplies `bg-background`); inside it,
-  don't set it. Full-bleed marketing/hero pages and centered spinner/empty states
+  your own header as the first child). `fullHeight` wraps content in a full-height
+  **white** background and is only for pages rendered outside `PrivateLayout`
+  (auth/bare/public routes); inside `PrivateLayout` **don't set it** — that layout
+  supplies the gray app surface (`bg-surface`), and a white `min-h-screen` would
+  paint over it. Full-bleed marketing/hero pages and centered spinner/empty states
   are legitimate exceptions. Converting one of the ~57% opt-out pages: follow the
   PageShell adoption checklist in
   [visual-consistency-standard.md](../design/visual-consistency-standard.md) §8.

@@ -296,7 +296,7 @@ export default function Documents() {
   // nothing was submitted (all "pending") — show an honest error + retry (ux-01).
   if (docsError) {
     return (
-      <PageShell fullHeight width="wide" title="Document Checklist" subtitle="Submit required documents as requested — we may ask for more as your application progresses">
+      <PageShell width="wide" title="Document Checklist" subtitle="Submit required documents as requested — we may ask for more as your application progresses">
         <QueryErrorState
           error={docsErrorObj}
           onRetry={() => refetchDocs()}
@@ -378,7 +378,7 @@ export default function Documents() {
         onChange={handleFileSelected}
         data-testid="input-file-upload"
       />
-      <PageShell fullHeight width="wide" title="Document Checklist" subtitle="Submit required documents as requested — we may ask for more as your application progresses">
+      <PageShell width="wide" title="Document Checklist" subtitle="Submit required documents as requested — we may ask for more as your application progresses">
         {/* Condition-focus banner: arrived from a specific outstanding item */}
         {conditionId && focusedCondition && (
           <Card

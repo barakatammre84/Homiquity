@@ -176,7 +176,6 @@ export default function Profile() {
 
   return (
     <PageShell
-      fullHeight
       width="content"
       icon={<UserCircle2 className="h-7 w-7 text-primary" />}
       title="My Profile"

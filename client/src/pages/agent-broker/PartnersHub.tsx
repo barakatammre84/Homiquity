@@ -258,7 +258,7 @@ export default function PartnersHub() {
 
   if (isLoading) {
     return (
-      <PageShell title="Partner Hub" fullHeight>
+      <PageShell title="Partner Hub">
         <div className="space-y-4">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-40 w-full" />
@@ -270,7 +270,7 @@ export default function PartnersHub() {
   if (user?.role === "cpa") {
     // The existing CPA portal is the CPA tab content until the convergence prompt.
     return (
-      <PageShell fullHeight>
+      <PageShell>
         <CpaPortal />
       </PageShell>
     );
@@ -278,7 +278,7 @@ export default function PartnersHub() {
 
   if (user?.role === "admin") {
     return (
-      <PageShell title="Partner Hub" subtitle="Admins manage partners from the admin queue." fullHeight>
+      <PageShell title="Partner Hub" subtitle="Admins manage partners from the admin queue.">
         <Card>
           <CardContent className="flex items-center justify-between py-6">
             <p className="text-sm text-muted-foreground">
@@ -300,7 +300,6 @@ export default function PartnersHub() {
     <PageShell
       title="Partner Hub"
       subtitle="Your referral link, your clients' progress — never their private data."
-      fullHeight
     >
       <RealtorHub />
     </PageShell>

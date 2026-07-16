@@ -47,8 +47,16 @@ Wired in `tailwind.config.ts` from the existing `--shadow-*` vars (see
 | `shadow-card-hover` | `--shadow-md` | hover lift on a clickable card (pair with `hover-elevate`) |
 | `shadow-card-lg` | `--shadow-lg` | hero-overlapping / emphasis card |
 
-- `--surface: 210 40% 97%` → `bg-surface` — the light-gray **app/dashboard ground**. White
-  canvas (Layer 0) stays for public/reading/form surfaces.
+- `--surface: 210 40% 97%` → `bg-surface` — the light-gray **app ground**. **Shipped
+  app-wide for the authed app**: `PrivateLayout`'s `<main>` carries `bg-surface` +
+  `app-surface`. White canvas (Layer 0) stays for public/auth/reading surfaces.
+- **Cards elevate automatically inside `.app-surface`** — `index.css` supplies
+  `shadow-card` via `.app-surface .shadcn-card:not([class*="shadow-"])`, so authed pages
+  need no per-card class. Declaring any `shadow-*` opts out and wins (`shadow-card-lg` for
+  emphasis, `shadow-none` to go flat). Don't remove the `:not()` guard — Tailwind v3's
+  `@layer` isn't a native cascade layer, so specificity would otherwise flatten overrides.
+- **Inside `PrivateLayout`, never pass `fullHeight` to PageShell** — it paints a white
+  `min-h-screen` over the surface. (`fullHeight` is for outside-`PrivateLayout` routes only.)
 - Cards keep their **hairline** (`border-card-border`) as a second separation cue — shadow
   is additive, not a replacement.
 - **Retire these ad-hoc surface shadows** (from the audit): `shadow-2xl`

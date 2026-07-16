@@ -281,6 +281,30 @@
   }
 }
 
+@layer components {
+  /**
+   * Default card elevation on the authed app surface.
+   *
+   * The standard: "a content card on bg-surface carries shadow-card; on the
+   * white canvas it stays near-flat (hairline only)". `.app-surface` is set on
+   * PrivateLayout's <main>, so every card in the authed app gets the shadow
+   * without touching hundreds of call sites — and public/marketing pages (which
+   * never carry the class) stay flat.
+   *
+   * The `:not([class*="shadow-"])` guard is LOAD-BEARING, not decoration.
+   * Tailwind v3's `@layer` is a build-time directive, not native CSS cascade
+   * layers, so plain specificity decides: this two-class selector would
+   * otherwise beat a one-class `.shadow-card-lg` utility and silently flatten
+   * every explicit override (it did — the dashboard's next-step card rendered
+   * shadow-sm). Excluding cards that already declare a `shadow-*` class means
+   * this only ever supplies a DEFAULT: `shadow-card-lg` (emphasis) and
+   * `shadow-none` (opt-out) both keep working.
+   */
+  .app-surface .shadcn-card:not([class*="shadow-"]) {
+    box-shadow: var(--shadow-sm);
+  }
+}
+
 /**
  * Using the elevate system.
  * Automatic contrast adjustment.

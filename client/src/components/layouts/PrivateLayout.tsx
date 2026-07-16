@@ -113,7 +113,15 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
               )}
             </div>
           </header>
-          <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto bg-background pb-16 md:pb-0 focus:outline-none">
+          {/* The authed app ground is the light-gray surface (Layer 0-surface), so
+              white cards read with their shadow-card depth. The `app-surface` hook
+              is what elevates cards inside it (see index.css). Public/bare layouts
+              stay on the white canvas. See design_guidelines.md → Layers. */}
+          <main
+            id="main"
+            tabIndex={-1}
+            className="app-surface flex-1 overflow-y-auto bg-surface pb-16 md:pb-0 focus:outline-none"
+          >
             {children}
           </main>
           <MobileBottomNav />
