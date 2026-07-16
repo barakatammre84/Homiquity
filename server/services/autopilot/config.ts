@@ -19,6 +19,8 @@ export interface AutopilotConfig {
   enabled: boolean;
   followUpGenerationEnabled: boolean;
   applicationDataUpdatesEnabled: boolean;
+  /** Lender-decision relay to the borrower/staff. Off by default (Reg N/ECOA). */
+  decisionRelayEnabled: boolean;
   /** null / empty = all loan officers; otherwise only these LO user ids. */
   loanOfficerAllowlist: string[] | null;
   guidelineMode: AutopilotGuidelineMode;
@@ -29,6 +31,7 @@ const DISABLED_DEFAULT: AutopilotConfig = {
   enabled: false,
   followUpGenerationEnabled: true,
   applicationDataUpdatesEnabled: true,
+  decisionRelayEnabled: false,
   loanOfficerAllowlist: null,
   guidelineMode: "fannie_mae",
 };
@@ -50,6 +53,7 @@ export async function getAutopilotConfig(): Promise<AutopilotConfig> {
           enabled: row.enabled,
           followUpGenerationEnabled: row.followUpGenerationEnabled,
           applicationDataUpdatesEnabled: row.applicationDataUpdatesEnabled,
+          decisionRelayEnabled: row.decisionRelayEnabled,
           loanOfficerAllowlist:
             Array.isArray(row.loanOfficerAllowlist) && row.loanOfficerAllowlist.length > 0
               ? row.loanOfficerAllowlist
@@ -84,4 +88,9 @@ export async function canGenerateFollowUps(): Promise<boolean> {
 
 export async function canUpdateApplicationData(): Promise<boolean> {
   return (await getAutopilotConfig()).applicationDataUpdatesEnabled;
+}
+
+/** Independent gate for the lender-decision relay (borrower-facing, Reg N/ECOA). */
+export async function canRelayDecisions(): Promise<boolean> {
+  return (await getAutopilotConfig()).decisionRelayEnabled;
 }

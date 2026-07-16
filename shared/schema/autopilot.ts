@@ -43,6 +43,12 @@ export const autopilotConfig = pgTable("autopilot_config", {
   followUpGenerationEnabled: boolean("follow_up_generation_enabled").notNull().default(true),
   applicationDataUpdatesEnabled: boolean("application_data_updates_enabled").notNull().default(true),
 
+  // Decision relay (lender decision → borrower approval / staff adverse-action).
+  // Defaults OFF even when Autopilot is enabled: it's borrower-facing outbound
+  // messaging on a credit decision (Reg N / ECOA §1002.9), so it stays dark
+  // until an operator turns it on (counsel sign-off before activation).
+  decisionRelayEnabled: boolean("decision_relay_enabled").notNull().default(false),
+
   // Pilot rollout: null (or empty) = all loan officers; otherwise the agent only
   // runs for applications owned by a listed LO user id (searchable allowlist).
   loanOfficerAllowlist: jsonb("loan_officer_allowlist").$type<string[] | null>(),
