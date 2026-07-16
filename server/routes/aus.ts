@@ -250,6 +250,32 @@ export function registerAusRoutes(app: Express) {
           }
         }
 
+        // Autopilot (Phase 2): map AUS findings to the right split — borrower
+        // follow-ups for Day 1 Certainty assets/income, lender-internal for VOE
+        // and structural (LTV/credit/DTI) conditions. No-op when the agent is
+        // off or this file is out of pilot scope, so today's behavior is intact.
+        try {
+          const { isAutopilotEnabled, canGenerateFollowUps } = await import("../services/autopilot/config");
+          if ((await isAutopilotEnabled(application.loanOfficerId)) && (await canGenerateFollowUps())) {
+            const { materializeAusFollowUps } = await import("../services/autopilot/ausFollowUps");
+            const mapped = await materializeAusFollowUps(applicationId, findings, lpaFindings);
+            const total = mapped.borrowerActionable + mapped.lenderInternal;
+            await storage.createDealActivity({
+              applicationId,
+              activityType: "autopilot_review",
+              title: "Autopilot mapped AUS findings",
+              description:
+                total === 0
+                  ? "DU/LPA returned no borrower-actionable conditions — the file is verification-clean."
+                  : `DU/LPA returned ${total} condition(s): created ${mapped.created.length} borrower follow-up(s)` +
+                    `${mapped.created.length ? ` (${mapped.created.join(", ")})` : ""}, kept ${mapped.lenderInternal} lender-internal.`,
+              performedBy: application.userId,
+            });
+          }
+        } catch (autopilotErr) {
+          console.warn("[Autopilot] AUS mapping failed (non-fatal):", autopilotErr);
+        }
+
         const commitmentLetter = buildCommitmentLetter({
           applicationId,
           borrowerName: [borrower?.firstName, borrower?.lastName].filter(Boolean).join(" ") || "Borrower",
