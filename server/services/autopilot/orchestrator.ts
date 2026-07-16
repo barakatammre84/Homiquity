@@ -18,6 +18,7 @@ import {
 } from "../../pipelineEngine";
 import { isAutopilotEnabled, canGenerateFollowUps } from "./config";
 import { materializeFlagsToFollowUps } from "./followUps";
+import { publishReviewing, publishCurrentStatus } from "./events";
 import type { PreUwFlag } from "../preUnderwriting";
 import type { LoanApplication } from "@shared/schema";
 import { toNum } from "@shared/lib/number";
@@ -211,6 +212,10 @@ export async function runAutopilotForDocument(params: AutopilotDocumentParams): 
     // gates; this makes the orchestrator safe to invoke from anywhere).
     if (!(await isAutopilotEnabled(application.loanOfficerId))) return;
 
+    // Live banner: flip the borrower's status to "We're reviewing your
+    // information…" for anyone watching the SSE stream in this process.
+    await publishReviewing(applicationId);
+
     // 1. PERCEIVE (+ 2. RECONCILE narration) ---------------------------------
     let outcome: ExtractionOutcome | null = null;
     let extractionFailed = false;
@@ -289,6 +294,10 @@ export async function runAutopilotForDocument(params: AutopilotDocumentParams): 
       description: buildNarration({ outcome, extractionFailed, createdFollowUps, readinessLine }),
       performedBy: application.userId,
     });
+
+    // 7. Live banner: push the result state ("Looks good!" / "A few items
+    // needed.") to anyone watching the borrower's SSE stream.
+    await publishCurrentStatus(applicationId);
   } catch (err) {
     console.error(`[Autopilot] Document run failed for ${params.documentId} (non-fatal):`, err);
   }
