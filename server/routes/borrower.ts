@@ -1009,6 +1009,21 @@ export function registerBorrowerRoutes(
         safeResults.coApplicants = safeResults.coApplicants.map(sanitizeBorrowerResults);
       }
 
+      // Autopilot (Phase 3): proactively build the document needs list from the
+      // borrower's stated URLA data — before any upload — so there's no dead
+      // time waiting on a human to say what's needed. Detached + gated (the
+      // cached global check means an OFF agent adds no work); the orchestrator
+      // re-checks the pilot allowlist.
+      (async () => {
+        const { getAutopilotConfig } = await import("../services/autopilot/config");
+        if ((await getAutopilotConfig()).enabled) {
+          const { runAutopilotForSection } = await import("../services/autopilot/orchestrator");
+          await runAutopilotForSection({ applicationId, triggeredBy: user.id });
+        }
+      })().catch((err) =>
+        console.warn(`[Autopilot] Section run failed for ${applicationId} (non-fatal):`, err?.message || err),
+      );
+
       res.json(safeResults);
     } catch (error) {
       console.error("Save URLA data error:", error);
