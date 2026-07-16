@@ -1,14 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Upload, 
-  FileText,
-  Clock,
-  ArrowRight
-} from "lucide-react";
+import { Upload, Clock, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
+import { AllCaughtUpArt } from "@/components/illustrations";
 
 interface BorrowerTask {
   id: string;
@@ -58,9 +54,12 @@ function formatDueDate(minutes: number | null): string {
 interface BorrowerRequestsProps {
   applicationId?: string;
   "data-testid"?: string;
+  /** Return null when there are no pending tasks (default false → show the
+   *  "all caught up" state, so a dashboard grid cell never renders blank). */
+  hideWhenEmpty?: boolean;
 }
 
-export function BorrowerRequests({ applicationId, "data-testid": testId }: BorrowerRequestsProps) {
+export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhenEmpty = false }: BorrowerRequestsProps) {
   const { data: tasks, isLoading } = useQuery<BorrowerTask[]>({
     queryKey: ["/api/task-engine/applications", applicationId, "borrower-tasks"],
     enabled: !!applicationId,
@@ -70,10 +69,10 @@ export function BorrowerRequests({ applicationId, "data-testid": testId }: Borro
 
   if (isLoading) {
     return (
-      <Card data-testid={testId || "card-what-we-need"}>
+      <Card className="shadow-card" data-testid={testId || "card-what-we-need"}>
         <CardContent className="p-6">
           <div className="flex items-center justify-center h-16">
-            <div className="animate-pulse text-muted-foreground">Loading...</div>
+            <div className="animate-pulse text-muted-foreground">Loading…</div>
           </div>
         </CardContent>
       </Card>
@@ -81,23 +80,43 @@ export function BorrowerRequests({ applicationId, "data-testid": testId }: Borro
   }
 
   if (pendingTasks.length === 0) {
-    return null;
+    if (hideWhenEmpty) return null;
+    // A blank grid cell reads as broken — show a positive "all caught up" state.
+    return (
+      <Card className="shadow-card" data-testid={testId || "card-what-we-need"}>
+        <CardContent className="flex flex-col items-center px-6 py-8 text-center">
+          <AllCaughtUpArt className="mb-3 h-20 w-20" />
+          <p className="font-medium text-foreground" data-testid="text-tasks-caught-up">You're all caught up</p>
+          <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+            Nothing needed from you right now. We'll let you know the moment something comes up.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   const displayTasks = pendingTasks.slice(0, 3);
 
   return (
-    <Card className="shadow-md" data-testid={testId || "card-what-we-need"}>
-      <CardHeader className="pb-3 border-b">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2 flex-wrap">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-warning/15">
-            <FileText className="h-3 w-3 text-warning-subtle-foreground" />
+    <Card className="shadow-card" data-testid={testId || "card-what-we-need"}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tasks</p>
+              <Badge variant="secondary" className="text-[10px]">{pendingTasks.length}</Badge>
+            </div>
+            <div className="mt-1 h-0.5 w-8 rounded-full bg-primary/60" />
           </div>
-          What We Need From You
-          <Badge variant="secondary" className="text-[10px] ml-auto">{pendingTasks.length}</Badge>
-        </CardTitle>
+          <Link href="/tasks">
+            <Button variant="outline" size="sm" data-testid="button-complete-items">
+              Complete items
+              <ArrowRight className="ml-1 h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </div>
       </CardHeader>
-      <CardContent className="pt-4 space-y-3">
+      <CardContent className="pt-1 space-y-3">
         {displayTasks.map((task) => {
           const friendlyName = FRIENDLY_TASK_NAMES[task.taskTypeCode || ""] || task.title;
           const dueText = formatDueDate(task.timeRemaining);

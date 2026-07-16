@@ -17,7 +17,9 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { ApplicationSwitcher } from "@/components/ApplicationSwitcher";
 import { JourneyTracker } from "@/components/JourneyTracker";
 import { PartnerSharingCard } from "@/components/PartnerSharingCard";
-import { TrustLayer } from "@/components/TrustLayer";
+import { PreApprovedCard } from "@/components/dashboard/PreApprovedCard";
+import { ContactCard } from "@/components/dashboard/ContactCard";
+import { LoanTeamCard } from "@/components/dashboard/LoanTeamCard";
 import { RenterHome } from "@/pages/borrower/RenterHome";
 import { isStaffRole } from "@shared/roles";
 import { isTerminalLoanAppStatus } from "@shared/schema";
@@ -367,7 +369,7 @@ function FinancialSnapshot({ graph }: { graph: BorrowerGraphData }) {
           )
         )}
       </button>
-      <Card data-testid="card-financial-snapshot">
+      <Card className="shadow-card" data-testid="card-financial-snapshot">
         <CardContent className="p-4">
           <div className="space-y-3">
             {previewSignals.map((signal) => (
@@ -447,7 +449,7 @@ function CollapsibleActivity({ activities }: { activities: DealActivity[] }) {
       </button>
 
       {expanded && (
-        <Card className="animate-in fade-in slide-in-from-top-1 duration-200" data-testid="card-recent-activity">
+        <Card className="shadow-card animate-in fade-in slide-in-from-top-1 duration-200" data-testid="card-recent-activity">
           <CardContent className="p-4">
             <div className="space-y-2.5">
               {activities.slice(0, 5).map((activity, index) => (
@@ -566,7 +568,7 @@ function LoanDetails({
       </button>
 
       {expanded && (
-        <Card className="animate-in fade-in slide-in-from-top-1 duration-200" data-testid="card-loan-details">
+        <Card className="shadow-card animate-in fade-in slide-in-from-top-1 duration-200" data-testid="card-loan-details">
           <CardContent className="p-4">
             <div className="space-y-3">
               {items.map((item) => (
@@ -762,15 +764,16 @@ export default function Dashboard() {
     : null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-xl px-4 py-8 sm:px-6 sm:py-10 space-y-8">
-
-        {/* Section 1: Greeting */}
-        <div className="space-y-1">
+    <div className="min-h-screen bg-surface">
+      {/* HERO — full-bleed royal-blue band. Uses bg-accent / text-accent-foreground
+          (brandable tokens) so it re-skins to a tenant's brand via BrandingProvider;
+          never a bare white literal. */}
+      <section className="bg-accent text-accent-foreground">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">
+                <h1 className="text-2xl font-bold sm:text-3xl" data-testid="text-dashboard-title">
                   {greetingTitle}
                 </h1>
                 {fileHealth === "healthy" && (
@@ -794,175 +797,188 @@ export default function Dashboard() {
                   </span>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground mt-1 leading-relaxed" data-testid="text-dashboard-subtitle">
+              <p className="mt-1 text-sm leading-relaxed text-accent-foreground/85" data-testid="text-dashboard-subtitle">
                 {greetingSubtitle}
               </p>
             </div>
             {applications.length > 1 && (
-              <ApplicationSwitcher
-                applications={applications}
-                activeApplicationId={activeApplication?.id}
-                onSelectApplication={(app) => setSelectedAppId(app.id)}
-              />
+              /* White pill so the switcher's dark trigger reads on the royal hero. */
+              <div className="shrink-0 rounded-lg bg-background p-1 shadow-card" data-testid="app-switcher-wrap">
+                <ApplicationSwitcher
+                  applications={applications}
+                  activeApplicationId={activeApplication?.id}
+                  onSelectApplication={(app) => setSelectedAppId(app.id)}
+                />
+              </div>
             )}
           </div>
-          {hasClosedLoan && (
-            <Link href="/homeowner-dashboard">
-              <div
-                className="mt-3 flex items-center justify-between rounded-lg border border-card-border bg-card px-4 py-3 hover-elevate cursor-pointer"
-                data-testid="link-homeowner-dashboard"
-              >
-                <div>
-                  <p className="text-sm font-semibold">Your Homeowner Hub</p>
-                  <p className="text-xs text-muted-foreground">
-                    Track your equity, watch for refinance opportunities, and manage your home.
-                  </p>
+        </div>
+      </section>
+
+      {/* CONTENT — centered grid overlapping the hero */}
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 -mt-8 pb-16">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+          {/* LEFT column (wider): next step → tasks → progress */}
+          <div className="space-y-4 sm:space-y-6 lg:col-span-2">
+            {hasClosedLoan && (
+              <Link href="/homeowner-dashboard">
+                <div
+                  className="flex items-center justify-between rounded-lg border border-card-border bg-card px-4 py-3 shadow-card hover-elevate cursor-pointer"
+                  data-testid="link-homeowner-dashboard"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">Your Homeowner Hub</p>
+                    <p className="text-xs text-muted-foreground">
+                      Track your equity, watch for refinance opportunities, and manage your home.
+                    </p>
+                  </div>
+                  <span className="text-sm font-medium text-primary">Open →</span>
                 </div>
-                <span className="text-sm font-medium text-primary">Open →</span>
-              </div>
-            </Link>
-          )}
+              </Link>
+            )}
+
+            {/* One dominant action — the "next step" hero card */}
+            <Card className="shadow-card-lg hover-elevate" data-testid="card-dominant-action">
+              <CardContent className="p-5 sm:p-6">
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold tracking-wide text-accent uppercase">Your next step</span>
+                    {dominant.timeEstimate && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" data-testid="text-dominant-time">
+                        <Clock className="h-3 w-3" />
+                        {dominant.timeEstimate}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                    <DominantIcon className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <h2 className="text-base font-semibold" data-testid="text-dominant-title">
+                      {dominant.title}
+                    </h2>
+                    <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto" data-testid="text-dominant-description">
+                      {dominant.description}
+                    </p>
+                    {dominant.whyNeeded && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help" data-testid="button-why-needed">
+                            Why is this needed?
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs text-xs">
+                          <p>{dominant.whyNeeded}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
+                  <Link href={dominant.href} data-testid="link-dominant-action">
+                    <Button size="lg" data-testid="button-dominant-action">
+                      {dominant.buttonLabel}
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tasks — what we need from you */}
+            {activeApplication && (
+              <BorrowerRequests
+                applicationId={activeApplication.id}
+                data-testid="card-what-we-need"
+              />
+            )}
+
+            {/* Loan Progress — vertical COMPLETE / CURRENT / UPCOMING timeline */}
+            {activeApplication && activeApplication.status !== "draft" && (
+              <Card className="shadow-card" data-testid="card-journey">
+                <CardContent className="p-5 sm:p-6">
+                  <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Progress</p>
+                      <div className="mt-1 h-0.5 w-8 rounded-full bg-primary/60" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-20 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all duration-700"
+                          style={{ width: `${readiness}%` }}
+                          data-testid="progress-bar-fill"
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground" data-testid="text-readiness">
+                        {readiness}%
+                      </span>
+                    </div>
+                  </div>
+                  <JourneyTracker status={activeApplication.status} variant="vertical" showEstimates />
+                  <div className="mt-4 pt-3 border-t flex items-center gap-2 text-[11px] text-muted-foreground/70" data-testid="text-automation-status">
+                    <Zap className="h-3 w-3 text-primary" />
+                    <span>Platform is automatically tracking compliance deadlines, verifying documents, and updating your progress</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* RIGHT column (narrower): pre-approval → contact → loan team */}
+          <div className="space-y-4 sm:space-y-6 lg:col-span-1">
+            {activeApplication && activeApplication.status === "pre_approved" && (
+              <PreApprovedCard
+                applicationId={activeApplication.id}
+                amount={activeApplication.preApprovalAmount || activeApplication.purchasePrice}
+                validUntil={expirationInfo && expirationInfo.urgency !== "expired" ? expirationInfo.label : null}
+              />
+            )}
+            {activeApplication && ["submitted", "analyzing"].includes(activeApplication.status) && (
+              <PreQualLetterCard applicationId={activeApplication.id} />
+            )}
+            {activeApplication && <ContactCard />}
+            {activeApplication && <LoanTeamCard applicationId={activeApplication.id} />}
+          </div>
         </div>
 
-        {/* Section 2: Journey Progress (prominent, above action) */}
-        {activeApplication && activeApplication.status !== "draft" && (
-          <Card data-testid="card-journey">
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Your Journey
-                </h3>
-                <div className="flex items-center gap-2">
-                  <div className="h-1.5 w-20 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-700"
-                      style={{ width: `${readiness}%` }}
-                      data-testid="progress-bar-fill"
-                    />
-                  </div>
-                  <span className="text-xs text-muted-foreground" data-testid="text-readiness">
-                    {readiness}%
-                  </span>
-                </div>
-              </div>
-              <JourneyTracker status={activeApplication.status} showEstimates />
-              <div className="mt-3 pt-3 border-t flex items-center gap-2 text-[11px] text-muted-foreground/70" data-testid="text-automation-status">
-                <Zap className="h-3 w-3 text-primary" />
-                <span>Platform is automatically tracking compliance deadlines, verifying documents, and updating your progress</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* SECONDARY — full-width detail stack below the grid (collapsed by default) */}
+        <div className="mt-6 space-y-4">
+          {/* Progress-sharing with a referring partner (PH-2). Self-hides when the
+              borrower has no partner referrer. */}
+          <PartnerSharingCard />
 
-        {/* Progress-sharing with a referring partner (PH-2). Self-hides when the
-            borrower has no partner referrer. */}
-        <PartnerSharingCard />
+          {activeApplication && activeApplication.status !== "draft" && (
+            <PredictionInsights applicationId={activeApplication.id} />
+          )}
 
-        {/* Section 3: One dominant action — the "next step" hero */}
-        <Card className="shadow-md hover-elevate border-2 border-accent/40" data-testid="card-dominant-action">
-          <CardContent className="p-5 sm:p-6">
-            <div className="flex flex-col items-center text-center space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold tracking-wide text-accent uppercase">Your next step</span>
-                {dominant.timeEstimate && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground" data-testid="text-dominant-time">
-                    <Clock className="h-3 w-3" />
-                    {dominant.timeEstimate}
-                  </span>
-                )}
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <DominantIcon className="h-6 w-6 text-primary" />
-              </div>
-              <div className="space-y-1">
-                <h2 className="text-base font-semibold" data-testid="text-dominant-title">
-                  {dominant.title}
-                </h2>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto" data-testid="text-dominant-description">
-                  {dominant.description}
-                </p>
-                {dominant.whyNeeded && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help" data-testid="button-why-needed">
-                        Why is this needed?
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs text-xs">
-                      <p>{dominant.whyNeeded}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-              <Link href={dominant.href} data-testid="link-dominant-action">
-                <Button size="lg" data-testid="button-dominant-action">
-                  {dominant.buttonLabel}
-                  <ArrowRight className="h-4 w-4 ml-2" />
+          {borrowerGraph && !graphError && (
+            <FinancialSnapshot graph={borrowerGraph} />
+          )}
+
+          {activeApplication && (
+            <LoanDetails
+              application={activeApplication}
+              hasOffers={hasOffers}
+              offerCount={offerCount}
+              rateRange={rateRange}
+              hmdaCompleted={hmdaCompleted}
+              expirationInfo={expirationInfo}
+              isPreApproved={isPreApproved}
+            />
+          )}
+
+          <CollapsibleActivity activities={activities} />
+
+          {activeApplication && (
+            <div className="flex justify-center pt-2">
+              <Link href="/onboarding" data-testid="link-view-journey">
+                <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
+                  <Rocket className="h-3.5 w-3.5" />
+                  View full journey checklist
                 </Button>
               </Link>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 4: Trust Layer (who's handling your file + timeline + security) */}
-        {activeApplication && activeApplication.status !== "draft" && (
-          <TrustLayer
-            applicationId={activeApplication.id}
-            status={activeApplication.status}
-          />
-        )}
-
-        {/* Section 5: Borrower requests (pending tasks from staff) */}
-        {activeApplication && (
-          <BorrowerRequests
-            applicationId={activeApplication.id}
-            data-testid="card-what-we-need"
-          />
-        )}
-
-        {/* Section 6: Pre-qual letter for submitted apps */}
-        {activeApplication && ["submitted", "analyzing"].includes(activeApplication.status) && (
-          <PreQualLetterCard applicationId={activeApplication.id} />
-        )}
-
-        {/* Section 7: Prediction Insights */}
-        {activeApplication && activeApplication.status !== "draft" && (
-          <PredictionInsights applicationId={activeApplication.id} />
-        )}
-
-        {/* Section 8: Financial Snapshot (collapsed by default) */}
-        {borrowerGraph && !graphError && (
-          <FinancialSnapshot graph={borrowerGraph} />
-        )}
-
-        {/* Section 8: Loan Details (collapsed by default) */}
-        {activeApplication && (
-          <LoanDetails
-            application={activeApplication}
-            hasOffers={hasOffers}
-            offerCount={offerCount}
-            rateRange={rateRange}
-            hmdaCompleted={hmdaCompleted}
-            expirationInfo={expirationInfo}
-            isPreApproved={isPreApproved}
-          />
-        )}
-
-        {/* Section 9: Recent Activity (collapsed by default) */}
-        <CollapsibleActivity activities={activities} />
-
-        {/* Section 10: Journey checklist link */}
-        {activeApplication && (
-          <div className="flex justify-center pt-2">
-            <Link href="/onboarding" data-testid="link-view-journey">
-              <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
-                <Rocket className="h-3.5 w-3.5" />
-                View full journey checklist
-              </Button>
-            </Link>
-          </div>
-        )}
-
+          )}
+        </div>
       </div>
     </div>
   );

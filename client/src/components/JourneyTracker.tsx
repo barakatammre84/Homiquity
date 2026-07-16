@@ -60,13 +60,30 @@ function getStepIndex(status: string): number {
   return idx >= 0 ? idx : -1;
 }
 
+/** One-line description per step — shown only in the vertical timeline variant. */
+const STEP_DESCRIPTIONS: Record<string, string> = {
+  submitted: "We've received your application and started the review.",
+  pre_approved: "You're pre-approved. Time to shop with confidence.",
+  processing: "We're verifying the documents you provided.",
+  underwriting: "An underwriter is reviewing your complete file.",
+  clear_to_close: "Approved — we're preparing your closing.",
+  closing: "Sign your final documents at closing.",
+  funded: "Your loan is funded. Welcome home!",
+};
+
 interface JourneyTrackerProps {
   status: string;
   className?: string;
   showEstimates?: boolean;
+  /**
+   * "responsive" (default) = the horizontal desktop stepper / compact mobile card.
+   * "vertical" = a top-to-bottom timeline with COMPLETE / CURRENT / UPCOMING states
+   * and a colored connector (the borrower-dashboard "Loan Progress" card).
+   */
+  variant?: "responsive" | "vertical";
 }
 
-export function JourneyTracker({ status, className = "", showEstimates = false }: JourneyTrackerProps) {
+export function JourneyTracker({ status, className = "", showEstimates = false, variant = "responsive" }: JourneyTrackerProps) {
   if (status === "draft" || status === "denied") return null;
 
   const currentIndex = getStepIndex(status);
@@ -76,6 +93,98 @@ export function JourneyTracker({ status, className = "", showEstimates = false }
       ? JOURNEY_STEPS[currentIndex + 1]
       : null;
   const CurrentIcon = current?.icon ?? Circle;
+
+  if (variant === "vertical") {
+    return (
+      <ol className={`w-full ${className}`} data-testid="journey-tracker">
+        {JOURNEY_STEPS.map((step, index) => {
+          const isCompleted = index < currentIndex;
+          const isCurrent = index === currentIndex;
+          const isLast = index === JOURNEY_STEPS.length - 1;
+          const StepIcon = step.icon;
+          const tag = isCompleted ? "Complete" : isCurrent ? "Current" : "Upcoming";
+          const tagColor = isCompleted
+            ? "text-success-subtle-foreground"
+            : isCurrent
+            ? "text-primary"
+            : "text-muted-foreground";
+
+          return (
+            <li
+              key={step.id}
+              className="relative flex gap-3 pb-6 last:pb-0"
+              data-testid={`journey-step-${step.id}`}
+            >
+              {/* Connector: green once the step is complete, else a hairline. */}
+              {!isLast && (
+                <span
+                  className={`absolute left-4 top-4 h-full w-0.5 -translate-x-1/2 ${
+                    isCompleted ? "bg-success" : "bg-border"
+                  }`}
+                  aria-hidden="true"
+                  data-testid={`journey-line-${step.id}`}
+                />
+              )}
+
+              {/* Node */}
+              <div
+                className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${
+                  isCompleted
+                    ? "border-success bg-success text-success-foreground"
+                    : isCurrent
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground"
+                }`}
+              >
+                {isCompleted ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : isCurrent ? (
+                  <>
+                    <StepIcon className="h-4 w-4" />
+                    <span className="absolute inset-0 rounded-full border-2 border-primary animate-ping opacity-20" />
+                  </>
+                ) : (
+                  <Circle className="h-3 w-3" />
+                )}
+              </div>
+
+              {/* Text */}
+              <div className="min-w-0 flex-1 pb-1">
+                <p
+                  className={`text-[10px] font-semibold uppercase tracking-wider ${tagColor}`}
+                  data-testid={`journey-tag-${step.id}`}
+                >
+                  {tag}
+                </p>
+                <p
+                  className={`text-sm leading-tight ${
+                    isCurrent
+                      ? "font-semibold text-foreground"
+                      : isCompleted
+                      ? "font-semibold text-foreground"
+                      : "font-medium text-muted-foreground"
+                  }`}
+                  data-testid={`journey-label-${step.id}`}
+                >
+                  {step.label}
+                </p>
+                {STEP_DESCRIPTIONS[step.id] && (
+                  <p className="mt-0.5 text-xs text-muted-foreground leading-snug">
+                    {STEP_DESCRIPTIONS[step.id]}
+                  </p>
+                )}
+                {showEstimates && isCurrent && step.estimate && (
+                  <p className="mt-1 text-[11px] text-muted-foreground" data-testid={`journey-estimate-${step.id}`}>
+                    ~{step.estimate}
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }
 
   return (
     <div className={`w-full ${className}`} data-testid="journey-tracker">
