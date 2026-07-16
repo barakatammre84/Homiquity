@@ -276,7 +276,7 @@ export default function BorrowerDealComparison() {
   const comparedOffers = offers.filter((o) => compareOffers.includes(o.id));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <div className="sticky top-0 z-10 bg-card border-b shadow-sm" data-testid="context-bar">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">

@@ -61,7 +61,9 @@ export default function AgentDashboard() {
   const isLoading = agentLoading || listingsLoading;
 
   return (
-    <div className="min-h-screen bg-background">
+    /* Full-bleed hero + overlap — a documented PageShell exception (same pattern
+       as the borrower dashboard). No bg here: it sits on PrivateLayout's surface. */
+    <div className="min-h-screen">
       {/* Premium Agent Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />

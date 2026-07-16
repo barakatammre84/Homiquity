@@ -259,7 +259,7 @@ export default function BuyerProperties() {
   // (looks like "no homes match") — show an honest error + retry instead (ux-01).
   if (propertiesIsError) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <QueryErrorState
             error={propertiesError}
@@ -273,7 +273,7 @@ export default function BuyerProperties() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Hero Section */}
       <div className="relative bg-gradient-to-r from-primary to-primary/80 py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
