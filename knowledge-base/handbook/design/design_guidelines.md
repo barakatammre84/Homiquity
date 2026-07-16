@@ -54,13 +54,15 @@ slate `#0F172A`. Sidebar: deep royal blue.
 ### Layers
 - **Layer 0** `bg-background` — Stark White canvas (public/marketing, forms, reading
   surfaces); `bg-muted` (#F8FAFC) separates data sections (e.g. PITI panels).
-- **Layer 0-surface** `bg-surface` (⏳ rolling out) — the light-gray **app/dashboard page
-  ground** (`--surface`, one hair deeper than `--muted`) that white cards sit *on* so
-  their shadow reads. Used by authenticated dashboards; Layer 0 white stays for public
-  and reading surfaces. See *Radii, elevation, motion*.
+- **Layer 0-surface** `bg-surface` — the light-gray **app ground** (`--surface`, one hair
+  deeper than `--muted`) that white cards sit *on* so their shadow reads. **Shipped: the
+  whole authenticated app.** `PrivateLayout`'s `<main>` carries `bg-surface` + the
+  `app-surface` hook, so every authed page is on it by default; Layer 0 white stays for
+  public/marketing, auth, and reading surfaces. See *Radii, elevation, motion*.
 - **Layer 1** — white cards + 1px slate-200 hairline (`border-card-border`). On the white
   canvas they stay near-flat (hairline only); on `bg-surface` a content card carries
-  `shadow-card` (⏳ rolling out). The hairline is always kept as a second separation cue.
+  `shadow-card` — supplied **automatically** inside `.app-surface` (see elevation), so
+  authed pages need no per-card class. The hairline is always kept as a second separation cue.
 - **Layer 2** — Emerald conversion actions (`bg-primary`), hover deepens via the elevate system.
 - **Sidebar** — deep royal-blue dark nav container.
 
@@ -127,12 +129,18 @@ marketing/hero pages and centered spinner/empty states are the only legitimate e
 ## Radii, elevation, motion
 - **Radii:** `--radius` .75rem → `rounded-lg` 12px (cards/modals), `rounded-md` 8px
   (inputs/buttons), `rounded-sm` 4px (chips).
-- **Elevation (⏳ rolling out — this reverses the prior "cards default to no shadow"
-  doctrine).** The neutral-tinted `--shadow-2xs`…`--shadow-2xl` vars (in `index.css`) are
-  wired into Tailwind as a named card scale: `shadow-card` (= `--shadow-sm`),
-  `shadow-card-hover` (= `--shadow-md`), `shadow-card-lg` (= `--shadow-lg`). Rules:
+- **Elevation (this reverses the prior "cards default to no shadow" doctrine).** The
+  neutral-tinted `--shadow-2xs`…`--shadow-2xl` vars (in `index.css`) are wired into Tailwind
+  as a named card scale: `shadow-card` (= `--shadow-sm`), `shadow-card-hover`
+  (= `--shadow-md`), `shadow-card-lg` (= `--shadow-lg`). Rules:
   - A **content card on `bg-surface`** carries `shadow-card` (+ its hairline). On the white
     canvas (Layer 0), cards stay near-flat (hairline only) — shadow needs the gray ground to read.
+  - **You don't hand-apply it inside the authed app.** `index.css` supplies the default via
+    `.app-surface .shadcn-card:not([class*="shadow-"])`. Declaring any `shadow-*` class on a
+    card opts out of the default and wins — use `shadow-card-lg` for emphasis, `shadow-none`
+    to go flat. (The `:not()` guard is load-bearing: Tailwind v3's `@layer` is a build-time
+    directive, not native cascade layers, so without it this selector's specificity would
+    silently flatten every explicit override.)
   - **Interaction depth:** clickable cards/rows use `hover-elevate` (pair with
     `shadow-card-hover` for a lift); `active-elevate-2` is the pressed state (buttons and
     other pressables). Don't mix raw `hover:shadow-*` on cards — that's one of the drifts

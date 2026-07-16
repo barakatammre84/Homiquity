@@ -200,7 +200,7 @@ export default function Tasks() {
   // Yet" empty state — misleading. Show an honest error + retry instead (ux-01).
   if (tasksIsError) {
     return (
-      <PageShell fullHeight width="wide" title="My Tasks" subtitle="Complete these tasks to move forward with your loan application">
+      <PageShell width="wide" title="My Tasks" subtitle="Complete these tasks to move forward with your loan application">
         <QueryErrorState
           error={tasksError}
           onRetry={() => refetchTasks()}
@@ -242,7 +242,7 @@ export default function Tasks() {
 
   return (
     <>
-      <PageShell fullHeight width="wide" title="My Tasks" subtitle="Complete these tasks to move forward with your loan application">
+      <PageShell width="wide" title="My Tasks" subtitle="Complete these tasks to move forward with your loan application">
             {myTasks.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">

@@ -44,7 +44,12 @@ interface PageShellProps {
   children: React.ReactNode;
   /** Semantic max-width. Default "content". */
   width?: PageWidth;
-  /** Wrap in a full-height page background (replaces per-page `min-h-screen bg-background`). */
+  /**
+   * Wrap in a full-height WHITE page background — only for pages rendered
+   * OUTSIDE `PrivateLayout` (auth/bare/public routes). Inside `PrivateLayout`
+   * do NOT set this: that layout supplies the gray app surface (`bg-surface`),
+   * and a white `min-h-screen` here would paint over it.
+   */
   fullHeight?: boolean;
   /** Render a standard PageHeader above the content. */
   title?: React.ReactNode;
