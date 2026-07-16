@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Lazy so recharts (~150KB) code-splits out of the console's main chunk.
 const AutopilotTrendChart = lazy(() => import("./AutopilotTrendChart"));
@@ -88,6 +89,52 @@ function rangeFromUrl(): string {
   return RANGE_OPTIONS.some((o) => o.value === r) ? (r as string) : DEFAULT_RANGE;
 }
 
+const fmtTrendDate = (d: string): string =>
+  new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+/**
+ * Accessible table alternative to the trend chart (dataviz: a table view always
+ * exists). Same data, screen-reader-friendly: caption, column/row headers, and a
+ * total. No recharts dependency, so it renders even if the chart chunk fails.
+ */
+function TrendTable({ data }: { data: { date: string; count: number }[] }) {
+  const total = data.reduce((sum, d) => sum + d.count, 0);
+  return (
+    <div className="max-h-52 overflow-y-auto rounded-lg border border-border">
+      <table className="w-full text-xs" data-testid="autopilot-trend-table">
+        <caption className="sr-only">Daily Autopilot activity for the selected range</caption>
+        <thead className="sticky top-0 bg-card">
+          <tr className="border-b border-border text-muted-foreground">
+            <th scope="col" className="px-3 py-2 text-left font-medium">Date</th>
+            <th scope="col" className="px-3 py-2 text-right font-medium">Activity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((d) => (
+            <tr key={d.date} className="border-b border-border/50 last:border-0">
+              <th scope="row" className="px-3 py-1.5 text-left font-normal text-foreground">
+                {fmtTrendDate(d.date)}
+              </th>
+              <td className="px-3 py-1.5 text-right tabular-nums text-foreground">{d.count}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="sticky bottom-0 bg-card">
+          <tr className="border-t border-border font-medium">
+            <th scope="row" className="px-3 py-2 text-left">Total</th>
+            <td className="px-3 py-2 text-right tabular-nums">{total}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
 export default function AutopilotConsole() {
   const { toast } = useToast();
   // Persist the selected range in the URL (?range=) so a reload or a shared link
@@ -100,6 +147,7 @@ export default function AutopilotConsole() {
     window.history.replaceState(null, "", `${window.location.pathname}?${sp.toString()}`);
   };
   const rangeDays = RANGE_OPTIONS.find((r) => r.value === rangeValue)?.days ?? 30;
+  const [trendView, setTrendView] = useState<"chart" | "table">("chart");
 
   const { data: config, isLoading: configLoading } = useQuery<AutopilotConfigResp>({
     queryKey: ["/api/autopilot/config"],
@@ -308,18 +356,40 @@ export default function AutopilotConsole() {
           </div>
         )}
 
-        {/* Daily activity trend — single series, so the title names it (no legend). */}
+        {/* Daily activity trend — single series, so the title names it (no legend).
+            A Chart/Table toggle gives an accessible table alternative. */}
         <Card className="mt-4">
           <CardContent className="p-4 sm:p-5">
-            <h3 className="text-sm font-semibold">Agent activity</h3>
-            <p className="mb-3 text-xs text-muted-foreground">Reviews, follow-ups, and relays per day.</p>
-            {trendLoading ? (
-              <Skeleton className="h-52 w-full" />
-            ) : (
-              <Suspense fallback={<Skeleton className="h-52 w-full" />}>
-                <AutopilotTrendChart data={trend?.buckets ?? []} />
-              </Suspense>
-            )}
+            <Tabs value={trendView} onValueChange={(v) => setTrendView(v as "chart" | "table")}>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">Agent activity</h3>
+                  <p className="text-xs text-muted-foreground">Reviews, follow-ups, and relays per day.</p>
+                </div>
+                <TabsList className="h-8">
+                  <TabsTrigger value="chart" className="text-xs" data-testid="tab-trend-chart">
+                    Chart
+                  </TabsTrigger>
+                  <TabsTrigger value="table" className="text-xs" data-testid="tab-trend-table">
+                    Table
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              {trendLoading ? (
+                <Skeleton className="h-52 w-full" />
+              ) : (
+                <>
+                  <TabsContent value="chart" className="mt-0">
+                    <Suspense fallback={<Skeleton className="h-52 w-full" />}>
+                      <AutopilotTrendChart data={trend?.buckets ?? []} />
+                    </Suspense>
+                  </TabsContent>
+                  <TabsContent value="table" className="mt-0">
+                    <TrendTable data={trend?.buckets ?? []} />
+                  </TabsContent>
+                </>
+              )}
+            </Tabs>
           </CardContent>
         </Card>
       </div>
