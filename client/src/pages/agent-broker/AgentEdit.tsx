@@ -115,7 +115,7 @@ export default function AgentEdit() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <PageShell width="content">
         <Button
           variant="ghost"
@@ -372,6 +372,6 @@ export default function AgentEdit() {
       </PageShell>
 
       <Footer />
-    </div>
+    </>
   );
 }

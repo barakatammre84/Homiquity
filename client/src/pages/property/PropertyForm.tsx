@@ -3,6 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 import { Footer } from "@/components/Footer";
+import { PageShell } from "@/components/PageShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,11 +84,7 @@ export default function PropertyForm() {
   });
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-4xl px-4 py-12">Loading...</div>
-      </div>
-    );
+    return <PageShell width="content">Loading...</PageShell>;
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -96,8 +93,8 @@ export default function PropertyForm() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+    <>
+      <PageShell width="content">
         <Button
           variant="ghost"
           onClick={() => navigate("/agent/dashboard")}
@@ -369,9 +366,9 @@ export default function PropertyForm() {
             </form>
           </CardContent>
         </Card>
-      </div>
+      </PageShell>
 
       <Footer />
-    </div>
+    </>
   );
 }
