@@ -42,7 +42,7 @@ const DECISION_PATH_MODULES = [
 const AI_IMPORT_PATTERNS = [
   /from\s+["']openai["']/,
   /from\s+["']@google\/genai["']/,
-  /from\s+["'][^"']*coachingService["']/,
+  /from\s+["'][^"']*\/coaching[A-Za-z]*["']/,
   /from\s+["'][^"']*\/gemini["']/,
   /from\s+["'][^"']*riskBrief["']/,
   /@anthropic-ai\/sdk/,
@@ -294,7 +294,7 @@ describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice"
 
 describe("Reg N / UDAAP: borrower-facing AI coach output rides the deterministic lint rail", () => {
   it("coach replies pass through the shared loCommsLint hard-block filter before display/persistence", () => {
-    const svc = read("server/services/coachingService.ts");
+    const svc = read("server/services/coachingLint.ts");
     expect(svc).toMatch(/from\s+["']@shared\/compliance\/loCommsLint["']/);
     expect(svc).toContain("hardBlockMatches");
     expect(svc).toContain("COACH_LINT_SAFE_MESSAGE");
@@ -308,7 +308,7 @@ describe("Reg N / UDAAP: borrower-facing AI coach output rides the deterministic
   });
 
   it("every coach model call lands in the ai_interactions governance log", () => {
-    const svc = read("server/services/coachingService.ts");
+    const svc = read("server/services/coachingTurn.ts");
     expect(svc).toContain("logAiInteraction");
     expect(svc).toMatch(/workflow:\s*"ai_coach"/);
     expect(svc).toMatch(/provider:\s*"claude"/);
