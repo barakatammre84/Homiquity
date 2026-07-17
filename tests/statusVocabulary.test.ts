@@ -81,6 +81,43 @@ describe("loan-application status vocabulary is canonical", () => {
     expect(violations, violations.join("\n")).toEqual([]);
   });
 
+  it("every status list fed to inArray(loanApplications.status, …) is canonical", () => {
+    // The Drizzle-column idiom the <app>.status regexes above can't see: the
+    // receiver is the column, not an application variable, so a hand-listed
+    // filter array can carry phantoms (or silently omit canonical statuses)
+    // without tripping the comparison scans. Resolves the second argument
+    // when it is an inline array literal, `[...NAME]`, or a bare NAME whose
+    // same-file `const NAME = [ … ]` is an array literal. Lists DERIVED from
+    // LOAN_APP_STATUSES (e.g. via .filter) have no literals to check and are
+    // canonical by construction — those are skipped.
+    const INARRAY_RE = /inArray\(\s*loanApplications\.status\s*,\s*([^)]*)\)/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+
+      for (const match of source.matchAll(INARRAY_RE)) {
+        let expr = match[1].trim();
+        const ident = expr.match(/^\[?\s*(?:\.\.\.)?\s*([A-Za-z_$][\w$]*)\s*\]?$/);
+        if (ident) {
+          const decl = source.match(
+            new RegExp(`const\\s+${ident[1]}[^=]*=\\s*\\[([^\\]]*)\\]`),
+          );
+          if (!decl) continue; // derived or imported — typing covers it
+          expr = decl[1];
+        }
+        for (const lit of expr.matchAll(/["']([a-z_]+)["']/g)) {
+          if (!CANONICAL.has(lit[1])) {
+            violations.push(
+              `${rel}: inArray(loanApplications.status, …) list contains phantom "${lit[1]}"`,
+            );
+          }
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
   it("no direct status writes outside the single writer (updatePipelineStage)", () => {
     // A storage.updateLoanApplication / db.update(loanApplications) call whose
     // payload sets `status:` must live in pipelineEngine.ts (the single

@@ -18,6 +18,8 @@ import {
   loanApplications,
   teamMessages,
   isStaffRole,
+  LOAN_APP_STATUSES,
+  isTerminalLoanAppStatus,
   type User,
   type TeamMessage,
   type InsertTeamMessage,
@@ -89,9 +91,11 @@ export class MessagingStorage extends OpsAnalyticsStorage {
       .from(loanApplications)
       .where(sql`${loanApplications.userId} = ANY(${referredUserIds})`);
     
-    const activeStatuses = ['draft', 'submitted', 'analyzing', 'pre_approved', 'verified', 'underwriting', 'approved'];
-    const activeApplications = applications.filter(a => activeStatuses.includes(a.status)).length;
-    const closedLoans = applications.filter(a => a.status === 'closed').length;
+    // Same active/terminal split as brokerReferrals.getBrokerReferralStats —
+    // derived from the canonical vocabulary, not hand-listed.
+    const activeStatuses = LOAN_APP_STATUSES.filter(s => !isTerminalLoanAppStatus(s)) as string[];
+    const activeApplications = applications.filter(app => activeStatuses.includes(app.status)).length;
+    const closedLoans = applications.filter(app => app.status === 'funded').length;
     
     return {
       totalReferrals: referredUsers.length,
