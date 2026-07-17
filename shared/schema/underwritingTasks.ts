@@ -58,6 +58,29 @@ export const TASK_OWNER_ROLES = [
 
 export type TaskOwnerRole = typeof TASK_OWNER_ROLES[number];
 
+/**
+ * A document_request assigned to the borrower who owns the application is
+ * borrower work — ownerRole "BORROWER" is the key every borrower-facing
+ * surface filters on (sidebar badge pending-count, /api/shell/badges,
+ * BorrowerRequests, getBorrowerTasks). A writer that omits ownerRole inherits
+ * the column's PROCESSOR default instead, which parked 1,000+ borrower upload
+ * tasks in the staff processor queue while the borrower badge read 0
+ * (migration 0035 remapped the existing rows). Returns undefined when the
+ * rule doesn't apply so callers can fall through to the default: staff-chase
+ * document tasks (assigned to staff, or unassigned document-intelligence
+ * review items) legitimately stay PROCESSOR-owned.
+ */
+export function deriveDocumentTaskOwnerRole(
+  task: { taskType: string; assignedToUserId?: string | null },
+  applicationOwnerUserId: string | null | undefined,
+): Extract<TaskOwnerRole, "BORROWER"> | undefined {
+  return task.taskType === "document_request" &&
+    !!task.assignedToUserId &&
+    task.assignedToUserId === applicationOwnerUserId
+    ? "BORROWER"
+    : undefined;
+}
+
 // Task type codes for SLA mapping
 export const TASK_TYPE_CODES = [
   // Intake & Identity

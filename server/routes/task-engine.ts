@@ -5,6 +5,7 @@ import {
   isStaffRole,
   isInternalStaffRole,
   insertTaskSchema,
+  deriveDocumentTaskOwnerRole,
   TASK_STATUSES,
   type TaskStatus,
 } from "@shared/schema";
@@ -94,7 +95,24 @@ export async function registerTaskEngineRoutes(
         res,
       );
       if (data === undefined) return;
-      const task = await storage.createTask({ ...data, createdByUserId: userId });
+
+      // The StaffDashboard "create task" dialog assigns document requests to
+      // the borrower and never sends ownerRole, so those rows inherited the
+      // column's PROCESSOR default — invisible to every borrower surface
+      // (which filter on ownerRole === "BORROWER") and parked in the staff
+      // processor queue. Derive the honest owner when the creator didn't pick
+      // one; an explicit ownerRole always wins.
+      let ownerRole = data.ownerRole;
+      if (!ownerRole) {
+        const application = await storage.getLoanApplication(applicationId);
+        ownerRole = deriveDocumentTaskOwnerRole(data, application?.userId);
+      }
+
+      const task = await storage.createTask({
+        ...data,
+        ...(ownerRole ? { ownerRole } : {}),
+        createdByUserId: userId,
+      });
 
       await storage.createDealActivity({
         applicationId: task.applicationId,

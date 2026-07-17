@@ -107,6 +107,7 @@ export default defineConfig({
       "tests/documentStatus.test.ts",
       "tests/documentReviewNotifications.test.ts",
       "tests/documentConditionRevert.test.ts",
+      "tests/documentTaskOwnerRole.test.ts",
       "tests/uploadValidation.test.ts",
       "tests/documentChecklist.test.ts",
     ],
