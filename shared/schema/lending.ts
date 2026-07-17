@@ -14,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { stripCurrency } from "../lib/number";
 import { users } from "./core";
 import {
   underwritingDecisions,
@@ -1201,8 +1202,6 @@ export const CREDIT_SCORE_BAND_VALUES = ["760", "720", "680", "640", "600", "not
  * until a real credit pull replaces it (see shared/dataProvenance.ts).
  */
 export const CREDIT_SCORE_UNKNOWN_DEFAULT = 680;
-
-const stripCurrency = (v: string) => v.replace(/[,$]/g, "");
 
 /**
  * JSON callers (staff tools, tests, future API consumers) may send numbers

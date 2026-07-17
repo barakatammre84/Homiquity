@@ -7,7 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatDuration } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -120,15 +120,6 @@ function calculate(inputs: PayoffInputs): PayoffResults {
     monthsSaved: Math.max(0, baselineMonths - acceleratedMonths),
     interestSaved: Math.max(0, baselineInterest - acceleratedInterest),
   };
-}
-
-function formatDuration(totalMonths: number): string {
-  const years = Math.floor(totalMonths / 12);
-  const months = Math.round(totalMonths % 12);
-  const parts: string[] = [];
-  if (years > 0) parts.push(`${years} yr${years === 1 ? "" : "s"}`);
-  if (months > 0) parts.push(`${months} mo`);
-  return parts.join(" ") || "0 mo";
 }
 
 export default function MortgagePayoffCalculator() {

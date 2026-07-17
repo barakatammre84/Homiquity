@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
+import { titleCaseFromSnake } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -79,10 +80,7 @@ function getDocumentCategoryLabel(category: string) {
     other: "Other Document",
   };
   // Fallback: humanize unknown snake_case types instead of showing raw keys.
-  return (
-    labels[category] ||
-    category.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  );
+  return labels[category] || titleCaseFromSnake(category);
 }
 
 export default function Tasks() {

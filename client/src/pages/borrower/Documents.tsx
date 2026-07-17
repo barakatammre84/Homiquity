@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { formatDate } from "@/lib/formatters";
+import { formatDate, titleCaseFromSnake } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -140,7 +140,7 @@ const DOC_TYPE_NAMES: Record<string, string> = Object.fromEntries(
 );
 
 function docTypeName(type: string): string {
-  return DOC_TYPE_NAMES[type] ?? type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  return DOC_TYPE_NAMES[type] ?? titleCaseFromSnake(type);
 }
 
 function getUploadNextStep(docType: string): string {
