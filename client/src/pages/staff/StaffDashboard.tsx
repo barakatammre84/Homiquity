@@ -255,7 +255,6 @@ export default function StaffDashboard() {
   );
 
   const queueBreached = sortedQueueTasks.filter(t => t.slaStatus === "red").length;
-  const queueAtRisk = sortedQueueTasks.filter(t => t.slaStatus === "amber").length;
   const submittedTasks = tasks.filter(t => t.status === "submitted");
   const automatedTasks = sortedQueueTasks.filter(t => t.triggerSource && t.triggerSource !== "MANUAL");
 

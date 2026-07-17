@@ -83,7 +83,7 @@ export default function BorrowerFile() {
     enabled: !!applicationId && !authLoading,
   });
 
-  const { data: creditData, isLoading: creditLoading, refetch: refetchCredit } = useQuery<CreditSummary>({
+  const { data: creditData, isLoading: creditLoading } = useQuery<CreditSummary>({
     queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'],
     enabled: !!applicationId && !authLoading,
   });

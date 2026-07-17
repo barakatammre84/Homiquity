@@ -82,7 +82,7 @@ function PreApprovalFunnel() {
   const [rentalProperties, setRentalProperties] = useState<RentalPropertyEntry[]>([]);
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   usePageView("/apply");
   const track = useTrackActivity();

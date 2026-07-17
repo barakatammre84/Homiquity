@@ -220,7 +220,7 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
 }
 
 export function getDynamicTitle(currentQ: Question, formValues: PreApprovalFormData): string {
-  const { purchasePrice, loanPurpose, employmentType, downPayment } = formValues;
+  const { purchasePrice, loanPurpose, employmentType } = formValues;
 
   switch (currentQ.id) {
     case "downPayment":
