@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { describe, expect, it } from "vitest";
 
@@ -181,14 +181,18 @@ describe("TRID (Reg Z §1026.19): the LE clock is triggered, business-day based,
     const lending = read("server/routes/lending.ts");
     expect(lending.match(/evaluateTridTrigger\(/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
     // …and the URLA personal-info save (SSN).
-    const borrower = read("server/routes/borrower.ts");
-    expect(borrower).toMatch(/evaluateTridTrigger\(/);
+    const borrowerUrla = read("server/routes/borrower/urla.ts");
+    expect(borrowerUrla).toMatch(/evaluateTridTrigger\(/);
   });
 
   it("only the trid service writes tridTriggeredAt", () => {
     const trid = read("server/services/trid.ts");
     expect(trid).toMatch(/updateLoanApplication\([^)]*tridTriggeredAt/s);
-    for (const route of ["server/routes/lending.ts", "server/routes/borrower.ts", "server/routes/underwriting.ts", "server/services/coachProfileSync.ts"]) {
+    // Every borrower route group, so new group files are covered automatically.
+    const borrowerRoutes = readdirSync(join(ROOT, "server/routes/borrower"))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => `server/routes/borrower/${f}`);
+    for (const route of ["server/routes/lending.ts", ...borrowerRoutes, "server/routes/underwriting.ts", "server/services/coachProfileSync.ts"]) {
       expect(read(route)).not.toMatch(/tridTriggeredAt\s*:/);
     }
   });
