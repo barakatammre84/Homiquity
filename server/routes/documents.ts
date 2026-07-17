@@ -7,7 +7,7 @@ import {
   extractBankStatementData,
   extractLeaseData,
 } from "../extractionService";
-import { recordCoarseExtraction } from "../services/documentConfidence";
+import { recordCoarseExtraction, markHumanReviewCompleted } from "../services/documentConfidence";
 import { allowedUploadTypes, bufferMatchesAllowedSignature } from "./utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
 import {
@@ -260,13 +260,30 @@ export function registerDocumentRoutes(
   app.post("/api/documents/:id/extract", isAuthenticated, async (req, res) => {
     try {
       const { id } = req.params;
+      const user = req.user as User;
       const document = await storage.getDocument(id);
 
       if (!document) {
         return res.status(404).json({ error: "Document not found" });
       }
 
-      if (document.userId !== req.user!.id && req.user!.role !== "admin") {
+      // Owner and admin as before; deal-team staff may also (re-)run
+      // extraction — the same roles and deal-team check as /verify below, so
+      // the review workbench can refresh values without an admin. Extraction
+      // only stages (MR-2): it can never verify, so widening the trigger does
+      // not widen who can bind an outcome.
+      let authorized = document.userId === user.id || user.role === "admin";
+      if (
+        !authorized &&
+        ["lo", "loa", "processor", "underwriter"].includes(user.role) &&
+        document.applicationId
+      ) {
+        const assignedApp = await storage.getLoanApplicationWithAccess(
+          document.applicationId, user.id, user.role
+        );
+        authorized = !!assignedApp;
+      }
+      if (!authorized) {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
@@ -379,6 +396,14 @@ export function registerDocumentRoutes(
         }
       }
 
+      // Extraction reads a PII-bearing document and returns financial values —
+      // record who triggered it (the other document actions already log).
+      logAudit(req, "document.extract", "document", id, {
+        documentType: document.documentType,
+        applicationId: document.applicationId,
+        confidence: extractedData.confidence,
+      });
+
       res.json({
         documentId: id,
         documentType: document.documentType,
@@ -452,6 +477,16 @@ export function registerDocumentRoutes(
           reviewedByUserId: user.id,
           reviewedAt: new Date(),
         });
+
+        // Close the MR-6 accuracy loop: a verify/reject IS a completed human
+        // review, so stamp the confidence row (no-op when extraction never
+        // ran). Non-fatal — the human verdict must stand even if the stamp
+        // fails.
+        try {
+          await markHumanReviewCompleted(id, user.id);
+        } catch (stampErr) {
+          console.warn(`[Documents] Review stamp failed for ${id} (non-fatal):`, stampErr);
+        }
 
         logAudit(req, `document.${status}`, "document", id, {
           documentType: document.documentType,
