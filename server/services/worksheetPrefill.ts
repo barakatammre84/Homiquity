@@ -333,13 +333,56 @@ export function buildEntityWorksheetDraft(
         },
       });
     }
+    // Entity-level cash-flow adjustments (B3-3.7-01/-02): the business return
+    // yields two draftable categories — its page-1 depreciation deduction and
+    // the Schedule L short-term debt (mortgages/notes payable < 1 year). The
+    // remaining categories (depletion, amortization/casualty, travel & meals,
+    // non-recurring income) aren't distinct extracted fields; they draft as 0
+    // for the borrower/CPA to fill.
+    const entityAnalysisFor = (
+      yearPrefix: string,
+      k1Instance: PublicTaxFormInstance,
+    ): Record<string, number> | undefined => {
+      const [yearReturn] = ofEntity(parentType).filter((p) => p.taxYear === k1Instance.taxYear);
+      if (!yearReturn) return undefined;
+      const dep = num(yearReturn, "depreciationDeduction");
+      const std = num(yearReturn, "scheduleLShortTermDebtEndOfYear");
+      if (dep === undefined && std === undefined) return undefined;
+      const draft: Record<string, number> = {};
+      if (dep !== undefined) {
+        draft.depreciation = Math.max(0, dep);
+        provenance.push(
+          extracted(`${yearPrefix}.entityAnalysis.depreciation`, yearReturn, "depreciationDeduction", draft.depreciation),
+        );
+      }
+      if (std !== undefined) {
+        draft.shortTermObligations = Math.max(0, std);
+        provenance.push(
+          extracted(`${yearPrefix}.entityAnalysis.shortTermObligations`, yearReturn, "scheduleLShortTermDebtEndOfYear", draft.shortTermObligations),
+        );
+      }
+      return draft;
+    };
+    const currentEntity = entityAnalysisFor("k1.currentYear", current);
+    const priorEntity = prior ? entityAnalysisFor("k1.priorYear", prior) : undefined;
+
     worksheet = {
       version: 1,
       businessStructure: entity.entityType,
       ...(ownership !== undefined ? { ownershipPercent: ownership } : {}),
       k1: {
-        currentYear: k1YearDraft("k1.currentYear", current, provenance),
-        ...(prior ? { priorYear: k1YearDraft("k1.priorYear", prior, provenance) } : {}),
+        currentYear: {
+          ...k1YearDraft("k1.currentYear", current, provenance),
+          ...(currentEntity ? { entityAnalysis: currentEntity } : {}),
+        },
+        ...(prior
+          ? {
+              priorYear: {
+                ...k1YearDraft("k1.priorYear", prior, provenance),
+                ...(priorEntity ? { entityAnalysis: priorEntity } : {}),
+              },
+            }
+          : {}),
         hasTwoYearGuaranteedPayments: false,
         ...(liquidity ? { liquidity } : {}),
         w2FromBusiness: 0,
@@ -348,6 +391,11 @@ export function buildEntityWorksheetDraft(
     warnings.push(
       "hasTwoYearGuaranteedPayments defaults to false — the borrower attests the two-year history; the draft cannot.",
     );
+    if (currentEntity || priorEntity) {
+      warnings.push(
+        "Entity cash-flow adjustments drafted from the business return cover depreciation and short-term obligations only — depletion, amortization/casualty, travel & meals, and non-recurring income draft as 0 and need the borrower or their accountant to confirm (B3-3.7-01/-02). The short-term-obligation roll-over waiver is an attestation and never drafts.",
+      );
+    }
   }
 
   // The draft must be exactly what the write path would accept.

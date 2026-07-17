@@ -36,10 +36,17 @@ memory still use). The **current** map — verified live against selling-guide.f
 | B3-3.6-05 | Income or Loss Reported on IRS Form 1040, Schedule E | — |
 | B3-3.6-06 | Income or Loss Reported on IRS Form 1040, Schedule F | — |
 | B3-3.6-07 | Income or Loss Reported on IRS Form 1065 or IRS Form 1120S, Schedule K-1 | 05/07/2025 |
+| **B3-3.7** | **Self-Employment Documentation Requirements for a Business** (section landing) | — |
+| B3-3.7-01 | Analyzing Partnership Returns for a Partnership or LLC | 02/07/2024² |
+| B3-3.7-02 | Analyzing Returns for an S Corporation | 02/07/2024² |
+| B3-3.7-03 | Analyzing Returns for a Corporation | —² |
+| B3-3.7-04 | Analyzing Profit and Loss Statements | —² |
 
 ¹ Effective dates as displayed on the Selling Guide page when fetched (2026-07-10); re-confirm on
 access — Fannie republishes with new dates. Rental income (Schedule E) is already handled by
-`server/services/underwritingNuance.ts` under **B3-3.1-08** and is out of scope for the SE calculator.
+`server/services/underwritingNuance.ts` under **B3-3.8-01** (formerly B3-3.1-08 — see
+[rental-income-reference.md](rental-income-reference.md)) and is out of scope for the SE calculator.
+² B3-3.7 rows fetched live 2026-07-17 (chapter index + -01/-02 section pages).
 
 **Online source of truth:** <https://selling-guide.fanniemae.com/sel/b3-3.5/self-employment-income>
 and <https://selling-guide.fanniemae.com/sel/b3-3.6/self-employment-documentation-requirements-individual>.
@@ -104,27 +111,54 @@ Starting from Schedule C net profit/loss:
   (current assets − inventory) ÷ current liabilities (inventory-heavy businesses); **Current Ratio**
   = current assets ÷ current liabilities (non-inventory). A ratio of **one or greater** is generally
   sufficient.
-- W-2 wages the borrower draws from their own S-corp: treatment is not stated in B3-3.6-07 — confirm
-  in the business-return analysis subsections before adding (see *Missing artifacts*).
+- W-2 wages the borrower draws from their own S-corp: **resolved via B3-3.7-02** (below) — owners
+  *"may receive income in the form of wages or dividends in addition to their proportionate share of
+  business income (or loss) reported on Schedule K-1."* Owner wages are ordinary income counted
+  directly; in this codebase they count inside the K-1 lane (`k1.w2FromBusiness`) because the agency
+  wage path deliberately skips self-employed employment rows.
+
+### Business returns — Form 1065 / Form 1120-S (B3-3.7-01 / B3-3.7-02, both eff. 02/07/2024; fetched live 2026-07-17)
+
+Both sections define the same entity-level cash-flow analysis, applied to the business return and
+attributed to the borrower proportionally:
+
+- **Add-backs** (verbatim): *"depreciation, depletion, amortization, casualty losses, and other
+  losses that are not consistent and recurring."*
+- **Subtractions** (verbatim): the *"travel and meals exclusion"*; *"other reported income that is
+  not consistent and recurring"*; and *"the total amount of obligations on mortgages, notes, or
+  bonds that are payable in less than one year."*
+- **Short-term-obligation waiver** (B3-3.7-01 note, mirrored in -02): the subtraction does not
+  apply when the obligations *"roll over regularly and/or the business has sufficient liquid assets
+  to cover them"* — a documented judgment, captured as an explicit worksheet boolean, defaulting to
+  subtract (conservative).
+- **Attribution:** the borrower's proportionate share follows the Schedule K-1 ownership figure —
+  partnership: *"percentage of Ending Capital"* (1065 K-1); S-corp: *"percentage of stock
+  ownership for the tax year"* (1120-S K-1). No percentage captured ⇒ no adjustment applied
+  (flagged for review, never guessed).
+- **Access gate:** adjusted business income may be used only where *"the income was actually
+  distributed to the borrower consistent with the level of business income reflected on Schedule
+  K-1"* or the business shows adequate liquidity — the same two pathways as B3-3.6-07, so the
+  entity share joins the calculator's existing distributions-or-liquidity gated pool.
+- **No line numbers:** neither section cites IRS form line numbers; the calculator collects each
+  adjustment **by named category** (same discipline as the Schedule C section above).
 
 ## Missing artifacts (download manually — Cloudflare blocks programmatic fetch)
 
-Both are behind Fannie's Cloudflare Turnstile challenge, so they could **not** be scripted into the
-repo. A human should download them from the URLs below and drop them into `docs/fannie-mae/`, then
-add them to the README inventory:
-
-1. **Form 1084 (Cash Flow Analysis)** — the worksheet itself, for line-level confirmation:
+1. **Form 1084 (Cash Flow Analysis)** — the worksheet itself, for line-level confirmation and
+   worked-example test fixtures. Behind Fannie's Cloudflare Turnstile challenge, so it could **not**
+   be scripted into the repo; a human should download it and drop it into `docs/fannie-mae/`:
    <https://singlefamily.fanniemae.com/media/document/pdf/form-1084> (also
    <https://singlefamily.fanniemae.com/media/7746/display>).
-2. **Business-return analysis subsections** — the S-corp/partnership/corporation *business* return
-   treatment (adjustments to the 1120S/1065/1120 themselves, and the borrower's-own-S-corp W-2
-   question). Locate via the B3-3 chapter index:
-   <https://selling-guide.fanniemae.com/sel/b3-3/income-assessment>.
+2. ~~Business-return analysis subsections~~ — **RESOLVED 2026-07-17**: B3-3.7-01 and B3-3.7-02 were
+   fetched live from the Selling Guide and transcribed above (the guide pages are not
+   Turnstile-blocked; only the PDF media downloads are). B3-3.7-03 (C-corporation) and B3-3.7-04
+   (P&L statements) remain untranscribed — the C-corp lane deliberately returns no SE figure today,
+   and P&L-only is an Appendix-A-gated future program in the non-W2 plan.
 
-Until #1 and #2 are in-repo, the calculator implements only what is **verified above** — Schedule C
-add-backs/subtractions and K-1 ordinary income gated on documented distributions or the liquidity
-ratio. It must **not** implement business-return-level add-backs (e.g. adjustments inside the 1120S)
-from memory; those are flagged for the human and escalated if a borrower needs them at launch.
+The calculator implements only what is **verified above** — Schedule C add-backs/subtractions, K-1
+income gated on documented distributions or the liquidity ratio, and the B3-3.7-01/-02 entity-level
+adjustments by named category. Anything beyond (C-corp business analysis, P&L-only) stays
+unimplemented until its section is transcribed here.
 
 ## Implementation contract (`server/services/selfEmploymentIncome.ts`)
 

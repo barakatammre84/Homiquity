@@ -14,9 +14,20 @@ const scheduleCYear = (o: Partial<{
   businessUseOfHome: 0, mealsExclusion: 0, nonRecurringIncome: 0, ...o,
 });
 
+const entityAnalysis = (o: Partial<{
+  depreciation: number; depletion: number; amortizationCasualtyOtherLosses: number;
+  travelMealsExclusion: number; nonRecurringIncome: number;
+  shortTermObligations: number; shortTermObligationsWaived: boolean;
+}> = {}) => ({
+  depreciation: 0, depletion: 0, amortizationCasualtyOtherLosses: 0,
+  travelMealsExclusion: 0, nonRecurringIncome: 0,
+  shortTermObligations: 0, shortTermObligationsWaived: false, ...o,
+});
+
 const k1Year = (o: Partial<{
   ordinaryBusinessIncome: number; netRentalRealEstateIncome: number;
   otherNetRentalIncome: number; guaranteedPayments: number; distributionsReceived: number;
+  entityAnalysis: ReturnType<typeof entityAnalysis>;
 }> = {}) => ({
   ordinaryBusinessIncome: 0, netRentalRealEstateIncome: 0, otherNetRentalIncome: 0,
   guaranteedPayments: 0, distributionsReceived: 0, ...o,
@@ -38,10 +49,13 @@ const k1Worksheet = (
     hasTwoYearGuaranteedPayments?: boolean;
     liquidity?: { currentAssets: number; currentLiabilities: number; inventory: number };
     w2FromBusiness?: number;
+    ownershipPercent?: number;
+    businessStructure?: "partnership" | "s_corporation";
   } = {},
 ): SelfEmploymentWorksheet => ({
   version: 1,
-  businessStructure: "partnership",
+  businessStructure: opts.businessStructure ?? "partnership",
+  ownershipPercent: opts.ownershipPercent,
   k1: {
     currentYear,
     priorYear: opts.priorYear,
@@ -164,6 +178,85 @@ describe("Schedule K-1 partnership / S-corp (Fannie B3-3.6-07)", () => {
 });
 
 // --- structure dispatch + determinism ---------------------------------------
+
+describe("entity business-return analysis (Fannie B3-3.7-01 / B3-3.7-02)", () => {
+  it("applies the borrower's ownership share of entity add-backs and subtractions to the gated pool", () => {
+    const year = k1Year({
+      ordinaryBusinessIncome: 80000,
+      distributionsReceived: 200000,
+      entityAnalysis: entityAnalysis({ depreciation: 30000, shortTermObligations: 10000 }),
+    });
+    const r = computeSelfEmploymentQualifyingIncome(
+      k1Worksheet(year, { priorYear: year, ownershipPercent: 50 }),
+    );
+    // share = (30000 − 10000) × 50% = 10000 → usable 90000/yr, covered by distributions
+    expect(r.netProfitYear1).toBe(90000);
+    expect(r.avgAnnualCashFlow).toBe(90000);
+    expect(r.monthlyQualifyingIncome).toBe(7500);
+    expect(r.addBacks).toBe(30000); // 15000 share × 2 years (informational)
+    expect(r.deductions).toBe(10000);
+    expect(r.requiresManualReview).toBe(false);
+  });
+
+  it("waives the short-term-obligation subtraction when flagged as rolling over", () => {
+    const year = k1Year({
+      ordinaryBusinessIncome: 80000,
+      distributionsReceived: 200000,
+      entityAnalysis: entityAnalysis({
+        depreciation: 30000,
+        shortTermObligations: 10000,
+        shortTermObligationsWaived: true,
+      }),
+    });
+    const r = computeSelfEmploymentQualifyingIncome(
+      k1Worksheet(year, { priorYear: year, ownershipPercent: 50 }),
+    );
+    expect(r.netProfitYear1).toBe(95000); // share = 30000 × 50%, no subtraction
+    expect(r.deductions).toBe(0);
+  });
+
+  it("skips the adjustment and flags review when no ownership percentage is captured", () => {
+    const year = k1Year({
+      ordinaryBusinessIncome: 80000,
+      distributionsReceived: 200000,
+      entityAnalysis: entityAnalysis({ depreciation: 30000 }),
+    });
+    const r = computeSelfEmploymentQualifyingIncome(k1Worksheet(year, { priorYear: year }));
+    expect(r.netProfitYear1).toBe(80000); // adjustment NOT applied
+    expect(r.requiresManualReview).toBe(true);
+    expect(r.notes.some((n) => n.includes("no ownership percentage"))).toBe(true);
+  });
+
+  it("counts the owner's own-business W-2 directly even when K-1 income is gated down", () => {
+    const year = k1Year({ ordinaryBusinessIncome: 100000, distributionsReceived: 0 });
+    const r = computeSelfEmploymentQualifyingIncome(
+      k1Worksheet(year, {
+        priorYear: year,
+        w2FromBusiness: 60000,
+        businessStructure: "s_corporation",
+      }),
+    );
+    // ordinary income gated to distributions (0); the W-2 salary still counts
+    expect(r.avgAnnualCashFlow).toBe(60000);
+    expect(r.monthlyQualifyingIncome).toBe(5000);
+    expect(r.requiresManualReview).toBe(true); // gated-down flag
+  });
+
+  it("lets a negative entity adjustment flow through as a loss (never gated away)", () => {
+    const year = k1Year({
+      ordinaryBusinessIncome: 5000,
+      distributionsReceived: 5000,
+      entityAnalysis: entityAnalysis({ shortTermObligations: 30000 }),
+    });
+    const r = computeSelfEmploymentQualifyingIncome(
+      k1Worksheet(year, { ownershipPercent: 100 }),
+    );
+    // gated pool = 5000 − 30000 = −25000 → flows as a loss; floored at zero
+    expect(r.netProfitYear1).toBe(-25000);
+    expect(r.monthlyQualifyingIncome).toBe(0);
+    expect(r.requiresManualReview).toBe(true);
+  });
+});
 
 describe("structure dispatch and determinism", () => {
   it("returns no self-employment income for a C corporation", () => {
