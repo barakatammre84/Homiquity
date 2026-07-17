@@ -156,13 +156,224 @@ function getUploadNextStep(docType: string): string {
   );
 }
 
+// Personalized checklist item as served by /document-checklist (built from the
+// pipeline engine's loan_conditions — see server/services/documentChecklist.ts).
+interface ChecklistItemView {
+  id: string;
+  source: "condition" | "standard" | "task";
+  conditionId?: string;
+  category: string;
+  documentType: string;
+  acceptedTypes: string[];
+  label: string;
+  description?: string;
+  required: boolean;
+  status: "needed" | "uploaded" | "verifying" | "verified" | "rejected";
+  documentId?: string;
+  fileName?: string;
+  uploadedAt?: string;
+  rejectionReason?: string | null;
+}
+
+// Category shells for the personalized path — same visual system as the
+// static catalog (CONDITION_CATEGORIES vocabulary from the pipeline engine).
+const CONDITION_CATEGORY_META: Record<
+  string,
+  { name: string; description: string; icon: typeof User; color: string; bgColor: string }
+> = {
+  income: { name: "Income Verification", description: "Pay stubs, tax returns, and employment documents", icon: DollarSign, color: "text-chart-2", bgColor: "bg-chart-2/10" },
+  assets: { name: "Assets & Savings", description: "Bank statements, gift funds, and reserves", icon: Building2, color: "text-chart-4", bgColor: "bg-chart-4/10" },
+  credit: { name: "Credit & Liabilities", description: "Statements and explanations for credit items", icon: CreditCard, color: "text-chart-3", bgColor: "bg-chart-3/10" },
+  property: { name: "Property & Transaction", description: "Contract, appraisal, and property documents", icon: Home, color: "text-chart-5", bgColor: "bg-chart-5/10" },
+  insurance: { name: "Insurance", description: "Homeowners and other required coverage", icon: Shield, color: "text-chart-1", bgColor: "bg-chart-1/10" },
+  title: { name: "Title", description: "Title and closing documentation", icon: FileText, color: "text-chart-4", bgColor: "bg-chart-4/10" },
+  compliance: { name: "Identity & Compliance", description: "Government-issued ID and identity verification", icon: User, color: "text-chart-1", bgColor: "bg-chart-1/10" },
+  other: { name: "Other Requests", description: "Additional items your loan team asked for", icon: ClipboardList, color: "text-chart-2", bgColor: "bg-chart-2/10" },
+};
+
+// One row model feeding one row component, whichever path produced it — the
+// static catalog and the personalized checklist must never render differently.
+interface DocRow {
+  /** Readable key used in data-testids (document type). */
+  key: string;
+  /** Identifies THIS row's in-flight upload (unique per row). */
+  uploadKey: string;
+  /** documentType POSTed on upload. */
+  uploadType: string;
+  name: string;
+  description?: string;
+  required: boolean;
+  status: "needed" | "uploaded" | "verifying" | "verified" | "rejected";
+  fileName?: string;
+  uploadedAt?: string | Date | null;
+  documentId?: string;
+  rejectionReason?: string | null;
+  focused?: boolean;
+}
+
+function DocumentItemRow({
+  row,
+  uploading,
+  uploadingFile,
+  progress,
+  anyUploadBusy,
+  onFile,
+  onBrowse,
+  onCancel,
+}: {
+  row: DocRow;
+  uploading: boolean;
+  uploadingFile: { fileName: string; fileSize: number } | null;
+  progress: number;
+  anyUploadBusy: boolean;
+  onFile: (file: File) => void;
+  onBrowse: () => void;
+  onCancel: () => void;
+}) {
+  const hasUpload = row.status !== "needed";
+  const isRejected = row.status === "rejected";
+  // Pending items and bounced items invite a (re-)upload right in the row;
+  // accepted/in-review items stay calm.
+  const showDropzone = !uploading && (!hasUpload || isRejected);
+
+  return (
+    <div
+      className={`p-4 rounded-lg transition-colors ${
+        isRejected
+          ? "bg-destructive/5"
+          : hasUpload
+          ? "bg-success-subtle/50"
+          : row.required
+          ? "bg-warning-subtle/50"
+          : "bg-muted/30"
+      } ${row.focused ? "ring-2 ring-primary" : ""}`}
+      data-testid={`row-doctype-${row.key}`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 flex-1">
+          {isRejected ? (
+            <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+          ) : hasUpload ? (
+            <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground shrink-0" />
+          ) : row.required ? (
+            <AlertCircle className="h-5 w-5 text-warning-subtle-foreground shrink-0" />
+          ) : (
+            <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm">{row.name}</span>
+              {row.required && !hasUpload && (
+                <Badge variant="outline" className="text-xs border-border text-warning-subtle-foreground">
+                  Required
+                </Badge>
+              )}
+              {row.required && hasUpload && !isRejected && (
+                <Badge variant="outline" className="text-xs border-border text-success-subtle-foreground">
+                  Complete
+                </Badge>
+              )}
+            </div>
+            {row.description && (
+              <p className="text-xs text-muted-foreground mt-0.5">{row.description}</p>
+            )}
+            {hasUpload && (
+              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                {row.fileName && (
+                  <span className="flex items-center gap-1">
+                    <FileCheck className="h-3 w-3" />
+                    {row.fileName}
+                  </span>
+                )}
+                {row.uploadedAt && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {formatDate(row.uploadedAt)}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Shield className="h-3 w-3" />
+                  <DocumentStatusBadge status={row.status} data-testid={`badge-doc-status-${row.key}`} />
+                </span>
+              </div>
+            )}
+            {isRejected && row.rejectionReason && (
+              <p
+                className="mt-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                data-testid={`text-reject-reason-${row.key}`}
+              >
+                {row.rejectionReason} — please upload a new copy.
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 ml-4">
+          {hasUpload && row.documentId && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="gap-1.5"
+              data-testid={`button-download-${row.key}`}
+              onClick={() => window.open(`/api/documents/${row.documentId}/download`, "_blank")}
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">View</span>
+            </Button>
+          )}
+          {hasUpload && !isRejected && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              data-testid={`button-upload-${row.key}`}
+              disabled={anyUploadBusy}
+              onClick={onBrowse}
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Replace</span>
+            </Button>
+          )}
+        </div>
+      </div>
+      {uploading && uploadingFile && (
+        <div className="mt-3">
+          <UploadProgressCard
+            fileName={uploadingFile.fileName}
+            fileSize={uploadingFile.fileSize}
+            progress={progress}
+            onCancel={onCancel}
+            data-testid={`upload-progress-${row.key}`}
+          />
+        </div>
+      )}
+      {showDropzone && (
+        <div className="mt-3">
+          <DocumentDropzone
+            compact
+            disabled={anyUploadBusy}
+            onFileAccepted={onFile}
+            idleLabel={
+              isRejected
+                ? "Upload a new copy — drag & drop, or browse"
+                : `Drag & drop your ${row.name.toLowerCase()}, or browse`
+            }
+            data-testid={`dropzone-${row.key}`}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Documents() {
   const { isLoading: authLoading } = useAuth();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["income", "assets"]);
-  const [activeDocType, setActiveDocType] = useState<string | null>(null);
+  const [activeDocType, setActiveDocType] = useState<{ type: string; rowKey: string } | null>(null);
   // The row whose file is in flight — it swaps its dropzone for the live
   // progress card. One upload at a time keeps the page state honest.
+  // rowKey identifies the ROW (two personalized items can accept one type).
   const [activeUpload, setActiveUpload] = useState<{
+    rowKey: string;
     docType: string;
     fileName: string;
     fileSize: number;
@@ -204,6 +415,25 @@ export default function Documents() {
     enabled: !!conditionId && !!focusAppId,
   });
 
+  // Personalized checklist: same endpoint the messaging surface uses, now
+  // built from the pipeline engine's loan_conditions (self-employed borrowers
+  // see P&L/business items). Falls back to the static catalog below when the
+  // application has no document-bearing conditions or there's no application.
+  const { data: checklistData } = useQuery<{ documents: ChecklistItemView[] }>({
+    queryKey: ["/api/applications", focusAppId, "document-checklist"],
+    enabled: !!focusAppId && !authLoading,
+  });
+  const personalizedItems = (checklistData?.documents ?? []).filter(
+    (i) =>
+      i.source === "condition" ||
+      // Custom document-request tasks join the list, but internal review
+      // tasks surface with documentType "other" and are staff work, not
+      // borrower uploads — same rule as outstandingItems() in
+      // UploadDocumentDialog.
+      (i.source === "task" && i.documentType !== "other"),
+  );
+  const personalized = personalizedItems.some((i) => i.source === "condition");
+
   const focusedCondition = conditionId
     ? (focusPipeline?.conditions ?? []).find((c) => c.id === conditionId) ?? null
     : null;
@@ -225,15 +455,15 @@ export default function Documents() {
     }
   }, [focusedCondition?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleUploadClick = (docType: string) => {
-    setActiveDocType(docType);
+  const handleUploadClick = (docType: string, rowKey: string = docType) => {
+    setActiveDocType({ type: docType, rowKey });
     fileInputRef.current?.click();
   };
 
   // One shared upload path for every affordance on this page (row dropzones,
   // Replace buttons, the condition-focus banner): validate → presigned PUT
   // with real byte-level progress → JSON registration.
-  const startUpload = async (docType: string, file: File) => {
+  const startUpload = async (docType: string, file: File, rowKey: string = docType) => {
     if (isUploading) {
       toast({
         title: "One upload at a time",
@@ -247,7 +477,7 @@ export default function Documents() {
       return;
     }
     cancelledRef.current = false;
-    setActiveUpload({ docType, fileName: file.name, fileSize: file.size });
+    setActiveUpload({ rowKey, docType, fileName: file.name, fileSize: file.size });
     try {
       const response = await uploadFile(file);
       if (!response) {
@@ -296,13 +526,13 @@ export default function Documents() {
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    const docType = activeDocType;
+    const picked = activeDocType;
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
     setActiveDocType(null);
-    if (!file || !docType) return;
-    await startUpload(docType, file);
+    if (!file || !picked) return;
+    await startUpload(picked.type, file, picked.rowKey);
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -362,8 +592,39 @@ export default function Documents() {
     const docs = documentsByType[d.type];
     return !docs?.length || docs[0]?.status === "rejected";
   });
-  const pendingCount = pendingRequiredDocs.length;
+  // Personalized mode counts the pipeline's own items instead.
+  const personalizedPending = personalizedItems.filter(
+    (i) => i.status === "needed" || i.status === "rejected",
+  ).length;
+  const pendingCount = personalized ? personalizedPending : pendingRequiredDocs.length;
   const isAllCaughtUp = pendingCount === 0;
+
+  // Group personalized items into the same visual category cards the static
+  // catalog uses (unknown categories fold into "other").
+  const personalizedGroups = new Map<string, ChecklistItemView[]>();
+  if (personalized) {
+    for (const item of personalizedItems) {
+      const cat = CONDITION_CATEGORY_META[item.category] ? item.category : "other";
+      const group = personalizedGroups.get(cat) ?? [];
+      group.push(item);
+      personalizedGroups.set(cat, group);
+    }
+  }
+
+  const rowFromItem = (item: ChecklistItemView): DocRow => ({
+    key: item.documentType,
+    uploadKey: item.id,
+    uploadType: item.documentType,
+    name: item.label,
+    description: item.description,
+    required: item.required,
+    status: item.status,
+    fileName: item.fileName,
+    uploadedAt: item.uploadedAt,
+    documentId: item.documentId,
+    rejectionReason: item.rejectionReason,
+    focused: !!conditionId && item.conditionId === conditionId,
+  });
 
   // Determine status message and styling
   const getStatusInfo = () => {
@@ -504,7 +765,71 @@ export default function Documents() {
         </div>
 
         <div className="space-y-4">
-        {DOCUMENT_CATEGORIES.map((category) => {
+        {personalized
+          ? [...personalizedGroups.entries()].map(([catId, items]) => {
+              const meta = CONDITION_CATEGORY_META[catId];
+              const CategoryIcon = meta.icon;
+              const pendingInGroup = items.filter(
+                (i) => i.status === "needed" || i.status === "rejected",
+              ).length;
+              return (
+                <Card key={catId} className="shadow-lg border-0" data-testid={`card-category-${catId}`}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-lg ${meta.bgColor}`}>
+                          <CategoryIcon className={`h-5 w-5 ${meta.color}`} />
+                        </div>
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            {meta.name}
+                            {pendingInGroup === 0 && (
+                              <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground" />
+                            )}
+                          </CardTitle>
+                          <CardDescription>{meta.description}</CardDescription>
+                        </div>
+                      </div>
+                      <Badge
+                        className={
+                          pendingInGroup === 0
+                            ? "bg-success-subtle text-success-subtle-foreground"
+                            : "bg-warning-subtle text-warning-subtle-foreground"
+                        }
+                      >
+                        {pendingInGroup === 0 ? "Complete" : `${pendingInGroup} needed`}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="border-t pt-4">
+                      <div className="space-y-3">
+                        {items.map((item) => {
+                          const row = rowFromItem(item);
+                          return (
+                            <DocumentItemRow
+                              key={item.id}
+                              row={row}
+                              uploading={activeUpload?.rowKey === row.uploadKey}
+                              uploadingFile={activeUpload}
+                              progress={progress}
+                              anyUploadBusy={isUploading}
+                              onFile={(file) => startUpload(row.uploadType, file, row.uploadKey)}
+                              onBrowse={() => handleUploadClick(row.uploadType, row.uploadKey)}
+                              onCancel={() => {
+                                cancelledRef.current = true;
+                                cancel();
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          : DOCUMENT_CATEGORIES.map((category) => {
           const CategoryIcon = category.icon;
           const isExpanded = expandedCategories.includes(category.id);
 
@@ -580,151 +905,41 @@ export default function Documents() {
                     <div className="space-y-3">
                       {category.documents.map((docType) => {
                         const uploadedDocs = documentsByType[docType.type] || [];
-                        const hasUpload = uploadedDocs.length > 0;
                         // The dashboard document list is newest-first, so the
                         // latest upload of a type is [0] — [length - 1] was the
                         // OLDEST, which froze the row on a re-upload's stale status.
                         const latestDoc = uploadedDocs[0];
-
-                        const isRejected = latestDoc?.status === "rejected";
-                        const isRowUploading = activeUpload?.docType === docType.type;
-                        // Pending items and bounced items invite a (re-)upload
-                        // right in the row; accepted/in-review items stay calm.
-                        const showDropzone = !isRowUploading && (!hasUpload || isRejected);
-
+                        const row: DocRow = {
+                          key: docType.type,
+                          uploadKey: docType.type,
+                          uploadType: docType.type,
+                          name: docType.name,
+                          description: docType.description,
+                          required: docType.required,
+                          status: latestDoc
+                            ? ((latestDoc.status as DocRow["status"]) || "uploaded")
+                            : "needed",
+                          fileName: latestDoc?.fileName,
+                          uploadedAt: latestDoc?.createdAt,
+                          documentId: latestDoc?.id,
+                          rejectionReason: latestDoc?.rejectionReason,
+                          focused: focusTypes.has(canonicalDocumentType(docType.type)),
+                        };
                         return (
-                          <div
-                            key={docType.type}
-                            className={`p-4 rounded-lg transition-colors ${
-                              isRejected
-                                ? "bg-destructive/5"
-                                : hasUpload
-                                ? "bg-success-subtle/50"
-                                : docType.required
-                                ? "bg-warning-subtle/50"
-                                : "bg-muted/30"
-                            } ${focusTypes.has(canonicalDocumentType(docType.type)) ? "ring-2 ring-primary" : ""}`}
-                            data-testid={`row-doctype-${docType.type}`}
-                          >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 flex-1">
-                              {isRejected ? (
-                                <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
-                              ) : hasUpload ? (
-                                <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground shrink-0" />
-                              ) : docType.required ? (
-                                <AlertCircle className="h-5 w-5 text-warning-subtle-foreground shrink-0" />
-                              ) : (
-                                <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-sm">{docType.name}</span>
-                                  {docType.required && !hasUpload && (
-                                    <Badge variant="outline" className="text-xs border-border text-warning-subtle-foreground">
-                                      Required
-                                    </Badge>
-                                  )}
-                                  {docType.required && hasUpload && !isRejected && (
-                                    <Badge variant="outline" className="text-xs border-border text-success-subtle-foreground">
-                                      Complete
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {docType.description}
-                                </p>
-                                {hasUpload && latestDoc && (
-                                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                    <span className="flex items-center gap-1">
-                                      <FileCheck className="h-3 w-3" />
-                                      {latestDoc.fileName}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      {formatDate(latestDoc.createdAt)}
-                                    </span>
-                                    {latestDoc.status && (
-                                      <span className="flex items-center gap-1">
-                                        <Shield className="h-3 w-3" />
-                                        <DocumentStatusBadge
-                                          status={latestDoc.status}
-                                          data-testid={`badge-doc-status-${docType.type}`}
-                                        />
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                                {hasUpload &&
-                                  latestDoc?.status === "rejected" &&
-                                  latestDoc.rejectionReason && (
-                                    <p
-                                      className="mt-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
-                                      data-testid={`text-reject-reason-${docType.type}`}
-                                    >
-                                      {latestDoc.rejectionReason} — please upload a new copy.
-                                    </p>
-                                  )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 ml-4">
-                              {hasUpload && latestDoc && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="gap-1.5"
-                                  data-testid={`button-download-${docType.type}`}
-                                  onClick={() => window.open(`/api/documents/${latestDoc.id}/download`, "_blank")}
-                                >
-                                  <Download className="h-4 w-4" />
-                                  <span className="hidden sm:inline">View</span>
-                                </Button>
-                              )}
-                              {hasUpload && !isRejected && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="gap-1.5"
-                                  data-testid={`button-upload-${docType.type}`}
-                                  disabled={isUploading}
-                                  onClick={() => handleUploadClick(docType.type)}
-                                >
-                                  <Upload className="h-4 w-4" />
-                                  <span className="hidden sm:inline">Replace</span>
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          {isRowUploading && activeUpload && (
-                            <div className="mt-3">
-                              <UploadProgressCard
-                                fileName={activeUpload.fileName}
-                                fileSize={activeUpload.fileSize}
-                                progress={progress}
-                                onCancel={() => {
-                                  cancelledRef.current = true;
-                                  cancel();
-                                }}
-                                data-testid={`upload-progress-${docType.type}`}
-                              />
-                            </div>
-                          )}
-                          {showDropzone && (
-                            <div className="mt-3">
-                              <DocumentDropzone
-                                compact
-                                disabled={isUploading}
-                                onFileAccepted={(file) => startUpload(docType.type, file)}
-                                idleLabel={
-                                  isRejected
-                                    ? "Upload a new copy — drag & drop, or browse"
-                                    : `Drag & drop your ${docType.name.toLowerCase()}, or browse`
-                                }
-                                data-testid={`dropzone-${docType.type}`}
-                              />
-                            </div>
-                          )}
-                          </div>
+                          <DocumentItemRow
+                            key={row.key}
+                            row={row}
+                            uploading={activeUpload?.rowKey === row.uploadKey}
+                            uploadingFile={activeUpload}
+                            progress={progress}
+                            anyUploadBusy={isUploading}
+                            onFile={(file) => startUpload(row.uploadType, file, row.uploadKey)}
+                            onBrowse={() => handleUploadClick(row.uploadType, row.uploadKey)}
+                            onCancel={() => {
+                              cancelledRef.current = true;
+                              cancel();
+                            }}
+                          />
                         );
                       })}
                     </div>

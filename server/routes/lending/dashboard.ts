@@ -6,6 +6,7 @@ import { isAuthenticated } from "../../auth";
 import { insertBorrowerDeclarationsSchema, type User } from "@shared/schema";
 import { computeNextAction } from "../../services/nextAction";
 import { getUserActivitySummary } from "../../services/activitySummary";
+import { buildDocumentChecklist } from "../../services/documentChecklist";
 import { isTerminalLoanAppStatus } from "@shared/schema";
 import { db } from "../../db";
 import { creditConsents, dealActivities, hmdaDemographics, loanOptions, tasks, verifications } from "@shared/schema";
@@ -209,7 +210,10 @@ export function registerDashboardRoutes(
     }
   });
 
-  // Document Checklist API - shows required documents and their status
+  // Document Checklist API — the personalized requirements the pipeline
+  // engine wrote as loan_conditions (self-employed → P&L etc.), with the
+  // legacy 5-item standard list as the no-conditions fallback. All derivation
+  // rules live in the pure builder (server/services/documentChecklist.ts).
   app.get("/api/applications/:applicationId/document-checklist", isAuthenticated, async (req, res) => {
     try {
       const { applicationId } = req.params;
@@ -223,78 +227,19 @@ export function registerDashboardRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
 
-      // Get uploaded documents for this application
-      const uploadedDocs = await storage.getDocumentsByApplication(applicationId);
-      
-      // Get tasks that request documents
-      const tasks = await storage.getTasksByApplication(applicationId);
-      const documentTasks = tasks.filter(t => t.taskType === "document_request");
+      const [conditions, uploadedDocs, tasks] = await Promise.all([
+        storage.getLoanConditionsByApplication(applicationId),
+        storage.getDocumentsByApplication(applicationId),
+        storage.getTasksByApplication(applicationId),
+      ]);
 
-      // Define standard document requirements based on loan type
-      const standardDocs = [
-        { type: "w2", label: "W-2 Forms (Last 2 Years)", required: true },
-        { type: "pay_stub", label: "Recent Pay Stubs (Last 30 Days)", required: true },
-        { type: "tax_return", label: "Tax Returns (Last 2 Years)", required: true },
-        { type: "bank_statement", label: "Bank Statements (Last 2 Months)", required: true },
-        { type: "id", label: "Government-Issued ID", required: true },
-      ];
-
-      // Build document checklist
-      const documents = standardDocs.map(doc => {
-        const uploaded = uploadedDocs.find(u => u.documentType === doc.type);
-        const task = documentTasks.find(t => t.documentCategory === doc.type);
-        
-        let status: "needed" | "uploaded" | "verifying" | "verified" | "rejected" = "needed";
-        if (uploaded) {
-          if (uploaded.status === "verified") status = "verified";
-          else if (uploaded.status === "rejected") status = "rejected";
-          else status = "uploaded";
-        } else if (task && task.status === "submitted") {
-          status = "verifying";
-        }
-
-        return {
-          id: uploaded?.id || doc.type,
-          documentType: doc.type,
-          label: doc.label,
-          status,
-          fileName: uploaded?.fileName,
-          uploadedAt: uploaded?.createdAt?.toISOString(),
-          notes: uploaded?.notes || task?.verificationNotes,
-          requestingTeam: task?.requestingTeam,
-          isCustomRequest: task?.isCustomRequest,
-          instructions: task?.documentInstructions,
-        };
-      });
-
-      // Add any additional document tasks not in standard list (custom requests)
-      for (const task of documentTasks) {
-        if (!standardDocs.find(d => d.type === task.documentCategory)) {
-          const uploaded = uploadedDocs.find(u => u.documentType === task.documentCategory);
-          documents.push({
-            id: task.id,
-            documentType: task.documentCategory || "other",
-            label: task.title,
-            status: uploaded ? (uploaded.status === "verified" ? "verified" : "uploaded") : "needed",
-            fileName: uploaded?.fileName,
-            uploadedAt: uploaded?.createdAt?.toISOString(),
-            notes: task.documentInstructions,
-            requestingTeam: task.requestingTeam,
-            isCustomRequest: task.isCustomRequest,
-            instructions: task.documentInstructions,
-          });
-        }
-      }
-
-      const stats = {
-        total: documents.length,
-        verified: documents.filter(d => d.status === "verified").length,
-        uploaded: documents.filter(d => d.status === "uploaded" || d.status === "verifying").length,
-        needed: documents.filter(d => d.status === "needed").length,
-        rejected: documents.filter(d => d.status === "rejected").length,
-      };
-
-      res.json({ documents, stats });
+      res.json(
+        buildDocumentChecklist({
+          conditions,
+          documents: uploadedDocs,
+          tasks,
+        }),
+      );
     } catch (error) {
       console.error("Document checklist error:", error);
       res.status(500).json({ error: "Failed to load document checklist" });
