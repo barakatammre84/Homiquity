@@ -77,31 +77,42 @@ jobs:
 
   migrate-prod:
     name: migrate-prod (apply pending migrations)
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    # Never run two migrations against prod at once; don't cancel one in flight.
-    concurrency:
-      group: migrate-prod
-      cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.x
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --prod=false
-      - name: Apply pending migrations to prod
+      - name: Neon branch inventory (READ-ONLY — no DB connection, no mutation)
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          # Only needed when the API key can see more than one Neon project.
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
         run: |
-          ARGS=""
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
-            ARGS="--dry-run"
-          fi
-          # The connection string is piped straight into migrate-prod's env via
-          # command substitution: never echoed, never written to GITHUB_ENV, and
-          # neither script ever prints it.
-          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" node scripts/migrate-prod.cjs $ARGS
+          set -euo pipefail
+          # Control-plane metadata only. This never opens a DB connection and never
+          # requests a connection URI, so no credential and no row data is fetched.
+          curl -sS -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
+            -o /tmp/b.json
+          echo "=== NEON BRANCH INVENTORY ==="
+          jq -r '
+            (reduce .branches[] as $b ({}; . + {($b.id): $b.name})) as $names
+            | "TOTAL BRANCHES: \(.branches|length)"
+            , ( .branches
+                | sort_by(.created_at)
+                | .[]
+                | (if .parent_id == null then "*** ROOT ***" else ($names[.parent_id] // .parent_id) end) as $par
+                | "\(.created_at)  \(.name)"
+                  + "\n    parent=\($par)"
+                  + "  protected=\(.protected)"
+                  + "  default=\(.default // false)"
+                  + "  size=\((((.logical_size // 0)/1048576)*10|floor)/10)MB"
+                  + "  state=\(.current_state // "?")" )
+          ' /tmp/b.json
+          echo
+          echo "=== SUMMARY ==="
+          jq -r '
+            (reduce .branches[] as $b ({}; . + {($b.id): $b.name})) as $names
+            | ( [.branches[] | select(.parent_id != null and ($names[.parent_id] // "") == "production")] ) as $kids
+            | "children of production : \($kids|length)"
+            , "preview/* clones       : \([.branches[]|select(.name|startswith("preview/"))]|length)"
+            , "production protected   : \([.branches[]|select(.name=="production")|.protected][0])"
+            , "total logical size     : \(((([.branches[].logical_size // 0]|add)/1048576)*10|floor)/10)MB"
+          ' /tmp/b.json
