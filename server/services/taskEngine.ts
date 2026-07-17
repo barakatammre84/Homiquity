@@ -20,7 +20,7 @@ import {
   type SlaClassConfig,
   type TaskTypeSlaMapping,
 } from "@shared/schema";
-import { eq, and, isNull, lt, desc, asc, inArray, sql, isNotNull } from "drizzle-orm";
+import { eq, and, or, isNull, lt, desc, asc, inArray, sql, isNotNull } from "drizzle-orm";
 
 /**
  * A status outside TASK_STATUSES reached updateTaskStatus — routes translate
@@ -200,7 +200,12 @@ export class TaskEngineService {
       const mapping = await this.getTaskTypeSlaMapping(taskData.taskTypeCode);
       if (mapping) {
         slaClass = mapping.slaClass;
-        ownerRole = mapping.defaultOwnerRole;
+        // The mapping supplies a DEFAULT owner only — a creator's explicit
+        // ownerRole must survive (this used to override unconditionally, which
+        // was invisible while the mapping table sat empty; now that it's
+        // seeded, an override here would silently re-route staff-chosen
+        // assignments the moment a task carries a code).
+        ownerRole = taskData.ownerRole || mapping.defaultOwnerRole;
         const slaResult = await this.computeSlaDueAt(taskData.taskTypeCode);
         slaDueAt = slaResult.slaDueAt;
       }
@@ -571,34 +576,24 @@ export class TaskEngineService {
     }));
   }
 
-  // Get borrower-visible tasks (simplified view)
+  // Get borrower-visible tasks (simplified view): everything the borrower
+  // OWNS, plus staff tasks whose type is flagged visibleToBorrower
+  // (transparency items like "we're reviewing your document" — the borrower
+  // may see them, never act on them; BorrowerRequests still filters to
+  // ownerRole === "BORROWER" for action items).
+  //
+  // These are a UNION, not alternatives. The original either/or (visibility
+  // codes IF any mapping exists, ownerRole otherwise) was a landmine while
+  // taskTypeSlaMapping sat empty: seeding the table would have silently
+  // switched this query to codes-only and re-hidden every pipeline document
+  // task (taskTypeCode NULL, ownerRole BORROWER) — undoing the #232 fix.
   async getBorrowerTasks(applicationId: string): Promise<TaskWithSlaStatus[]> {
-    // Get tasks that are visible to borrowers
     const visibleMappings = await db
-      .select()
+      .select({ taskTypeCode: taskTypeSlaMapping.taskTypeCode })
       .from(taskTypeSlaMapping)
       .where(eq(taskTypeSlaMapping.visibleToBorrower, true));
 
     const visibleCodes = visibleMappings.map(m => m.taskTypeCode);
-
-    if (visibleCodes.length === 0) {
-      // Return tasks with BORROWER owner role
-      const borrowerTasks = await db
-        .select()
-        .from(tasks)
-        .where(
-          and(
-            eq(tasks.applicationId, applicationId),
-            eq(tasks.ownerRole, "BORROWER")
-          )
-        )
-        .orderBy(asc(tasks.slaDueAt));
-
-      return borrowerTasks.map(task => ({
-        ...task,
-        ...this.computeSlaStatus(task),
-      }));
-    }
 
     const borrowerTasks = await db
       .select()
@@ -606,7 +601,10 @@ export class TaskEngineService {
       .where(
         and(
           eq(tasks.applicationId, applicationId),
-          inArray(tasks.taskTypeCode, visibleCodes)
+          or(
+            eq(tasks.ownerRole, "BORROWER"),
+            ...(visibleCodes.length > 0 ? [inArray(tasks.taskTypeCode, visibleCodes)] : [])
+          )
         )
       )
       .orderBy(asc(tasks.slaDueAt));

@@ -109,6 +109,7 @@ export default defineConfig({
       "tests/documentConditionRevert.test.ts",
       "tests/documentTaskOwnerRole.test.ts",
       "tests/taskCancellation.test.ts",
+      "tests/taskEngineSlaSeed.test.ts",
       "tests/uploadValidation.test.ts",
       "tests/documentChecklist.test.ts",
     ],
