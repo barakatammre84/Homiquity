@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { SiGoogle, SiLinkedin, SiApple } from "react-icons/si";
+import { SiGoogle, SiApple } from "react-icons/si";
+// simple-icons dropped the LinkedIn glyph (brand licensing); Font Awesome still ships it.
+import { FaLinkedin } from "react-icons/fa";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Icons, iconSize } from "@/lib/icons";
@@ -45,7 +47,7 @@ export function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
     {
       key: "linkedin",
       label: `${label} with LinkedIn`,
-      icon: SiLinkedin,
+      icon: FaLinkedin,
       configured: providers?.linkedin ?? false,
     },
     {
