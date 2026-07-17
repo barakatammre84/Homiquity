@@ -49,8 +49,9 @@ import { PRE_APPROVAL_DEFAULTS } from "@/funnel/preApprovalMachine";
 import { useFunnelAutosave } from "@/funnel/useFunnelAutosave";
 import { VerificationPulse } from "@/funnel/VerificationPulse";
 import { Checkbox } from "@/components/ui/checkbox";
-import { QUESTIONS_BY_ID, toStepId } from "./preApproval/questions";
+import { QUESTIONS_BY_ID } from "./preApproval/questions";
 import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
+import { useDraftRestore } from "./preApproval/useDraftRestore";
 
 export default function PreApproval() {
   return (
@@ -76,7 +77,6 @@ function PreApprovalFunnel() {
   } = useFunnel();
   const direction = funnelState.direction;
   const [stateComboOpen, setStateComboOpen] = useState(false);
-  const [applicationId, setApplicationId] = useState<string | null>(null);
   const [selectedIncomeTypes, setSelectedIncomeTypes] = useState<string[]>([]);
   const [incomeDetails, setIncomeDetails] = useState<Record<string, { annualAmount: string; employerName: string; yearsInRole: string }>>({});
   const [rentalProperties, setRentalProperties] = useState<RentalPropertyEntry[]>([]);
@@ -128,11 +128,6 @@ function PreApprovalFunnel() {
     },
   });
 
-  const { data: serverDraft, isLoading: serverDraftLoading } = useQuery<any>({
-    queryKey: ["/api/loan-applications/draft/latest"],
-    enabled: isAuthenticated,
-  });
-
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("calculatorPrefill");
@@ -162,8 +157,6 @@ function PreApprovalFunnel() {
 
   // Draft/step/pending-submit keys now live in @/lib/pendingAttribution so the
   // post-auth router (getPostAuthRoute) can detect a deferred submit too.
-  const [autosaveRestored, setAutosaveRestored] = useState(false);
-  const [showRestoreBanner, setShowRestoreBanner] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
 
   const hasMeaningfulData = useCallback((values: PreApprovalFormData) => {
@@ -184,11 +177,17 @@ function PreApprovalFunnel() {
     } catch {}
   }, []);
 
+  // The pending key is consumed synchronously below, but the restore offer
+  // must stay suppressed for the rest of this mount while the deferred
+  // auto-submit runs — the ref outlives the key.
+  const pendingSubmitRef = useRef(false);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     try {
       const pending = localStorage.getItem(PENDING_SUBMIT_KEY);
       if (!pending) return;
+      pendingSubmitRef.current = true;
       const saved = localStorage.getItem(AUTOSAVE_KEY);
       if (!saved) { localStorage.removeItem(PENDING_SUBMIT_KEY); return; }
       const formData = JSON.parse(saved) as PreApprovalFormData;
@@ -241,108 +240,57 @@ function PreApprovalFunnel() {
     shouldPersist: hasMeaningfulData,
   });
 
-  useEffect(() => {
-    if (autosaveRestored) return;
-    if (isAuthenticated && serverDraftLoading) return;
-
-    if (isAuthenticated && serverDraft) {
-      const d = serverDraft as any;
-      const hasMeaningfulData = d.annualIncome || d.purchasePrice || d.creditScore || d.monthlyDebts;
-      if (hasMeaningfulData) {
-        setShowRestoreBanner(true);
-        setAutosaveRestored(true);
-        return;
+  // Rebuild the income-sources step's UI stores from restored entries — they
+  // mirror form.incomeSources (see the income_sources case in renderInput), so
+  // a restore has to reseed them or the step renders empty.
+  const applyIncomeSources = useCallback((sources: PreApprovalFormData["incomeSources"]) => {
+    if (!Array.isArray(sources) || sources.length === 0) return;
+    const types: string[] = [];
+    const details: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }> = {};
+    let rentals: RentalPropertyEntry[] = [];
+    for (const src of sources) {
+      types.push(src.type);
+      details[src.type] = {
+        annualAmount: src.annualAmount || "",
+        employerName: src.employerName || "",
+        yearsInRole: src.yearsInRole || "",
+      };
+      if (src.type === "rental" && Array.isArray(src.rentalProperties)) {
+        rentals = src.rentalProperties;
       }
     }
-
-    const saved = readSaved();
-    if (saved && saved.stepId !== "intro") {
-      setShowRestoreBanner(true);
-      setAutosaveRestored(true);
-      return;
+    setSelectedIncomeTypes(types);
+    setIncomeDetails(details);
+    if (rentals.length > 0) {
+      setRentalProperties(rentals);
     }
-    setAutosaveRestored(true);
-  }, [autosaveRestored, isAuthenticated, serverDraft, serverDraftLoading, readSaved]);
+  }, []);
 
-  const handleRestoreDraft = useCallback(() => {
-    if (isAuthenticated && serverDraft && (serverDraft as any).annualIncome) {
-      const draft = serverDraft as any;
-      form.reset({
-        ...form.getValues(),
-        annualIncome: draft.annualIncome || "",
-        employmentType: draft.employmentType || "employed",
-        employmentYears: draft.employmentYears ? String(draft.employmentYears) : "",
-        monthlyDebts: draft.monthlyDebts || "",
-        creditScore: draft.creditScore ? String(draft.creditScore) : "",
-        loanPurpose: draft.loanPurpose || "purchase",
-        propertyType: draft.propertyType || "single_family",
-        purchasePrice: draft.purchasePrice || "",
-        downPayment: draft.downPayment || "",
-        isVeteran: !!draft.isVeteran,
-        isFirstTimeBuyer: !!draft.isFirstTimeBuyer,
-        avoidsInterestFinancing: !!draft.avoidsInterestFinancing,
-        propertyState: draft.propertyState || "",
-        hasAdditionalIncome: Array.isArray(draft.incomeSources) && draft.incomeSources.length > 0,
-        incomeSources: Array.isArray(draft.incomeSources) ? draft.incomeSources : [],
-      });
-      if (Array.isArray(draft.incomeSources) && draft.incomeSources.length > 0) {
-        const types: string[] = [];
-        const details: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }> = {};
-        for (const src of draft.incomeSources) {
-          types.push(src.type);
-          details[src.type] = {
-            annualAmount: src.annualAmount || "",
-            employerName: src.employerName || "",
-            yearsInRole: src.yearsInRole || "",
-          };
-          if (src.type === "rental" && Array.isArray(src.rentalProperties)) {
-            setRentalProperties(src.rentalProperties);
-          }
-        }
-        setSelectedIncomeTypes(types);
-        setIncomeDetails(details);
-      }
-      goTo("loanPurpose");
-      setShowRestoreBanner(false);
-      toast({ title: "Draft restored from your account", description: "We loaded your saved progress." });
-      return;
-    }
+  const hasPendingSubmit = useCallback(() => {
+    if (pendingSubmitRef.current) return true;
     try {
-      const saved = readSaved();
-      if (saved) {
-        const merged = { ...form.getValues(), ...saved.values };
-        form.reset(merged);
-        const parsed = saved.values as PreApprovalFormData;
-        if (Array.isArray(parsed.incomeSources) && parsed.incomeSources.length > 0) {
-          const types: string[] = [];
-          const details: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }> = {};
-          for (const src of parsed.incomeSources) {
-            types.push(src.type);
-            details[src.type] = {
-              annualAmount: src.annualAmount || "",
-              employerName: src.employerName || "",
-              yearsInRole: src.yearsInRole || "",
-            };
-            if (src.type === "rental" && Array.isArray(src.rentalProperties)) {
-              setRentalProperties(src.rentalProperties);
-            }
-          }
-          setSelectedIncomeTypes(types);
-          setIncomeDetails(details);
-        }
-        hydrate(toStepId(saved.stepId), merged);
-        setShowRestoreBanner(false);
-        toast({ title: "Progress restored", description: "We picked up where you left off." });
-      }
+      return !!localStorage.getItem(PENDING_SUBMIT_KEY);
     } catch {
-      setShowRestoreBanner(false);
+      return false;
     }
-  }, [form, toast, isAuthenticated, serverDraft, goTo, hydrate, readSaved]);
+  }, []);
 
-  const handleDismissRestore = useCallback(() => {
-    setShowRestoreBanner(false);
-    clearAutosave();
-  }, [clearAutosave]);
+  const {
+    applicationId,
+    showRestoreBanner,
+    restore: handleRestoreDraft,
+    dismiss: handleDismissRestore,
+  } = useDraftRestore({
+    form,
+    isAuthenticated,
+    hasPendingSubmit,
+    readSaved,
+    clearAutosave,
+    applyIncomeSources,
+    goTo,
+    hydrate,
+    toast,
+  });
 
   useEffect(() => {
     if (progress.index !== prevStepRef.current && progress.index > 0) {
@@ -354,17 +302,6 @@ function PreApprovalFunnel() {
       prevStepRef.current = progress.index;
     }
   }, [progress.index, progress.total, stepId, track]);
-
-  // Load draft application if user is authenticated
-  const { data: draftApp } = useQuery({
-    queryKey: ["/api/loan-applications/draft/latest"],
-    queryFn: async () => {
-      if (!isAuthenticated) return null;
-      const response = await apiRequest("GET", "/api/loan-applications/draft/latest");
-      return response.json();
-    },
-    enabled: isAuthenticated,
-  });
 
   // Load coach intake data to pre-fill empty fields
   const { data: coachIntake } = useQuery<{
@@ -390,29 +327,14 @@ function PreApprovalFunnel() {
 
   const [prefillApplied, setPrefillApplied] = useState(false);
 
-  // Initialize with draft data, then fill remaining gaps with coach intake
+  // Gap-fill from the coach conversation's intake. Saved-draft answers are
+  // deliberately NOT applied here — adopting a draft (data + PATCH target) is
+  // consent-gated through useDraftRestore's banner.
   useEffect(() => {
     if (prefillApplied) return;
 
     const formData: Partial<PreApprovalFormData> = {};
     let hasData = false;
-
-    if (draftApp) {
-      setApplicationId(draftApp.id);
-      if (draftApp.annualIncome) formData.annualIncome = String(draftApp.annualIncome);
-      if (draftApp.employmentType) formData.employmentType = draftApp.employmentType;
-      if (draftApp.employmentYears) formData.employmentYears = String(draftApp.employmentYears);
-      if (draftApp.monthlyDebts) formData.monthlyDebts = String(draftApp.monthlyDebts);
-      if (draftApp.creditScore) formData.creditScore = String(draftApp.creditScore);
-      if (draftApp.loanPurpose) formData.loanPurpose = draftApp.loanPurpose;
-      if (draftApp.propertyType) formData.propertyType = draftApp.propertyType;
-      if (draftApp.purchasePrice) formData.purchasePrice = String(draftApp.purchasePrice);
-      if (draftApp.downPayment) formData.downPayment = String(draftApp.downPayment);
-      formData.isVeteran = draftApp.isVeteran || false;
-      formData.isFirstTimeBuyer = draftApp.isFirstTimeBuyer || false;
-      if (draftApp.propertyState) formData.propertyState = draftApp.propertyState;
-      hasData = true;
-    }
 
     const ci = coachIntake?.intake;
     if (ci) {
@@ -449,7 +371,7 @@ function PreApprovalFunnel() {
       form.reset({ ...form.getValues(), ...formData } as PreApprovalFormData);
       setPrefillApplied(true);
     }
-  }, [draftApp, coachIntake, form, prefillApplied]);
+  }, [coachIntake, form, prefillApplied]);
 
   // Create/update application mutation
   const submitMutation = useMutation({
