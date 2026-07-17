@@ -218,6 +218,13 @@
       "when": 1784392800000,
       "tag": "0030_extraction_engine_drop_stale_default",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1784479200000,
+      "tag": "0031_extraction_engine_require_named",
+      "breakpoints": true
     }
   ]
 }
