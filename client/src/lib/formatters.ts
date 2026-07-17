@@ -54,6 +54,25 @@ export function formatDate(date: Date | string | null | undefined, fallback = "N
   });
 }
 
+/** "18 yrs 4 mo" from a month count; "0 mo" when nothing remains. */
+export function formatDuration(totalMonths: number): string {
+  const years = Math.floor(totalMonths / 12);
+  const months = Math.round(totalMonths % 12);
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years} yr${years === 1 ? "" : "s"}`);
+  if (months > 0) parts.push(`${months} mo`);
+  return parts.join(" ") || "0 mo";
+}
+
+/**
+ * "loan_officer" → "Loan Officer". The last-resort humanizer for snake_case
+ * keys with no display mapping — surfaces with curated labels (STAGE_DISPLAY,
+ * DOC_TYPE_NAMES, …) should consult their map first and fall back to this.
+ */
+export function titleCaseFromSnake(value: string): string {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function formatTimeRemaining(minutes: number | null): string {
   if (minutes === null) return "No SLA";
   if (minutes <= 0) return "Overdue";

@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { FileText, AlertTriangle, Printer, ArrowLeft } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { titleCaseFromSnake } from "@/lib/formatters";
 
 interface AdverseAction {
   id: string;
@@ -24,10 +25,6 @@ interface AdverseAction {
   noticeText: string;
   noticeDate: string;
   deliveredAt?: string | null;
-}
-
-function titleCase(s: string): string {
-  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default function AdverseActionNotice() {
@@ -101,7 +98,7 @@ export default function AdverseActionNotice() {
           <Card key={notice.id} data-testid={`notice-${notice.id}`}>
             <CardHeader>
               <CardTitle className="text-lg flex items-center justify-between">
-                <span>{titleCase(notice.actionType)}</span>
+                <span>{titleCaseFromSnake(notice.actionType)}</span>
                 <span className="text-xs font-normal text-muted-foreground">
                   {notice.noticeDate ? format(new Date(notice.noticeDate), "PPP") : ""}
                 </span>
@@ -133,7 +130,7 @@ export default function AdverseActionNotice() {
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Credit score used</p>
                     <p className="font-medium">
                       {notice.creditScoreUsed}
-                      {notice.creditScoreSource ? ` (${titleCase(notice.creditScoreSource)})` : ""}
+                      {notice.creditScoreSource ? ` (${titleCaseFromSnake(notice.creditScoreSource)})` : ""}
                     </p>
                     {notice.scoreRangeLow != null && notice.scoreRangeHigh != null && (
                       <p className="text-muted-foreground">

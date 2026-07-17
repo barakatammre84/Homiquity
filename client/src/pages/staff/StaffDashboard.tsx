@@ -58,7 +58,7 @@ import {
   Archive,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { formatCurrency, formatTimeRemaining } from "@/lib/formatters";
+import { formatCurrency, formatTimeRemaining, titleCaseFromSnake } from "@/lib/formatters";
 import { type SlaStatus, SLA_STATUS_COLORS, SLA_DOT_COLORS, SLA_SORT_ORDER } from "@/lib/sla";
 
 interface QueueTask {
@@ -155,7 +155,7 @@ interface RetentionReport {
 
 
 function formatStageLabel(stage: string): string {
-  return STAGE_DISPLAY[stage] || stage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+  return STAGE_DISPLAY[stage] || titleCaseFromSnake(stage);
 }
 
 function coApplicantNames(

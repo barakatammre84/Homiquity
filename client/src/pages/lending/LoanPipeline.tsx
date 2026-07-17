@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, titleCaseFromSnake } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -118,7 +118,7 @@ function getStageIndex(stage: string): number {
 }
 
 function formatStageLabel(stage: string): string {
-  return stage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+  return titleCaseFromSnake(stage);
 }
 
 export default function LoanPipeline() {
