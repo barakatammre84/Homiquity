@@ -1,5 +1,13 @@
 import { db } from "../db";
-import { documents, loanApplications, loanConditions, users } from "@shared/schema";
+import {
+  documents,
+  loanApplications,
+  loanConditions,
+  users,
+  LOAN_APP_STATUSES,
+  LOAN_APP_TERMINAL_STATUSES,
+  type LoanAppStatus,
+} from "@shared/schema";
 import { and, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import { storage } from "../storage";
 
@@ -99,16 +107,41 @@ async function buildDscrSignals(): Promise<StaffSignal[]> {
   }
 }
 
-const ACTIVE_STATUSES = [
+/**
+ * Which applications the feed considers — derived from the canonical status
+ * vocabulary (shared/schema/lendingCore.ts) so the two can't drift. Beyond
+ * the terminal statuses, excluded on purpose:
+ *   - "draft" — nothing submitted yet; nothing for staff to act on
+ *   - "clear_to_close" / "closing" — closing track: conditions are cleared
+ *     and documents locked into the closing package (mirrors
+ *     lifecycleEngine's IN_FLIGHT_STATUSES reasoning)
+ *   - "suspended" — deliberately paused by staff; signals resume when the
+ *     file resumes to a working stage
+ * Exported for tests, which pin the exact membership.
+ */
+export const SIGNAL_ACTIVE_STATUSES: readonly LoanAppStatus[] = LOAN_APP_STATUSES.filter(
+  (s) =>
+    !(LOAN_APP_TERMINAL_STATUSES as readonly string[]).includes(s) &&
+    s !== "draft" &&
+    s !== "clear_to_close" &&
+    s !== "closing" &&
+    s !== "suspended",
+);
+
+/**
+ * Stall-rescue scope: stages where the file is waiting on a person — the
+ * borrower (intake, document collection) or our own underwriter
+ * ("under_review", where a file may carry no pre-UW flags and would
+ * otherwise surface nowhere while ECOA/Reg B's 30-day action clock runs).
+ * "pre_approved" is the borrower shopping — inactivity there is normal —
+ * and later stages have their own queues (conditions, docs-ready).
+ */
+export const STALL_WATCH_STATUSES: readonly LoanAppStatus[] = [
   "submitted",
   "analyzing",
-  "pre_approved",
-  "verified",
+  "under_review",
   "doc_collection",
-  "processing",
-  "underwriting",
-  "conditional",
-] as const;
+];
 
 const DOC_FRESHNESS_DAYS = 30;
 const DOC_WARNING_DAYS = 25;
@@ -130,7 +163,7 @@ export async function buildStaffSignals(limit = 30, scope?: StaffSignalScope): P
   // the platform-wide query.
   if (scope && scope.applicationIds.length === 0) return [];
 
-  const statusFilter = inArray(loanApplications.status, [...ACTIVE_STATUSES]);
+  const statusFilter = inArray(loanApplications.status, [...SIGNAL_ACTIVE_STATUSES]);
   const activeApps = await db
     .select({
       id: loanApplications.id,
@@ -268,17 +301,23 @@ export async function buildStaffSignals(limit = 30, scope?: StaffSignalScope): P
   // 3 — stalled applications (no update in STALL_DAYS on early stages)
   const stallCutoff = Date.now() - STALL_DAYS * 24 * 3600 * 1000;
   for (const app of activeApps) {
-    if (!["submitted", "analyzing", "doc_collection"].includes(app.status)) continue;
+    if (!(STALL_WATCH_STATUSES as readonly string[]).includes(app.status)) continue;
     const updated = app.updatedAt ? new Date(app.updatedAt).getTime() : 0;
     if (updated > 0 && updated < stallCutoff) {
       const days = Math.floor((Date.now() - updated) / (24 * 3600 * 1000));
+      const stage = app.status.replace(/_/g, " ");
       signals.push({
         type: "stalled",
         priority: 3,
         applicationId: app.id,
         borrowerName: borrower(app.id),
         title: `No activity for ${days} days`,
-        detail: `File is sitting in "${app.status.replace(/_/g, " ")}" — a nudge or a call may unstick it.`,
+        // The ball is in a different court per stage: under_review waits on
+        // our underwriter, everything else waits on the borrower.
+        detail:
+          app.status === "under_review"
+            ? `File is sitting in "${stage}" — an underwriting decision is owed.`
+            : `File is sitting in "${stage}" — a nudge or a call may unstick it.`,
       });
     }
   }
