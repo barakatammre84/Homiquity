@@ -283,7 +283,7 @@ export async function detectStaleApplications(): Promise<Array<{
       if (!user?.email) continue;
 
       const currentState = await getCurrentState(app.userId);
-      const terminalStates = ["withdrawn", "denied", "expired", "funded", "homeowner"];
+      const terminalStates: BorrowerState[] = ["withdrawn", "denied", "expired", "funded", "homeowner"];
       if (terminalStates.includes(currentState)) continue;
 
       const daysSinceLastActivity = Math.floor(

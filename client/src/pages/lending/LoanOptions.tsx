@@ -15,6 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatCurrency, formatPercent, getLoanTypeLabel } from "@/lib/formatters";
 import type { LoanApplication, LoanOption } from "@shared/schema";
 import type { BorrowerOfferView } from "@shared/borrowerOfferView";
+import { PREQUAL_ELIGIBLE_STATUSES } from "@shared/letters";
 import {
   CheckCircle2,
   Star,
@@ -836,8 +837,7 @@ function PreQualLetterButton({ applicationId, status }: { applicationId: string;
     }
   };
 
-  const validStatuses = ["submitted", "analyzing", "pre_approved", "verified", "underwriting", "approved"];
-  if (!validStatuses.includes(status)) return null;
+  if (!(PREQUAL_ELIGIBLE_STATUSES as readonly string[]).includes(status)) return null;
 
   if (status === "pre_approved") return null;
 

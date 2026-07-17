@@ -26,7 +26,7 @@ import { RenterHome } from "@/pages/borrower/RenterHome";
 import { isStaffRole } from "@shared/roles";
 import { isTerminalLoanAppStatus } from "@shared/schema";
 import PredictionInsights from "@/components/borrower/PredictionInsights";
-import type { LoanApplication, DealActivity } from "@shared/schema";
+import type { LoanApplication, DealActivity, LoanAppStatus } from "@shared/schema";
 import {
   CheckCircle2,
   Clock,
@@ -164,10 +164,13 @@ function getReadinessPercent(
     return score;
   }
   const status = application.status;
-  const statusWeights: Record<string, number> = {
+  // Full Record over the canonical vocabulary — a new status cannot compile
+  // without an explicit weight decision here.
+  const statusWeights: Record<LoanAppStatus, number> = {
     draft: 20,
     submitted: 35,
     analyzing: 40,
+    under_review: 45,
     pre_approved: 60,
     doc_collection: 55,
     processing: 65,
@@ -177,8 +180,11 @@ function getReadinessPercent(
     closing: 98,
     funded: 100,
     denied: 10,
+    withdrawn: 10,
+    expired: 15,
+    suspended: 25,
   };
-  let base = statusWeights[status] || 30;
+  let base = statusWeights[status as LoanAppStatus] || 30;
   if (verificationStatus) {
     if (verificationStatus.hasCreditConsent) base += 3;
     if (verificationStatus.hasIdVerification) base += 3;

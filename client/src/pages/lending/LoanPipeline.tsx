@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { LoanApplication, LoanCondition, Document, ApplicationProperty, LoanOption } from "@shared/schema";
+import { SETTLED_CONDITION_STATUSES, type LoanApplication, type LoanCondition, type Document, type ApplicationProperty, type LoanOption } from "@shared/schema";
 import {
   CheckCircle2,
   Circle,
@@ -314,11 +314,13 @@ export default function LoanPipeline() {
     completionPercentage: 0,
   };
 
+  // Open/settled must partition the vocabulary — a hand-rolled "cleared or
+  // waived" pair drops "not_applicable" conditions from both buckets.
   const outstandingConditions = (pipeline?.conditions || []).filter(
-    c => c.status === "outstanding" || c.status === "submitted"
+    c => !(SETTLED_CONDITION_STATUSES as readonly string[]).includes(c.status)
   );
   const clearedConditions = (pipeline?.conditions || []).filter(
-    c => c.status === "cleared" || c.status === "waived"
+    c => (SETTLED_CONDITION_STATUSES as readonly string[]).includes(c.status)
   );
 
   return (
