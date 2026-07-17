@@ -3,8 +3,10 @@ import {
   computeRefiSavings,
   estimateRemainingBalance,
   monthlyPayment,
+  planMissingDocNudges,
   PMI_REMOVAL_LTV_THRESHOLD,
   REFI_ALERT_RATE_DROP,
+  type MissingDocCandidate,
 } from "../server/services/lifecycleEngine";
 
 describe("monthlyPayment", () => {
@@ -71,5 +73,80 @@ describe("thresholds", () => {
 
   it("requires at least a quarter-point drop before raising refi alerts", () => {
     expect(REFI_ALERT_RATE_DROP).toBeGreaterThanOrEqual(0.25);
+  });
+});
+
+describe("planMissingDocNudges", () => {
+  const condition = (over: Partial<MissingDocCandidate> = {}): MissingDocCandidate => ({
+    conditionId: "cond-1",
+    applicationId: "app-1",
+    userId: "user-1",
+    title: "2025 W-2 Verification",
+    requiredDocumentTypes: ["w2"],
+    ...over,
+  });
+
+  it("nudges an outstanding condition with no matching upload", () => {
+    const plans = planMissingDocNudges([condition()], new Map());
+    expect(plans).toHaveLength(1);
+    expect(plans[0]).toMatchObject({
+      userId: "user-1",
+      applicationId: "app-1",
+      conditionIds: ["cond-1"],
+      conditionTitles: ["2025 W-2 Verification"],
+      documentTypes: ["w2"],
+    });
+  });
+
+  it("treats an alias upload as satisfying (paystub satisfies pay_stub)", () => {
+    const plans = planMissingDocNudges(
+      [condition({ requiredDocumentTypes: ["pay_stub"] })],
+      new Map([["app-1", ["paystub"]]]),
+    );
+    expect(plans).toHaveLength(0);
+  });
+
+  it("any one of several required types satisfies the condition", () => {
+    const plans = planMissingDocNudges(
+      [condition({ requiredDocumentTypes: ["tax_return", "pay_stub"] })],
+      new Map([["app-1", ["tax_return_1040"]]]),
+    );
+    expect(plans).toHaveLength(0);
+  });
+
+  it("skips conditions without requiredDocumentTypes (staff tasks, not upload asks)", () => {
+    expect(planMissingDocNudges([condition({ requiredDocumentTypes: null })], new Map())).toHaveLength(0);
+    expect(planMissingDocNudges([condition({ requiredDocumentTypes: [] })], new Map())).toHaveLength(0);
+  });
+
+  it("groups multiple conditions on one application into a single plan, deduping types", () => {
+    const plans = planMissingDocNudges(
+      [
+        condition(),
+        condition({ conditionId: "cond-2", title: "Bank statements", requiredDocumentTypes: ["bank_statement", "w2"] }),
+      ],
+      new Map(),
+    );
+    expect(plans).toHaveLength(1);
+    expect(plans[0].conditionIds).toEqual(["cond-1", "cond-2"]);
+    expect(plans[0].conditionTitles).toEqual(["2025 W-2 Verification", "Bank statements"]);
+    expect(plans[0].documentTypes).toEqual(["w2", "bank_statement"]);
+  });
+
+  it("keeps separate applications in separate plans", () => {
+    const plans = planMissingDocNudges(
+      [condition(), condition({ conditionId: "cond-2", applicationId: "app-2", userId: "user-2" })],
+      new Map(),
+    );
+    expect(plans).toHaveLength(2);
+    expect(plans.map((p) => p.applicationId).sort()).toEqual(["app-1", "app-2"]);
+  });
+
+  it("only uploads on the SAME application satisfy a condition", () => {
+    const plans = planMissingDocNudges(
+      [condition()],
+      new Map([["app-2", ["w2"]]]),
+    );
+    expect(plans).toHaveLength(1);
   });
 });
