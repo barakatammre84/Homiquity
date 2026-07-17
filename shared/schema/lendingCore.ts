@@ -258,6 +258,17 @@ export const loanApplications = pgTable("loan_applications", {
   
   // Multi-income source tracking
   incomeSources: jsonb("income_sources"),
+
+  // S-07 (Fannie B3-3.8-01 / B3-6-06): what happens to the borrower's current
+  // primary residence on this purchase. "converted_to_rental" activates the
+  // departing-residence rental offset using departingResidence figures.
+  // NULL = not asked / not applicable (e.g. first-time buyer, renter).
+  currentPropertyDisposition: varchar("current_property_disposition", { length: 30 }),
+  // { address?, estimatedMarketRent, monthlyPitia } for the departing
+  // residence when it converts to a rental (departingResidenceSchema —
+  // projected rent, so the offset always carries manual review until the
+  // rental appraisal/lease evidence is verified).
+  departingResidence: jsonb("departing_residence"),
   
   // Calculated Values (populated by AI analysis)
   dtiRatio: decimal("dti_ratio", { precision: 5, scale: 2 }),
@@ -313,11 +324,35 @@ export const loanApplications = pgTable("loan_applications", {
   index("idx_loan_applications_user_status").on(table.userId, table.status),
 ]);
 
-export const insertLoanApplicationSchema = createInsertSchema(loanApplications).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+/** S-07: what happens to the borrower's current primary residence. */
+export const CURRENT_PROPERTY_DISPOSITIONS = [
+  "retained_as_primary",
+  "sold",
+  "converted_to_rental",
+] as const;
+export type CurrentPropertyDisposition = (typeof CURRENT_PROPERTY_DISPOSITIONS)[number];
+
+/** Departing-residence figures for a "converted_to_rental" disposition
+ *  (S-07, B3-3.8-01): projected market rent + the retained property's PITIA.
+ *  Projected — the offset stays manual-review until appraisal/lease evidence
+ *  verifies it. */
+export const departingResidenceSchema = z.object({
+  address: z.string().max(500).optional(),
+  estimatedMarketRent: z.coerce.number().positive(),
+  monthlyPitia: z.coerce.number().min(0),
 });
+export type DepartingResidence = z.infer<typeof departingResidenceSchema>;
+
+export const insertLoanApplicationSchema = createInsertSchema(loanApplications)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    currentPropertyDisposition: z.enum(CURRENT_PROPERTY_DISPOSITIONS).nullish(),
+    departingResidence: departingResidenceSchema.nullish(),
+  });
 
 export type InsertLoanApplication = z.infer<typeof insertLoanApplicationSchema>;
 export type LoanApplication = typeof loanApplications.$inferSelect;

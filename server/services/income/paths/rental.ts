@@ -36,14 +36,52 @@ export interface RentalPathContext {
   applyPositiveToDti: boolean;
   /** True when URLA liabilities include mortgage-type rows (double-count risk). */
   hasMortgageLiabilityRows: boolean;
+  /** True when the entries include the S-07 departing residence at PROJECTED
+   *  market rent — always manual review until appraisal/lease evidence. */
+  departingResidenceIncluded?: boolean;
+}
+
+/**
+ * B3-3.8-01 is applied PER PROPERTY: each property whose 75%-of-rent net of
+ * its own PITIA is positive adds to income; each negative one adds its loss
+ * to monthly obligations. Positives and losses are never netted across
+ * properties (splitting is also strictly conservative: a loss in the DTI
+ * numerator weighs more than the same loss subtracted from income).
+ */
+export interface RentalOffsetSplit {
+  /** Σ positive per-property offsets (income side, provenance-gated). */
+  positiveTotal: number;
+  /** Σ |negative| per-property offsets (obligation side, always applied). */
+  negativeTotal: number;
+  /** positiveTotal − negativeTotal (informational net). */
+  net: number;
+  count: number;
+}
+
+export function splitRentalOffsets(
+  rentalProperties: RentalPropertyEntry[] | null | undefined,
+): RentalOffsetSplit {
+  const offsets = calculateRentalIncomeOffsets(rentalProperties);
+  let positiveTotal = 0;
+  let negativeTotal = 0;
+  for (const o of offsets) {
+    if (o.netOffset >= 0) positiveTotal += o.netOffset;
+    else negativeTotal += -o.netOffset;
+  }
+  return {
+    positiveTotal: roundCents(positiveTotal),
+    negativeTotal: roundCents(negativeTotal),
+    net: roundCents(positiveTotal - negativeTotal),
+    count: offsets.length,
+  };
 }
 
 export function computeRentalPath(
   rentalProperties: RentalPropertyEntry[] | null | undefined,
   ctx: RentalPathContext,
 ): DtiIncomePathResult {
-  const offsets = calculateRentalIncomeOffsets(rentalProperties);
-  if (offsets.length === 0) {
+  const split = splitRentalOffsets(rentalProperties);
+  if (split.count === 0) {
     return {
       pathId: "rental",
       kind: "dti_income",
@@ -57,22 +95,28 @@ export function computeRentalPath(
     };
   }
 
-  const netOffset = roundCents(offsets.reduce((sum, o) => sum + o.netOffset, 0));
-  // A loss is always applied (conservative); a gain only on verified provenance.
-  const applied = netOffset < 0 ? true : ctx.applyPositiveToDti;
+  // Losses always apply (conservative); gains only on verified provenance.
+  const applied = split.negativeTotal > 0 || ctx.applyPositiveToDti;
   const doubleCountRisk = applied && ctx.hasMortgageLiabilityRows;
 
   const notes = [
-    `${offsets.length} rental propert${offsets.length === 1 ? "y" : "ies"}: net qualifying offset ${netOffset >= 0 ? "+" : ""}${netOffset} (75% of gross rent, net of PITIA — B3-3.8-01).` +
-      (applied
-        ? netOffset >= 0
-          ? " Applied to qualifying income."
-          : " Applied to monthly obligations (net rental loss)."
-        : " Not applied yet — positive rental offsets count toward the decision once income, assets, and credit are verified (decision-grade provenance)."),
+    `${split.count} rental propert${split.count === 1 ? "y" : "ies"} (per-property B3-3.8-01 treatment): ` +
+      `+${split.positiveTotal} qualifying income from positive offsets` +
+      (ctx.applyPositiveToDti
+        ? " (applied)"
+        : " (withheld until income, assets, and credit are verified — decision-grade provenance)") +
+      `; ${split.negativeTotal} rental losses to monthly obligations` +
+      (split.negativeTotal > 0 ? " (applied)" : "") +
+      ". 75% of gross rent net of each property's own PITIA.",
   ];
+  if (ctx.departingResidenceIncluded) {
+    notes.push(
+      "Includes the departing residence at PROJECTED market rent (S-07 conversion): a rental appraisal or executed lease plus the most recent Schedule E (confirming the property is newly placed in service) is required before this figure is verified-final — flagged for manual review.",
+    );
+  }
   if (doubleCountRisk) {
     notes.push(
-      "URLA liabilities include mortgage-type rows: the rental property's PITIA may be counted both inside this net offset and as a listed liability. B3-3.8-01 bars counting the PITIA separately — flagged for manual review to resolve which entry carries the payment.",
+      "URLA liabilities include mortgage-type rows: a rental property's PITIA may be counted both inside its net offset and as a listed liability. B3-3.8-01 bars counting the PITIA separately — flagged for manual review to resolve which entry carries the payment.",
     );
   }
 
@@ -81,10 +125,11 @@ export function computeRentalPath(
     kind: "dti_income",
     role: "component",
     status: "applicable",
-    monthlyQualifyingIncome: netOffset,
+    monthlyQualifyingIncome: split.net,
     appliedToDti: applied,
     citations: RENTAL_CITATIONS,
-    requiresManualReview: netOffset < 0 || doubleCountRisk,
+    requiresManualReview:
+      split.negativeTotal > 0 || doubleCountRisk || ctx.departingResidenceIncluded === true,
     notes,
   };
 }

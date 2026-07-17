@@ -16,9 +16,10 @@ import {
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { storage } from "../../storage";
 import { calculateSubjectPropertyQualifyingRent } from "../underwritingNuance";
+import { estimateMonthlyPITI } from "../preUnderwriting";
 import { computeAgencyWageIncome } from "./paths/agencyWage";
 import { computeSelfEmploymentPath } from "./paths/selfEmployment";
-import { computeRentalPath } from "./paths/rental";
+import { computeRentalPath, splitRentalOffsets } from "./paths/rental";
 import { computeDscrPath } from "./paths/dscr";
 import {
   computeBankStatementPath,
@@ -60,11 +61,22 @@ export interface IncomePathsCoreInput {
   applyRentalToDti?: boolean;
   /** URLA liabilities contain mortgage-type rows (B3-3.8-01 double-count guard). */
   hasMortgageLiabilityRows?: boolean;
-  /** Subject-property facts for the B3-3.8-01 2–4-unit owner-occupied rent rule. */
+  /** Subject-property facts: B3-3.8-01 2–4-unit owner-occupied rent rule, and
+   *  the subject DSCR ratio for an investment purchase (estimatedPitia is the
+   *  pre-lock estimate; the ratio always stays manual-review). */
   subjectProperty?: {
     numberOfUnits: number | null;
     occupancyType: string | null;
     estimatedMarketRent: number | string | null;
+    estimatedPitia?: number | null;
+  } | null;
+  /** S-07: the borrower's current primary residence converting to a rental
+   *  (currentPropertyDisposition = "converted_to_rental"). Projected market
+   *  rent + retained PITIA join the per-property rental offsets, always with
+   *  manual review (projected evidence). */
+  departingResidence?: {
+    estimatedMarketRent: number | string | null;
+    monthlyPitia: number | string | null;
   } | null;
 }
 
@@ -75,13 +87,27 @@ export function computeIncomePaths(input: IncomePathsCoreInput): IncomeOrchestra
     fallbackAnnualIncome: input.fallbackAnnualIncome,
   });
   const selfEmployment = computeSelfEmploymentPath(input.employment);
-  const rentalPath = computeRentalPath(input.rentalProperties, {
+
+  // S-07: the departing residence enters the per-property offset set as one
+  // more rental (projected rent − retained PITIA), never the DSCR portfolio.
+  const departingEntries: RentalPropertyEntry[] = input.departingResidence
+    ? [
+        {
+          address: "Departing residence (converting to rental)",
+          monthlyRentalIncome: String(input.departingResidence.estimatedMarketRent ?? ""),
+          monthlyDebtPayment: String(input.departingResidence.monthlyPitia ?? ""),
+        } as RentalPropertyEntry,
+      ]
+    : [];
+  const rentalEntries = [...input.rentalProperties, ...departingEntries];
+  const rentalPath = computeRentalPath(rentalEntries, {
     applyPositiveToDti: input.applyRentalToDti === true,
     hasMortgageLiabilityRows: input.hasMortgageLiabilityRows === true,
+    departingResidenceIncluded: departingEntries.length > 0,
   });
 
   const hasSelfEmployment = selfEmployment.path.status === "applicable";
-  const dscr = computeDscrPath(input.rentalProperties);
+  const dscr = computeDscrPath(input.rentalProperties, input.subjectProperty ?? null);
   const bankStatement = computeBankStatementPath(hasSelfEmployment, input.bankStatementAnalysis);
 
   const paths: IncomePathResult[] = [
@@ -93,17 +119,18 @@ export function computeIncomePaths(input: IncomePathsCoreInput): IncomeOrchestra
   ];
 
   // Primary DTI income = applied component dti_income paths. Rental applies
-  // per B3-3.8-01 (ledger fnma-b3-3-8-01-rental-offset-dti): a positive net
-  // offset joins the income side here; a LOSS is surfaced as a liability for
-  // the decision engine to add to monthly obligations — never negative income
-  // (the two land in different halves of the DTI ratio).
+  // PER PROPERTY per B3-3.8-01 (ledger fnma-b3-3-8-01-rental-offset-dti):
+  // each positive per-property offset joins the income side (provenance-
+  // gated); each property's loss is surfaced as a liability for the decision
+  // engine to add to monthly obligations — never negative income, and never
+  // netted across properties (the split is strictly conservative).
   const agencyApplied = agency.path.monthlyQualifyingIncome;
   const seApplied = selfEmployment.path.monthlyQualifyingIncome;
-  const rentalNet = rentalPath.status === "applicable" ? rentalPath.monthlyQualifyingIncome : 0;
+  const rentalSplit = splitRentalOffsets(rentalEntries);
+  const rentalNet = rentalSplit.count > 0 ? rentalSplit.net : 0;
   const rentalIncomeApplied =
-    rentalPath.appliedToDti && rentalNet > 0 ? roundCents(rentalNet) : 0;
-  const rentalLiabilityApplied =
-    rentalPath.appliedToDti && rentalNet < 0 ? roundCents(-rentalNet) : 0;
+    input.applyRentalToDti === true ? rentalSplit.positiveTotal : 0;
+  const rentalLiabilityApplied = rentalSplit.negativeTotal;
 
   // Subject-property 2–4-unit owner-occupied rent (B3-3.8-01, ledger
   // fnma-b3-3-8-01-subject-rental-income): qualifying rent is ADDED to income;
@@ -205,6 +232,13 @@ export function incomeInputsFingerprint(input: IncomePathsCoreInput): string {
           u: input.subjectProperty.numberOfUnits ?? null,
           o: input.subjectProperty.occupancyType ?? null,
           r: numOrNull(input.subjectProperty.estimatedMarketRent),
+          p: numOrNull(input.subjectProperty.estimatedPitia ?? null),
+        }
+      : null,
+    departing: input.departingResidence
+      ? {
+          r: numOrNull(input.departingResidence.estimatedMarketRent),
+          p: numOrNull(input.departingResidence.monthlyPitia),
         }
       : null,
   };
@@ -262,6 +296,38 @@ export function hasMortgageTypeLiability(
 }
 
 /**
+ * S-07 input gate: only a "converted_to_rental" disposition with parseable
+ * figures produces a departing-residence entry. Shared by both IO loaders so
+ * the instant decision and the persisted evaluation can never disagree.
+ */
+export function departingResidenceInput(
+  app: Pick<LoanApplication, "currentPropertyDisposition" | "departingResidence">,
+): IncomePathsCoreInput["departingResidence"] {
+  if (app.currentPropertyDisposition !== "converted_to_rental") return null;
+  const dr = app.departingResidence as {
+    estimatedMarketRent?: number | string | null;
+    monthlyPitia?: number | string | null;
+  } | null;
+  if (!dr || dr.estimatedMarketRent === undefined || dr.monthlyPitia === undefined) return null;
+  return { estimatedMarketRent: dr.estimatedMarketRent, monthlyPitia: dr.monthlyPitia };
+}
+
+/** Pre-lock subject PITIA estimate for the DSCR ratio (30-yr at the funnel's
+ *  advisory assumptions — the ratio is always manual-review, so an estimate
+ *  is honest here; the lender's lock reprices it). Null until price and down
+ *  payment are captured. */
+export function estimateSubjectPitia(
+  purchasePrice: unknown,
+  downPayment: unknown,
+): number | null {
+  const price = numOrNull(purchasePrice);
+  const down = numOrNull(downPayment);
+  if (price === null || down === null || price <= 0) return null;
+  const piti = estimateMonthlyPITI(price, down);
+  return piti > 0 ? roundCents(piti) : null;
+}
+
+/**
  * IO layer: load an application's income facts and evaluate every path. Reads
  * exactly what the instant-decision path reads, plus rental properties from
  * the application's incomeSources jsonb, the latest captured bank-statement
@@ -294,8 +360,10 @@ export async function evaluateIncomePaths(app: LoanApplication): Promise<Evaluat
           numberOfUnits: propertyInfo.numberOfUnits,
           occupancyType: propertyInfo.occupancyType,
           estimatedMarketRent: propertyInfo.estimatedMarketRent,
+          estimatedPitia: estimateSubjectPitia(app.purchasePrice, app.downPayment),
         }
       : null,
+    departingResidence: departingResidenceInput(app),
   };
   const result = computeIncomePaths(input);
   return {

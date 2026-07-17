@@ -133,11 +133,13 @@ from application data, credit tradelines, bank transactions, or public records.
 ## Backlog (processed top-down, one per daily run)
 
 ### S-07: Rental Income Conversion (retaining current primary as a rental)
-Status: Proposed
+Status: **Implemented 2026-07-17** (non-W2 plan §3.4; migration `0037` adds the intake fields)
 Story: The borrower is converting their current primary residence to an investment property and wants its projected rent to offset that property's PITIA on the new application.
-Guideline: Fannie Mae Selling Guide B3-3.1-08
-Signal: application field for current-property disposition = "retain as rental" with no 12-month rental history on tax returns. *(Note: intake doesn't collect this disposition field yet — implementation includes adding it.)*
-Rule: Offset = (Gross Market Rent × 0.75) − retained property PITIA; a negative result adds to DTI. Example: rent $2,000 × 0.75 = $1,500; PITIA $1,800 → −$300/month (net debt).
+Guideline: Fannie Mae Selling Guide **B3-3.8-01** (Rental Income, 10/08/2025; formerly B3-3.1-08) — the current text has **no equity requirement and no prior-rental-history restriction** for a departing residence (verified live 2026-07-17; the 30%-equity / 1-year-management rules circulating in older sources are stale — see the non-W2 plan Appendix A.3). Recently converted properties need the most recent Schedule E confirming no prior rental activity; conversions also see B3-6-06.
+Signal: `loan_applications.current_property_disposition = "converted_to_rental"` + `departing_residence` jsonb (`{ address?, estimatedMarketRent, monthlyPitia }`), validated by `departingResidenceSchema`
+Rule: the departing residence joins the **per-property** B3-3.8-01 offset set (75% × projected market rent − retained PITIA; positive → qualifying income at decision-grade provenance, negative → monthly obligations always — same gates as S-05). Because the rent is **projected**, the rental path flags manual review whenever a departing residence is included (PLATFORM POLICY, ledger `platform-s07-departing-projected-rent-review`), and it never enters the DSCR portfolio.
+Engine: `departingResidenceInput` (orchestrator IO gate) → synthesized entry in `computeRentalPath`; borrower flag `RENTAL_CONVERSION_OFFSET` in `preUnderwriting.ts`
+Tests: `tests/incomeOrchestrator.test.ts` (departing gain gated / loss always / review note), `tests/preUnderwriting flag coverage`
 Resolution: "We applied a 25% vacancy factor to your estimated market rent per investor guidelines. Please upload a rental appraisal or executed lease to verify these figures."
 
 ### S-08: Self-Employed Declining Income Trend

@@ -11,6 +11,8 @@ import {
   incomeEvaluationFingerprint,
   loadLatestBankStatementAnalysis,
   hasMortgageTypeLiability,
+  departingResidenceInput,
+  estimateSubjectPitia,
   type IncomePathsCoreInput,
 } from "./income/orchestrator";
 import type { IncomeOrchestrationResult } from "@shared/incomePaths";
@@ -218,8 +220,11 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
           numberOfUnits: propertyInfo.numberOfUnits,
           occupancyType: propertyInfo.occupancyType,
           estimatedMarketRent: propertyInfo.estimatedMarketRent,
+          estimatedPitia: estimateSubjectPitia(app.purchasePrice, app.downPayment),
         }
       : null,
+    // S-07: a converting departing residence joins the per-property offsets.
+    departingResidence: departingResidenceInput(app),
   };
   const income = computeIncomePaths(incomeInput);
 

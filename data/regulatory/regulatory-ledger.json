@@ -462,6 +462,17 @@
       "lastVerified": "2026-07-17",
       "reviewIntervalDays": 180,
       "notes": "Resolves the reference doc's former open question on owner W-2 treatment. No double-count: computeAgencyWageIncome skips isSelfEmployed employment rows by design."
+    },
+    {
+      "id": "platform-s07-departing-projected-rent-review",
+      "rule": "S-07 departing-residence conversion: the offset runs on PROJECTED market rent, so any evaluation including a departing residence carries requiresManualReview until a rental appraisal (Form 1007) or executed lease plus the most recent Schedule E (newly-placed-in-service confirmation) is verified; the departing residence never enters the DSCR portfolio view",
+      "value": "always manual review while projected; standard B3-3.8-01 per-property math otherwise",
+      "citation": "PLATFORM POLICY - conservative overlay. VERIFIED AGENCY BASELINE (B3-3.8-01, fetched 2026-07-17): the current section imposes NO equity requirement and NO prior-rental-history restriction on a departing residence (the 30%-equity / 1-year-management rules in older secondary sources are stale); it requires Schedule E confirmation for recently converted properties and standard rent documentation (lease or Form 1007/1025). The always-review overlay reflects that projected rent is the weakest evidence class.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.1-08/rental-income",
+      "codeRef": "server/services/income/orchestrator.ts departingResidenceInput; server/services/income/paths/rental.ts departingResidenceIncluded; migration 0037",
+      "lastVerified": "2026-07-17",
+      "reviewIntervalDays": 180,
+      "notes": "Positive projected offsets additionally sit behind the decision-grade provenance gate (platform-rental-preliminary-asymmetry); a projected LOSS counts immediately — conservative in both directions."
     }
   ]
 }
