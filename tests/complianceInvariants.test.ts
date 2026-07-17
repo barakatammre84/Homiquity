@@ -37,6 +37,7 @@ const AI_IMPORT_PATTERNS = [
   /from\s+["']@google\/genai["']/,
   /from\s+["'][^"']*coachingService["']/,
   /from\s+["'][^"']*\/gemini["']/,
+  /from\s+["'][^"']*riskBrief["']/,
   /@anthropic-ai\/sdk/,
 ];
 
@@ -298,6 +299,35 @@ describe("Reg N / UDAAP: borrower-facing AI coach output rides the deterministic
     expect(svc).toContain("logAiInteraction");
     expect(svc).toMatch(/workflow:\s*"ai_coach"/);
     expect(svc).toMatch(/provider:\s*"claude"/);
+  });
+});
+
+describe("Advisory AI risk brief (M-7): narrates decisions, never makes or delivers them", () => {
+  it("the adverse-action path never imports the risk brief", () => {
+    // The brief must be unusable as adverse-action content (ECOA §1002.9): the
+    // notice chokepoint and the letter generator stay AI-free.
+    for (const module of [
+      "server/services/adverseActionDelivery.ts",
+      "server/services/pdfLetterGenerator.ts",
+      "server/services/creditService.ts",
+    ]) {
+      expect(read(module)).not.toMatch(/riskBrief/);
+    }
+  });
+
+  it("every risk-brief model call lands in the ai_interactions governance log as internal_only", () => {
+    const source = read("server/services/riskBrief.ts");
+    expect(source).toContain("logAiInteraction");
+    expect(source).toMatch(/workflow:\s*"risk_brief"/);
+    expect(source).toMatch(/classification:\s*"internal_only"/);
+    expect(source).toContain("RISK_BRIEF_DISCLAIMER");
+  });
+
+  it("the narrative is echo-only: unsourced numbers force the deterministic fallback", () => {
+    const source = read("server/services/riskBrief.ts");
+    expect(source).toContain("findUnsourcedNumbers");
+    expect(source).toContain("buildDeterministicBrief");
+    expect(source).toMatch(/validation_failed/);
   });
 });
 
