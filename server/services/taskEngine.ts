@@ -1,15 +1,18 @@
 import { db } from "../db";
-import { 
-  tasks, 
-  taskEvents, 
-  taskAuditLog, 
+import {
+  tasks,
+  taskEvents,
+  taskAuditLog,
   slaClassConfigs,
   taskTypeSlaMapping,
   escalationActions,
   users,
   loanApplications,
   isInternalStaffRole,
+  TASK_STATUSES,
+  ACTIVE_TASK_STATUSES,
   type Task,
+  type TaskStatus,
   type InsertTask,
   type TaskEvent,
   type InsertTaskEvent,
@@ -19,15 +22,20 @@ import {
 } from "@shared/schema";
 import { eq, and, isNull, lt, desc, asc, inArray, sql, isNotNull } from "drizzle-orm";
 
-// Role mapping between user roles (lowercase) and task owner roles (uppercase)
 /**
- * Task-engine "still being worked" statuses (tasks.status declared vocabulary:
- * OPEN, IN_PROGRESS, BLOCKED, COMPLETED, EXPIRED). NOTE: the table also holds
- * legacy lowercase rows ("pending") written before the engine existed — those
- * are invisible to these sweeps until the vocabulary is unified.
+ * A status outside TASK_STATUSES reached updateTaskStatus — routes translate
+ * this to a 400 with the allowed vocabulary instead of writing the phantom.
  */
-const ENGINE_OPEN_TASK_STATUSES = ["OPEN", "IN_PROGRESS", "BLOCKED"] as const;
+export class InvalidTaskStatusError extends Error {
+  constructor(status: string) {
+    super(
+      `Invalid task status "${status}" — allowed: ${TASK_STATUSES.join(", ")}`,
+    );
+    this.name = "InvalidTaskStatusError";
+  }
+}
 
+// Role mapping between user roles (lowercase) and task owner roles (uppercase)
 const USER_ROLE_TO_OWNER_ROLE: Record<string, string> = {
   "admin": "ADMIN",
   "lo": "LO",
@@ -271,13 +279,18 @@ export class TaskEngineService {
     return { task, event: { ...taskEvent, resultingTaskId: task.id } };
   }
 
-  // Update task status
+  // Update task status. Rejects non-canonical values at run time — client JSON
+  // reaches here through routes, and an unvocabulary write is how the table
+  // ended up holding "pending"/"submitted" rows invisible to every SLA sweep.
   async updateTaskStatus(
-    taskId: string, 
-    newStatus: string, 
-    userId?: string, 
+    taskId: string,
+    newStatus: TaskStatus,
+    userId?: string,
     notes?: string
   ): Promise<Task | null> {
+    if (!TASK_STATUSES.includes(newStatus)) {
+      throw new InvalidTaskStatusError(newStatus);
+    }
     const [currentTask] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     if (!currentTask) return null;
 
@@ -456,7 +469,7 @@ export class TaskEngineService {
   }
 
   // Get tasks by owner role (accepts both uppercase and lowercase roles)
-  async getTasksByOwnerRole(ownerRole: string, status?: string): Promise<TaskWithSlaStatus[]> {
+  async getTasksByOwnerRole(ownerRole: string, status?: TaskStatus): Promise<TaskWithSlaStatus[]> {
     // Normalize to uppercase owner role format
     const normalizedRole = userRoleToOwnerRole(ownerRole);
     const conditions = [eq(tasks.ownerRole, normalizedRole)];
@@ -477,7 +490,7 @@ export class TaskEngineService {
   }
 
   // Get tasks assigned to a user
-  async getTasksForUser(userId: string, status?: string): Promise<TaskWithSlaStatus[]> {
+  async getTasksForUser(userId: string, status?: TaskStatus): Promise<TaskWithSlaStatus[]> {
     const conditions = [eq(tasks.assignedToUserId, userId)];
     if (status) {
       conditions.push(eq(tasks.status, status));
@@ -560,7 +573,7 @@ export class TaskEngineService {
       .from(tasks)
       .where(
         and(
-          inArray(tasks.status, [...ENGINE_OPEN_TASK_STATUSES]),
+          inArray(tasks.status, [...ACTIVE_TASK_STATUSES]),
           lt(tasks.slaDueAt, now),
           lt(tasks.escalationLevel, 4)
         )
@@ -596,7 +609,7 @@ export class TaskEngineService {
     const allTasks = await db
       .select()
       .from(tasks)
-      .where(inArray(tasks.status, [...ENGINE_OPEN_TASK_STATUSES]));
+      .where(inArray(tasks.status, [...ACTIVE_TASK_STATUSES]));
 
     const tasksWithStatus = allTasks.map(task => ({
       ...task,

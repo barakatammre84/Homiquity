@@ -10,6 +10,10 @@ import {
   isInFlightLoanAppStatus,
   isValidLoanAppTransition,
   pickActiveLoanApplication,
+  TASK_STATUSES,
+  ACTIVE_TASK_STATUSES,
+  TERMINAL_TASK_STATUSES,
+  TASK_VERIFICATION_STATUSES,
 } from "../shared/schema";
 
 /**
@@ -276,6 +280,160 @@ describe("transition table integrity", () => {
 
   it("every status has display metadata", () => {
     expect(Object.keys(LOAN_APP_STATUS_META).sort()).toEqual([...LOAN_APP_STATUSES].sort());
+  });
+});
+
+/**
+ * tasks.status vocabulary — same guardrails for the task table, added when the
+ * dual-vocabulary rows were unified (migration 0033). The failure class: the
+ * table held engine-written "OPEN"/"COMPLETED" alongside pipeline-written
+ * "pending" and route-written "submitted"/"verified", so SLA sweeps skipped
+ * legacy rows and the borrower dashboard counted engine-COMPLETED tasks as
+ * open action items (it compared verificationStatus values against status).
+ */
+describe("task status vocabulary is canonical", () => {
+  const TASK_CANONICAL = new Set<string>(TASK_STATUSES);
+  const VERIFICATION_CANONICAL = new Set<string>(TASK_VERIFICATION_STATUSES);
+
+  // Variable names that hold a task row across server + client code. Bare "t"
+  // is deliberately excluded — it binds to documents/conditions/invites in the
+  // same files, which have their own (lowercase) vocabularies.
+  const TASK_VAR = "(?:task|currentTask|existingTask|updatedTask|newTask|selectedTask)";
+
+  it("every literal compared against <task>.status is canonical", () => {
+    const RE = new RegExp(
+      `${TASK_VAR}\\.status\\s*[!=]==?\\s*["']([A-Za-z_]+)["']`,
+      "g",
+    );
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(RE)) {
+        if (!TASK_CANONICAL.has(match[1])) {
+          violations.push(`${rel}: compares <task>.status to phantom "${match[1]}"`);
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("every literal in includes() lists tested against <task>.status is canonical", () => {
+    const RE = new RegExp(
+      `\\[((?:\\s*["'][A-Za-z_]+["']\\s*,?)+)\\]\\.includes\\(\\s*${TASK_VAR}\\.status\\s*\\)`,
+      "g",
+    );
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(RE)) {
+        for (const litMatch of match[1].matchAll(/["']([A-Za-z_]+)["']/g)) {
+          if (!TASK_CANONICAL.has(litMatch[1])) {
+            violations.push(`${rel}: includes() list contains phantom "${litMatch[1]}"`);
+          }
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("every status list fed to inArray(tasks.status, …) is canonical", () => {
+    // Same Drizzle-column idiom scan as the loanApplications one above:
+    // resolves inline array literals, `[...NAME]`, and same-file const arrays.
+    // Lists derived from TASK_STATUSES have no literals and are canonical by
+    // construction — skipped.
+    const INARRAY_RE = /inArray\(\s*tasks\.status\s*,\s*([^)]*)\)/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(INARRAY_RE)) {
+        let expr = match[1].trim();
+        const ident = expr.match(/^\[?\s*(?:\.\.\.)?\s*([A-Za-z_$][\w$]*)\s*\]?$/);
+        if (ident) {
+          const decl = source.match(
+            new RegExp(`const\\s+${ident[1]}[^=]*=\\s*\\[([^\\]]*)\\]`),
+          );
+          if (!decl) continue; // derived or imported — typing covers it
+          expr = decl[1];
+        }
+        for (const lit of expr.matchAll(/["']([A-Za-z_]+)["']/g)) {
+          if (!TASK_CANONICAL.has(lit[1])) {
+            violations.push(
+              `${rel}: inArray(tasks.status, …) list contains phantom "${lit[1]}"`,
+            );
+          }
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("every literal in eq/ne(tasks.status, …) is canonical", () => {
+    const EQ_RE = /\b(?:eq|ne)\(\s*tasks\.status\s*,\s*["']([A-Za-z_]+)["']\s*\)/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(EQ_RE)) {
+        if (!TASK_CANONICAL.has(match[1])) {
+          violations.push(`${rel}: eq/ne(tasks.status, "${match[1]}") uses a phantom status`);
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("no raw SQL IN-list on tasks.status (use inArray with typed values)", () => {
+    // sql`${tasks.status} IN (…)` carries string literals the type system and
+    // the scans above can't see — the optimizationEngine sweep hid this way.
+    const RE = /sql`[^`]*\$\{tasks\.status\}\s+IN\s*\(/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      if (RE.test(source)) {
+        violations.push(`${rel}: raw sql IN-list on tasks.status`);
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("every literal compared against <task>.verificationStatus is canonical", () => {
+    const RE = new RegExp(
+      `${TASK_VAR}\\.verificationStatus\\s*[!=]==?\\s*["']([A-Za-z_]+)["']`,
+      "g",
+    );
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(RE)) {
+        if (!VERIFICATION_CANONICAL.has(match[1])) {
+          violations.push(
+            `${rel}: compares <task>.verificationStatus to phantom "${match[1]}"`,
+          );
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("active + terminal subsets partition the vocabulary exactly", () => {
+    expect(
+      [...ACTIVE_TASK_STATUSES, ...TERMINAL_TASK_STATUSES].sort(),
+    ).toEqual([...TASK_STATUSES].sort());
+  });
+
+  it("lifecycle and verification vocabularies never share a value", () => {
+    // The dashboard defect was exactly this ambiguity: "pending"/"rejected"
+    // compared against the wrong column. Keeping the two sets disjoint means a
+    // literal can always be attributed to one axis.
+    const overlap = TASK_STATUSES.filter((s) =>
+      (TASK_VERIFICATION_STATUSES as readonly string[]).includes(s),
+    );
+    expect(overlap).toEqual([]);
   });
 });
 

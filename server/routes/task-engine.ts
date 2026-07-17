@@ -1,9 +1,23 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
-import { isStaffRole, isInternalStaffRole, insertTaskSchema } from "@shared/schema";
+import {
+  isStaffRole,
+  isInternalStaffRole,
+  insertTaskSchema,
+  TASK_STATUSES,
+  type TaskStatus,
+} from "@shared/schema";
 import { parseBodyOr400 } from "./validate";
 import { firstQueryValue } from "./queryParams";
+
+// Narrow an optional ?status= query value to the canonical vocabulary.
+// Returns undefined for absent, null for a phantom value (caller 400s) — a
+// phantom silently matching nothing is how the dual-vocabulary rows hid.
+function parseStatusFilter(raw: string | undefined): TaskStatus | null | undefined {
+  if (raw === undefined) return undefined;
+  return (TASK_STATUSES as readonly string[]).includes(raw) ? (raw as TaskStatus) : null;
+}
 
 // Internal-only staff roles that have global task access.
 // Partner roles (broker, lender) are scoped to their referred applications only.
@@ -276,6 +290,12 @@ export async function registerTaskEngineRoutes(
           updateData.verifiedByUserId = userId;
           updateData.verifiedAt = new Date();
         }
+        // Completion timestamp is server-controlled: a COMPLETED transition
+        // through this route (e.g. the staff-dashboard Verify button) must
+        // stamp completedAt just like the task engine's own writers do.
+        if (updateData.status === "COMPLETED" && !task.completedAt) {
+          updateData.completedAt = new Date();
+        }
       } else {
         // Non-staff (assignee): reject any attempt to set staff-controlled fields.
         const forbidden = Object.keys(req.body).filter((k) =>
@@ -363,7 +383,13 @@ export async function registerTaskEngineRoutes(
         documentId,
       });
 
-      await storage.updateTask(taskId, { status: "submitted" });
+      // Lifecycle stays canonical: the upload moves the task to IN_PROGRESS;
+      // "awaiting staff review" is the verification axis, not a status. (This
+      // write was the source of the legacy "submitted" rows.)
+      await storage.updateTask(taskId, {
+        status: "IN_PROGRESS",
+        verificationStatus: "pending",
+      });
 
       await storage.createDealActivity({
         applicationId: task.applicationId,
@@ -439,16 +465,28 @@ export async function registerTaskEngineRoutes(
       });
 
       if (isVerified) {
-        const task = await storage.getTask(taskId);
-        if (task) {
-          await storage.updateTask(taskId, {
-            status: "verified",
-            verificationStatus: "verified",
-            verifiedByUserId: req.user!.id,
-            verifiedAt: new Date(),
-            verificationNotes,
-          });
-        }
+        // Verification completes the task; the verification verdict lives in
+        // verificationStatus. (This write was the source of the legacy
+        // "verified" status rows.)
+        await storage.updateTask(taskId, {
+          status: "COMPLETED",
+          completedAt: new Date(),
+          verificationStatus: "verified",
+          verifiedByUserId: req.user!.id,
+          verifiedAt: new Date(),
+          verificationNotes,
+        });
+      } else {
+        // An explicit rejection reopens the task for the borrower and records
+        // the verdict — previously a reject left the task frozen as
+        // "submitted" and the client's rejected-state UI could never fire.
+        await storage.updateTask(taskId, {
+          status: "OPEN",
+          verificationStatus: "rejected",
+          verifiedByUserId: req.user!.id,
+          verifiedAt: new Date(),
+          verificationNotes,
+        });
       }
 
       res.json(updated);
@@ -554,7 +592,10 @@ export async function registerTaskEngineRoutes(
       }
       // Normalize to owner-role form (e.g. "underwriter" -> "UW") so the lookup is
       // correct regardless of the casing/alias the client sends.
-      const status = firstQueryValue(req.query.status);
+      const status = parseStatusFilter(firstQueryValue(req.query.status));
+      if (status === null) {
+        return res.status(400).json({ error: `Invalid status filter — allowed: ${TASK_STATUSES.join(", ")}` });
+      }
       const tasks = await taskEngine.getTasksByOwnerRole(userRoleToOwnerRole(req.params.role), status);
       res.json(tasks);
     } catch (error) {
@@ -567,7 +608,10 @@ export async function registerTaskEngineRoutes(
   app.get("/api/task-engine/my-tasks", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const status = firstQueryValue(req.query.status);
+      const status = parseStatusFilter(firstQueryValue(req.query.status));
+      if (status === null) {
+        return res.status(400).json({ error: `Invalid status filter — allowed: ${TASK_STATUSES.join(", ")}` });
+      }
       const tasks = await taskEngine.getTasksForUser(userId, status);
       res.json(tasks);
     } catch (error) {
@@ -641,6 +685,11 @@ export async function registerTaskEngineRoutes(
 
       if (!status) {
         return res.status(400).json({ error: "Status is required" });
+      }
+      if (!(TASK_STATUSES as readonly string[]).includes(status)) {
+        // A phantom status (e.g. legacy "submitted") written here is invisible
+        // to every SLA sweep and dashboard count — reject it at the boundary.
+        return res.status(400).json({ error: `Invalid status "${status}" — allowed: ${TASK_STATUSES.join(", ")}` });
       }
 
       // Fetch task first to check authorization

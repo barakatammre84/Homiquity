@@ -35,16 +35,24 @@ interface DashboardData {
   applications: LoanApplication[];
 }
 
-function getTaskStatusBadge(status: string) {
-  const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-    pending: { variant: "secondary", label: "Pending" },
-    in_progress: { variant: "outline", label: "In Progress" },
-    submitted: { variant: "default", label: "Submitted" },
-    verified: { variant: "default", label: "Verified" },
-    rejected: { variant: "destructive", label: "Needs Attention" },
-    completed: { variant: "default", label: "Completed" },
+// Badge over both task axes: lifecycle (tasks.status, canonical uppercase) and
+// the verification verdict (verificationStatus) — a rejection outranks the
+// lifecycle label because it is the thing the borrower must act on.
+function getTaskStatusBadge(task: Pick<Task, "status" | "verificationStatus">) {
+  if (task.verificationStatus === "rejected" && task.status !== "COMPLETED") {
+    return <Badge variant="destructive">Needs Attention</Badge>;
+  }
+  const config: Record<Task["status"], { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    OPEN: { variant: "secondary", label: "Pending" },
+    IN_PROGRESS:
+      task.verificationStatus === "pending"
+        ? { variant: "default", label: "Submitted" }
+        : { variant: "outline", label: "In Progress" },
+    BLOCKED: { variant: "secondary", label: "Blocked" },
+    COMPLETED: { variant: "default", label: "Completed" },
+    EXPIRED: { variant: "secondary", label: "Expired" },
   };
-  const c = config[status] || { variant: "secondary" as const, label: status };
+  const c = config[task.status] || { variant: "secondary" as const, label: task.status };
   return <Badge variant={c.variant}>{c.label}</Badge>;
 }
 
@@ -149,15 +157,15 @@ export default function Tasks() {
 
       const document = await uploadResponse.json();
 
+      // Linking the document is what advances the task (IN_PROGRESS +
+      // verification pending) — done server-side by this POST. The old
+      // follow-up PATCH { status: "submitted" } always 403'd for borrowers
+      // (status is a staff-only field), surfacing a spurious failure toast
+      // after a successful upload.
       const linkResponse = await apiRequest("POST", `/api/tasks/${selectedTask.id}/documents`, {
         documentId: document.id,
       });
       await linkResponse.json();
-
-      const updateResponse = await apiRequest("PATCH", `/api/tasks/${selectedTask.id}`, {
-        status: "submitted",
-      });
-      await updateResponse.json();
 
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
@@ -215,14 +223,26 @@ export default function Tasks() {
   );
 
   // Scope to the ACTIVE application — tasks from old/denied applications are
-  // noise, not next steps (the "56 pending tasks" defect).
+  // noise, not next steps (the "56 pending tasks" defect). EXPIRED tasks are
+  // dead, not to-dos, so they don't count against progress either.
   const myTasks = (tasks || []).filter(
-    (t) => !activeApplication || t.applicationId === activeApplication.id,
+    (t) =>
+      (!activeApplication || t.applicationId === activeApplication.id) &&
+      t.status !== "EXPIRED",
   );
-  const pendingTasks = myTasks.filter((t) => ["pending", "in_progress"].includes(t.status));
-  const submittedTasks = myTasks.filter((t) => t.status === "submitted");
-  const completedTasks = myTasks.filter((t) => ["verified", "completed"].includes(t.status));
-  const rejectedTasks = myTasks.filter((t) => t.status === "rejected");
+  // Buckets over the canonical vocabulary (the old lowercase groups matched
+  // zero engine-written tasks, leaving every OPEN task invisible on this page).
+  // A "rejected" verdict on a non-completed task outranks its lifecycle bucket.
+  const rejectedTasks = myTasks.filter(
+    (t) => t.verificationStatus === "rejected" && t.status !== "COMPLETED",
+  );
+  const pendingTasks = myTasks.filter(
+    (t) => (t.status === "OPEN" || t.status === "BLOCKED") && t.verificationStatus !== "rejected",
+  );
+  const submittedTasks = myTasks.filter(
+    (t) => t.status === "IN_PROGRESS" && t.verificationStatus !== "rejected",
+  );
+  const completedTasks = myTasks.filter((t) => t.status === "COMPLETED");
 
   // Milestone grouping: document requests collapse into ONE checklist card
   // instead of a wall of near-identical task rows.
@@ -293,7 +313,7 @@ export default function Tasks() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 flex-wrap mb-2">
                                   <h4 className="font-medium">{task.title}</h4>
-                                  {getTaskStatusBadge(task.status)}
+                                  {getTaskStatusBadge(task)}
                                   {task.priority && getPriorityBadge(task.priority)}
                                 </div>
                                 {task.description && (
@@ -391,7 +411,7 @@ export default function Tasks() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 flex-wrap mb-2">
                                   <h4 className="font-medium">{task.title}</h4>
-                                  {getTaskStatusBadge(task.status)}
+                                  {getTaskStatusBadge(task)}
                                   {task.priority && getPriorityBadge(task.priority)}
                                 </div>
                                 {task.description && (
@@ -448,7 +468,7 @@ export default function Tasks() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 flex-wrap mb-2">
                                   <h4 className="font-medium">{task.title}</h4>
-                                  {getTaskStatusBadge(task.status)}
+                                  {getTaskStatusBadge(task)}
                                 </div>
                                 {task.documentCategory && (
                                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -489,7 +509,7 @@ export default function Tasks() {
                                   </p>
                                 )}
                               </div>
-                              {getTaskStatusBadge(task.status)}
+                              {getTaskStatusBadge(task)}
                             </div>
                           </CardContent>
                         </Card>

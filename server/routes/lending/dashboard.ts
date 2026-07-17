@@ -3,7 +3,12 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
-import { insertBorrowerDeclarationsSchema, type User } from "@shared/schema";
+import {
+  insertBorrowerDeclarationsSchema,
+  ACTIVE_TASK_STATUSES,
+  TERMINAL_TASK_STATUSES,
+  type User,
+} from "@shared/schema";
 import { computeNextAction } from "../../services/nextAction";
 import { getUserActivitySummary } from "../../services/activitySummary";
 import { buildDocumentChecklist } from "../../services/documentChecklist";
@@ -134,8 +139,12 @@ export function registerDashboardRoutes(
         activitiesMap[appId] = activityRows.filter((a) => a.applicationId === appId).slice(0, 10);
       }
 
+      // ACTIVE_TASK_STATUSES, not a hand-listed array: the previous filter
+      // compared verificationStatus values ("pending", "rejected") against
+      // tasks.status, so engine tasks (OPEN/IN_PROGRESS/BLOCKED) were never
+      // counted and completed legacy rows never dropped out.
       const pendingTaskRows = taskRows.filter((t) =>
-        ["pending", "in_progress", "rejected"].includes(t.status),
+        ACTIVE_TASK_STATUSES.includes(t.status),
       );
       const pendingTaskCount = pendingTaskRows.length;
       // Per-application counts so the dashboard's "next step" signal reflects
@@ -283,8 +292,10 @@ export function registerDashboardRoutes(
       // Build action items list
       const items: any[] = [];
 
-      // Add document tasks that aren't completed/verified
-      for (const task of borrowerTasks.filter(t => t.status !== "completed" && t.status !== "verified")) {
+      // Add tasks still in flight. The old lowercase filter ("completed"/
+      // "verified") never matched the engine's COMPLETED, so finished tasks
+      // kept rendering as open borrower action items.
+      for (const task of borrowerTasks.filter(t => !TERMINAL_TASK_STATUSES.includes(t.status))) {
         items.push({
           id: task.id,
           type: task.taskType === "document_request" ? "document" : task.taskType,
@@ -292,7 +303,10 @@ export function registerDashboardRoutes(
           description: task.description || task.documentInstructions,
           priority: task.priority || "normal",
           dueDate: task.dueDate?.toISOString(),
-          status: task.status === "submitted" ? "in_progress" : "pending",
+          // Action-item DISPLAY status (its own client-facing vocabulary):
+          // in_progress once the borrower has acted (doc submitted → task
+          // IN_PROGRESS), pending while the ball is in their court.
+          status: task.status === "IN_PROGRESS" ? "in_progress" : "pending",
           actionUrl: `/tasks/${task.id}`,
           actionLabel: task.taskType === "document_request" ? "Upload" : "Complete",
         });
@@ -342,7 +356,7 @@ export function registerDashboardRoutes(
         total: items.length,
         urgent: items.filter(i => i.priority === "urgent").length,
         pending: items.filter(i => i.status === "pending").length,
-        completed: borrowerTasks.filter(t => t.status === "completed" || t.status === "verified").length,
+        completed: borrowerTasks.filter(t => t.status === "COMPLETED").length,
       };
 
       res.json({ items, stats });

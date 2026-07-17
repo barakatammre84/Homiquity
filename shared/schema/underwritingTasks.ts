@@ -95,6 +95,55 @@ export type TaskTypeCode = typeof TASK_TYPE_CODES[number];
 export const ESCALATION_LEVELS = [0, 1, 2, 3, 4] as const;
 export type EscalationLevel = typeof ESCALATION_LEVELS[number];
 
+/**
+ * Task lifecycle statuses — the ONLY values tasks.status may hold.
+ *
+ * The column spent a year holding two vocabularies at once: the task engine
+ * wrote this uppercase set while the pipeline engine's document tasks wrote
+ * lowercase "pending" and the legacy upload/verify routes wrote "submitted"/
+ * "verified" — so SLA sweeps skipped pipeline tasks and completed tasks kept
+ * rendering as open borrower action items. Migration 0033 mapped every legacy
+ * value onto this set. Do not add lowercase aliases; document-verification
+ * outcomes ("pending review", "rejected") belong in verificationStatus, not here.
+ */
+export const TASK_STATUSES = [
+  "OPEN",
+  "IN_PROGRESS",
+  "BLOCKED",
+  "COMPLETED",
+  "EXPIRED",
+] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+// The "still needs work" subset every SLA/escalation/count query filters on.
+// Derived here once so sweeps and dashboards cannot drift apart again.
+export const ACTIVE_TASK_STATUSES: readonly TaskStatus[] = [
+  "OPEN",
+  "IN_PROGRESS",
+  "BLOCKED",
+];
+
+// Terminal subset — no SLA clock, no escalation, no action item.
+export const TERMINAL_TASK_STATUSES: readonly TaskStatus[] = [
+  "COMPLETED",
+  "EXPIRED",
+];
+
+/**
+ * Document-verification outcomes for a task's submitted document — a SEPARATE
+ * axis from the lifecycle status above. "pending" here means "awaiting staff
+ * review", which is NOT a lifecycle state (the lifecycle stays IN_PROGRESS
+ * while review is pending). The borrower dashboard once compared these values
+ * against tasks.status and counted engine-COMPLETED tasks as open items.
+ */
+export const TASK_VERIFICATION_STATUSES = [
+  "pending",
+  "verified",
+  "rejected",
+  "needs_review",
+] as const;
+export type TaskVerificationStatus = (typeof TASK_VERIFICATION_STATUSES)[number];
+
 // Tasks for document requests and workflow items
 export const tasks = pgTable("tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -128,14 +177,14 @@ export const tasks = pgTable("tasks", {
   isCustomRequest: boolean("is_custom_request").default(false), // true for custom/unique document requests
   
   // Status
-  status: varchar("status", { length: 50 }).default("OPEN").notNull(), // OPEN, IN_PROGRESS, BLOCKED, COMPLETED, EXPIRED
-  priority: varchar("priority", { length: 20 }).default("NORMAL"), // LOW, NORMAL, HIGH, CRITICAL
+  status: varchar("status", { length: 50 }).$type<TaskStatus>().default("OPEN").notNull(),
+  priority: varchar("priority", { length: 20 }).default("NORMAL"), // LOW, NORMAL, HIGH, CRITICAL (legacy pipeline rows also hold lowercase high/normal)
   
   // Due Date
   dueDate: timestamp("due_date"),
   
   // Verification (for document tasks)
-  verificationStatus: varchar("verification_status", { length: 50 }), // pending, verified, rejected, needs_review
+  verificationStatus: varchar("verification_status", { length: 50 }).$type<TaskVerificationStatus>(),
   verificationNotes: text("verification_notes"),
   verifiedByUserId: varchar("verified_by_user_id").references(() => users.id),
   verifiedAt: timestamp("verified_at"),
@@ -173,11 +222,20 @@ export const tasks = pgTable("tasks", {
   index("idx_tasks_app_status").on(table.applicationId, table.status),
 ]);
 
-export const insertTaskSchema = createInsertSchema(tasks).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+// createInsertSchema derives z.string() for varchar regardless of $type, so the
+// vocabulary columns are pinned to z.enum explicitly — the same closure that
+// stopped the unvalidated commission-status writes (#221). Without this, the
+// staff PATCH /api/tasks/:id route accepts any string into status.
+export const insertTaskSchema = createInsertSchema(tasks)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    status: z.enum(TASK_STATUSES).optional(),
+    verificationStatus: z.enum(TASK_VERIFICATION_STATUSES).nullable().optional(),
+  });
 
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;

@@ -524,7 +524,10 @@ export async function checkSlaBreaches(): Promise<Array<{
     .from(tasks)
     .leftJoin(loanApplications, eq(tasks.applicationId, loanApplications.id))
     .where(and(
-      sql`${tasks.status} IN ('OPEN', 'IN_PROGRESS')`,
+      // Deliberately narrower than ACTIVE_TASK_STATUSES: BLOCKED tasks are
+      // waiting on someone else, so a pre-breach warning to the assignee is
+      // noise (the escalation sweep still covers them after breach).
+      inArray(tasks.status, ["OPEN", "IN_PROGRESS"]),
       isNotNull(tasks.slaDueAt),
       lte(tasks.slaDueAt, warningWindow),
     ));
