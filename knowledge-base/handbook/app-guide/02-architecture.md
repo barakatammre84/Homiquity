@@ -82,15 +82,39 @@ Order matters — this is the actual middleware chain from `server/app.ts`:
 | PDF letters | PDFKit-generated pre-approval/pre-qualification letters | `server/services/pdfLetterGenerator.ts` |
 | MISMO 3.4 XML | GSE-compliant loan export | `server/mismo.ts`, `server/services/mismoValidation.ts` |
 | File downloads/uploads | GCS signed URLs (client uploads directly to the bucket) | `server/integrations/object_storage/` |
-| Outbound API calls | Plaid, Gemini, OpenAI, Google Maps, RapidAPI (see doc 09) | various services |
+| Outbound API calls | Plaid, Anthropic (Claude), Google Maps, RapidAPI (see doc 09) | various services |
 | Logs | stdout (Vercel/host log drain picks them up) | `log()` in `server/app.ts` |
 
 ## The layering rule
 
 Routes (`server/routes/*`) should stay thin: validate input (Zod), check
 authorization, call **services** or **storage**, shape the response. Business
-logic belongs in `server/services/*`. Database access goes through
-`server/storage.ts` (a single `IStorage` implementation) or, in newer code,
-direct Drizzle queries inside services. When you add a feature, follow the
+logic belongs in `server/services/*`. Database access goes through the
+storage layer (`server/storage/` — see doc 03) or, in newer code, direct
+Drizzle queries inside services. When you add a feature, follow the
 domain-module pattern: schema in `shared/schema/<domain>.ts`, routes in
 `server/routes/<domain>.ts`, page in `client/src/pages/<domain>/`.
+
+### The 2026-07-17 monolith splits (where things live now)
+
+The five largest server files were split into domain modules (PRs #182–#217).
+The conventions, so you add code in the right place:
+
+- **Route registrars** — `server/routes/{borrower,lending,underwriting,agent-broker}/`
+  are directories of sub-registrars composed by an `index.ts` that calls them
+  **in the original registration order**. Express matches routes in
+  registration order, so the call sequence in `index.ts` is a correctness
+  invariant — add new routes to the matching group file; add a new group only
+  at the end of the chain unless you know the ordering is safe.
+- **Storage** — `server/storage/` is a linear inheritance chain of domain
+  classes composed into `DatabaseStorage` in its `index.ts`. `IStorage` is
+  DERIVED from the class (`type IStorage = DatabaseStorage`) — add methods
+  once, in the matching domain file; never re-create a hand-written interface.
+- **Schema** — split schema files are FLAT siblings (`lending*.ts`,
+  `underwriting*.ts`) with the old filename kept as a re-export shim, because
+  the schema-migration guard readdirs `shared/schema/` non-recursively — a
+  subdirectory would silently blind it.
+- **Services** — `credit*.ts`, `coaching*.ts`, `extraction*.ts` families with
+  the old filename as a re-export shim. Module-level mutable state shared
+  across a family (the credit audit hash-chain queue, the coach/extraction
+  clients) lives in a LEAF module the others import.

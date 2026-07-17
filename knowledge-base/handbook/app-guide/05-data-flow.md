@@ -46,19 +46,24 @@ just supporting detail.
   `server/propertyAnalyzer.ts`, `server/routes/calculators.ts`.
 - The pre-approval application is a conversational, step-at-a-time form
   (`client/src/pages/borrower/`); it writes `loan_applications` plus the URLA
-  (Form 1003) tables in `shared/schema/lending.ts` via `server/routes/borrower.ts`.
+  (Form 1003) tables in `shared/schema/lendingCore.ts`/`lendingUrla.ts` via
+  `server/routes/borrower/urla.ts`.
 
 ### 3. Coach
-- `server/routes/coach.ts` + `server/services/coachingService.ts` (OpenAI).
-  Conversations are stored (`shared/schema/coach.ts`) and mined for structured
-  intake data that also lands in the borrower profile.
+- `server/routes/coach.ts` + the `server/services/coaching*.ts` family
+  (Claude Sonnet 5; `coachingService.ts` is the re-export shim, the turn loop
+  lives in `coachingTurn.ts`). Conversations are stored
+  (`shared/schema/coach.ts`) and mined for structured intake data that also
+  lands in the borrower profile.
 
 ### 4. Documents
 - Client asks `server/routes/documents.ts` for an **upload URL** → uploads the
   file **directly to GCS** (the server never proxies bytes).
-- `server/extractionService.ts` runs OCR/AI extraction (paystubs, W-2s, bank
-  statements, tax returns); `server/services/documentConfidence.ts` scores how
-  trustworthy the extraction is.
+- The `server/extraction*.ts` family runs OCR/AI extraction (paystubs, W-2s,
+  bank statements, tax returns; `extractionService.ts` is the re-export shim,
+  per-doc extractors live in `extractionDocuments.ts`);
+  `server/services/documentConfidence.ts` scores how trustworthy the
+  extraction is.
 
 ### 5. Verification
 - `server/plaid.ts` + `server/services/verification.ts`: borrower links
@@ -89,8 +94,8 @@ just supporting detail.
 - **LO handoff & claim (added #135, 2026-07-12):** a submitted application with no
   assigned LO lands in the LO Command Center's **intake pool**; an LO/LOA claims it
   via `POST /api/loan-applications/:applicationId/claim`
-  (`server/routes/underwriting.ts`), which routes through the single
-  `assignLoanOfficer` chokepoint in `server/storage.ts` (atomic claim +
+  (`server/routes/underwriting/pipeline.ts`), which routes through the single
+  `assignLoanOfficer` chokepoint in `server/storage/pipeline.ts` (atomic claim +
   deal-team visibility). The cockpit reads `server/routes/cockpit.ts`
   (`/api/staff/signals`, `/api/staff/applications/:id/cockpit`).
 - `server/services/emailService.ts` — notifications (console-logged until an

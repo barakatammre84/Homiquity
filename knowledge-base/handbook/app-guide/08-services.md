@@ -46,10 +46,10 @@ Charter: [`specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md`](../../specs/) (PR #102)
 
 | Service | Does |
 |---------|------|
-| `../extractionService.ts` | Runs AI extraction on uploaded docs (paystub/W-2/bank statement/tax return) — **owns its own Anthropic (Claude) client**; there is no separate pluggable AI-gateway module (the old `aiGateway.ts` was removed) |
+| `../extraction*.ts` family (shim: `../extractionService.ts`) | Runs AI extraction on uploaded docs (paystub/W-2/bank statement/tax return). Split #209: `extractionCore` (the import-time Anthropic client + storage instances + shared model-call wrapper — **the leaf everything imports**), `extractionValidation` (Zod clamps, consistency checks), `extractionDocuments` (per-doc extractors + simulations), `extractionTaxIntel` (tax-package classification). No separate AI-gateway module |
 | `documentConfidence.ts` | Scores extraction trustworthiness |
 | `taxInsightService.ts` | Derives readiness signals from consumer-uploaded tax returns (the §7216-safe consumer-direct path; routes in `server/routes/taxInsights.ts`) |
-| `coachingService.ts` + `coachTools.ts` + `coachIntake.ts` | AI Homebuyer Coach (Claude Sonnet 5, streaming tool-use) + its structured intake; replies pass the deterministic `loCommsLint` hard-block rail and every model call is logged to `ai_interactions` |
+| `coaching*.ts` family (shim: `coachingService.ts`) + `coachTools.ts` + `coachIntake.ts` | AI Homebuyer Coach (Claude Sonnet 5, streaming tool-use) + its structured intake. Split #204: `coachingClient` (the lazily-built Anthropic singleton + budget constants — the leaf), `coachingContext` (readiness derivations + prompt builders), `coachingPrompt` (the cached system prefix — bump `COACH_PROMPT_VERSION` on any edit), `coachingLint` (the Reg N rail), `coachingTurn` (the SSE tool-loop). Replies pass the deterministic `loCommsLint` hard-block rail and every model call is logged to `ai_interactions` |
 | `coachProfileSync.ts` | Coach → draft-application writeback: chat-captured intake validated with the shared funnel schema, applied `self_reported` to DRAFTS only (verified dimensions locked, TRID trigger evaluated), with an `{applied, skipped}` trail |
 | `aiInteractionLog.ts` | Fire-and-forget writer for the `ai_interactions` governance table (one row per model call) |
 
@@ -57,7 +57,7 @@ Charter: [`specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md`](../../specs/) (PR #102)
 
 | Service | Does |
 |---------|------|
-| `creditService.ts` | FCRA chain: consent capture, credit pulls (soft/hard), adverse action, hash-chained audit log. Denial via the status route auto-generates the Reg B notice (reasons mapped from the HMDA list) |
+| `credit*.ts` family (shim: `creditService.ts`) | FCRA chain: consent capture, credit pulls (soft/hard), adverse action, hash-chained audit log. Split #196: `creditCatalogs` (FCRA/ECOA texts + reason catalog), `creditConsents`, `creditPulls`, `creditAdverseActions` (the §1002.9 `ensureAdverseActionForDenial` chokepoint + HMDA→Reg B map), `creditAuditChain` (**leaf**: the hash-chain writer — deliberately not re-exported), `creditAudit` (AG-1 agent audit + verify/export), `creditConsentDrafts`, `creditRetention`. Denial via the status route auto-generates the Reg B notice |
 | `trid.ts` | TRID six-piece trigger (§1026.2(a)(3)): sole writer of `tridTriggeredAt`, starts the 3-business-day LE clock, hard-stops forward status/stage moves when the LE is overdue |
 | `businessDays.ts` | Shared TRID business-day math (weekends + federal holidays) — never reimplement with calendar arithmetic |
 | `encryptionService.ts` | Field encryption, PII hashing, audit hash-chaining |
