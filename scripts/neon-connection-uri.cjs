@@ -17,6 +17,8 @@
  *   NEON_PROJECT_ID (optional) — only needed when the key sees >1 project.
  *   NEON_DATABASE   (optional) — override the discovered database name.
  *   NEON_ROLE       (optional) — override the discovered role name.
+ *   NEON_BRANCH_NAME (optional) — resolve a NAMED branch instead of the default
+ *                    (used by preview-seed.yml; never set by migrate-prod).
  *
  * API: GET /projects/{project_id}/connection_uri
  *      (query: database_name, role_name required; branch_id optional — defaults
@@ -67,11 +69,18 @@ async function main() {
   }
 
   // 2. Default branch = prod. Neon marks it `default`; tolerate the older `primary`.
+  //    NEON_BRANCH_NAME (opt-in) targets a named branch instead — used by the
+  //    preview-seed workflow. migrate-prod never sets it, so the prod-resolution
+  //    behavior is unchanged (see the 2026-07-13 outage class: default=true is
+  //    what migrate-prod applies to).
   const { branches = [] } = await api(`/projects/${projectId}/branches`);
-  const branch =
-    branches.find((b) => b.default === true) ??
-    branches.find((b) => b.primary === true) ??
-    (branches.length === 1 ? branches[0] : null);
+  const wantName = process.env.NEON_BRANCH_NAME;
+  const branch = wantName
+    ? branches.find((b) => b.name === wantName) ??
+      fail(`no branch named "${wantName}" — have: ${branches.map((b) => b.name).join(", ")}`)
+    : branches.find((b) => b.default === true) ??
+      branches.find((b) => b.primary === true) ??
+      (branches.length === 1 ? branches[0] : null);
   if (!branch) fail(`could not identify the default branch among ${branches.length} branch(es).`);
 
   // 3. Database + owning role on that branch.

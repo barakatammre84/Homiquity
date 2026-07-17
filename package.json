@@ -32,7 +32,8 @@
     "coach:ab": "tsx scripts/coachModelAb.ts",
     "db:start": "docker start homiquity-db 2>/dev/null || docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16",
     "sync": "git pull --no-edit origin main && git push origin main",
-    "save": "git add -A && git commit -m \"checkpoint: $(date '+%Y-%m-%d %H:%M')\" && npm run sync"
+    "save": "git add -A && git commit -m \"checkpoint: $(date '+%Y-%m-%d %H:%M')\" && npm run sync",
+    "db:seed": "tsx server/scripts/runSeed.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",

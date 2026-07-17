@@ -1,0 +1,46 @@
+# Builds/refreshes the PII-free `preview-seed` Neon branch that Vercel Preview
+# deployments point at (doctrine + founder cutover steps:
+# kb/runbooks/NEON_PREVIEW_DB.md). Manual-dispatch only: it is a provisioning
+# action, not a per-commit check. Runs here because NEON_API_KEY exists only as
+# an Actions secret (write-only; no local copy by design).
+#
+# Steps: create/verify the schema-only branch (credentials rotated every run) →
+# adopt the migration journal (schema-only already HAS every object, so
+# migrations are recorded as applied, not re-executed) → run the idempotent
+# synthetic content seed. No connection string or password is ever printed.
+name: preview-seed
+
+on:
+  workflow_dispatch:
+
+jobs:
+  preview-seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prod=false
+      - name: Create/verify the schema-only preview-seed branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: node scripts/neon-preview-seed-branch.cjs
+      - name: Adopt the migration journal on preview-seed
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          NEON_BRANCH_NAME: preview-seed
+        run: |
+          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" pnpm db:migrate:adopt
+      - name: Seed synthetic content
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          NEON_BRANCH_NAME: preview-seed
+        run: |
+          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" pnpm db:seed
