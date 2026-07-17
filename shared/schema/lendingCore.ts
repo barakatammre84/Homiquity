@@ -185,6 +185,55 @@ export function isValidLoanAppTransition(from: LoanAppStatus, to: LoanAppStatus)
   return LOAN_APP_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
+/**
+ * Statuses staff may set directly via PATCH /api/loan-applications/:id/status:
+ * the canonical vocabulary minus system-only states — "draft" belongs to the
+ * borrower funnel, "analyzing"/"expired" are written by automation. The route's
+ * Zod schema and every staff status picker derive from this one list; a
+ * hand-listed picker is how phantom statuses ("in_review",
+ * "conditional_approval", "approved") survived the vocabulary sweeps.
+ */
+export const STAFF_SETTABLE_STATUSES = LOAN_APP_STATUSES.filter(
+  (status) => status !== "draft" && status !== "analyzing" && status !== "expired",
+) as [LoanAppStatus, ...LoanAppStatus[]];
+
+/**
+ * Final credit decisions and the roles allowed to set them on the staff status
+ * route. Every other role must go through the guarded advance-stage endpoint
+ * (STAGE_TRANSITION_ROLES policy in server/routes/underwriting/). The two
+ * halves of the policy live together so client pickers gate exactly the
+ * statuses the server 403s.
+ */
+export const PROTECTED_CREDIT_DECISION_STATUSES: readonly LoanAppStatus[] = [
+  "pre_approved",
+  "clear_to_close",
+  "funded",
+  "denied",
+] as const;
+
+export const CREDIT_DECISION_ROLES: readonly string[] = ["admin", "underwriter"] as const;
+
+export function isProtectedCreditDecisionStatus(value: string): boolean {
+  return (PROTECTED_CREDIT_DECISION_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * Favorable credit determinations — these may not rest on self-reported
+ * figures. The status route rejects them (422) via assertVerifiedForDecisioning
+ * (shared/dataProvenance.ts) unless financialDataProvenance is "verified".
+ * Denial is deliberately absent: a file can be denied for unverifiable or
+ * incomplete information.
+ */
+export const APPROVAL_OUTCOME_STATUSES: readonly LoanAppStatus[] = [
+  "pre_approved",
+  "clear_to_close",
+  "funded",
+] as const;
+
+export function isApprovalOutcomeStatus(value: string): boolean {
+  return (APPROVAL_OUTCOME_STATUSES as readonly string[]).includes(value);
+}
+
 // Loan Applications
 export const loanApplications = pgTable("loan_applications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -58,9 +58,16 @@ import { ChangeOfCircumstancePanel } from "@/components/staff/ChangeOfCircumstan
 import { RiskBriefPanel } from "@/components/staff/RiskBriefPanel";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { canReviewDocuments } from "@shared/documentStatus";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate, getStatusLabel } from "@/lib/formatters";
 import { DocumentReviewPanel } from "@/components/staff/DocumentReviewPanel";
-import type { LoanCondition, UrlaPersonalInfo } from "@shared/schema";
+import {
+  STAFF_SETTABLE_STATUSES,
+  CREDIT_DECISION_ROLES,
+  isProtectedCreditDecisionStatus,
+  isApprovalOutcomeStatus,
+  type LoanCondition,
+  type UrlaPersonalInfo,
+} from "@shared/schema";
 
 import { type ActivityItem, type ApplicationData, type PipelineData, type CreditSummary, type CreditAuditEntry, HMDA_DENIAL_REASONS } from "./borrowerFile/model";
 
@@ -359,6 +366,9 @@ export default function BorrowerFile() {
   const outstandingConditions = conditions.filter(c => c.status === "outstanding" || c.status === "submitted");
   const clearedConditions = conditions.filter(c => c.status === "cleared" || c.status === "waived" || c.status === "not_applicable");
   const isStaff2 = isStaffRole(user?.role || "");
+  // Mirrors the server's role gate on PATCH /:id/status (statusDecisions.ts):
+  // final credit decisions are 403'd for everyone else, so grey them out here.
+  const canSetCreditDecisions = CREDIT_DECISION_ROLES.includes(user?.role || "");
 
   // Pre-underwriting validator flags (loan_applications.pre_uw_flags) — the
   // machine-readable signal staff should see before opening any tab.
@@ -478,15 +488,19 @@ export default function BorrowerFile() {
                               <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="submitted">Submitted</SelectItem>
-                              <SelectItem value="in_review">In Review</SelectItem>
-                              <SelectItem value="underwriting">Underwriting</SelectItem>
-                              <SelectItem value="conditional_approval">Conditional Approval</SelectItem>
-                              <SelectItem value="pre_approved">Pre-Approved</SelectItem>
-                              <SelectItem value="approved">Approved</SelectItem>
-                              <SelectItem value="denied">Denied</SelectItem>
-                              <SelectItem value="suspended">Suspended</SelectItem>
-                              <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                              {/* Derived from the canonical vocabulary — the server's
+                                  staffStatusSchema accepts exactly this list. Hand-listing
+                                  statuses here is the phantom-status bug class
+                                  (tests/statusVocabulary.test.ts). */}
+                              {STAFF_SETTABLE_STATUSES.map((s) => {
+                                const locked = isProtectedCreditDecisionStatus(s) && !canSetCreditDecisions;
+                                return (
+                                  <SelectItem key={s} value={s} disabled={locked} data-testid={`option-status-${s}`}>
+                                    {getStatusLabel(s)}
+                                    {locked && " (underwriter/admin only)"}
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </div>
@@ -527,7 +541,9 @@ export default function BorrowerFile() {
                           />
                         </div>
                       </div>
-                      {(statusUpdate.status === "approved" || statusUpdate.status === "pre_approved") &&
+                      {/* Same set the server 422s on via assertVerifiedForDecisioning:
+                          every approval outcome, not just pre_approved. */}
+                      {isApprovalOutcomeStatus(statusUpdate.status) &&
                         application.financialDataProvenance !== "verified" && (
                           <div className="rounded-md border border-border bg-warning-subtle p-3 text-sm text-warning-subtle-foreground">
                             Financials must be verified before an approval outcome can be set. Use
@@ -544,7 +560,7 @@ export default function BorrowerFile() {
                             !statusUpdate.status ||
                             statusUpdateMutation.isPending ||
                             (statusUpdate.status === "denied" && statusUpdate.denialReasons.length < 2) ||
-                            ((statusUpdate.status === "approved" || statusUpdate.status === "pre_approved") &&
+                            (isApprovalOutcomeStatus(statusUpdate.status) &&
                               application.financialDataProvenance !== "verified")
                           }
                           onClick={() => statusUpdateMutation.mutate({
