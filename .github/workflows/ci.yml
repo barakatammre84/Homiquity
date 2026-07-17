@@ -7,7 +7,12 @@ name: CI
 #   migrate-prod — on merge to main: apply any pending migrations to PROD so the
 #                  database is never left behind the code (the 2026-07-13 outage cause).
 #                  Also runnable manually (workflow_dispatch) — defaults to a DRY RUN,
-#                  which is the runbook's mandatory pre-flight.
+#                  which is the runbook's mandatory pre-flight. Scope note: the dry run
+#                  reconciles the JOURNAL (what does prod think is pending?) and never
+#                  executes a migration's SQL, so it cannot pre-flight a CONTRACT step
+#                  (SET NOT NULL / CHECK / FK) that could fail on data — those need the
+#                  read-only prod probe in knowledge-base/runbooks/DB_MIGRATIONS.md
+#                  (§Contract migrations) BEFORE the migration is authored.
 #
 # Credentials: NO prod DB password is stored in GitHub. migrate-prod mints a fresh
 # Neon DIRECT (unpooled) connection string at run time from NEON_API_KEY (provisioned
