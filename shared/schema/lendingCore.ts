@@ -108,6 +108,36 @@ export function isApprovedGradeLoanAppStatus(value: string): boolean {
   return (LOAN_APP_APPROVED_GRADE_STATUSES as readonly string[]).includes(value);
 }
 
+/**
+ * In-flight = submitted into the pipeline and not yet ended: neither "draft"
+ * (not submitted) nor any terminal status. "suspended" IS in-flight — a
+ * suspension pauses a file, it doesn't end it. Derived from the canonical
+ * list so a vocabulary change can never leave it stale.
+ */
+export const LOAN_APP_IN_FLIGHT_STATUSES: readonly LoanAppStatus[] = LOAN_APP_STATUSES.filter(
+  (status) => status !== "draft" && !isTerminalLoanAppStatus(status),
+);
+
+export function isInFlightLoanAppStatus(value: string): boolean {
+  return (LOAN_APP_IN_FLIGHT_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * THE selector for "the borrower's active application": the first in-flight
+ * entry in list order (every caller passes a newest-first list, so this is
+ * the most recent in-flight file). Returns undefined when nothing is
+ * in-flight — surfaces that would rather show a closed file than nothing
+ * compose their own fallback, e.g. `pickActiveLoanApplication(apps) ?? apps[0]`.
+ *
+ * Replaces the hand-rolled `status !== "draft" && status !== "denied"`
+ * selectors that let withdrawn/expired/funded files pose as the active one.
+ */
+export function pickActiveLoanApplication<T extends { status: string }>(
+  applications: readonly T[],
+): T | undefined {
+  return applications.find((a) => isInFlightLoanAppStatus(a.status));
+}
+
 export interface LoanAppStatusMeta {
   /** Short badge/label text. */
   label: string;

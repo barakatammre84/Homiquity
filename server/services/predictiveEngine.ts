@@ -8,6 +8,7 @@ import {
   borrowerStateHistory,
   documentConfidenceScores,
   analyticsEvents,
+  pickActiveLoanApplication,
 } from "@shared/schema";
 import { eq, and, gte, sql, desc, isNotNull, avg } from "drizzle-orm";
 import { buildBorrowerGraph } from "./borrowerGraph";
@@ -64,7 +65,7 @@ export async function computePrediction(
 
   const activeApp = applicationId
     ? graph.applications.find(a => a.id === applicationId)
-    : graph.applications.find(a => a.status !== "draft" && a.status !== "denied");
+    : pickActiveLoanApplication(graph.applications);
 
   const conditions = activeApp ? await storage.getLoanConditionsByApplication(activeApp.id) : [];
   const conditionsOutstanding = conditions.filter(c => c.status === "outstanding").length;
@@ -306,7 +307,7 @@ export async function getBorrowerBenchmark(
     ? getCreditBucketLabel(graph.eligibility.creditScore)
     : null;
 
-  const activeApp = graph.applications.find(a => a.status !== "draft" && a.status !== "denied");
+  const activeApp = pickActiveLoanApplication(graph.applications);
   const daysInProcess = activeApp?.createdAt
     ? Math.round((Date.now() - new Date(activeApp.createdAt).getTime()) / (1000 * 60 * 60 * 24))
     : null;
