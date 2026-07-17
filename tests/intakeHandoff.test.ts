@@ -48,7 +48,7 @@ const INTAKE_PAYLOAD = {
   downPayment: "80000",
   isVeteran: false,
   isFirstTimeBuyer: true,
-  propertyState: "TX",
+  propertyState: "IL", // the licensed footprint (#201) — intake 422s outside it
   softPullConsentAccepted: true,
 };
 

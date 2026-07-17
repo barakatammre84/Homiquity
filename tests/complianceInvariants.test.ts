@@ -19,6 +19,13 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(__dirname, "..");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 
+// The lending route groups (split from the old single routes/lending.ts).
+const lendingRouteFiles = () =>
+  readdirSync(join(ROOT, "server/routes/lending"))
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => `server/routes/lending/${f}`);
+const readLendingRoutes = () => lendingRouteFiles().map(read).join("\n");
+
 // Modules that make or feed credit decisions — the "decision path".
 const DECISION_PATH_MODULES = [
   "server/services/underwritingNuance.ts",
@@ -60,7 +67,7 @@ describe("FCRA: credit pulls remain consent-gated", () => {
   });
 
   it("the funnel persists the soft-pull acknowledgment as evidence", () => {
-    const source = read("server/routes/lending.ts");
+    const source = read("server/routes/lending/applications.ts");
     expect(source).toContain("softPullConsentAccepted");
     expect(source).toContain("createCreditConsent");
   });
@@ -73,7 +80,7 @@ describe("ESIGN / Reg Z: disclosure gates stay wired", () => {
   });
 
   it("rate locking requires the anti-steering acknowledgment for borrowers", () => {
-    const source = read("server/routes/lending.ts");
+    const source = read("server/routes/lending/pricing.ts");
     expect(source).toMatch(/hasBorrowerConsent\("anti_steering"/);
   });
 
@@ -157,7 +164,7 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
 
 describe("Reg B: the intake decision path is fully deterministic", () => {
   it("the intake route no longer imports the retired LLM analysis module", () => {
-    const source = read("server/routes/lending.ts");
+    const source = readLendingRoutes();
     expect(source).not.toMatch(/from\s+["'][^"']*\/gemini["']/);
     // The route drives the deterministic finalizer, which wraps the engine.
     expect(source).toContain("finalizeIntake");
@@ -179,8 +186,10 @@ describe("Reg B: the intake decision path is fully deterministic", () => {
 describe("TRID (Reg Z §1026.19): the LE clock is triggered, business-day based, and enforced", () => {
   it("the six-piece trigger is evaluated on every write path that can complete an application", () => {
     // Intake creation + borrower PATCH (income, property address, value, loan amount)…
-    const lending = read("server/routes/lending.ts");
-    expect(lending.match(/evaluateTridTrigger\(/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    // intake creation and the borrower PATCH live in separate group files now —
+    // pin each write path individually.
+    expect(read("server/routes/lending/applications.ts")).toMatch(/evaluateTridTrigger\(/);
+    expect(read("server/routes/lending/statusDecisions.ts")).toMatch(/evaluateTridTrigger\(/);
     // …and the URLA personal-info save (SSN).
     const borrowerUrla = read("server/routes/borrower/urla.ts");
     expect(borrowerUrla).toMatch(/evaluateTridTrigger\(/);
@@ -193,7 +202,7 @@ describe("TRID (Reg Z §1026.19): the LE clock is triggered, business-day based,
     const borrowerRoutes = readdirSync(join(ROOT, "server/routes/borrower"))
       .filter((f) => f.endsWith(".ts"))
       .map((f) => `server/routes/borrower/${f}`);
-    for (const route of ["server/routes/lending.ts", ...borrowerRoutes, "server/routes/underwriting.ts", "server/services/coachProfileSync.ts"]) {
+    for (const route of [...lendingRouteFiles(), ...borrowerRoutes, "server/routes/underwriting.ts", "server/services/coachProfileSync.ts"]) {
       expect(read(route)).not.toMatch(/tridTriggeredAt\s*:/);
     }
   });
@@ -212,7 +221,7 @@ describe("TRID (Reg Z §1026.19): the LE clock is triggered, business-day based,
   });
 
   it("status and stage advancement enforce the TRID hard stop", () => {
-    expect(read("server/routes/lending.ts")).toMatch(/tridHardStopError\(/);
+    expect(read("server/routes/lending/statusDecisions.ts")).toMatch(/tridHardStopError\(/);
     expect(read("server/routes/underwriting.ts")).toMatch(/tridHardStopError\(/);
   });
 
@@ -238,7 +247,7 @@ describe("Reg Z §1026.22: every displayed APR comes from the actuarial engine",
   });
 
   it("pre-approval letters price payments from the advertised rate, not a constant", () => {
-    const lending = read("server/routes/lending.ts");
+    const lending = read("server/routes/lending/letters.ts");
     expect(lending).not.toMatch(/const rate = 0\.065/);
     expect(lending).toMatch(/currentAdvertised30YrRate/);
   });
@@ -249,7 +258,7 @@ describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice"
     // Both denial paths — the status PATCH and the pipeline advance-stage
     // POST — must call ensureAdverseActionForDenial before the disposition
     // is applied. A denial path that skips it reopens the §1002.9 hole.
-    for (const route of ["server/routes/lending.ts", "server/routes/underwriting.ts"]) {
+    for (const route of ["server/routes/lending/statusDecisions.ts", "server/routes/underwriting.ts"]) {
       expect(read(route)).toMatch(/ensureAdverseActionForDenial\(/);
     }
   });
@@ -259,7 +268,7 @@ describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice"
     expect(credit).toMatch(/export async function ensureAdverseActionForDenial/);
     expect(credit).toMatch(/HMDA_TO_ADVERSE_ACTION_REASON/);
     // Routes must not carry their own copy of the mapping (single source).
-    for (const route of ["server/routes/lending.ts", "server/routes/underwriting.ts"]) {
+    for (const route of [...lendingRouteFiles(), "server/routes/underwriting.ts"]) {
       expect(read(route)).not.toMatch(/HMDA_TO_ADVERSE_ACTION_REASON\s*:/);
     }
   });
@@ -341,9 +350,9 @@ describe("State licensing (SAFE Act/Reg H, 12 CFR 1008): the footprint gate stay
   // unlicensed-solicitation exposure — state law controls what requires
   // licensure, so we simply refuse to transact outside the footprint.
   it("every subject-property-state write path calls the shared gate", () => {
-    const lending = read("server/routes/lending.ts");
-    // Intake create + draft PATCH both gate.
-    expect(lending.match(/unlicensedStateRejection\(/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    // Intake create + draft PATCH both gate (separate group files post-split).
+    expect(read("server/routes/lending/applications.ts")).toMatch(/unlicensedStateRejection\(/);
+    expect(read("server/routes/lending/statusDecisions.ts")).toMatch(/unlicensedStateRejection\(/);
     const properties = read("server/routes/borrower/applicationProperties.ts");
     // Property attach, switch, and edit all gate.
     expect(properties.match(/unlicensedStateRejection\(/g)?.length ?? 0).toBeGreaterThanOrEqual(3);

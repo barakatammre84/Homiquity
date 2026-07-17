@@ -51,7 +51,7 @@ Status ledger (updated by the orchestrator after each run):
 
 ## 2. Application & intake
 
-- **Server**: intake portions of `server/routes/lending.ts` + `server/routes/borrower.ts`
+- **Server**: intake portions of `server/routes/lending/` (applications, statusDecisions) + `server/routes/borrower/`
   (URLA save), `server/services/trid.ts` (six-piece trigger, sole writer of `tridTriggeredAt`),
   `server/consentGate.ts`, `server/services/preUnderwriting.ts`, `shared/stageRequirements.ts`,
   `server/services/nextAction.ts`.
