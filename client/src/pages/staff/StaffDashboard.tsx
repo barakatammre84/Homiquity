@@ -58,7 +58,7 @@ import {
   Archive,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { formatCurrency, formatTimeRemaining, titleCaseFromSnake } from "@/lib/formatters";
+import { formatCurrency, formatTimeRemaining, getStatusLabel } from "@/lib/formatters";
 import { type SlaStatus, SLA_STATUS_COLORS, SLA_DOT_COLORS, SLA_SORT_ORDER } from "@/lib/sla";
 
 interface QueueTask {
@@ -154,9 +154,8 @@ interface RetentionReport {
 }
 
 
-function formatStageLabel(stage: string): string {
-  return STAGE_DISPLAY[stage] || titleCaseFromSnake(stage);
-}
+// Stage labels come from getStatusLabel — the pipeline stage IS
+// application.status, and LoanPipeline renders the same value.
 
 function coApplicantNames(
   coApplicants?: { borrowerSequenceNumber: number; name: string | null }[]
@@ -177,16 +176,6 @@ const STAGE_ORDER = [
   "clear_to_close",
   "funded",
 ];
-
-const STAGE_DISPLAY: Record<string, string> = {
-  pre_approved: "Pre-Approved",
-  doc_collection: "Doc Collection",
-  processing: "Processing",
-  underwriting: "Underwriting",
-  conditional: "Conditional Approval",
-  clear_to_close: "Clear to Close",
-  funded: "Funded",
-};
 
 const COMPLIANCE_CHECKLIST_ITEMS = [
   { id: "le_issued", label: "Loan Estimate Issued", regulation: "TRID - within 3 business days of application", stage: "pre_approved" },
@@ -847,7 +836,7 @@ export default function StaffDashboard() {
                   >
                     <span className="text-xl font-bold">{count}</span>
                     <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                      {formatStageLabel(stage)}
+                      {getStatusLabel(stage)}
                     </span>
                   </div>
                 );
@@ -939,7 +928,7 @@ export default function StaffDashboard() {
                                       {item.borrowerName || `Loan #${item.applicationId.slice(0, 8)}`}
                                     </span>
                                   </Link>
-                                  <Badge variant="outline">{formatStageLabel(item.currentStage)}</Badge>
+                                  <Badge variant="outline">{getStatusLabel(item.currentStage)}</Badge>
                                   {compApp?.gseReady && (
                                     <Badge variant="secondary" className="gap-1 text-xs bg-success-subtle text-success-subtle-foreground" data-testid={`badge-gse-${item.applicationId}`}>
                                       <CheckCircle2 className="h-3 w-3" />

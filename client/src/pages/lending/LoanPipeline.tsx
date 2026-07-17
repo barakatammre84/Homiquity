@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, titleCaseFromSnake } from "@/lib/formatters";
+import { formatCurrency, getStatusLabel } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -115,10 +115,6 @@ const STAGE_ORDER = [
 function getStageIndex(stage: string): number {
   const idx = STAGE_ORDER.findIndex(s => s.key === stage);
   return idx >= 0 ? idx : 0;
-}
-
-function formatStageLabel(stage: string): string {
-  return titleCaseFromSnake(stage);
 }
 
 export default function LoanPipeline() {
@@ -352,7 +348,7 @@ export default function LoanPipeline() {
                     variant={currentStage === "funded" ? "default" : "secondary"}
                     data-testid="badge-current-stage"
                   >
-                    {formatStageLabel(currentStage)}
+                    {getStatusLabel(currentStage)}
                   </Badge>
                 </div>
               </CardHeader>
