@@ -61,7 +61,7 @@ export default function AdminCharts({
                 <XAxis dataKey="name" className="text-xs" />
                 <YAxis className="text-xs" />
                 <Tooltip
-                  formatter={(value: number) => [`$${value.toFixed(1)}M`, "Volume"]}
+                  formatter={(value) => [`$${Number(value).toFixed(1)}M`, "Volume"]}
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",

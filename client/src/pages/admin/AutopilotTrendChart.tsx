@@ -7,7 +7,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import type { TooltipProps } from "recharts";
+import type { TooltipContentProps } from "recharts";
 
 export interface TrendPoint {
   date: string; // YYYY-MM-DD
@@ -33,7 +33,7 @@ const fmtFull = (d: string): string => {
 
 /** Custom hover tooltip — the date plus the exact activity count for that day.
  *  Text wears text tokens, not the series color. */
-function TrendTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function TrendTooltip({ active, payload, label }: TooltipContentProps) {
   if (!active || !payload?.length) return null;
   const count = Number(payload[0].value ?? 0);
   return (
@@ -75,7 +75,7 @@ export default function AutopilotTrendChart({ data }: { data: TrendPoint[] }) {
             className="text-xs"
           />
           <Tooltip
-            content={<TrendTooltip />}
+            content={TrendTooltip}
             cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
           />
           <Area
