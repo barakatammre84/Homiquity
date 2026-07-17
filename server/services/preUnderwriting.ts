@@ -88,7 +88,7 @@ export interface PreUwInput {
   tradelines?: Tradeline[] | null;
   /** Depository transactions from the latest VOA (B3-4.3-04 sourcing). */
   transactions?: DepositoryTransaction[] | null;
-  /** Subject property details from URLA (B3-3.1-08 multi-unit rental offset). */
+  /** Subject property details from URLA (B3-3.8-01 multi-unit rental income). */
   subjectProperty?: {
     numberOfUnits: number | null;
     occupancyType: string | null;
@@ -273,8 +273,11 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     }
   }
 
-  // --- Rental income calculation (Fannie B3-3.1-08): 75% of gross rent, net
-  // of the property's PITIA, per rental property declared at intake. --------
+  // --- Rental income calculation (Fannie B3-3.8-01, formerly B3-3.1-08): 75%
+  // of gross rent, net of the property's PITIA, per rental property declared
+  // at intake. Positive offsets reach the decision only once the file is
+  // verification-grade; a net loss counts immediately (see
+  // docs/fannie-mae/rental-income-reference.md, platform asymmetry policy). --
   const rentalProperties = (input.incomeSources ?? [])
     .filter((s) => s.type === "rental")
     .flatMap((s) => s.rentalProperties ?? []);
@@ -289,7 +292,7 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
         `We applied a 25% vacancy/expense factor to your reported rental income (standard guidelines): ` +
         `$${Math.round(totalQualifying).toLocaleString()}/month qualifying across ${rentalOffsets.length} propert${rentalOffsets.length === 1 ? "y" : "ies"}, ` +
         (totalNetOffset >= 0
-          ? `net of the property payment this adds $${Math.round(totalNetOffset).toLocaleString()}/month toward your qualifying income.`
+          ? `net of the property payment this adds $${Math.round(totalNetOffset).toLocaleString()}/month toward your qualifying income once your rental documentation is verified.`
           : `net of the property payment this adds $${Math.round(Math.abs(totalNetOffset)).toLocaleString()}/month to your qualifying debt.`) +
         ` Please upload the executed lease agreement(s) and your most recent Schedule E to document rental history.`,
       requiredDocs: [
@@ -304,8 +307,11 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     });
   }
 
-  // --- Multi-unit subject property rental income (Fannie B3-3.1-08): 75% of
-  // appraisal market rent, net of the subject property's own PITIA. ---------
+  // --- Multi-unit subject property rental income (Fannie B3-3.8-01, formerly
+  // B3-3.1-08): 75% of appraisal market rent is ADDED to qualifying income;
+  // the subject property's full payment stays in monthly obligations — the
+  // two are never netted in the applied DTI math (ledger
+  // fnma-b3-3-8-01-subject-rental-income). ----------------------------------
   if (input.subjectProperty && !isNaN(price) && !isNaN(down)) {
     const subjectPitia = estimateMonthlyPITI(price, down);
     const subjectOffset = calculateSubjectPropertyRentalOffset(
@@ -320,10 +326,7 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
         severity: "warning",
         reason:
           `We applied a 25% vacancy/expense factor to the subject property's projected market rent (standard guidelines): ` +
-          `$${Math.round(subjectOffset.qualifyingRentalIncome).toLocaleString()}/month qualifying, ` +
-          (subjectOffset.netOffset >= 0
-            ? `net of the property's estimated payment this adds $${Math.round(subjectOffset.netOffset).toLocaleString()}/month toward your qualifying income.`
-            : `net of the property's estimated payment this adds $${Math.round(Math.abs(subjectOffset.netOffset)).toLocaleString()}/month to your qualifying debt.`) +
+          `$${Math.round(subjectOffset.qualifyingRentalIncome).toLocaleString()}/month is added toward your qualifying income once the rent schedule is verified, while the property's full estimated payment of $${Math.round(subjectOffset.subjectPitia).toLocaleString()}/month remains in your obligations.` +
           ` Please upload the appraisal rent schedule or executed leases for the other units to confirm market rent.`,
         requiredDocs: [
           { documentType: "other", description: "Appraisal rent schedule (Fannie Mae Form 1025/1007) for the subject property" },

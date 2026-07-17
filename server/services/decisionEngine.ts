@@ -10,6 +10,7 @@ import {
   incomeInputsFingerprint,
   incomeEvaluationFingerprint,
   loadLatestBankStatementAnalysis,
+  hasMortgageTypeLiability,
   type IncomePathsCoreInput,
 } from "./income/orchestrator";
 import type { IncomeOrchestrationResult } from "@shared/incomePaths";
@@ -173,13 +174,15 @@ interface AggregatedFinancials {
  * figures when line items haven't been captured yet.
  */
 async function aggregateBorrowerFinancials(app: LoanApplication): Promise<AggregatedFinancials> {
-  const [employment, otherIncome, liabilities, urlaAssets, bankStatementAnalysis] = await Promise.all([
-    storage.getEmploymentHistory(app.id),
-    storage.getOtherIncomeSources(app.id),
-    storage.getUrlaLiabilities(app.id),
-    storage.getUrlaAssets(app.id),
-    loadLatestBankStatementAnalysis(app.id),
-  ]);
+  const [employment, otherIncome, liabilities, urlaAssets, bankStatementAnalysis, propertyInfo] =
+    await Promise.all([
+      storage.getEmploymentHistory(app.id),
+      storage.getOtherIncomeSources(app.id),
+      storage.getUrlaLiabilities(app.id),
+      storage.getUrlaAssets(app.id),
+      loadLatestBankStatementAnalysis(app.id),
+      storage.getUrlaPropertyInfo(app.id),
+    ]);
 
   // Assets across all borrowers, bucketed for the engine's reserve haircuts.
   const assets: AssetProfile[] = urlaAssets
@@ -205,20 +208,40 @@ async function aggregateBorrowerFinancials(app: LoanApplication): Promise<Aggreg
     rentalProperties,
     fallbackAnnualIncome: app.annualIncome,
     bankStatementAnalysis,
+    // B3-3.8-01 rental application (docs/fannie-mae/rental-income-reference.md):
+    // positive offsets and subject-property rent only on decision-grade
+    // provenance; losses always (platform-rental-preliminary-asymmetry).
+    applyRentalToDti: isDecisionGrade(app.financialDataProvenance as DataProvenance),
+    hasMortgageLiabilityRows: hasMortgageTypeLiability(liabilities),
+    subjectProperty: propertyInfo
+      ? {
+          numberOfUnits: propertyInfo.numberOfUnits,
+          occupancyType: propertyInfo.occupancyType,
+          estimatedMarketRent: propertyInfo.estimatedMarketRent,
+        }
+      : null,
   };
   const income = computeIncomePaths(incomeInput);
 
-  // Debts: monthly payments not being paid off, summed across all borrowers.
+  // Debts: monthly payments not being paid off, summed across all borrowers,
+  // plus an applied net rental LOSS — B3-3.8-01 puts it in monthly
+  // obligations, the numerator of DTI, never in income as a negative.
   for (const l of liabilities) borrowerSeqs.add(l.borrowerSequenceNumber ?? 1);
-  const monthlyDebts = sumOpenMonthlyLiabilities(liabilities, app.monthlyDebts);
+  const monthlyDebts =
+    sumOpenMonthlyLiabilities(liabilities, app.monthlyDebts) +
+    income.primaryBreakdown.rentalLiabilityApplied;
 
   // Engine split (base+bonus, used only as a sum): agency variable is "bonus";
-  // agency base + self-employment are "base". For a wage-only file this is
-  // exactly the legacy split (self-employment = 0); the engine sees the same
-  // combined income either way.
+  // agency base + self-employment are "base"; applied rental income (non-
+  // subject positive offsets + subject-property qualifying rent) rides in
+  // "variable" so base + variable always equals the primary total. For a
+  // wage-only file this is exactly the legacy split.
   return {
     baseMonthlyIncome: income.primaryBreakdown.agencyBase + income.primaryBreakdown.selfEmployment,
-    variableMonthlyIncome: income.primaryBreakdown.agencyVariable,
+    variableMonthlyIncome:
+      income.primaryBreakdown.agencyVariable +
+      income.primaryBreakdown.rentalIncomeApplied +
+      income.primaryBreakdown.subjectRentalIncomeApplied,
     totalMonthlyIncome: income.primaryMonthlyQualifyingIncome,
     monthlyDebts,
     borrowerCount: Math.max(borrowerSeqs.size, 1),

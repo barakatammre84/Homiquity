@@ -122,7 +122,7 @@ export function classifySituation(input: SituationClassifierInput): SituationPro
     flags.push({
       id: "rental_income_present",
       label: "Rental real estate income",
-      detail: `Schedule E shows rental activity${props > 0 ? ` across ${props} propert${props === 1 ? "y" : "ies"}` : ""}. Rental offsets follow the cited B3-3.1-08 treatment; a DSCR route is a candidate only (see income paths).`,
+      detail: `Schedule E shows rental activity${props > 0 ? ` across ${props} propert${props === 1 ? "y" : "ies"}` : ""}. Rental offsets follow the cited B3-3.8-01 (formerly B3-3.1-08) treatment; a DSCR route is a candidate only (see income paths).`,
       evidence: schEs.map((i) => `schedule_e ${i.taxYear ?? ""}`.trim()),
     });
   }
@@ -223,7 +223,7 @@ export function classifySituation(input: SituationClassifierInput): SituationPro
       signal: schEs.length > 0 ? "applicable" : "not_indicated",
       reason:
         schEs.length > 0
-          ? "Schedule E rental activity present; offsets follow the cited B3-3.1-08 treatment."
+          ? "Schedule E rental activity present; offsets follow the cited B3-3.8-01 (formerly B3-3.1-08) treatment."
           : "No rental activity found.",
     },
     {

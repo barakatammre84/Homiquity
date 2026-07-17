@@ -53,12 +53,12 @@ const MATERIALIZABLE: Partial<Record<PreUwFlagCode, FollowUpSpec>> = {
   RENTAL_INCOME_OFFSET: {
     title: "Rental Income Documentation",
     category: "income",
-    citation: "Fannie Mae B3-3.1-08",
+    citation: "Fannie Mae B3-3.8-01 (formerly B3-3.1-08)",
   },
   SUBJECT_PROPERTY_RENTAL_OFFSET: {
     title: "Subject Property Rental Income Documentation",
     category: "income",
-    citation: "Fannie Mae B3-3.1-08",
+    citation: "Fannie Mae B3-3.8-01 (formerly B3-3.1-08)",
   },
 };
 

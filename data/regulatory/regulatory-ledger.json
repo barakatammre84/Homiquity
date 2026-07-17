@@ -1,5 +1,5 @@
 {
-  "$comment": "Regulatory source-of-truth ledger. Every statutory/guideline constant in the codebase has an entry: where it comes from, where it lives in code, when a human last verified it against the official source, and how often it must be re-verified. scripts/regulatory-freshness.cjs (run by npm run checkup and the daily guardian) FAILS when any entry is overdue. When you verify a value against its source, update lastVerified (YYYY-MM-DD). Never change a value without a citation \u2014 that is a Correction to the scenario registry.",
+  "$comment": "Regulatory source-of-truth ledger. Every statutory/guideline constant in the codebase has an entry: where it comes from, where it lives in code, when a human last verified it against the official source, and how often it must be re-verified. scripts/regulatory-freshness.cjs (run by npm run checkup and the daily guardian) FAILS when any entry is overdue. When you verify a value against its source, update lastVerified (YYYY-MM-DD). Never change a value without a citation — that is a Correction to the scenario registry.",
   "entries": [
     {
       "id": "fnma-b3-6-05-deferred-student-loan",
@@ -10,7 +10,7 @@
       "codeRef": "server/services/underwritingNuance.ts DEFERRED_STUDENT_LOAN_FACTOR",
       "lastVerified": "2026-07-03",
       "reviewIntervalDays": 90,
-      "notes": "NC-01 open in the scenarios registry: generated sources claim 0.5% (that is the FHA Handbook 4000.1 figure). Documented IDR payments may be usable per guide \u2014 confirm on next verification."
+      "notes": "NC-01 open in the scenarios registry: generated sources claim 0.5% (that is the FHA Handbook 4000.1 figure). Documented IDR payments may be usable per guide — confirm on next verification."
     },
     {
       "id": "fnma-b3-3-2-income-seasoning",
@@ -71,7 +71,7 @@
       "id": "platform-dti-ceiling-43",
       "rule": "Standard DTI ceiling used for flags/what-if coaching",
       "value": "0.43",
-      "citation": "PLATFORM POLICY referencing legacy QM 43% (12 CFR \u00a71026.43 Appendix Q, repealed 2021 \u2014 replaced by price-based General QM)",
+      "citation": "PLATFORM POLICY referencing legacy QM 43% (12 CFR §1026.43 Appendix Q, repealed 2021 — replaced by price-based General QM)",
       "sourceUrl": "https://www.consumerfinance.gov/rules-policy/regulations/1026/43/",
       "codeRef": "server/services/underwritingNuance.ts STANDARD_DTI_CEILING",
       "lastVerified": "2026-07-03",
@@ -82,18 +82,18 @@
       "id": "hpa-pmi-removal-80-ltv",
       "rule": "PMI-removal opportunity alert at 80% LTV",
       "value": "80",
-      "citation": "Homeowners Protection Act, 12 U.S.C. \u00a74901 et seq. (borrower-requested cancellation at 80% LTV of original value; automatic termination at 78%)",
+      "citation": "Homeowners Protection Act, 12 U.S.C. §4901 et seq. (borrower-requested cancellation at 80% LTV of original value; automatic termination at 78%)",
       "sourceUrl": "https://www.consumerfinance.gov/compliance/supervision-examinations/homeowners-protection-act-pmi-cancellation-act-examination-procedures/",
       "codeRef": "server/services/lifecycleEngine.ts PMI_REMOVAL_LTV_THRESHOLD",
       "lastVerified": "2026-07-03",
       "reviewIntervalDays": 180,
-      "notes": "Alert uses current estimated value (AVM); statutory cancellation right keys off original value \u2014 the alert is an opportunity signal, the letter/request path must use HPA terms."
+      "notes": "Alert uses current estimated value (AVM); statutory cancellation right keys off original value — the alert is an opportunity signal, the letter/request path must use HPA terms."
     },
     {
       "id": "platform-reserves-2-months",
       "rule": "Low-reserves warning threshold (months of PITI post-closing)",
       "value": "2",
-      "citation": "PLATFORM POLICY; Fannie reserve requirements (B3-4.1-01) vary by transaction \u2014 formal mapping pending",
+      "citation": "PLATFORM POLICY; Fannie reserve requirements (B3-4.1-01) vary by transaction — formal mapping pending",
       "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-4.1-01/minimum-reserve-requirements",
       "codeRef": "server/services/preUnderwriting.ts RESERVES_MONTHS_THRESHOLD",
       "lastVerified": "2026-07-03",
@@ -115,7 +115,7 @@
       "id": "regz-1026-36e-anti-steering",
       "rule": "Anti-steering loan-options disclosure before rate lock",
       "value": "template v1.0",
-      "citation": "Regulation Z, 12 CFR \u00a71026.36(e)(3)",
+      "citation": "Regulation Z, 12 CFR §1026.36(e)(3)",
       "sourceUrl": "https://www.consumerfinance.gov/rules-policy/regulations/1026/36/",
       "codeRef": "server/consentGate.ts ANTI_STEERING_TEMPLATE",
       "lastVerified": "2026-07-03",
@@ -126,7 +126,7 @@
       "id": "fcra-disclosure-version",
       "rule": "FCRA credit-pull disclosure text/version",
       "value": "FCRA-2025-v2",
-      "citation": "FCRA \u00a7604 (15 U.S.C. \u00a71681b) written-instruction consent",
+      "citation": "FCRA §604 (15 U.S.C. §1681b) written-instruction consent",
       "sourceUrl": "https://www.consumerfinance.gov/rules-policy/regulations/1022/",
       "codeRef": "server/services/creditService.ts CURRENT_DISCLOSURE_VERSION / FCRA_DISCLOSURE_TEXT",
       "lastVerified": "2026-07-03",
@@ -157,11 +157,11 @@
     },
     {
       "id": "cfpb-reg-v-medical-debt-vacated",
-      "rule": "NO federal ban on medical debt in credit reports or underwriting \u2014 the CFPB Reg V medical-debt rule was VACATED; do not re-import it",
+      "rule": "NO federal ban on medical debt in credit reports or underwriting — the CFPB Reg V medical-debt rule was VACATED; do not re-import it",
       "value": "vacated 2025-07-11",
       "citation": "Cornerstone Credit Union League v. CFPB (E.D. Tex., joint request), vacating 'Prohibition on Creditors and CRAs Concerning Medical Information (Regulation V)'; no appeal filed within the window. Same ruling held FCRA preempts state medical-debt reporting bans, so state bans are legally doubtful.",
       "sourceUrl": "https://www.consumerfinance.gov/rules-policy/final-rules/prohibition-on-creditors-and-consumer-reporting-agencies-concerning-medical-information-regulation-v/",
-      "codeRef": "CTO_ROADMAP.md #28 (no engine change \u2014 documented so nobody encodes the vacated rule)",
+      "codeRef": "CTO_ROADMAP.md #28 (no engine change — documented so nobody encodes the vacated rule)",
       "lastVerified": "2026-07-04",
       "reviewIntervalDays": 180,
       "notes": "Bureau voluntary policies still hold: unpaid medical collections < $500 and all paid medical collections are not reported by Equifax/Experian/TransUnion. The pre-production doctrine's 'Medical Debt DTI exclusion (2026 rule)' claim is FALSE as a federal rule; the real, citable medical carve-outs are agency underwriting policies (see fnma-b3-5.3-09-medical-collections and fha-4000-1-collections-capacity)."
@@ -170,20 +170,20 @@
       "id": "fnma-b3-5.3-09-medical-collections",
       "rule": "GSE payoff policy: medical collection accounts excluded from collection/charge-off payoff limits (never required to be paid at/prior to closing); non-medical limits: 1-unit primary none, 2-4-unit owner-occ + second homes > $5,000 total, investment $250 individual / $1,000 total",
       "value": "medical excluded; $5,000 / $250 / $1,000",
-      "citation": "Fannie Mae Selling Guide B3-5.3-09 (DU Credit Report Analysis \u2014 Past-Due, Collection and Charge-Off of Non-Mortgage Accounts)",
+      "citation": "Fannie Mae Selling Guide B3-5.3-09 (DU Credit Report Analysis — Past-Due, Collection and Charge-Off of Non-Mortgage Accounts)",
       "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-5.3-09/du-credit-report-analysis",
-      "codeRef": "CTO_ROADMAP.md #28 (not yet in code \u2014 activates with F3 real credit adapter; collections do not exist in the simulated soft pull)",
+      "codeRef": "CTO_ROADMAP.md #28 (not yet in code — activates with F3 real credit adapter; collections do not exist in the simulated soft pull)",
       "lastVerified": "2026-07-04",
       "reviewIntervalDays": 90,
-      "notes": "Verified against the live guide page 2026-07-04 (guide edition 06/03/2026). The $5,000 2-4-unit/second-home threshold differs from the older $250/$1,000 rule of thumb \u2014 re-confirm the exact threshold table on next verification. Freddie Mac equivalent (Guide 5401.2) not yet verified \u2014 do so before building the F3 adapter."
+      "notes": "Verified against the live guide page 2026-07-04 (guide edition 06/03/2026). The $5,000 2-4-unit/second-home threshold differs from the older $250/$1,000 rule of thumb — re-confirm the exact threshold table on next verification. Freddie Mac equivalent (Guide 5401.2) not yet verified — do so before building the F3 adapter."
     },
     {
       "id": "fha-4000-1-collections-capacity",
       "rule": "FHA capacity analysis: if aggregate NON-MEDICAL collection balances > $2,000, include 5% of outstanding balance as monthly debt in DTI (or documented payment plan, or payoff); MEDICAL collections excluded entirely from the threshold and the DTI add",
       "value": "0.05 above $2,000; medical excluded",
-      "citation": "HUD Handbook 4000.1, Origination through Post-Closing \u2014 Collection Accounts (TOTAL: II.A.4.b.iv; Manual: II.A.5.a.iv)",
+      "citation": "HUD Handbook 4000.1, Origination through Post-Closing — Collection Accounts (TOTAL: II.A.4.b.iv; Manual: II.A.5.a.iv)",
       "sourceUrl": "https://www.hud.gov/hud-partners/single-family-handbook-4000-1",
-      "codeRef": "CTO_ROADMAP.md #28 (not yet in code \u2014 the engine has no collections-to-DTI path today; must ship WITH the F3 adapter or FHA files will compute DTI wrong in both directions)",
+      "codeRef": "CTO_ROADMAP.md #28 (not yet in code — the engine has no collections-to-DTI path today; must ship WITH the F3 adapter or FHA files will compute DTI wrong in both directions)",
       "lastVerified": "2026-07-04",
       "reviewIntervalDays": 90,
       "notes": "Subsection letters within II.A.4.b.iv / II.A.5.a.iv shift between handbook updates - cite the Collection Accounts heading, and pin exact subsections when implementing."
@@ -203,7 +203,7 @@
       "id": "hppa-trigger-leads",
       "rule": "Mortgage trigger leads: CRAs may not furnish prescreened consumer reports on residential-mortgage credit inquiries EXCEPT to (a) a party with the consumer's documented opt-in authorization, (b) the originator of the consumer's current mortgage, (c) its current servicer, or (d) an insured depository/credit union holding a current account for the consumer. We must never purchase trigger leads outside these exceptions.",
       "value": "in effect since 2026-03-04/05",
-      "citation": "Homebuyers Privacy Protection Act, Pub. L. 119-36 (H.R. 2808, 119th Cong.), signed 2025-09-05, amending FCRA \u00a7604(c) (15 U.S.C. \u00a71681b(c)); effective 180 days after enactment",
+      "citation": "Homebuyers Privacy Protection Act, Pub. L. 119-36 (H.R. 2808, 119th Cong.), signed 2025-09-05, amending FCRA §604(c) (15 U.S.C. §1681b(c)); effective 180 days after enactment",
       "sourceUrl": "https://www.congress.gov/bill/119th-congress/house-bill/2808",
       "codeRef": "server/routes/leads.ts (first-party intake only: TrustedForm cert + consent IP/UA/timestamp evidence; the platform purchases no leads)",
       "lastVerified": "2026-07-04",
@@ -329,7 +329,7 @@
       "codeRef": "server/services/businessDays.ts (excludes Saturdays, Sundays, observed federal holidays for ALL counts)",
       "lastVerified": "2026-07-04",
       "reviewIntervalDays": 180,
-      "notes": "PLATFORM CONVENTION: one calendar (Mon-Fri minus observed holidays) for both tiers. For the LE clock that reflects a brokerage not open Saturdays (general definition); for precise-definition waiting periods the reg COUNTS Saturdays, so excluding them delays earliest-consummation/receipt math \u2014 conservative in both directions, never permissive. 5 USC 6103(a) includes Juneteenth \u2014 VERIFIED present in businessDays.ts's holiday list (with Sat\u2192Fri/Sun\u2192Mon observance) 2026-07-04."
+      "notes": "PLATFORM CONVENTION: one calendar (Mon-Fri minus observed holidays) for both tiers. For the LE clock that reflects a brokerage not open Saturdays (general definition); for precise-definition waiting periods the reg COUNTS Saturdays, so excluding them delays earliest-consummation/receipt math — conservative in both directions, never permissive. 5 USC 6103(a) includes Juneteenth — VERIFIED present in businessDays.ts's holiday list (with Sat→Fri/Sun→Mon observance) 2026-07-04."
     },
     {
       "id": "trid-waiting-periods",
@@ -346,7 +346,7 @@
       "id": "aoms-bank-statement-expense-factor-default",
       "rule": "Angel Oak bank-statement qualifying income uses a default expense factor of 50% against eligible deposits",
       "value": "0.50",
-      "citation": "Angel Oak Mortgage Solutions \u2014 Bank Statement program page (public)",
+      "citation": "Angel Oak Mortgage Solutions — Bank Statement program page (public)",
       "sourceUrl": "https://angeloakms.com/programs/bank-statement-mortgage-program/",
       "codeRef": "server/services/income/paths/bankStatement.ts BANK_STATEMENT_DEFAULT_EXPENSE_FACTOR",
       "lastVerified": "2026-07-11",
@@ -357,7 +357,7 @@
       "id": "aoms-bank-statement-expense-factor-high",
       "rule": "Industries with traditionally higher expense factors are underwritten at a 70% expense factor; a factor below 50% requires a third-party CPA/tax-preparer/bookkeeper statement",
       "value": "0.70",
-      "citation": "Angel Oak Mortgage Solutions \u2014 Bank Statement program page (public)",
+      "citation": "Angel Oak Mortgage Solutions — Bank Statement program page (public)",
       "sourceUrl": "https://angeloakms.com/programs/bank-statement-mortgage-program/",
       "codeRef": "server/services/income/paths/bankStatement.ts BANK_STATEMENT_HIGH_EXPENSE_FACTOR",
       "lastVerified": "2026-07-11",
@@ -366,9 +366,9 @@
     },
     {
       "id": "aoms-dscr-rent-divided-pitia",
-      "rule": "Angel Oak Investor Cash Flow DSCR = expected rent divided by PITIA (principal, interest, taxes, insurance, HOA) \u2014 'Rent Divided PITIA = DSCR'",
+      "rule": "Angel Oak Investor Cash Flow DSCR = expected rent divided by PITIA (principal, interest, taxes, insurance, HOA) — 'Rent Divided PITIA = DSCR'",
       "value": "rent/PITIA",
-      "citation": "Angel Oak Mortgage Solutions \u2014 DSCR loan calculator page (public, operative formula)",
+      "citation": "Angel Oak Mortgage Solutions — DSCR loan calculator page (public, operative formula)",
       "sourceUrl": "https://angeloakms.com/dscr-loan-calculator/",
       "codeRef": "server/services/income/paths/dscr.ts computeDscrRatio",
       "lastVerified": "2026-07-11",
@@ -407,6 +407,39 @@
       "lastVerified": "2026-07-11",
       "reviewIntervalDays": 180,
       "notes": "Option-set DERIVATION for the LO-2 scenario simulator; the borrower-facing disclosure template is the separate regz-1026-36e-anti-steering entry (consentGate.ts). (e)(3)(ii) good-faith qualification is satisfied structurally: the simulator runs deterministic qualification per offer. Catalog carries no prepayment-penalty/demand/shared-equity flags; the (B) leg derives risky features from amortizationType markers (IO/balloon/neg-am) — the PPE adapter must map real feature flags when the contract lands."
+    },
+    {
+      "id": "fnma-b3-3-8-01-rental-offset-dti",
+      "rule": "Non-subject rental property DTI treatment: monthly qualifying rental income (75% of gross rent) minus full PITIA — positive result added to total monthly income, negative result added to total monthly obligations; PITIA never separately double-counted",
+      "value": "positive → income; negative → obligations; 75% factor; PITIA inside the net only",
+      "citation": "Fannie Mae Selling Guide B3-3.8-01 Rental Income (10/08/2025) — formerly B3-3.1-08 before the Income Assessment reorganization. Verbatim: 'If the monthly qualifying rental income minus the full PITIA is positive, it must be added to the borrower's total monthly income'; 'If the monthly qualifying rental income minus PITIA is negative, the monthly net rental loss must be added to the borrower's total monthly obligations.'",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.1-08/rental-income",
+      "codeRef": "server/services/income/paths/rental.ts (net offset), server/services/income/orchestrator.ts (income-side application), server/services/decisionEngine.ts (obligation-side application); transcription docs/fannie-mae/rental-income-reference.md",
+      "lastVerified": "2026-07-17",
+      "reviewIntervalDays": 180,
+      "notes": "DTI application shipped with the Phase-1 rental wiring (non-W2 plan §3.1); previously computed advisory-only."
+    },
+    {
+      "id": "fnma-b3-3-8-01-subject-rental-income",
+      "rule": "Subject-property 2-4 unit principal residence: qualifying rental income from the non-occupied unit(s) is ADDED to total monthly income while the FULL subject PITIA remains in total monthly obligations — never netted",
+      "value": "income-side only; full PITIA stays in housing expense",
+      "citation": "Fannie Mae Selling Guide B3-3.8-01 Rental Income (10/08/2025) — formerly B3-3.1-08. Verbatim: 'the full amount of the mortgage payment (PITIA) must be included in the borrower's total monthly obligations.' Netting qualifying rent against subject PITIA in the applied math would double-count the PITIA already carried in the housing expense.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.1-08/rental-income",
+      "codeRef": "server/services/income/orchestrator.ts subjectPropertyRental application; advisory display remains calculateSubjectPropertyRentalOffset (server/services/underwritingNuance.ts)",
+      "lastVerified": "2026-07-17",
+      "reviewIntervalDays": 180,
+      "notes": "S-06 upgraded from advisory to applied income-side; the borrower-facing flag now reports the income-side figure."
+    },
+    {
+      "id": "platform-rental-preliminary-asymmetry",
+      "rule": "WHEN rental offsets auto-apply: positive net rental income applies only at decision-grade financialDataProvenance (verified income/assets/credit); negative net rental applies to obligations ALWAYS, including PRELIMINARY decisions",
+      "value": "positive gated on verification; negative always counted",
+      "citation": "PLATFORM POLICY - strictly-conservative overlay. VERIFIED AGENCY BASELINE (B3-3.8-01, fetched 2026-07-17): the guide states the arithmetic and documentation (Schedule E / leases + 2 months of receipt evidence / Form 1007-1025) but not an automation gate; applying declared-but-unverified positive rent to a preliminary decision could over-state qualification, so the platform withholds it until provenance is decision-grade. Counting a declared loss early can only under-state.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.1-08/rental-income",
+      "codeRef": "server/services/income/orchestrator.ts (applyRentalToDti gate from shared/dataProvenance.ts isDecisionGrade), server/services/income/paths/rental.ts",
+      "lastVerified": "2026-07-17",
+      "reviewIntervalDays": 180,
+      "notes": "Asymmetry can never approve a file the guide would deny. Includes the mortgage-liability coexistence guard: applied offsets alongside mortgage-type URLA liability rows flag manual review instead of silently risking a PITIA double-count."
     }
   ]
 }

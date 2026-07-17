@@ -342,11 +342,14 @@ export function detectSignificantDeposits(
 }
 
 // ---------------------------------------------------------------------------
-// Scenario 5 — rental income calculation (Fannie B3-3.1-08)
+// Scenario 5 — rental income calculation (Fannie B3-3.8-01, formerly
+// B3-3.1-08; renumbering verified live 2026-07-17 —
+// docs/fannie-mae/rental-income-reference.md)
 // ---------------------------------------------------------------------------
 
-/** Fannie Mae B3-3.1-08: qualifying rental income = 75% of gross rent (a
- * standard 25% vacancy/expense factor), net of the rental property's PITIA. */
+/** Fannie Mae B3-3.8-01 (formerly B3-3.1-08): qualifying rental income = 75%
+ * of gross rent (a standard 25% vacancy/expense factor), net of the rental
+ * property's PITIA. */
 export const RENTAL_INCOME_VACANCY_FACTOR = 0.75;
 
 export interface RentalIncomeOffset {
@@ -354,7 +357,9 @@ export interface RentalIncomeOffset {
   grossMonthlyRent: number;
   qualifyingRentalIncome: number;
   monthlyPitia: number;
-  /** qualifyingRentalIncome − monthlyPitia; negative values add to DTI. */
+  /** qualifyingRentalIncome − monthlyPitia. B3-3.8-01: positive → added to
+   * qualifying income; negative → the net loss is added to monthly
+   * obligations (ledger fnma-b3-3-8-01-rental-offset-dti). */
   netOffset: number;
 }
 
@@ -380,33 +385,57 @@ export function calculateRentalIncomeOffsets(
 }
 
 // ---------------------------------------------------------------------------
-// Scenario 6 — multi-unit subject property rental income (Fannie B3-3.1-08)
+// Scenario 6 — multi-unit subject property rental income (Fannie B3-3.8-01,
+// formerly B3-3.1-08)
 // ---------------------------------------------------------------------------
 
 export interface SubjectPropertyRentalOffset {
   grossMonthlyMarketRent: number;
   qualifyingRentalIncome: number;
   subjectPitia: number;
+  /** Informational context only. B3-3.8-01's applied treatment is INCOME-SIDE:
+   * qualifying rent is added to total monthly income while the FULL subject
+   * PITIA stays in monthly obligations — the two are never netted in the DTI
+   * math (ledger fnma-b3-3-8-01-subject-rental-income). */
   netOffset: number;
 }
 
-/** Fannie B3-3.1-08: an owner-occupied 2-4 unit purchase qualifies market rent
- * from the appraisal's rent schedule at the same 75% vacancy/expense factor
- * as investment rental income, netted against the subject property's own
- * PITIA. Only applies when the borrower occupies one unit as a primary
- * residence and the property has 2-4 units — a non-owner-occupied multi-unit
- * purchase or a 1-unit/5+-unit property don't fit this rule. */
+/** Fannie B3-3.8-01 (formerly B3-3.1-08): an owner-occupied 2–4-unit property
+ * qualifies market rent from the appraisal's rent schedule (Form 1025) at the
+ * same 75% vacancy/expense factor as investment rental income. Eligibility:
+ * the borrower occupies one unit as a primary residence and the property has
+ * 2–4 units — a non-owner-occupied multi-unit purchase or a 1-unit/5+-unit
+ * property don't fit this rule. Returns the qualifying monthly rent to ADD to
+ * income (never net against the subject PITIA), or null when ineligible. */
+export function calculateSubjectPropertyQualifyingRent(
+  marketMonthlyRent: number | string | null | undefined,
+  numberOfUnits: number | null | undefined,
+  occupancyType: string | null | undefined,
+): number | null {
+  if (occupancyType !== "primary_residence") return null;
+  if (!numberOfUnits || numberOfUnits < 2 || numberOfUnits > 4) return null;
+  const rent = toNum(marketMonthlyRent);
+  if (isNaN(rent) || rent <= 0) return null;
+  return rent * RENTAL_INCOME_VACANCY_FACTOR;
+}
+
+/** Advisory display shape over calculateSubjectPropertyQualifyingRent: keeps
+ * the subject PITIA and a net figure for borrower-context messaging. The
+ * applied DTI math must use the qualifying rent income-side only (see
+ * SubjectPropertyRentalOffset.netOffset doc). */
 export function calculateSubjectPropertyRentalOffset(
   marketMonthlyRent: number | string | null | undefined,
   subjectPitia: number,
   numberOfUnits: number | null | undefined,
   occupancyType: string | null | undefined,
 ): SubjectPropertyRentalOffset | null {
-  if (occupancyType !== "primary_residence") return null;
-  if (!numberOfUnits || numberOfUnits < 2 || numberOfUnits > 4) return null;
+  const qualifyingRentalIncome = calculateSubjectPropertyQualifyingRent(
+    marketMonthlyRent,
+    numberOfUnits,
+    occupancyType,
+  );
+  if (qualifyingRentalIncome === null) return null;
   const rent = toNum(marketMonthlyRent);
-  if (isNaN(rent) || rent <= 0) return null;
-  const qualifyingRentalIncome = rent * RENTAL_INCOME_VACANCY_FACTOR;
   return {
     grossMonthlyMarketRent: rent,
     qualifyingRentalIncome,
