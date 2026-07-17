@@ -75,25 +75,46 @@ async function main() {
       typeof prod.logical_size === "number" &&
       branch.logical_size > prod.logical_size * 0.5;
     if (looksLikeClone) {
-      fail(
-        `existing "${BRANCH_NAME}" looks like a DATA clone of production ` +
-          `(${branch.logical_size} vs prod ${prod.logical_size} bytes) — it contains prod data. ` +
-          "Delete it in the Neon console and re-run so it is recreated schema-only.",
+      // Not fatal: on legacy-web-access projects the branch is BORN a clone
+      // and the reset step wipes it. Surface it loudly so a failed wipe is
+      // visible in the run log.
+      console.log(
+        `warning: "${BRANCH_NAME}" currently holds data-clone-sized storage ` +
+          `(${branch.logical_size} vs prod ${prod.logical_size} bytes) — the reset step MUST succeed.`,
       );
     }
   } else {
-    // schema-only: prod's DDL, zero rows. Neon creates it as an independent
-    // root branch (schema-only branches cannot sit under a parent).
-    console.log(`creating schema-only branch "${BRANCH_NAME}" from ${prod.id}…`);
-    const created = await api(`/projects/${projectId}/branches`, {
-      method: "POST",
-      body: JSON.stringify({
-        branch: { name: BRANCH_NAME, init_source: "schema-only", parent_id: prod.id },
-        endpoints: [{ type: "read_write" }],
-      }),
-    });
-    branch = created.branch;
-    console.log(`created ${branch.id}.`);
+    // Preferred: schema-only (prod's DDL, zero rows; an independent root).
+    // VERIFIED 2026-07-17: this project 412s — "project with a legacy web
+    // access role do not support schema-only branches; role: anonymous"
+    // (a leftover of Neon's old passwordless web access; removing a prod role
+    // is founder-territory). Fallback: a plain child branch — a DATA clone —
+    // whose data the NEXT workflow step wipes and rebuilds from migrations.
+    // Password rotation below applies on both paths.
+    console.log(`creating branch "${BRANCH_NAME}" (schema-only preferred)…`);
+    try {
+      const created = await api(`/projects/${projectId}/branches`, {
+        method: "POST",
+        body: JSON.stringify({
+          branch: { name: BRANCH_NAME, init_source: "schema-only", parent_id: prod.id },
+          endpoints: [{ type: "read_write" }],
+        }),
+      });
+      branch = created.branch;
+      console.log(`created ${branch.id} (schema-only).`);
+    } catch (err) {
+      if (!/legacy web access|schema-only/i.test(String(err.message))) throw err;
+      console.log("schema-only unavailable on this project (legacy web-access role) — falling back to a child branch; the reset step wipes its data.");
+      const created = await api(`/projects/${projectId}/branches`, {
+        method: "POST",
+        body: JSON.stringify({
+          branch: { name: BRANCH_NAME, parent_id: prod.id },
+          endpoints: [{ type: "read_write" }],
+        }),
+      });
+      branch = created.branch;
+      console.log(`created ${branch.id} (child clone — MUST be wiped by the reset step before use).`);
+    }
   }
 
   // Ensure it has a compute endpoint (find-or-create).

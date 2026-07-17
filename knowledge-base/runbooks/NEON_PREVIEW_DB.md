@@ -46,14 +46,21 @@ gh workflow run preview-seed.yml
 The workflow (`.github/workflows/preview-seed.yml`, manual-dispatch only —
 `NEON_API_KEY` exists only as an Actions secret):
 
-1. `scripts/neon-preview-seed-branch.cjs` — find-or-create the schema-only
-   branch (+ compute endpoint), **refuse** if an existing branch of that name
-   looks like a data clone, rotate every role password.
-2. `pnpm db:migrate:adopt` against it — schema-only already *has* every
-   object, so migrations are recorded as applied, not re-executed. Future
-   schema PRs: previews tolerate an older DB by the expand/contract rule; the
-   branch picks up new schema whenever the workflow is re-run after a merge.
-3. `pnpm db:seed` — the idempotent synthetic content seed (same one the server
+1. `scripts/neon-preview-seed-branch.cjs` — find-or-create the branch
+   (+ compute endpoint) and rotate every role password. Schema-only is
+   preferred, but **this project 412s on schema-only** ("legacy web access
+   role … role: anonymous" — a leftover of Neon's old passwordless web
+   access; removing a production role is a founder/Neon-support call), so the
+   script falls back to a child clone that the next step erases.
+2. `scripts/reset-preview-seed-db.cjs` — wipe the branch to an empty schema.
+   Guarded: it resolves its own connection from the Neon API (never a raw
+   `DATABASE_URL`) and hard-refuses the default branch, so it cannot be
+   mis-aimed at production.
+3. `pnpm db:migrate` — rebuild from the FULL migration chain (a nice side
+   effect: every run validates the chain from zero). Future schema PRs:
+   previews tolerate an older DB by the expand/contract rule; re-run the
+   workflow after a merge to pick up new schema.
+4. `pnpm db:seed` — the idempotent synthetic content seed (same one the server
    runs at boot; no PII, no prod extract).
 
 No step prints a connection string or password.
@@ -80,9 +87,13 @@ No step prints a connection string or password.
 - **Schema-ahead PRs**: a preview whose code *requires* brand-new tables will
   500 on those paths until the workflow is re-run post-merge (same expand/
   contract tolerance as production deploys).
-- The nicer long-term options remain: Neon **anonymized branches** (ask Neon
-  support — integration support is undocumented) or the paid plan's branch
-  protection.
+- **Clone-path residual**: on this project the branch is born a data clone
+  and wiped seconds later; Neon time-travel history retains the pre-wipe
+  state for the plan's retention window (hours on Free), after which no
+  borrower data exists anywhere on the branch.
+- The nicer long-term options remain: ask Neon support to **remove the legacy
+  web-access role** (unlocks schema-only branches), Neon **anonymized
+  branches**, or the paid plan's branch protection.
 
 ## 5. Verification after cutover
 
