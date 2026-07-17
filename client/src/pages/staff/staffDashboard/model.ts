@@ -76,6 +76,32 @@ export interface ComplianceData {
     coApplicantCount?: number;
     coApplicants?: { borrowerSequenceNumber: number; name: string | null }[];
   }[];
+  // ECOA §1002.9 delivery watchdog: undelivered adverse-action notices in the
+  // viewer's scope, with how many have aged into the pre-deadline warning band
+  // (≥21 days) or past the 30-day statutory window (breach).
+  adverseActionDelivery: {
+    undelivered: number;
+    warning: number;
+    breach: number;
+  };
+}
+
+/**
+ * Compliance KPI: share of validated files meeting at least the ULDD data bar,
+ * each application counted once. `gseReady` (the stronger state) and
+ * `ulddCompliant` (the weaker one) are independently computed flags — see
+ * server/services/mismoValidation.ts — and a delivery-ready file is usually
+ * both, so summing the endpoint's two counts double-counts it and can push the
+ * ratio past 100%.
+ */
+export function complianceScorePercent(
+  data:
+    | { total: number; applications: { gseReady: boolean; ulddCompliant: boolean }[] }
+    | undefined,
+): number {
+  if (!data) return 0;
+  const compliant = data.applications.filter(a => a.gseReady || a.ulddCompliant).length;
+  return Math.round((compliant / Math.max(data.total, 1)) * 100);
 }
 
 export interface RetentionPolicy {
