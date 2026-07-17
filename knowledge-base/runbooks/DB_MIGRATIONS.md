@@ -53,9 +53,27 @@ PR touches shared/schema/**
      script fails with the list of project ids when it's ambiguous. A project id is not secret.
    - The connection string is piped straight into the migrator by command substitution; it is
      never echoed, never written to `GITHUB_ENV`, and neither script prints it.
-2. **Make the gate binding.** Settings → Branches → branch protection on `main` → require the
-   `gate` status check to pass before merge. Without this, "green" is advisory and auto-merge could
-   merge a red PR.
+2. **Make the gate binding.** ✅ **Done 2026-07-17** — branch protection on `main` requires the
+   `gate` check. Until it existed, "green" was advisory and auto-merge could merge a red PR.
+   Current rule (`gh api repos/OWNER/REPO/branches/main/protection` to read it back):
+
+   | Setting | Value | Why |
+   |---|---|---|
+   | Required check | `gate (typecheck · tests · schema guard)` | the only check that must pass |
+   | `enforce_admins` | **on** | auto-merge runs *as* the repo owner; without this the rule is decorative |
+   | Required reviews | none | a solo owner can't approve their own PR — this keeps autonomous merge of a GREEN PR working |
+   | Force-push / delete `main` | blocked | |
+   | `strict` (branch up to date) | off | avoids an update+re-run cycle on every merge |
+
+   Deliberately **not** required: `migrate-prod` (it reports `skipped` on PRs — requiring it would
+   deadlock every PR) and Vercel's checks (third-party, not a correctness gate).
+
+   ⚠️ **The required context is the gate job's `name:`, matched verbatim.** Renaming that job
+   without re-pointing the rule deadlocks every PR, unbypassable. See the warning comment on the
+   job in [`ci.yml`](../../.github/workflows/ci.yml).
+
+   **Break-glass:** `enforce_admins` binds the owner too, so a genuine emergency needs it turned
+   off deliberately (Settings → Branches), not bypassed silently — which is the point.
 3. **Pre-flight before trusting the auto-run (mandatory).** Pending-detection is journal-based
    (hash OR `created_at`), so confirm what it *thinks* is pending before it applies anything.
    Run it from GitHub — **no local credential needed**:
