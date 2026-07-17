@@ -313,6 +313,30 @@ export function registerUnderwritingRoutes(
     },
   );
 
+  // AI risk brief (advisory, internal_only — roadmap A4). Narrates the
+  // deterministic outputs; never recomputes them, never feeds a decision or an
+  // adverse-action notice (CI-enforced in tests/complianceInvariants.test.ts).
+  // POST, not GET: each call spends model tokens and writes an ai_interactions
+  // governance row, so it must never auto-fire from a mounted useQuery.
+  app.post(
+    "/api/loan-applications/:id/risk-brief",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        const { generateRiskBrief } = await import("../services/riskBrief");
+        res.json(await generateRiskBrief(id, { userId: req.user!.id, userRole: req.user!.role }));
+      } catch (error) {
+        console.error("Risk brief error:", error);
+        res.status(500).json({ error: "Failed to generate risk brief" });
+      }
+    },
+  );
+
   // ============================================================================
   // LOAN PIPELINE API ENDPOINTS
   // ============================================================================
