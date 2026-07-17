@@ -6,7 +6,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry, type IncomeSourceEntry } from "@shared/schema";
-import { COMPANY_IDENTITY } from "@shared/companyIdentity";
+import { COMPANY_IDENTITY, isLicensedState, unlicensedStateMessage } from "@shared/companyIdentity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressInput } from "@/components/AddressInput";
@@ -733,7 +733,12 @@ function PreApprovalFunnel() {
                           onSelect={() => {
                             form.setValue("propertyState", state.value, { shouldValidate: true });
                             setStateComboOpen(false);
-                            setTimeout(() => next(form.getValues()), 200);
+                            // Licensed-state gate (roadmap A5), mirroring the
+                            // server's 422: don't advance into a funnel we
+                            // can't finish — the notice below explains why.
+                            if (isLicensedState(state.value)) {
+                              setTimeout(() => next(form.getValues()), 200);
+                            }
                           }}
                         >
                           <Check
@@ -751,6 +756,25 @@ function PreApprovalFunnel() {
                 </Command>
               </PopoverContent>
             </Popover>
+            {selectedState && !isLicensedState(selectedState) && (
+              <div
+                className="mt-4 rounded-md border p-4 text-left text-sm text-muted-foreground"
+                role="alert"
+                data-testid="notice-unlicensed-state"
+              >
+                <p className="font-medium text-foreground">
+                  We can't take applications in {selectedStateOption?.label ?? selectedState} yet
+                </p>
+                <p className="mt-1 leading-relaxed">{unlicensedStateMessage(selectedState)}</p>
+                <p className="mt-2 leading-relaxed">
+                  Pick a different state to continue, or see{" "}
+                  <a href="/disclosures" className="font-medium text-primary underline underline-offset-2">
+                    where we're licensed
+                  </a>
+                  .
+                </p>
+              </div>
+            )}
           </div>
         );
 

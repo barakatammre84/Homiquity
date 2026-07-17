@@ -3,6 +3,7 @@
 import type { Express } from "express";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
+import { unlicensedStateRejection } from "@shared/companyIdentity";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -51,6 +52,13 @@ export function registerApplicationPropertyRoutes(
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Licensed-state gate (roadmap A5): attaching a property stamps its
+      // state onto the application — same footprint rule as intake.
+      const stateRejection = unlicensedStateRejection(req.body.state);
+      if (stateRejection) {
+        return res.status(422).json(stateRejection);
       }
 
       const propertyData = {
@@ -109,6 +117,13 @@ export function registerApplicationPropertyRoutes(
       const property = await storage.switchToProperty(id, propertyId);
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
+      }
+
+      // Licensed-state gate (roadmap A5): switching makes this property the
+      // subject property — refuse when it sits outside the footprint.
+      const stateRejection = unlicensedStateRejection(property.state);
+      if (stateRejection) {
+        return res.status(422).json(stateRejection);
       }
 
       // Update the main application with the switched property details
@@ -175,6 +190,13 @@ export function registerApplicationPropertyRoutes(
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Licensed-state gate (roadmap A5): a property edit can change the
+      // state; the current property syncs onto the application below.
+      const stateRejection = unlicensedStateRejection(req.body.state);
+      if (stateRejection) {
+        return res.status(422).json(stateRejection);
       }
 
       const updateData: any = {};

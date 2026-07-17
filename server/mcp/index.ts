@@ -18,6 +18,7 @@ import {
   users,
   wholesaleLenders,
 } from "@shared/schema";
+import { isZipInLicensedStates, unlicensedStateMessage } from "@shared/companyIdentity";
 import { calculateLLPA } from "../pricing";
 import {
   logAgentToolInvocation,
@@ -375,6 +376,19 @@ server.registerTool(
     const toolName = "get_best_execution_rates";
     const args = { creditScore, ltv, zipCode, loanAmount, productType };
     try {
+      // Licensed-state gate (roadmap A5): location-scoped pricing is quoting
+      // activity — refuse ZIPs outside the licensed footprint (SAFE Act/Reg H;
+      // state law controls — see shared/companyIdentity.ts). Same refusal
+      // posture as the FCRA consent gate on the soft-pull tool.
+      if (!isZipInLicensedStates(zipCode)) {
+        await auditInvocation({
+          toolName,
+          args,
+          outcome: "refused",
+          resultSummary: { reason: "unlicensed_state_zip" },
+        });
+        return fail(`Licensing: ${unlicensedStateMessage()} (ZIP ${zipCode} is outside the footprint.)`);
+      }
       const rows = await withTimeout(
         db
           .select({

@@ -49,3 +49,98 @@ export function isCompanyNmlsPending(): boolean {
   const id = COMPANY_IDENTITY.nmlsId as string;
   return !id || id === "PENDING";
 }
+
+// =============================================================================
+// Licensed-state footprint (roadmap A5; 2026-07-17 adjudication gap D).
+//
+// The company license (SAFE Act / Reg H, 12 CFR 1008) is state-by-state and
+// STATE LAW CONTROLS what activity requires licensure (docs/nmls/README.md
+// hierarchy; for Illinois, the Residential Mortgage License Act governs). We
+// therefore do not take applications, set a subject-property state, or quote
+// location-scoped pricing outside this list. Same light-up contract as
+// companyNmlsDisplay(): while the NMLS id is PENDING the footprint is empty.
+//
+// FOUNDER-MAINTAINED: founder confirmed Illinois-only on 2026-07-17. Add a
+// state here ONLY when its license is issued and verifiable on NMLS Consumer
+// Access — never speculatively. Keep LICENSED_STATE_DETAILS (the Disclosures
+// page card) and STATE_ZIP3_RANGES (zip-scoped gates) in step.
+// =============================================================================
+
+export const LICENSED_STATES = ["IL"] as const;
+
+/** Rendered on the Disclosures "State Licensing" card. Add the state-issued
+ * license number to `licenseNumber` when at hand — never invent one; the
+ * NMLS Consumer Access link is the verification path either way. */
+export const LICENSED_STATE_DETAILS: Array<{
+  code: string;
+  name: string;
+  license: string;
+  licenseNumber?: string;
+}> = [
+  { code: "IL", name: "Illinois", license: "Illinois Residential Mortgage License" },
+];
+
+// Full-name lookup so isLicensedState accepts "Illinois" as well as "IL".
+const LICENSED_STATE_NAMES = new Map(
+  LICENSED_STATE_DETAILS.map((s) => [s.name.toLowerCase(), s.code]),
+);
+
+/** USPS 3-digit ZIP prefixes per licensed state (inclusive ranges). Illinois
+ * is 600xx–629xx. Used where only a ZIP is known (e.g. the MCP pricing tool). */
+const STATE_ZIP3_RANGES: Record<string, Array<[number, number]>> = {
+  IL: [[600, 629]],
+};
+
+function normalizeStateCode(state: string | null | undefined): string | null {
+  const trimmed = (state ?? "").trim();
+  if (!trimmed) return null;
+  if (trimmed.length === 2) return trimmed.toUpperCase();
+  return LICENSED_STATE_NAMES.get(trimmed.toLowerCase()) ?? trimmed.toUpperCase();
+}
+
+/** True when the company may arrange financing for a property in `state`. */
+export function isLicensedState(state: string | null | undefined): boolean {
+  if (isCompanyNmlsPending()) return false;
+  const code = normalizeStateCode(state);
+  return code !== null && (LICENSED_STATES as readonly string[]).includes(code);
+}
+
+/** True when a 5-digit ZIP falls inside a licensed state's USPS prefix range. */
+export function isZipInLicensedStates(zip: string | null | undefined): boolean {
+  if (isCompanyNmlsPending()) return false;
+  const digits = (zip ?? "").trim();
+  if (!/^\d{5}$/.test(digits)) return false;
+  const prefix = parseInt(digits.slice(0, 3), 10);
+  return LICENSED_STATES.some((code) =>
+    (STATE_ZIP3_RANGES[code] ?? []).some(([lo, hi]) => prefix >= lo && prefix <= hi),
+  );
+}
+
+/** Borrower-safe copy for the gate responses. Names the footprint dynamically
+ * so adding a state never requires a copy edit. */
+export function unlicensedStateMessage(state?: string | null): string {
+  const names = LICENSED_STATE_DETAILS.map((s) => s.name).join(", ");
+  const where = normalizeStateCode(state);
+  return (
+    `Homiquity is currently licensed to arrange mortgage financing in ${names} only, ` +
+    `so we can't yet accept applications or provide quotes for properties` +
+    `${where ? ` in ${where}` : " outside those states"}. Our licensing is independently ` +
+    `verifiable through NMLS Consumer Access (${companyNmlsDisplay() ?? "NMLS id pending"}).`
+  );
+}
+
+/**
+ * One-liner gate for API routes writing a subject-property state: returns the
+ * 422 envelope body when the state is outside the licensed footprint, or null
+ * when the write may proceed. An ABSENT state never rejects — the TRID
+ * address-last funnel legitimately collects the property late; the gate fires
+ * only when a concrete unlicensed state is being set.
+ */
+export function unlicensedStateRejection(
+  state: string | null | undefined,
+): { error: string; code: "UNLICENSED_STATE" } | null {
+  const trimmed = (state ?? "").trim();
+  if (!trimmed) return null;
+  if (isLicensedState(trimmed)) return null;
+  return { error: unlicensedStateMessage(trimmed), code: "UNLICENSED_STATE" };
+}
