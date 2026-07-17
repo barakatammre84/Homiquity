@@ -3,7 +3,7 @@
 import type { Express } from "express";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
-import { isInternalStaffRole, type User } from "@shared/schema";
+import { isInternalStaffRole, OPEN_RATE_LOCK_STATUSES, type User } from "@shared/schema";
 import { z } from "zod";
 import { firstQueryValue } from "../queryParams";
 
@@ -165,8 +165,11 @@ export function registerRateLockRoutes(
         return res.status(403).json({ error: "Access denied to this application" });
       }
 
-      if (lock.status !== "active") {
-        return res.status(400).json({ error: "Can only extend active rate locks" });
+      // Any open lock is extendable — "extended" included, or a second
+      // extension would be impossible (extensionCount exists to count them,
+      // and the desk dialog offers Extend on every live lock).
+      if (!OPEN_RATE_LOCK_STATUSES.includes(lock.status)) {
+        return res.status(400).json({ error: "Can only extend an open rate lock" });
       }
 
       const currentExpiry = new Date(lock.expiresAt);

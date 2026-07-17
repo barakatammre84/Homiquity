@@ -119,8 +119,19 @@ describe("LE clock and hard stop (§1026.19(e)(1)(iii))", () => {
   });
 
   it("hard stop never blocks exit dispositions", () => {
-    for (const exit of ["denied", "withdrawn", "suspended"]) {
+    // Every non-consummation ending plus the pause — expiring an LE-overdue
+    // pre-approval must be possible (the old hand list omitted "expired").
+    for (const exit of ["denied", "withdrawn", "expired", "suspended"]) {
       expect(tridHardStopError(triggeredMonday, exit, new Date("2026-06-15T12:00:00Z"))).toBeNull();
+    }
+  });
+
+  it("hard stop still gates consummation — funded is not an exit", () => {
+    for (const advance of ["funded", "closing", "clear_to_close"]) {
+      expect(
+        tridHardStopError(triggeredMonday, advance, new Date("2026-06-15T12:00:00Z")),
+        `${advance} must be blocked while the LE is overdue`,
+      ).toMatch(/1026\.19/);
     }
   });
 

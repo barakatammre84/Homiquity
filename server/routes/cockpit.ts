@@ -5,7 +5,13 @@ import { buildStaffSignals } from "../services/signalEngine";
 import { getLatestIncomePathEvaluation } from "../services/scenarioSimulator";
 import { getUserActivitySummary } from "../services/activitySummary";
 import { verifyInternalStaffApplicationAccess } from "./borrower";
-import { LOAN_APP_TERMINAL_STATUSES, type User, type DealTeamMember, type LoanApplication } from "@shared/schema";
+import {
+  LOAN_APP_TERMINAL_STATUSES,
+  SETTLED_CONDITION_STATUSES,
+  type User,
+  type DealTeamMember,
+  type LoanApplication,
+} from "@shared/schema";
 
 /**
  * LO Command Center cockpit routes (LO Advisor Program prompt LO-1).
@@ -26,7 +32,7 @@ import { LOAN_APP_TERMINAL_STATUSES, type User, type DealTeamMember, type LoanAp
  * existing audited reveal path.
  */
 
-const OPEN_CONDITION_CLOSED_STATUSES = new Set(["cleared", "waived", "not_applicable", "satisfied"]);
+const OPEN_CONDITION_CLOSED_STATUSES: ReadonlySet<string> = new Set(SETTLED_CONDITION_STATUSES);
 const RECENT_MESSAGE_LIMIT = 6;
 const MESSAGE_SNIPPET_CHARS = 140;
 

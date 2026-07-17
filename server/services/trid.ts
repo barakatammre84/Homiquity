@@ -17,7 +17,21 @@
 
 import { storage } from "../storage";
 import { addBusinessDays } from "./businessDays";
-import type { LoanApplication, UrlaPersonalInfo } from "@shared/schema";
+import { LOAN_APP_TERMINAL_STATUSES, type LoanApplication, type UrlaPersonalInfo } from "@shared/schema";
+
+/**
+ * Transitions the LE hard stop must not block: every way an application ends
+ * without consummation (denied / withdrawn / expired) plus "suspended" (a
+ * pause, not an advance). "funded" is deliberately NOT an exit — it is
+ * consummation, the one terminal the overdue-LE stop must still gate.
+ * Derived from the canonical vocabulary; the old hand list carried the
+ * phantom "closed" and omitted "expired", which blocked staff from marking
+ * an LE-overdue pre-approval expired through the status routes.
+ */
+const TRID_EXIT_STATUSES: ReadonlySet<string> = new Set([
+  ...LOAN_APP_TERMINAL_STATUSES.filter((s) => s !== "funded"),
+  "suspended",
+]);
 
 export interface SixPiecesAssessment {
   complete: boolean;
@@ -108,8 +122,7 @@ export function tridHardStopError(
   targetStatus: string,
   now: Date = new Date(),
 ): string | null {
-  const EXIT_STATUSES = new Set(["denied", "withdrawn", "suspended", "closed"]);
-  if (EXIT_STATUSES.has(targetStatus)) return null;
+  if (TRID_EXIT_STATUSES.has(targetStatus)) return null;
 
   const status = getTridStatus(application, now);
   if (!status.leOverdue) return null;

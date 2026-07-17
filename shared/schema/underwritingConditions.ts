@@ -215,6 +215,32 @@ export const CONDITION_CATEGORIES = [
 
 export const CONDITION_PRIORITY = ["prior_to_approval", "prior_to_docs", "prior_to_funding"] as const;
 
+/**
+ * The ONLY statuses `loanConditions.status` may hold. Lifecycle:
+ * "outstanding" (issued / reopened) → "submitted" (a borrower upload matched —
+ * pipelineEngine) → "cleared" / "waived" / "not_applicable" (staff verdicts,
+ * role-gated in server/routes/underwriting/pipeline.ts).
+ */
+export const LOAN_CONDITION_STATUSES = [
+  "outstanding",
+  "submitted",
+  "cleared",
+  "waived",
+  "not_applicable",
+] as const;
+export type LoanConditionStatus = (typeof LOAN_CONDITION_STATUSES)[number];
+
+/**
+ * Verdict statuses — the condition no longer needs work. Everything outside
+ * this set ("outstanding", "submitted") counts as open; readiness gates and
+ * open-condition counts must derive from this so the two can't diverge.
+ */
+export const SETTLED_CONDITION_STATUSES: readonly LoanConditionStatus[] = [
+  "cleared",
+  "waived",
+  "not_applicable",
+];
+
 export const loanConditions = pgTable("loan_conditions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
@@ -224,7 +250,7 @@ export const loanConditions = pgTable("loan_conditions", {
   description: text("description"),
   priority: varchar("priority", { length: 50 }).default("prior_to_docs").notNull(),
 
-  status: varchar("status", { length: 50 }).default("outstanding").notNull(),
+  status: varchar("status", { length: 50 }).$type<LoanConditionStatus>().default("outstanding").notNull(),
 
   requiredDocumentTypes: text("required_document_types").array(),
   linkedTaskId: varchar("linked_task_id").references(() => tasks.id),
@@ -249,7 +275,9 @@ export const loanConditions = pgTable("loan_conditions", {
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 });
 
-export const insertLoanConditionSchema = createInsertSchema(loanConditions).omit({
+export const insertLoanConditionSchema = createInsertSchema(loanConditions, {
+  status: z.enum(LOAN_CONDITION_STATUSES).optional(),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

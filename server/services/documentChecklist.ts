@@ -19,7 +19,7 @@
  *  - rejected items expose rejectionReason/reviewedAt so the portal can say
  *    WHY and invite a re-upload.
  */
-import type { Document, LoanCondition, Task } from "@shared/schema";
+import { SETTLED_CONDITION_STATUSES as SHARED_SETTLED_CONDITION_STATUSES, type Document, type LoanCondition, type Task } from "@shared/schema";
 import { documentTypesMatch } from "@shared/documentTypes";
 import {
   DOCUMENT_STATUS,
@@ -98,7 +98,7 @@ export const STANDARD_DOCS: Array<{
 ];
 
 /** Condition states that mean "this to-do is settled" — no checklist item. */
-const SETTLED_CONDITION_STATUSES = new Set(["cleared", "waived", "not_applicable"]);
+const SETTLED_CONDITION_STATUSES: ReadonlySet<string> = new Set(SHARED_SETTLED_CONDITION_STATUSES);
 
 function documentItemStatus(doc: ChecklistDocument): ChecklistItemStatus {
   return doc.status && isDocumentStatus(doc.status) ? doc.status : DOCUMENT_STATUS.UPLOADED;
