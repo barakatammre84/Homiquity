@@ -4,6 +4,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Sparkles, WifiOff } from "lucide-react";
+import { Icons, iconSize } from "@/lib/icons";
+import { companyNmlsDisplay } from "@shared/companyIdentity";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { usePageView, useTrackActivity, useTrackCoachSession } from "@/hooks/useActivityTracker";
@@ -273,6 +275,23 @@ export default function AICoach() {
             </span>
           </div>
         )}
+
+        {/* First-contact disclosure — static copy, deliberately not model-
+            generated: AI identity, educational-guidance limitation, PII
+            channel rule, and the SAFE Act unique-identifier line (renders
+            only once licensed, via companyNmlsDisplay). */}
+        <div
+          className="flex items-center gap-2 border-b px-4 py-2 text-xs text-muted-foreground"
+          data-testid="banner-coach-disclosure"
+        >
+          <Icons.security className={`${iconSize.dense} shrink-0`} />
+          <span>
+            You're chatting with Homiquity's AI assistant. Its guidance is educational — estimates
+            aren't offers or approvals, and final terms come from underwriting review and official
+            disclosures. Please don't share your Social Security number or date of birth in chat.
+            {companyNmlsDisplay() ? ` ${companyNmlsDisplay()} · ` : " "}Equal Housing Opportunity.
+          </span>
+        </div>
 
         {!hasActiveChat ? (
           <WelcomeState onStart={(msg) => handleSend(msg)} insights={insights} />
