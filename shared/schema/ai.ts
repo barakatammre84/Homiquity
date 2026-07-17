@@ -48,7 +48,7 @@ export const aiInteractions = pgTable(
     userRole: varchar("user_role", { length: 50 }), // role of the requesting user, if any
 
     // Provider + model actually used (provider-agnostic gateway)
-    provider: varchar("provider", { length: 30 }).notNull(), // "gemini" | "claude"
+    provider: varchar("provider", { length: 30 }).notNull(), // "claude" (current) | "gemini" (legacy rows)
     model: varchar("model", { length: 100 }).notNull(),
 
     // The exchange (store enough to reconstruct for an exam; redact PII upstream)
