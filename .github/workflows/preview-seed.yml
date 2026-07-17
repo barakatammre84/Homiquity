@@ -14,6 +14,11 @@ name: preview-seed
 
 on:
   workflow_dispatch:
+    inputs:
+      reap_orphans:
+        description: "Delete orphaned preview/* Neon clones whose git branch is gone (inventory prints either way)"
+        type: boolean
+        default: false
 
 jobs:
   preview-seed:
@@ -31,7 +36,10 @@ jobs:
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
-        run: node scripts/neon-preview-seed-branch.cjs
+          REAP_ORPHANS: ${{ inputs.reap_orphans && 'true' || 'false' }}
+        run: |
+          GIT_REMOTE_BRANCHES="$(git ls-remote --heads origin | awk '{print $2}' | sed 's|refs/heads/||')" \
+            node scripts/neon-preview-seed-branch.cjs
       - name: Wipe preview-seed back to an empty schema
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
