@@ -110,6 +110,19 @@ export const TASK_TYPE_CODES = [
   "CMP_ADVERSE_ACTION", "CMP_POLICY_EXCEPTION", "CMP_AUDIT_REVIEW", "CMP_DATA_RETENTION", "CMP_INCIDENT_REVIEW",
   // General
   "DOCUMENT_REQUEST", "VERIFICATION", "REVIEW", "FOLLOW_UP", "ESCALATION",
+  // Codes the task-event emitters actually write (server/services/taskEventEmitter.ts).
+  // The blocks above were declared before the emitters were built and the two
+  // vocabularies never met: until 2026-07-17 every live event task carried a
+  // code absent from this list. Declared must contain spoken —
+  // tests/taskEngineSlaSeed.test.ts scans the emitter and fails on any new
+  // code missing here or in the SLA seed. (CMP_ADVERSE_ACTION and
+  // CRD_NEW_TRADELINE were already shared with the blocks above.)
+  "DOC_REVIEW", "OCR_FAILED", "OCR_QUALITY", "DOC_EXPIRED", "DOC_MISSING",
+  "INTAKE_REVIEW", "PA_GENERATE", "DOC_COLLECT_START", "PROC_START", "UW_START",
+  "ELIG_COND_CLEAR", "CMP_CLOSING_DISC",
+  "CRD_SCORE_CHANGE", "CRD_EXPIRED",
+  "INC_CHANGE", "INC_VERIFY_EMP", "INC_EXPIRED",
+  "AST_DECREASE", "AST_VERIFY",
 ] as const;
 
 export type TaskTypeCode = typeof TASK_TYPE_CODES[number];

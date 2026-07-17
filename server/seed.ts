@@ -1,9 +1,10 @@
 import { db } from "./db";
-import { contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders, properties, dpaPrograms } from "@shared/schema";
+import { contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders, properties, dpaPrograms, slaClassConfigs, taskTypeSlaMapping } from "@shared/schema";
 import { refreshRates, syncBestExecutionRates } from "./services/rateService";
 import { seedMarketPricing } from "./seedMarketPricing";
 import { ILLINOIS_DPA_ARTICLES, ILLINOIS_DPA_PROGRAMS } from "./seedData/illinoisDpa";
 import { EDUCATION_ARTICLES } from "./seedData/educationContent";
+import { SLA_CLASS_CONFIG_SEED, TASK_TYPE_SLA_MAPPING_SEED } from "./seedData/taskEngineSla";
 
 export async function seedDatabase() {
   try {
@@ -815,6 +816,7 @@ For more information, visit www.consumerfinance.gov/learnmore`,
 
     await seedIllinoisDpaContent();
     await seedEducationContent();
+    await seedTaskEngineSla();
 
     await seedMarketPricing();
 
@@ -868,5 +870,34 @@ export async function seedIllinoisDpaContent() {
 export async function seedEducationContent() {
   for (const article of EDUCATION_ARTICLES) {
     await db.insert(articles).values(article).onConflictDoNothing({ target: articles.slug });
+  }
+}
+
+// Task-engine SLA reference data — runs every boot, insert-only on the natural
+// keys (slaClass / taskTypeCode), same contract as the DPA seeder: the DB rows
+// are the live config and operator edits are never overwritten. Both tables
+// were empty for the engine's whole life, so no task ever got an SLA deadline
+// and per-code default ownership never applied (see seedData/taskEngineSla.ts).
+export async function seedTaskEngineSla() {
+  let seededConfigs = 0;
+  for (const config of SLA_CLASS_CONFIG_SEED) {
+    const inserted = await db
+      .insert(slaClassConfigs)
+      .values(config)
+      .onConflictDoNothing({ target: slaClassConfigs.slaClass })
+      .returning({ id: slaClassConfigs.id });
+    seededConfigs += inserted.length;
+  }
+  let seededMappings = 0;
+  for (const mapping of TASK_TYPE_SLA_MAPPING_SEED) {
+    const inserted = await db
+      .insert(taskTypeSlaMapping)
+      .values(mapping)
+      .onConflictDoNothing({ target: taskTypeSlaMapping.taskTypeCode })
+      .returning({ id: taskTypeSlaMapping.id });
+    seededMappings += inserted.length;
+  }
+  if (seededConfigs > 0 || seededMappings > 0) {
+    console.log(`Seeded task-engine SLA config (${seededConfigs} classes, ${seededMappings} task-type mappings)`);
   }
 }
