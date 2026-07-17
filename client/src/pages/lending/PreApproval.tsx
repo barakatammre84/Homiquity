@@ -1217,6 +1217,23 @@ function PreApprovalFunnel() {
           !ADVISORY_HIDDEN_STEPS.includes(currentQ.id) && "lg:pr-96",
         )}
       >
+        {/*
+          mode="wait" mounts the next step only after the previous step's exit
+          animation completes, and framer-motion drives that animation off
+          requestAnimationFrame — which browsers stop entirely while
+          document.visibilityState === "hidden". Machine state (and the
+          "Step X of Y" header above, which lives outside this AnimatePresence)
+          still advances, so a hidden document can sit indefinitely at
+          header = step N+1 while the step-N question stays in the DOM, frozen
+          at its last animation pose. Verified 2026-07-17: a real user cannot
+          reach that state — a hidden tab receives no trusted pointer/keyboard
+          input, and if the tab is hidden mid-transition the stalled exit
+          completes on the first frame after it becomes visible again,
+          resyncing the UI. Only scripted drivers (element.click() / CDP
+          against an unrendered pane) can observe the desync, so headless
+          funnel tests must force the pane to render (screenshot/focus) or
+          assert on the step counter, not on the question text.
+        */}
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={stepId}
