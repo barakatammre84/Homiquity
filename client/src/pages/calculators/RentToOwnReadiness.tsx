@@ -5,7 +5,7 @@ import { PageShell } from "@/components/PageShell";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest } from "@/lib/queryClient";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatInputCurrency, parseCurrencyInput } from "@/lib/formatters";
 import { SEOHead } from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,14 +84,6 @@ const defaultInputs: RentInputs = {
   loanTermYears: 30,
   zipCode: "",
 };
-
-function formatInputCurrency(value: number): string {
-  return value.toLocaleString("en-US");
-}
-
-function parseCurrencyInput(value: string): number {
-  return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
-}
 
 // Reverse-affordability: given a target monthly housing payment (the renter's
 // current rent), derive the home price that payment could support at a given

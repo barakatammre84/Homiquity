@@ -51,7 +51,7 @@ import type { TeamMessage, DocumentRequestData } from "@shared/schema";
 import {
   UploadDocumentDialog,
   DocumentNeedsSummary,
-  canonicalDocumentType,
+  toUploadableDocumentType,
 } from "@/components/UploadDocumentDialog";
 
 interface TeamMember {
@@ -280,7 +280,7 @@ function DocumentRequestCard({
             {canUpload && (
               <UploadDocumentDialog
                 applicationId={applicationId}
-                defaultDocumentType={canonicalDocumentType(data.documentType)}
+                defaultDocumentType={toUploadableDocumentType(data.documentType)}
                 requestMessageId={messageId}
                 confirmToRecipientId={partnerId}
                 trigger={

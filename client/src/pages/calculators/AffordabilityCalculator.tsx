@@ -8,7 +8,7 @@ import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { SEOHead } from "@/components/SEOHead";
 import { TermTooltip } from "@/components/TermTooltip";
 import { PageShell } from "@/components/PageShell";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatInputCurrency, parseCurrencyInput } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -178,14 +178,6 @@ function calculateAffordability(inputs: AffordabilityInputs): AffordabilityResul
     monthlyPMI: Math.max(0, monthlyPMI),
     withinGuidelines,
   };
-}
-
-function formatInputCurrency(value: number): string {
-  return value.toLocaleString("en-US");
-}
-
-function parseCurrencyInput(value: string): number {
-  return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
 }
 
 export default function AffordabilityCalculator() {

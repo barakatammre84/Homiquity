@@ -22,6 +22,17 @@ export function formatCurrencyDecimal(amount: number | string | null | undefined
   }).format(num);
 }
 
+// Controlled currency <input> pair: the field renders a grouped digit string
+// ("1,250") while state stays a plain number. Keep them inverse of each other —
+// formatInputCurrency omits the "$" because the inputs render their own prefix.
+export function formatInputCurrency(value: number): string {
+  return value.toLocaleString("en-US");
+}
+
+export function parseCurrencyInput(value: string): number {
+  return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
+}
+
 export function formatPercent(value: number | string): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
   return `${num.toFixed(3)}%`;
