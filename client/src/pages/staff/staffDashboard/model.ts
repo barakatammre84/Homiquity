@@ -3,6 +3,7 @@
 // Extracted verbatim from StaffDashboard.tsx.
 import { Zap, Bot, ArrowRight, ScanLine, Brain } from "lucide-react";
 import { type SlaStatus } from "@/lib/sla";
+import { type TaskPriority } from "@shared/schema";
 
 export interface QueueTask {
   id: string;
@@ -153,7 +154,9 @@ export const documentCategories = [
 
 export const documentYears = ["2025", "2024", "2023", "2022"];
 
-export const priorityOptions = [
+// Values are TASK_PRIORITIES members — the create/edit form posts them
+// straight into insertTaskSchema's z.enum.
+export const priorityOptions: ReadonlyArray<{ value: TaskPriority; label: string }> = [
   { value: "low", label: "Low" },
   { value: "normal", label: "Normal" },
   { value: "high", label: "High" },

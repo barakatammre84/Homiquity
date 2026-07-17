@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
-import type { Task, LoanApplication } from "@shared/schema";
+import type { Task, LoanApplication, TaskPriority } from "@shared/schema";
 import { isTerminalLoanAppStatus } from "@shared/schema";
 import {
   CheckCircle2,
@@ -56,14 +56,14 @@ function getTaskStatusBadge(task: Pick<Task, "status" | "verificationStatus">) {
   return <Badge variant={c.variant}>{c.label}</Badge>;
 }
 
-function getPriorityBadge(priority: string) {
-  const config: Record<string, { className: string; label: string }> = {
+function getPriorityBadge(priority: TaskPriority) {
+  const config: Record<TaskPriority, { className: string; label: string }> = {
     low: { className: "bg-muted text-muted-foreground", label: "Low" },
     normal: { className: "bg-primary/10 text-primary", label: "Normal" },
     high: { className: "bg-status-warning/10 text-status-warning", label: "High" },
     urgent: { className: "bg-status-danger/10 text-status-danger", label: "Urgent" },
   };
-  const p = config[priority || "normal"] || config.normal;
+  const p = config[priority] ?? config.normal; // runtime guard: pre-0034 legacy rows
   return <Badge className={`no-default-hover-elevate no-default-active-elevate ${p.className}`}>{p.label}</Badge>;
 }
 

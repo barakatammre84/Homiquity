@@ -203,7 +203,7 @@ export class TaskEngineService {
         slaDueAt,
         escalationLevel: 0,
         status: "OPEN",
-        priority: taskData.priority || "NORMAL",
+        priority: taskData.priority || "normal",
         triggerMetadata: triggerMetadata as Record<string, unknown>,
         createdByUserId,
       })

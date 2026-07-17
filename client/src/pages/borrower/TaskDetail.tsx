@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { useLocation, useRoute } from "wouter";
 import { isStaffRole } from "@shared/roles";
-import type { Task, Document, TaskDocument } from "@shared/schema";
+import type { Task, Document, TaskDocument, TaskPriority } from "@shared/schema";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -51,14 +51,14 @@ function getStatusBadge(task: Pick<Task, "status" | "verificationStatus">) {
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
 
-function getPriorityBadge(priority: string) {
-  const config: Record<string, { className: string; label: string }> = {
+function getPriorityBadge(priority: TaskPriority) {
+  const config: Record<TaskPriority, { className: string; label: string }> = {
     low: { className: "bg-muted text-muted-foreground", label: "Low Priority" },
     normal: { className: "bg-info-subtle text-info", label: "Normal Priority" },
     high: { className: "bg-warning-subtle text-warning-subtle-foreground", label: "High Priority" },
     urgent: { className: "bg-destructive-subtle text-destructive", label: "Urgent" },
   };
-  const p = config[priority] || config.normal;
+  const p = config[priority] ?? config.normal; // runtime guard: pre-0034 legacy rows
   return <Badge className={p.className}>{p.label}</Badge>;
 }
 
