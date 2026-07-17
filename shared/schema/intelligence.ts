@@ -750,10 +750,12 @@ export const documentConfidenceScores = pgTable("document_confidence_scores", {
   documentType: varchar("document_type", { length: 50 }).notNull(),
   applicationId: varchar("application_id").references(() => loanApplications.id),
 
-  // No default (mig 0030): the engine is AI-audit provenance, so the writer names it —
-  // recordExtractionConfidence() always does. A default silently stamps an omitting
-  // writer with a guess, which is how this column outlived the retired "gemini" (#146).
-  extractionEngine: varchar("extraction_engine", { length: 30 }),
+  // No default (0030) + required (0031): the engine is AI-audit provenance, so the
+  // writer must name it. A default silently stamps an omitting writer with a guess —
+  // which is how this column outlived the retired "gemini" (#146) — and nullable only
+  // downgraded that to an unexplained gap. Required, so a new insert path that forgets
+  // the engine fails to compile instead of quietly filing an unattributable extraction.
+  extractionEngine: varchar("extraction_engine", { length: 30 }).notNull(),
   extractionVersion: varchar("extraction_version", { length: 20 }),
 
   overallConfidence: decimal("overall_confidence", { precision: 5, scale: 4 }).notNull(),
