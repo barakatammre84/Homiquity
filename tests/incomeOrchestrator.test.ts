@@ -102,15 +102,46 @@ describe("self-employment path", () => {
   });
 });
 
-describe("rental path", () => {
-  it("computes the net offset but does NOT apply it to DTI (advisory)", () => {
-    const r = computeRentalPath([
-      { address: "1 Main", monthlyRentalIncome: 2000, monthlyDebtPayment: 1200 } as never,
-    ]);
+describe("rental path (B3-3.8-01 applied)", () => {
+  const oneRental = [
+    { address: "1 Main", monthlyRentalIncome: 2000, monthlyDebtPayment: 1200 } as never,
+  ];
+  const noRisk = { applyPositiveToDti: false, hasMortgageLiabilityRows: false };
+
+  it("withholds a POSITIVE offset until the provenance gate opens (platform asymmetry)", () => {
+    const r = computeRentalPath(oneRental, noRisk);
     expect(r.status).toBe("applicable");
     expect(r.appliedToDti).toBe(false);
     // 75% of 2000 = 1500, net of 1200 PITIA = 300
     expect(r.monthlyQualifyingIncome).toBe(300);
+  });
+
+  it("applies a POSITIVE offset on decision-grade provenance", () => {
+    const r = computeRentalPath(oneRental, { ...noRisk, applyPositiveToDti: true });
+    expect(r.appliedToDti).toBe(true);
+    expect(r.monthlyQualifyingIncome).toBe(300);
+    expect(r.requiresManualReview).toBe(false);
+  });
+
+  it("applies a NEGATIVE offset (rental loss) even without the provenance gate", () => {
+    const r = computeRentalPath(
+      [{ address: "1 Main", monthlyRentalIncome: 1000, monthlyDebtPayment: 1200 } as never],
+      noRisk,
+    );
+    // 75% of 1000 = 750, net of 1200 = −450: a loss always counts.
+    expect(r.appliedToDti).toBe(true);
+    expect(r.monthlyQualifyingIncome).toBe(-450);
+    expect(r.requiresManualReview).toBe(true);
+  });
+
+  it("flags manual review when an applied offset coexists with mortgage-type liabilities", () => {
+    const r = computeRentalPath(oneRental, {
+      applyPositiveToDti: true,
+      hasMortgageLiabilityRows: true,
+    });
+    expect(r.appliedToDti).toBe(true);
+    expect(r.requiresManualReview).toBe(true);
+    expect(r.notes.some((n) => n.includes("counted both"))).toBe(true);
   });
 });
 
@@ -124,14 +155,16 @@ describe("orchestrator core", () => {
     rentalProperties: [{ address: "2 Oak", monthlyRentalIncome: 1800, monthlyDebtPayment: 1000 } as never],
   };
 
-  it("stacks agency + SE into the primary DTI income; rental stays advisory", () => {
+  it("stacks agency + SE into the primary DTI income; ungated positive rental stays out", () => {
     const r = computeIncomePaths(input);
     const agency = r.primaryBreakdown.agencyBase + r.primaryBreakdown.agencyVariable;
     expect(agency).toBe(6900); // 6000 base + (500 bonus + 400 other)
     expect(r.primaryBreakdown.selfEmployment).toBeGreaterThan(0);
     expect(r.primaryMonthlyQualifyingIncome).toBe(agency + r.primaryBreakdown.selfEmployment);
-    // rental offset present but not summed in
-    expect(r.primaryBreakdown.rental).toBe(0);
+    // rental offset computed (75% × 1800 − 1000 = 350) but not applied ungated
+    expect(r.primaryBreakdown.rental).toBe(350);
+    expect(r.primaryBreakdown.rentalIncomeApplied).toBe(0);
+    expect(r.primaryBreakdown.rentalLiabilityApplied).toBe(0);
     expect(r.paths.find((p) => p.pathId === "rental")!.status).toBe("applicable");
   });
 
@@ -181,5 +214,79 @@ describe("orchestrator core", () => {
   it("reports application_summary basis only on the annual-income fallback", () => {
     expect(computeIncomePaths({ employment: [], otherIncome: [], rentalProperties: [], fallbackAnnualIncome: 60000 }).incomeBasis).toBe("application_summary");
     expect(computeIncomePaths(input).incomeBasis).toBe("urla_line_items");
+  });
+});
+
+describe("rental DTI application (B3-3.8-01 wiring)", () => {
+  const wage = [emp({ baseIncome: 6000 })];
+
+  it("adds a positive net offset to the primary income at decision-grade provenance", () => {
+    const r = computeIncomePaths({
+      employment: wage,
+      otherIncome: [],
+      rentalProperties: [{ address: "2 Oak", monthlyRentalIncome: 1800, monthlyDebtPayment: 1000 } as never],
+      applyRentalToDti: true,
+    });
+    expect(r.primaryBreakdown.rentalIncomeApplied).toBe(350);
+    expect(r.primaryBreakdown.rentalLiabilityApplied).toBe(0);
+    expect(r.primaryMonthlyQualifyingIncome).toBe(6000 + 350);
+  });
+
+  it("surfaces a rental LOSS as a liability (never negative income), gate or no gate", () => {
+    for (const applyRentalToDti of [false, true]) {
+      const r = computeIncomePaths({
+        employment: wage,
+        otherIncome: [],
+        rentalProperties: [{ address: "2 Oak", monthlyRentalIncome: 1000, monthlyDebtPayment: 1200 } as never],
+        applyRentalToDti,
+      });
+      expect(r.primaryBreakdown.rentalLiabilityApplied).toBe(450);
+      expect(r.primaryBreakdown.rentalIncomeApplied).toBe(0);
+      // The loss reduces DTI through obligations, not by shrinking income.
+      expect(r.primaryMonthlyQualifyingIncome).toBe(6000);
+    }
+  });
+
+  it("adds subject-property qualifying rent income-side for a gated 2–4 unit owner-occupied file", () => {
+    const subject = { numberOfUnits: 3, occupancyType: "primary_residence", estimatedMarketRent: 3000 };
+    const gated = computeIncomePaths({
+      employment: wage, otherIncome: [], rentalProperties: [],
+      applyRentalToDti: true, subjectProperty: subject,
+    });
+    expect(gated.primaryBreakdown.subjectRentalIncomeApplied).toBe(2250); // 75% × 3000
+    expect(gated.primaryMonthlyQualifyingIncome).toBe(6000 + 2250);
+
+    const ungated = computeIncomePaths({
+      employment: wage, otherIncome: [], rentalProperties: [], subjectProperty: subject,
+    });
+    expect(ungated.primaryBreakdown.subjectRentalIncomeApplied).toBe(0);
+    expect(ungated.primaryMonthlyQualifyingIncome).toBe(6000);
+  });
+
+  it("ignores subject-property rent outside the 2–4 unit owner-occupied rule", () => {
+    for (const subject of [
+      { numberOfUnits: 1, occupancyType: "primary_residence", estimatedMarketRent: 3000 },
+      { numberOfUnits: 3, occupancyType: "investment", estimatedMarketRent: 3000 },
+    ]) {
+      const r = computeIncomePaths({
+        employment: wage, otherIncome: [], rentalProperties: [],
+        applyRentalToDti: true, subjectProperty: subject,
+      });
+      expect(r.primaryBreakdown.subjectRentalIncomeApplied).toBe(0);
+    }
+  });
+
+  it("the provenance gate and subject facts are part of the inputs fingerprint", () => {
+    const base: IncomePathsCoreInput = {
+      employment: wage, otherIncome: [],
+      rentalProperties: [{ address: "2 Oak", monthlyRentalIncome: 1800, monthlyDebtPayment: 1000 } as never],
+    };
+    const gatedFp = incomeInputsFingerprint({ ...base, applyRentalToDti: true });
+    expect(gatedFp).not.toBe(incomeInputsFingerprint(base));
+    const withSubject = incomeInputsFingerprint({
+      ...base,
+      subjectProperty: { numberOfUnits: 3, occupancyType: "primary_residence", estimatedMarketRent: 3000 },
+    });
+    expect(withSubject).not.toBe(incomeInputsFingerprint(base));
   });
 });

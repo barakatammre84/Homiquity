@@ -106,19 +106,20 @@ from application data, credit tradelines, bank transactions, or public records.
 - Future depth: automated e-sign gift-letter generation with donor link (blocked on e-signature provider + SendGrid)
 
 ### S-05: Rental Income Calculation (Schedule E)
-- Status: Implemented 2026-07-03
-- Guideline: Fannie Mae Selling Guide B3-3.1-08 (Rental Income)
-- Engine: `calculateRentalIncomeOffsets` in [underwritingNuance.ts](../../server/services/underwritingNuance.ts) → flag `RENTAL_INCOME_OFFSET`
+- Status: Implemented 2026-07-03; **applied to DTI 2026-07-17** (non-W2 plan §3.1 — previously advisory-only)
+- Guideline: Fannie Mae Selling Guide **B3-3.8-01** (Rental Income, 10/08/2025) — *renumbered from B3-3.1-08 in the Income Assessment reorganization; verified live 2026-07-17.* Transcription: [docs/fannie-mae/rental-income-reference.md](../../docs/fannie-mae/rental-income-reference.md)
+- Engine: `calculateRentalIncomeOffsets` in [underwritingNuance.ts](../../server/services/underwritingNuance.ts) → flag `RENTAL_INCOME_OFFSET`; **DTI application** via `computeRentalPath` → orchestrator (positive → qualifying income) + `decisionEngine.aggregateBorrowerFinancials` (net loss → monthly obligations), per the guide's verbatim positive/negative treatment (ledger `fnma-b3-3-8-01-rental-offset-dti`)
+- Application gates (PLATFORM POLICY, ledger `platform-rental-preliminary-asymmetry`): positive offsets apply only at decision-grade `financialDataProvenance`; a net loss applies always (can only under-state). Applied offsets coexisting with mortgage-type URLA liability rows flag manual review (the guide bars counting the PITIA separately — double-count guard)
 - Signal source: intake `incomeSources[].rentalProperties[]` (monthlyRentalIncome + monthlyDebtPayment per property)
-- Tests: `tests/underwritingNuance.test.ts` (reproduces the source doc: $2,000 rent × 0.75 − $1,200 PITIA = +$300/month; also covers a negative net-offset case and multi-property summation)
+- Tests: `tests/underwritingNuance.test.ts` (source-doc math) + `tests/incomeOrchestrator.test.ts` "rental DTI application" (gate asymmetry, loss-to-liability, double-count guard, fingerprint sensitivity)
 - Verified live: fresh registered borrower, rental income source with $2,000/mo rent + $1,200/mo PITIA → `RENTAL_INCOME_OFFSET` raised with "$1,500/month qualifying... adds $300/month toward your qualifying income", borrower notified
 
 ### S-06: Multi-Unit Subject Property Rental Income
-- Status: Implemented 2026-07-04 (commit b7f6e5d)
-- Guideline: Fannie Mae Selling Guide B3-3.1-08 (Rental Income from Subject Property)
-- Engine: `calculateSubjectPropertyRentalOffset` in [underwritingNuance.ts](../../server/services/underwritingNuance.ts) → flag `SUBJECT_PROPERTY_RENTAL_OFFSET`
-- Signal source: `urla_property_info.numberOfUnits` + `.occupancyType` + new `.estimatedMarketRent` column (appraisal rent schedule / lease estimate captured on the URLA property step)
-- Tests: `tests/underwritingNuance.test.ts` (reproduces the source doc: $3,000 market rent × 0.75 = $2,250 qualifying; also covers non-primary-occupancy and 1-unit/5+-unit exclusions)
+- Status: Implemented 2026-07-04 (commit b7f6e5d); **applied to DTI 2026-07-17** (income-side)
+- Guideline: Fannie Mae Selling Guide **B3-3.8-01** (Rental Income, 10/08/2025; formerly B3-3.1-08). **Applied treatment verified live 2026-07-17:** qualifying rent from the non-occupied unit(s) is **added to total monthly income** while the **full subject PITIA stays in monthly obligations** — never netted (ledger `fnma-b3-3-8-01-subject-rental-income`). The earlier net-of-PITIA framing survives only as advisory display context in `calculateSubjectPropertyRentalOffset`
+- Engine: `calculateSubjectPropertyQualifyingRent` in [underwritingNuance.ts](../../server/services/underwritingNuance.ts) → orchestrator `subjectRentalIncomeApplied` (2–4 unit + primary-residence eligibility gate, decision-grade provenance gate shared with S-05); borrower flag `SUBJECT_PROPERTY_RENTAL_OFFSET` reports the income-side figure
+- Signal source: `urla_property_info.numberOfUnits` + `.occupancyType` + `.estimatedMarketRent` column (appraisal rent schedule / lease estimate captured on the URLA property step)
+- Tests: `tests/underwritingNuance.test.ts` (source-doc math + exclusions) + `tests/incomeOrchestrator.test.ts` (income-side application, eligibility + provenance gating)
 - Verified live: fresh registered borrower, 3-unit primary-residence purchase ($450,000/$90,000 down) + $3,000/mo estimated market rent → `SUBJECT_PROPERTY_RENTAL_OFFSET` raised with $2,250/month qualifying against the computed $2,863.84 subject PITIA, borrower notified
 
 ### Foundation scenarios (shipped before the registry existed)

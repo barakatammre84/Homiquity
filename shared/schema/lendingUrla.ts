@@ -390,7 +390,7 @@ export const urlaPropertyInfo = pgTable("urla_property_info", {
   occupancyType: varchar("occupancy_type", { length: 50 }),
   // Gross monthly market rent for the subject property (appraisal rent
   // schedule / lease), used to qualify rental income on 2-4 unit
-  // owner-occupied purchases — Fannie Mae Selling Guide B3-3.1-08.
+  // owner-occupied purchases — Fannie Mae Selling Guide B3-3.8-01 (formerly B3-3.1-08).
   estimatedMarketRent: decimal("estimated_market_rent", { precision: 12, scale: 2 }),
   
   isMixedUse: boolean("is_mixed_use").default(false),

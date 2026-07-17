@@ -89,8 +89,14 @@ export interface IncomeOrchestrationResult {
     /** Agency variable income (overtime/bonus/commission/other + other-income sources). */
     agencyVariable: number;
     selfEmployment: number;
-    /** Net rental offset (advisory — not summed into the primary figure). */
+    /** Net non-subject rental offset as computed (may be negative; informational). */
     rental: number;
+    /** Positive net rental offset applied to qualifying income (B3-3.8-01; 0 unless applied). */
+    rentalIncomeApplied: number;
+    /** Net rental LOSS applied to monthly obligations by the decision engine (≥ 0; B3-3.8-01). */
+    rentalLiabilityApplied: number;
+    /** Subject-property (2–4 unit owner-occupied) qualifying rent added to income — never netted against the subject PITIA (B3-3.8-01). */
+    subjectRentalIncomeApplied: number;
   };
   /**
    * Highest-qualifying-income METHOD among the standard full-doc total and any

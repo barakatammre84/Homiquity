@@ -128,7 +128,7 @@ export const SCENARIO_CATALOG: ScenarioCatalogEntry[] = [
     flagCode: "RENTAL_INCOME_OFFSET",
     status: "implemented",
     triggers: ["incomeSources[].type = rental with one or more rentalProperties entries"],
-    regulations: ["Fannie Mae Selling Guide B3-3.1-08 (Rental Income)"],
+    regulations: ["Fannie Mae Selling Guide B3-3.8-01 (Rental Income; formerly B3-3.1-08)"],
     riskImpact:
       "Gross rent overstates qualifying income; a 25% vacancy/expense factor must be applied and netted against the property's own PITIA before it can offset DTI.",
     workflow: {
@@ -149,7 +149,7 @@ export const SCENARIO_CATALOG: ScenarioCatalogEntry[] = [
     flagCode: "SUBJECT_PROPERTY_RENTAL_OFFSET",
     status: "implemented",
     triggers: ["urla_property_info.numberOfUnits between 2-4 with occupancyType = primary_residence and estimatedMarketRent set"],
-    regulations: ["Fannie Mae Selling Guide B3-3.1-08 (Rental Income from Subject Property)"],
+    regulations: ["Fannie Mae Selling Guide B3-3.8-01 (Rental Income from Subject Property; formerly B3-3.1-08)"],
     riskImpact:
       "Gross market rent on a purchased owner-occupied multi-unit property overstates qualifying income; a 25% vacancy/expense factor must be applied and netted against the subject property's own PITIA.",
     workflow: {

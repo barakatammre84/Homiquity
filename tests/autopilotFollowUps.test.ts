@@ -44,16 +44,16 @@ describe("planFollowUpForFlag", () => {
     expect(plan!.description).toContain("Fannie Mae B3-3.2");
   });
 
-  it("cites B3-6-05 for VERIFIED_DEBT_DTI and B3-3.1-08 for rental offsets", () => {
+  it("cites B3-6-05 for VERIFIED_DEBT_DTI and B3-3.8-01 for rental offsets", () => {
     expect(planFollowUpForFlag(flag({ code: "VERIFIED_DEBT_DTI" }))!.description).toContain(
       "Fannie Mae B3-6-05",
     );
     expect(planFollowUpForFlag(flag({ code: "RENTAL_INCOME_OFFSET" }))!.description).toContain(
-      "Fannie Mae B3-3.1-08",
+      "Fannie Mae B3-3.8-01",
     );
     expect(
       planFollowUpForFlag(flag({ code: "SUBJECT_PROPERTY_RENTAL_OFFSET" }))!.description,
-    ).toContain("Fannie Mae B3-3.1-08");
+    ).toContain("Fannie Mae B3-3.8-01");
   });
 
   it("does NOT materialize LOW_RESERVES (already handled) or COMPLEX_INCOME_CHECK (pipelineEngine)", () => {
