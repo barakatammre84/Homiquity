@@ -290,3 +290,99 @@ describe("rental DTI application (B3-3.8-01 wiring)", () => {
     expect(withSubject).not.toBe(incomeInputsFingerprint(base));
   });
 });
+
+describe("S-07 departing residence + per-property split + subject DSCR (PR-B)", () => {
+  const wage = [emp({ baseIncome: 6000 })];
+
+  it("splits offsets PER PROPERTY: gains to income (gated), losses to obligations — never netted", () => {
+    const mixed = [
+      { address: "A", monthlyRentalIncome: 1800, monthlyDebtPayment: 1000 } as never, // +350
+      { address: "B", monthlyRentalIncome: 1000, monthlyDebtPayment: 1200 } as never, // −450
+    ];
+    const gated = computeIncomePaths({
+      employment: wage, otherIncome: [], rentalProperties: mixed, applyRentalToDti: true,
+    });
+    expect(gated.primaryBreakdown.rentalIncomeApplied).toBe(350);
+    expect(gated.primaryBreakdown.rentalLiabilityApplied).toBe(450);
+    expect(gated.primaryMonthlyQualifyingIncome).toBe(6350);
+
+    const ungated = computeIncomePaths({
+      employment: wage, otherIncome: [], rentalProperties: mixed,
+    });
+    expect(ungated.primaryBreakdown.rentalIncomeApplied).toBe(0);
+    expect(ungated.primaryBreakdown.rentalLiabilityApplied).toBe(450); // loss still counts
+    expect(ungated.primaryMonthlyQualifyingIncome).toBe(6000);
+  });
+
+  it("folds a converting departing residence into the offsets with always-review", () => {
+    const r = computeIncomePaths({
+      employment: wage, otherIncome: [], rentalProperties: [],
+      departingResidence: { estimatedMarketRent: 2000, monthlyPitia: 1800 },
+    });
+    // 75% × 2000 − 1800 = −300 loss: applied to obligations even ungated
+    expect(r.primaryBreakdown.rentalLiabilityApplied).toBe(300);
+    const rental = r.paths.find((p) => p.pathId === "rental")!;
+    expect(rental.requiresManualReview).toBe(true);
+    expect(rental.notes.some((n) => n.includes("departing residence"))).toBe(true);
+  });
+
+  it("applies a positive departing-residence offset only at decision-grade provenance", () => {
+    const departingResidence = { estimatedMarketRent: 2000, monthlyPitia: 1000 }; // +500
+    const gated = computeIncomePaths({
+      employment: wage, otherIncome: [], rentalProperties: [],
+      applyRentalToDti: true, departingResidence,
+    });
+    expect(gated.primaryBreakdown.rentalIncomeApplied).toBe(500);
+    expect(gated.primaryMonthlyQualifyingIncome).toBe(6500);
+    // still review — projected rent
+    expect(gated.paths.find((p) => p.pathId === "rental")!.requiresManualReview).toBe(true);
+
+    const ungated = computeIncomePaths({
+      employment: wage, otherIncome: [], rentalProperties: [], departingResidence,
+    });
+    expect(ungated.primaryBreakdown.rentalIncomeApplied).toBe(0);
+  });
+
+  it("computes the subject-property DSCR for an investment purchase from URLA market rent", () => {
+    const r = computeIncomePaths({
+      employment: wage, otherIncome: [], rentalProperties: [],
+      subjectProperty: {
+        numberOfUnits: 1, occupancyType: "investment",
+        estimatedMarketRent: 3000, estimatedPitia: 2400,
+      },
+    });
+    const dscr = r.paths.find((p) => p.pathId === "dscr")!;
+    expect(dscr.status).toBe("applicable");
+    expect(dscr.kind === "coverage_ratio" && dscr.coverageRatio).toBe(1.25);
+    expect(dscr.requiresManualReview).toBe(true); // matrix still portal-gated
+    expect(dscr.notes.some((n) => n.includes("Subject property"))).toBe(true);
+    // owner-occupied subject never computes a DSCR
+    const oo = computeIncomePaths({
+      employment: wage, otherIncome: [], rentalProperties: [],
+      subjectProperty: {
+        numberOfUnits: 1, occupancyType: "primary_residence",
+        estimatedMarketRent: 3000, estimatedPitia: 2400,
+      },
+    });
+    expect(oo.paths.find((p) => p.pathId === "dscr")!.status).toBe("not_indicated");
+  });
+
+  it("departing figures and subject PITIA are part of the inputs fingerprint", () => {
+    const base: IncomePathsCoreInput = { employment: wage, otherIncome: [], rentalProperties: [] };
+    expect(
+      incomeInputsFingerprint({
+        ...base,
+        departingResidence: { estimatedMarketRent: 2000, monthlyPitia: 1800 },
+      }),
+    ).not.toBe(incomeInputsFingerprint(base));
+    const s1 = incomeInputsFingerprint({
+      ...base,
+      subjectProperty: { numberOfUnits: 1, occupancyType: "investment", estimatedMarketRent: 3000, estimatedPitia: 2400 },
+    });
+    const s2 = incomeInputsFingerprint({
+      ...base,
+      subjectProperty: { numberOfUnits: 1, occupancyType: "investment", estimatedMarketRent: 3000, estimatedPitia: 2500 },
+    });
+    expect(s1).not.toBe(s2);
+  });
+});

@@ -60,7 +60,8 @@ export type PreUwFlagCode =
   | "VERIFIED_DEBT_DTI"
   | "LARGE_DEPOSIT_SOURCING"
   | "RENTAL_INCOME_OFFSET"
-  | "SUBJECT_PROPERTY_RENTAL_OFFSET";
+  | "SUBJECT_PROPERTY_RENTAL_OFFSET"
+  | "RENTAL_CONVERSION_OFFSET";
 
 export interface PreUwRequiredDoc {
   documentType: string;
@@ -93,6 +94,12 @@ export interface PreUwInput {
     numberOfUnits: number | null;
     occupancyType: string | null;
     estimatedMarketRent: string | number | null;
+  } | null;
+  /** S-07: current-residence disposition + departing figures (B3-3.8-01). */
+  currentPropertyDisposition?: string | null;
+  departingResidence?: {
+    estimatedMarketRent: string | number | null;
+    monthlyPitia: string | number | null;
   } | null;
 }
 
@@ -342,6 +349,47 @@ export function derivePreUnderwritingFlags(input: PreUwInput): PreUwFlag[] {
     }
   }
 
+  // --- S-07: departing residence converting to a rental (Fannie B3-3.8-01;
+  // conversions also see B3-6-06). Projected market rent × 75% net of the
+  // retained property's PITIA — same per-property treatment as S-05, always
+  // review-flagged until appraisal/lease evidence lands. ---------------------
+  if (
+    input.currentPropertyDisposition === "converted_to_rental" &&
+    input.departingResidence
+  ) {
+    const [offset] = calculateRentalIncomeOffsets([
+      {
+        address: "Departing residence",
+        monthlyRentalIncome: String(input.departingResidence.estimatedMarketRent ?? ""),
+        monthlyDebtPayment: String(input.departingResidence.monthlyPitia ?? ""),
+      } as never,
+    ]);
+    if (offset && offset.grossMonthlyRent > 0) {
+      flags.push({
+        code: "RENTAL_CONVERSION_OFFSET",
+        severity: "warning",
+        reason:
+          `You're converting your current home to a rental. We applied a 25% vacancy factor to your estimated market rent (standard guidelines): ` +
+          `$${Math.round(offset.qualifyingRentalIncome).toLocaleString()}/month qualifying, ` +
+          (offset.netOffset >= 0
+            ? `net of that property's payment this adds $${Math.round(offset.netOffset).toLocaleString()}/month toward your qualifying income once the rental documentation is verified.`
+            : `net of that property's payment this adds $${Math.round(Math.abs(offset.netOffset)).toLocaleString()}/month to your qualifying debt.`) +
+          ` Please upload a rental appraisal or executed lease to verify these figures.`,
+        requiredDocs: [
+          { documentType: "lease_agreement", description: "Executed lease agreement for the departing residence (if already leased)" },
+          { documentType: "other", description: "Rental appraisal / market-rent schedule (Form 1007) for the departing residence" },
+          { documentType: "tax_return", description: "Most recent Schedule E (confirming the property is newly placed in service)" },
+        ],
+        metrics: {
+          grossMonthlyMarketRent: offset.grossMonthlyRent,
+          qualifyingRentalIncome: Number(offset.qualifyingRentalIncome.toFixed(2)),
+          retainedPitia: Number(offset.monthlyPitia.toFixed(2)),
+          netOffset: Number(offset.netOffset.toFixed(2)),
+        },
+      });
+    }
+  }
+
   return flags;
 }
 
@@ -365,6 +413,7 @@ export function buildFlagOutreach(
       case "LARGE_DEPOSIT_SOURCING":
       case "RENTAL_INCOME_OFFSET":
       case "SUBJECT_PROPERTY_RENTAL_OFFSET":
+      case "RENTAL_CONVERSION_OFFSET":
         // These reasons are already written borrower-first with the specific
         // numbers and the resolution path baked in.
         return f.reason;
@@ -473,6 +522,12 @@ export async function runPreUnderwriting(
           estimatedMarketRent: propertyInfo.estimatedMarketRent,
         }
       : null,
+    currentPropertyDisposition: application.currentPropertyDisposition,
+    departingResidence:
+      (application.departingResidence as {
+        estimatedMarketRent: string | number | null;
+        monthlyPitia: string | number | null;
+      } | null) ?? null,
   });
 
   const previous = (application.preUwFlags ?? null) as { notifiedHash?: string } | null;

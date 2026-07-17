@@ -158,3 +158,45 @@ describe("buildFlagOutreach", () => {
     expect(outreach.emailText).not.toMatch(/-\d+\.\d+ months/);
   });
 });
+
+describe("S-07 departing-residence conversion flag (B3-3.8-01)", () => {
+  const base = {
+    annualIncome: "120,000",
+    purchasePrice: "500,000",
+    downPayment: "100,000",
+    employmentType: "employed",
+    verifiedAssetsTotal: 150_000 as number | null,
+  };
+
+  it("raises RENTAL_CONVERSION_OFFSET with the netted figures and doc set", () => {
+    const flags = derivePreUnderwritingFlags({
+      ...base,
+      currentPropertyDisposition: "converted_to_rental",
+      departingResidence: { estimatedMarketRent: 2000, monthlyPitia: 1800 },
+    });
+    const flag = flags.find((f) => f.code === "RENTAL_CONVERSION_OFFSET")!;
+    expect(flag).toBeDefined();
+    expect(flag.severity).toBe("warning");
+    // 75% × 2000 = 1500, net of 1800 PITIA = −300 → debt side
+    expect(flag.metrics!.qualifyingRentalIncome).toBe(1500);
+    expect(flag.metrics!.netOffset).toBe(-300);
+    expect(flag.reason).toContain("$300");
+    expect(flag.reason).toContain("qualifying debt");
+    expect(flag.requiredDocs.map((d) => d.documentType)).toContain("tax_return");
+  });
+
+  it("stays silent for sold / retained dispositions and missing figures", () => {
+    expect(
+      derivePreUnderwritingFlags({ ...base, currentPropertyDisposition: "sold" }).find(
+        (f) => f.code === "RENTAL_CONVERSION_OFFSET",
+      ),
+    ).toBeUndefined();
+    expect(
+      derivePreUnderwritingFlags({
+        ...base,
+        currentPropertyDisposition: "converted_to_rental",
+        departingResidence: null,
+      }).find((f) => f.code === "RENTAL_CONVERSION_OFFSET"),
+    ).toBeUndefined();
+  });
+});

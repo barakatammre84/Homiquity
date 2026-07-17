@@ -84,10 +84,39 @@ export function computeDscrForProperties(
   return { perProperty, aggregate: computeDscrRatio(totalRent, totalPitia) };
 }
 
+/** Subject-property context for a purchase/refi DSCR ratio: only an
+ *  INVESTMENT occupancy computes (the program is investor cash-flow), using
+ *  the URLA expected market rent (later reconciled against the Form 1007/1025
+ *  rent schedule) over the pre-lock PITIA estimate. */
+export interface DscrSubjectContext {
+  occupancyType: string | null;
+  estimatedMarketRent: number | string | null;
+  estimatedPitia?: number | null;
+}
+
+export function computeSubjectDscr(
+  subject: DscrSubjectContext | null | undefined,
+): DscrPropertyRatio | null {
+  if (!subject || subject.occupancyType !== "investment") return null;
+  const rent = parseFinancialNumber(subject.estimatedMarketRent);
+  const pitia = subject.estimatedPitia ?? NaN;
+  if (!Number.isFinite(rent) || rent <= 0 || !Number.isFinite(pitia) || (pitia as number) <= 0) {
+    return null;
+  }
+  return {
+    address: "Subject property",
+    monthlyRent: rent,
+    monthlyPitia: pitia as number,
+    ratio: computeDscrRatio(rent, pitia as number),
+  };
+}
+
 export function computeDscrPath(
   rentalProperties: RentalPropertyEntry[] | null | undefined,
+  subject?: DscrSubjectContext | null,
 ): CoverageRatioPathResult {
-  const hasRental = (rentalProperties ?? []).length > 0;
+  const subjectRatio = computeSubjectDscr(subject);
+  const hasRental = (rentalProperties ?? []).length > 0 || subjectRatio !== null;
 
   if (!DSCR_PROGRAM.enabled) {
     // Defensive branch: enabled is compile-time true as of P4, and the fs test
@@ -119,13 +148,19 @@ export function computeDscrPath(
   }
 
   const { perProperty, aggregate } = computeDscrForProperties(rentalProperties);
-  const notes: string[] = perProperty.map((p) =>
+  const rows = subjectRatio ? [subjectRatio, ...perProperty] : perProperty;
+  const notes: string[] = rows.map((p) =>
     p.ratio !== null
       ? `${p.address ?? "Rental property"}: DSCR ${p.ratio} (rent ${p.monthlyRent} ÷ PITIA ${p.monthlyPitia}, per the cited Rent-Divided-PITIA formula).`
       : `${p.address ?? "Rental property"}: DSCR undefined — the property's PITIA is missing or zero; capture it before a ratio can be computed.`,
   );
+  if (subjectRatio) {
+    notes.push(
+      "Subject-property DSCR uses the URLA expected market rent over a pre-lock PITIA estimate — reconcile against the appraisal rent schedule (Form 1007/1025) and locked terms before submission.",
+    );
+  }
   notes.push(
-    "The qualifying minimum DSCR by LTV/FICO tier is portal-gated (AE matrix, not yet in-repo) — this path reports the ratio and never declares pass/fail. Subject-property DSCR for a purchase additionally needs the expected market rent, which intake does not capture yet.",
+    "The qualifying minimum DSCR by LTV/FICO tier is portal-gated (AE matrix, not yet in-repo) — this path reports the ratio and never declares pass/fail.",
   );
 
   return {
@@ -133,7 +168,9 @@ export function computeDscrPath(
     kind: "coverage_ratio",
     role: "alternative",
     status: "applicable",
-    coverageRatio: aggregate,
+    // The subject ratio is the qualification figure for an investment
+    // purchase; the declared-REO aggregate is the portfolio fallback.
+    coverageRatio: subjectRatio ? subjectRatio.ratio : aggregate,
     citations: DSCR_CITATIONS,
     // Always: no in-repo qualifying threshold exists to clear it automatically.
     requiresManualReview: true,
