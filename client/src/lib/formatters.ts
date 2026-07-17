@@ -96,6 +96,13 @@ export function getLoanTypeLabel(type: string): string {
   return labels[type] || type;
 }
 
+/**
+ * Display label for an application status / pipeline stage — one vocabulary:
+ * the server's pipeline `currentStage` IS `application.status`
+ * (server/pipelineEngine.ts), so status labels and stage labels must never
+ * diverge. This map is the single source; unmapped keys humanize instead of
+ * leaking raw snake_case.
+ */
 export function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     draft: "Draft",
@@ -103,12 +110,17 @@ export function getStatusLabel(status: string): string {
     analyzing: "Analyzing",
     pre_approved: "Pre-Approved",
     verified: "Verified",
+    doc_collection: "Doc Collection",
+    processing: "Processing",
     underwriting: "Underwriting",
+    conditional: "Conditional Approval",
+    clear_to_close: "Clear to Close",
     approved: "Approved",
     denied: "Denied",
+    funded: "Funded",
     closed: "Closed",
   };
-  return labels[status] || status;
+  return labels[status] || titleCaseFromSnake(status);
 }
 
 interface MortgageRateProgram {
