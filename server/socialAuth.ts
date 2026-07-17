@@ -106,14 +106,52 @@ function getCallbackUrl(req: any, provider: string): string {
   return `${protocol}://${req.get("host")}/api/auth/${provider}/callback`;
 }
 
+// Providers that generate their client secret dynamically (Apple) rely on a set
+// of extra secrets instead of a single static client secret.
+function requiredEnvVars(provider: OAuthProviderConfig): string[] {
+  return provider.getClientSecret
+    ? [provider.clientIdEnv, ...(provider.extraSecretEnvs ?? [])]
+    : [provider.clientIdEnv, provider.clientSecretEnv];
+}
+
+function missingEnvVars(provider: OAuthProviderConfig): string[] {
+  return requiredEnvVars(provider).filter((key) => !process.env[key]);
+}
+
 function isProviderConfigured(provider: OAuthProviderConfig): boolean {
-  if (!process.env[provider.clientIdEnv]) return false;
-  // Providers that generate their client secret dynamically (Apple) rely on a
-  // set of extra secrets instead of a single static client secret.
-  if (provider.getClientSecret) {
-    return (provider.extraSecretEnvs ?? []).every((key) => !!process.env[key]);
+  return missingEnvVars(provider).length === 0;
+}
+
+export interface ProvidersResponse {
+  providers: Record<string, boolean>;
+  missing?: Record<string, string[]>;
+}
+
+/**
+ * Drives which social buttons the login/signup pages render. Reports only whether
+ * each provider's env vars are PRESENT — never whether the credentials behind
+ * them work, which no local check can know.
+ *
+ * An unconfigured provider is silently hidden in the UI. That is right for
+ * borrowers, but it is indistinguishable from a broken build while developing, so
+ * in development this also names the env vars each hidden provider is waiting on.
+ * Names only, never values — and never off localhost: the route is public and
+ * unauthenticated, and Vercel builds (preview included) run as "production", so
+ * keying on "development" fails closed everywhere it matters.
+ */
+export function buildProvidersResponse(): ProvidersResponse {
+  const available: Record<string, boolean> = {};
+  for (const [name, config] of Object.entries(providers)) {
+    available[name] = isProviderConfigured(config);
   }
-  return !!process.env[provider.clientSecretEnv];
+
+  if (process.env.NODE_ENV !== "development") return { providers: available };
+
+  const missing: Record<string, string[]> = {};
+  for (const [name, config] of Object.entries(providers)) {
+    if (!available[name]) missing[name] = missingEnvVars(config);
+  }
+  return { providers: available, missing };
 }
 
 const STATE_COOKIE = "oauth_state";
@@ -143,11 +181,7 @@ function decodeJwtPayload(token: string): any {
 
 export function setupSocialAuth(app: Express) {
   app.get("/api/auth/providers", (_req, res) => {
-    const available: Record<string, boolean> = {};
-    for (const [name, config] of Object.entries(providers)) {
-      available[name] = isProviderConfigured(config);
-    }
-    res.json({ providers: available });
+    res.json(buildProvidersResponse());
   });
 
   for (const [providerName, config] of Object.entries(providers)) {

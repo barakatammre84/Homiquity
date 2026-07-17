@@ -48,6 +48,7 @@ export default defineConfig({
       "tests/borrowerStateMachine.test.ts",
       "tests/ssnVault.test.ts",
       "tests/loginLockout.test.ts",
+      "tests/socialAuthProviders.test.ts",
       "tests/marketDataParsers.test.ts",
       "tests/valueEstimate.test.ts",
       "tests/propertyEligibility.test.ts",
