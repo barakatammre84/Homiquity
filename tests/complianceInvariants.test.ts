@@ -20,6 +20,10 @@ const ROOT = join(__dirname, "..");
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 
 // The lending route groups (split from the old single routes/lending.ts).
+const routeDirFiles = (dir: string) =>
+  readdirSync(join(ROOT, dir))
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => `${dir}/${f}`);
 const lendingRouteFiles = () =>
   readdirSync(join(ROOT, "server/routes/lending"))
     .filter((f) => f.endsWith(".ts"))
@@ -75,7 +79,7 @@ describe("FCRA: credit pulls remain consent-gated", () => {
 
 describe("ESIGN / Reg Z: disclosure gates stay wired", () => {
   it("Loan Estimate delivery requires the e_disclosure consent", () => {
-    const source = read("server/routes/underwriting.ts");
+    const source = read("server/routes/underwriting/delivery.ts");
     expect(source).toMatch(/loan-estimate.*requireConsent\("e_disclosure"\)/s);
   });
 
@@ -202,7 +206,7 @@ describe("TRID (Reg Z §1026.19): the LE clock is triggered, business-day based,
     const borrowerRoutes = readdirSync(join(ROOT, "server/routes/borrower"))
       .filter((f) => f.endsWith(".ts"))
       .map((f) => `server/routes/borrower/${f}`);
-    for (const route of [...lendingRouteFiles(), ...borrowerRoutes, "server/routes/underwriting.ts", "server/services/coachProfileSync.ts"]) {
+    for (const route of [...lendingRouteFiles(), ...borrowerRoutes, ...routeDirFiles("server/routes/underwriting"), "server/services/coachProfileSync.ts"]) {
       expect(read(route)).not.toMatch(/tridTriggeredAt\s*:/);
     }
   });
@@ -222,11 +226,11 @@ describe("TRID (Reg Z §1026.19): the LE clock is triggered, business-day based,
 
   it("status and stage advancement enforce the TRID hard stop", () => {
     expect(read("server/routes/lending/statusDecisions.ts")).toMatch(/tridHardStopError\(/);
-    expect(read("server/routes/underwriting.ts")).toMatch(/tridHardStopError\(/);
+    expect(read("server/routes/underwriting/pipeline.ts")).toMatch(/tridHardStopError\(/);
   });
 
   it("borrower LE retrieval persists the delivery date", () => {
-    const underwriting = read("server/routes/underwriting.ts");
+    const underwriting = read("server/routes/underwriting/delivery.ts");
     expect(underwriting).toMatch(/leIssuedDate/);
     expect(underwriting).toMatch(/trid\.loan_estimate_delivered/);
   });
@@ -258,7 +262,7 @@ describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice"
     // Both denial paths — the status PATCH and the pipeline advance-stage
     // POST — must call ensureAdverseActionForDenial before the disposition
     // is applied. A denial path that skips it reopens the §1002.9 hole.
-    for (const route of ["server/routes/lending/statusDecisions.ts", "server/routes/underwriting.ts"]) {
+    for (const route of ["server/routes/lending/statusDecisions.ts", "server/routes/underwriting/pipeline.ts"]) {
       expect(read(route)).toMatch(/ensureAdverseActionForDenial\(/);
     }
   });
@@ -268,7 +272,7 @@ describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice"
     expect(credit).toMatch(/export async function ensureAdverseActionForDenial/);
     expect(credit).toMatch(/HMDA_TO_ADVERSE_ACTION_REASON/);
     // Routes must not carry their own copy of the mapping (single source).
-    for (const route of [...lendingRouteFiles(), "server/routes/underwriting.ts"]) {
+    for (const route of [...lendingRouteFiles(), ...routeDirFiles("server/routes/underwriting")]) {
       expect(read(route)).not.toMatch(/HMDA_TO_ADVERSE_ACTION_REASON\s*:/);
     }
   });
