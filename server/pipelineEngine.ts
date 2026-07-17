@@ -336,6 +336,13 @@ export async function generateDocumentTasks(
       taskType: "document_request",
       documentCategory: req.documentType,
       documentYear: req.yearsRequired?.[0]?.toString(),
+      // These tasks are assigned to the borrower (userId = application.userId,
+      // the only way this generator is called), so they are BORROWER-owned per
+      // deriveDocumentTaskOwnerRole — omitting this inherited the column's
+      // PROCESSOR default, hiding every pipeline doc task from the borrower
+      // badge/requests panel and polluting the staff processor queue
+      // (migration 0034 remapped the existing rows).
+      ownerRole: "BORROWER",
       // "OPEN" per TASK_STATUSES — this writer's lowercase "pending" is what
       // split the tasks table into two vocabularies (migration 0033 remapped
       // the existing rows). Priority stays lowercase pending its own
