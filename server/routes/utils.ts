@@ -1,15 +1,10 @@
 import multer from "multer";
 import type { Request, Response, NextFunction } from "express";
-import { MAX_UPLOAD_BYTES } from "@shared/uploads";
+import { MAX_UPLOAD_BYTES, ACCEPTED_UPLOAD_MIME_TYPES } from "@shared/uploads";
 
-export const allowedUploadTypes = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/jpg",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
+// Single source in shared/uploads.ts (the client dropzones pre-flight against
+// the same list); re-exported here so existing server import sites are stable.
+export const allowedUploadTypes = ACCEPTED_UPLOAD_MIME_TYPES;
 
 // Memory-only multer, kept for exactly one consumer: the public lease
 // extractor (/api/calculators/extract-lease), which processes the file within
