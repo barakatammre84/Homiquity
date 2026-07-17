@@ -2,7 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { COMPANY_IDENTITY, isCompanyNmlsPending } from "@shared/companyIdentity";
+import { COMPANY_IDENTITY, isCompanyNmlsPending, LICENSED_STATE_DETAILS } from "@shared/companyIdentity";
 import {
   Shield,
   Building,
@@ -17,8 +17,6 @@ import {
   Accessibility,
   Scale,
 } from "lucide-react";
-
-// State licensing list intentionally omitted until real licenses are issued (roadmap F1).
 
 export default function Disclosures() {
   return (
@@ -108,9 +106,31 @@ export default function Disclosures() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Homiquity is completing the state mortgage licensing process. Once our licenses
-              are issued, the states where we can arrange financing will be listed here and
-              independently verifiable through NMLS Consumer Access.
+              Homiquity Mortgage Corporation arranges mortgage financing only in the states
+              listed below. Every license is independently verifiable through NMLS Consumer
+              Access under our NMLS ID{isCompanyNmlsPending() ? "" : ` ${COMPANY_IDENTITY.nmlsId}`}.
+            </p>
+            <ul className="space-y-2" data-testid="list-licensed-states">
+              {LICENSED_STATE_DETAILS.map((state) => (
+                <li
+                  key={state.code}
+                  className="flex items-start justify-between gap-3 rounded-md border p-3"
+                  data-testid={`licensed-state-${state.code}`}
+                >
+                  <div>
+                    <p className="text-sm font-medium">{state.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {state.license}
+                      {state.licenseNumber ? ` — ${state.licenseNumber}` : ""}
+                    </p>
+                  </div>
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success-subtle-foreground" />
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              We do not accept applications or provide quotes for properties in states where we
+              are not licensed. Additional state licenses will be listed here as they are issued.
             </p>
           </CardContent>
         </Card>

@@ -14,6 +14,7 @@ import { updatePipelineStage, PipelineTransitionError } from "../pipelineEngine"
 import { computeNextAction } from "../services/nextAction";
 import { getUserActivitySummary } from "../services/activitySummary";
 import { isTerminalLoanAppStatus } from "@shared/schema";
+import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { finalizeIntake } from "../services/loanAnalysis";
 import { generateMISMO34XML, type MISMOLoanDTO } from "../mismo";
 import { db } from "../db";
@@ -462,6 +463,15 @@ export function registerLendingRoutes(
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
       }
       const formData = parsed.data;
+
+      // Licensed-state gate (roadmap A5): we cannot take an application for a
+      // property outside the licensed footprint (SAFE Act/Reg H; state law
+      // controls — see shared/companyIdentity.ts). Absent state passes: the
+      // TRID address-last funnel may not have collected the property yet.
+      const stateRejection = unlicensedStateRejection(formData.propertyState);
+      if (stateRejection) {
+        return res.status(422).json(stateRejection);
+      }
 
       let referringBrokerId: string | undefined = undefined;
       if (user.referredByUserId) {
@@ -1332,6 +1342,14 @@ export function registerLendingRoutes(
       }
 
       const formData = parsed.data;
+
+      // Licensed-state gate (roadmap A5): a draft edit can supply the property
+      // state — same footprint rule as intake creation.
+      const stateRejection = unlicensedStateRejection(formData.propertyState);
+      if (stateRejection) {
+        return res.status(422).json(stateRejection);
+      }
+
       // Only real loan_applications columns — the funnel schema also carries
       // UI-only helpers (hasAdditionalIncome) that must not reach the DB.
       const UPDATABLE_COLUMNS = [

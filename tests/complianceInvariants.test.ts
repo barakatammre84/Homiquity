@@ -335,6 +335,33 @@ describe("Advisory AI risk brief (M-7): narrates decisions, never makes or deliv
   });
 });
 
+describe("State licensing (SAFE Act/Reg H, 12 CFR 1008): the footprint gate stays wired", () => {
+  // Roadmap A5, Illinois-only (founder-confirmed 2026-07-17). A write path
+  // that sets the subject-property state without the gate reopens
+  // unlicensed-solicitation exposure — state law controls what requires
+  // licensure, so we simply refuse to transact outside the footprint.
+  it("every subject-property-state write path calls the shared gate", () => {
+    const lending = read("server/routes/lending.ts");
+    // Intake create + draft PATCH both gate.
+    expect(lending.match(/unlicensedStateRejection\(/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    const properties = read("server/routes/borrower/applicationProperties.ts");
+    // Property attach, switch, and edit all gate.
+    expect(properties.match(/unlicensedStateRejection\(/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+  });
+
+  it("the MCP pricing tool refuses ZIPs outside the footprint", () => {
+    const source = read("server/mcp/index.ts");
+    expect(source).toContain("isZipInLicensedStates");
+    expect(source).toMatch(/unlicensed_state_zip/);
+  });
+
+  it("the footprint is founder-maintained in one place with the light-up contract", () => {
+    const identity = read("shared/companyIdentity.ts");
+    expect(identity).toMatch(/LICENSED_STATES = \["IL"\] as const/);
+    expect(identity).toContain("isCompanyNmlsPending()) return false");
+  });
+});
+
 describe("Protocol & platform safety", () => {
   it("the MCP server's first import is the stdout-protecting bootstrap", () => {
     const source = read("server/mcp/index.ts");
