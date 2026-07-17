@@ -17,6 +17,7 @@ import {
   rateLocks,
   consentTemplates,
   borrowerConsents,
+  OPEN_RATE_LOCK_STATUSES,
   type RateLock,
   type InsertRateLock,
   type ConsentTemplate,
@@ -52,7 +53,7 @@ export class LocksAndConsentsStorage extends JourneyStorage {
     const [lock] = await db
       .select()
       .from(rateLocks)
-      .where(and(eq(rateLocks.applicationId, applicationId), inArray(rateLocks.status, ["active", "extended"])));
+      .where(and(eq(rateLocks.applicationId, applicationId), inArray(rateLocks.status, [...OPEN_RATE_LOCK_STATUSES])));
     return lock;
   }
 
@@ -76,7 +77,7 @@ export class LocksAndConsentsStorage extends JourneyStorage {
         and(
           // Extended locks still expire — include them, or the alert sweep
           // misses the files most likely to be near expiry (already extended).
-          inArray(rateLocks.status, ["active", "extended"]),
+          inArray(rateLocks.status, [...OPEN_RATE_LOCK_STATUSES]),
           gte(rateLocks.expiresAt, now),
           lte(rateLocks.expiresAt, futureDate)
         )

@@ -118,6 +118,22 @@ describe("loan-application status vocabulary is canonical", () => {
     expect(violations, violations.join("\n")).toEqual([]);
   });
 
+  it("every literal in eq/ne(loanApplications.status, …) is canonical", () => {
+    // Companion to the inArray scan: the single-value Drizzle comparators.
+    const EQ_RE = /\b(?:eq|ne)\(\s*loanApplications\.status\s*,\s*["']([a-z_]+)["']\s*\)/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(EQ_RE)) {
+        if (!CANONICAL.has(match[1])) {
+          violations.push(`${rel}: eq/ne(loanApplications.status, "${match[1]}") uses a phantom status`);
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
   it("no direct status writes outside the single writer (updatePipelineStage)", () => {
     // A storage.updateLoanApplication / db.update(loanApplications) call whose
     // payload sets `status:` must live in pipelineEngine.ts (the single

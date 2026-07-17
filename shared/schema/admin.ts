@@ -112,6 +112,15 @@ export type Faq = typeof faqs.$inferSelect;
 
 // ===== BROKER COMMISSIONS =====
 
+/**
+ * The ONLY statuses `brokerCommissions.status` may hold. Lifecycle:
+ * "pending" (created on funding) → "approved" (admin sign-off) → "paid"
+ * (stamps paidAt/paidBy), or "rejected" at any pre-paid point. Transitions
+ * are admin-only (server/routes/agent-broker/profileBroker.ts).
+ */
+export const BROKER_COMMISSION_STATUSES = ["pending", "approved", "paid", "rejected"] as const;
+export type BrokerCommissionStatus = (typeof BROKER_COMMISSION_STATUSES)[number];
+
 export const brokerCommissions = pgTable("broker_commissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   brokerId: varchar("broker_id").references(() => users.id).notNull(),
@@ -119,7 +128,7 @@ export const brokerCommissions = pgTable("broker_commissions", {
   loanAmount: decimal("loan_amount", { precision: 12, scale: 2 }).notNull(),
   commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }).notNull(),
   commissionAmount: decimal("commission_amount", { precision: 10, scale: 2 }).notNull(),
-  status: varchar("status", { length: 50 }).default("pending").notNull(),
+  status: varchar("status", { length: 50 }).$type<BrokerCommissionStatus>().default("pending").notNull(),
   paidAt: timestamp("paid_at"),
   paidBy: varchar("paid_by").references(() => users.id),
   paymentReference: varchar("payment_reference", { length: 255 }),
@@ -133,7 +142,9 @@ export const brokerCommissions = pgTable("broker_commissions", {
   index("idx_broker_commissions_status").on(table.status),
 ]);
 
-export const insertBrokerCommissionSchema = createInsertSchema(brokerCommissions).omit({
+export const insertBrokerCommissionSchema = createInsertSchema(brokerCommissions, {
+  status: z.enum(BROKER_COMMISSION_STATUSES).optional(),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
