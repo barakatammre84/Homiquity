@@ -336,7 +336,11 @@ export async function generateDocumentTasks(
       taskType: "document_request",
       documentCategory: req.documentType,
       documentYear: req.yearsRequired?.[0]?.toString(),
-      status: "pending",
+      // "OPEN" per TASK_STATUSES — this writer's lowercase "pending" is what
+      // split the tasks table into two vocabularies (migration 0033 remapped
+      // the existing rows). Priority stays lowercase pending its own
+      // reconciliation; the dashboard's priority sort expects these values.
+      status: "OPEN",
       priority: req.priority === "prior_to_approval" ? "high" : "normal",
     };
 

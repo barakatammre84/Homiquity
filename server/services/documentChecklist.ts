@@ -42,11 +42,22 @@ export type ChecklistTask = Pick<
   | "documentCategory"
   | "title"
   | "status"
+  | "verificationStatus"
   | "verificationNotes"
   | "requestingTeam"
   | "isCustomRequest"
   | "documentInstructions"
 >;
+
+/**
+ * "Verifying" = the borrower has acted and staff review is pending. Lives on
+ * the verification axis (tasks.verificationStatus), NOT the lifecycle status —
+ * the old check compared status === "submitted", a value the task engine never
+ * writes.
+ */
+function taskAwaitingReview(task: ChecklistTask | undefined): boolean {
+  return task?.status === "IN_PROGRESS" && task?.verificationStatus === "pending";
+}
 
 export interface ChecklistItemDto {
   /** Stable per-source id: conditionId | taskId | `std-<type>`. */
@@ -198,7 +209,7 @@ export function buildDocumentChecklist(input: {
           instructions: task?.documentInstructions ?? undefined,
         },
         doc,
-        task?.status === "submitted" ? "verifying" : "needed",
+        taskAwaitingReview(task) ? "verifying" : "needed",
       );
       items.push(item);
     }
@@ -228,7 +239,7 @@ export function buildDocumentChecklist(input: {
           instructions: task.documentInstructions ?? undefined,
         },
         doc,
-        task.status === "submitted" ? "verifying" : "needed",
+        taskAwaitingReview(task) ? "verifying" : "needed",
       ),
     );
   }

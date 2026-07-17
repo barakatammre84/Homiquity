@@ -31,7 +31,8 @@ const task = (over: Partial<ChecklistTask> & { id: string }): ChecklistTask => (
   taskType: "document_request",
   documentCategory: null,
   title: over.id,
-  status: "pending",
+  status: "OPEN",
+  verificationStatus: null,
   verificationNotes: null,
   requestingTeam: null,
   isCustomRequest: true,
@@ -146,7 +147,9 @@ describe("buildDocumentChecklist — standard fallback path", () => {
     const { documents } = buildDocumentChecklist({
       conditions: [],
       documents: [doc({ id: "d1", documentType: "tax_return_1040", status: "verified" })],
-      tasks: [task({ id: "t1", documentCategory: "pay_stub", status: "submitted" })],
+      tasks: [
+        task({ id: "t1", documentCategory: "pay_stub", status: "IN_PROGRESS", verificationStatus: "pending" }),
+      ],
     });
     const byType = Object.fromEntries(documents.map((d) => [d.documentType, d]));
     expect(byType["tax_return"].status).toBe("verified");

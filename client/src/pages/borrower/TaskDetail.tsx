@@ -30,16 +30,24 @@ interface TaskWithDocs extends Task {
   documents: (TaskDocument & { document: Document })[];
 }
 
-function getStatusBadge(status: string) {
-  const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-    pending: { variant: "secondary", label: "Pending" },
-    in_progress: { variant: "default", label: "In Progress" },
-    submitted: { variant: "outline", label: "Submitted - Awaiting Review" },
-    verified: { variant: "default", label: "Verified" },
-    rejected: { variant: "destructive", label: "Rejected" },
-    completed: { variant: "default", label: "Completed" },
+// Badge over both task axes: lifecycle (tasks.status, canonical uppercase) and
+// the verification verdict (verificationStatus) — a rejection outranks the
+// lifecycle label because it is the thing the borrower must act on.
+function getStatusBadge(task: Pick<Task, "status" | "verificationStatus">) {
+  if (task.verificationStatus === "rejected" && task.status !== "COMPLETED") {
+    return <Badge variant="destructive">Rejected</Badge>;
+  }
+  const statusConfig: Record<Task["status"], { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    OPEN: { variant: "secondary", label: "Pending" },
+    IN_PROGRESS:
+      task.verificationStatus === "pending"
+        ? { variant: "outline", label: "Submitted - Awaiting Review" }
+        : { variant: "default", label: "In Progress" },
+    BLOCKED: { variant: "secondary", label: "Blocked" },
+    COMPLETED: { variant: "default", label: "Completed" },
+    EXPIRED: { variant: "secondary", label: "Expired" },
   };
-  const config = statusConfig[status] || { variant: "secondary" as const, label: status };
+  const config = statusConfig[task.status] || { variant: "secondary" as const, label: task.status };
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
 
@@ -173,8 +181,11 @@ export default function TaskDetail() {
 
   const isStaff = isStaffRole(user?.role || "");
   const isAssignedUser = task.assignedToUserId === user?.id;
-  const canUpload = isAssignedUser && ["pending", "in_progress", "rejected"].includes(task.status);
-  const canVerify = isStaff && task.status === "submitted";
+  // Upload while the ball is in the borrower's court (OPEN covers both the
+  // initial request and a reopened-after-rejection task); verify once a
+  // document is submitted and the verdict is still pending.
+  const canUpload = isAssignedUser && task.status === "OPEN";
+  const canVerify = isStaff && task.status === "IN_PROGRESS" && task.verificationStatus === "pending";
 
   return (
     <PageShell
@@ -194,7 +205,7 @@ export default function TaskDetail() {
       }
       headerMeta={
         <div className="flex flex-wrap items-center gap-2">
-          {getStatusBadge(task.status)}
+          {getStatusBadge(task)}
           {getPriorityBadge(task.priority || "normal")}
           {task.dueDate && (
             <span className="text-sm text-muted-foreground flex items-center gap-1">
@@ -428,7 +439,7 @@ export default function TaskDetail() {
                   </Card>
                 )}
 
-                {task.status === "rejected" && (
+                {task.verificationStatus === "rejected" && task.status !== "COMPLETED" && (
                   <Card className="border-border bg-destructive-subtle">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-3">
@@ -446,7 +457,7 @@ export default function TaskDetail() {
                   </Card>
                 )}
 
-                {task.status === "verified" && (
+                {task.status === "COMPLETED" && (
                   <Card className="border-border bg-success-subtle">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-3">

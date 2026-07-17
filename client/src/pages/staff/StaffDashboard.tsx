@@ -255,7 +255,12 @@ export default function StaffDashboard() {
   );
 
   const queueBreached = sortedQueueTasks.filter(t => t.slaStatus === "red").length;
-  const submittedTasks = tasks.filter(t => t.status === "submitted");
+  // Awaiting review = doc submitted (IN_PROGRESS) with the verification
+  // verdict still pending — the old check compared status === "submitted",
+  // a value the canonical vocabulary never contained.
+  const submittedTasks = tasks.filter(
+    t => t.status === "IN_PROGRESS" && t.verificationStatus === "pending",
+  );
   const automatedTasks = sortedQueueTasks.filter(t => t.triggerSource && t.triggerSource !== "MANUAL");
 
   const getUserName = (userId: string) => {
@@ -920,7 +925,7 @@ export default function StaffDashboard() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "rejected", verificationStatus: "rejected" } })}
+                              onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "OPEN", verificationStatus: "rejected" } })}
                               data-testid={`button-reject-${task.id}`}
                             >
                               <X className="mr-1 h-4 w-4" />
@@ -928,7 +933,7 @@ export default function StaffDashboard() {
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "verified", verificationStatus: "verified" } })}
+                              onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "COMPLETED", verificationStatus: "verified" } })}
                               data-testid={`button-verify-${task.id}`}
                             >
                               <CheckCircle2 className="mr-1 h-4 w-4" />
