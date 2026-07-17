@@ -12,6 +12,11 @@
 > [feature-review/FINDINGS.md](../feature-review/FINDINGS.md); the live work queue is
 > [CTO_ROADMAP.md](../../CTO_ROADMAP.md) (note: two roadmap sections were verified stale at
 > the time of writing — see §11 footnotes).
+>
+> **2026-07-17 update — the research came back.** It was adjudicated against §1 and
+> code-corrected per the returning-research protocol; the adopted, governing plan for the
+> non-W2 program is now **[NON_W2_TECH_OPTIMIZATION_PLAN.md](NON_W2_TECH_OPTIMIZATION_PLAN.md)**
+> (it supersedes conflicting prior framing; this document's §1 box still binds it).
 
 ---
 
