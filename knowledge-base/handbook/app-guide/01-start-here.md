@@ -23,7 +23,7 @@ pipeline), **Rates**, **Calculators**, **Education**, **Realtor Engine**
 | Backend | Node.js + Express + TypeScript (run with `tsx` in dev, esbuild bundle in prod) | `server/` |
 | Database | PostgreSQL — Neon serverless in prod, local Postgres in dev — via Drizzle ORM | `shared/schema/`, `server/db.ts` |
 | Shared types | Zod + drizzle-zod schemas shared by client and server | `shared/` |
-| AI | Gemini (document extraction only — never in the decision path), OpenAI (coach) | `server/extractionService.ts`, `server/services/coachingService.ts` |
+| AI | Anthropic Claude only — document extraction (never in the decision path) + the borrower coach | `server/extraction*.ts` family, `server/services/coaching*.ts` family (the old `extractionService.ts`/`coachingService.ts` are re-export shims) |
 | File storage | Google Cloud Storage (signed URLs) | `server/integrations/object_storage/` |
 | Deploy | Vercel (static client + serverless Express) | `vercel.json`, `api/index.ts` |
 

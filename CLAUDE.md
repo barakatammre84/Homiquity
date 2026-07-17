@@ -51,7 +51,7 @@ Where this code lives:
 | Broker submission workflow (intake → DU → lender package) | `server/services/brokerSubmissionReadiness.ts` |
 | AUS submission (dual: DU + simulated LPA leg) | `server/services/ausSubmission.ts`, `server/routes/aus.ts` |
 | Wholesale lender submissions (Target-5 catalog + status machine) | `server/services/lenderSubmission.ts`, `shared/wholesaleLenders.ts` |
-| Lending / underwriting routes | `server/routes/lending.ts`, `server/routes/underwriting.ts` |
+| Lending / underwriting routes | `server/routes/lending/`, `server/routes/underwriting/` (sub-registrar directories; `index.ts` order = Express matching order) |
 
 ## NMLS licensing: source of truth
 

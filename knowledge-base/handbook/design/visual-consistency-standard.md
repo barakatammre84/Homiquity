@@ -159,7 +159,7 @@ The white-label seam. Mounted on `PrivateLayout` only.
 ### Data gaps to close (feature completion, Phase 4)
 - `agent-broker/AgentCoBranding.tsx` has **no logo-upload control** and never sends
   `logoUrl`/`heroImageUrl` — add the upload (through the object-storage layer) and wire it
-  through the POST/PATCH in `server/routes/agent-broker.ts`.
+  through the POST/PATCH in `server/routes/agent-broker/referralsCoBrand.ts`.
 - Resolve *which* tenant brand an authenticated session uses (LO assigned to the file, or
   the broker org). **Compliance gate before ship** (advertising/NMLS — see below).
 

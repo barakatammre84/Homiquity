@@ -105,7 +105,8 @@ exact-role-gated surfaces. Per-resource ownership checks (does this application 
   without the two keys above — you cannot accidentally run unencrypted.
 - **FCRA flow**: consent capture (versioned disclosure text) → credit pull
   (soft/hard recorded) → adverse action records — all in
-  `server/services/creditService.ts` + `shared/schema/compliance.ts`.
+  the `server/services/credit*.ts` family (`creditService.ts` is the re-export
+  shim; the hash-chain writer is `creditAuditChain.ts`) + `shared/schema/compliance.ts`.
 
 Deeper reading: [threat_model.md](../../compliance/security/threat_model.md).
 

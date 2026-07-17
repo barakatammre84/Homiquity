@@ -44,7 +44,7 @@ The industry terms this codebase assumes you know, decoded.
 
 | Term | Meaning |
 |------|---------|
-| **FCRA** | Fair Credit Reporting Act — governs credit pulls: consent, disclosures, adverse-action notices. Implemented in `creditService.ts` |
+| **FCRA** | Fair Credit Reporting Act — governs credit pulls: consent, disclosures, adverse-action notices. Implemented in the `server/services/credit*.ts` family |
 | **ECOA / Fair Lending** | Equal Credit Opportunity Act — no discrimination on protected bases. **This is why underwriting is a deterministic rules engine, not an LLM**: decisions must be explainable, repeatable, and auditable |
 | **Adverse action** | Formal notice required when credit is denied or terms worsen based on credit data |
 | **Soft vs hard pull** | Soft credit inquiry doesn't affect score or alert competitors; hard does. Hard pulls generate **trigger leads** (bureaus sell the inquiry to rival lenders) |

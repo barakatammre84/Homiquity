@@ -84,8 +84,18 @@
 
 ## Reading the data-access layer
 
-[`server/storage.ts`](../../../server/storage.ts) (~4,700 lines) implements the
-`IStorage` interface — a very wide repository of CRUD methods passed into most
-route registrars. Newer services (e.g. the intelligence layer) often query
-Drizzle directly instead. Both patterns coexist; prefer keeping related queries
-near their existing home.
+[`server/storage/`](../../../server/storage/) is the repository layer — 22
+domain files (`users`, `applications`, `urla`, `pipeline`, `partners`, …)
+forming a linear inheritance chain composed into `DatabaseStorage` in
+[`index.ts`](../../../server/storage/index.ts) (split from the old 5,700-line
+`storage.ts` in #182). Two rules when you touch it:
+
+- **Add a method once, in the matching domain file.** `IStorage` is derived
+  from the class (`type IStorage = DatabaseStorage`) — there is no separate
+  interface to keep in sync.
+- **Chain order only matters for cross-domain `this.x()` calls** — the callee
+  must sit earlier in the chain; tsc errors if it doesn't.
+
+Newer services (e.g. the intelligence layer) often query Drizzle directly
+instead. Both patterns coexist; prefer keeping related queries near their
+existing home.

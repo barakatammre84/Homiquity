@@ -18,6 +18,6 @@ Fast-start router. **Authoritative reference:** [`kb/handbook/app-guide/04-api-r
 - **Migrations:** hand-author the SQL in `migrations/`; **never** `drizzle-kit generate` or `npm run db:push` (see CLAUDE.md → Database).
 
 ## Where it lives
-`server/routes/*.ts` (~490 endpoints / 34 files) · `server/auth.ts` (middleware) · `server/storage.ts` (data-access layer) · `server/app.ts` (middleware, CSRF, logging).
+`server/routes/` (~523 endpoints; the four largest domains — `borrower/`, `lending/`, `underwriting/`, `agent-broker/` — are sub-registrar directories whose `index.ts` call order = Express matching order) · `server/auth.ts` (middleware) · `server/storage/` (data-access layer; inheritance chain, add methods in the matching domain file) · `server/app.ts` (middleware, CSRF, logging).
 
 Enumerate a domain's endpoints: `grep -nE 'app\.(get|post|put|patch|delete)\(' server/routes/<domain>.ts`.

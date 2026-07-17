@@ -17,22 +17,26 @@ to the SPA.
 ## Route domains
 
 Each file in [`server/routes/`](../../../server/routes/) registers one domain in
-`registerRoutes()` ([`server/routes.ts`](../../../server/routes.ts)). Endpoint
-counts give you a sense of surface area (~523 total across 41 route files, 2026-07-12
-recount; counts are approximate — grep a file to confirm):
+`registerRoutes()` ([`server/routes.ts`](../../../server/routes.ts)). The four
+largest domains are **directories** of sub-registrars (split 2026-07-17,
+#193/#202/#207/#217): their `index.ts` calls the group registrars **in the
+original registration order** — Express matches in registration order, so that
+sequence is a correctness invariant. Add a route to the matching group file.
+Endpoint counts give you a sense of surface area (counts are approximate —
+grep a file to confirm):
 
 | File | ~Endpoints | Domain |
 |------|-----------:|--------|
-| `borrower.ts` | 117 | The borrower portal: applications, URLA form sections, dashboard data, pre-approvals, invites, Plaid verification, partner orders |
-| `agent-broker.ts` | 47 | Agent/broker portal: referrals, invites, deal visibility, revenue tools |
+| `borrower/` (14 groups) | 121 | The borrower portal: applications, URLA form sections, dashboard data, pre-approvals, invites, Plaid verification, partner orders |
+| `agent-broker/` (6 groups) | 47 | Agent/broker portal: referrals, invites, deal visibility, revenue tools |
 | `admin.ts` | 36 | Admin panel: users/roles, config, audit, automation |
 | `compliance.ts` | 33 | Consents, credit pulls, adverse action, data retention, disclosures |
-| `lending.ts` | 25 | Loan pipeline operations, letters, MISMO export, rate locks |
+| `lending/` (7 groups) | 27 | Loan pipeline operations, letters, MISMO export, intake + status machine |
 | `task-engine.ts` | 23 | Staff task engine: rules-driven task creation/assignment |
 | `intelligence.ts` | 23 | Borrower graph, state machine, lender matching, readiness |
 | `rate-sheets.ts` | 20 | Wholesale rate sheets & pricing adjustments |
 | `policy-ops.ts` | 19 | Underwriting policy operations/admin |
-| `underwriting.ts` | 18 | Run underwriting, decisions, findings |
+| `underwriting/` (7 groups) | 35 | Run underwriting, decisions, pipeline/conditions, lender submissions, LE delivery |
 | `data-intelligence.ts` | 16 | Analytics events, funnels, outcomes, predictions, benchmarks |
 | `property.ts` | 12 | Properties CRUD, affordability analysis |
 | `optimizations.ts` | 12 | Optimization engine (recommendations) |
@@ -61,10 +65,11 @@ recount; counts are approximate — grep a file to confirm):
 | `scenarios.ts` | 1 | LO-2 What-If Scenario Simulator: deterministic scenario runs (`scenario_runs`) |
 | `comms.ts` | 1 | LO-5 comms compliance lint (deterministic Reg Z/Reg N lexicon) |
 
-To enumerate a domain's exact endpoints, grep it:
+To enumerate a domain's exact endpoints, grep it (use `-r` on the split
+directories):
 
 ```bash
-grep -nE 'app\.(get|post|put|patch|delete)\(' server/routes/borrower.ts | less
+grep -rnE 'app\.(get|post|put|patch|delete)\(' server/routes/borrower/ | less
 ```
 
 ## Authorization pattern
