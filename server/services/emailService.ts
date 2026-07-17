@@ -321,6 +321,48 @@ export const emailTemplates = {
     };
   },
 
+  // Missing-document reminder (lifecycle sweep, roadmap A8). Factual list of
+  // what's still outstanding + where to upload — no approval, eligibility, or
+  // decision language (Reg N; the complianceInvariants suite greps this file).
+  // Titles are engine literals today, but escape anyway: nothing enforces
+  // that a future free-text condition (e.g. lender-transcribed) can't gain
+  // requiredDocumentTypes and start flowing into this template.
+  missingDocumentsReminder(borrowerName: string, items: string[]): EmailOptions {
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const safeName = esc(borrowerName);
+    const listRows = items
+      .map(
+        (item) =>
+          `<p style="margin:0 0 8px;color:#0f1729;font-size:15px;font-weight:600">• ${esc(item)}</p>`,
+      )
+      .join("");
+    return {
+      to: "",
+      subject: "Reminder: your mortgage application is waiting on documents",
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">A few documents are still needed</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${safeName},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Your application still has ${items.length > 1 ? "items" : "an item"} waiting on an upload:
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;margin:16px 0">
+          <tr>
+            <td style="padding:16px">
+              ${listRows}
+            </td>
+          </tr>
+        </table>
+        <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
+          Log into your Homiquity account and open <strong>Documents</strong> to upload
+          ${items.length > 1 ? "them" : "it"} — that keeps your file moving with no extra steps.
+        </p>
+      `, "A few documents are still needed on your application"),
+    };
+  },
+
   documentRequested(borrowerName: string, documentName: string): EmailOptions {
     return {
       to: "",
@@ -611,6 +653,7 @@ export type NotificationType =
   | "application_denied"
   | "message_received"
   | "document_requested"
+  | "missing_docs_reminder"
   | "document_uploaded"
   | "document_verified"
   | "document_rejected"
@@ -646,6 +689,9 @@ export function sendNotificationEmail(mapping: NotificationEmailMapping): void {
       break;
     case "document_requested":
       email = emailTemplates.documentRequested(data.borrowerName, data.documentName);
+      break;
+    case "missing_docs_reminder":
+      email = emailTemplates.missingDocumentsReminder(data.borrowerName, data.items ?? []);
       break;
     case "document_uploaded":
       email = emailTemplates.documentUploaded(data.staffName, data.borrowerName, data.documentName, data.applicationId);

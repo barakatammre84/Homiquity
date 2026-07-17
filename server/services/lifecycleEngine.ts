@@ -4,9 +4,11 @@ import {
   equitySnapshots,
   homeownerProfiles,
   loanApplications,
+  loanConditions,
   loanOptions,
   mortgageRatePrograms,
   mortgageRates,
+  notifications,
   refiAlerts,
   LOAN_APP_STATUSES,
   LOAN_APP_TERMINAL_STATUSES,
@@ -16,6 +18,8 @@ import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { storage } from "../storage";
 import { fetchAvm } from "../mcp/vendors";
 import { toNum } from "@shared/lib/number";
+import { documentTypesMatch } from "@shared/documentTypes";
+import { sendNotificationEmail } from "./emailService";
 
 /**
  * Lifecycle engine — the "evergreen client" automation (CTO_ROADMAP #9).
@@ -124,6 +128,7 @@ interface SweepResult {
   pmiAlerts: number;
   refiAlertsCreated: number;
   docExpiryNudges: number;
+  missingDocNudges: number;
   stuckIntakeRecovered: number;
   errors: number;
 }
@@ -186,6 +191,183 @@ async function sweepAgingDocuments(counters: SweepResult): Promise<void> {
       metadata: { fileNames, nudgeAtDays: DOC_NUDGE_AT_DAYS },
     });
     counters.docExpiryNudges += 1;
+  }
+}
+
+/** Days an outstanding condition may sit without a matching upload before the
+ * borrower gets one reminder. The daily sweep gives this day granularity. */
+const MISSING_DOC_NUDGE_AT_DAYS = 2;
+
+export interface MissingDocCandidate {
+  conditionId: string;
+  applicationId: string;
+  userId: string;
+  title: string;
+  requiredDocumentTypes: string[] | null;
+}
+
+export interface MissingDocNudgePlan {
+  userId: string;
+  applicationId: string;
+  conditionIds: string[];
+  conditionTitles: string[];
+  documentTypes: string[];
+}
+
+/**
+ * Pure planner for the missing-document nudge (exported for tests): which
+ * applications get one grouped reminder, given the window's outstanding
+ * conditions and each application's already-uploaded document types.
+ *
+ * A condition is skipped when it has no requiredDocumentTypes (a staff task,
+ * not an upload ask) or when any uploaded document already satisfies one of
+ * its required types via the alias-aware matcher — the belt-and-suspenders
+ * for conditions materialized AFTER a satisfying upload, which the
+ * upload-time auto-matcher never saw.
+ */
+export function planMissingDocNudges(
+  conditions: MissingDocCandidate[],
+  documentTypesByApplication: Map<string, string[]>,
+): MissingDocNudgePlan[] {
+  const byApp = new Map<string, MissingDocNudgePlan>();
+
+  for (const condition of conditions) {
+    const required = condition.requiredDocumentTypes ?? [];
+    if (required.length === 0) continue;
+
+    const uploaded = documentTypesByApplication.get(condition.applicationId) ?? [];
+    const satisfied = required.some((req) =>
+      uploaded.some((up) => documentTypesMatch(req, up)),
+    );
+    if (satisfied) continue;
+
+    const plan = byApp.get(condition.applicationId) ?? {
+      userId: condition.userId,
+      applicationId: condition.applicationId,
+      conditionIds: [],
+      conditionTitles: [],
+      documentTypes: [],
+    };
+    plan.conditionIds.push(condition.conditionId);
+    plan.conditionTitles.push(condition.title);
+    for (const req of required) {
+      if (!plan.documentTypes.includes(req)) plan.documentTypes.push(req);
+    }
+    byApp.set(condition.applicationId, plan);
+  }
+
+  return [...byApp.values()];
+}
+
+/**
+ * Missing-document reminder (roadmap A8): outstanding conditions that entered
+ * the [2d, 3d) age window TODAY and still have no matching upload get one
+ * grouped nudge per application — in-app notification + email. The one-day
+ * window is the same natural-idempotency trick as sweepAgingDocuments: each
+ * condition passes through exactly once, so nobody is re-nagged daily.
+ *
+ * Copy stays inside the Reg N rails — a factual reminder of what's missing,
+ * never approval/eligibility language (tests/complianceInvariants.test.ts
+ * greps emailService for decision phrasing).
+ */
+async function sweepMissingConditionDocuments(counters: SweepResult): Promise<void> {
+  const rows = await db
+    .select({
+      conditionId: loanConditions.id,
+      applicationId: loanConditions.applicationId,
+      userId: loanApplications.userId,
+      title: loanConditions.title,
+      requiredDocumentTypes: loanConditions.requiredDocumentTypes,
+    })
+    .from(loanConditions)
+    .innerJoin(loanApplications, eq(loanConditions.applicationId, loanApplications.id))
+    .where(
+      and(
+        eq(loanConditions.status, "outstanding"),
+        inArray(loanApplications.status, IN_FLIGHT_STATUSES),
+        sql`${loanConditions.createdAt} <= now() - interval '${sql.raw(String(MISSING_DOC_NUDGE_AT_DAYS))} days'`,
+        sql`${loanConditions.createdAt} > now() - interval '${sql.raw(String(MISSING_DOC_NUDGE_AT_DAYS + 1))} days'`,
+      ),
+    );
+  if (rows.length === 0) return;
+
+  const applicationIds = [...new Set(rows.map((r) => r.applicationId))];
+  // A rejected upload does NOT satisfy the ask — the borrower still owes a
+  // usable copy, so it must not suppress their reminder.
+  const uploadedDocs = await db
+    .select({ applicationId: documents.applicationId, documentType: documents.documentType })
+    .from(documents)
+    .where(
+      and(
+        inArray(documents.applicationId, applicationIds),
+        sql`${documents.status} IS DISTINCT FROM 'rejected'`,
+      ),
+    );
+
+  const documentTypesByApplication = new Map<string, string[]>();
+  for (const doc of uploadedDocs) {
+    if (!doc.applicationId) continue;
+    const list = documentTypesByApplication.get(doc.applicationId) ?? [];
+    list.push(doc.documentType);
+    documentTypesByApplication.set(doc.applicationId, list);
+  }
+
+  const plans = planMissingDocNudges(rows, documentTypesByApplication);
+
+  // Same-day guard: the one-day age window already makes the daily cron fire
+  // once per condition, but a manual ops re-run of /api/jobs/lifecycle the
+  // same day must not email a borrower twice. Compared entirely in SQL —
+  // created_at is a bare `timestamp` holding the DB's wall clock, and a JS
+  // Date param arrives as a UTC-rendered wall clock, so a JS "start of day"
+  // silently misses by the UTC offset for part of every day.
+  for (const plan of plans) {
+    const [alreadyNudgedToday] = await db
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, plan.userId),
+          eq(notifications.type, "documents_needed"),
+          eq(notifications.entityId, plan.applicationId),
+          sql`${notifications.createdAt} >= date_trunc('day', now())`,
+        ),
+      )
+      .limit(1);
+    if (alreadyNudgedToday) continue;
+
+    const titleList =
+      plan.conditionTitles.slice(0, 2).join(" and ") +
+      (plan.conditionTitles.length > 2 ? ` and ${plan.conditionTitles.length - 2} more` : "");
+
+    await storage.createNotification({
+      userId: plan.userId,
+      type: "documents_needed",
+      title: "We still need a few documents",
+      body: `${titleList} ${plan.conditionTitles.length > 1 ? "are" : "is"} still waiting on an upload — adding ${plan.conditionTitles.length > 1 ? "them" : "it"} in your Documents checklist keeps your application moving.`,
+      entityType: "loan_application",
+      entityId: plan.applicationId,
+      metadata: {
+        conditionIds: plan.conditionIds,
+        documentTypes: plan.documentTypes,
+        nudgeAtDays: MISSING_DOC_NUDGE_AT_DAYS,
+      },
+    });
+
+    // Email leg — fire-and-forget (sendNotificationEmail self-catches); a
+    // missing address just means the in-app notification carries it alone.
+    const borrower = await storage.getUser(plan.userId);
+    if (borrower?.email) {
+      sendNotificationEmail({
+        type: "missing_docs_reminder",
+        recipientEmail: borrower.email,
+        data: {
+          borrowerName: borrower.firstName || "there",
+          items: plan.conditionTitles,
+        },
+      });
+    }
+
+    counters.missingDocNudges += 1;
   }
 }
 
@@ -329,6 +511,7 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
     pmiAlerts: 0,
     refiAlertsCreated: 0,
     docExpiryNudges: 0,
+    missingDocNudges: 0,
     stuckIntakeRecovered: 0,
     errors: 0,
   };
@@ -364,10 +547,18 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
     console.error("[lifecycle] Aging-document sweep failed (continuing):", err);
   }
 
+  try {
+    await sweepMissingConditionDocuments(counters);
+  } catch (err) {
+    counters.errors += 1;
+    console.error("[lifecycle] Missing-document sweep failed (continuing):", err);
+  }
+
   console.log(
     `[lifecycle] Sweep complete: ${counters.profilesProcessed} profiles, ` +
       `${counters.snapshotsCreated} snapshots, ${counters.pmiAlerts} PMI alerts, ` +
       `${counters.refiAlertsCreated} refi alerts, ${counters.docExpiryNudges} doc nudges, ` +
+      `${counters.missingDocNudges} missing-doc nudges, ` +
       `${counters.stuckIntakeRecovered} stuck-intake recovered, ${counters.errors} errors` +
       (marketRate === null ? " (no market rate data — refi checks skipped)" : ""),
   );
