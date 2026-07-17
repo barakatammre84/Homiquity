@@ -39,6 +39,7 @@ import {
   Plus,
   ArrowRight,
   ChevronRight,
+  ChevronLeft,
   Calendar,
   Phone,
   Mail,
@@ -47,6 +48,11 @@ import {
   TrendingUp,
   Settings,
   Percent,
+  Download,
+  XCircle,
+  ZoomIn,
+  ZoomOut,
+  RefreshCw,
 } from "lucide-react";
 
 /**
@@ -76,6 +82,12 @@ export const Icons = {
   add: Plus, // add / new
   next: ArrowRight, // forward CTA
   navNext: ChevronRight, // nav-row chevron
+  navPrev: ChevronLeft, // nav-row chevron, backwards (pager "previous")
+  download: Download, // download a file
+  reject: XCircle, // reject / deny action (pairs with `done` for verify)
+  zoomIn: ZoomIn, // viewer zoom in
+  zoomOut: ZoomOut, // viewer zoom out
+  rerun: RefreshCw, // re-run / refresh an operation
   calendar: Calendar, // schedule / date
   phone: Phone, // phone
   email: Mail, // email

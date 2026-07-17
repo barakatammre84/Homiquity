@@ -136,6 +136,37 @@ export function getReviewThreshold(documentType: string): number {
   return thresholds[documentType] || 0.80;
 }
 
+/**
+ * One-click review completion — the verify/reject route's stamp. Records WHO
+ * reviewed and WHEN on the confidence row, deliberately WITHOUT the field
+ * accuracy counters: those stay null so the MR-6 accuracy report only averages
+ * reviews that actually graded fields (recordHumanReview below). No-op when
+ * the document has no un-stamped confidence row (extraction never ran, or a
+ * reviewer already completed it).
+ */
+export async function markHumanReviewCompleted(
+  documentId: string,
+  reviewedBy: string,
+): Promise<void> {
+  const updated = await db.update(documentConfidenceScores).set({
+    humanReviewCompleted: true,
+    humanReviewedBy: reviewedBy,
+    humanReviewedAt: new Date(),
+  }).where(and(
+    eq(documentConfidenceScores.documentId, documentId),
+    eq(documentConfidenceScores.humanReviewCompleted, false),
+  )).returning({ id: documentConfidenceScores.id });
+
+  if (updated.length > 0) {
+    await emitEvent("document", "human_review_completed", {
+      entityType: "document",
+      entityId: documentId,
+      actorId: reviewedBy,
+      payload: { oneClick: true, rowsStamped: updated.length },
+    });
+  }
+}
+
 export async function recordHumanReview(
   documentId: string,
   reviewedBy: string,

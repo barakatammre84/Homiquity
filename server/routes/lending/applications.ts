@@ -260,7 +260,13 @@ export function registerApplicationRoutes(
       res.json({
         application,
         options,
-        documents,
+        // The encrypted raw extraction response never leaves the server — same
+        // doctrine as publicExtraction() in routes/documents.ts. Ciphertext is
+        // useless without the server-side key, but there is no reason to ship
+        // it to the browser at all.
+        documents: documents.map(
+          ({ extractionRawEncrypted, extractionRawIv, extractionRawKeyId, ...doc }) => doc,
+        ),
         activities,
       });
     } catch (error) {

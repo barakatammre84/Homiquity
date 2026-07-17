@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, Link } from "wouter";
+import { lazy, Suspense, useState } from "react";
+import { useParams, useSearch, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,17 +58,32 @@ import { ChangeOfCircumstancePanel } from "@/components/staff/ChangeOfCircumstan
 import { RiskBriefPanel } from "@/components/staff/RiskBriefPanel";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { canReviewDocuments } from "@shared/documentStatus";
-import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import type { Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
+import { DocumentReviewPanel } from "@/components/staff/DocumentReviewPanel";
+import type { LoanCondition, UrlaPersonalInfo } from "@shared/schema";
 
 import { type ActivityItem, type ApplicationData, type PipelineData, type CreditSummary, type CreditAuditEntry, HMDA_DENIAL_REASONS } from "./borrowerFile/model";
+
+// Lazy so pdfjs-dist stays in a staff-only async chunk, off every borrower
+// bundle and off this page's own initial render.
+const DocumentViewer = lazy(() => import("@/components/staff/DocumentViewer"));
+
+const TAB_VALUES = ["overview", "documents", "conditions", "timeline", "credit", "tax-intel", "team"];
 
 export default function BorrowerFile() {
   const params = useParams();
   const applicationId = params.id as string;
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+
+  // ?tab= deep-link (e.g. the staff docs-ready signal links straight to the
+  // Documents tab). Tabs are controlled so the link works after hydration too.
+  const search = useSearch();
+  const requestedTab = new URLSearchParams(search).get("tab");
+  const [activeTab, setActiveTab] = useState(
+    requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "overview",
+  );
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
 
   const { data: appData, isLoading: appLoading } = useQuery<ApplicationData>({
     queryKey: ['/api/loan-applications', applicationId],
@@ -100,42 +115,6 @@ export default function BorrowerFile() {
     action: "cleared" | "waived" | "not_applicable" | null;
     notes: string;
   }>({ condition: null, action: null, notes: "" });
-
-  // Per-document human review (MR-2: the only path to verified/rejected).
-  // Reject requires a borrower-facing reason, collected in a dialog.
-  const [docReject, setDocReject] = useState<{ doc: Document | null; reason: string }>({
-    doc: null,
-    reason: "",
-  });
-  const documentReviewMutation = useMutation({
-    mutationFn: async ({
-      documentId,
-      status,
-      reason,
-    }: {
-      documentId: string;
-      status: "verified" | "rejected";
-      reason?: string;
-    }) => {
-      return apiRequest("POST", `/api/documents/${documentId}/verify`, {
-        status,
-        ...(reason ? { reason } : {}),
-      });
-    },
-    onSuccess: (_res, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'pipeline'] });
-      toast(
-        vars.status === "verified"
-          ? { title: "Document verified", description: "The borrower sees it as accepted." }
-          : { title: "Sent back to the borrower", description: "They'll see your reason on their Documents page." },
-      );
-      setDocReject({ doc: null, reason: "" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Review failed", description: error.message, variant: "destructive" });
-    },
-  });
 
   const [exportingMismo, setExportingMismo] = useState(false);
   const handleExportMismo = async () => {
@@ -653,7 +632,7 @@ export default function BorrowerFile() {
                 </Card>
               </div>
 
-              <Tabs defaultValue="overview" className="space-y-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                 <TabsList>
                   <TabsTrigger value="overview" data-testid="tab-overview">
                     <User className="mr-2 h-4 w-4" />
@@ -778,145 +757,38 @@ export default function BorrowerFile() {
                 </TabsContent>
 
                 <TabsContent value="documents" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>Uploaded Documents</CardTitle>
-                        <Button size="sm" data-testid="button-request-docs">
-                          <Upload className="mr-2 h-4 w-4" />
-                          Request Documents
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {documents.length === 0 ? (
-                        <p className="text-center text-muted-foreground py-8">
-                          No documents uploaded yet.
-                        </p>
-                      ) : (
-                        <ScrollArea className="h-[400px]">
-                          <div className="space-y-2">
-                            {documents.map((doc) => {
-                              const canReview = canReviewDocuments(user?.role);
-                              return (
-                                <div
-                                  key={doc.id}
-                                  className="rounded-lg border p-3"
-                                  data-testid={`row-staff-doc-${doc.id}`}
-                                >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div className="flex min-w-0 items-center gap-3">
-                                      <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-                                      <div className="min-w-0">
-                                        <p className="truncate font-medium">{doc.fileName}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {doc.documentType} • {formatDate(doc.createdAt)}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex shrink-0 items-center gap-2">
-                                      {canReview && doc.status !== "verified" && (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="gap-1.5"
-                                          disabled={documentReviewMutation.isPending}
-                                          onClick={() =>
-                                            documentReviewMutation.mutate({ documentId: doc.id, status: "verified" })
-                                          }
-                                          data-testid={`button-verify-doc-${doc.id}`}
-                                        >
-                                          <CheckCircle2 className="h-4 w-4" />
-                                          Accept
-                                        </Button>
-                                      )}
-                                      {canReview && doc.status !== "rejected" && (
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="gap-1.5 text-destructive"
-                                          disabled={documentReviewMutation.isPending}
-                                          onClick={() => setDocReject({ doc, reason: "" })}
-                                          data-testid={`button-reject-doc-${doc.id}`}
-                                        >
-                                          <AlertCircle className="h-4 w-4" />
-                                          Reject
-                                        </Button>
-                                      )}
-                                      <DocumentStatusBadge
-                                        status={doc.status}
-                                        audience="staff"
-                                        data-testid={`badge-doc-status-${doc.id}`}
-                                      />
-                                    </div>
-                                  </div>
-                                  {doc.status === "rejected" && doc.rejectionReason && (
-                                    <p
-                                      className="mt-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
-                                      data-testid={`text-reject-reason-${doc.id}`}
-                                    >
-                                      Reason sent to borrower: {doc.rejectionReason}
-                                      {doc.reviewedAt ? ` (${formatDate(doc.reviewedAt)})` : ""}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </ScrollArea>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Dialog
-                    open={!!docReject.doc}
-                    onOpenChange={(open) => {
-                      if (!open) setDocReject({ doc: null, reason: "" });
-                    }}
-                  >
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Reject document</DialogTitle>
-                        <DialogDescription>
-                          {docReject.doc?.fileName} — the borrower will see this reason on their
-                          Documents page and be asked to upload a new copy.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-2">
-                        <Label htmlFor="doc-reject-reason">Reason (shown to the borrower)</Label>
-                        <Textarea
-                          id="doc-reject-reason"
-                          value={docReject.reason}
-                          onChange={(e) => setDocReject((prev) => ({ ...prev, reason: e.target.value }))}
-                          placeholder="e.g. Pages 3–4 of the statement are missing — please upload all pages."
-                          data-testid="input-reject-reason"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Written for the borrower: say what to re-upload and why, in plain language.
-                        </p>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setDocReject({ doc: null, reason: "" })}>
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          disabled={!docReject.reason.trim() || documentReviewMutation.isPending}
-                          onClick={() =>
-                            docReject.doc &&
-                            documentReviewMutation.mutate({
-                              documentId: docReject.doc.id,
-                              status: "rejected",
-                              reason: docReject.reason.trim(),
-                            })
-                          }
-                          data-testid="button-confirm-reject"
+                  {/* Split workbench (roadmap A6): review list left, safe
+                      rasterizing viewer right. Stacks on narrow viewports. */}
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                    <DocumentReviewPanel
+                      applicationId={applicationId}
+                      documents={documents}
+                      application={application}
+                      canReview={canReviewDocuments(user?.role)}
+                      selectedDocumentId={selectedDocumentId}
+                      onSelectDocument={setSelectedDocumentId}
+                    />
+                    {(() => {
+                      const selectedDocument = documents.find((d) => d.id === selectedDocumentId);
+                      return selectedDocument ? (
+                        <Suspense
+                          fallback={<Skeleton className="h-[560px] w-full" data-testid="viewer-suspense" />}
                         >
-                          {documentReviewMutation.isPending ? "Sending..." : "Reject & notify borrower"}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                          <DocumentViewer
+                            documentId={selectedDocument.id}
+                            fileName={selectedDocument.fileName}
+                            mimeType={selectedDocument.mimeType}
+                          />
+                        </Suspense>
+                      ) : (
+                        <Card className="flex min-h-[320px] items-center justify-center">
+                          <CardContent className="py-10 text-sm text-muted-foreground" data-testid="viewer-placeholder">
+                            Select a document to preview it here.
+                          </CardContent>
+                        </Card>
+                      );
+                    })()}
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="conditions" className="space-y-4">
