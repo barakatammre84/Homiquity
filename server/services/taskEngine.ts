@@ -35,6 +35,20 @@ export class InvalidTaskStatusError extends Error {
   }
 }
 
+/**
+ * Cancellation was requested for a COMPLETED task — routes translate this to
+ * a 409. Completed work is part of the permanent loan record; rewriting it to
+ * EXPIRED would falsify that record.
+ */
+export class TaskNotCancellableError extends Error {
+  constructor(taskId: string) {
+    super(
+      `Task ${taskId} is COMPLETED and part of the loan record — completed tasks cannot be cancelled or removed`,
+    );
+    this.name = "TaskNotCancellableError";
+  }
+}
+
 // Role mapping between user roles (lowercase) and task owner roles (uppercase)
 const USER_ROLE_TO_OWNER_ROLE: Record<string, string> = {
   "admin": "ADMIN",
@@ -324,6 +338,55 @@ export class TaskEngineService {
       { status: newStatus },
       userId,
       notes
+    );
+
+    return updatedTask;
+  }
+
+  // Cancel a task (the admin "delete"). Tasks are never hard-deleted: every
+  // engine-created task has a "created" row in task_audit_log (immutable
+  // compliance trail, NOT NULL FK), and task_events.resulting_task_id /
+  // underwriting_conditions.linked_task_id reference tasks as part of the
+  // permanent loan record — a bare DELETE FROM tasks 23503s on the first and
+  // would orphan the rest. Cancellation gives the operational outcome (the
+  // task leaves every ACTIVE_TASK_STATUSES queue, SLA sweep, and dashboard)
+  // while the record and its trail survive, with the removal itself audited.
+  async cancelTask(taskId: string, actorUserId: string, reason?: string): Promise<Task | null> {
+    const [currentTask] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+    if (!currentTask) return null;
+
+    // Idempotent: cancelling an already-EXPIRED task is a no-op, not a second
+    // audit entry.
+    if (currentTask.status === "EXPIRED") return currentTask;
+
+    if (currentTask.status === "COMPLETED") {
+      throw new TaskNotCancellableError(taskId);
+    }
+
+    const note = reason
+      ? `Cancelled by admin: ${reason}`
+      : "Cancelled by admin — removed from active queues; record retained";
+
+    const [updatedTask] = await db
+      .update(tasks)
+      .set({
+        status: "EXPIRED",
+        resolvedByUserId: actorUserId,
+        resolutionNotes: currentTask.resolutionNotes
+          ? `${currentTask.resolutionNotes}\n${note}`
+          : note,
+        updatedAt: new Date(),
+      })
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    await this.logTaskAction(
+      taskId,
+      "cancelled",
+      { status: currentTask.status },
+      { status: "EXPIRED" },
+      actorUserId,
+      note
     );
 
     return updatedTask;

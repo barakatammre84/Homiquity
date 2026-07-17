@@ -64,10 +64,11 @@ export class TasksStorage extends StatsStorage {
     return updated;
   }
 
-  async deleteTask(id: string): Promise<void> {
-    await db.delete(taskDocuments).where(eq(taskDocuments.taskId, id));
-    await db.delete(tasks).where(eq(tasks.id, id));
-  }
+  // No deleteTask: tasks are never hard-deleted. task_audit_log (immutable
+  // compliance trail) carries a NOT NULL FK into tasks from the moment the
+  // engine creates one, and task_events/underwriting_conditions reference
+  // tasks as loan-record history — a bare DELETE FROM tasks violates FK 23503.
+  // Removal is taskEngine.cancelTask (terminal EXPIRED status, audited).
 
   // Task Documents
   async createTaskDocument(data: InsertTaskDocument): Promise<TaskDocument> {
