@@ -25,6 +25,10 @@ name: CI
 #   • Repo variable NEON_PROJECT_ID — ONLY if the key can see more than one Neon
 #     project (the script fails with the list of ids when it's ambiguous).
 #   • Branch protection on `main` requiring the "gate" check (makes the gate binding).
+#     ✅ CONFIGURED 2026-07-17: gate required · enforce_admins ON (it binds the repo
+#     owner too — auto-merge runs AS the admin, so without this the rule would be
+#     decorative) · no required reviews (autonomous merge of a GREEN PR still works)
+#     · force-push and deletion of `main` blocked. See the rename warning on the job.
 
 on:
   pull_request:
@@ -43,6 +47,16 @@ permissions:
 
 jobs:
   gate:
+    # ⚠️ DO NOT RENAME without updating branch protection in the same change. This
+    # `name:` string IS the required status check on `main`, matched VERBATIM (the
+    # separators are U+00B7 MIDDLE DOTs, not periods). Rename it and every future PR
+    # deadlocks: the new check never satisfies the old required context, so the PR sits
+    # "Expected — Waiting for status" forever, and enforce_admins=true means nobody can
+    # bypass it. Rename procedure (both, together):
+    #   gh api -X PATCH repos/OWNER/REPO/branches/main/protection/required_status_checks \
+    #     -f 'contexts[]=<the exact new name>'
+    # Recovery if it does deadlock: re-point the rule with the PATCH above, or turn
+    # enforce_admins off temporarily (Settings → Branches). Both need repo admin.
     name: gate (typecheck · tests · schema guard)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
