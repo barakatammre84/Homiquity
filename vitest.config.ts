@@ -99,6 +99,7 @@ export default defineConfig({
       "tests/autopilotAusFollowUps.test.ts",
       "tests/autopilotDecisionRelay.test.ts",
       "tests/autopilotConsole.test.ts",
+      "tests/sensitiveInputGuard.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

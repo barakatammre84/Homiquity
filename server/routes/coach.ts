@@ -5,6 +5,11 @@ import { runCoachTurn, CoachTurnError, isCoachConfigured, type CoachTurnResult, 
 import { buildBorrowerGraph } from "../services/borrowerGraph";
 import { getCoachIntakeSnapshots } from "../services/coachIntake";
 import { beginSse, writeSse } from "../sse";
+import {
+  detectSensitiveInput,
+  SENSITIVE_INPUT_MESSAGES,
+  SENSITIVE_INPUT_REDACTED_PLACEHOLDER,
+} from "../services/sensitiveInputGuard";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
 
@@ -469,8 +474,43 @@ export function registerCoachRoutes(app: Express) {
   app.post("/api/coach/message/stream", isAuthenticated, async (req, res) => {
     let streaming = false;
     try {
+      // Input-side sensitive-data guard: runs BEFORE prepareCoachTurn so a
+      // pasted SSN/DOB is never persisted, never enters model context, and
+      // never lands in a log. The stored user message becomes the redacted
+      // placeholder; the reply is canned (no model call, no ai_interactions
+      // row — nothing was invoked).
+      const guardHit = detectSensitiveInput(
+        typeof req.body?.message === "string" ? req.body.message : "",
+      );
+      if (guardHit) {
+        req.body.message = SENSITIVE_INPUT_REDACTED_PLACEHOLDER;
+      }
+
       const prep = await prepareCoachTurn(req, res);
       if (!prep) return;
+
+      if (guardHit) {
+        const guardMessage = SENSITIVE_INPUT_MESSAGES[guardHit.kind];
+        const assistantMsg = await storage.createCoachMessage({
+          conversationId: prep.conversation.id,
+          role: "assistant",
+          content: guardMessage,
+        });
+        console.error(
+          `[coach-guard] blocked ${guardHit.kind}-shaped input (conversation ${prep.conversation.id})`,
+        );
+        beginSse(res);
+        streaming = true;
+        writeSse(res, "meta", {
+          conversationId: prep.conversation.id,
+          userMessageId: prep.userMessageId,
+          remaining: prep.remaining,
+        });
+        writeSse(res, "text", { delta: guardMessage });
+        writeSse(res, "done", { messageId: assistantMsg.id, usage: null, remaining: prep.remaining });
+        res.end();
+        return;
+      }
 
       beginSse(res);
       streaming = true;
@@ -536,8 +576,39 @@ export function registerCoachRoutes(app: Express) {
   // an intermediary buffers SSE.
   app.post("/api/coach/message", isAuthenticated, async (req, res) => {
     try {
+      // Same input-side sensitive-data guard as the streaming variant.
+      const guardHit = detectSensitiveInput(
+        typeof req.body?.message === "string" ? req.body.message : "",
+      );
+      if (guardHit) {
+        req.body.message = SENSITIVE_INPUT_REDACTED_PLACEHOLDER;
+      }
+
       const prep = await prepareCoachTurn(req, res);
       if (!prep) return;
+
+      if (guardHit) {
+        const guardMessage = SENSITIVE_INPUT_MESSAGES[guardHit.kind];
+        const assistantMsg = await storage.createCoachMessage({
+          conversationId: prep.conversation.id,
+          role: "assistant",
+          content: guardMessage,
+        });
+        console.error(
+          `[coach-guard] blocked ${guardHit.kind}-shaped input (conversation ${prep.conversation.id})`,
+        );
+        return res.json({
+          conversationId: prep.conversation.id,
+          message: assistantMsg,
+          profile: prep.conversation.financialProfile || null,
+          intake: getLatestIntakeFromConversation(prep.conversation),
+          actionPlan: prep.conversation.actionPlan || null,
+          documentChecklist: prep.conversation.documentChecklist || null,
+          borrowerPackage: null,
+          captured: null,
+          suggestions: null,
+        });
+      }
 
       let lastCaptured: Record<string, unknown> | null = null;
       const emit: CoachEmit = (event) => {
