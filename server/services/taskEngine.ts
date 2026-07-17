@@ -20,6 +20,14 @@ import {
 import { eq, and, isNull, lt, desc, asc, inArray, sql, isNotNull } from "drizzle-orm";
 
 // Role mapping between user roles (lowercase) and task owner roles (uppercase)
+/**
+ * Task-engine "still being worked" statuses (tasks.status declared vocabulary:
+ * OPEN, IN_PROGRESS, BLOCKED, COMPLETED, EXPIRED). NOTE: the table also holds
+ * legacy lowercase rows ("pending") written before the engine existed — those
+ * are invisible to these sweeps until the vocabulary is unified.
+ */
+const ENGINE_OPEN_TASK_STATUSES = ["OPEN", "IN_PROGRESS", "BLOCKED"] as const;
+
 const USER_ROLE_TO_OWNER_ROLE: Record<string, string> = {
   "admin": "ADMIN",
   "lo": "LO",
@@ -552,7 +560,7 @@ export class TaskEngineService {
       .from(tasks)
       .where(
         and(
-          inArray(tasks.status, ["OPEN", "IN_PROGRESS", "BLOCKED"]),
+          inArray(tasks.status, [...ENGINE_OPEN_TASK_STATUSES]),
           lt(tasks.slaDueAt, now),
           lt(tasks.escalationLevel, 4)
         )
@@ -588,7 +596,7 @@ export class TaskEngineService {
     const allTasks = await db
       .select()
       .from(tasks)
-      .where(inArray(tasks.status, ["OPEN", "IN_PROGRESS", "BLOCKED"]));
+      .where(inArray(tasks.status, [...ENGINE_OPEN_TASK_STATUSES]));
 
     const tasksWithStatus = allTasks.map(task => ({
       ...task,

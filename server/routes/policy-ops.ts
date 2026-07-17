@@ -5,18 +5,27 @@ import {
   insertPolicyProfileSchema,
   insertPolicyThresholdSchema,
   insertPolicyLenderOverlaySchema,
+  type PolicyStatus,
 } from "@shared/schema";
 import { logAudit } from "../auditLog";
 import { z } from "zod";
 
-const VALID_POLICY_STATUSES = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "ACTIVE", "RETIRED"];
-const VALID_TRANSITIONS: Record<string, string[]> = {
+// Typed against the canonical POLICY_STATUSES vocabulary — a phantom key or
+// target cannot compile.
+const VALID_TRANSITIONS: Record<PolicyStatus, PolicyStatus[]> = {
   DRAFT: ["PENDING_APPROVAL"],
   PENDING_APPROVAL: ["APPROVED", "DRAFT"],
   APPROVED: ["ACTIVE", "DRAFT"],
   ACTIVE: ["RETIRED"],
   RETIRED: [],
 };
+
+/** Once a profile/overlay reaches approval it is immutable — edit via a new version. */
+const IMMUTABLE_POLICY_STATUSES: ReadonlySet<string> = new Set<PolicyStatus>([
+  "APPROVED",
+  "ACTIVE",
+  "RETIRED",
+]);
 
 export function registerPolicyOpsRoutes(
   app: Express,
@@ -154,7 +163,7 @@ export function registerPolicyOpsRoutes(
         return res.status(403).json({ error: "Access denied: you can only submit policies you created" });
       }
 
-      if (!VALID_TRANSITIONS[profile.status]?.includes("PENDING_APPROVAL")) {
+      if (!VALID_TRANSITIONS[profile.status as PolicyStatus]?.includes("PENDING_APPROVAL")) {
         return res.status(400).json({ error: `Cannot submit from ${profile.status} status` });
       }
 
@@ -403,7 +412,7 @@ export function registerPolicyOpsRoutes(
         return res.status(403).json({ error: "Access denied: you can only add thresholds to policies you created" });
       }
 
-      if (profile.status === "APPROVED" || profile.status === "ACTIVE" || profile.status === "RETIRED") {
+      if (IMMUTABLE_POLICY_STATUSES.has(profile.status)) {
         return res.status(400).json({ error: `Cannot add thresholds to a policy in ${profile.status} status` });
       }
 
@@ -435,7 +444,7 @@ export function registerPolicyOpsRoutes(
         return res.status(403).json({ error: "Access denied: you can only edit thresholds on policies you created" });
       }
 
-      if (profile && (profile.status === "APPROVED" || profile.status === "ACTIVE" || profile.status === "RETIRED")) {
+      if (profile && (IMMUTABLE_POLICY_STATUSES.has(profile.status))) {
         return res.status(400).json({ error: `Cannot edit thresholds on a policy in ${profile.status} status` });
       }
 
@@ -492,7 +501,7 @@ export function registerPolicyOpsRoutes(
         return res.status(403).json({ error: "Access denied: you can only delete thresholds on policies you created" });
       }
 
-      if (profile && (profile.status === "APPROVED" || profile.status === "ACTIVE" || profile.status === "RETIRED")) {
+      if (profile && (IMMUTABLE_POLICY_STATUSES.has(profile.status))) {
         return res.status(400).json({ error: `Cannot delete thresholds from a policy in ${profile.status} status` });
       }
 
@@ -603,7 +612,7 @@ export function registerPolicyOpsRoutes(
         return res.status(403).json({ error: "Access denied: you can only edit overlays you created" });
       }
 
-      if (overlay.status === "APPROVED" || overlay.status === "ACTIVE" || overlay.status === "RETIRED") {
+      if (IMMUTABLE_POLICY_STATUSES.has(overlay.status)) {
         return res.status(400).json({ error: `Cannot edit an overlay in ${overlay.status} status` });
       }
 
@@ -644,7 +653,7 @@ export function registerPolicyOpsRoutes(
         return res.status(403).json({ error: "Access denied: you can only delete overlays you created" });
       }
 
-      if (overlay.status === "APPROVED" || overlay.status === "ACTIVE" || overlay.status === "RETIRED") {
+      if (IMMUTABLE_POLICY_STATUSES.has(overlay.status)) {
         return res.status(400).json({ error: `Cannot delete an overlay in ${overlay.status} status` });
       }
 

@@ -3,8 +3,10 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
-import { isLoanAppStatus, LOAN_APP_STATUSES } from "@shared/schema";
-import type { User } from "@shared/schema";
+import { isLoanAppStatus, LOAN_APP_STATUSES, LOAN_CONDITION_STATUSES } from "@shared/schema";
+import type { User, LoanAppStatus } from "@shared/schema";
+import { z } from "zod";
+import { parseBodyOr400 } from "../validate";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 import { assertStageRequirements } from "@shared/stageRequirements";
 import { tridHardStopError } from "../../services/trid";
@@ -130,7 +132,20 @@ export function registerPipelineRoutes(
         return res.status(403).json({ error: "You are not assigned to this loan file" });
       }
 
-      const { status, clearanceNotes } = req.body;
+      // The status vocabulary is closed — the old raw-body fall-through let
+      // any string reach loanConditions.status, and an off-vocabulary value
+      // makes the condition invisible to open-condition counts and readiness
+      // gates without ever being settled.
+      const body = parseBodyOr400(
+        z.object({
+          status: z.enum(LOAN_CONDITION_STATUSES),
+          clearanceNotes: z.string().max(2000).optional(),
+        }),
+        req.body,
+        res,
+      );
+      if (body === undefined) return;
+      const { status, clearanceNotes } = body;
       const callerRole = req.user!.role;
 
       // Waiving a condition is restricted to underwriters and admins only
@@ -269,7 +284,7 @@ export function registerPipelineRoutes(
 
       // Approval-grade stages may not be reached on self-reported/estimated data.
       // (Denial is not gated — see the status endpoint for the rationale.)
-      const APPROVAL_GRADE_STAGES = new Set(["pre_approved", "conditional", "clear_to_close", "funded"]);
+      const APPROVAL_GRADE_STAGES = new Set<LoanAppStatus>(["pre_approved", "conditional", "clear_to_close", "funded"]);
       if (APPROVAL_GRADE_STAGES.has(newStage)) {
         try {
           assertVerifiedForDecisioning(
