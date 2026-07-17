@@ -172,11 +172,21 @@ async function main() {
   const { roles = [] } = await api(`/projects/${projectId}/branches/${branch.id}/roles`);
   for (const role of roles) {
     if (role.protected) continue;
-    await api(
-      `/projects/${projectId}/branches/${branch.id}/roles/${encodeURIComponent(role.name)}/reset_password`,
-      { method: "POST" },
-    );
-    console.log(`rotated password for role "${role.name}".`);
+    try {
+      await api(
+        `/projects/${projectId}/branches/${branch.id}/roles/${encodeURIComponent(role.name)}/reset_password`,
+        { method: "POST" },
+      );
+      console.log(`rotated password for role "${role.name}".`);
+    } catch (err) {
+      // The legacy web-access role ("anonymous") is passwordless — nothing to
+      // rotate, nothing to leak. Anything else is a real failure.
+      if (/ROLE_PASSWORD_NOT_AVAILABLE/.test(String(err.message))) {
+        console.log(`skipping passwordless role "${role.name}" (nothing to rotate).`);
+        continue;
+      }
+      throw err;
+    }
   }
 
   console.log(
