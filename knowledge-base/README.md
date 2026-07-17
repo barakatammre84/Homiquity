@@ -45,6 +45,10 @@ doc-drift bug to fix):
 - [TEAM_PRACTICES.md](governance/TEAM_PRACTICES.md) — how we work (the house-style exemplar).
 - [AI_GOVERNANCE_POLICY.md](governance/AI_GOVERNANCE_POLICY.md) · [MODEL_RISK_GOVERNANCE.md](governance/MODEL_RISK_GOVERNANCE.md)
   · [ASSUMPTIONS.md](governance/ASSUMPTIONS.md) · [ARMED_LAUNCH_CHARTER_2026-07-07.md](governance/ARMED_LAUNCH_CHARTER_2026-07-07.md)
+- [security/](governance/security/) — the security governance pack (vendor-diligence ready; drafted for the Plaid
+  clearance): [Information Security Policy](governance/security/INFORMATION_SECURITY_POLICY.md)
+  · [Access Control Policy](governance/security/ACCESS_CONTROL_POLICY.md) · [Asset & Endpoint Register](governance/security/ASSET_REGISTER.md)
+  · [Incident Response Plan](governance/security/INCIDENT_RESPONSE_PLAN.md) · [Plaid questionnaire answers + pre-submit checklist](governance/security/PLAID_SECURITY_QUESTIONNAIRE_ANSWERS.md)
 
 ### Runbooks — operational how-to · [`runbooks/`](runbooks/)
 - [CICD.md](runbooks/CICD.md) · [DB_MIGRATIONS.md](runbooks/DB_MIGRATIONS.md) — schema-gated, auto-applied to prod · [ROLLBACK.md](runbooks/ROLLBACK.md) · [LOCAL_DEV.md](runbooks/LOCAL_DEV.md)

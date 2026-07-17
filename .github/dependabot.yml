@@ -1,0 +1,20 @@
+# Dependabot — weekly dependency-update PRs. Part of the vulnerability-management
+# program in knowledge-base/governance/security/INFORMATION_SECURITY_POLICY.md §8
+# (the blocking per-PR scan is the `pnpm audit` step in ci.yml's gate job).
+version: 2
+updates:
+  - package-ecosystem: "npm" # covers pnpm via pnpm-lock.yaml
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
