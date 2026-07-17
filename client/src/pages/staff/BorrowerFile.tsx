@@ -57,8 +57,10 @@ import { format } from "date-fns";
 import { ChangeOfCircumstancePanel } from "@/components/staff/ChangeOfCircumstancePanel";
 import { RiskBriefPanel } from "@/components/staff/RiskBriefPanel";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
+import { canReviewDocuments } from "@shared/documentStatus";
+import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import type { LoanCondition, UrlaPersonalInfo } from "@shared/schema";
+import type { Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
 
 import { type ActivityItem, type ApplicationData, type PipelineData, type CreditSummary, type CreditAuditEntry, HMDA_DENIAL_REASONS } from "./borrowerFile/model";
 
@@ -98,6 +100,42 @@ export default function BorrowerFile() {
     action: "cleared" | "waived" | "not_applicable" | null;
     notes: string;
   }>({ condition: null, action: null, notes: "" });
+
+  // Per-document human review (MR-2: the only path to verified/rejected).
+  // Reject requires a borrower-facing reason, collected in a dialog.
+  const [docReject, setDocReject] = useState<{ doc: Document | null; reason: string }>({
+    doc: null,
+    reason: "",
+  });
+  const documentReviewMutation = useMutation({
+    mutationFn: async ({
+      documentId,
+      status,
+      reason,
+    }: {
+      documentId: string;
+      status: "verified" | "rejected";
+      reason?: string;
+    }) => {
+      return apiRequest("POST", `/api/documents/${documentId}/verify`, {
+        status,
+        ...(reason ? { reason } : {}),
+      });
+    },
+    onSuccess: (_res, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'pipeline'] });
+      toast(
+        vars.status === "verified"
+          ? { title: "Document verified", description: "The borrower sees it as accepted." }
+          : { title: "Sent back to the borrower", description: "They'll see your reason on their Documents page." },
+      );
+      setDocReject({ doc: null, reason: "" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Review failed", description: error.message, variant: "destructive" });
+    },
+  });
 
   const [exportingMismo, setExportingMismo] = useState(false);
   const handleExportMismo = async () => {
@@ -758,33 +796,127 @@ export default function BorrowerFile() {
                       ) : (
                         <ScrollArea className="h-[400px]">
                           <div className="space-y-2">
-                            {documents.map((doc) => (
-                              <div
-                                key={doc.id}
-                                className="flex items-center justify-between rounded-lg border p-3"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                  <div>
-                                    <p className="font-medium">{doc.fileName}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {doc.documentType} • {formatDate(doc.createdAt)}
-                                    </p>
+                            {documents.map((doc) => {
+                              const canReview = canReviewDocuments(user?.role);
+                              return (
+                                <div
+                                  key={doc.id}
+                                  className="rounded-lg border p-3"
+                                  data-testid={`row-staff-doc-${doc.id}`}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                      <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                                      <div className="min-w-0">
+                                        <p className="truncate font-medium">{doc.fileName}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {doc.documentType} • {formatDate(doc.createdAt)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      {canReview && doc.status !== "verified" && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="gap-1.5"
+                                          disabled={documentReviewMutation.isPending}
+                                          onClick={() =>
+                                            documentReviewMutation.mutate({ documentId: doc.id, status: "verified" })
+                                          }
+                                          data-testid={`button-verify-doc-${doc.id}`}
+                                        >
+                                          <CheckCircle2 className="h-4 w-4" />
+                                          Accept
+                                        </Button>
+                                      )}
+                                      {canReview && doc.status !== "rejected" && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="gap-1.5 text-destructive"
+                                          disabled={documentReviewMutation.isPending}
+                                          onClick={() => setDocReject({ doc, reason: "" })}
+                                          data-testid={`button-reject-doc-${doc.id}`}
+                                        >
+                                          <AlertCircle className="h-4 w-4" />
+                                          Reject
+                                        </Button>
+                                      )}
+                                      <DocumentStatusBadge
+                                        status={doc.status}
+                                        audience="staff"
+                                        data-testid={`badge-doc-status-${doc.id}`}
+                                      />
+                                    </div>
                                   </div>
+                                  {doc.status === "rejected" && doc.rejectionReason && (
+                                    <p
+                                      className="mt-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                                      data-testid={`text-reject-reason-${doc.id}`}
+                                    >
+                                      Reason sent to borrower: {doc.rejectionReason}
+                                      {doc.reviewedAt ? ` (${formatDate(doc.reviewedAt)})` : ""}
+                                    </p>
+                                  )}
                                 </div>
-                                <Badge variant={
-                                  doc.status === "verified" ? "default" :
-                                  doc.status === "rejected" ? "destructive" : "secondary"
-                                }>
-                                  {doc.status}
-                                </Badge>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </ScrollArea>
                       )}
                     </CardContent>
                   </Card>
+
+                  <Dialog
+                    open={!!docReject.doc}
+                    onOpenChange={(open) => {
+                      if (!open) setDocReject({ doc: null, reason: "" });
+                    }}
+                  >
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Reject document</DialogTitle>
+                        <DialogDescription>
+                          {docReject.doc?.fileName} — the borrower will see this reason on their
+                          Documents page and be asked to upload a new copy.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-2">
+                        <Label htmlFor="doc-reject-reason">Reason (shown to the borrower)</Label>
+                        <Textarea
+                          id="doc-reject-reason"
+                          value={docReject.reason}
+                          onChange={(e) => setDocReject((prev) => ({ ...prev, reason: e.target.value }))}
+                          placeholder="e.g. Pages 3–4 of the statement are missing — please upload all pages."
+                          data-testid="input-reject-reason"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Written for the borrower: say what to re-upload and why, in plain language.
+                        </p>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setDocReject({ doc: null, reason: "" })}>
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          disabled={!docReject.reason.trim() || documentReviewMutation.isPending}
+                          onClick={() =>
+                            docReject.doc &&
+                            documentReviewMutation.mutate({
+                              documentId: docReject.doc.id,
+                              status: "rejected",
+                              reason: docReject.reason.trim(),
+                            })
+                          }
+                          data-testid="button-confirm-reject"
+                        >
+                          {documentReviewMutation.isPending ? "Sending..." : "Reject & notify borrower"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </TabsContent>
 
                 <TabsContent value="conditions" className="space-y-4">

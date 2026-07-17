@@ -13,6 +13,7 @@ import { queryClient } from "@/lib/queryClient";
 import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
 import { canonicalDocumentType } from "@shared/documentTypes";
 import { PageShell } from "@/components/PageShell";
+import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import {
   FileText,
@@ -152,20 +153,6 @@ function getUploadNextStep(docType: string): string {
     "We'll review it shortly. You'll be notified when it's processed."
   );
 }
-
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "verified":
-      return <Badge className="bg-success-subtle text-success-subtle-foreground">Verified</Badge>;
-    case "rejected":
-      return <Badge variant="destructive">Rejected</Badge>;
-    case "pending_review":
-      return <Badge className="bg-warning-subtle text-warning-subtle-foreground">Under Review</Badge>;
-    default:
-      return <Badge variant="secondary">Uploaded</Badge>;
-  }
-}
-
 
 export default function Documents() {
   const { isLoading: authLoading } = useAuth();
@@ -543,7 +530,10 @@ export default function Documents() {
                       {category.documents.map((docType) => {
                         const uploadedDocs = documentsByType[docType.type] || [];
                         const hasUpload = uploadedDocs.length > 0;
-                        const latestDoc = uploadedDocs[uploadedDocs.length - 1];
+                        // The dashboard document list is newest-first, so the
+                        // latest upload of a type is [0] — [length - 1] was the
+                        // OLDEST, which froze the row on a re-upload's stale status.
+                        const latestDoc = uploadedDocs[0];
 
                         return (
                           <div
@@ -595,11 +585,24 @@ export default function Documents() {
                                     {latestDoc.status && (
                                       <span className="flex items-center gap-1">
                                         <Shield className="h-3 w-3" />
-                                        {getStatusBadge(latestDoc.status)}
+                                        <DocumentStatusBadge
+                                          status={latestDoc.status}
+                                          data-testid={`badge-doc-status-${docType.type}`}
+                                        />
                                       </span>
                                     )}
                                   </div>
                                 )}
+                                {hasUpload &&
+                                  latestDoc?.status === "rejected" &&
+                                  latestDoc.rejectionReason && (
+                                    <p
+                                      className="mt-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
+                                      data-testid={`text-reject-reason-${docType.type}`}
+                                    >
+                                      {latestDoc.rejectionReason} — please upload a new copy.
+                                    </p>
+                                  )}
                               </div>
                             </div>
                             <div className="flex items-center gap-2 ml-4">
@@ -698,7 +701,12 @@ export default function Documents() {
                           </span>
                         </td>
                         <td className="px-4 py-4">
-                          {getStatusBadge(doc.status || "uploaded")}
+                          <DocumentStatusBadge status={doc.status} />
+                          {doc.status === "rejected" && doc.rejectionReason && (
+                            <p className="mt-1 max-w-[240px] text-xs text-destructive">
+                              {doc.rejectionReason}
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <Button

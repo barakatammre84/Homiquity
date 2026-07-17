@@ -123,6 +123,28 @@ export function getStatusLabel(status: string): string {
   return labels[status] || titleCaseFromSnake(status);
 }
 
+/**
+ * Display label for a DOCUMENT's review status (documents.status — vocabulary
+ * in shared/documentStatus.ts). Distinct from getStatusLabel above, which is
+ * the application/pipeline-stage map. The borrower audience deliberately
+ * collapses the internal uploaded/verifying distinction into "Under Review"
+ * (AI staging is internal machinery) and says "Accepted" — never "Approved":
+ * a document review must not read as a loan decision (Reg N).
+ */
+export function getDocumentStatusLabel(
+  status: string | null | undefined,
+  audience: "borrower" | "staff" = "borrower",
+): string {
+  const labels: Record<string, { borrower: string; staff: string }> = {
+    uploaded: { borrower: "Under Review", staff: "Uploaded" },
+    verifying: { borrower: "Under Review", staff: "Needs Review" },
+    verified: { borrower: "Accepted", staff: "Verified" },
+    rejected: { borrower: "Action Needed", staff: "Rejected" },
+  };
+  const key = status || "uploaded";
+  return labels[key]?.[audience] ?? titleCaseFromSnake(key);
+}
+
 interface MortgageRateProgram {
   termYears: number | null;
   isAdjustable: boolean | null;

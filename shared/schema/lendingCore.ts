@@ -455,6 +455,14 @@ export const documents = pgTable("documents", {
   status: varchar("status", { length: 50 }).default("uploaded"),
   notes: text("notes"),
 
+  // Human review decision (POST /api/documents/:id/verify — the only writer).
+  // rejectionReason is borrower-visible copy explaining what to re-upload;
+  // `notes` stays reserved for AI-extraction lineage — never overload it.
+  // Naming mirrors loanConditions.clearedByUserId/clearedAt.
+  rejectionReason: text("rejection_reason"),
+  reviewedByUserId: varchar("reviewed_by_user_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+
   // AI-extraction lineage (mirrors the credit-pull vendor-response pattern):
   // a SHA-256 of the raw model output, and that raw output encrypted at rest
   // (it can carry PII). Lets an auditor confirm the stored fields came from a
