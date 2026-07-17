@@ -102,6 +102,9 @@ export default defineConfig({
       "tests/riskBrief.test.ts",
       "tests/sensitiveInputGuard.test.ts",
       "tests/licensedStates.test.ts",
+      "tests/documentStatus.test.ts",
+      "tests/documentReviewNotifications.test.ts",
+      "tests/documentConditionRevert.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

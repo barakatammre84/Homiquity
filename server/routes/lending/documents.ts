@@ -8,6 +8,7 @@ import { isStaffRole } from "@shared/roles";
 import { z } from "zod";
 import { allowedUploadTypes } from "../utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
+import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import { logAudit } from "../../auditLog";
 import * as creditService from "../../services/creditService";
 
@@ -189,7 +190,7 @@ export function registerDocumentRoutes(
         fileSize: fileMeta.fileSize,
         mimeType: fileMeta.mimeType,
         storagePath: fileMeta.storagePath,
-        status: "uploaded",
+        status: DOCUMENT_STATUS.UPLOADED,
         notes: description || null,
       });
 
@@ -284,7 +285,7 @@ export function registerDocumentRoutes(
             // MR-2: AI confidence never auto-verifies. A doc that clears the
             // review threshold is staged "verifying" for a human to confirm via
             // POST /api/documents/:id/verify; the rest stay "uploaded".
-            status: !humanReviewRequired ? "verifying" : "uploaded",
+            status: !humanReviewRequired ? DOCUMENT_STATUS.VERIFYING : DOCUMENT_STATUS.UPLOADED,
             notes: JSON.stringify({
               extractedAt: new Date().toISOString(),
               extractedFields: extracted.extractedFields,

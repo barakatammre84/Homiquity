@@ -20,7 +20,9 @@ import {
   streamLocalObject,
 } from "../integrations/object_storage";
 import { type User } from "@shared/schema";
+import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import { logAudit } from "../auditLog";
+import { sendNotificationEmail } from "../services/emailService";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -305,7 +307,7 @@ export function registerDocumentRoutes(
         // able to mark itself verified). main's review-gate signal still routes:
         // a doc that clears the type-specific confidence threshold is staged
         // "verifying" for a human to confirm; everything else stays "uploaded".
-        status: !humanReviewRequired ? "verifying" : "uploaded",
+        status: !humanReviewRequired ? DOCUMENT_STATUS.VERIFYING : DOCUMENT_STATUS.UPLOADED,
         notes: JSON.stringify({
           extractedAt: new Date().toISOString(),
           extractedFields: extractedData.extractedFields,
@@ -414,10 +416,11 @@ export function registerDocumentRoutes(
         const { id } = req.params;
         const { status, reason } = req.body as { status?: string; reason?: string };
 
-        if (status !== "verified" && status !== "rejected") {
+        if (status !== DOCUMENT_STATUS.VERIFIED && status !== DOCUMENT_STATUS.REJECTED) {
           return res.status(400).json({ error: 'status must be "verified" or "rejected"' });
         }
-        if (status === "rejected" && (!reason || typeof reason !== "string")) {
+        const trimmedReason = typeof reason === "string" ? reason.trim() : "";
+        if (status === DOCUMENT_STATUS.REJECTED && !trimmedReason) {
           return res.status(400).json({ error: "A reason is required when rejecting a document" });
         }
 
@@ -439,16 +442,70 @@ export function registerDocumentRoutes(
           }
         }
 
-        // The rejection reason lives in the audit log (below) — the documents
-        // table has no dedicated column and `notes` holds extraction lineage.
-        const updated = await storage.updateDocument(id, { status });
+        // Persist the full review decision. rejectionReason is borrower-visible
+        // (shown on the Documents page); a verify clears any prior reason so a
+        // reversed bounce doesn't keep scolding the borrower. `notes` stays
+        // reserved for extraction lineage.
+        const updated = await storage.updateDocument(id, {
+          status,
+          rejectionReason: status === DOCUMENT_STATUS.REJECTED ? trimmedReason : null,
+          reviewedByUserId: user.id,
+          reviewedAt: new Date(),
+        });
 
         logAudit(req, `document.${status}`, "document", id, {
           documentType: document.documentType,
           applicationId: document.applicationId,
           reviewedBy: user.id,
-          ...(reason ? { reason } : {}),
+          ...(trimmedReason ? { reason: trimmedReason } : {}),
         });
+
+        // A rejection un-satisfies whatever condition this upload had moved to
+        // "submitted" — revert it to "outstanding" so the auto-matcher re-arms
+        // when the borrower uploads a replacement (non-fatal).
+        if (status === DOCUMENT_STATUS.REJECTED && document.applicationId) {
+          try {
+            const { revertConditionsForRejectedDocument } = await import("../pipelineEngine");
+            await revertConditionsForRejectedDocument({
+              applicationId: document.applicationId,
+              documentType: document.documentType,
+              fileName: document.fileName,
+              rejectedBy: user.id,
+            });
+          } catch (revertErr) {
+            console.error("[Documents] Condition revert failed (non-fatal):", revertErr);
+          }
+        }
+
+        // Close the loop with the borrower: in-app notification (carries the
+        // reason — it stays behind login) plus a content-free email nudge (the
+        // reason is staff-typed free text and never travels over email).
+        try {
+          const isVerified = status === DOCUMENT_STATUS.VERIFIED;
+          const documentLabel = document.documentType.replace(/_/g, " ");
+          await storage.createNotification({
+            userId: document.userId,
+            type: isVerified ? "document_verified" : "document_rejected",
+            title: isVerified ? "Document accepted" : "A document needs your attention",
+            body: isVerified
+              ? `${document.fileName} has been reviewed and accepted.`
+              : `${document.fileName} couldn't be accepted: ${trimmedReason} Open Documents to upload a new copy.`,
+            entityType: "document",
+            entityId: document.id,
+            status: "unread",
+            metadata: { documentType: document.documentType, applicationId: document.applicationId },
+          });
+          const borrower = await storage.getUser(document.userId);
+          if (borrower?.email) {
+            sendNotificationEmail({
+              type: isVerified ? "document_verified" : "document_rejected",
+              recipientEmail: borrower.email,
+              data: { borrowerName: borrower.firstName || "there", documentName: documentLabel },
+            });
+          }
+        } catch (notifyErr) {
+          console.error("[Documents] Review notification failed (non-fatal):", notifyErr);
+        }
 
         res.json(updated);
       } catch (error) {

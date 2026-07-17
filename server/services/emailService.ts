@@ -347,6 +347,53 @@ export const emailTemplates = {
     };
   },
 
+  // Document review notifications: deliberately content-free — the outcome
+  // details and any rejection reason stay behind login (staff-typed reasons
+  // can carry borrower PII, and nothing here may read as a loan decision —
+  // Reg N). documentName is a document-TYPE label ("bank statement"), never
+  // the uploaded file name.
+  documentAccepted(borrowerName: string, documentName: string): EmailOptions {
+    return {
+      to: "",
+      subject: "A document on your file has been reviewed",
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">Document reviewed</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${borrowerName},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Your ${documentName} has been reviewed and accepted for your file.
+          No further action is needed on this document.
+        </p>
+        <p style="color:#94a3b8;line-height:1.5;margin:16px 0 0;font-size:12px">
+          A document review is not a loan decision. Your loan team will let you
+          know if anything else is needed.
+        </p>
+      `, "A document on your file has been reviewed"),
+    };
+  },
+
+  documentActionNeeded(borrowerName: string, documentName: string): EmailOptions {
+    return {
+      to: "",
+      subject: "Action needed on a document",
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">Action needed</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${borrowerName},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          We couldn't accept your ${documentName} as submitted. For your privacy,
+          the details are only viewable inside your account.
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
+          Log into your Homiquity account and open <strong>Documents</strong> to
+          see what's needed and upload a new copy.
+        </p>
+      `, "Action needed on a document in your file"),
+    };
+  },
+
   documentUploaded(staffName: string, borrowerName: string, documentName: string, applicationId: string): EmailOptions {
     return {
       to: "",
@@ -565,6 +612,8 @@ export type NotificationType =
   | "message_received"
   | "document_requested"
   | "document_uploaded"
+  | "document_verified"
+  | "document_rejected"
   | "invite_sent"
   | "pre_approval_letter_ready"
   | "status_update"
@@ -600,6 +649,14 @@ export function sendNotificationEmail(mapping: NotificationEmailMapping): void {
       break;
     case "document_uploaded":
       email = emailTemplates.documentUploaded(data.staffName, data.borrowerName, data.documentName, data.applicationId);
+      break;
+    // Review outcomes intentionally take ONLY name + document-type label —
+    // the rejection reason must never travel over email.
+    case "document_verified":
+      email = emailTemplates.documentAccepted(data.borrowerName, data.documentName);
+      break;
+    case "document_rejected":
+      email = emailTemplates.documentActionNeeded(data.borrowerName, data.documentName);
       break;
     case "invite_sent":
       email = emailTemplates.inviteCode(recipientEmail, data.role, data.code, data.inviterName);
