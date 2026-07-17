@@ -15,6 +15,7 @@ export default defineConfig({
       "tests/loCommsLint.test.ts",
       "tests/scenarioSimulator.test.ts",
       "tests/cockpitScoping.test.ts",
+      "tests/signalEngine.test.ts",
       "tests/adversarialPersonas.test.ts",
       "tests/adverseActionNotice.test.ts",
       "tests/adverseActionDelivery.test.ts",
