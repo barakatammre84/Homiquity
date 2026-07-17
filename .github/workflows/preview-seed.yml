@@ -4,10 +4,12 @@
 # action, not a per-commit check. Runs here because NEON_API_KEY exists only as
 # an Actions secret (write-only; no local copy by design).
 #
-# Steps: create/verify the schema-only branch (credentials rotated every run) →
-# adopt the migration journal (schema-only already HAS every object, so
-# migrations are recorded as applied, not re-executed) → run the idempotent
-# synthetic content seed. No connection string or password is ever printed.
+# Steps: create/verify the branch (schema-only preferred; this project's legacy
+# web-access role forces a child-clone fallback — credentials rotated every
+# run) → wipe it to an empty schema (guarded: refuses the default branch) →
+# rebuild via the FULL migration chain (also validates migrations from zero) →
+# run the idempotent synthetic content seed. No connection string or password
+# is ever printed.
 name: preview-seed
 
 on:
@@ -30,13 +32,18 @@ jobs:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
         run: node scripts/neon-preview-seed-branch.cjs
-      - name: Adopt the migration journal on preview-seed
+      - name: Wipe preview-seed back to an empty schema
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: node scripts/reset-preview-seed-db.cjs
+      - name: Rebuild the schema from the full migration chain
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
           NEON_BRANCH_NAME: preview-seed
         run: |
-          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" pnpm db:migrate:adopt
+          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" pnpm db:migrate
       - name: Seed synthetic content
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
