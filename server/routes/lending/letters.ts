@@ -5,6 +5,7 @@ import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertBorrowerDeclarationsSchema, type User } from "@shared/schema";
 import { isStaffRole } from "@shared/roles";
+import { PREQUAL_ELIGIBLE_STATUSES } from "@shared/letters";
 import { z } from "zod";
 import crypto from "crypto";
 import { logAudit } from "../../auditLog";
@@ -477,8 +478,7 @@ export function registerLetterRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
-      const validStatuses = ["submitted", "analyzing", "pre_approved", "verified", "underwriting", "approved"];
-      if (!validStatuses.includes(application.status)) {
+      if (!(PREQUAL_ELIGIBLE_STATUSES as readonly string[]).includes(application.status)) {
         return res.status(400).json({ error: "Application must be submitted before generating a pre-qualification letter" });
       }
 

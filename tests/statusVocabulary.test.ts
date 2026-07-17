@@ -121,6 +121,47 @@ describe("loan-application status vocabulary is canonical", () => {
     expect(violations, violations.join("\n")).toEqual([]);
   });
 
+  it("named status lists used via .includes() carry no phantoms", () => {
+    // `const validStatuses = [ … ]; validStatuses.includes(x)` — the receiver
+    // is often a bare destructured `status`, so the APP_VAR regexes can't
+    // anchor on it. Instead anchor on the LIST: resolve every same-file
+    // `NAME.includes(…)` whose const is an array of string literals, and if
+    // two or more members are canonical loan-app statuses, the list is
+    // treated as a loan-app list and every member must be canonical. Lists
+    // from other vocabularies share at most one word with LOAN_APP_STATUSES
+    // ("submitted"), so they never trip the threshold.
+    const CALL_RE = /\b([A-Za-z_$][\w$]*)\.includes\(/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      const checked = new Set<string>();
+
+      for (const match of source.matchAll(CALL_RE)) {
+        const name = match[1];
+        if (checked.has(name)) continue;
+        checked.add(name);
+        const decl = source.match(
+          new RegExp(`const\\s+${name}\\s*(:[^=]+)?=\\s*\\[([^\\]]*)\\]`),
+        );
+        if (!decl) continue;
+        // A type-annotated list belongs to whatever vocabulary its type names,
+        // and the compiler already validates its members — skip it here.
+        if (decl[1]) continue;
+        const members = [...decl[2].matchAll(/["']([a-z_]+)["']/g)].map((m) => m[1]);
+        if (members.length === 0) continue;
+        const canonicalCount = members.filter((m) => CANONICAL.has(m)).length;
+        if (canonicalCount < 2) continue; // not a loan-app status list
+        for (const m of members) {
+          if (!CANONICAL.has(m)) {
+            violations.push(`${rel}: status list "${name}" contains phantom "${m}"`);
+          }
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
   it("every literal in eq/ne(loanApplications.status, …) is canonical", () => {
     // Companion to the inArray scan: the single-value Drizzle comparators.
     const EQ_RE = /\b(?:eq|ne)\(\s*loanApplications\.status\s*,\s*["']([a-z_]+)["']\s*\)/g;
