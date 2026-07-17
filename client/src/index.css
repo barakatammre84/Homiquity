@@ -1,6 +1,33 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Keep the JS theme config (Royal Blue Emerald ramp, semantic tokens, elevation
+   scale) as the source of truth rather than porting ~150 lines to CSS-first
+   @theme. v4 loads it in compatibility mode. */
+@config "../../tailwind.config.ts";
+
+/* v4 makes @layer a NATIVE CSS cascade layer, and its Preflight changes three
+   defaults this design depended on v3 for. Restore them so the migration is
+   visual-parity, not a restyle:
+   - border color: v4 defaults to currentColor; v3 (and this design's hairlines)
+     used the border token. The `* { @apply border-border }` base rule below
+     already sets it, but inputs/etc. that don't inherit need the fallback.
+   - ring: v4's `ring` is 1px currentColor; v3 was 3px. shadcn focus rings are
+     authored as `ring-2 ring-ring`, so both width and color are explicit at the
+     call site — no restore needed (placeholders likewise: the shadcn input /
+     textarea set `placeholder:text-muted-foreground` explicitly).
+   - button cursor: v4 defaults to `default`; restored to v3's pointer. */
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: hsl(var(--border));
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 /* LIGHT MODE - "Royal Blue Emerald": stark-white system with vivid royal-blue
    dark surfaces (2026-07-08 repaint of "Charcoal Emerald" — charcoal dark
