@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { documents, loanApplications, loanConditions, users } from "@shared/schema";
-import { and, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import { storage } from "../storage";
 
 /**
@@ -9,17 +9,26 @@ import { storage } from "../storage";
  * Aggregates the platform's machine-generated signals into one prioritized
  * list so an LO opens the day knowing exactly which files to touch:
  *   1 (act now)   — pre-underwriting flags blocking progress
- *   2 (review)    — conditions moved to "submitted" by document uploads
+ *   2 (review)    — conditions moved to "submitted" by document uploads;
+ *                   documents staged for human verify (extraction ran, a
+ *                   human decision is owed — deep-links to the workbench)
  *   3 (rescue)    — applications stalled mid-funnel (no activity in 3+ days);
  *                   also investor-loan (DSCR) candidates from tax insights
  *   4 (freshness) — documents approaching the 30-day staleness rule
  *
  * Pure read — the feed derives from state the engines already maintain
- * (preUnderwriting, pipelineEngine condition matching, optimizationEngine).
+ * (preUnderwriting, pipelineEngine condition matching, documentConfidence,
+ * optimizationEngine).
  */
 
 export interface StaffSignal {
-  type: "preuw_flag" | "conditions_review" | "stalled" | "docs_expiring" | "investor_candidate";
+  type:
+    | "preuw_flag"
+    | "conditions_review"
+    | "docs_ready_for_review"
+    | "stalled"
+    | "docs_expiring"
+    | "investor_candidate";
   priority: 1 | 2 | 3 | 4;
   /** Null for signals that predate any application (e.g. incubator tax insights). */
   applicationId: string | null;
@@ -31,6 +40,35 @@ export interface StaffSignal {
 }
 
 const DSCR_SIGNAL_WINDOW_DAYS = 30;
+
+export interface DocsReadyGroup {
+  applicationId: string;
+  count: number;
+  /** First three file names, for the signal detail line. */
+  fileNames: string[];
+}
+
+/**
+ * Pure grouping for the docs-ready-for-review signal (exported for tests):
+ * one group per application, counting its documents awaiting a human verdict.
+ * This definition intentionally equals the workbench's "needs review" bucket
+ * (client/src/lib/documentReview.ts documentReviewGroup) so the signal count
+ * matches what the reviewer sees after clicking through.
+ */
+export function planDocsReadySignals(
+  rows: Array<{ applicationId: string | null; fileName: string }>,
+): DocsReadyGroup[] {
+  const byApp = new Map<string, DocsReadyGroup>();
+  for (const row of rows) {
+    if (!row.applicationId) continue;
+    const group =
+      byApp.get(row.applicationId) ?? { applicationId: row.applicationId, count: 0, fileNames: [] };
+    group.count += 1;
+    if (group.fileNames.length < 3) group.fileNames.push(row.fileName);
+    byApp.set(row.applicationId, group);
+  }
+  return [...byApp.values()];
+}
 
 /**
  * Investor-loan (DSCR) candidates: users whose self-uploaded tax return showed
@@ -117,7 +155,7 @@ export async function buildStaffSignals(limit = 30, scope?: StaffSignalScope): P
   const appIds = activeApps.map((a) => a.id);
   const appById = new Map(activeApps.map((a) => [a.id, a]));
 
-  const [conditionRows, docRows, userRows] = await Promise.all([
+  const [conditionRows, reviewDocRows, docRows, userRows] = await Promise.all([
     db
       .select({
         applicationId: loanConditions.applicationId,
@@ -125,6 +163,34 @@ export async function buildStaffSignals(limit = 30, scope?: StaffSignalScope): P
       })
       .from(loanConditions)
       .where(and(inArray(loanConditions.applicationId, appIds), sql`${loanConditions.status} = 'submitted'`)),
+    // Documents owed a human verdict: staged "verifying" by extraction, or
+    // still "uploaded" with an open human-review requirement from the
+    // confidence gate. Status-based first so docs verified/rejected before
+    // confidence stamping shipped still drop out.
+    db
+      .select({
+        applicationId: documents.applicationId,
+        fileName: documents.fileName,
+      })
+      .from(documents)
+      .where(
+        and(
+          isNotNull(documents.applicationId),
+          inArray(documents.applicationId, appIds),
+          or(
+            sql`${documents.status} = 'verifying'`,
+            and(
+              sql`${documents.status} = 'uploaded'`,
+              sql`EXISTS (
+                SELECT 1 FROM document_confidence_scores dcs
+                WHERE dcs.document_id = ${documents.id}
+                  AND dcs.human_review_required = true
+                  AND dcs.human_review_completed = false
+              )`,
+            ),
+          ),
+        ),
+      ),
     db
       .select({
         applicationId: documents.applicationId,
@@ -184,6 +250,18 @@ export async function buildStaffSignals(limit = 30, scope?: StaffSignalScope): P
       borrowerName: borrower(appId),
       title: `${titles.length} condition${titles.length === 1 ? "" : "s"} ready for review`,
       detail: titles.slice(0, 3).join("; "),
+    });
+  }
+
+  // 2 — documents awaiting a human verify/reject (the A6 workbench queue)
+  for (const group of planDocsReadySignals(reviewDocRows)) {
+    signals.push({
+      type: "docs_ready_for_review",
+      priority: 2,
+      applicationId: group.applicationId,
+      borrowerName: borrower(group.applicationId),
+      title: `${group.count} document${group.count === 1 ? "" : "s"} awaiting review`,
+      detail: group.fileNames.join("; "),
     });
   }
 

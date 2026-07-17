@@ -3,10 +3,16 @@ import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Building2, CheckCircle2, Clock, FileWarning, Radio, TimerReset } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, Clock, FileSearch, FileWarning, Radio, TimerReset } from "lucide-react";
 
 interface StaffSignal {
-  type: "preuw_flag" | "conditions_review" | "stalled" | "docs_expiring" | "investor_candidate";
+  type:
+    | "preuw_flag"
+    | "conditions_review"
+    | "docs_ready_for_review"
+    | "stalled"
+    | "docs_expiring"
+    | "investor_candidate";
   priority: 1 | 2 | 3 | 4;
   applicationId: string | null;
   userId?: string;
@@ -27,6 +33,11 @@ const SIGNAL_META: Record<
   conditions_review: {
     label: "Review",
     icon: FileWarning,
+    chipClass: "bg-status-warning/10 text-status-warning",
+  },
+  docs_ready_for_review: {
+    label: "Doc review",
+    icon: FileSearch,
     chipClass: "bg-status-warning/10 text-status-warning",
   },
   stalled: {
@@ -107,9 +118,14 @@ export function StaffSignalsPanel() {
               </div>
             );
             // Signals without an application (e.g. incubator tax insights)
-            // have no borrower file to deep-link into yet.
+            // have no borrower file to deep-link into yet. Document-review
+            // signals land directly on the Documents workbench tab.
+            const href =
+              signal.type === "docs_ready_for_review"
+                ? `/borrower-file/${signal.applicationId}?tab=documents`
+                : `/borrower-file/${signal.applicationId}`;
             return signal.applicationId ? (
-              <Link key={`${signal.type}-${signal.applicationId}-${i}`} href={`/borrower-file/${signal.applicationId}`}>
+              <Link key={`${signal.type}-${signal.applicationId}-${i}`} href={href}>
                 {row}
               </Link>
             ) : (
