@@ -3,7 +3,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
-import { isInternalStaffRole } from "@shared/schema";
+import { isInFlightLoanAppStatus, isInternalStaffRole } from "@shared/schema";
 import type { User } from "@shared/schema";
 import * as creditService from "../../services/creditService";
 
@@ -30,8 +30,11 @@ export function registerComplianceDashboardRoutes(
           .filter((a): a is NonNullable<typeof a> => a !== null && a !== undefined);
       }
 
-      const activeApps = applications.filter(a => 
-        !["draft", "denied"].includes(a.status || "draft")
+      // Validation worklist: in-flight files plus funded ones — a funded loan
+      // still faces GSE delivery, so its MISMO/URLA gaps stay visible. Dead
+      // files (denied/withdrawn/expired) and drafts have nothing to validate.
+      const activeApps = applications.filter(
+        a => isInFlightLoanAppStatus(a.status) || a.status === "funded"
       );
 
       const { getApplicationValidationSummary } = await import("../../services/mismoValidation");

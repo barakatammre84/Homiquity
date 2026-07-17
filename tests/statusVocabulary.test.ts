@@ -4,9 +4,12 @@ import { describe, expect, it } from "vitest";
 import {
   LOAN_APP_STATUSES,
   LOAN_APP_TERMINAL_STATUSES,
+  LOAN_APP_IN_FLIGHT_STATUSES,
   LOAN_APP_TRANSITIONS,
   LOAN_APP_STATUS_META,
+  isInFlightLoanAppStatus,
   isValidLoanAppTransition,
+  pickActiveLoanApplication,
 } from "../shared/schema";
 
 /**
@@ -232,5 +235,36 @@ describe("transition table integrity", () => {
 
   it("every status has display metadata", () => {
     expect(Object.keys(LOAN_APP_STATUS_META).sort()).toEqual([...LOAN_APP_STATUSES].sort());
+  });
+});
+
+describe("in-flight set and the active-application selector", () => {
+  it("in-flight = every canonical status except draft and the terminals", () => {
+    const expected = LOAN_APP_STATUSES.filter(
+      (s) => s !== "draft" && !LOAN_APP_TERMINAL_STATUSES.includes(s),
+    );
+    expect([...LOAN_APP_IN_FLIGHT_STATUSES]).toEqual(expected);
+    for (const s of [...LOAN_APP_TERMINAL_STATUSES, "draft"]) {
+      expect(isInFlightLoanAppStatus(s), `${s} must not be in-flight`).toBe(false);
+    }
+    // A suspension pauses a file, it doesn't end it.
+    expect(isInFlightLoanAppStatus("suspended")).toBe(true);
+  });
+
+  it("pickActiveLoanApplication takes the first in-flight entry, skipping closed files", () => {
+    const apps = [
+      { id: "newer-withdrawn", status: "withdrawn" },
+      { id: "live", status: "underwriting" },
+      { id: "older-funded", status: "funded" },
+    ];
+    expect(pickActiveLoanApplication(apps)?.id).toBe("live");
+  });
+
+  it("pickActiveLoanApplication returns undefined when nothing is in-flight", () => {
+    expect(pickActiveLoanApplication([])).toBeUndefined();
+    expect(pickActiveLoanApplication([{ status: "draft" }])).toBeUndefined();
+    expect(
+      pickActiveLoanApplication(LOAN_APP_TERMINAL_STATUSES.map((status) => ({ status }))),
+    ).toBeUndefined();
   });
 });

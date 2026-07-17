@@ -23,7 +23,7 @@ import type { User, LoanApplication, BorrowerProfile, RealEstateOwned } from "@s
 import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 import { eq, desc, sql, and, gte, count, isNotNull } from "drizzle-orm";
 import { computeNextAction } from "./nextAction";
-import { isTerminalLoanAppStatus } from "@shared/schema";
+import { pickActiveLoanApplication } from "@shared/schema";
 
 export interface IncomeSource {
   source: "document" | "application" | "coach" | "goal";
@@ -293,7 +293,7 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       .groupBy(intentEvents.eventType),
   ]);
 
-  const activeApp = apps.find(a => a.status !== "draft" && !isTerminalLoanAppStatus(a.status)) || apps[0] || null;
+  const activeApp = pickActiveLoanApplication(apps) || apps[0] || null;
 
   // Second parallel wave — everything that depends on wave-1 results. These
   // were previously scattered sequential awaits (employment history, coach

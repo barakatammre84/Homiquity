@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { isAuthenticated } from "../auth";
 import { storage } from "../storage";
 import { db } from "../db";
-import { auditLogs } from "@shared/schema";
+import { auditLogs, pickActiveLoanApplication } from "@shared/schema";
 import type { LoanApplication, User } from "@shared/schema";
 import { getCoachIntakeSnapshots } from "../services/coachIntake";
 
@@ -42,7 +42,7 @@ export function registerProfileRoutes(app: Express) {
 
       const applications = await storage.getLoanApplicationsByUser(user.id);
       const draft = applications.find((a) => a.status === "draft");
-      const active = applications.find((a) => a.status !== "draft" && a.status !== "denied");
+      const active = pickActiveLoanApplication(applications);
       const display: LoanApplication | null = draft ?? active ?? applications[0] ?? null;
 
       const { conversations } = await getCoachIntakeSnapshots(user.id);
