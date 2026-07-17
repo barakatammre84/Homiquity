@@ -75,6 +75,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 > Point-in-time records. Never rewritten; supersession goes in a top banner (TEAM_PRACTICES §2).
 - [logs/ux-audit/](logs/ux-audit/) — dated UX audit + design routine runs.
 - [logs/2026-07-12-external-strategy-adjudication.md](logs/2026-07-12-external-strategy-adjudication.md) — external L1 critique + broker-bottleneck memo adjudicated against code: verdicts, the AUS-gate fix, the Reg N binding correction, and what stays deliberately unbuilt.
+- [logs/2026-07-17-external-agentic-mortgage-artifacts-evaluation.md](logs/2026-07-17-external-agentic-mortgage-artifacts-evaluation.md) — IBM / Confluent / Lendtrain "agentic mortgage" artifacts adjudicated against code: nothing vendored, four gaps extracted (risk-brief narration, coach input guard + disclosure, licensed-state footprint), seven house designs validated, binding rejections for LLM-in-decision-path proposals.
 > The launch-era operational logs (founder-routines, lo-audit) and one-time platform assessments (2026-07-02 → 07-06) were archived 2026-07-08 — see the Archive section below.
 
 ### Research — scratch + strategy collateral · [`research/`](research/)
