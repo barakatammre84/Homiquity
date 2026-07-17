@@ -84,6 +84,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [research/my-research/](research/my-research/) — scratch (nothing load-bearing).
 - [research/gtm/](research/gtm/) — GTM battlecards + competitive briefs.
 - [research/islamic-finance/](research/islamic-finance/) — alternative / Shariah-compliant (Musharaka/Ijara/Murabaha) "Universal Adaptation Layer" as a **broker-triage** lane: feasibility + compliance-gap map (§3 payment-decomposition table = the citation authority for the P7 translation calculators) + lender-channel validation (route is the Ijara-CDC/CMG ecosystem; the 2 founder calls are the channel gates) + Shariah-governance validation (structure cert = the funder's). Productized as UAL program prompt P7 — funder-agnostic build only until a founder-call "yes".
+- [research/NON_W2_LENDING_RESEARCH_BRIEFING.md](research/NON_W2_LENDING_RESEARCH_BRIEFING.md) — dated (2026-07-17, pinned to `main` @ `98a9674`) inventory of everything built for the non-W2 / self-employed beachhead — the UAL income engine, document intelligence, decisioning→delivery pipeline, surfaces, the real-vs-simulated vendor map, and code-verified gaps — plus the research questions handed to the outside research team. Code wins over this snapshot.
 
 ### Archive — obsolete, quarantined · [`archive/`](./archive/)
 Superseded docs kept for provenance. Never act on these. Includes the launch-era
