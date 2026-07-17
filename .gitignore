@@ -12,3 +12,4 @@ api/_app.mjs
 
 # MISMO XML exports (generated at runtime, not source)
 mismo-*.xml
+.vite-cache/

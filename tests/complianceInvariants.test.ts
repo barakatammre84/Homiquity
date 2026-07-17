@@ -37,6 +37,7 @@ const AI_IMPORT_PATTERNS = [
   /from\s+["']@google\/genai["']/,
   /from\s+["'][^"']*coachingService["']/,
   /from\s+["'][^"']*\/gemini["']/,
+  /from\s+["'][^"']*riskBrief["']/,
   /@anthropic-ai\/sdk/,
 ];
 
@@ -253,8 +254,8 @@ describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice"
     }
   });
 
-  it("the chokepoint and its HMDA→Reg B mapping live only in creditService", () => {
-    const credit = read("server/services/creditService.ts");
+  it("the chokepoint and its HMDA→Reg B mapping live only in creditAdverseActions", () => {
+    const credit = read("server/services/creditAdverseActions.ts");
     expect(credit).toMatch(/export async function ensureAdverseActionForDenial/);
     expect(credit).toMatch(/HMDA_TO_ADVERSE_ACTION_REASON/);
     // Routes must not carry their own copy of the mapping (single source).
@@ -264,7 +265,7 @@ describe("ECOA/Reg B §1002.9: a denial cannot outrun its adverse-action notice"
   });
 
   it("the adverse-action notice carries the mandatory ECOA §1002.9 block, not just FCRA", () => {
-    const credit = read("server/services/creditService.ts");
+    const credit = read("server/services/creditAdverseActions.ts");
     expect(credit).toMatch(/EQUAL CREDIT OPPORTUNITY ACT/);
     expect(credit).toMatch(/prohibits creditors from discriminating/);
     // Creditor identity + administering agency are required alongside the notice.
@@ -302,6 +303,35 @@ describe("Reg N / UDAAP: borrower-facing AI coach output rides the deterministic
     expect(svc).toContain("logAiInteraction");
     expect(svc).toMatch(/workflow:\s*"ai_coach"/);
     expect(svc).toMatch(/provider:\s*"claude"/);
+  });
+});
+
+describe("Advisory AI risk brief (M-7): narrates decisions, never makes or delivers them", () => {
+  it("the adverse-action path never imports the risk brief", () => {
+    // The brief must be unusable as adverse-action content (ECOA §1002.9): the
+    // notice chokepoint and the letter generator stay AI-free.
+    for (const module of [
+      "server/services/adverseActionDelivery.ts",
+      "server/services/pdfLetterGenerator.ts",
+      "server/services/creditService.ts",
+    ]) {
+      expect(read(module)).not.toMatch(/riskBrief/);
+    }
+  });
+
+  it("every risk-brief model call lands in the ai_interactions governance log as internal_only", () => {
+    const source = read("server/services/riskBrief.ts");
+    expect(source).toContain("logAiInteraction");
+    expect(source).toMatch(/workflow:\s*"risk_brief"/);
+    expect(source).toMatch(/classification:\s*"internal_only"/);
+    expect(source).toContain("RISK_BRIEF_DISCLAIMER");
+  });
+
+  it("the narrative is echo-only: unsourced numbers force the deterministic fallback", () => {
+    const source = read("server/services/riskBrief.ts");
+    expect(source).toContain("findUnsourcedNumbers");
+    expect(source).toContain("buildDeterministicBrief");
+    expect(source).toMatch(/validation_failed/);
   });
 });
 
@@ -348,15 +378,15 @@ describe("AI governance (AG-1): MCP tool actions land in the tamper-evident audi
     expect(source).toMatch(/createHash\("sha256"\)/);
   });
 
-  it("audited soft-pull persistence re-verifies FCRA consent inside creditService", () => {
-    const credit = read("server/services/creditService.ts");
+  it("audited soft-pull persistence re-verifies FCRA consent inside creditAudit", () => {
+    const credit = read("server/services/creditAudit.ts");
     expect(credit).toMatch(/export async function recordExternalSoftPull/);
     expect(credit).toMatch(/Valid consent required before credit pull/);
     expect(credit).toMatch(/does not belong to this borrower/);
   });
 
   it("agent caller identity stays pluggable (AG-2 seam)", () => {
-    expect(read("server/services/creditService.ts")).toMatch(
+    expect(read("server/services/creditAudit.ts")).toMatch(
       /DEFAULT_AGENT_CALLER_IDENTITY = "mcp-stdio"/,
     );
     expect(read("server/mcp/identity.ts")).toMatch(/MCP_CALLER_IDENTITY/);
@@ -395,7 +425,7 @@ describe("AI governance (AG-2): the MCP surface authenticates WHICH agent it ser
   it("agent identity is stamped on every row the MCP surface persists", () => {
     expect(read("shared/schema/compliance.ts")).toMatch(/agent_identity/);
     expect(read("shared/schema/property.ts")).toMatch(/avm_agent_identity/);
-    expect(read("server/services/creditService.ts")).toMatch(/agentIdentity: callerIdentity/);
+    expect(read("server/services/creditAudit.ts")).toMatch(/agentIdentity: callerIdentity/);
     expect(read("server/mcp/index.ts")).toMatch(/avmAgentIdentity: CALLER_IDENTITY/);
     expect(read("migrations/0005_ag2_agent_identity.sql")).toMatch(/ADD COLUMN IF NOT EXISTS/);
   });
@@ -403,6 +433,6 @@ describe("AI governance (AG-2): the MCP surface authenticates WHICH agent it ser
   it("every audit entry carries the resolved agent context", () => {
     const source = read("server/mcp/index.ts");
     expect(source).toMatch(/agentContext: agentContext\(\)/);
-    expect(read("server/services/creditService.ts")).toMatch(/agentContext/);
+    expect(read("server/services/creditAudit.ts")).toMatch(/agentContext/);
   });
 });

@@ -61,6 +61,7 @@ import {
 import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
 import { ChangeOfCircumstancePanel } from "@/components/staff/ChangeOfCircumstancePanel";
+import { RiskBriefPanel } from "@/components/staff/RiskBriefPanel";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { LoanApplication, Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
@@ -841,6 +842,8 @@ export default function BorrowerFile() {
                   </div>
 
                   <ChangeOfCircumstancePanel applicationId={application.id} />
+
+                  <RiskBriefPanel applicationId={application.id} />
                 </TabsContent>
 
                 <TabsContent value="documents" className="space-y-4">
