@@ -341,12 +341,12 @@ export async function generateDocumentTasks(
       // deriveDocumentTaskOwnerRole — omitting this inherited the column's
       // PROCESSOR default, hiding every pipeline doc task from the borrower
       // badge/requests panel and polluting the staff processor queue
-      // (migration 0034 remapped the existing rows).
+      // (migration 0035 remapped the existing rows).
       ownerRole: "BORROWER",
       // "OPEN" per TASK_STATUSES — this writer's lowercase "pending" is what
       // split the tasks table into two vocabularies (migration 0033 remapped
-      // the existing rows). Priority stays lowercase pending its own
-      // reconciliation; the dashboard's priority sort expects these values.
+      // the existing rows). Priority literals are TASK_PRIORITIES members —
+      // the same defect's second axis, unified by migration 0034.
       status: "OPEN",
       priority: req.priority === "prior_to_approval" ? "high" : "normal",
     };

@@ -7,6 +7,8 @@ import {
   insertBorrowerDeclarationsSchema,
   ACTIVE_TASK_STATUSES,
   TERMINAL_TASK_STATUSES,
+  TASK_PRIORITY_RANK,
+  type TaskPriority,
   type User,
 } from "@shared/schema";
 import { computeNextAction } from "../../services/nextAction";
@@ -342,11 +344,14 @@ export function registerDashboardRoutes(
         }
       }
 
-      // Sort by priority (urgent first) then by due date
-      const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+      // Sort by priority (urgent first) then by due date. ?? not ||: "urgent"
+      // ranks 0, which the old || fallback swallowed — urgent items sorted as
+      // normal, below high. The ?? fallback also keeps any not-yet-remapped
+      // legacy value (pre-0034 rows) at normal instead of NaN-ing the sort.
       items.sort((a, b) => {
-        const priorityDiff = (priorityOrder[a.priority as keyof typeof priorityOrder] || 2) - 
-                            (priorityOrder[b.priority as keyof typeof priorityOrder] || 2);
+        const priorityDiff =
+          (TASK_PRIORITY_RANK[a.priority as TaskPriority] ?? TASK_PRIORITY_RANK.normal) -
+          (TASK_PRIORITY_RANK[b.priority as TaskPriority] ?? TASK_PRIORITY_RANK.normal);
         if (priorityDiff !== 0) return priorityDiff;
         if (a.dueDate && b.dueDate) return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
         return 0;

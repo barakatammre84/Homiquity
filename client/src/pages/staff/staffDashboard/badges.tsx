@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertCircle, Shield, CircleCheck } from "lucide-react";
+import { type TaskPriority } from "@shared/schema";
 import { COMPLIANCE_CHECKLIST_ITEMS, AUTOMATION_LABELS, STAGE_ORDER } from "./model";
 
 export function getStatusBadge(status: string) {
@@ -19,14 +20,14 @@ export function getStatusBadge(status: string) {
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }
 
-export function getPriorityBadge(priority: string) {
-  const config: Record<string, { className: string; label: string }> = {
+export function getPriorityBadge(priority: TaskPriority) {
+  const config: Record<TaskPriority, { className: string; label: string }> = {
     low: { className: "bg-muted text-muted-foreground", label: "Low" },
     normal: { className: "bg-info-subtle text-info", label: "Normal" },
     high: { className: "bg-warning-subtle text-warning-subtle-foreground", label: "High" },
     urgent: { className: "bg-destructive-subtle text-destructive", label: "Urgent" },
   };
-  const p = config[priority] || config.normal;
+  const p = config[priority] ?? config.normal; // runtime guard: pre-0034 legacy rows
   return <Badge className={p.className}>{p.label}</Badge>;
 }
 

@@ -65,7 +65,7 @@ export type TaskOwnerRole = typeof TASK_OWNER_ROLES[number];
  * BorrowerRequests, getBorrowerTasks). A writer that omits ownerRole inherits
  * the column's PROCESSOR default instead, which parked 1,000+ borrower upload
  * tasks in the staff processor queue while the borrower badge read 0
- * (migration 0034 remapped the existing rows). Returns undefined when the
+ * (migration 0035 remapped the existing rows). Returns undefined when the
  * rule doesn't apply so callers can fall through to the default: staff-chase
  * document tasks (assigned to staff, or unassigned document-intelligence
  * review items) legitimately stay PROCESSOR-owned.
@@ -167,6 +167,34 @@ export const TASK_VERIFICATION_STATUSES = [
 ] as const;
 export type TaskVerificationStatus = (typeof TASK_VERIFICATION_STATUSES)[number];
 
+/**
+ * Task priorities — the ONLY values tasks.priority may hold, least to most
+ * urgent.
+ *
+ * The column's declared vocabulary (LOW, NORMAL, HIGH, CRITICAL) was never
+ * read by anything: every badge map and the lending dashboard's action-item
+ * sort match this lowercase set, and the pipeline engine's document tasks
+ * write it. Only the task engine's fallback and the old column default
+ * produced uppercase rows ("NORMAL"), which rendered as Normal purely via
+ * the badge fallback and took the default sort rank. Migration 0034 remapped
+ * the legacy rows. "CRITICAL" was never written by any code path; its
+ * canonical spelling is "urgent" — the tier every reader styles. Do not add
+ * uppercase aliases.
+ */
+export const TASK_PRIORITIES = ["low", "normal", "high", "urgent"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
+// Shared sort rank for action-item/queue ordering — 0 sorts first. Keyed
+// Record<TaskPriority, …> so a vocabulary change breaks the build here;
+// coverage is also asserted in tests/statusVocabulary.test.ts. NOTE: "urgent"
+// ranks 0 (falsy) — combine with ?? when a fallback is needed, never ||.
+export const TASK_PRIORITY_RANK: Record<TaskPriority, number> = {
+  urgent: 0,
+  high: 1,
+  normal: 2,
+  low: 3,
+};
+
 // Tasks for document requests and workflow items
 export const tasks = pgTable("tasks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -201,7 +229,7 @@ export const tasks = pgTable("tasks", {
   
   // Status
   status: varchar("status", { length: 50 }).$type<TaskStatus>().default("OPEN").notNull(),
-  priority: varchar("priority", { length: 20 }).default("NORMAL"), // LOW, NORMAL, HIGH, CRITICAL (legacy pipeline rows also hold lowercase high/normal)
+  priority: varchar("priority", { length: 20 }).$type<TaskPriority>().default("normal"), // TASK_PRIORITIES — migration 0034 retired the uppercase legacy set
   
   // Due Date
   dueDate: timestamp("due_date"),
@@ -257,6 +285,7 @@ export const insertTaskSchema = createInsertSchema(tasks)
   })
   .extend({
     status: z.enum(TASK_STATUSES).optional(),
+    priority: z.enum(TASK_PRIORITIES).optional(),
     verificationStatus: z.enum(TASK_VERIFICATION_STATUSES).nullable().optional(),
   });
 

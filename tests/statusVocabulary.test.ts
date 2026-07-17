@@ -14,6 +14,8 @@ import {
   ACTIVE_TASK_STATUSES,
   TERMINAL_TASK_STATUSES,
   TASK_VERIFICATION_STATUSES,
+  TASK_PRIORITIES,
+  TASK_PRIORITY_RANK,
 } from "../shared/schema";
 
 /**
@@ -434,6 +436,137 @@ describe("task status vocabulary is canonical", () => {
       (TASK_VERIFICATION_STATUSES as readonly string[]).includes(s),
     );
     expect(overlap).toEqual([]);
+  });
+});
+
+/**
+ * tasks.priority vocabulary — the status defect's second axis, unified by
+ * migration 0034. The column declared LOW/NORMAL/HIGH/CRITICAL but every
+ * reader (badge maps, the lending dashboard's action-item sort) matched
+ * lowercase, and the task engine's fallback kept writing "NORMAL" alongside
+ * the pipeline engine's "high"/"normal". Canonical is the lowercase set;
+ * "urgent", not "CRITICAL", is the top tier.
+ */
+describe("task priority vocabulary is canonical", () => {
+  const PRIORITY_CANONICAL = new Set<string>(TASK_PRIORITIES);
+  // Same task-row variable names as the status scans above.
+  const TASK_VAR = "(?:task|currentTask|existingTask|updatedTask|newTask|selectedTask)";
+
+  it("every literal compared against <task>.priority is canonical", () => {
+    const RE = new RegExp(
+      `${TASK_VAR}\\.priority\\s*[!=]==?\\s*["']([A-Za-z_]+)["']`,
+      "g",
+    );
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(RE)) {
+        if (!PRIORITY_CANONICAL.has(match[1])) {
+          violations.push(`${rel}: compares <task>.priority to phantom "${match[1]}"`);
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("every literal in includes() lists tested against <task>.priority is canonical", () => {
+    const RE = new RegExp(
+      `\\[((?:\\s*["'][A-Za-z_]+["']\\s*,?)+)\\]\\.includes\\(\\s*${TASK_VAR}\\.priority\\s*\\)`,
+      "g",
+    );
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(RE)) {
+        for (const litMatch of match[1].matchAll(/["']([A-Za-z_]+)["']/g)) {
+          if (!PRIORITY_CANONICAL.has(litMatch[1])) {
+            violations.push(`${rel}: includes() list contains phantom "${litMatch[1]}"`);
+          }
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("every priority list fed to inArray(tasks.priority, …) is canonical", () => {
+    // Same Drizzle-column idiom scan as the status one: resolves inline array
+    // literals, `[...NAME]`, and same-file const arrays. Lists derived from
+    // TASK_PRIORITIES have no literals and are canonical by construction.
+    const INARRAY_RE = /inArray\(\s*tasks\.priority\s*,\s*([^)]*)\)/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(INARRAY_RE)) {
+        let expr = match[1].trim();
+        const ident = expr.match(/^\[?\s*(?:\.\.\.)?\s*([A-Za-z_$][\w$]*)\s*\]?$/);
+        if (ident) {
+          const decl = source.match(
+            new RegExp(`const\\s+${ident[1]}[^=]*=\\s*\\[([^\\]]*)\\]`),
+          );
+          if (!decl) continue; // derived or imported — typing covers it
+          expr = decl[1];
+        }
+        for (const lit of expr.matchAll(/["']([A-Za-z_]+)["']/g)) {
+          if (!PRIORITY_CANONICAL.has(lit[1])) {
+            violations.push(
+              `${rel}: inArray(tasks.priority, …) list contains phantom "${lit[1]}"`,
+            );
+          }
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("every literal in eq/ne(tasks.priority, …) is canonical", () => {
+    const EQ_RE = /\b(?:eq|ne)\(\s*tasks\.priority\s*,\s*["']([A-Za-z_]+)["']\s*\)/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const match of source.matchAll(EQ_RE)) {
+        if (!PRIORITY_CANONICAL.has(match[1])) {
+          violations.push(`${rel}: eq/ne(tasks.priority, "${match[1]}") uses a phantom priority`);
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("no raw SQL IN-list on tasks.priority (use inArray with typed values)", () => {
+    const RE = /sql`[^`]*\$\{tasks\.priority\}\s+IN\s*\(/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      if (RE.test(source)) {
+        violations.push(`${rel}: raw sql IN-list on tasks.priority`);
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("TASK_PRIORITY_RANK covers the vocabulary exactly, urgent first", () => {
+    expect(Object.keys(TASK_PRIORITY_RANK).sort()).toEqual([...TASK_PRIORITIES].sort());
+    expect(TASK_PRIORITY_RANK.urgent).toBe(0);
+    // TASK_PRIORITIES ascends in urgency, so rank must strictly descend along
+    // it — no ties, or the dashboard sort silently stops distinguishing tiers.
+    for (let i = 1; i < TASK_PRIORITIES.length; i++) {
+      expect(
+        TASK_PRIORITY_RANK[TASK_PRIORITIES[i]],
+        `${TASK_PRIORITIES[i]} must outrank ${TASK_PRIORITIES[i - 1]}`,
+      ).toBeLessThan(TASK_PRIORITY_RANK[TASK_PRIORITIES[i - 1]]);
+    }
+  });
+
+  it("priority never shares a value with the status or verification vocabularies", () => {
+    // Same disjointness doctrine as status vs verification: a literal must be
+    // attributable to exactly one axis of the tasks table.
+    const others = new Set<string>([...TASK_STATUSES, ...TASK_VERIFICATION_STATUSES]);
+    expect(TASK_PRIORITIES.filter((p) => others.has(p))).toEqual([]);
   });
 });
 

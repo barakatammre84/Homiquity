@@ -80,7 +80,7 @@ describe("generateDocumentTasks — borrower ownership", () => {
   it("stamps every pipeline document task BORROWER-owned and OPEN", async () => {
     // The regression this pins: omitting ownerRole let the column default
     // (PROCESSOR) hide 1,015 dev tasks from the borrower badge and requests
-    // panel while polluting the staff processor queue (migration 0034).
+    // panel while polluting the staff processor queue (migration 0035).
     const tasks = await generateDocumentTasks(
       "app-1",
       "borrower-1",

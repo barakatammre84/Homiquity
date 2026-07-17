@@ -244,7 +244,14 @@
       "idx": 34,
       "version": "7",
       "when": 1784738400000,
-      "tag": "0034_document_task_owner_role",
+      "tag": "0034_task_priority_vocabulary",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1784824800000,
+      "tag": "0035_document_task_owner_role",
       "breakpoints": true
     }
   ]
