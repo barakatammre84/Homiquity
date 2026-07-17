@@ -112,6 +112,7 @@ export default defineConfig({
       "tests/taskEngineSlaSeed.test.ts",
       "tests/uploadValidation.test.ts",
       "tests/documentChecklist.test.ts",
+      "tests/complianceScore.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

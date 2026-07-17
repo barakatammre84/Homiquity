@@ -62,6 +62,7 @@ import {
   Scale,
   ShieldAlert,
   Archive,
+  Mail,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { formatCurrency, formatTimeRemaining, getStatusLabel } from "@/lib/formatters";
@@ -72,6 +73,7 @@ import {
   type ComplianceData,
   type RetentionPolicy,
   type RetentionReport,
+  complianceScorePercent,
   coApplicantNames,
   STAGE_ORDER,
   documentCategories,
@@ -269,9 +271,10 @@ export default function StaffDashboard() {
   };
 
   const totalVolume = pipeline.reduce((sum, l) => sum + (parseFloat(l.loanAmount || "0") || 0), 0);
-  const complianceScore = complianceData
-    ? Math.round(((complianceData.gseReady + complianceData.ulddCompliant) / Math.max(complianceData.total, 1)) * 100)
-    : 0;
+  const complianceScore = complianceScorePercent(complianceData);
+  const aaUndelivered = complianceData?.adverseActionDelivery?.undelivered ?? 0;
+  const aaWarning = complianceData?.adverseActionDelivery?.warning ?? 0;
+  const aaBreach = complianceData?.adverseActionDelivery?.breach ?? 0;
 
   if (authLoading || tasksLoading || applicationsLoading) {
     return (
@@ -1009,7 +1012,7 @@ export default function StaffDashboard() {
 
           <TabsContent value="compliance">
             <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -1044,6 +1047,29 @@ export default function StaffDashboard() {
                       <AlertTriangle className="h-8 w-8 text-warning-subtle-foreground/30" />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Missing critical data</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Undelivered Notices</p>
+                        <p
+                          className={`text-2xl font-bold ${aaBreach > 0 ? "text-destructive" : aaWarning > 0 ? "text-warning-subtle-foreground" : ""}`}
+                          data-testid="text-aa-undelivered"
+                        >
+                          {aaUndelivered}
+                        </p>
+                      </div>
+                      <Mail className="h-8 w-8 text-muted-foreground/30" />
+                    </div>
+                    {aaBreach > 0 ? (
+                      <p className="text-xs text-destructive mt-1" data-testid="text-aa-delivery-status">{aaBreach} past 30-day ECOA window</p>
+                    ) : aaWarning > 0 ? (
+                      <p className="text-xs text-warning-subtle-foreground mt-1" data-testid="text-aa-delivery-status">{aaWarning} nearing 30-day deadline</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-aa-delivery-status">Adverse actions — ECOA §1002.9</p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
