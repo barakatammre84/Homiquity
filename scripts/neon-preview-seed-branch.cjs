@@ -61,6 +61,45 @@ async function main() {
   const prod = branches.find((b) => b.default === true) ?? branches.find((b) => b.primary === true);
   if (!prod) fail("could not identify the default (production) branch.");
 
+  // Inventory (names/flags/sizes only — Free-plan branch limits make "what
+  // exists" the first question on every failure).
+  console.log(`branch inventory (${branches.length}):`);
+  for (const b of branches) {
+    console.log(
+      `  ${b.name}  default=${b.default === true} parent=${b.parent_id || "-"} size=${b.logical_size ?? "?"}`,
+    );
+  }
+
+  // Opt-in orphan reaper (REAP_ORPHANS=true): delete integration-created
+  // `preview/<git-branch>` clones whose git branch no longer exists — the
+  // integration normally reaps these on git-branch deletion, but orphans
+  // accumulate when it misses, and they both hold prod PII and eat the
+  // Free-plan branch limit. Guards: only `preview/`-prefixed names, never the
+  // default branch, never protected, never our own seed branch; the surviving
+  // git refs come from GIT_REMOTE_BRANCHES (computed by the workflow from
+  // `git ls-remote`, newline-separated).
+  if (process.env.REAP_ORPHANS === "true") {
+    const liveRefs = new Set(
+      (process.env.GIT_REMOTE_BRANCHES || "")
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+    if (liveRefs.size === 0) fail("REAP_ORPHANS=true but GIT_REMOTE_BRANCHES is empty — refusing.");
+    for (const b of branches) {
+      if (!b.name.startsWith("preview/")) continue;
+      if (b.default === true || b.protected === true) continue;
+      if (b.name === `preview/${BRANCH_NAME}` || b.name === BRANCH_NAME) continue;
+      const gitRef = b.name.replace(/^preview\//, "");
+      if (liveRefs.has(gitRef)) {
+        console.log(`  keeping ${b.name} — git branch still exists.`);
+        continue;
+      }
+      console.log(`  reaping orphaned clone ${b.name} (${b.id}) — git branch is gone.`);
+      await api(`/projects/${projectId}/branches/${b.id}`, { method: "DELETE" });
+    }
+  }
+
   let branch = branches.find((b) => b.name === BRANCH_NAME);
   if (branch) {
     console.log(`branch "${BRANCH_NAME}" already exists (${branch.id}) — verifying it is not a data clone.`);
