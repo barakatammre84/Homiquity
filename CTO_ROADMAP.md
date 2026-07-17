@@ -33,7 +33,12 @@
 > everything commercial and is the single regulatory flip between an invited human and submitting
 > an application (`shared/companyIdentity.ts` + `server/config/company.ts` still `PENDING`);
 > **LS-2** (Vercel env/ops) is founder-side; the simulated lender/AUS/credit adapters and the
-> MISMO XSD-conformance gap (`L6`) stay as noted.
+> MISMO XSD-conformance gap (`L6`) stay as noted. **Status correction 2026-07-17:** the NMLS
+> leg has since cleared — PR #154 (merged 2026-07-13) set company **NMLS #427468** in
+> `shared/companyIdentity.ts`, and `companyNmlsDisplay()` renders it site-wide. Licensing no
+> longer gates go-live; the remaining lever is the **founder-held env flip**
+> (`PRELAUNCH_GATED` / `VITE_PRELAUNCH_GATED`, plus the separate `BETA_ACCESS_CODE` front
+> door). Only `mersOrgId` in `server/config/company.ts` is still `PENDING`. See LS-1.
 
 > **Status update — 2026-07-08.** Since this sprint opened, three pushes landed (authoritative
 > record: the production change ledger in [CICD.md](./knowledge-base/runbooks/CICD.md), and
@@ -52,7 +57,7 @@
 
 **Founder (⛔ human — blocks everything commercial):**
 
-- [ ] **LS-1. F1 NMLS licensing (+ MERS org ID).** `server/config/company.ts` still says `PENDING`; no wholesale lender will credential an unlicensed broker. This is the single longest-lead item — everything else exists to be ready the day it clears.
+- [x] **LS-1. F1 NMLS licensing (+ MERS org ID).** *(NMLS leg DONE — company licensed as **NMLS #427468**, live in `shared/companyIdentity.ts` since PR #154 (merged 2026-07-13); `companyNmlsDisplay()` lights it up site-wide, footprint Illinois-only per A5. Go-live is no longer licensing-gated: the remaining lever is the founder-held env flip — `PRELAUNCH_GATED=false` + `VITE_PRELAUNCH_GATED=false` in Vercel opens the pre-license gate; the `BETA_ACCESS_CODE` front-door beta gate is separate. Still open: `mersOrgId` (`server/config/company.ts`) remains `PENDING`, and the IL state license number can be added to `LICENSED_STATE_DETAILS` when at hand.)*
 - [ ] **LS-2. Ops env vars in Vercel:** GCS bucket credentials (#1), `SENDGRID_API_KEY`/`FROM_EMAIL` + SPF/DKIM DNS (#3), `SENTRY_DSN` + uptime monitor on `/api/health` (#4). ~1 hour of account setup; unblocks real email, error visibility, and durable uploads.
 - [x] **LS-3. Decide + merge PR #39** (VA residual income primary-source fix — resolves #29, the standing FAIL). *(Merged 2026-07-04 in the launch-integration batch — the primary-source audit resolved the 18%-vs-22% question with cited 26-7 values; see #29 below.)*
 - [ ] **LS-4. Start F3 (credit vendor) and F6 (DU/LPA access) applications now** — vendor paperwork lead time runs in parallel with F1, not after it.
@@ -87,9 +92,9 @@ Near-term singles surfaced by the 07-12 beta walkthrough / merge train (not yet 
 - [ ] **A3. Retire or wire the vestigial `active_buyer` role split.** Open item from the 2026-07-08 consumer-workflow audit.
 - [x] **A4. Staff AI risk-brief panel.** Advisory `internal_only` narration of the deterministic risk outputs on the staff borrower-file view — the one extraction from the [2026-07-17 external-artifacts evaluation](./knowledge-base/logs/2026-07-17-external-agentic-mortgage-artifacts-evaluation.md); LLM narrates, never decides. *(Merged #195; MRG inventory row M-7.)*
 - [x] **A5. Licensed-state footprint gate.** Shipped **Illinois-only** (founder-confirmed 2026-07-17): `LICENSED_STATES` light-up + helpers in `shared/companyIdentity.ts`, the Disclosures state-licensing card, 422 `UNLICENSED_STATE` gates on intake/draft-PATCH/property attach-switch-edit, a ZIP-footprint refusal on the MCP pricing tool, and the funnel state-step mirror. Add states only when licenses issue (verify via NMLS Consumer Access); IL state license number can be added to `LICENSED_STATE_DETAILS` when at hand.
-- [ ] **A6. Staff document review workbench.** Split-screen document viewer + one-click verify/reject on the staff BorrowerFile Documents tab — closes the "`POST /api/documents/:id/verify` has zero client callers" gap from the [2026-07-17 vendor-pitch adjudication](./knowledge-base/logs/2026-07-17-underwriter-splitscreen-vendor-pitch-adjudication.md) §2-A. MR-2 preserved: extraction stages, only a staff click verifies; viewer is canvas-rasterized (no iframe/embed — the no-execute download posture stands). §9 security review before merge.
-- [ ] **A7. `docs_ready_for_review` staff signal.** Pipeline-wide triage chip for documents sitting in `verifying`/needs-review, deep-linking to A6's tab (adjudication §2-B). After A6.
-- [ ] **A8. Missing-docs borrower nudge.** Daily lifecycle pass: outstanding conditions with `requiredDocumentTypes` and no matching upload after ~2 days → one in-app notification + one Reg N-safe email (adjudication §2-C). §9 security review before merge.
+- [x] **A6. Staff document review workbench.** Split-screen document viewer + one-click verify/reject on the staff BorrowerFile Documents tab — closes the "`POST /api/documents/:id/verify` has zero client callers" gap from the [2026-07-17 vendor-pitch adjudication](./knowledge-base/logs/2026-07-17-underwriter-splitscreen-vendor-pitch-adjudication.md) §2-A. MR-2 preserved: extraction stages, only a staff click verifies; viewer is canvas-rasterized (no iframe/embed — the no-execute download posture stands). §9 security review before merge. *(Merged #211, 2026-07-17 — `DocumentReviewPanel`/`DocumentViewer` wired into the staff BorrowerFile Documents tab; the verify endpoint now has client callers.)*
+- [x] **A7. `docs_ready_for_review` staff signal.** Pipeline-wide triage chip for documents sitting in `verifying`/needs-review, deep-linking to A6's tab (adjudication §2-B). After A6. *(Merged #215, 2026-07-17 — the workbench queue chip, deep-linking into A6's tab.)*
+- [x] **A8. Missing-docs borrower nudge.** Daily lifecycle pass: outstanding conditions with `requiredDocumentTypes` and no matching upload after ~2 days → one in-app notification + one Reg N-safe email (adjudication §2-C). §9 security review before merge. *(Merged #214, 2026-07-17 — grouped reminder in the daily lifecycle pass: one in-app notification + one Reg N-safe email per stale group.)*
 - **Counsel gates, aggregated** (founder-side; see [BETA_GO_LIVE_READINESS.md](./knowledge-base/runbooks/BETA_GO_LIVE_READINESS.md) §5): BUILD-1 pre-license calculator deviation ratification; PH-2 consent copy; Reg N cite confirmations from #138; UAL §5 halal-lane review; ad-imagery / Fair Housing marketing policy.
 
 ---
@@ -206,7 +211,7 @@ Audit 2026-07-08: `optimizationEngine.ts` (988 lines) is partly live (imported b
 
 These wait until licensing and contracts are in motion. Each contract unlocks a small, well-defined engineering ticket because every adapter is already built as a simulation.
 
-- [ ] **F1. NMLS licensing** *(business critical path — everything commercial waits on this)*: company NMLS registration (`server/config/company.ts` says `nmlsId: "PENDING"`), state licenses, licensed-LO roster.
+- [x] **F1. NMLS licensing** *(was the business critical path; cleared 2026-07-13)*: company NMLS registration DONE — **NMLS #427468** in `shared/companyIdentity.ts` (PR #154); state footprint live as Illinois-only (A5's `LICENSED_STATES` gate — add states only when licenses issue). Go-live now waits on the founder-held env flip (see LS-1), not licensing. Residual: licensed-LO roster (per-LO NMLS IDs bind when LOs join) and `mersOrgId` (`server/config/company.ts`, still `PENDING`).
 - [ ] **F2. NMLS state-routing gate** *(engineering, but pointless until F1 exists)*: assignment engine must refuse to route applications in regulated states (e.g., Illinois/IRMLA) to unlicensed LOs.
 - [ ] **F3. Credit vendor contract** (CRS One / iSoftpull) → then implement the real adapter in `server/mcp/vendors.ts` (it intentionally throws today if a key is set).
 - [ ] **F4. Plaid production keys** → real Link + asset reports through the existing webhook.
