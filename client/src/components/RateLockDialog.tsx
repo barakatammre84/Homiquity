@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, Lock, RefreshCw, XCircle } from "lucide-react";
-import type { LoanOption, RateLock } from "@shared/schema";
+import { OPEN_RATE_LOCK_STATUSES, type LoanOption, type RateLock } from "@shared/schema";
 
 // -----------------------------------------------------------------------------
 // Rate-lock desk — the loan officer's lock/extend/cancel control for one file.
@@ -38,7 +38,6 @@ import type { LoanOption, RateLock } from "@shared/schema";
 // -----------------------------------------------------------------------------
 
 const LOCK_PERIODS = [15, 30, 45, 60, 90] as const;
-const LIVE_STATUSES = ["active", "extended"];
 
 function daysUntil(expiresAt: string | Date): number {
   return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000);
@@ -65,7 +64,7 @@ export function RateLockDialog({ applicationId, borrowerName }: RateLockDialogPr
     enabled: open,
   });
 
-  const activeLock = locks?.find((lock) => LIVE_STATUSES.includes(lock.status));
+  const activeLock = locks?.find((lock) => OPEN_RATE_LOCK_STATUSES.includes(lock.status));
   const options = optionsData?.options ?? [];
 
   const refresh = () => {

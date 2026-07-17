@@ -16,6 +16,7 @@ import {
   insertAgentProfileSchema,
   insertApplicationMilestoneSchema,
   loanApplications,
+  BROKER_COMMISSION_STATUSES,
 } from "@shared/schema";
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
@@ -189,6 +190,16 @@ export function registerProfileBrokerRoutes(
 
       const { id } = req.params;
 
+      const body = parseBodyOr400(
+        z.object({
+          notes: z.string().max(5000).optional(),
+          status: z.enum(BROKER_COMMISSION_STATUSES).optional(),
+        }),
+        req.body,
+        res,
+      );
+      if (body === undefined) return;
+
       // Fetch the commission first to enforce ownership
       const existing = await storage.getBrokerCommission(id);
       if (!existing) {
@@ -197,7 +208,7 @@ export function registerProfileBrokerRoutes(
 
       // Status transitions (including "paid", "approved", "rejected") are admin-only.
       // Brokers and LOs can only update the notes field.
-      if (req.body.status !== undefined && user.role !== "admin") {
+      if (body.status !== undefined && user.role !== "admin") {
         return res.status(403).json({ error: "Only admins can change commission status" });
       }
 
@@ -209,9 +220,9 @@ export function registerProfileBrokerRoutes(
 
       const updateData: Record<string, any> = {};
       // Only admit fields that callers are permitted to set
-      if (req.body.notes !== undefined) updateData.notes = req.body.notes;
-      if (req.body.status !== undefined && user.role === "admin") {
-        updateData.status = req.body.status;
+      if (body.notes !== undefined) updateData.notes = body.notes;
+      if (body.status !== undefined && user.role === "admin") {
+        updateData.status = body.status;
       }
       // paidAt and paidBy are server-controlled only; never accepted from client body
 

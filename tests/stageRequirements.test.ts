@@ -9,15 +9,14 @@ import {
   COMMITTED_STATUSES,
   isCommittedStage,
 } from "@shared/stageRequirements";
+import { LOAN_APP_STATUSES, LOAN_APP_APPROVED_GRADE_STATUSES } from "@shared/schema";
 
 describe("stageRequirements: statusRequiresLoanAmount", () => {
   it("requires an amount for credit-decision statuses", () => {
     for (const status of [
       "pre_approved",
-      "approved",
       "underwriting",
       "conditional",
-      "conditional_approval",
       "clear_to_close",
       "closing",
       "funded",
@@ -27,8 +26,18 @@ describe("stageRequirements: statusRequiresLoanAmount", () => {
   });
 
   it("does not require an amount for pre-decision or terminal statuses", () => {
-    for (const status of ["draft", "submitted", "analyzing", "in_review", "denied", "withdrawn", "expired"]) {
+    for (const status of ["draft", "submitted", "analyzing", "under_review", "denied", "withdrawn", "expired"]) {
       expect(statusRequiresLoanAmount(status)).toBe(false);
+    }
+  });
+
+  it("does not match legacy statuses the vocabulary migration erased", () => {
+    // "approved" → clear_to_close and "conditional_approval" → conditional
+    // (scripts/migrate-status-vocabulary.ts); no row or writer can produce
+    // them, so keeping them in the set would only mask a phantom write.
+    for (const legacy of ["approved", "conditional_approval", "in_review"]) {
+      expect(statusRequiresLoanAmount(legacy)).toBe(false);
+      expect(isCommittedStage(legacy)).toBe(false);
     }
   });
 
@@ -111,10 +120,33 @@ describe("stageRequirements: assertStageRequirements", () => {
   });
 });
 
-describe("stageRequirements: AMOUNT_BEARING_STATUSES", () => {
-  it("covers both pipeline and staff-enum naming for conditional approval", () => {
-    expect(AMOUNT_BEARING_STATUSES.has("conditional")).toBe(true);
-    expect(AMOUNT_BEARING_STATUSES.has("conditional_approval")).toBe(true);
+describe("stageRequirements: reconciliation with the canonical vocabulary", () => {
+  // stageRequirements stays import-free on purpose (purity), so these sets are
+  // hand-listed there — this suite is what keeps them from drifting away from
+  // shared/schema/lendingCore.ts (the old list carried "approved" and
+  // "conditional_approval", legacy statuses the migration erased).
+  it("every member of both sets is a canonical status", () => {
+    const canonical = new Set<string>(LOAN_APP_STATUSES);
+    for (const s of AMOUNT_BEARING_STATUSES) {
+      expect(canonical.has(s), `AMOUNT_BEARING member "${s}" is not canonical`).toBe(true);
+    }
+    for (const s of COMMITTED_STATUSES) {
+      expect(canonical.has(s), `COMMITTED member "${s}" is not canonical`).toBe(true);
+    }
+  });
+
+  it("COMMITTED_STATUSES is set-equal to LOAN_APP_APPROVED_GRADE_STATUSES", () => {
+    expect([...COMMITTED_STATUSES].sort()).toEqual([...LOAN_APP_APPROVED_GRADE_STATUSES].sort());
+  });
+
+  it("AMOUNT_BEARING_STATUSES is the approved grade minus the amount-less processing stages", () => {
+    // doc_collection/processing are reachable without an amount via
+    // under_review → doc_collection, so they belong in COMMITTED but must not
+    // demand an amount.
+    const expected = LOAN_APP_APPROVED_GRADE_STATUSES.filter(
+      (s) => s !== "doc_collection" && s !== "processing",
+    );
+    expect([...AMOUNT_BEARING_STATUSES].sort()).toEqual([...expected].sort());
   });
 });
 
@@ -122,12 +154,10 @@ describe("stageRequirements: isCommittedStage", () => {
   it("is true from pre-approval onward, including processing sub-stages", () => {
     for (const status of [
       "pre_approved",
-      "approved",
       "doc_collection",
       "processing",
       "underwriting",
       "conditional",
-      "conditional_approval",
       "clear_to_close",
       "closing",
       "funded",
@@ -137,7 +167,7 @@ describe("stageRequirements: isCommittedStage", () => {
   });
 
   it("is false before pre-approval and for terminal/empty statuses", () => {
-    for (const status of ["lead", "draft", "submitted", "analyzing", "in_review", "denied", "withdrawn", "expired"]) {
+    for (const status of ["lead", "draft", "submitted", "analyzing", "under_review", "denied", "withdrawn", "expired"]) {
       expect(isCommittedStage(status)).toBe(false);
     }
     expect(isCommittedStage(null)).toBe(false);

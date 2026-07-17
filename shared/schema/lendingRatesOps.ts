@@ -120,6 +120,18 @@ export type ApplicationInvite = typeof applicationInvites.$inferSelect;
 
 // ===== RATE LOCK SYSTEM =====
 
+/**
+ * The ONLY statuses `rateLocks.status` may hold. Expiry is computed from
+ * `expiresAt`, not stored — an expired lock keeps its last status, so "open"
+ * checks must pair OPEN_RATE_LOCK_STATUSES with an `expiresAt` comparison
+ * where staleness matters.
+ */
+export const RATE_LOCK_STATUSES = ["active", "extended", "cancelled"] as const;
+export type RateLockStatus = (typeof RATE_LOCK_STATUSES)[number];
+
+/** A live lock: "extended" is still open — only cancellation closes one. */
+export const OPEN_RATE_LOCK_STATUSES: readonly RateLockStatus[] = ["active", "extended"];
+
 export const rateLocks = pgTable("rate_locks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   
@@ -136,8 +148,8 @@ export const rateLocks = pgTable("rate_locks", {
   lockedAt: timestamp("locked_at").defaultNow().notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   
-  status: varchar("status", { length: 50 }).default("active").notNull(),
-  
+  status: varchar("status", { length: 50 }).$type<RateLockStatus>().default("active").notNull(),
+
   extensionCount: integer("extension_count").default(0),
   originalExpiresAt: timestamp("original_expires_at"),
   extensionFee: decimal("extension_fee", { precision: 10, scale: 2 }),
@@ -157,7 +169,9 @@ export const rateLocks = pgTable("rate_locks", {
   index("idx_rate_locks_expires").on(table.expiresAt),
 ]);
 
-export const insertRateLockSchema = createInsertSchema(rateLocks).omit({
+export const insertRateLockSchema = createInsertSchema(rateLocks, {
+  status: z.enum(RATE_LOCK_STATUSES).optional(),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

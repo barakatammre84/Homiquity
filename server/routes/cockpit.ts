@@ -5,7 +5,7 @@ import { buildStaffSignals } from "../services/signalEngine";
 import { getLatestIncomePathEvaluation } from "../services/scenarioSimulator";
 import { getUserActivitySummary } from "../services/activitySummary";
 import { verifyInternalStaffApplicationAccess } from "./borrower";
-import type { User, DealTeamMember, LoanApplication } from "@shared/schema";
+import { LOAN_APP_TERMINAL_STATUSES, type User, type DealTeamMember, type LoanApplication } from "@shared/schema";
 
 /**
  * LO Command Center cockpit routes (LO Advisor Program prompt LO-1).
@@ -30,8 +30,13 @@ const OPEN_CONDITION_CLOSED_STATUSES = new Set(["cleared", "waived", "not_applic
 const RECENT_MESSAGE_LIMIT = 6;
 const MESSAGE_SNIPPET_CHARS = 140;
 
-/** Statuses excluded from the "active" cockpit book (not in flight). */
-const INACTIVE_STATUSES = new Set(["draft", "funded", "denied"]);
+/**
+ * Statuses excluded from the "active" cockpit book: nothing submitted yet
+ * (draft) or the file has ended (every terminal status). "suspended" stays in
+ * the book on purpose — a paused file still belongs to its deal team. The
+ * signals feed applies its own tighter gate (SIGNAL_ACTIVE_STATUSES) on top.
+ */
+const INACTIVE_STATUSES: ReadonlySet<string> = new Set(["draft", ...LOAN_APP_TERMINAL_STATUSES]);
 
 /**
  * Deduplicated ids of the ACTIVE applications a staffer is on the deal team for.

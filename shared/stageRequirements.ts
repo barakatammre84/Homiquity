@@ -19,18 +19,21 @@
 /**
  * Statuses that commit the file to a loan amount. Reaching any of these without
  * a positive amount is incoherent. Deliberately excludes pre-decision statuses
- * (draft, submitted, analyzing, in_review) where no amount exists yet, and
+ * (draft, submitted, analyzing, under_review) where no amount exists yet,
+ * doc_collection/processing (reachable amount-less via under_review), and
  * terminal statuses (denied, withdrawn, expired) which carry no amount.
  *
- * Both naming schemes in the codebase are covered ("conditional" from the
- * pipeline engine and "conditional_approval" from the staff status enum).
+ * Members are LOAN_APP_STATUSES values only (this module stays import-free for
+ * purity, so tests/stageRequirements.test.ts reconciles the sets against the
+ * canonical vocabulary — this is exactly LOAN_APP_APPROVED_GRADE_STATUSES minus
+ * doc_collection/processing). The borrower-journey state machine
+ * (server/services/borrowerStateMachine.ts) is a different vocabulary and
+ * never passes through here.
  */
 export const AMOUNT_BEARING_STATUSES: ReadonlySet<string> = new Set([
   "pre_approved",
-  "approved",
   "underwriting",
   "conditional",
-  "conditional_approval",
   "clear_to_close",
   "closing",
   "funded",
@@ -49,6 +52,8 @@ export function statusRequiresLoanAmount(status: string | null | undefined): boo
  * pre-commitment: a pre-approved borrower with low recent clickstream activity
  * is mid-process, not wavering, so flagging them "uncertain/inactive"
  * contradicts their status.
+ *
+ * Set-equal to LOAN_APP_APPROVED_GRADE_STATUSES (pinned by tests).
  */
 export const COMMITTED_STATUSES: ReadonlySet<string> = new Set([
   ...AMOUNT_BEARING_STATUSES,

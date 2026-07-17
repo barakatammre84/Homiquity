@@ -15,6 +15,7 @@
 // =============================================================================
 
 import { checkStageRequirements } from "@shared/stageRequirements";
+import { LOAN_APP_TERMINAL_STATUSES } from "@shared/schema";
 
 export type FileHealthLight = "green" | "yellow" | "red";
 
@@ -71,7 +72,7 @@ export const PIPELINE_AGE_RED_DAYS = 30;
 /** Matches buildPipelineSummary's "high" band for outstanding conditions. */
 export const CONDITIONS_WARNING_COUNT = 3;
 
-const TERMINAL_STATUSES = new Set(["funded", "denied", "withdrawn", "expired"]);
+const TERMINAL_STATUSES: ReadonlySet<string> = new Set(LOAN_APP_TERMINAL_STATUSES);
 
 /**
  * Compute the health light for one file. Rules are evaluated worst-first and
