@@ -6,28 +6,107 @@
  * found so the checkup can flag them; exits 0 when the codebase is fully
  * connected. Read-only.
  *
- * Known limits: string-built dynamic import paths are invisible to the regex,
- * so verify a candidate really is dead (grep its basename) before deleting it.
+ * Accuracy rules learned the hard way — a guard that cries wolf gets ignored:
+ * - Comments are stripped before matching. A file's own header often documents
+ *   its usage (`import { Icons } from "@/lib/icons"`), and counting that as a
+ *   real import let an orphan cloak itself.
+ * - A file importing itself never counts as an inbound reference.
+ * - npm-script entrypoints are derived from package.json, not hand-listed, so
+ *   adding a `tsx foo.ts` script can't silently turn foo.ts into a false orphan.
+ *
+ * Known limit: string-built dynamic import paths are invisible to the regex, so
+ * verify a candidate really is dead (grep its basename) before deleting it.
  */
 const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
 
-// Files that are executed directly (npm scripts, platform entrypoints) rather
-// than imported. Anything else with zero inbound imports is an orphan.
-const ENTRY_FILES = new Set([
-  "client/src/main.tsx",
+// Executed by the platform/bundler rather than imported, and invisible to
+// package.json (no `tsx <path>` to parse). Keep this list to things nothing
+// else can infer.
+const PLATFORM_ENTRIES = new Set([
+  "client/src/main.tsx", // Vite html entry
   "server/index-dev.ts",
   "server/index-prod.ts",
   "server/app.ts", // esbuild entry for the Vercel bundle (api/_app.mjs)
-  "server/mcp/index.ts",
-  "server/scripts/seedLendingGrids.ts",
-  "server/scripts/backfillSsnEncryption.ts",
-  "server/scripts/markMigrationsApplied.ts",
+  "api/index.ts", // Vercel serverless function
   "server/seed.ts",
-  "api/index.ts",
 ]);
+
+// Ad-hoc operator tools, run by hand via tsx (each documents its own
+// invocation). Real entrypoints — not rot — but deliberately not npm scripts.
+const ADHOC_SCRIPTS = new Set([
+  "server/scripts/scrubProhibitedComms.ts", // one-off Reg N scrub (#138)
+  "server/scripts/seedDemoFile.ts", // lender-walkthrough demo seed (#145)
+  "server/scripts/seedLendingGrids.ts", // pricing/underwriting test fixtures
+  "server/scripts/backfillSsnEncryption.ts", // one-off ssnVault backfill
+]);
+
+// Built ahead of the code that will consume it. Unimported ON PURPOSE — each
+// entry needs a reason and an adoption trigger, so this can't become a
+// graveyard. Delete the entry (and adopt or remove the file) when it fires.
+const INERT_BY_DESIGN = new Map([
+  ["client/src/components/brand/Logo.tsx", "design Phase 2 (#166); adopted when BrandingProvider mounts in Phase 4"],
+  ["client/src/components/ui/typography.tsx", "design Phase 2 (#166); adopted by the Phase 3 type-scale migration"],
+  ["client/src/lib/icons.ts", "design Phase 2 (#166); adopted by the Phase 3 icon-registry migration"],
+]);
+
+/** Entrypoints named by package.json scripts (`tsx x.ts`, `node x.cjs`, ...). */
+function npmScriptEntries() {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+  const found = new Set();
+  for (const cmd of Object.values(pkg.scripts ?? {})) {
+    for (const m of cmd.matchAll(/(?:^|\s)((?:[\w./-]+\/)?[\w.-]+\.(?:ts|tsx))(?=\s|$)/g)) {
+      found.add(path.normalize(m[1]));
+    }
+  }
+  return found;
+}
+
+const ENTRY_FILES = new Set([
+  ...PLATFORM_ENTRIES,
+  ...ADHOC_SCRIPTS,
+  ...INERT_BY_DESIGN.keys(),
+  ...npmScriptEntries(),
+]);
+
+/**
+ * Blanks out line/block comments so commented-out or documented imports don't
+ * count as real references. Quote-aware: a "//" inside a string literal (URLs)
+ * is left alone, and lengths are preserved so nothing else shifts.
+ */
+function stripComments(src) {
+  let out = "";
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    const next = src[i + 1];
+    if (c === "/" && next === "/") {
+      while (i < src.length && src[i] !== "\n") { out += " "; i++; }
+    } else if (c === "/" && next === "*") {
+      while (i < src.length && !(src[i] === "*" && src[i + 1] === "/")) {
+        out += src[i] === "\n" ? "\n" : " ";
+        i++;
+      }
+      out += "  ";
+      i += 2;
+    } else if (c === '"' || c === "'" || c === "`") {
+      const quote = c;
+      out += c;
+      i++;
+      while (i < src.length && src[i] !== quote) {
+        if (src[i] === "\\") { out += src[i]; i++; }
+        if (i < src.length) { out += src[i]; i++; }
+      }
+      if (i < src.length) { out += src[i]; i++; }
+    } else {
+      out += c;
+      i++;
+    }
+  }
+  return out;
+}
 
 const SCAN_ROOTS = ["client/src", "server", "shared"];
 const SEARCH_ROOTS = ["client/src", "server", "shared", "api", "tests"];
@@ -83,13 +162,15 @@ function main() {
     .flatMap((d) => walk(path.join(ROOT, d)))
     .filter(isSource);
   for (const f of sources) {
-    const content = fs.readFileSync(f, "utf8");
+    const content = stripComments(fs.readFileSync(f, "utf8"));
     let m;
+    IMPORT_RE.lastIndex = 0;
     while ((m = IMPORT_RE.exec(content))) {
       const spec = m[1] || m[2] || m[3] || m[4];
       if (!spec) continue;
       const r = resolve(spec, path.dirname(f));
-      if (r) referenced.add(r);
+      // A file can't keep itself alive.
+      if (r && r !== rel(f)) referenced.add(r);
     }
   }
 

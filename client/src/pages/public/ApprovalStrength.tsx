@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { formatInputCurrency, parseCurrencyInput } from "@/lib/formatters";
 import {
   assessApprovalStrength,
   type ApprovalStrengthInputs,
@@ -56,14 +57,6 @@ const PRICE_BANDS: { value: PriceBand; label: string }[] = [
   { value: "750k_plus", label: "$750k+" },
   { value: "not_sure", label: "Not sure yet" },
 ];
-
-function parseCurrencyInput(value: string): number {
-  return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
-}
-
-function formatInputCurrency(value: number): string {
-  return value.toLocaleString("en-US");
-}
 
 function FactorStatusIcon({ status }: { status: Factor["status"] }) {
   if (status === "helping") return <CheckCircle2 className="h-5 w-5 text-success shrink-0" />;

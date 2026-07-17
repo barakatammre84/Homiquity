@@ -51,7 +51,7 @@ export const UPLOADABLE_DOCUMENT_TYPES = [
   { value: "other", label: "Other Document", category: "Other" },
 ];
 
-/** Older request vocabularies → canonical checklist types. */
+/** Older request vocabularies → this dialog's UPLOADABLE_DOCUMENT_TYPES values. */
 const TYPE_ALIASES: Record<string, string> = {
   paystub: "pay_stub",
   tax_return_1040: "tax_return",
@@ -61,7 +61,17 @@ const TYPE_ALIASES: Record<string, string> = {
   homeowners_insurance_binder: "homeowners_insurance",
 };
 
-export function canonicalDocumentType(type: string | undefined | null): string {
+/**
+ * Resolves a requested document type to a value the type <Select> can actually
+ * show, falling back to "other" so an unknown request still uploads.
+ *
+ * NOT interchangeable with `canonicalDocumentType` in @shared/documentTypes:
+ * that one canonicalizes to the *pipeline-engine* vocabulary for condition
+ * matching (drivers_license → government_id), this one targets the *upload
+ * select* vocabulary (drivers_license → id). Same input, different output —
+ * keep the names distinct so neither gets imported for the other's job.
+ */
+export function toUploadableDocumentType(type: string | undefined | null): string {
   if (!type) return "other";
   return TYPE_ALIASES[type] ?? type;
 }
@@ -120,7 +130,7 @@ export function UploadDocumentDialog({
   onUploaded?: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<string>(canonicalDocumentType(defaultDocumentType));
+  const [selectedType, setSelectedType] = useState<string>(toUploadableDocumentType(defaultDocumentType));
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<"idle" | "uploading" | "registering">("idle");
@@ -140,7 +150,7 @@ export function UploadDocumentDialog({
   const reset = () => {
     setFile(null);
     setDescription("");
-    setSelectedType(canonicalDocumentType(defaultDocumentType));
+    setSelectedType(toUploadableDocumentType(defaultDocumentType));
     setPhase("idle");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };

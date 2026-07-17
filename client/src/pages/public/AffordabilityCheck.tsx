@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatInputCurrency, parseCurrencyInput } from "@/lib/formatters";
 import { loadBuyingPowerScenario } from "@/lib/buyingPowerScenario";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -184,14 +184,6 @@ function StatusBadge({ status }: { status: string }) {
       Over Budget
     </Badge>
   );
-}
-
-function parseCurrencyInput(value: string): number {
-  return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
-}
-
-function formatInputCurrency(value: number): string {
-  return value.toLocaleString("en-US");
 }
 
 export default function AffordabilityCheck() {
