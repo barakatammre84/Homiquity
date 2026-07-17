@@ -589,7 +589,9 @@ export class UrlaStorage extends TasksStorage {
 
   // Data Quality Scoring for Broker Dashboard
   async getApplicationDataQuality(applicationId: string) {
-    const [application, urlaData, docs, taskList] = await Promise.all([
+    // application + taskList results are unused but the parallel fetches stay (existence
+    // + timing behavior preserved) — underscore marks them deliberately unused.
+    const [_application, urlaData, docs, _taskList] = await Promise.all([
       this.getLoanApplication(applicationId),
       this.getCompleteUrlaData(applicationId),
       this.getDocumentsByApplication(applicationId),

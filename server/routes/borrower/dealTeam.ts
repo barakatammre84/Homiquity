@@ -167,7 +167,6 @@ export function registerDealTeamRoutes(
   // which is the authorization boundary for partner file access.
   app.patch("/api/deal-team/:id", requireRole("admin"), async (req, res) => {
     try {
-      const user = req.user as User;
 
       const { id } = req.params;
       const schema = z.object({
