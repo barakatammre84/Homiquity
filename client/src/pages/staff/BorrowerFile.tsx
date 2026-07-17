@@ -23,13 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,110 +58,9 @@ import { ChangeOfCircumstancePanel } from "@/components/staff/ChangeOfCircumstan
 import { RiskBriefPanel } from "@/components/staff/RiskBriefPanel";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import type { LoanApplication, Document, LoanCondition, UrlaPersonalInfo } from "@shared/schema";
+import type { LoanCondition, UrlaPersonalInfo } from "@shared/schema";
 
-interface ActivityItem {
-  id?: string;
-  activityType: string;
-  title: string;
-  description?: string;
-  createdAt: string;
-}
-
-interface LoanOption {
-  id: string;
-  loanType: string;
-  interestRate: string;
-  term: number;
-  monthlyPayment: string;
-}
-
-interface ApplicationData {
-  application: LoanApplication;
-  options: LoanOption[];
-  documents: Document[];
-  activities: ActivityItem[];
-}
-
-interface PersonalInfoData {
-  personalInfo: UrlaPersonalInfo | null;
-}
-
-interface PipelineData {
-  progress: {
-    completionPercentage: number;
-    documentsReceived: number;
-    documentsRequired: number;
-    conditionsCleared: number;
-    conditionsTotal: number;
-    readyForNextStage: boolean;
-    blockers: string[];
-    nextSteps: string[];
-  };
-  summary: Record<string, unknown> | null;
-  milestones: Record<string, Date | null>;
-  conditions: LoanCondition[];
-}
-
-interface CreditSummary {
-  hasActiveConsent: boolean;
-  consent: {
-    id: string;
-    consentTimestamp: string;
-    borrowerFullName: string;
-    disclosureVersion: string;
-  } | null;
-  latestPull: {
-    id: string;
-    status: string;
-    pullType: string;
-    bureaus: string[];
-    representativeScore: number | null;
-    experianScore: number | null;
-    equifaxScore: number | null;
-    transunionScore: number | null;
-    totalTradelines: number | null;
-    openTradelines: number | null;
-    derogatoryCount: number | null;
-    totalDebt: string | null;
-    monthlyPayments: string | null;
-    completedAt: string | null;
-    expiresAt: string | null;
-    isSimulated?: boolean;
-  } | null;
-  pullCount: number;
-  adverseActionCount: number;
-  latestAdverseAction: {
-    id: string;
-    actionType: string;
-    primaryReason: string;
-    noticeDate: string;
-    deliveredAt: string | null;
-    deliveryMethod: string | null;
-  } | null;
-}
-
-interface CreditAuditEntry {
-  id: string;
-  action: string;
-  actionDetails: Record<string, any> | null;
-  timestamp: string;
-  performedBy: string | null;
-}
-
-// Standard HMDA (Reg C) denial reasons. At least 2 must be selected when an
-// application is denied so the Loan Application Register can be reported.
-const HMDA_DENIAL_REASONS = [
-  "Debt-to-income ratio",
-  "Employment history",
-  "Credit history",
-  "Collateral",
-  "Insufficient cash (downpayment, closing costs)",
-  "Unverifiable information",
-  "Credit application incomplete",
-  "Mortgage insurance denied",
-  "Other",
-];
+import { type ActivityItem, type ApplicationData, type PipelineData, type CreditSummary, type CreditAuditEntry, HMDA_DENIAL_REASONS } from "./borrowerFile/model";
 
 export default function BorrowerFile() {
   const params = useParams();
