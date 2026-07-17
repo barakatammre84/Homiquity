@@ -17,6 +17,7 @@ import {
   brokerCommissions,
   wholesaleLenders,
   documents,
+  pickActiveLoanApplication,
 } from "@shared/schema";
 import type { BorrowerState, TransitionTrigger } from "@shared/schema";
 import { eq, and, sql, gte, lte, desc, lt, isNull, isNotNull, ne, count, avg, inArray } from "drizzle-orm";
@@ -195,7 +196,9 @@ export async function getCoachPreFillData(userId: string): Promise<{
 
   try {
     const applications = await storage.getLoanApplicationsByUser(userId);
-    const activeApp = applications.find(a => a.status !== "draft" && a.status !== "denied") || applications[0];
+    // Pre-fill source: the in-flight file if one exists, else the most recent
+    // file of any status — old figures are still the borrower's figures.
+    const activeApp = pickActiveLoanApplication(applications) || applications[0];
 
     if (activeApp) {
       const appFieldMap: Record<string, { value: any; key: string }> = {

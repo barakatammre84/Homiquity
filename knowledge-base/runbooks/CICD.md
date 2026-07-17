@@ -1,40 +1,54 @@
 # Deploy & Revert
 
-Homiquity ships with a deliberately simple flow: **push to `main` → Vercel
-deploys it. If it breaks, revert.** No approvals.
+Homiquity ships with a deliberately simple flow: **branch → PR → the required
+`gate` check goes green → merge, and Vercel deploys `main`. If it breaks,
+revert.** No human review required — the machine gate is the only approval.
 
 ```
-  git push (main)  ──▶  Vercel builds & deploys automatically
-        │                     │
-        ▼            broken?  ▼
-  GitHub Actions    Vercel → Deployments → previous one → Promote  (instant)
-  (planned — not
-   on main yet,
-   see below)
+  PR ──▶ gate green ──▶ merge to main ──▶ Vercel builds & deploys
+          │                  │                       │
+          ▼                  ▼              broken?  ▼
+  typecheck · unit     migrate-prod applies    Vercel → Deployments →
+  tests · prod-dep     pending migrations      previous one → Promote
+  audit · schema       to the prod DB          (instant)
+  guard
 ```
 
-**CI status (corrected 2026-07-04): there is no CI on `main` today** — `.github/`
-does not exist there, so nothing runs on push; all checks are manual (see
-"Optional checks" below). A finished non-blocking workflow (`ci.yml`:
-typecheck, unit tests, build, lockfile parity) is authored and waiting on local
-branch `claude/inspiring-faraday-86b6b2` (commit `4fa08ad`), but the automation
-GitHub token lacks the `workflow` scope, so **a human must push/merge it from a
-normally-authenticated environment** (roadmap #5). Once landed it is
-informational only — a red run marks the commit but the deploy still goes out.
-To make it a hard gate later: GitHub → Settings → Branches → protect `main`,
-require the `ci` check (this also blocks direct pushes, so `npm run save`
-would move to a PR flow).
+**CI status (corrected 2026-07-17): the gate is live and blocking.**
+[`ci.yml`](../../.github/workflows/ci.yml) runs a required **`gate`** job on
+every PR to `main` — `pnpm check`, `pnpm test` (unit suite), a **blocking**
+`pnpm audit --prod --audit-level=high`, and `pnpm guard:schema` (a schema change
+without a same-PR migration goes RED and cannot merge). Branch protection
+requires that check with `enforce_admins` ON, so **nobody direct-pushes `main`,
+founder included** (force-push and deletion of `main` are blocked too;
+`npm run save` / `npm run sync` predate this and now die on the push step — see
+Shipping). No required reviews: the author merges their own PR once the gate is
+green ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6). On merge, the same
+workflow's **`migrate-prod`** job auto-applies any pending `migrations/` to the
+production DB over a Neon DIRECT URL minted at run time from `NEON_API_KEY` — no
+prod DB password is stored in GitHub; full flow and its limits (a manual
+`dry_run` reconciles the journal only, it never executes migration SQL) in
+[DB_MIGRATIONS.md](./DB_MIGRATIONS.md). ⚠️ The required-check string is matched
+**verbatim** (`gate (typecheck · tests · schema guard)`, U+00B7 middle dots) —
+never rename the job without re-pointing branch protection in the same change
+(procedure in the workflow's comments).
 
 ## Shipping
 
 ```bash
-npm run save        # commit everything with a timestamp + pull + push
-# or, if you've already committed:
-npm run sync        # pull + push
+git checkout -b <topic-branch>         # never commit on main — direct pushes are rejected
+git push -u origin <topic-branch>
+gh pr create --fill                    # the gate runs automatically
+gh pr checks --watch                   # wait for green…
+gh pr merge --squash --delete-branch   # …then merge your own PR (no reviews required)
 ```
 
-Every push to `main` triggers a production deploy on Vercel. Every PR branch
-gets its own preview deployment automatically.
+Every merge to `main` triggers a production deploy on Vercel (then run the
+post-deploy health check below — READY is not healthy). Every PR branch gets
+its own preview deployment automatically. One branch per isolated worktree,
+merged = deleted same day ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md)
+§4). The old `npm run save` / `npm run sync` scripts direct-push `main` and are
+dead — branch protection rejects the push.
 
 ## Reverting
 
@@ -150,17 +164,33 @@ site (every route except `/api/*`) behind invite links while the
 - Edge Middleware only runs on Vercel; `npm run dev` and local prod builds
   never execute it.
 
-## Optional checks (run manually, nothing enforces them)
+## Checks — what the gate enforces, and what stays manual
+
+The required `gate` check runs these four on every PR (same commands locally):
 
 ```bash
-npm run check              # typecheck
-npm run test:unit          # pure logic tests (no server needed)
-TEST_BASE_URL=http://127.0.0.1:5001 npm run test:integration   # against a running dev server
+pnpm check                             # typecheck
+pnpm test                              # unit suite (vitest.config.ts include list)
+pnpm audit --prod --audit-level=high   # blocking prod-dependency scan (high+)
+pnpm guard:schema                      # schema ↔ migration drift guard
 ```
 
-If you later want gates again (block bad pushes before they deploy), add a
-GitHub Actions workflow that runs the commands above and enable branch
-protection — but that's a deliberate future choice, not the current setup.
+Still **manual — CI never runs these**:
+
+```bash
+TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration   # needs a running dev server
+node scripts/design-token-guard.cjs   # raw-color ratchet (baselines race — re-run right before merge)
+pnpm checkup                          # daily umbrella: the gate's checks + build, orphan scan,
+                                      # token/kb guards, prod health — deliberately no integration
+```
+
+The gate has no server and no database, so the integration suite
+(`vitest.integration.config.ts`) **never runs in CI**: a green gate proves the
+change typechecks and breaks no unit test — nothing more. If a change is only
+exercised by an integration test, run it by hand against a live worktree server
+and record that in the PR ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md)
+§5). A test file added to neither vitest config's include list is silently
+never run.
 
 ## Production change ledger (append-only)
 
@@ -172,6 +202,7 @@ rollback pointer.
 
 | Date | Change | Prod DB / env | Validation | Rollback |
 |---|---|---|---|---|
+| 2026-07-17 | **PR #226 — docs-only: this file's header un-stale'd to the live PR-flow + required-gate reality; this ledger row rides in the same PR.** The header still opened with "there is no CI on `main` today" (corrected 2026-07-04) and the checks section still framed CI as "a deliberate future choice" — both predate #176's branch protection and contradicted the rest of this file. Rewrote the header/diagram (PR → required `gate`: typecheck · unit tests · blocking prod audit · schema guard → merge → Vercel deploy + `migrate-prod` auto-apply), Shipping (the `npm run save`/`npm run sync` direct-push recipe is dead — `enforce_admins` rejects pushes to `main`), and "Optional checks" → "Checks — what the gate enforces, and what stays manual" (integration tests + design-token guard remain manual, never in CI). Post-deploy health-check section, `pnpm.overrides` rules, and all prior ledger rows untouched. | **None** — docs-only (one `.md`); no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0032`**); no env-var change. | Facts re-verified against source, not memory: `ci.yml` read on this branch (4 gate steps; migrate-prod trigger + journal-only dry-run) + live `gh api …/branches/main/protection` (required check `gate (typecheck · tests · schema guard)`, `enforce_admins: true`, no required reviews, force-push/deletion of `main` blocked); link targets exist + no inbound links to the renamed anchor (corpus grep); gate green on the PR. ⚠️ Merged inside the Vercel build-quota freeze — this merge's deploy queues unbuilt; prod stays frozen HEALTHY at #222 (docs-only, no runtime risk; probe `/api/health` when builds resume per the section above). | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (docs only). |
 | 2026-07-17 | **Prod API outage (~15:03–15:19Z, ≈16 min) + forward fix — PR #222 (`b87d830`).** #219 (`4eb456a`) moved the overrides block to `pnpm.overrides` so it finally applied; the uuid override from the `524335b` vulnerability sweep was a **floor** (`">=11.1.1"`), which resolved to **ESM-only uuid@14** and broke `gaxios`'s CJS `require("uuid")` in the Vercel function loader — every `/api/*` route returned the `bootError` JSON behind READY, aliased deploys while the static front end kept serving. Fix: cap the override at `^11.1.1` (same security floor, newest major with a real CJS build); 2-file diff (`package.json` + 7 `pnpm-lock.yaml` hunks). Full narrative + binding lessons: [postmortem](../logs/2026-07-17-prod-api-outage-uuid-esm-postmortem.md); the new "Post-deploy health check" section above is this incident's enforcement. *(This ledger row + postmortem land in a docs-only follow-up PR, same day.)* | **None** — no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0032`**); no env-var change. Dependency graph only. | Root cause pinned by micro-repro (`createRequire(<gaxios pkg>)("uuid")`: before → `uuid@14/dist-node` ESM, the exact module in prod's error; after → `uuid@11.1.1/dist/cjs`, loads); built server boots locally with `/api/health` ok; `pnpm audit --prod` clean (floor preserved); gate green. **Prod recovery verified live: `GET /api/health` → `{"status":"ok"}` at 15:19:34Z + `/api/auth/providers` serving real data.** Broken window bounded by Vercel API evidence (#221 deploy `dpl_WwBpC9XgjiDCW2vts4fzhKrnejqL` READY/aliased yet API-dead, probe-verified). | **Do not `git revert b87d830` — reverting re-breaks the entire prod API** (restores the uuid floor). Forward-fix only; if uuid must move majors, prove `exports.node.require` exists first ([postmortem §7](../logs/2026-07-17-prod-api-outage-uuid-esm-postmortem.md)). |
 | 2026-07-17 | **Borrower document portal — 3 PRs, squash-merged in order #208 → #212 → #213** (one session; built from a Better/Blend design brief, founder-approved full scope). **#208** (`51ea772`) closed the document review loop: `shared/documentStatus.ts` status vocabulary + `DOCUMENT_REVIEW_ROLES`; **migration `0032`** (`rejection_reason`, `reviewed_by_user_id`, `reviewed_at` on `documents`, expand-only idempotent); `POST /api/documents/:id/verify` now persists the decision, reverts no-longer-satisfied submitted conditions (`revertConditionsForRejectedDocument`), and notifies the borrower — in-app carries the reason (stays behind login), **email is content-free by doctrine** (reason/filename never travel over email, test-pinned); staff Accept/Reject UI (superseded same-day by #211's workbench, which converged on the same endpoint); canonical `DocumentStatusBadge` (borrower vocabulary Under Review / Accepted / Action Needed — never "Approved", test-pinned) fixing the dead `pending_review` badge. **#212** (`4b70f51`) dropzone UX: hand-rolled `DocumentDropzone` (idle/drag-active/drop-error, semantic tokens), real byte-level XHR progress + working cancel in `use-upload.ts`, `shared/uploads.ts` becomes the single accepted-type source (server allow-list re-exports it), 25MB→10MB copy fix. **#213** (`f5281c3`) personalized checklist: pure `buildDocumentChecklist` derives the borrower checklist from the pipeline's `loan_conditions` (alias-aware matching, latest-upload-wins, `verifying` passthrough, rejection reason exposure; standard-list fallback), route rewrite, one `DocumentItemRow` rendering both paths. | **Migration `0032` auto-applied to prod on the #208 merge — `migrate-prod` job green** (journal idx 32, `when` 1784565600000, monotonic). No env-var changes. | Per-PR gates green (typecheck · unit suite grown 1212→1266 across the train · schema guard · token guard at 0/97 baselines); §9 security-review notes recorded in the #208 (outbound messaging) and #212 (uploads) PR bodies. **Browser-verified end-to-end on the worktree dev server**: drag states + type/size rejection → upload → Under Review → staff reject-with-reason → borrower Action Needed + in-app notification + content-free email (console transport) → re-upload re-arms the condition → staff accept → Accepted; personalized mode verified against seeded pipeline-style conditions (alias bridge matching live), `?condition=` focus mode, no-application fallback, Messages dialog regression. ⚠️ Deploy caveat: these merges landed inside the Vercel **build-rate-limit freeze** — their deploys never built; the code reached prod via the post-quota deploy chain, which was then **API-dead until #222** (see the row above). First healthy prod build containing the portal = #222's. | [ROLLBACK.md](./ROLLBACK.md) §1; isolated **squash** commits, revert newest first: #213 `f5281c3`, #212 `4b70f51`, #208 `51ea772`. Migration `0032` is additive — safe to leave in place on a code revert (no automatic down). |
 | 2026-07-12 | **Docs housekeeping — PR #141 (docs-only); this ledger row rides in the same PR.** Brings the governance record in line with the now-deployed money-path train: adds the row immediately below (#135→#139), flips `BETA_GO_LIVE_READINESS.md` §2 from "awaiting merge" to "merged & deployed", and adds a 2026-07-12 `CTO_ROADMAP` status box (also filling the gap the closed #128 roadmap-refresh left). | **None** — docs-only (`CTO_ROADMAP.md` + two runbooks, `.md` only); no `migrations/` or `shared/schema/` change (migration HEAD stays `0023`); no env-var change. | Edits to already-indexed docs (KB index unaffected); docs-only Vercel build — prod deploy verified **READY** with `GET /api/health` 200 after merge. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (docs only). |

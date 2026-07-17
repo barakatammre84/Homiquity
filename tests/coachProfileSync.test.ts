@@ -292,6 +292,32 @@ describe("syncCoachIntakeToApplication (mocked persistence)", () => {
     expect(result.created).toBe(true);
   });
 
+  it.each(["withdrawn", "expired", "funded"] as const)(
+    "allows a fresh draft after a %s history (terminal = closed, nothing forks)",
+    async (status) => {
+      vi.mocked(storage.getLoanApplicationsByUser).mockResolvedValue([
+        draftApp({ id: "app-old", status }),
+      ]);
+      vi.mocked(storage.createLoanApplication).mockResolvedValue(draftApp({ id: "app-new" }));
+
+      const result = await syncCoachIntakeToApplication(fakeReq, "user-1", { annualIncome: "85000" }, "conv-1");
+      expect(result.created).toBe(true);
+      expect(result.applicationId).toBe("app-new");
+    },
+  );
+
+  it("refuses to fork while a suspended file exists (paused, not closed)", async () => {
+    vi.mocked(storage.getLoanApplicationsByUser).mockResolvedValue([
+      draftApp({ id: "app-held", status: "suspended" }),
+    ]);
+
+    const result = await syncCoachIntakeToApplication(fakeReq, "user-1", { annualIncome: "85000" }, "conv-1");
+
+    expect(result.applicationId).toBeNull();
+    expect(result.skipped).toEqual([{ field: "annualIncome", reason: "application_submitted" }]);
+    expect(storage.createLoanApplication).not.toHaveBeenCalled();
+  });
+
   it("never creates an intake surface while prelaunch-gated", async () => {
     process.env.PRELAUNCH_GATED = "true";
     vi.mocked(storage.getLoanApplicationsByUser).mockResolvedValue([]);

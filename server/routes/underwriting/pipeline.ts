@@ -3,7 +3,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
-import { isLoanAppStatus, LOAN_APP_STATUSES, LOAN_CONDITION_STATUSES } from "@shared/schema";
+import { isInFlightLoanAppStatus, isLoanAppStatus, LOAN_APP_STATUSES, LOAN_CONDITION_STATUSES } from "@shared/schema";
 import type { User, LoanAppStatus } from "@shared/schema";
 import { z } from "zod";
 import { parseBodyOr400 } from "../validate";
@@ -416,9 +416,10 @@ export function registerPipelineRoutes(
           .filter((a): a is NonNullable<typeof a> => a !== null && a !== undefined);
       }
 
-      const activeApps = applications.filter(a => 
-        !["draft", "funded", "denied"].includes(a.status || "draft")
-      );
+      // The work queue holds in-flight files only: no drafts, no terminal
+      // statuses (funded/denied/withdrawn/expired). Suspended files stay —
+      // paused work is still the team's work.
+      const activeApps = applications.filter(a => isInFlightLoanAppStatus(a.status));
 
       const { getPipelineSummaries } = await import("../../pipelineEngine");
 

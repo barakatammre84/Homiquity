@@ -1,6 +1,6 @@
 import type { Request } from "express";
 import type { LoanApplication } from "@shared/schema";
-import { loanApplicationIntakeUpdateSchema } from "@shared/schema";
+import { loanApplicationIntakeUpdateSchema, pickActiveLoanApplication } from "@shared/schema";
 import type { CoachIntakeData } from "./coachTools";
 import { storage } from "../storage";
 import { logAudit } from "../auditLog";
@@ -328,10 +328,12 @@ export async function syncCoachIntakeToApplication(
   const draft = applications.find((a) => a.status === "draft");
 
   if (!draft) {
-    // A submitted/in-flight application exists → its figures change through
-    // staff channels, and starting a competing draft from chat would fork the
-    // borrower's file. (All-denied or no history → a fresh draft is fine.)
-    const inFlight = applications.find((a) => a.status !== "denied");
+    // An in-flight application exists → its figures change through staff
+    // channels, and starting a competing draft from chat would fork the
+    // borrower's file. (All-terminal — denied/withdrawn/expired/funded — or
+    // no history → a fresh draft is fine; those files are closed, so nothing
+    // forks.)
+    const inFlight = pickActiveLoanApplication(applications);
     if (inFlight) {
       return {
         applicationId: null,

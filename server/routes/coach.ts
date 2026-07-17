@@ -10,6 +10,7 @@ import {
   SENSITIVE_INPUT_MESSAGES,
   SENSITIVE_INPUT_REDACTED_PLACEHOLDER,
 } from "../services/sensitiveInputGuard";
+import { pickActiveLoanApplication } from "@shared/schema";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
 
@@ -23,7 +24,12 @@ const messageSchema = z.object({
 async function buildVerifiedContext(userId: string, user: User, propertyContext?: { price: number; address: string } | null): Promise<VerifiedUserContext> {
   try {
     const applications = await storage.getLoanApplicationsByUser(userId);
-    const activeApp = applications.find(a => a.status !== "draft" && a.status !== "denied") || applications[0];
+    // Coach context: the in-flight file first; else the funded one (post-close
+    // coaching still needs the closed loan's facts); else the most recent file
+    // of any status so the coach is never blind to history.
+    const activeApp = pickActiveLoanApplication(applications)
+      ?? applications.find(a => a.status === "funded")
+      ?? applications[0];
 
     if (!activeApp) {
       return {
