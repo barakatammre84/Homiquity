@@ -12,6 +12,11 @@
  *  - K-1 ordinary income: usable only with documented distributions or
  *    adequate business liquidity (quick/current ratio ≥ 1); guaranteed
  *    payments for 2+ years usable directly ............... B3-3.6-07
+ *  - Entity business-return adjustments (add back depreciation / depletion /
+ *    amortization-casualty-other losses; subtract travel & meals exclusion,
+ *    non-recurring income, short-term obligations with roll-over waiver),
+ *    applied at the K-1 ownership percentage ............. B3-3.7-01 / -02
+ *  - Owner W-2 wages counted directly in the K-1 lane .... B3-3.7-02
  *
  * Where judgment is required (declining income, single-year history, income
  * gated out by liquidity, a net loss) the calculator is CONSERVATIVE and sets
@@ -170,25 +175,63 @@ export function computeSelfEmploymentQualifyingIncome(
     };
   }
 
-  // Partnership / S corporation → Schedule K-1 (B3-3.6-07)
+  // Partnership / S corporation → Schedule K-1 (B3-3.6-07) + entity-level
+  // business-return analysis (B3-3.7-01 / B3-3.7-02)
   if (wk.businessStructure === "partnership" || wk.businessStructure === "s_corporation") {
     const k1 = wk.k1;
     if (!k1) return empty("insufficient_history", ["No K-1 figures captured."]);
     const gate = liquidityAdequate(k1.liquidity);
     let gatedDown = false;
     let liquidityUnknown = false;
+    let entityWithoutOwnership = false;
+    let entityAddBacks = 0;
+    let entityDeductions = 0;
+
+    // Borrower's share of the entity's cash-flow adjustments (B3-3.7-01/-02):
+    // add back depreciation, depletion, amortization/casualty/other
+    // non-recurring losses; subtract the travel & meals exclusion,
+    // non-recurring income, and short-term obligations (mortgages/notes/bonds
+    // payable < 1 year — waivable when they roll over regularly or liquid
+    // assets cover them). Proportionate share per the K-1 ownership
+    // percentage; without a captured percentage the adjustment is skipped and
+    // flagged rather than guessed.
+    const entityShare = (
+      y: NonNullable<SelfEmploymentWorksheet["k1"]>["currentYear"],
+    ): number => {
+      const ea = y.entityAnalysis;
+      if (!ea) return 0;
+      if (wk.ownershipPercent === undefined || wk.ownershipPercent === null) {
+        entityWithoutOwnership = true;
+        return 0;
+      }
+      const share = wk.ownershipPercent / 100;
+      const addBacks =
+        ea.depreciation + ea.depletion + ea.amortizationCasualtyOtherLosses;
+      const deductions =
+        ea.travelMealsExclusion +
+        ea.nonRecurringIncome +
+        (ea.shortTermObligationsWaived ? 0 : ea.shortTermObligations);
+      entityAddBacks += addBacks * share;
+      entityDeductions += deductions * share;
+      return (addBacks - deductions) * share;
+    };
 
     // Per-year usable income: guaranteed payments held ≥2 years are usable
-    // directly; ordinary + rental income is usable only if documented
-    // distributions cover it OR business liquidity is adequate — otherwise only
-    // the amount actually distributed counts (B3-3.6-07).
+    // directly, as is the borrower's own-business W-2 salary (B3-3.7-02:
+    // wages received "in addition to their proportionate share"; the agency
+    // wage path skips self-employed rows, so it counts only here). The
+    // adjusted business income — K-1 boxes plus the entity-share adjustment —
+    // is usable only if documented distributions cover it OR business
+    // liquidity is adequate; otherwise only the amount actually distributed
+    // counts (B3-3.6-07, B3-3.7-01/-02).
     const usable = (y: NonNullable<SelfEmploymentWorksheet["k1"]>["currentYear"]): number => {
       const guaranteedDirect = k1.hasTwoYearGuaranteedPayments ? y.guaranteedPayments : 0;
       const gatedPool =
         y.ordinaryBusinessIncome +
         y.netRentalRealEstateIncome +
         y.otherNetRentalIncome +
-        (k1.hasTwoYearGuaranteedPayments ? 0 : y.guaranteedPayments);
+        (k1.hasTwoYearGuaranteedPayments ? 0 : y.guaranteedPayments) +
+        entityShare(y);
       let ordinaryUsable: number;
       if (gatedPool <= 0) {
         ordinaryUsable = gatedPool; // a loss flows through (handled by averaging guard)
@@ -201,7 +244,7 @@ export function computeSelfEmploymentQualifyingIncome(
         gatedDown = true;
         if (gate === null) liquidityUnknown = true;
       }
-      return guaranteedDirect + ordinaryUsable;
+      return guaranteedDirect + k1.w2FromBusiness + ordinaryUsable;
     };
 
     const curUsable = usable(k1.currentYear);
@@ -214,6 +257,21 @@ export function computeSelfEmploymentQualifyingIncome(
           : "K-1 ordinary income exceeds documented distributions and the business liquidity ratio is below 1. Only distributed income was used (B3-3.6-07).",
       );
     }
+    if (entityWithoutOwnership) {
+      notes.push(
+        "Business-return adjustments were captured but no ownership percentage is on the worksheet — the entity-level adjustment was skipped rather than guessed (B3-3.7: the borrower's share follows the K-1 ownership percentage). Capture the percentage to apply it; flagged for review.",
+      );
+    }
+    if ((entityAddBacks !== 0 || entityDeductions !== 0) && !entityWithoutOwnership) {
+      notes.push(
+        `Entity cash-flow adjustment applied at ${wk.ownershipPercent}% ownership: +${round2(entityAddBacks)} add-backs (depreciation/depletion/amortization-casualty), −${round2(entityDeductions)} subtractions (travel & meals, non-recurring income, short-term obligations) per B3-3.7-01/-02.`,
+      );
+    }
+    if (k1.w2FromBusiness > 0) {
+      notes.push(
+        `Included the borrower's own-business W-2 salary (${round2(k1.w2FromBusiness)}/yr) directly: B3-3.7-02 treats owner wages as income in addition to the K-1 share, and the wage path skips self-employed employment rows.`,
+      );
+    }
 
     const { avg, year1, year2, trend, manual } = averageTwoYears(curUsable, priorUsable, notes);
     return {
@@ -221,10 +279,10 @@ export function computeSelfEmploymentQualifyingIncome(
       netProfitYear1: round2(year1),
       netProfitYear2: round2(year2),
       avgAnnualCashFlow: round2(avg),
-      addBacks: 0,
-      deductions: 0,
+      addBacks: round2(entityAddBacks),
+      deductions: round2(entityDeductions),
       trend,
-      requiresManualReview: manual || gatedDown,
+      requiresManualReview: manual || gatedDown || entityWithoutOwnership,
       notes,
     };
   }

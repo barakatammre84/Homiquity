@@ -440,6 +440,28 @@
       "lastVerified": "2026-07-17",
       "reviewIntervalDays": 180,
       "notes": "Asymmetry can never approve a file the guide would deny. Includes the mortgage-liability coexistence guard: applied offsets alongside mortgage-type URLA liability rows flag manual review instead of silently risking a PITIA double-count."
+    },
+    {
+      "id": "fnma-b3-3-7-01-partnership-cash-flow",
+      "rule": "Partnership/LLC (Form 1065) entity cash-flow analysis: add back depreciation, depletion, amortization, casualty and other non-recurring losses; subtract the travel & meals exclusion, non-recurring income, and mortgages/notes/bonds payable in less than one year (waived when they roll over regularly and/or liquid assets cover them); borrower share per the K-1 percentage of Ending Capital; usable only with distributions consistent with the income used or adequate business liquidity",
+      "value": "named-category add-backs/subtractions × ownership share, distributions-or-liquidity gated",
+      "citation": "Fannie Mae Selling Guide B3-3.7-01, Analyzing Partnership Returns for a Partnership or LLC (02/07/2024). Fetched live 2026-07-17; transcription in docs/fannie-mae/self-employment-income-reference.md §Business returns.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.7-01/analyzing-partnership-returns-partnership-or-llc",
+      "codeRef": "server/services/selfEmploymentIncome.ts K-1 lane entityShare; shared/schema/lendingUrla.ts entityCashFlowAnalysisSchema",
+      "lastVerified": "2026-07-17",
+      "reviewIntervalDays": 180,
+      "notes": "The guide names no IRS line numbers; the worksheet collects by named category. Missing ownership percentage skips the adjustment and flags review — never guessed."
+    },
+    {
+      "id": "fnma-b3-3-7-02-scorp-cash-flow",
+      "rule": "S corporation (Form 1120-S) entity cash-flow analysis: same add-back/subtraction taxonomy as B3-3.7-01; borrower share per the K-1 percentage of stock ownership; owner W-2 wages are income 'in addition to their proportionate share' and count directly (in this codebase inside the K-1 lane, since the agency wage path skips self-employed employment rows)",
+      "value": "entity adjustments × stock-ownership share, distributions-or-liquidity gated; owner W-2 direct",
+      "citation": "Fannie Mae Selling Guide B3-3.7-02, Analyzing Returns for an S Corporation (02/07/2024). Verbatim: owners 'may receive income in the form of wages or dividends in addition to their proportionate share of business income (or loss) reported on Schedule K-1.' Fetched live 2026-07-17; transcription in docs/fannie-mae/self-employment-income-reference.md §Business returns.",
+      "sourceUrl": "https://selling-guide.fanniemae.com/sel/b3-3.7-02/analyzing-returns-s-corporation",
+      "codeRef": "server/services/selfEmploymentIncome.ts K-1 lane (entityShare + w2FromBusiness direct); shared/schema/lendingUrla.ts k1 worksheet",
+      "lastVerified": "2026-07-17",
+      "reviewIntervalDays": 180,
+      "notes": "Resolves the reference doc's former open question on owner W-2 treatment. No double-count: computeAgencyWageIncome skips isSelfEmployed employment rows by design."
     }
   ]
 }

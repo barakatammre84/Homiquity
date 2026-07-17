@@ -154,7 +154,31 @@ const scheduleCYearSchema = z.object({
   nonRecurringIncome: z.number().min(0).default(0),
 });
 
-/** One tax year of Schedule K-1 figures (B3-3.6-07). */
+/** Entity-level cash-flow adjustments from the business return (Form 1065 /
+ *  Form 1120-S analysis — B3-3.7-01 / B3-3.7-02, both eff. 02/07/2024;
+ *  transcribed in docs/fannie-mae/self-employment-income-reference.md).
+ *  Named categories only — the guide names no line numbers and neither do we.
+ *  The borrower's share = ownershipPercent × the entity's net adjustment. */
+const entityCashFlowAnalysisSchema = z.object({
+  // Add-backs: "depreciation, depletion, amortization, casualty losses, and
+  // other losses that are not consistent and recurring"
+  depreciation: z.number().min(0).default(0),
+  depletion: z.number().min(0).default(0),
+  amortizationCasualtyOtherLosses: z.number().min(0).default(0),
+  // Subtractions: "travel and meals exclusion"; "other reported income that is
+  // not consistent and recurring"; "the total amount of obligations on
+  // mortgages, notes, or bonds that are payable in less than one year"
+  travelMealsExclusion: z.number().min(0).default(0),
+  nonRecurringIncome: z.number().min(0).default(0),
+  shortTermObligations: z.number().min(0).default(0),
+  /** B3-3.7-01/-02 waiver: the short-term-obligation subtraction does not
+   *  apply when the obligations "roll over regularly and/or the business has
+   *  sufficient liquid assets to cover them." Defaults false (subtract). */
+  shortTermObligationsWaived: z.boolean().default(false),
+});
+
+/** One tax year of Schedule K-1 figures (B3-3.6-07), plus the optional
+ *  entity-level business-return analysis for the same year (B3-3.7). */
 const k1YearSchema = z.object({
   taxYear: z.number().int().min(1980).max(2100).optional(),
   ordinaryBusinessIncome: z.number().default(0),
@@ -162,6 +186,7 @@ const k1YearSchema = z.object({
   otherNetRentalIncome: z.number().default(0),
   guaranteedPayments: z.number().default(0),
   distributionsReceived: z.number().min(0).default(0),
+  entityAnalysis: entityCashFlowAnalysisSchema.optional(),
 });
 
 /** Business liquidity (B3-3.6-07): quick ratio = (current assets − inventory) /
@@ -196,9 +221,11 @@ export const selfEmploymentWorksheetSchema = z
          *  without additional liquidity documentation (B3-3.6-07). */
         hasTwoYearGuaranteedPayments: z.boolean().default(false),
         liquidity: businessLiquiditySchema.optional(),
-        /** W-2 the borrower draws from their own S-corp. Captured but NOT auto-
-         *  added by the calculator until the business-return subsection is
-         *  in-repo (flagged in the reference doc). */
+        /** W-2 the borrower draws from their own S-corp. Added directly to the
+         *  K-1 lane's usable income (B3-3.7-02: owners "may receive income in
+         *  the form of wages or dividends in addition to their proportionate
+         *  share" — the agency wage path skips self-employed employment rows,
+         *  so this is the only place the salary can count; no double-count). */
         w2FromBusiness: z.number().min(0).default(0),
       })
       .optional(),
