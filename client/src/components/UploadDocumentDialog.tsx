@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
+import { DocumentDropzone } from "@/components/DocumentDropzone";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -76,11 +76,6 @@ export function toUploadableDocumentType(type: string | undefined | null): strin
   return TYPE_ALIASES[type] ?? type;
 }
 
-const ACCEPTED_EXTENSIONS = ".pdf,.jpg,.jpeg,.png,.doc,.docx";
-// Shared with the server so the client pre-flight matches what the server will
-// actually accept (see shared/uploads.ts).
-const MAX_FILE_BYTES = MAX_UPLOAD_BYTES;
-
 interface ChecklistItem {
   id: string;
   documentType: string;
@@ -134,9 +129,8 @@ export function UploadDocumentDialog({
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<"idle" | "uploading" | "registering">("idle");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { uploadFile } = useUpload();
+  const { uploadFile, progress } = useUpload();
 
   const { data: checklist } = useDocumentChecklist(applicationId, open);
   const neededItems = outstandingItems(checklist);
@@ -152,20 +146,6 @@ export function UploadDocumentDialog({
     setDescription("");
     setSelectedType(toUploadableDocumentType(defaultDocumentType));
     setPhase("idle");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const handleFilePicked = (picked: File | null) => {
-    if (!picked) return;
-    if (picked.size > MAX_FILE_BYTES) {
-      toast({
-        title: "File too large",
-        description: `The limit is ${MAX_UPLOAD_LABEL}. Try compressing the file or splitting it into parts.`,
-        variant: "destructive",
-      });
-      return;
-    }
-    setFile(picked);
   };
 
   const submit = useMutation({
@@ -304,14 +284,6 @@ export function UploadDocumentDialog({
 
           <div className="space-y-2">
             <Label>File</Label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPTED_EXTENSIONS}
-              className="hidden"
-              onChange={(e) => handleFilePicked(e.target.files?.[0] ?? null)}
-              data-testid="input-upload-file"
-            />
             {file ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/40 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
@@ -325,27 +297,21 @@ export function UploadDocumentDialog({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon" aria-label="Close"
-                    onClick={() => {
-                      setFile(null);
-                      if (fileInputRef.current) fileInputRef.current.value = "";
-                    }}
+                    size="icon" aria-label="Remove file"
+                    onClick={() => setFile(null)}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
             ) : (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => fileInputRef.current?.click()}
-                data-testid="button-choose-file"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Choose a file (PDF, JPG, PNG, DOC — up to 25MB)
-              </Button>
+              // Validates type + the shared size cap itself (the old copy
+              // promised 25MB while the server enforced 10MB).
+              <DocumentDropzone
+                compact
+                onFileAccepted={setFile}
+                data-testid="dropzone-upload-dialog"
+              />
             )}
           </div>
 
@@ -365,9 +331,13 @@ export function UploadDocumentDialog({
 
           {busy && (
             <div className="space-y-1.5" data-testid="upload-progress">
-              <Progress value={phase === "uploading" ? 45 : 90} />
+              {/* Real byte-level progress from the XHR PUT; registration is a
+                  quick JSON call shown as the near-done tail. */}
+              <Progress value={phase === "uploading" ? Math.max(progress, 3) : 95} />
               <p className="text-xs text-muted-foreground">
-                {phase === "uploading" ? "Uploading to secure storage…" : "Filing it on your loan…"}
+                {phase === "uploading"
+                  ? `Uploading to secure storage… ${Math.round(progress)}%`
+                  : "Filing it on your loan…"}
               </p>
             </div>
           )}

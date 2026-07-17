@@ -9,11 +9,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
 import { canonicalDocumentType } from "@shared/documentTypes";
+import { validateUploadFile } from "@shared/uploads";
 import { PageShell } from "@/components/PageShell";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
+import { DocumentDropzone, UploadProgressCard } from "@/components/DocumentDropzone";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import {
   FileText,
@@ -158,9 +160,17 @@ export default function Documents() {
   const { isLoading: authLoading } = useAuth();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["income", "assets"]);
   const [activeDocType, setActiveDocType] = useState<string | null>(null);
+  // The row whose file is in flight — it swaps its dropzone for the live
+  // progress card. One upload at a time keeps the page state honest.
+  const [activeUpload, setActiveUpload] = useState<{
+    docType: string;
+    fileName: string;
+    fileSize: number;
+  } | null>(null);
+  const cancelledRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { uploadFile, isUploading } = useUpload();
+  const { uploadFile, isUploading, progress, cancel } = useUpload();
 
   const {
     data,
@@ -181,9 +191,11 @@ export default function Documents() {
   const search = useSearch();
   const conditionId = new URLSearchParams(search).get("condition");
 
+  // Always know the borrower's latest application (not just in focus mode):
+  // registrations carry its id so uploads land on the loan file explicitly.
   const { data: myApps } = useQuery<LoanApplication[]>({
     queryKey: ["/api/loan-applications"],
-    enabled: !!conditionId && !authLoading,
+    enabled: !authLoading,
   });
   const focusAppId = myApps?.[0]?.id;
 
@@ -218,44 +230,79 @@ export default function Documents() {
     fileInputRef.current?.click();
   };
 
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeDocType) return;
-
-    const response = await uploadFile(file);
-    if (response) {
-      const registered = await fetch("/api/documents/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
+  // One shared upload path for every affordance on this page (row dropzones,
+  // Replace buttons, the condition-focus banner): validate → presigned PUT
+  // with real byte-level progress → JSON registration.
+  const startUpload = async (docType: string, file: File) => {
+    if (isUploading) {
+      toast({
+        title: "One upload at a time",
+        description: "Let the current file finish (or cancel it), then try again.",
+      });
+      return;
+    }
+    const check = validateUploadFile(file);
+    if (!check.ok) {
+      toast({ title: "That file won't work", description: check.message, variant: "destructive" });
+      return;
+    }
+    cancelledRef.current = false;
+    setActiveUpload({ docType, fileName: file.name, fileSize: file.size });
+    try {
+      const response = await uploadFile(file);
+      if (!response) {
+        // A user cancel resets quietly; a real failure gets an honest toast.
+        if (!cancelledRef.current) {
+          toast({
+            title: "Upload didn't complete",
+            description: "The file never reached storage. Please try again.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+      try {
+        await apiRequest("POST", "/api/documents/upload", {
           objectPath: response.objectPath,
           fileName: file.name,
           fileSize: file.size,
           mimeType: file.type,
-          documentType: activeDocType,
-        }),
-      });
-      if (registered.ok) {
-        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-        // Refresh pipeline data too — a matching upload moves the focused
-        // condition to "submitted" and the banner should say so.
-        queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
-        toast({ title: "Document uploaded", description: getUploadNextStep(activeDocType) });
-      } else {
+          documentType: docType,
+          ...(focusAppId ? { applicationId: focusAppId } : {}),
+        });
+      } catch {
         // Never claim success on a failed registration — that's how files get lost.
         toast({
           title: "Upload didn't complete",
           description: "The file reached storage but couldn't be filed on your loan. Please try again.",
           variant: "destructive",
         });
+        return;
       }
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      // Refresh pipeline data too — a matching upload moves the focused
+      // condition to "submitted" and the banner should say so.
+      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
+      if (focusAppId) {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/applications", focusAppId, "document-checklist"],
+        });
+      }
+      toast({ title: "Document uploaded", description: getUploadNextStep(docType) });
+    } finally {
+      setActiveUpload(null);
     }
+  };
 
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const docType = activeDocType;
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
     setActiveDocType(null);
+    if (!file || !docType) return;
+    await startUpload(docType, file);
   };
 
   const toggleCategory = (categoryId: string) => {
@@ -309,9 +356,12 @@ export default function Documents() {
   const allRequiredDocs = DOCUMENT_CATEGORIES.flatMap(cat =>
     cat.documents.filter(d => d.required)
   );
-  const pendingRequiredDocs = allRequiredDocs.filter(d =>
-    !documentsByType[d.type]?.length
-  );
+  // A required item is pending when nothing was uploaded OR the latest upload
+  // bounced (rejected latest = action still needed, not "complete").
+  const pendingRequiredDocs = allRequiredDocs.filter(d => {
+    const docs = documentsByType[d.type];
+    return !docs?.length || docs[0]?.status === "rejected";
+  });
   const pendingCount = pendingRequiredDocs.length;
   const isAllCaughtUp = pendingCount === 0;
 
@@ -460,9 +510,10 @@ export default function Documents() {
 
           // Calculate category status
           const requiredInCategory = category.documents.filter(d => d.required);
-          const pendingInCategory = requiredInCategory.filter(d =>
-            !documentsByType[d.type]?.length
-          ).length;
+          const pendingInCategory = requiredInCategory.filter(d => {
+            const docs = documentsByType[d.type];
+            return !docs?.length || docs[0]?.status === "rejected";
+          }).length;
           const uploadedCount = category.documents.filter(d => documentsByType[d.type]?.length > 0).length;
 
           const allCaughtUp = pendingInCategory === 0;
@@ -535,11 +586,19 @@ export default function Documents() {
                         // OLDEST, which froze the row on a re-upload's stale status.
                         const latestDoc = uploadedDocs[0];
 
+                        const isRejected = latestDoc?.status === "rejected";
+                        const isRowUploading = activeUpload?.docType === docType.type;
+                        // Pending items and bounced items invite a (re-)upload
+                        // right in the row; accepted/in-review items stay calm.
+                        const showDropzone = !isRowUploading && (!hasUpload || isRejected);
+
                         return (
                           <div
                             key={docType.type}
-                            className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
-                              hasUpload
+                            className={`p-4 rounded-lg transition-colors ${
+                              isRejected
+                                ? "bg-destructive/5"
+                                : hasUpload
                                 ? "bg-success-subtle/50"
                                 : docType.required
                                 ? "bg-warning-subtle/50"
@@ -547,8 +606,11 @@ export default function Documents() {
                             } ${focusTypes.has(canonicalDocumentType(docType.type)) ? "ring-2 ring-primary" : ""}`}
                             data-testid={`row-doctype-${docType.type}`}
                           >
+                          <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 flex-1">
-                              {hasUpload ? (
+                              {isRejected ? (
+                                <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+                              ) : hasUpload ? (
                                 <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground shrink-0" />
                               ) : docType.required ? (
                                 <AlertCircle className="h-5 w-5 text-warning-subtle-foreground shrink-0" />
@@ -563,7 +625,7 @@ export default function Documents() {
                                       Required
                                     </Badge>
                                   )}
-                                  {docType.required && hasUpload && (
+                                  {docType.required && hasUpload && !isRejected && (
                                     <Badge variant="outline" className="text-xs border-border text-success-subtle-foreground">
                                       Complete
                                     </Badge>
@@ -618,20 +680,50 @@ export default function Documents() {
                                   <span className="hidden sm:inline">View</span>
                                 </Button>
                               )}
-                              <Button
-                                size="sm"
-                                variant={hasUpload ? "outline" : "default"}
-                                className="gap-1.5"
-                                data-testid={`button-upload-${docType.type}`}
-                                disabled={isUploading}
-                                onClick={() => handleUploadClick(docType.type)}
-                              >
-                                <Upload className="h-4 w-4" />
-                                <span className="hidden sm:inline">
-                                  {isUploading && activeDocType === docType.type ? "Uploading..." : hasUpload ? "Replace" : "Upload"}
-                                </span>
-                              </Button>
+                              {hasUpload && !isRejected && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1.5"
+                                  data-testid={`button-upload-${docType.type}`}
+                                  disabled={isUploading}
+                                  onClick={() => handleUploadClick(docType.type)}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                  <span className="hidden sm:inline">Replace</span>
+                                </Button>
+                              )}
                             </div>
+                          </div>
+                          {isRowUploading && activeUpload && (
+                            <div className="mt-3">
+                              <UploadProgressCard
+                                fileName={activeUpload.fileName}
+                                fileSize={activeUpload.fileSize}
+                                progress={progress}
+                                onCancel={() => {
+                                  cancelledRef.current = true;
+                                  cancel();
+                                }}
+                                data-testid={`upload-progress-${docType.type}`}
+                              />
+                            </div>
+                          )}
+                          {showDropzone && (
+                            <div className="mt-3">
+                              <DocumentDropzone
+                                compact
+                                disabled={isUploading}
+                                onFileAccepted={(file) => startUpload(docType.type, file)}
+                                idleLabel={
+                                  isRejected
+                                    ? "Upload a new copy — drag & drop, or browse"
+                                    : `Drag & drop your ${docType.name.toLowerCase()}, or browse`
+                                }
+                                data-testid={`dropzone-${docType.type}`}
+                              />
+                            </div>
+                          )}
                           </div>
                         );
                       })}

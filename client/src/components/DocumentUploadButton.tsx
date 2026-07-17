@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
+import { ACCEPTED_UPLOAD_EXTENSIONS, validateUploadFile } from "@shared/uploads";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, FileUp, RefreshCw } from "lucide-react";
 
@@ -40,7 +40,7 @@ export function DocumentUploadButton({
   onDone?: () => void;
 }) {
   const { toast } = useToast();
-  const { uploadFile } = useUpload();
+  const { uploadFile, progress } = useUpload();
   const inputRef = useRef<HTMLInputElement>(null);
   const [done, setDone] = useState(false);
 
@@ -76,10 +76,11 @@ export function DocumentUploadButton({
 
   const handlePicked = (file: File | null) => {
     if (!file) return;
-    if (file.size > MAX_UPLOAD_BYTES) {
+    const check = validateUploadFile(file);
+    if (!check.ok) {
       toast({
-        title: "File too large",
-        description: `The limit is ${MAX_UPLOAD_LABEL}. Try compressing the file.`,
+        title: check.reason === "size" ? "File too large" : "Unsupported file type",
+        description: check.message,
         variant: "destructive",
       });
       return;
@@ -94,7 +95,7 @@ export function DocumentUploadButton({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        accept={ACCEPTED_UPLOAD_EXTENSIONS}
         className="hidden"
         onChange={(e) => {
           handlePicked(e.target.files?.[0] ?? null);
@@ -117,7 +118,13 @@ export function DocumentUploadButton({
         ) : (
           <FileUp className="mr-1.5 h-3.5 w-3.5" />
         )}
-        {busy ? "Uploading…" : done ? "Uploaded — add another" : label}
+        {busy
+          ? progress > 0
+            ? `Uploading… ${Math.round(progress)}%`
+            : "Uploading…"
+          : done
+            ? "Uploaded — add another"
+            : label}
       </Button>
     </>
   );
