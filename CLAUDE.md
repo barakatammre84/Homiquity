@@ -110,7 +110,19 @@ migrations 0026/0027). So:
    DIRECT URL — sidesteps the pooler gotcha). The URL is minted at run time from `NEON_API_KEY`
    by [`scripts/neon-connection-uri.cjs`](scripts/neon-connection-uri.cjs) — **no prod DB
    password is stored in GitHub**. Never hand-apply, never `db:push` to prod. To pre-flight,
-   run the CI workflow manually with `dry_run: true`.
+   run the CI workflow manually with `dry_run: true` — but know what that proves: it reconciles
+   the **journal** ("is prod's ledger in sync; is the pending list what I expect?") and **never
+   executes a migration's SQL** (`--dry-run` prints `pending <tag>` and moves on). A green
+   dry-run is not evidence the DDL will succeed.
+5. **Contract migrations need a real data check.** `SET NOT NULL`, `CHECK`, `FK`, type
+   narrowing — anything that can fail on existing rows — is not covered by #4's dry-run, and a
+   contract migration that aborts on data fails the post-merge `migrate-prod` job: the
+   2026-07-13 outage class. Before authoring one, verify the assumption against prod with a
+   read-only probe (`NEON_API_KEY` is write-only in GitHub, so this runs *through CI*, not from
+   a laptop) and record the counts in the migration's header comment. Recipe:
+   [DB_MIGRATIONS.md §Contract migrations](knowledge-base/runbooks/DB_MIGRATIONS.md#contract-migrations-set-not-null-check-fk-type-narrowing).
+   **Never backfill a guessed value to make a constraint pass** on a provenance/audit column —
+   a NULL is an honest gap, a wrong value is a falsified record. Escalate instead.
 
 Full flow and the one-time secret/branch-protection setup: [DB_MIGRATIONS.md](knowledge-base/runbooks/DB_MIGRATIONS.md).
 
