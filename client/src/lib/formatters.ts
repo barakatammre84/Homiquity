@@ -108,6 +108,7 @@ export function getStatusLabel(status: string): string {
     draft: "Draft",
     submitted: "Submitted",
     analyzing: "Analyzing",
+    under_review: "Under Review",
     pre_approved: "Pre-Approved",
     verified: "Verified",
     doc_collection: "Doc Collection",
@@ -115,9 +116,13 @@ export function getStatusLabel(status: string): string {
     underwriting: "Underwriting",
     conditional: "Conditional Approval",
     clear_to_close: "Clear to Close",
+    closing: "Closing",
     approved: "Approved",
     denied: "Denied",
     funded: "Funded",
+    withdrawn: "Withdrawn",
+    suspended: "Suspended",
+    expired: "Expired",
     closed: "Closed",
   };
   return labels[status] || titleCaseFromSnake(status);

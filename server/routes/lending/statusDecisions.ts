@@ -3,7 +3,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
-import { insertBorrowerDeclarationsSchema, LOAN_APP_STATUSES, loanApplicationIntakeUpdateSchema, type LoanAppStatus, type User } from "@shared/schema";
+import { insertBorrowerDeclarationsSchema, loanApplicationIntakeUpdateSchema, STAFF_SETTABLE_STATUSES, CREDIT_DECISION_ROLES, isProtectedCreditDecisionStatus, isApprovalOutcomeStatus, type User } from "@shared/schema";
 import { updatePipelineStage, PipelineTransitionError } from "../../pipelineEngine";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { z } from "zod";
@@ -108,20 +108,11 @@ export function registerStatusDecisionRoutes(
     }
   });
 
-  // Statuses that represent a final credit decision. Only underwriters and admins
-  // may set these; other roles must go through the guarded advance-stage endpoint
-  // in underwriting.ts which enforces the STAGE_TRANSITION_ROLES policy.
-  const PROTECTED_CREDIT_DECISION_STATUSES = new Set<LoanAppStatus>([
-    "pre_approved", "clear_to_close", "funded", "denied",
-  ]);
-
-  // The canonical vocabulary minus system-only states: "draft" belongs to the
-  // borrower funnel, "analyzing"/"expired" are set by automation. HMDA codes
-  // and milestones are stamped inside updatePipelineStage — one writer.
-  const STAFF_SETTABLE_STATUSES = LOAN_APP_STATUSES.filter(
-    (s) => s !== "draft" && s !== "analyzing" && s !== "expired",
-  ) as [LoanAppStatus, ...LoanAppStatus[]];
-
+  // STAFF_SETTABLE_STATUSES / PROTECTED_CREDIT_DECISION_STATUSES /
+  // APPROVAL_OUTCOME_STATUSES live in shared/schema/lendingCore.ts so the staff
+  // status pickers (client/src/pages/staff/BorrowerFile.tsx) offer exactly what
+  // this schema accepts and grey out exactly what the gates below reject. HMDA
+  // codes and milestones are stamped inside updatePipelineStage — one writer.
   const staffStatusSchema = z.object({
     status: z.enum(STAFF_SETTABLE_STATUSES),
     notes: z.string().max(2000).optional(),
@@ -158,7 +149,7 @@ export function registerStatusDecisionRoutes(
       // Enforce that only admin or underwriter can set final credit-decision statuses.
       // All other roles (including assigned deal-team members) must use the
       // underwriting advance-stage endpoint which enforces the full transition policy.
-      if (PROTECTED_CREDIT_DECISION_STATUSES.has(status) && user.role !== "admin" && user.role !== "underwriter") {
+      if (isProtectedCreditDecisionStatus(status) && !CREDIT_DECISION_ROLES.includes(user.role)) {
         return res.status(403).json({ error: "Only underwriters or admins may set approval or denial outcomes" });
       }
 
@@ -174,7 +165,7 @@ export function registerStatusDecisionRoutes(
       // Approval outcomes may not be set on self-reported/estimated data — a
       // favorable credit determination requires verified figures. (Denial is not
       // gated: an application can be denied for unverifiable or incomplete info.)
-      if (status === "pre_approved" || status === "clear_to_close" || status === "funded") {
+      if (isApprovalOutcomeStatus(status)) {
         try {
           assertVerifiedForDecisioning(
             application.financialDataProvenance as DataProvenance,

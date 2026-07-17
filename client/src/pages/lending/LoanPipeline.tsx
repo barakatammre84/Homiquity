@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SETTLED_CONDITION_STATUSES, type LoanApplication, type LoanCondition, type Document, type ApplicationProperty, type LoanOption } from "@shared/schema";
+import { SETTLED_CONDITION_STATUSES, type LoanAppStatus, type LoanApplication, type LoanCondition, type Document, type ApplicationProperty, type LoanOption } from "@shared/schema";
 import {
   CheckCircle2,
   Circle,
@@ -102,18 +102,26 @@ interface ApplicationData {
   activities: ActivityItem[];
 }
 
-const STAGE_ORDER = [
-  { key: "application", label: "Application", icon: FileText },
-  { key: "pre_approval", label: "Pre-Approval", icon: CheckCircle2 },
-  { key: "processing", label: "Processing", icon: ClipboardList },
-  { key: "underwriting", label: "Underwriting", icon: ShieldCheck },
-  { key: "conditional_approval", label: "Conditional", icon: AlertCircle },
-  { key: "clear_to_close", label: "Clear to Close", icon: CheckCheck },
-  { key: "funded", label: "Funded", icon: Banknote },
+// Visual buckets along the happy path — several canonical statuses collapse
+// into one step. `statuses` is typed against the vocabulary so a phantom key
+// is a compile error (the old string keys — "conditional_approval",
+// "pre_approval", "application" — matched no status at all, so every file
+// before underwriting rendered back at step 0). "closing" deliberately buckets
+// with Clear to Close rather than Funded: never show a step the loan hasn't
+// reached. Off-ramp statuses (denied/withdrawn/suspended/expired) aren't on
+// the happy path and fall back to step 0; the header badge carries the truth.
+const STAGE_ORDER: Array<{ key: string; label: string; icon: typeof FileText; statuses: readonly LoanAppStatus[] }> = [
+  { key: "application", label: "Application", icon: FileText, statuses: ["draft", "submitted", "analyzing", "under_review"] },
+  { key: "pre_approval", label: "Pre-Approval", icon: CheckCircle2, statuses: ["pre_approved", "doc_collection"] },
+  { key: "processing", label: "Processing", icon: ClipboardList, statuses: ["processing"] },
+  { key: "underwriting", label: "Underwriting", icon: ShieldCheck, statuses: ["underwriting"] },
+  { key: "conditional", label: "Conditional", icon: AlertCircle, statuses: ["conditional"] },
+  { key: "clear_to_close", label: "Clear to Close", icon: CheckCheck, statuses: ["clear_to_close", "closing"] },
+  { key: "funded", label: "Funded", icon: Banknote, statuses: ["funded"] },
 ];
 
 function getStageIndex(stage: string): number {
-  const idx = STAGE_ORDER.findIndex(s => s.key === stage);
+  const idx = STAGE_ORDER.findIndex(s => (s.statuses as readonly string[]).includes(stage));
   return idx >= 0 ? idx : 0;
 }
 

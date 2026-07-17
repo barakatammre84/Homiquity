@@ -7,6 +7,10 @@ import {
   LOAN_APP_IN_FLIGHT_STATUSES,
   LOAN_APP_TRANSITIONS,
   LOAN_APP_STATUS_META,
+  STAFF_SETTABLE_STATUSES,
+  PROTECTED_CREDIT_DECISION_STATUSES,
+  APPROVAL_OUTCOME_STATUSES,
+  CREDIT_DECISION_ROLES,
   isInFlightLoanAppStatus,
   isValidLoanAppTransition,
   pickActiveLoanApplication,
@@ -17,6 +21,7 @@ import {
   TASK_PRIORITIES,
   TASK_PRIORITY_RANK,
 } from "../shared/schema";
+import { getStatusLabel } from "../client/src/lib/formatters";
 
 /**
  * Status vocabulary invariants — the guardrails behind the single-writer
@@ -161,6 +166,39 @@ describe("loan-application status vocabulary is canonical", () => {
         for (const m of members) {
           if (!CANONICAL.has(m)) {
             violations.push(`${rel}: status list "${name}" contains phantom "${m}"`);
+          }
+        }
+      }
+    }
+    expect(violations, violations.join("\n")).toEqual([]);
+  });
+
+  it("hand-listed <SelectItem> status pickers carry no phantoms", () => {
+    // The BorrowerFile "Update Application Status" dialog survived the
+    // #220–#229 sweeps because its statuses lived in JSX SelectItem values,
+    // which none of the scans above anchor on — staff picking "In Review",
+    // "Conditional Approval", or "Approved" always got a 400. Heuristic
+    // mirrors the named-const rule: a SelectContent block whose literal
+    // values include ≥2 canonical loan-app statuses is a status picker, and
+    // then EVERY value in it must be canonical. Pickers for other
+    // vocabularies (doc types, property types, rate-lock states, …) share at
+    // most one word with LOAN_APP_STATUSES, so they never hit the threshold;
+    // pickers derived from the shared list have no literals to flag.
+    const SELECT_CONTENT_RE = /<SelectContent[^>]*>([\s\S]*?)<\/SelectContent>/g;
+    const ITEM_RE = /<SelectItem[^>]*\bvalue=["']([a-z_]+)["']/g;
+    const violations: string[] = [];
+    for (const file of SOURCE_FILES) {
+      if (!file.endsWith(".tsx")) continue;
+      const source = readFileSync(file, "utf8");
+      const rel = relative(ROOT, file);
+      for (const block of source.matchAll(SELECT_CONTENT_RE)) {
+        const values = [...block[1].matchAll(ITEM_RE)].map((m) => m[1]);
+        if (values.length === 0) continue;
+        const canonicalCount = values.filter((v) => CANONICAL.has(v)).length;
+        if (canonicalCount < 2) continue; // not a loan-app status picker
+        for (const v of values) {
+          if (!CANONICAL.has(v)) {
+            violations.push(`${rel}: status SelectItem picker contains phantom "${v}"`);
           }
         }
       }
@@ -567,6 +605,50 @@ describe("task priority vocabulary is canonical", () => {
     // attributable to exactly one axis of the tasks table.
     const others = new Set<string>([...TASK_STATUSES, ...TASK_VERIFICATION_STATUSES]);
     expect(TASK_PRIORITIES.filter((p) => others.has(p))).toEqual([]);
+  });
+});
+
+/**
+ * Staff status-machine subsets — the shared policy behind
+ * PATCH /api/loan-applications/:id/status and the staff status pickers.
+ * The BorrowerFile dialog previously hand-listed its options and drifted
+ * three phantoms away from the route schema; both sides now derive from
+ * these lists, and these tests pin the policy so a vocabulary edit can't
+ * silently widen or narrow what staff can set.
+ */
+describe("staff status-machine subsets", () => {
+  it("staff-settable = the vocabulary minus draft/analyzing/expired", () => {
+    expect([...STAFF_SETTABLE_STATUSES]).toEqual(
+      LOAN_APP_STATUSES.filter((s) => s !== "draft" && s !== "analyzing" && s !== "expired"),
+    );
+  });
+
+  it("protected credit decisions are staff-settable and role-gated", () => {
+    for (const s of PROTECTED_CREDIT_DECISION_STATUSES) {
+      expect(STAFF_SETTABLE_STATUSES, `${s} must be staff-settable`).toContain(s);
+    }
+    expect([...PROTECTED_CREDIT_DECISION_STATUSES].sort()).toEqual(
+      ["clear_to_close", "denied", "funded", "pre_approved"],
+    );
+    expect([...CREDIT_DECISION_ROLES].sort()).toEqual(["admin", "underwriter"]);
+  });
+
+  it("approval outcomes = the protected set minus denial (ECOA: denial is never verification-gated)", () => {
+    expect([...APPROVAL_OUTCOME_STATUSES].sort()).toEqual(
+      PROTECTED_CREDIT_DECISION_STATUSES.filter((s) => s !== "denied").sort(),
+    );
+  });
+
+  it("getStatusLabel maps every canonical status explicitly (no snake_case fallbacks)", () => {
+    // The fallback humanizer would render these fine, but an explicit entry is
+    // the contract: status pickers show curated labels, not derived ones.
+    for (const s of LOAN_APP_STATUSES) {
+      expect(getStatusLabel(s), `label for ${s}`).not.toBe(s);
+      expect(getStatusLabel(s)).toBeTruthy();
+    }
+    expect(getStatusLabel("under_review")).toBe("Under Review");
+    expect(getStatusLabel("conditional")).toBe("Conditional Approval");
+    expect(getStatusLabel("clear_to_close")).toBe("Clear to Close");
   });
 });
 
