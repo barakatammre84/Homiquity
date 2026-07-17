@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { parseBodyOr400 } from "./validate";
 import { firstQueryValue } from "./queryParams";
+import { z } from "zod";
 
 // Narrow an optional ?status= query value to the canonical vocabulary.
 // Returns undefined for absent, null for a phantom value (caller 400s) — a
@@ -74,6 +75,11 @@ export async function registerTaskEngineRoutes(
   app: Express,
   storage: IStorage,
 ) {
+  // Task engine service — needed by the legacy DELETE route below as well as
+  // the /api/task-engine/* endpoints, so imported before any registration.
+  const { taskEngine, userRoleToOwnerRole, canAccessRoleQueue, TaskNotCancellableError } =
+    await import("../services/taskEngine");
+
   // Task Routes - Internal staff only can create and manage tasks.
   // External partner roles (broker, lender) are excluded from task creation.
   app.post("/api/tasks", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
@@ -344,6 +350,13 @@ export async function registerTaskEngineRoutes(
     }
   });
 
+  // Admin "delete" = audited cancellation, never a hard delete. Tasks are part
+  // of the loan record: task_audit_log (immutable trail, NOT NULL FK) holds a
+  // "created" row for every engine-created task, and task_events /
+  // underwriting_conditions reference tasks — a bare DELETE FROM tasks 500'd
+  // with FK 23503 on every one of them. Cancellation moves the task to the
+  // terminal EXPIRED status (out of all active queues, SLA sweeps, and
+  // dashboards) and logs who removed it and why.
   app.delete("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
@@ -351,9 +364,26 @@ export async function registerTaskEngineRoutes(
         return res.status(403).json({ error: "Only admins can delete tasks" });
       }
 
-      await storage.deleteTask(req.params.id);
-      res.status(204).send();
+      const data = parseBodyOr400(
+        z.object({ reason: z.string().trim().max(2000).optional() }),
+        req.body ?? {},
+        res,
+      );
+      if (data === undefined) return;
+
+      const task = await taskEngine.cancelTask(req.params.id, req.user!.id, data.reason);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      res.json({
+        message: "Task cancelled — tasks are retained for the compliance record, not hard-deleted",
+        task,
+      });
     } catch (error) {
+      if (error instanceof TaskNotCancellableError) {
+        return res.status(409).json({ error: error.message });
+      }
       console.error("Delete task error:", error);
       res.status(500).json({ error: "Failed to delete task" });
     }
@@ -517,9 +547,6 @@ export async function registerTaskEngineRoutes(
   // ========================================================================
   // TASK ENGINE API ENDPOINTS
   // ========================================================================
-
-  // Import task engine
-  const { taskEngine, userRoleToOwnerRole, canAccessRoleQueue } = await import("../services/taskEngine");
 
   // Get SLA class configurations (admin/underwriter only — control-plane config)
   app.get("/api/task-engine/sla-classes", requireRole("admin", "underwriter"), async (req, res) => {
