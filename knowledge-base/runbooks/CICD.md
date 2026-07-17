@@ -1,40 +1,54 @@
 # Deploy & Revert
 
-Homiquity ships with a deliberately simple flow: **push to `main` → Vercel
-deploys it. If it breaks, revert.** No approvals.
+Homiquity ships with a deliberately simple flow: **branch → PR → the required
+`gate` check goes green → merge, and Vercel deploys `main`. If it breaks,
+revert.** No human review required — the machine gate is the only approval.
 
 ```
-  git push (main)  ──▶  Vercel builds & deploys automatically
-        │                     │
-        ▼            broken?  ▼
-  GitHub Actions    Vercel → Deployments → previous one → Promote  (instant)
-  (planned — not
-   on main yet,
-   see below)
+  PR ──▶ gate green ──▶ merge to main ──▶ Vercel builds & deploys
+          │                  │                       │
+          ▼                  ▼              broken?  ▼
+  typecheck · unit     migrate-prod applies    Vercel → Deployments →
+  tests · prod-dep     pending migrations      previous one → Promote
+  audit · schema       to the prod DB          (instant)
+  guard
 ```
 
-**CI status (corrected 2026-07-04): there is no CI on `main` today** — `.github/`
-does not exist there, so nothing runs on push; all checks are manual (see
-"Optional checks" below). A finished non-blocking workflow (`ci.yml`:
-typecheck, unit tests, build, lockfile parity) is authored and waiting on local
-branch `claude/inspiring-faraday-86b6b2` (commit `4fa08ad`), but the automation
-GitHub token lacks the `workflow` scope, so **a human must push/merge it from a
-normally-authenticated environment** (roadmap #5). Once landed it is
-informational only — a red run marks the commit but the deploy still goes out.
-To make it a hard gate later: GitHub → Settings → Branches → protect `main`,
-require the `ci` check (this also blocks direct pushes, so `npm run save`
-would move to a PR flow).
+**CI status (corrected 2026-07-17): the gate is live and blocking.**
+[`ci.yml`](../../.github/workflows/ci.yml) runs a required **`gate`** job on
+every PR to `main` — `pnpm check`, `pnpm test` (unit suite), a **blocking**
+`pnpm audit --prod --audit-level=high`, and `pnpm guard:schema` (a schema change
+without a same-PR migration goes RED and cannot merge). Branch protection
+requires that check with `enforce_admins` ON, so **nobody direct-pushes `main`,
+founder included** (force-push and deletion of `main` are blocked too;
+`npm run save` / `npm run sync` predate this and now die on the push step — see
+Shipping). No required reviews: the author merges their own PR once the gate is
+green ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6). On merge, the same
+workflow's **`migrate-prod`** job auto-applies any pending `migrations/` to the
+production DB over a Neon DIRECT URL minted at run time from `NEON_API_KEY` — no
+prod DB password is stored in GitHub; full flow and its limits (a manual
+`dry_run` reconciles the journal only, it never executes migration SQL) in
+[DB_MIGRATIONS.md](./DB_MIGRATIONS.md). ⚠️ The required-check string is matched
+**verbatim** (`gate (typecheck · tests · schema guard)`, U+00B7 middle dots) —
+never rename the job without re-pointing branch protection in the same change
+(procedure in the workflow's comments).
 
 ## Shipping
 
 ```bash
-npm run save        # commit everything with a timestamp + pull + push
-# or, if you've already committed:
-npm run sync        # pull + push
+git checkout -b <topic-branch>         # never commit on main — direct pushes are rejected
+git push -u origin <topic-branch>
+gh pr create --fill                    # the gate runs automatically
+gh pr checks --watch                   # wait for green…
+gh pr merge --squash --delete-branch   # …then merge your own PR (no reviews required)
 ```
 
-Every push to `main` triggers a production deploy on Vercel. Every PR branch
-gets its own preview deployment automatically.
+Every merge to `main` triggers a production deploy on Vercel (then run the
+post-deploy health check below — READY is not healthy). Every PR branch gets
+its own preview deployment automatically. One branch per isolated worktree,
+merged = deleted same day ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md)
+§4). The old `npm run save` / `npm run sync` scripts direct-push `main` and are
+dead — branch protection rejects the push.
 
 ## Reverting
 
@@ -150,17 +164,33 @@ site (every route except `/api/*`) behind invite links while the
 - Edge Middleware only runs on Vercel; `npm run dev` and local prod builds
   never execute it.
 
-## Optional checks (run manually, nothing enforces them)
+## Checks — what the gate enforces, and what stays manual
+
+The required `gate` check runs these four on every PR (same commands locally):
 
 ```bash
-npm run check              # typecheck
-npm run test:unit          # pure logic tests (no server needed)
-TEST_BASE_URL=http://127.0.0.1:5001 npm run test:integration   # against a running dev server
+pnpm check                             # typecheck
+pnpm test                              # unit suite (vitest.config.ts include list)
+pnpm audit --prod --audit-level=high   # blocking prod-dependency scan (high+)
+pnpm guard:schema                      # schema ↔ migration drift guard
 ```
 
-If you later want gates again (block bad pushes before they deploy), add a
-GitHub Actions workflow that runs the commands above and enable branch
-protection — but that's a deliberate future choice, not the current setup.
+Still **manual — CI never runs these**:
+
+```bash
+TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration   # needs a running dev server
+node scripts/design-token-guard.cjs   # raw-color ratchet (baselines race — re-run right before merge)
+pnpm checkup                          # daily umbrella: the gate's checks + build, orphan scan,
+                                      # token/kb guards, prod health — deliberately no integration
+```
+
+The gate has no server and no database, so the integration suite
+(`vitest.integration.config.ts`) **never runs in CI**: a green gate proves the
+change typechecks and breaks no unit test — nothing more. If a change is only
+exercised by an integration test, run it by hand against a live worktree server
+and record that in the PR ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md)
+§5). A test file added to neither vitest config's include list is silently
+never run.
 
 ## Production change ledger (append-only)
 
