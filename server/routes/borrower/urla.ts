@@ -1,0 +1,669 @@
+// Borrower routes: URLA sections (personal info/SSN/employment/income/assets/liabilities/property) + bulk save.
+// One registrar in the original registration order — see ./index.ts.
+import type { Express } from "express";
+import { InvalidSsnError, type IStorage } from "../../storage";
+import { isAuthenticated } from "../../auth";
+import { logAudit } from "../../auditLog";
+import { selfEmploymentWorksheetSchema, isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
+import { pickTableFields, sanitizePersonalInfoBody, URLA_TABLES } from "../urlaValidation";
+import { stripEncryptedFields } from "../../services/piiVault";
+import { evaluateTridTrigger } from "../../services/trid";
+
+// Verify that an internal staff user is actually assigned to the given application.
+// Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
+// deal-team membership for processor/underwriter/closer.
+// External partner roles (broker, lender) are NOT permitted by this helper.
+// Exported: the LO-2 scenario route reuses this gate (one access model, no forks).
+import { maskUrlaPersonalInfo } from "./access";
+
+export function registerUrlaRoutes(
+  app: Express,
+  storage: IStorage,
+) {
+  // URLA Data Routes
+  app.get("/api/urla/:applicationId", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const urlaData = await storage.getCompleteUrlaData(applicationId);
+      // Redact raw PII for external partners (broker/lender). They may be
+      // deal-team members but must not see full SSN/DOB — matching the
+      // redaction discipline already applied on the credit/verification routes
+      // in compliance.ts. The borrower (a client role) and internal staff are
+      // unaffected and see the full record.
+      if (isStaffRole(user.role) && !isInternalStaffRole(user.role)) {
+        if (urlaData.personalInfo) {
+          urlaData.personalInfo = maskUrlaPersonalInfo(urlaData.personalInfo);
+        }
+        urlaData.allPersonalInfo = (urlaData.allPersonalInfo ?? []).map(maskUrlaPersonalInfo);
+      }
+      // Ciphertext/IV/key columns never leave the server — clients get last4 only.
+      res.json({
+        application,
+        ...urlaData,
+        personalInfo: urlaData.personalInfo ? stripEncryptedFields(urlaData.personalInfo) : urlaData.personalInfo,
+        allPersonalInfo: urlaData.allPersonalInfo.map(stripEncryptedFields),
+        assets: urlaData.assets.map(stripEncryptedFields),
+        liabilities: urlaData.liabilities.map(stripEncryptedFields),
+      });
+    } catch (error) {
+      console.error("Get URLA data error:", error);
+      res.status(500).json({ error: "Failed to get URLA data" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/personal-info", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      // Whitelist to table columns (mass-assignment defense) and pass the raw
+      // `ssn` through to storage, where ssnVault validates + encrypts it
+      // (InvalidSsnError → 400 below). stripEncryptedFields keeps ciphertext
+      // out of the response.
+      const sanitized = sanitizePersonalInfoBody(req.body);
+      if (!sanitized.ok) {
+        return res.status(400).json({ error: sanitized.error });
+      }
+      const data = { ...sanitized.data, applicationId };
+      const result = await storage.upsertUrlaPersonalInfo(data as any);
+
+      // TRID §1026.2(a)(3): the SSN often arrives here as the 6th piece of
+      // application information — evaluate the Loan Estimate trigger.
+      try {
+        const trid = await evaluateTridTrigger(applicationId);
+        if (trid.justTriggered) {
+          logAudit(req, "trid.application_triggered", "loan_application", applicationId, {
+            leDueDate: trid.leDueDate?.toISOString(),
+          });
+        }
+      } catch (tridErr) {
+        console.error("[TRID] Trigger evaluation failed (non-fatal):", tridErr);
+      }
+
+      res.json(stripEncryptedFields(result));
+    } catch (error) {
+      if (error instanceof InvalidSsnError) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Save personal info error:", error);
+      res.status(500).json({ error: "Failed to save personal info" });
+    }
+  });
+
+  /**
+   * Audited full-SSN reveal. Everything else in the API returns the masked
+   * form; this endpoint exists for the narrow staff workflows that genuinely
+   * need the full value (credit pulls, GSE casefile fixes). Owner borrowers
+   * may read their own. Every call writes an audit entry.
+   */
+  app.get("/api/urla/:applicationId/ssn", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const seq = Math.max(parseInt(String(req.query.borrowerSequenceNumber ?? "1"), 10) || 1, 1);
+
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const isOwner = application.userId === user.id;
+      const allowedStaff = ["admin", "underwriter", "processor"];
+      if (!isOwner && !allowedStaff.includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const ssn = await storage.getDecryptedUrlaSsn(applicationId, seq);
+      if (!ssn) {
+        return res.status(404).json({ error: "No SSN on file" });
+      }
+
+      await logAudit(req, "urla.ssn_reveal", "loan_application", applicationId, {
+        borrowerSequenceNumber: seq,
+        role: user.role,
+      });
+      res.json({ ssn });
+    } catch (error) {
+      console.error("SSN reveal error:", error);
+      res.status(500).json({ error: "Failed to retrieve SSN" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/employment", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const data = { ...pickTableFields(URLA_TABLES.employment, req.body), applicationId };
+      const result = await storage.createEmploymentHistory(data as any);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Create employment error:", error);
+      res.status(500).json({ error: "Failed to create employment record" });
+    }
+  });
+
+  app.patch("/api/urla/employment/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getEmploymentHistoryById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      // Whitelist to table columns; applicationId is always stripped (immutable).
+      const safeBody = pickTableFields(URLA_TABLES.employment, req.body);
+      const result = await storage.updateEmploymentHistory(id, safeBody as any);
+      if (!result) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      res.json(result);
+    } catch (error) {
+      console.error("Update employment error:", error);
+      res.status(500).json({ error: "Failed to update employment record" });
+    }
+  });
+
+  app.delete("/api/urla/employment/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getEmploymentHistoryById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      await storage.deleteEmploymentHistory(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete employment error:", error);
+      res.status(500).json({ error: "Failed to delete employment record" });
+    }
+  });
+
+  // Self-employment income worksheet (Form 1084 / B3-3.5 & B3-3.6). This is a
+  // structured JSON object, so it does NOT go through the generic employment
+  // save (pickTableFields drops JSON by design) — it has its own Zod-validated
+  // write path. Providing a worksheet marks the record self-employed.
+  app.put("/api/urla/employment/:id/self-employment", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getEmploymentHistoryById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const parsed = selfEmploymentWorksheetSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid self-employment worksheet",
+          details: parsed.error.flatten(),
+        });
+      }
+      const result = await storage.updateEmploymentHistory(id, {
+        selfEmploymentIncome: parsed.data,
+        isSelfEmployed: true,
+      } as any);
+      if (!result) {
+        return res.status(404).json({ error: "Employment record not found" });
+      }
+
+      // P5 accuracy loop: a saved worksheet changes qualifying income — rerun
+      // the decision (and its income-path evaluation). A confirmed smart-fill
+      // draft is distinguishable in the snapshot trail by its trigger.
+      const { recalculateDecision } = await import("../../services/decisionEngine");
+      void recalculateDecision(
+        record.applicationId,
+        parsed.data.confirmedByBorrowerAt ? "worksheet_confirmed" : "income_updated",
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Save self-employment worksheet error:", error);
+      res.status(500).json({ error: "Failed to save self-employment worksheet" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/other-income", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const data = { ...pickTableFields(URLA_TABLES.otherIncome, req.body), applicationId };
+      const result = await storage.createOtherIncomeSource(data as any);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Create other income error:", error);
+      res.status(500).json({ error: "Failed to create other income source" });
+    }
+  });
+
+  app.delete("/api/urla/other-income/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getOtherIncomeSourceById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Income source not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      await storage.deleteOtherIncomeSource(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete other income error:", error);
+      res.status(500).json({ error: "Failed to delete other income source" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/assets", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const data = { ...pickTableFields(URLA_TABLES.asset, req.body, ["accountNumber"]), applicationId };
+      const result = await storage.createUrlaAsset(data as any);
+      res.status(201).json(stripEncryptedFields(result));
+    } catch (error) {
+      console.error("Create asset error:", error);
+      res.status(500).json({ error: "Failed to create asset" });
+    }
+  });
+
+  app.patch("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getUrlaAssetById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      // Whitelist to table columns; applicationId is always stripped (immutable).
+      const safeBody = pickTableFields(URLA_TABLES.asset, req.body, ["accountNumber"]);
+      const result = await storage.updateUrlaAsset(id, safeBody as any);
+      if (!result) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      res.json(stripEncryptedFields(result));
+    } catch (error) {
+      console.error("Update asset error:", error);
+      res.status(500).json({ error: "Failed to update asset" });
+    }
+  });
+
+  app.delete("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getUrlaAssetById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      await storage.deleteUrlaAsset(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete asset error:", error);
+      res.status(500).json({ error: "Failed to delete asset" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/liabilities", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const data = { ...pickTableFields(URLA_TABLES.liability, req.body, ["accountNumber"]), applicationId };
+      const result = await storage.createUrlaLiability(data as any);
+      res.status(201).json(stripEncryptedFields(result));
+    } catch (error) {
+      console.error("Create liability error:", error);
+      res.status(500).json({ error: "Failed to create liability" });
+    }
+  });
+
+  app.patch("/api/urla/liabilities/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getUrlaLiabilityById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Liability not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      // Whitelist to table columns; applicationId is always stripped (immutable).
+      const safeBody = pickTableFields(URLA_TABLES.liability, req.body, ["accountNumber"]);
+      const result = await storage.updateUrlaLiability(id, safeBody as any);
+      if (!result) {
+        return res.status(404).json({ error: "Liability not found" });
+      }
+      res.json(stripEncryptedFields(result));
+    } catch (error) {
+      console.error("Update liability error:", error);
+      res.status(500).json({ error: "Failed to update liability" });
+    }
+  });
+
+  app.delete("/api/urla/liabilities/:id", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { id } = req.params;
+      const record = await storage.getUrlaLiabilityById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Liability not found" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(record.applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      await storage.deleteUrlaLiability(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete liability error:", error);
+      res.status(500).json({ error: "Failed to delete liability" });
+    }
+  });
+
+  app.post("/api/urla/:applicationId/property-info", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const data = { ...pickTableFields(URLA_TABLES.propertyInfo, req.body), applicationId };
+      const result = await storage.upsertUrlaPropertyInfo(data as any);
+      res.json(result);
+    } catch (error) {
+      console.error("Save property info error:", error);
+      res.status(500).json({ error: "Failed to save property info" });
+    }
+  });
+
+  // Bulk save URLA data - only updates sections that are explicitly provided with content
+  app.post("/api/urla/:applicationId/save", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId } = req.params;
+      const { personalInfo, employmentHistory, otherIncomeSources, assets, liabilities, propertyInfo, declarations, demographics, coApplicants } = req.body;
+
+      // Verify the requesting user owns (or has staff access to) this application
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const hasContent = (obj: any) =>
+        obj && typeof obj === "object" &&
+        Object.keys(obj).some(key => obj[key] !== undefined && obj[key] !== "" && obj[key] !== null);
+
+      const demographicsHasContent = (d: any) =>
+        d && typeof d === "object" && (
+          d.ethnicityHispanicLatino || d.ethnicityNotHispanicLatino || d.ethnicityNotProvided ||
+          d.raceAmericanIndian || d.raceAsian || d.raceBlack || d.raceNativeHawaiian || d.raceWhite || d.raceNotProvided ||
+          d.sexFemale || d.sexMale || d.sexNotProvided ||
+          d.ageNotProvided || (d.age !== null && d.age !== undefined && d.age !== "")
+        );
+
+      const collectionMethod = isStaffRole(user.role) ? "loan_officer" : "borrower";
+
+      // Writes one borrower's URLA sections, scoped to a borrowerSequenceNumber.
+      // Bodies are whitelisted to their table's columns (pickTableFields) before
+      // any write. Returns ok=false with an http status when a referenced child
+      // record fails the ownership check or a field fails format validation.
+      const writeBorrowerSections = async (opts: {
+        seq: number;
+        isPrimary: boolean;
+        personalInfo?: any;
+        employmentHistory?: any[];
+        assets?: any[];
+        liabilities?: any[];
+        declarations?: any;
+        demographics?: any;
+      }): Promise<{ ok: boolean; status?: number; error?: string; results: any }> => {
+        const { seq, isPrimary } = opts;
+        const results: any = {};
+
+        if (hasContent(opts.personalInfo)) {
+          const sanitized = sanitizePersonalInfoBody(opts.personalInfo);
+          if (!sanitized.ok) {
+            return { ok: false, status: 400, error: sanitized.error, results };
+          }
+          results.personalInfo = await storage.upsertUrlaPersonalInfo({
+            ...sanitized.data,
+            applicationId,
+            borrowerSequenceNumber: seq,
+            isPrimaryBorrower: isPrimary,
+          } as any);
+        }
+
+        if (Array.isArray(opts.employmentHistory) && opts.employmentHistory.length > 0) {
+          results.employmentHistory = [];
+          for (const emp of opts.employmentHistory) {
+            if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
+            const cleanEmp = pickTableFields(URLA_TABLES.employment, emp);
+            // The self-employment worksheet is a structured JSON object, so
+            // pickTableFields drops it (URLA tables are scalar-only by design).
+            // Validate it explicitly here and merge it back in. `null` clears it.
+            if (emp.selfEmploymentIncome === null) {
+              (cleanEmp as any).selfEmploymentIncome = null;
+            } else if (emp.selfEmploymentIncome !== undefined) {
+              const wk = selfEmploymentWorksheetSchema.safeParse(emp.selfEmploymentIncome);
+              if (!wk.success) {
+                return { ok: false, status: 400, error: "Invalid self-employment worksheet", results };
+              }
+              (cleanEmp as any).selfEmploymentIncome = wk.data;
+            }
+            if (emp.id) {
+              const existing = await storage.getEmploymentHistoryById(emp.id);
+              if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
+              const updated = await storage.updateEmploymentHistory(emp.id, { ...cleanEmp, borrowerSequenceNumber: seq } as any);
+              if (updated) results.employmentHistory.push(updated);
+            } else {
+              const created = await storage.createEmploymentHistory({
+                ...cleanEmp,
+                applicationId,
+                borrowerSequenceNumber: seq,
+                employmentType: cleanEmp.employmentType || "current",
+              } as any);
+              results.employmentHistory.push(created);
+            }
+          }
+        }
+
+        if (Array.isArray(opts.assets) && opts.assets.length > 0) {
+          results.assets = [];
+          for (const asset of opts.assets) {
+            if (!asset.accountType && !asset.financialInstitution) continue;
+            const cleanAsset = pickTableFields(URLA_TABLES.asset, asset, ["accountNumber"]);
+            if (asset.id) {
+              const existing = await storage.getUrlaAssetById(asset.id);
+              if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
+              const updated = await storage.updateUrlaAsset(asset.id, { ...cleanAsset, borrowerSequenceNumber: seq } as any);
+              if (updated) results.assets.push(updated);
+            } else if (asset.accountType) {
+              const created = await storage.createUrlaAsset({ ...cleanAsset, applicationId, borrowerSequenceNumber: seq } as any);
+              results.assets.push(created);
+            }
+          }
+        }
+
+        if (Array.isArray(opts.liabilities) && opts.liabilities.length > 0) {
+          results.liabilities = [];
+          for (const liability of opts.liabilities) {
+            if (!liability.liabilityType && !liability.creditorName) continue;
+            const cleanLiability = pickTableFields(URLA_TABLES.liability, liability, ["accountNumber"]);
+            if (liability.id) {
+              const existing = await storage.getUrlaLiabilityById(liability.id);
+              if (!existing || existing.applicationId !== applicationId) return { ok: false, results };
+              const updated = await storage.updateUrlaLiability(liability.id, { ...cleanLiability, borrowerSequenceNumber: seq } as any);
+              if (updated) results.liabilities.push(updated);
+            } else if (liability.liabilityType) {
+              const created = await storage.createUrlaLiability({ ...cleanLiability, applicationId, borrowerSequenceNumber: seq } as any);
+              results.liabilities.push(created);
+            }
+          }
+        }
+
+        if (hasContent(opts.declarations)) {
+          results.declarations = await storage.upsertBorrowerDeclarations({
+            ...pickTableFields(URLA_TABLES.declarations, opts.declarations),
+            applicationId,
+            borrowerSequenceNumber: seq,
+          } as any);
+        }
+
+        if (demographicsHasContent(opts.demographics)) {
+          results.demographics = await storage.upsertHmdaDemographics({
+            ...pickTableFields(URLA_TABLES.demographics, opts.demographics),
+            applicationId,
+            borrowerId: application.userId,
+            borrowerSequenceNumber: seq,
+            collectionMethod,
+          } as any);
+        }
+
+        return { ok: true, results };
+      };
+
+      // Primary borrower (sequence 1)
+      const primary = await writeBorrowerSections({
+        seq: 1,
+        isPrimary: true,
+        personalInfo,
+        employmentHistory,
+        assets,
+        liabilities,
+        declarations,
+        demographics,
+      });
+      if (!primary.ok) {
+        return res.status(primary.status ?? 403).json({ error: primary.error ?? "Access denied" });
+      }
+      const results: any = { ...primary.results };
+
+      // Property info (shared subject property)
+      if (hasContent(propertyInfo)) {
+        results.propertyInfo = await storage.upsertUrlaPropertyInfo({
+          ...pickTableFields(URLA_TABLES.propertyInfo, propertyInfo),
+          applicationId,
+        } as any);
+      }
+
+      // Other income sources (primary only) - only create new ones
+      if (otherIncomeSources && Array.isArray(otherIncomeSources) && otherIncomeSources.length > 0) {
+        results.otherIncomeSources = [];
+        for (const income of otherIncomeSources) {
+          if (!income.incomeSource || !income.monthlyAmount) continue;
+          if (income.id) continue;
+          const created = await storage.createOtherIncomeSource({
+            ...pickTableFields(URLA_TABLES.otherIncome, income),
+            applicationId,
+          } as any);
+          results.otherIncomeSources.push(created);
+        }
+      }
+
+      // Co-applicants (sequence 2, 3, ...)
+      if (Array.isArray(coApplicants) && coApplicants.length > 0) {
+        results.coApplicants = [];
+        for (let i = 0; i < coApplicants.length; i++) {
+          const co = coApplicants[i] || {};
+          const coResult = await writeBorrowerSections({
+            seq: i + 2,
+            isPrimary: false,
+            personalInfo: co.personalInfo,
+            employmentHistory: co.employmentHistory,
+            assets: co.assets,
+            liabilities: co.liabilities,
+            declarations: co.declarations,
+            demographics: co.demographics,
+          });
+          if (!coResult.ok) {
+            return res.status(coResult.status ?? 403).json({ error: coResult.error ?? "Access denied" });
+          }
+          results.coApplicants.push(coResult.results);
+        }
+      }
+
+      // Ciphertext/IV/key columns never leave the server.
+      const sanitizeBorrowerResults = (r: any) => ({
+        ...r,
+        ...(r.personalInfo ? { personalInfo: stripEncryptedFields(r.personalInfo) } : {}),
+        ...(Array.isArray(r.assets) ? { assets: r.assets.map(stripEncryptedFields) } : {}),
+        ...(Array.isArray(r.liabilities) ? { liabilities: r.liabilities.map(stripEncryptedFields) } : {}),
+      });
+      const safeResults = sanitizeBorrowerResults(results);
+      if (Array.isArray(safeResults.coApplicants)) {
+        safeResults.coApplicants = safeResults.coApplicants.map(sanitizeBorrowerResults);
+      }
+
+      // Autopilot (Phase 3): proactively build the document needs list from the
+      // borrower's stated URLA data — before any upload — so there's no dead
+      // time waiting on a human to say what's needed. Detached + gated (the
+      // cached global check means an OFF agent adds no work); the orchestrator
+      // re-checks the pilot allowlist.
+      (async () => {
+        const { getAutopilotConfig } = await import("../../services/autopilot/config");
+        if ((await getAutopilotConfig()).enabled) {
+          const { runAutopilotForSection } = await import("../../services/autopilot/orchestrator");
+          await runAutopilotForSection({ applicationId, triggeredBy: user.id });
+        }
+      })().catch((err) =>
+        console.warn(`[Autopilot] Section run failed for ${applicationId} (non-fatal):`, err?.message || err),
+      );
+
+      res.json(safeResults);
+    } catch (error) {
+      console.error("Save URLA data error:", error);
+      res.status(500).json({ error: "Failed to save URLA data" });
+    }
+  });
+
+  // ===== ASPIRING OWNER JOURNEY API =====
+
+}
