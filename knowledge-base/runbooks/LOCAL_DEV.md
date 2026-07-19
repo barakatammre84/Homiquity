@@ -86,12 +86,11 @@ TEST_BASE_URL=http://localhost:5002 pnpm test:integration
 
 ## Landing work on GitHub
 
-Direct pushes to `main` are barred by doctrine — the old `pnpm save`/`pnpm sync`
-one-command scripts were **removed** (PR #251). Since 2026-07-19 the repo is
-deliberately private on the GitHub Free plan, so nothing platform-side rejects a
-direct push; the control is the recipe itself. Everything lands as a short-lived
-branch → PR → `gate` check **watched to green** → squash merge
-([CICD.md](./CICD.md) §Shipping; never `gh pr merge --auto`):
+`main` is protected — direct pushes are blocked by branch protection and barred
+by doctrine; the old `pnpm save`/`pnpm sync` one-command scripts were **removed**
+(PR #251). Everything lands as a short-lived branch → PR → `gate` check green →
+squash merge ([CICD.md](./CICD.md) §Shipping; verify protection is live before
+trusting `--auto` — [TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6):
 
 ```bash
 git checkout -b <topic-branch>

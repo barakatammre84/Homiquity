@@ -41,13 +41,13 @@ within 7 days or has its access suspended.
 
 ## 5. Production change control
 
-- `main` is production. All changes land by pull request and must pass the CI `gate` check
-  (typecheck, unit tests, production-dependency audit at high/critical, schema ↔ migration
-  guard, design-token guard) before merge, **verified green at merge time as documented
-  procedure** ([TEAM_PRACTICES](../TEAM_PRACTICES.md) §6). *(2026-07-19: the repository is
-  deliberately private on the GitHub Free plan, which does not enforce branch protection on
-  private repositories — merge discipline is procedural, not platform-enforced. Direct
-  pushes to `main` are prohibited by policy.)*
+- `main` is production. Direct pushes are disabled by branch protection with a required CI
+  `gate` check (typecheck, unit tests, production-dependency audit at high/critical, schema
+  ↔ migration guard, design-token guard), **enforced for administrators** — all changes
+  land by pull request, verified green at merge time. *(Defense in depth: platform
+  enforcement depends on GitHub plan/visibility and briefly lapsed on 2026-07-19; the
+  documented merge procedure — gate verified green before merge, direct pushes prohibited
+  by policy — applies regardless. [TEAM_PRACTICES](../TEAM_PRACTICES.md) §6.)*
 - Database schema changes ship as versioned SQL migrations applied by CI on merge using a
   connection string **minted at run time** from `NEON_API_KEY`
   (`scripts/neon-connection-uri.cjs`); no standing production database password exists in

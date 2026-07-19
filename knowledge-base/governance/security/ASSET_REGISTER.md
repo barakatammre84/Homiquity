@@ -16,7 +16,7 @@ instances** anywhere. Access = which of the two team members hold console seats.
 |---|---|---|---|---|
 | Vercel | Application hosting (serverless), env secrets, deploys | Application traffic; runtime logs (response bodies allowlisted) | 2 | ⬜ enable |
 | Neon | Production PostgreSQL (managed; TLS; point-in-time recovery) | All application records; Restricted fields encrypted at field level (AES-256-GCM) | 2 | ⬜ enable |
-| GitHub | Source (private repo), CI (Actions), `NEON_API_KEY` secret — no enforced branch protection (Free-plan private repo; merge gate is procedural, [TEAM_PRACTICES](../TEAM_PRACTICES.md) §6) | Source code; no borrower data | 2 | ⬜ enable |
+| GitHub | Source (**public repo** as of 2026-07-19, founder decision "for now, pro later"), CI (Actions), branch protection (re-applied 2026-07-19), `NEON_API_KEY` secret. ⬜ enable secret scanning + push protection (free on public repos) | Source code — **world-readable, including this knowledge base**; no borrower data | 2 | ⬜ enable |
 | Google Workspace | Company email / identity | Business communications | 2 | ⬜ enable |
 | Google Cloud (GCS + optional KMS) | Borrower document storage (private bucket, presigned access); optional envelope-encryption KEK | Restricted documents | Service account via Vercel env; console: 1–2 | ⬜ enable |
 | Anthropic Console | AI API keys (document extraction, AI Coach) | Prompt context may include borrower data — governed by the [AI Governance Policy](../AI_GOVERNANCE_POLICY.md) | 2 | ⬜ enable |

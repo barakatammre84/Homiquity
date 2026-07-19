@@ -114,23 +114,32 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
 - **The integration suite trips the auth rate limiter** — boot the test server with
   `RATE_LIMIT_RELAXED=true` (point 3 above).
 
-## 6. Push and merge policy *(rewritten 2026-07-19 evening: the gate is procedural on the Free plan)*
+## 6. Push and merge policy *(rewritten 2026-07-19: platform enforcement follows plan/visibility — verify it, don't assume it)*
 
-- **Nobody direct-pushes `main`, founder included — as binding doctrine, not platform
-  enforcement.** On 2026-07-19 the founder deliberately made the repo **private** to protect
-  the code and chose to stay on the GitHub **Free** plan, where private repos get no branch
-  protection or rulesets — the 2026-07-17 rule is stored but **inert**, and nothing
-  platform-side blocks a direct push, a force-push, a deletion of `main`, or a pre-green
-  merge. The lane itself is unchanged and is enforced by this recipe: short-lived branch →
-  PR → **watch the gate to green** (`gh pr checks <n> --watch --fail-fast`) → **squash
-  merge** (`gh pr merge <n> --squash`). **Never `gh pr merge --auto`** — with no required
-  checks it cannot arm; it merges instantly with the gate still running (#252–#259 all
-  landed that way on 2026-07-19 before this was understood; every gate passed after the
-  fact). No required reviews: the author merges their own green PR. Recipe detail:
-  [CICD.md](../runbooks/CICD.md) §Shipping. *(The founder-approved direct-push lane this
-  section once described stays dead. An emergency direct push is now technically possible —
-  it remains break-glass: a deliberate founder action, ledgered in CICD.md, never
-  autonomous. See [ROLLBACK.md](../runbooks/ROLLBACK.md) §2.)*
+- **Nobody direct-pushes `main`, founder included, and no PR merges before its `gate` is
+  green.** Branch protection currently enforces this (required `gate` check +
+  `enforce_admins`; force-push and deletion of `main` blocked; re-applied 2026-07-19
+  ~19:45Z, probe-verified by unmerged PR #262). Work lands as a short-lived branch → PR →
+  gate green → **squash merge**. No required reviews: the author merges their own green PR.
+  Recipe: [CICD.md](../runbooks/CICD.md) §Shipping.
+- **⚠️ The 2026-07-19 lesson: GitHub enforces branch protection only while plan/visibility
+  allow it, and a flip can silently *drop the rule entirely*.** The repo went private
+  ~17:20Z that day (Free plan ⇒ no protection on private repos) — the rule wasn't merely
+  suspended, it was **deleted** (API 404) — and **#252–#259 merged pre-green** because
+  `gh pr merge --auto` cannot arm with nothing required: it merges instantly, gate still
+  running (all eight gates passed post-hoc). The repo was made public again ~19:45Z
+  (founder: "for now, pro later") and the rule re-applied from the documented config in
+  [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md) §One-time setup. So the standing habit:
+  **before relying on `--auto`, verify enforcement is live** —
+  `gh api repos/barakatammre84/MortgageStream/branches/main/protection` must list the
+  `gate` context as required. If it 403s/404s or lists no checks, enforcement is OFF:
+  fall back to **watch-then-merge** (`gh pr checks <n> --watch --fail-fast` → green →
+  `gh pr merge <n> --squash`), flag it to the founder, and never merge red/pending.
+  Direct pushes and force-pushes to `main` stay barred by doctrine regardless of what the
+  platform currently blocks. *(Break-glass for a genuine emergency: a deliberate,
+  ledgered founder action — the `enforce_admins` toggle while protection is live, a
+  knowing direct push only when it is not. Never autonomous, never silent —
+  [ROLLBACK.md](../runbooks/ROLLBACK.md) §2.)*
 - Every merge to `main` deploys production. A deploying merge — and any action against the
   production DB or env — is not complete until its entry lands in the **production change
   ledger** in [CICD.md](../runbooks/CICD.md), same session: what shipped, prod DB/env actions,
