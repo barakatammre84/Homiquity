@@ -10,23 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { DealTeam } from "@/components/DealTeam";
 import { DealTeamManagement } from "@/components/DealTeamManagement";
 import { TaxIntelligencePanel } from "@/components/staff/TaxIntelligencePanel";
@@ -37,39 +21,28 @@ import {
   DollarSign,
   CheckCircle2,
   Clock,
-  AlertCircle,
-  Upload,
   Download,
-  MessageSquare,
   ArrowLeft,
   Briefcase,
   CreditCard,
   Home,
-  Shield,
-  RefreshCw,
-  AlertOctagon,
-  FileWarning,
   Users,
   Brain,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { format } from "date-fns";
 import { ChangeOfCircumstancePanel } from "@/components/staff/ChangeOfCircumstancePanel";
 import { RiskBriefPanel } from "@/components/staff/RiskBriefPanel";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { canReviewDocuments } from "@shared/documentStatus";
-import { formatCurrency, formatDate, getStatusLabel } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { DocumentReviewPanel } from "@/components/staff/DocumentReviewPanel";
-import {
-  STAFF_SETTABLE_STATUSES,
-  CREDIT_DECISION_ROLES,
-  isProtectedCreditDecisionStatus,
-  isApprovalOutcomeStatus,
-  type LoanCondition,
-  type UrlaPersonalInfo,
-} from "@shared/schema";
+import { CREDIT_DECISION_ROLES, type UrlaPersonalInfo } from "@shared/schema";
 
-import { type ActivityItem, type ApplicationData, type PipelineData, type CreditSummary, type CreditAuditEntry, HMDA_DENIAL_REASONS } from "./borrowerFile/model";
+import { type ApplicationData, type PipelineData } from "./borrowerFile/model";
+import { StatusUpdateDialog } from "./borrowerFile/StatusUpdateDialog";
+import { ConditionsTab } from "./borrowerFile/ConditionsTab";
+import { CreditTab } from "./borrowerFile/CreditTab";
+import { TimelineTab } from "./borrowerFile/TimelineTab";
 
 // Lazy so pdfjs-dist stays in a staff-only async chunk, off every borrower
 // bundle and off this page's own initial render.
@@ -106,22 +79,6 @@ export default function BorrowerFile() {
     queryKey: ['/api/urla', applicationId],
     enabled: !!applicationId && !authLoading,
   });
-
-  const { data: creditData, isLoading: creditLoading } = useQuery<CreditSummary>({
-    queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'],
-    enabled: !!applicationId && !authLoading,
-  });
-
-  const { data: auditLog } = useQuery<{ auditLog: CreditAuditEntry[] }>({
-    queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'],
-    enabled: !!applicationId && !authLoading,
-  });
-
-  const [conditionAction, setConditionAction] = useState<{
-    condition: LoanCondition | null;
-    action: "cleared" | "waived" | "not_applicable" | null;
-    notes: string;
-  }>({ condition: null, action: null, notes: "" });
 
   const [exportingMismo, setExportingMismo] = useState(false);
   const handleExportMismo = async () => {
@@ -162,22 +119,6 @@ export default function BorrowerFile() {
     }
   };
 
-  const [statusUpdate, setStatusUpdate] = useState<{ open: boolean; status: string; notes: string; denialReasons: string[] }>({ open: false, status: "", notes: "", denialReasons: [] });
-  const statusUpdateMutation = useMutation({
-    mutationFn: async ({ status, notes, denialReasons }: { status: string; notes?: string; denialReasons?: string[] }) => {
-      return apiRequest("PATCH", `/api/loan-applications/${applicationId}/status`, { status, notes, denialReasons });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'pipeline'] });
-      toast({ title: "Status Updated", description: `Application status has been changed.` });
-      setStatusUpdate({ open: false, status: "", notes: "", denialReasons: [] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
-    },
-  });
-
   const verifyFinancialsMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", `/api/loan-applications/${applicationId}/verify-financials`, {});
@@ -191,134 +132,6 @@ export default function BorrowerFile() {
     },
     onError: (error: Error) => {
       toast({ title: "Verification Failed", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const updateConditionMutation = useMutation({
-    mutationFn: async ({ id, status, clearanceNotes }: { id: string; status: string; clearanceNotes?: string }) => {
-      return apiRequest("PATCH", `/api/conditions/${id}`, { status, clearanceNotes });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'pipeline'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
-      const actionLabel = conditionAction.action === "cleared" ? "Cleared" : conditionAction.action === "waived" ? "Waived" : "Marked N/A";
-      toast({
-        title: `Condition ${actionLabel}`,
-        description: `"${conditionAction.condition?.title}" has been ${actionLabel.toLowerCase()}.`,
-      });
-      setConditionAction({ condition: null, action: null, notes: "" });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update condition",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleConditionAction = () => {
-    if (!conditionAction.condition || !conditionAction.action) return;
-    updateConditionMutation.mutate({
-      id: conditionAction.condition.id,
-      status: conditionAction.action,
-      clearanceNotes: conditionAction.notes || undefined,
-    });
-  };
-
-  const pullCreditMutation = useMutation({
-    mutationFn: async (pullType: string) => {
-      const response = await apiRequest("POST", `/api/loan-applications/${applicationId}/credit/pull`, {
-        pullType,
-        bureaus: ["experian", "equifax", "transunion"],
-      });
-      return await response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
-      toast({
-        title: "Credit Pull Complete",
-        description: "Credit report has been successfully retrieved.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Credit Pull Failed",
-        description: error.message || "Failed to pull credit report",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Postal fallback for the ECOA/Reg B delivery window: download the notice as
-  // a mailable PDF, send it, then confirm delivery with the method used.
-  // Confirmation goes through a dialog: marking a notice delivered records the
-  // Reg B §1002.9 obligation as met and there is no undo endpoint.
-  const [noticeDelivery, setNoticeDelivery] = useState<{ open: boolean; method: string; confirmation: string }>({
-    open: false,
-    method: "mail",
-    confirmation: "",
-  });
-  const [downloadingNotice, setDownloadingNotice] = useState(false);
-
-  const handleDownloadAdverseActionPdf = async (adverseActionId: string) => {
-    setDownloadingNotice(true);
-    try {
-      const res = await fetch(`/api/credit/adverse-action/${adverseActionId}/letter-pdf`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error || "Failed to generate the notice PDF.");
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `adverse-action-${adverseActionId.substring(0, 8)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast({
-        title: "Notice Downloaded",
-        description: "Print and mail the letter, then confirm delivery below.",
-      });
-    } catch (error) {
-      toast({
-        title: "Download Failed",
-        description: error instanceof Error ? error.message : "Unexpected error.",
-        variant: "destructive",
-      });
-    } finally {
-      setDownloadingNotice(false);
-    }
-  };
-
-  const confirmNoticeDeliveryMutation = useMutation({
-    mutationFn: async ({ adverseActionId, method, confirmation }: { adverseActionId: string; method: string; confirmation?: string }) => {
-      return apiRequest("POST", `/api/credit/adverse-action/${adverseActionId}/deliver`, {
-        deliveryMethod: method,
-        deliveryConfirmation: confirmation || undefined,
-      });
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'] });
-      setNoticeDelivery({ open: false, method: "mail", confirmation: "" });
-      toast({
-        title: "Delivery Confirmed",
-        description: `Adverse-action notice recorded as delivered via ${variables.method.replace(/_/g, "-")}.`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Delivery Confirmation Failed",
-        description: error.message,
-        variant: "destructive",
-      });
     },
   });
 
@@ -363,8 +176,6 @@ export default function BorrowerFile() {
     );
   }
 
-  const outstandingConditions = conditions.filter(c => c.status === "outstanding" || c.status === "submitted");
-  const clearedConditions = conditions.filter(c => c.status === "cleared" || c.status === "waived" || c.status === "not_applicable");
   const isStaff2 = isStaffRole(user?.role || "");
   // Mirrors the server's role gate on PATCH /:id/status (statusDecisions.ts):
   // final credit decisions are 403'd for everyone else, so grey them out here.
@@ -467,114 +278,11 @@ export default function BorrowerFile() {
                       )}
                     </>
                   )}
-                  <Dialog open={statusUpdate.open} onOpenChange={(o) => setStatusUpdate(prev => ({ ...prev, open: o }))}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline" data-testid="button-update-status">
-                        <RefreshCw className="mr-1 h-3 w-3" /> Update Status
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Update Application Status</DialogTitle>
-                        <DialogDescription>
-                          Change the application status. The borrower will be notified.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label>New Status</Label>
-                          <Select value={statusUpdate.status} onValueChange={(v) => setStatusUpdate(prev => ({ ...prev, status: v }))}>
-                            <SelectTrigger data-testid="select-new-status">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {/* Derived from the canonical vocabulary — the server's
-                                  staffStatusSchema accepts exactly this list. Hand-listing
-                                  statuses here is the phantom-status bug class
-                                  (tests/statusVocabulary.test.ts). */}
-                              {STAFF_SETTABLE_STATUSES.map((s) => {
-                                const locked = isProtectedCreditDecisionStatus(s) && !canSetCreditDecisions;
-                                return (
-                                  <SelectItem key={s} value={s} disabled={locked} data-testid={`option-status-${s}`}>
-                                    {getStatusLabel(s)}
-                                    {locked && " (underwriter/admin only)"}
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {statusUpdate.status === "denied" && (
-                          <div className="space-y-2">
-                            <Label>Denial Reasons (HMDA — select at least 2)</Label>
-                            <div className="space-y-2 rounded-md border p-3">
-                              {HMDA_DENIAL_REASONS.map((reason) => {
-                                const checked = statusUpdate.denialReasons.includes(reason);
-                                return (
-                                  <label key={reason} className="flex items-center gap-2 text-sm cursor-pointer">
-                                    <Checkbox
-                                      checked={checked}
-                                      onCheckedChange={(value) =>
-                                        setStatusUpdate(prev => ({
-                                          ...prev,
-                                          denialReasons: value
-                                            ? [...prev.denialReasons, reason]
-                                            : prev.denialReasons.filter(r => r !== reason),
-                                        }))
-                                      }
-                                      data-testid={`checkbox-denial-${reason}`}
-                                    />
-                                    {reason}
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                        <div className="space-y-2">
-                          <Label>Notes (optional)</Label>
-                          <Textarea
-                            value={statusUpdate.notes}
-                            onChange={(e) => setStatusUpdate(prev => ({ ...prev, notes: e.target.value }))}
-                            placeholder="Reason for status change..."
-                            data-testid="input-status-notes"
-                          />
-                        </div>
-                      </div>
-                      {/* Same set the server 422s on via assertVerifiedForDecisioning:
-                          every approval outcome, not just pre_approved. */}
-                      {isApprovalOutcomeStatus(statusUpdate.status) &&
-                        application.financialDataProvenance !== "verified" && (
-                          <div className="rounded-md border border-border bg-warning-subtle p-3 text-sm text-warning-subtle-foreground">
-                            Financials must be verified before an approval outcome can be set. Use
-                            "Mark Financials Verified" above once the borrower's income, assets, and
-                            credit are backed by documentation.
-                          </div>
-                        )}
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setStatusUpdate({ open: false, status: "", notes: "", denialReasons: [] })}>
-                          Cancel
-                        </Button>
-                        <Button
-                          disabled={
-                            !statusUpdate.status ||
-                            statusUpdateMutation.isPending ||
-                            (statusUpdate.status === "denied" && statusUpdate.denialReasons.length < 2) ||
-                            (isApprovalOutcomeStatus(statusUpdate.status) &&
-                              application.financialDataProvenance !== "verified")
-                          }
-                          onClick={() => statusUpdateMutation.mutate({
-                            status: statusUpdate.status,
-                            notes: statusUpdate.notes || undefined,
-                            denialReasons: statusUpdate.status === "denied" ? statusUpdate.denialReasons : undefined,
-                          })}
-                          data-testid="button-confirm-status-update"
-                        >
-                          {statusUpdateMutation.isPending ? "Updating..." : "Update Status"}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                  <StatusUpdateDialog
+                    applicationId={applicationId}
+                    financialDataProvenance={application.financialDataProvenance}
+                    canSetCreditDecisions={canSetCreditDecisions}
+                  />
                 </div>
               </div>
 
@@ -808,525 +516,19 @@ export default function BorrowerFile() {
                 </TabsContent>
 
                 <TabsContent value="conditions" className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <AlertCircle className="h-5 w-5 text-warning-subtle-foreground" />
-                          Outstanding ({outstandingConditions.length})
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ScrollArea className="h-[400px]">
-                          {outstandingConditions.length === 0 ? (
-                            <p className="text-center text-muted-foreground py-4">
-                              No outstanding conditions
-                            </p>
-                          ) : (
-                            <div className="space-y-2">
-                              {outstandingConditions.map((cond) => (
-                                <div
-                                  key={cond.id}
-                                  className="rounded-lg border p-3"
-                                  data-testid={`condition-outstanding-${cond.id}`}
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0 flex-1">
-                                      <p className="font-medium">{cond.title}</p>
-                                      {cond.description && (
-                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{cond.description}</p>
-                                      )}
-                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                        <Badge variant="outline" className="text-xs">{cond.category}</Badge>
-                                        <Badge variant={cond.priority === "prior_to_approval" ? "destructive" : "secondary"} className="text-xs">
-                                          {cond.priority?.replace(/_/g, " ")}
-                                        </Badge>
-                                        {cond.status === "submitted" && (
-                                          <Badge variant="default" className="text-xs">Submitted</Badge>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {isStaff2 && (
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <Button
-                                          size="sm"
-                                          variant="default"
-                                          onClick={() => setConditionAction({ condition: cond, action: "cleared", notes: "" })}
-                                          data-testid={`button-clear-condition-${cond.id}`}
-                                        >
-                                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                                          Clear
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => setConditionAction({ condition: cond, action: "waived", notes: "" })}
-                                          data-testid={`button-waive-condition-${cond.id}`}
-                                        >
-                                          Waive
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => setConditionAction({ condition: cond, action: "not_applicable", notes: "" })}
-                                          data-testid={`button-na-condition-${cond.id}`}
-                                        >
-                                          N/A
-                                        </Button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </ScrollArea>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground" />
-                          Resolved ({clearedConditions.length})
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <ScrollArea className="h-[400px]">
-                          {clearedConditions.length === 0 ? (
-                            <p className="text-center text-muted-foreground py-4">
-                              No resolved conditions yet
-                            </p>
-                          ) : (
-                            <div className="space-y-2">
-                              {clearedConditions.map((cond) => (
-                                <div
-                                  key={cond.id}
-                                  className="rounded-lg border border-border/20 p-3"
-                                  data-testid={`condition-resolved-${cond.id}`}
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div>
-                                      <p className="font-medium">{cond.title}</p>
-                                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                        <Badge variant="outline" className="text-xs">{cond.category}</Badge>
-                                        <Badge
-                                          variant={cond.status === "cleared" ? "default" : "secondary"}
-                                          className="text-xs"
-                                        >
-                                          {cond.status === "cleared" ? "Cleared" : cond.status === "waived" ? "Waived" : "N/A"}
-                                        </Badge>
-                                      </div>
-                                      {cond.clearanceNotes && (
-                                        <p className="text-xs text-muted-foreground mt-1">{cond.clearanceNotes}</p>
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground shrink-0">
-                                      {formatDate(cond.clearedAt)}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </ScrollArea>
-                      </CardContent>
-                    </Card>
-                  </div>
+                  <ConditionsTab
+                    applicationId={applicationId}
+                    conditions={conditions}
+                    isStaff={isStaff2}
+                  />
                 </TabsContent>
 
                 <TabsContent value="timeline" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock className="h-5 w-5" />
-                        Activity Timeline
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="h-[400px]">
-                        {activities.length === 0 ? (
-                          <p className="text-center text-muted-foreground py-8">
-                            No activity recorded yet.
-                          </p>
-                        ) : (
-                          <div className="space-y-4">
-                            {activities.map((activity: ActivityItem, index: number) => (
-                              <div
-                                key={activity.id || index}
-                                className="relative flex gap-4 pb-4 last:pb-0"
-                              >
-                                <div className="flex flex-col items-center">
-                                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                                    {activity.activityType === "status_change" ? (
-                                      <Shield className="h-4 w-4 text-primary" />
-                                    ) : activity.activityType === "document_uploaded" ? (
-                                      <Upload className="h-4 w-4 text-primary" />
-                                    ) : activity.activityType === "autopilot_review" ? (
-                                      <Brain className="h-4 w-4 text-primary" />
-                                    ) : (
-                                      <MessageSquare className="h-4 w-4 text-primary" />
-                                    )}
-                                  </div>
-                                  {index < activities.length - 1 && (
-                                    <div className="flex-1 w-px bg-border" />
-                                  )}
-                                </div>
-                                <div className="flex-1 pt-1">
-                                  <p className="font-medium">{activity.title}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {activity.description}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {formatDate(activity.createdAt)}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
+                  <TimelineTab activities={activities} />
                 </TabsContent>
 
                 <TabsContent value="credit" className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="flex items-center gap-2">
-                            <Shield className="h-5 w-5" />
-                            Consent Status
-                          </CardTitle>
-                          {creditLoading && <RefreshCw className="h-4 w-4 animate-spin" />}
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        {creditData?.hasActiveConsent ? (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground" />
-                              <span className="font-medium text-success-subtle-foreground" data-testid="text-consent-status">
-                                Consent Active
-                              </span>
-                            </div>
-                            <div className="text-sm text-muted-foreground space-y-1">
-                              <p>Signed by: {creditData.consent?.borrowerFullName}</p>
-                              <p>Date: {creditData.consent?.consentTimestamp && format(new Date(creditData.consent.consentTimestamp), "MMM d, yyyy 'at' h:mm a")}</p>
-                              <p>Version: {creditData.consent?.disclosureVersion}</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                              <AlertCircle className="h-5 w-5 text-warning-subtle-foreground" />
-                              <span className="font-medium text-warning-subtle-foreground" data-testid="text-consent-status">
-                                No Active Consent
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              Borrower must provide credit authorization before a credit pull can be performed.
-                            </p>
-                            <Button variant="outline" size="sm" asChild>
-                              <Link href={`/credit-consent/${applicationId}`}>
-                                Request Consent
-                              </Link>
-                            </Button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="flex items-center gap-2">
-                            <CreditCard className="h-5 w-5" />
-                            Credit Report
-                          </CardTitle>
-                          <Button
-                            size="sm"
-                            disabled={!creditData?.hasActiveConsent || pullCreditMutation.isPending}
-                            onClick={() => pullCreditMutation.mutate("tri_merge")}
-                            data-testid="button-pull-credit"
-                          >
-                            {pullCreditMutation.isPending ? (
-                              <>
-                                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                                Pulling...
-                              </>
-                            ) : (
-                              <>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Pull Credit
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        {creditData?.latestPull ? (
-                          <div className="space-y-4">
-                            {creditData.latestPull.isSimulated && (
-                              <div
-                                className="rounded-md border bg-warning-subtle px-3 py-2 text-xs font-medium text-warning-subtle-foreground"
-                                data-testid="badge-simulated-pull"
-                              >
-                                Simulated credit data — no live bureau pull. Not for a binding decision.
-                              </div>
-                            )}
-                            <div className="grid grid-cols-4 gap-4 text-center">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Representative</p>
-                                <p className="text-2xl font-bold" data-testid="text-rep-score">
-                                  {creditData.latestPull.representativeScore || "—"}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Experian</p>
-                                <p className="text-lg font-semibold" data-testid="text-exp-score">
-                                  {creditData.latestPull.experianScore || "—"}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Equifax</p>
-                                <p className="text-lg font-semibold" data-testid="text-eqf-score">
-                                  {creditData.latestPull.equifaxScore || "—"}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">TransUnion</p>
-                                <p className="text-lg font-semibold" data-testid="text-tu-score">
-                                  {creditData.latestPull.transunionScore || "—"}
-                                </p>
-                              </div>
-                            </div>
-                            <Separator />
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <span className="text-muted-foreground">Tradelines:</span>
-                                <span className="ml-2 font-medium">
-                                  {creditData.latestPull.openTradelines}/{creditData.latestPull.totalTradelines}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Derogatory:</span>
-                                <span className="ml-2 font-medium">
-                                  {creditData.latestPull.derogatoryCount || 0}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Total Debt:</span>
-                                <span className="ml-2 font-medium">
-                                  {formatCurrency(creditData.latestPull.totalDebt)}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Monthly Payments:</span>
-                                <span className="ml-2 font-medium">
-                                  {formatCurrency(creditData.latestPull.monthlyPayments)}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Pulled: {creditData.latestPull.completedAt && format(new Date(creditData.latestPull.completedAt), "MMM d, yyyy")}
-                              {creditData.latestPull.expiresAt && ` • Expires: ${format(new Date(creditData.latestPull.expiresAt), "MMM d, yyyy")}`}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center py-6">
-                            <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                            <p className="text-muted-foreground">
-                              No credit report on file
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {creditData?.pullCount || 0} previous pull(s)
-                            </p>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {creditData?.adverseActionCount && creditData.adverseActionCount > 0 && (
-                    <Card className="border-border">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-destructive">
-                          <AlertOctagon className="h-5 w-5" />
-                          Adverse Action Notices ({creditData.adverseActionCount})
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {creditData.latestAdverseAction && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium capitalize">
-                                {creditData.latestAdverseAction.actionType.replace(/_/g, " ")}
-                              </span>
-                              <Badge variant={creditData.latestAdverseAction.deliveredAt ? "default" : "secondary"}>
-                                {creditData.latestAdverseAction.deliveredAt ? "Delivered" : "Pending Delivery"}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {creditData.latestAdverseAction.primaryReason}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Generated: {format(new Date(creditData.latestAdverseAction.noticeDate), "MMM d, yyyy")}
-                            </p>
-                            {creditData.latestAdverseAction.deliveredAt ? (
-                              <p className="text-xs text-muted-foreground" data-testid="text-notice-delivered">
-                                Delivered
-                                {creditData.latestAdverseAction.deliveryMethod
-                                  ? ` via ${creditData.latestAdverseAction.deliveryMethod.replace(/_/g, "-")}`
-                                  : ""}
-                                : {format(new Date(creditData.latestAdverseAction.deliveredAt), "MMM d, yyyy")}
-                              </p>
-                            ) : (
-                              <>
-                                <Separator />
-                                <p className="text-xs text-muted-foreground">
-                                  Reg B §1002.9 requires the applicant be notified within 30 days of the
-                                  decision. If the borrower hasn't seen the in-app notice, download the
-                                  letter, mail it, then confirm delivery here.
-                                </p>
-                              </>
-                            )}
-                            <div className="flex flex-wrap items-center gap-2 pt-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDownloadAdverseActionPdf(creditData.latestAdverseAction!.id)}
-                                disabled={downloadingNotice}
-                                data-testid="button-download-adverse-action-pdf"
-                              >
-                                <Download className="h-4 w-4 mr-2" />
-                                {downloadingNotice ? "Preparing…" : "Download for mailing"}
-                              </Button>
-                              {!creditData.latestAdverseAction.deliveredAt && (
-                                <Dialog
-                                  open={noticeDelivery.open}
-                                  onOpenChange={(o) => setNoticeDelivery(prev => ({ ...prev, open: o }))}
-                                >
-                                  <DialogTrigger asChild>
-                                    <Button size="sm" data-testid="button-confirm-notice-delivery">
-                                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                                      Confirm delivery
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>Confirm notice delivery</DialogTitle>
-                                      <DialogDescription>
-                                        This records the adverse-action notice as delivered, satisfying the
-                                        Reg B §1002.9 notification requirement. It cannot be undone — confirm
-                                        only after the notice has actually been sent to the borrower.
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4 py-4">
-                                      <div className="space-y-2">
-                                        <Label>Delivery method</Label>
-                                        <Select
-                                          value={noticeDelivery.method}
-                                          onValueChange={(v) => setNoticeDelivery(prev => ({ ...prev, method: v }))}
-                                        >
-                                          <SelectTrigger data-testid="select-notice-delivery-method">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="mail">Mail</SelectItem>
-                                            <SelectItem value="email">Email</SelectItem>
-                                            <SelectItem value="in_app">In-app</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div className="space-y-2">
-                                        <Label>Delivery confirmation (optional)</Label>
-                                        <Input
-                                          value={noticeDelivery.confirmation}
-                                          onChange={(e) => setNoticeDelivery(prev => ({ ...prev, confirmation: e.target.value }))}
-                                          placeholder="e.g., certified-mail tracking number"
-                                          maxLength={255}
-                                          data-testid="input-notice-delivery-confirmation"
-                                        />
-                                      </div>
-                                    </div>
-                                    <DialogFooter>
-                                      <Button
-                                        variant="outline"
-                                        onClick={() => setNoticeDelivery({ open: false, method: "mail", confirmation: "" })}
-                                        data-testid="button-cancel-notice-delivery"
-                                      >
-                                        Cancel
-                                      </Button>
-                                      <Button
-                                        onClick={() =>
-                                          confirmNoticeDeliveryMutation.mutate({
-                                            adverseActionId: creditData.latestAdverseAction!.id,
-                                            method: noticeDelivery.method,
-                                            confirmation: noticeDelivery.confirmation.trim() || undefined,
-                                          })
-                                        }
-                                        disabled={confirmNoticeDeliveryMutation.isPending}
-                                        data-testid="button-confirm-notice-delivery-submit"
-                                      >
-                                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                                        {confirmNoticeDeliveryMutation.isPending ? "Confirming…" : "Confirm delivery"}
-                                      </Button>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <FileWarning className="h-5 w-5" />
-                        Credit Audit Log
-                      </CardTitle>
-                      <CardDescription>
-                        Immutable record of all credit-related actions for FCRA compliance
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="h-[200px]">
-                        {auditLog?.auditLog && auditLog.auditLog.length > 0 ? (
-                          <div className="space-y-2">
-                            {auditLog.auditLog.map((entry) => (
-                              <div
-                                key={entry.id}
-                                className="flex items-start justify-between text-sm border-b pb-2 last:border-0"
-                              >
-                                <div>
-                                  <p className="font-medium capitalize">
-                                    {entry.action.replace(/_/g, " ")}
-                                  </p>
-                                  {entry.actionDetails && (
-                                    <p className="text-xs text-muted-foreground">
-                                      {JSON.stringify(entry.actionDetails)}
-                                    </p>
-                                  )}
-                                </div>
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                  {format(new Date(entry.timestamp), "MMM d, h:mm a")}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-center text-muted-foreground py-8">
-                            No credit activity recorded yet.
-                          </p>
-                        )}
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
+                  <CreditTab applicationId={applicationId} />
                 </TabsContent>
 
                 <TabsContent value="tax-intel" className="space-y-4">
@@ -1360,73 +562,6 @@ export default function BorrowerFile() {
               </Tabs>
       </PageShell>
 
-      <Dialog
-        open={!!conditionAction.condition && !!conditionAction.action}
-        onOpenChange={(open) => {
-          if (!open) setConditionAction({ condition: null, action: null, notes: "" });
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {conditionAction.action === "cleared" && "Clear Condition"}
-              {conditionAction.action === "waived" && "Waive Condition"}
-              {conditionAction.action === "not_applicable" && "Mark as Not Applicable"}
-            </DialogTitle>
-            <DialogDescription>
-              {conditionAction.action === "cleared" && "Confirm this condition has been satisfied and all required documentation is in place."}
-              {conditionAction.action === "waived" && "Waiving removes this requirement. Provide a reason for the audit trail."}
-              {conditionAction.action === "not_applicable" && "Mark this condition as not applicable to this loan file. Provide a reason for the audit trail."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="rounded-lg border p-3">
-              <p className="font-medium text-sm">{conditionAction.condition?.title}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {conditionAction.condition?.category} · {conditionAction.condition?.priority?.replace(/_/g, " ")}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>
-                {conditionAction.action === "cleared" ? "Notes (optional)" : "Reason (required for audit)"}
-              </Label>
-              <Textarea
-                value={conditionAction.notes}
-                onChange={(e) => setConditionAction(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder={
-                  conditionAction.action === "cleared"
-                    ? "Any notes about how the condition was satisfied..."
-                    : "Explain why this condition is being waived or marked N/A..."
-                }
-                data-testid="input-condition-notes"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConditionAction({ condition: null, action: null, notes: "" })}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConditionAction}
-              disabled={
-                updateConditionMutation.isPending ||
-                (conditionAction.action !== "cleared" && !conditionAction.notes.trim())
-              }
-              variant={conditionAction.action === "cleared" ? "default" : "outline"}
-              data-testid="button-confirm-condition-action"
-            >
-              {updateConditionMutation.isPending ? "Updating..." : (
-                conditionAction.action === "cleared" ? "Confirm Clear" :
-                conditionAction.action === "waived" ? "Confirm Waive" :
-                "Confirm N/A"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
