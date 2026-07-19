@@ -11,7 +11,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-PROD_URL="${PROD_URL:-https://mortgage-stream.vercel.app}"
+PROD_URL="${PROD_URL:-https://www.homiquity.com}"
 LOG="$(mktemp)"
 trap 'rm -f "$LOG"' EXIT
 FAILED=0
