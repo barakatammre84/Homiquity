@@ -11,6 +11,8 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# Canonical prod host since the 2026-07-13 domain cutover (the binding
+# post-deploy health check in CICD.md probes the same URL).
 PROD_URL="${PROD_URL:-https://www.homiquity.com}"
 LOG="$(mktemp)"
 trap 'rm -f "$LOG"' EXIT
@@ -46,8 +48,12 @@ echo "=== Homiquity daily checkup: $(date '+%Y-%m-%d %H:%M') ==="
 check "working tree clean"            tree_clean
 check "in sync with origin/main"      main_in_sync
 check "typecheck (tsc)"               npx tsc --noEmit
-check "unit tests"                    pnpm test --silent
-check "production build"              pnpm build --silent
+# No --silent on script runs: pnpm v10 forwards post-scriptname flags INTO the
+# script line, so it lands on the last command of the && chain — esbuild
+# rejected it and the build check failed on a healthy build (found 2026-07-19).
+# check() captures all output to $LOG anyway, so the flag bought nothing.
+check "unit tests"                    pnpm test
+check "production build"              pnpm build
 check "dependency vulnerabilities"    pnpm audit --audit-level=moderate
 check "no orphaned files"             node scripts/orphan-scan.cjs
 check "schema ↔ migrations synced"    node scripts/schema-migration-guard.cjs
