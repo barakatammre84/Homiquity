@@ -6,14 +6,9 @@ import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry, type IncomeSourceEntry } from "@shared/schema";
-import { COMPANY_IDENTITY, isLicensedState, unlicensedStateMessage } from "@shared/companyIdentity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AddressInput } from "@/components/AddressInput";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { US_STATES } from "@/lib/us-states";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -24,24 +19,15 @@ import {
 } from "@/lib/pendingAttribution";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
-import { 
-  ArrowRight, 
-  ChevronLeft, 
-  ChevronsUpDown,
-  DollarSign, 
+import {
+  ArrowRight,
+  ChevronLeft,
+  DollarSign,
   Home,
-  Briefcase,
-  TrendingUp,
-  Clock,
-  Shield,
-  Users,
   Loader2,
   Check,
   AlertCircle,
   Info,
-  Plus,
-  Trash2,
-  LogIn,
 } from "lucide-react";
 
 import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
@@ -52,6 +38,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { QUESTIONS_BY_ID } from "./preApproval/questions";
 import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
+import { StateStep } from "./preApproval/StateStep";
+import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
+import { RestoreDraftBanner, AuthGateOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
 
 export default function PreApproval() {
   return (
@@ -76,7 +65,6 @@ function PreApprovalFunnel() {
     state: funnelState,
   } = useFunnel();
   const direction = funnelState.direction;
-  const [stateComboOpen, setStateComboOpen] = useState(false);
   const [selectedIncomeTypes, setSelectedIncomeTypes] = useState<string[]>([]);
   const [incomeDetails, setIncomeDetails] = useState<Record<string, { annualAmount: string; employerName: string; yearsInRole: string }>>({});
   const [rentalProperties, setRentalProperties] = useState<RentalPropertyEntry[]>([]);
@@ -620,347 +608,27 @@ function PreApprovalFunnel() {
         );
 
       case "state":
-        const selectedState = form.watch("propertyState");
-        const selectedStateOption = US_STATES.find((s) => s.value === selectedState);
         return (
-          <div className="w-full max-w-lg mx-auto">
-            <Popover open={stateComboOpen} onOpenChange={setStateComboOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={stateComboOpen}
-                  size="lg"
-                  data-testid="button-state-combobox"
-                  className="w-full justify-between font-medium"
-                >
-                  {selectedStateOption
-                    ? `${selectedStateOption.label} (${selectedStateOption.value})`
-                    : "Search for a state..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Type a state name or abbreviation..." data-testid="input-state-search" />
-                  <CommandList>
-                    <CommandEmpty>No state found.</CommandEmpty>
-                    <CommandGroup>
-                      {US_STATES.map((state) => (
-                        <CommandItem
-                          key={state.value}
-                          value={`${state.label} ${state.value}`}
-                          data-testid={`option-state-${state.value}`}
-                          onSelect={() => {
-                            form.setValue("propertyState", state.value, { shouldValidate: true });
-                            setStateComboOpen(false);
-                            // Licensed-state gate (roadmap A5), mirroring the
-                            // server's 422: don't advance into a funnel we
-                            // can't finish — the notice below explains why.
-                            if (isLicensedState(state.value)) {
-                              setTimeout(() => next(form.getValues()), 200);
-                            }
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedState === state.value ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <span>{state.label}</span>
-                          <span className="ml-auto text-muted-foreground">{state.value}</span>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {selectedState && !isLicensedState(selectedState) && (
-              <div
-                className="mt-4 rounded-md border p-4 text-left text-sm text-muted-foreground"
-                role="alert"
-                data-testid="notice-unlicensed-state"
-              >
-                <p className="font-medium text-foreground">
-                  We can't take applications in {selectedStateOption?.label ?? selectedState} yet
-                </p>
-                <p className="mt-1 leading-relaxed">{unlicensedStateMessage(selectedState)}</p>
-                <p className="mt-2 leading-relaxed">
-                  Pick a different state to continue, or see{" "}
-                  <a href="/disclosures" className="font-medium text-primary underline underline-offset-2">
-                    where we're licensed
-                  </a>
-                  .
-                </p>
-              </div>
-            )}
-          </div>
+          <StateStep
+            value={form.watch("propertyState")}
+            onSelectState={(v) => form.setValue("propertyState", v, { shouldValidate: true })}
+            onAdvance={() => next(form.getValues())}
+          />
         );
 
       case "income_sources": {
-        const employmentTypeMap: Record<string, string> = { employed: "w2", self_employed: "self_employed", retired: "pension" };
-        // Self-employed borrowers keep their primary type in the list — the
-        // complex-income block exists precisely to detail 1099/business income.
-        const rawPrimaryType = employmentTypeMap[form.getValues("employmentType") || ""] || "";
-        const primaryType = rawPrimaryType === "self_employed" ? "" : rawPrimaryType;
-        const allIncomeTypes = [
-          { value: "w2", label: "W-2 Employment", icon: Briefcase },
-          { value: "self_employed", label: "Self-Employment / 1099", icon: Users },
-          { value: "rental", label: "Rental Income", icon: Home },
-          { value: "social_security", label: "Social Security", icon: Shield },
-          { value: "pension", label: "Pension / Retirement", icon: Clock },
-          { value: "investment", label: "Investment Income", icon: TrendingUp },
-          { value: "other", label: "Other Income", icon: DollarSign },
-        ].filter((t) => t.value !== primaryType);
-
-        const buildFormEntries = (types: string[], details: typeof incomeDetails, rentals: RentalPropertyEntry[]) => {
-          return types.map((t) => {
-            const d = details[t] || { annualAmount: "", employerName: "", yearsInRole: "" };
-            const entry: IncomeSourceEntry & { rentalProperties?: RentalPropertyEntry[] } = {
-              type: t as IncomeSourceEntry["type"],
-              annualAmount: d.annualAmount || "",
-              employerName: d.employerName || "",
-              yearsInRole: d.yearsInRole || "",
-            };
-            if (t === "rental" && rentals.length > 0) {
-              entry.rentalProperties = rentals;
-              const totalMonthly = rentals.reduce((sum, p) => sum + (parseFloat(p.monthlyRentalIncome.replace(/,/g, "")) || 0), 0);
-              entry.annualAmount = totalMonthly > 0 ? formatCurrency(String(Math.round(totalMonthly * 12))) : "";
-            }
-            return entry;
-          });
-        };
-
-        const toggleIncomeType = (typeValue: string) => {
-          const isSelected = selectedIncomeTypes.includes(typeValue);
-          let newTypes: string[];
-          if (isSelected) {
-            newTypes = selectedIncomeTypes.filter((t) => t !== typeValue);
-            const newDetails = { ...incomeDetails };
-            delete newDetails[typeValue];
-            setIncomeDetails(newDetails);
-            if (typeValue === "rental") {
-              setRentalProperties([]);
-            }
-          } else {
-            newTypes = [...selectedIncomeTypes, typeValue];
-            if (!incomeDetails[typeValue]) {
-              setIncomeDetails({ ...incomeDetails, [typeValue]: { annualAmount: "", employerName: "", yearsInRole: "" } });
-            }
-            if (typeValue === "rental" && rentalProperties.length === 0) {
-              setRentalProperties([{ address: "", monthlyRentalIncome: "", monthlyDebtPayment: "" }]);
-            }
-          }
-          setSelectedIncomeTypes(newTypes);
-          form.setValue("incomeSources", buildFormEntries(newTypes, isSelected ? incomeDetails : { ...incomeDetails, [typeValue]: incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" } }, typeValue === "rental" && isSelected ? [] : rentalProperties) as never);
-        };
-
-        const updateDetail = (typeValue: string, field: string, value: string) => {
-          const newDetails = {
-            ...incomeDetails,
-            [typeValue]: { ...incomeDetails[typeValue], [field]: value },
-          };
-          setIncomeDetails(newDetails);
-          form.setValue("incomeSources", buildFormEntries(selectedIncomeTypes, newDetails, rentalProperties) as never);
-        };
-
-        const addRentalProperty = () => {
-          const updated = [...rentalProperties, { address: "", monthlyRentalIncome: "", monthlyDebtPayment: "" }];
-          setRentalProperties(updated);
-          form.setValue("incomeSources", buildFormEntries(selectedIncomeTypes, incomeDetails, updated) as never);
-        };
-
-        const removeRentalProperty = (index: number) => {
-          const updated = rentalProperties.filter((_, i) => i !== index);
-          setRentalProperties(updated);
-          form.setValue("incomeSources", buildFormEntries(selectedIncomeTypes, incomeDetails, updated) as never);
-        };
-
-        const updateRentalProperty = (index: number, field: keyof RentalPropertyEntry, value: string) => {
-          const updated = rentalProperties.map((p, i) => i === index ? { ...p, [field]: value } : p);
-          setRentalProperties(updated);
-          form.setValue("incomeSources", buildFormEntries(selectedIncomeTypes, incomeDetails, updated) as never);
-        };
-
-        const needsEmployerDetails = (typeValue: string) => typeValue === "w2" || typeValue === "self_employed";
-
-        const rentalAnnualTotal = rentalProperties.reduce((sum, p) => sum + (parseFloat(p.monthlyRentalIncome.replace(/,/g, "")) || 0), 0) * 12;
-
         return (
-          <div className="w-full max-w-lg mx-auto space-y-6">
-            <div className="grid grid-cols-2 gap-3">
-              {allIncomeTypes.map((incomeType) => {
-                const TypeIcon = incomeType.icon;
-                const isActive = selectedIncomeTypes.includes(incomeType.value);
-                return (
-                  <button
-                    key={incomeType.value}
-                    type="button"
-                    data-testid={`toggle-income-${incomeType.value}`}
-                    onClick={() => toggleIncomeType(incomeType.value)}
-                    className={`flex items-center gap-3 p-4 text-left text-sm font-medium border-2 rounded-xl transition-all duration-200
-                      ${isActive
-                        ? "border-primary bg-primary/5"
-                        : "border-muted hover:border-primary/50"
-                      }`}
-                  >
-                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors shrink-0
-                      ${isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                      <TypeIcon className="h-4 w-4" />
-                    </div>
-                    <span className={`flex-1 ${isActive ? "text-primary" : "text-foreground"}`}>
-                      {incomeType.label}
-                    </span>
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0
-                      ${isActive ? "border-primary bg-primary" : "border-muted-foreground/30"}`}>
-                      {isActive && <Check className="w-3 h-3 text-primary-foreground" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {selectedIncomeTypes.length > 0 && (
-              <div className="space-y-4">
-                {selectedIncomeTypes.map((typeValue) => {
-                  const typeInfo = allIncomeTypes.find((t) => t.value === typeValue);
-                  const details = incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" };
-
-                  if (typeValue === "rental") {
-                    return (
-                      <div key={typeValue} className="border-2 rounded-xl p-5 space-y-4 text-left" data-testid="card-income-rental">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Home className="h-4 w-4 text-primary" />
-                          <span className="font-semibold text-foreground">Rental Properties</span>
-                          {rentalAnnualTotal > 0 && (
-                            <span className="text-sm text-muted-foreground ml-auto">
-                              ${formatCurrency(String(Math.round(rentalAnnualTotal)))}/yr total
-                            </span>
-                          )}
-                        </div>
-
-                        {rentalProperties.map((prop, idx) => (
-                          <div key={idx} className="border rounded-xl p-4 space-y-3 bg-muted/30" data-testid={`rental-property-${idx}`}>
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-foreground">Property {idx + 1}</span>
-                              {rentalProperties.length > 1 && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon" aria-label="Delete"
-                                  data-testid={`button-remove-rental-${idx}`}
-                                  onClick={() => removeRentalProperty(idx)}
-                                >
-                                  <Trash2 className="h-4 w-4 text-muted-foreground" />
-                                </Button>
-                              )}
-                            </div>
-                            <div>
-                              <label className="text-sm text-muted-foreground mb-1 block">Property Address</label>
-                              <AddressInput
-                                placeholder="Start typing a property address..."
-                                defaultValue={prop.address}
-                                onSelect={(result) => updateRentalProperty(idx, "address", result.formattedAddress)}
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-sm text-muted-foreground mb-1 block">Monthly Rental Income</label>
-                                <div className="relative">
-                                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                  <Input
-                                    data-testid={`input-rental-income-${idx}`}
-                                    value={prop.monthlyRentalIncome}
-                                    onChange={(e) => updateRentalProperty(idx, "monthlyRentalIncome", formatCurrency(e.target.value))}
-                                    className="pl-9"
-                                    placeholder="2,000"
-                                    inputMode="decimal"
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="text-sm text-muted-foreground mb-1 block">Monthly Debt Payment</label>
-                                <div className="relative">
-                                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                  <Input
-                                    data-testid={`input-rental-debt-${idx}`}
-                                    value={prop.monthlyDebtPayment || ""}
-                                    onChange={(e) => updateRentalProperty(idx, "monthlyDebtPayment", formatCurrency(e.target.value))}
-                                    className="pl-9"
-                                    placeholder="1,200"
-                                    inputMode="decimal"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          data-testid="button-add-rental-property"
-                          onClick={addRentalProperty}
-                          className="w-full"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Another Property
-                        </Button>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={typeValue} className="border-2 rounded-xl p-5 space-y-4 text-left" data-testid={`card-income-${typeValue}`}>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {typeInfo && <typeInfo.icon className="h-4 w-4 text-primary" />}
-                        <span className="font-semibold text-foreground">{typeInfo?.label}</span>
-                      </div>
-                      <div>
-                        <label className="text-sm text-muted-foreground mb-1 block">Annual Amount</label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            data-testid={`input-income-amount-${typeValue}`}
-                            value={details.annualAmount}
-                            onChange={(e) => updateDetail(typeValue, "annualAmount", formatCurrency(e.target.value))}
-                            className="pl-9"
-                            placeholder="75,000"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-sm text-muted-foreground mb-1 block">
-                          {needsEmployerDetails(typeValue) ? "Employer Name" : "Source"}
-                        </label>
-                        <Input
-                          data-testid={`input-income-employer-${typeValue}`}
-                          value={details.employerName}
-                          onChange={(e) => updateDetail(typeValue, "employerName", e.target.value)}
-                          placeholder={needsEmployerDetails(typeValue) ? "Company name" : "Source name (optional)"}
-                        />
-                      </div>
-                      {needsEmployerDetails(typeValue) && (
-                        <div>
-                          <label className="text-sm text-muted-foreground mb-1 block">Years in Role</label>
-                          <Input
-                            data-testid={`input-income-years-${typeValue}`}
-                            value={details.yearsInRole}
-                            onChange={(e) => updateDetail(typeValue, "yearsInRole", e.target.value.replace(/\D/g, ""))}
-                            placeholder="3"
-                            inputMode="numeric"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <IncomeSourcesStep
+            employmentType={form.getValues("employmentType")}
+            selectedIncomeTypes={selectedIncomeTypes}
+            incomeDetails={incomeDetails}
+            rentalProperties={rentalProperties}
+            setSelectedIncomeTypes={setSelectedIncomeTypes}
+            setIncomeDetails={setIncomeDetails}
+            setRentalProperties={setRentalProperties}
+            setIncomeSources={(entries) => form.setValue("incomeSources", entries as never)}
+            formatCurrency={formatCurrency}
+          />
         );
       }
 
@@ -1033,30 +701,7 @@ function PreApprovalFunnel() {
   };
 
   const restoreBanner = showRestoreBanner ? (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="fixed top-2 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4"
-      data-testid="banner-restore-draft"
-    >
-      <div className="bg-card border shadow-lg rounded-xl p-4 flex items-center gap-3">
-        <div className="bg-primary/10 rounded-lg p-2 shrink-0">
-          <Clock className="h-4 w-4 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium">You have unsaved progress</p>
-          <p className="text-xs text-muted-foreground">Pick up where you left off?</p>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <Button size="sm" variant="ghost" onClick={handleDismissRestore} data-testid="button-dismiss-restore">
-            No
-          </Button>
-          <Button size="sm" onClick={handleRestoreDraft} data-testid="button-restore-draft">
-            Restore
-          </Button>
-        </div>
-      </div>
-    </motion.div>
+    <RestoreDraftBanner onRestore={handleRestoreDraft} onDismiss={handleDismissRestore} />
   ) : null;
 
   if (currentQ.type === "intro") {
@@ -1253,119 +898,9 @@ function PreApprovalFunnel() {
         </AnimatePresence>
       </div>
 
-      {showAuthGate && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
-          data-testid="auth-gate-overlay"
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-card border rounded-xl shadow-lg p-8 max-w-md w-full text-center"
-          >
-            <div className="mx-auto mb-6 h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <LogIn className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="text-2xl font-bold text-foreground mb-3" data-testid="text-auth-gate-title">
-              One last step
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              Create an account (or sign in) to see your pre-approval results. Your answers are already saved.
-            </p>
-            <div className="space-y-3">
-              <a href="/signup" className="block">
-                <Button size="lg" className="w-full" data-testid="button-auth-gate-signup">
-                  Create account
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </a>
-              <a href="/login" className="block">
-                <Button size="lg" variant="outline" className="w-full" data-testid="button-auth-gate-login">
-                  Sign In
-                </Button>
-              </a>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAuthGate(false)}
-                data-testid="button-auth-gate-dismiss"
-              >
-                Go back to form
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-4 flex items-center justify-center gap-1">
-              <Shield className="h-3 w-3" />
-              Your data is encrypted and never shared
-            </p>
-          </motion.div>
-        </motion.div>
-      )}
+      {showAuthGate && <AuthGateOverlay onDismiss={() => setShowAuthGate(false)} />}
 
-      {/* Compliance Footer */}
-      <footer className="border-t border-muted bg-muted/30 mt-auto" data-testid="footer-compliance">
-        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 space-y-6">
-          <div className="text-xs text-muted-foreground leading-relaxed space-y-4">
-            <p>
-              <sup>1</sup> Homiquity&apos;s pre-approval process uses self-reported information and a soft credit inquiry to provide an initial determination. A soft credit check will not affect your credit score. Final loan approval is subject to full underwriting review, including verification of income, assets, employment, and property appraisal. Pre-approval is not a commitment to lend and does not guarantee final approval. All loans are subject to credit and property approval. Terms and conditions apply.
-            </p>
-          </div>
-
-          <div className="border-t border-muted pt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
-              <div>
-                <p className="font-semibold text-foreground text-base mb-3">Homiquity</p>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  Homiquity Mortgage Corporation is a mortgage broker. Loans are arranged with third-party wholesale lending partners; Homiquity does not make credit decisions or fund loans.
-                </p>
-              </div>
-              <div>
-                <p className="font-medium text-foreground mb-2">Contact Us</p>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p>{COMPANY_IDENTITY.contactEmail}</p>
-                  <p>{COMPANY_IDENTITY.contactPhone}</p>
-                </div>
-                <div className="mt-3 space-y-1">
-                  <p className="font-medium text-foreground text-xs">Resources</p>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <p>FAQ</p>
-                    <p>Privacy Policy</p>
-                    <p>Terms of Use</p>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="font-medium text-foreground mb-2">Legal</p>
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  <p>NMLS Consumer Access</p>
-                  <p>Disclosures & Licensing</p>
-                  <p>Equal Housing Opportunity</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-muted pt-4 text-xs text-muted-foreground leading-relaxed space-y-3">
-            <p>
-              &copy; {new Date().getFullYear()} Homiquity Mortgage Corporation. All rights reserved. Homiquity is a family of companies serving the homeownership ecosystem including mortgage brokerage, property search, and AI-powered guidance.
-            </p>
-            <p>
-              Mortgage loans arranged by Homiquity Mortgage Corporation through third-party wholesale lending partners. Not available in all states. Equal Housing Opportunity. NMLS Consumer Access.
-            </p>
-            <div className="flex items-center justify-center gap-4 pt-2">
-              <div className="flex items-center gap-1">
-                <Shield className="h-3.5 w-3.5" />
-                <span>Soft credit check only</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Home className="h-3.5 w-3.5" />
-                <span>Equal Housing Opportunity</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <FunnelFooter />
     </div>
   );
 }
