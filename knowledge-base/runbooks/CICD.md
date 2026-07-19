@@ -175,7 +175,9 @@ The required `gate` check runs these four on every PR (same commands locally):
 
 ```bash
 pnpm check                             # typecheck
-pnpm test                              # unit suite (vitest.config.ts include list)
+pnpm test                              # node unit suite (vitest.config.ts include list)
+                                       #   + client component suite (vitest.client.config.ts,
+                                       #   happy-dom, glob: client/src/**/*.test.{ts,tsx})
 pnpm audit --prod --audit-level=high   # blocking prod-dependency scan (high+)
 pnpm guard:schema                      # schema ↔ migration drift guard
 ```
@@ -191,11 +193,13 @@ pnpm checkup                          # daily umbrella: the gate's checks + buil
 
 The gate has no server and no database, so the integration suite
 (`vitest.integration.config.ts`) **never runs in CI**: a green gate proves the
-change typechecks and breaks no unit test — nothing more. If a change is only
-exercised by an integration test, run it by hand against a live worktree server
-and record that in the PR ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md)
-§5). A test file added to neither vitest config's include list is silently
-never run.
+change typechecks and breaks no unit or component test — nothing more. If a
+change is only exercised by an integration test, run it by hand against a live
+worktree server and record that in the PR
+([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5). A **server/logic** test
+file added to neither the unit nor the integration config's include list is
+silently never run; **client component tests** (`client/src/**/*.test.{ts,tsx}`)
+are glob-included by `vitest.client.config.ts` and cannot be stranded.
 
 ## Production change ledger (append-only)
 

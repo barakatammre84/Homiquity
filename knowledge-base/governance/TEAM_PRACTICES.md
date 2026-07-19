@@ -48,14 +48,21 @@ at `knowledge-base/archive/lo-audit/2026-07-04-pm.md`.)*
 ## 5. Definition of done (every PR, no exceptions)
 
 1. `npm run check` clean (tsc).
-2. `npm test` fully green; new test files added to `vitest.config.ts`'s include list.
+2. `npm test` fully green — it runs the node suite **and** the client component suite. New
+   server/logic test files must be added to `vitest.config.ts`'s include list; client
+   component tests are colocated `client/src/**/*.test.tsx` and glob-included by
+   `vitest.client.config.ts` automatically. **UI behavior gets a component test here first**
+   (render/interaction against `data-testid`s, in happy-dom — no server); the §5.4 browser
+   pass is for what a component test can't prove (visuals, full E2E).
 3. Integration suite green against a live worktree server
    (`set -a; source .env; set +a; TEST_BASE_URL=http://localhost:5002 npm run test:integration`).
    Boot the test server with `RATE_LIMIT_RELAXED=true` so the suite's ~30 auth calls don't
    trip the 20/15-min auth limiter; fallback if you can't set env: run in 3 groups with a
    server restart between (restarts clear the in-memory counters).
 4. Live verification on the worktree port (5002+) when a running server proves the
-   behavior — capture the evidence in the PR body.
+   behavior — capture the evidence in the PR body. For client UI, do this *after* the
+   point-2 component tests: the browser pass proves visuals and end-to-end wiring, not
+   things a component test already pins.
 5. Regulated math changes carry a `data/regulatory/regulatory-ledger.json` citation **in the
    same commit** — no citation, no code change. Never invent MISMO names (see
    [CLAUDE.md](../../CLAUDE.md) compliance-first rules).
