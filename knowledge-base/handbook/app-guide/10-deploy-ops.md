@@ -86,12 +86,13 @@ scripts die on the push step).
 
 ## Quality checks — what CI enforces vs. what stays manual
 
-The required `gate` check already enforces `pnpm check`, `pnpm test`, a blocking
-`pnpm audit --prod --audit-level=high`, and `pnpm guard:schema` on every PR
-([CICD.md](../../runbooks/CICD.md) §Checks). Still **manual — CI never runs these**:
+The required `gate` check already enforces `pnpm check`, `pnpm test` (node +
+client component suites), a blocking `pnpm audit --prod --audit-level=high`,
+`pnpm guard:schema`, and `pnpm guard:tokens` (the design-token ratchet, gated
+2026-07-19) on every PR ([CICD.md](../../runbooks/CICD.md) §Checks). Still
+**manual — CI never runs these**:
 
 ```bash
 TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration   # needs a running dev server
 pnpm build                                                  # prove the prod build compiles
-node scripts/design-token-guard.cjs                         # raw-color ratchet
 ```

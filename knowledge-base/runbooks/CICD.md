@@ -8,17 +8,20 @@ revert.** No human review required — the machine gate is the only approval.
   PR ──▶ gate green ──▶ merge to main ──▶ Vercel builds & deploys
           │                  │                       │
           ▼                  ▼              broken?  ▼
-  typecheck · unit     migrate-prod applies    Vercel → Deployments →
-  tests · prod-dep     pending migrations      previous one → Promote
-  audit · schema       to the prod DB          (instant)
-  guard
+  typecheck · unit +   migrate-prod applies    Vercel → Deployments →
+  client tests ·       pending migrations      previous one → Promote
+  prod-dep audit ·     to the prod DB          (instant)
+  schema guard ·
+  token ratchet
 ```
 
-**CI status (corrected 2026-07-17): the gate is live and blocking.**
-[`ci.yml`](../../.github/workflows/ci.yml) runs a required **`gate`** job on
-every PR to `main` — `pnpm check`, `pnpm test` (unit suite), a **blocking**
-`pnpm audit --prod --audit-level=high`, and `pnpm guard:schema` (a schema change
-without a same-PR migration goes RED and cannot merge). Branch protection
+**CI status (corrected 2026-07-17; token ratchet gated 2026-07-19): the gate is
+live and blocking.** [`ci.yml`](../../.github/workflows/ci.yml) runs a required
+**`gate`** job on every PR to `main` — `pnpm check`, `pnpm test` (node unit +
+client component suites), a **blocking** `pnpm audit --prod --audit-level=high`,
+`pnpm guard:schema` (a schema change without a same-PR migration goes RED and
+cannot merge), and `pnpm guard:tokens` (the design-token ratchet — a raw palette
+class or bare white/black literal over baseline goes RED). Branch protection
 requires that check with `enforce_admins` ON, so **nobody direct-pushes `main`,
 founder included** (force-push and deletion of `main` are blocked too;
 `npm run save` / `npm run sync` predate this and now die on the push step — see
@@ -171,7 +174,7 @@ site (every route except `/api/*`) behind invite links while the
 
 ## Checks — what the gate enforces, and what stays manual
 
-The required `gate` check runs these four on every PR (same commands locally):
+The required `gate` check runs these five on every PR (same commands locally):
 
 ```bash
 pnpm check                             # typecheck
@@ -180,13 +183,21 @@ pnpm test                              # node unit suite (vitest.config.ts inclu
                                        #   happy-dom, glob: client/src/**/*.test.{ts,tsx})
 pnpm audit --prod --audit-level=high   # blocking prod-dependency scan (high+)
 pnpm guard:schema                      # schema ↔ migration drift guard
+pnpm guard:tokens                      # design-token ratchet (raw palette / bare white-black
+                                       #   counts vs scripts/design-token-baseline.json;
+                                       #   gated 2026-07-19 — counts may only go down)
 ```
+
+The token ratchet's residual is the `strict: false` racing-merge window
+(TEAM_PRACTICES §5 traps): two individually-green PRs can still combine into a
+red `main`, which the **next** PR's gate surfaces — fix forward in that PR by
+retokening or ratcheting the baseline (the #112 class, now caught in CI instead
+of lingering).
 
 Still **manual — CI never runs these**:
 
 ```bash
 TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration   # needs a running dev server
-node scripts/design-token-guard.cjs   # raw-color ratchet (baselines race — re-run right before merge)
 pnpm checkup                          # daily umbrella: the gate's checks + build, orphan scan,
                                       # token/kb guards, prod health — deliberately no integration
 ```
