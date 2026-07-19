@@ -13,9 +13,11 @@ PR branches      ──▶  automatic preview deployments
 broken prod?     ──▶  Vercel → Deployments → last good → Promote (instant)
 ```
 
-Ship via the PR flow in [CICD.md](../../runbooks/CICD.md) §Shipping — **direct pushes to
-`main` are rejected by branch protection** (the old `pnpm save`/`pnpm sync` one-command
-scripts die on the push step).
+Ship via the PR flow in [CICD.md](../../runbooks/CICD.md) §Shipping — **gate green, then
+squash-merge; direct pushes to `main` are blocked by branch protection and barred by
+doctrine** (verify protection is live before trusting `--auto` —
+[TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §6. The old `pnpm save`/`pnpm sync`
+one-command scripts were removed).
 
 ## How Vercel runs this app
 

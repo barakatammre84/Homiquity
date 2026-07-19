@@ -26,7 +26,7 @@ PR touches shared/schema/**
     pnpm check · pnpm test · pnpm guard:schema   ← schema-without-migration ⇒ RED, cannot merge
         │  green
         ▼
-   merge to main  (auto-merge-green policy)
+   merge to main  (merge-on-green policy — TEAM_PRACTICES §6)
         │
         ▼
   migrate-prod job (.github/workflows/ci.yml, on: push to main)
@@ -53,9 +53,15 @@ PR touches shared/schema/**
      script fails with the list of project ids when it's ambiguous. A project id is not secret.
    - The connection string is piped straight into the migrator by command substitution; it is
      never echoed, never written to `GITHUB_ENV`, and neither script prints it.
-2. **Make the gate binding.** ✅ **Done 2026-07-17** — branch protection on `main` requires the
-   `gate` check. Until it existed, "green" was advisory and auto-merge could merge a red PR.
-   Current rule (`gh api repos/OWNER/REPO/branches/main/protection` to read it back):
+2. **Make the gate binding.** ✅ Done 2026-07-17; **dropped and re-applied 2026-07-19** —
+   when the repo briefly went private that day, the Free plan doesn't support protection on
+   private repos and GitHub **deleted** the rule outright (API 404, not a suspension);
+   #252–#259 merged pre-green through the gap. On the repo going public again the rule was
+   re-applied **from this table** (which is why it stays maintained verbatim) and verified
+   by probe PR #262. If `gh api …/branches/main/protection` ever 403s/404s again,
+   enforcement is OFF: use watch-then-merge and flag the founder
+   ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6). Current rule
+   (`gh api repos/OWNER/REPO/branches/main/protection` to read it back):
 
    | Setting | Value | Why |
    |---|---|---|
@@ -72,8 +78,10 @@ PR touches shared/schema/**
    without re-pointing the rule deadlocks every PR, unbypassable. See the warning comment on the
    job in [`ci.yml`](../../.github/workflows/ci.yml).
 
-   **Break-glass:** `enforce_admins` binds the owner too, so a genuine emergency needs it turned
-   off deliberately (Settings → Branches), not bypassed silently — which is the point.
+   **Break-glass:** `enforce_admins` binds the owner too, so a genuine emergency needs it
+   turned off deliberately (Settings → Branches), not bypassed silently — which is the
+   point. (In an interval where protection is plan-gated off entirely, the equivalent is a
+   deliberate, ledgered founder direct push — [ROLLBACK.md](./ROLLBACK.md) §2.)
 3. **Pre-flight before trusting the auto-run (mandatory).** Pending-detection is journal-based
    (hash OR `created_at`), so confirm what it *thinks* is pending before it applies anything.
    Run it from GitHub — **no local credential needed**:

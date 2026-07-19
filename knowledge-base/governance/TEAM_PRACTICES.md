@@ -30,7 +30,7 @@ acting on a mid-afternoon report that the evening overtook.)*
 
 Any file a session generates (reports, research notes, extracted data) is **committed
 before the session ends** — in the sanctioned lane for its type: a **docs-only PR merged
-on green** (branch protection rejects direct pushes to `main` — §6). An untracked file in one checkout is
+on green** (direct pushes to `main` are barred by doctrine — §6). An untracked file in one checkout is
 invisible to every worktree and every other session. Code changes never ride along with a
 report commit. *(Prevents: the 2026-07-04 lo-audit report stranding — that report now lives
 at `knowledge-base/archive/lo-audit/2026-07-04-pm.md`.)*
@@ -106,23 +106,40 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
   pnpm, and `pnpm-lock.yaml` is the **only** lockfile: after any dependency change run
   `pnpm install` and commit `pnpm-lock.yaml`. Never resurrect `package-lock.json` via
   `pnpm import` — it was deleted as proxy-poisoned (CH-1, 2026-07-08; [CICD.md](../runbooks/CICD.md)).
-- **Racing auto-merges can land a tree the gate never tested** — branch protection
-  deliberately runs with `strict` off, so a PR that merges while other PRs land is combined
-  with `main` untested. After a squash merge amid other merges, diff the squash commit
-  against your tested branch head before trusting green (discovered 2026-07-17).
+- **Racing merges can land a tree the gate never tested** — the gate runs on the PR branch
+  as pushed (there is no up-to-date-with-`main` requirement), so a PR that merges while
+  other PRs land is combined with `main` untested. After a squash merge amid other merges,
+  diff the squash commit against your tested branch head before trusting green
+  (discovered 2026-07-17).
 - **The integration suite trips the auth rate limiter** — boot the test server with
   `RATE_LIMIT_RELAXED=true` (point 3 above).
 
-## 6. Push and merge policy *(rewritten 2026-07-19 for the 2026-07-17 branch protection)*
+## 6. Push and merge policy *(rewritten 2026-07-19: platform enforcement follows plan/visibility — verify it, don't assume it)*
 
-- **`main` is protected — nobody direct-pushes it, founder included.** The `gate` check is
-  required with `enforce_admins` on; force-push and deletion are blocked. Work lands as a
-  short-lived branch → PR → gate green → **squash merge**. No required reviews: the author
-  merges (or auto-merges) their own green PR. Recipe: [CICD.md](../runbooks/CICD.md) §Shipping.
-  *(The founder-approved direct-push lane this section used to describe — including the
-  2026-07-04 batch integration push — predates branch protection and no longer exists.
-  Break-glass for a genuine emergency is a deliberate `enforce_admins` toggle in GitHub
-  settings, never a workaround.)*
+- **Nobody direct-pushes `main`, founder included, and no PR merges before its `gate` is
+  green.** Branch protection currently enforces this (required `gate` check +
+  `enforce_admins`; force-push and deletion of `main` blocked; re-applied 2026-07-19
+  ~19:45Z, probe-verified by unmerged PR #262). Work lands as a short-lived branch → PR →
+  gate green → **squash merge**. No required reviews: the author merges their own green PR.
+  Recipe: [CICD.md](../runbooks/CICD.md) §Shipping.
+- **⚠️ The 2026-07-19 lesson: GitHub enforces branch protection only while plan/visibility
+  allow it, and a flip can silently *drop the rule entirely*.** The repo went private
+  ~17:20Z that day (Free plan ⇒ no protection on private repos) — the rule wasn't merely
+  suspended, it was **deleted** (API 404) — and **#252–#259 merged pre-green** because
+  `gh pr merge --auto` cannot arm with nothing required: it merges instantly, gate still
+  running (all eight gates passed post-hoc). The repo was made public again ~19:45Z
+  (founder: "for now, pro later") and the rule re-applied from the documented config in
+  [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md) §One-time setup. So the standing habit:
+  **before relying on `--auto`, verify enforcement is live** —
+  `gh api repos/barakatammre84/MortgageStream/branches/main/protection` must list the
+  `gate` context as required. If it 403s/404s or lists no checks, enforcement is OFF:
+  fall back to **watch-then-merge** (`gh pr checks <n> --watch --fail-fast` → green →
+  `gh pr merge <n> --squash`), flag it to the founder, and never merge red/pending.
+  Direct pushes and force-pushes to `main` stay barred by doctrine regardless of what the
+  platform currently blocks. *(Break-glass for a genuine emergency: a deliberate,
+  ledgered founder action — the `enforce_admins` toggle while protection is live, a
+  knowing direct push only when it is not. Never autonomous, never silent —
+  [ROLLBACK.md](../runbooks/ROLLBACK.md) §2.)*
 - Every merge to `main` deploys production. A deploying merge — and any action against the
   production DB or env — is not complete until its entry lands in the **production change
   ledger** in [CICD.md](../runbooks/CICD.md), same session: what shipped, prod DB/env actions,
@@ -131,8 +148,8 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
   the build, not the runtime. *(Prevents: an unledgered deploy invisible to the next incident
   responder — and the 2026-07-17 class of outage, where a READY deploy served a dead API.)*
 - Scheduled routines publish **docs-only, through the same PR lane** (docs-only branch →
-  gate → auto-merge; the routine inspects every commit's paths before opening the PR).
-  A routine never carries code.
+  gate watched to green → merge; the routine inspects every commit's paths before opening
+  the PR). A routine never carries code.
 - **Immediately after a merge**: delete the merged branch (remote and local) and its worktree,
   and archive the finished session — stale session chips claiming "open PR" cost the team a
   confused audit. *(Prevents: the post-batch "2 active sessions and 8 pull requests"

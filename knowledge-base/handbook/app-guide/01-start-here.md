@@ -57,9 +57,12 @@ pnpm build && pnpm start # production build + run
 pnpm db:migrate         # apply versioned migrations (hand-authored SQL in migrations/)
 ```
 
-Landing work: branch → PR → required `gate` check → squash merge
+Landing work: branch → PR → `gate` check green → squash merge
 ([CICD.md](../../runbooks/CICD.md) §Shipping). Direct pushes to `main` are
-rejected by branch protection — the old `pnpm save`/`pnpm sync` scripts are dead.
+blocked by branch protection and barred by doctrine — and verify protection is
+live before trusting `--auto`
+([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §6); the old
+`pnpm save`/`pnpm sync` scripts were removed.
 
 ⚠️ Do **not** use `pnpm db:push` — the shared dev DB serves multiple branches and
 push drops other branches' columns; migrations are hand-authored (drizzle-kit generate

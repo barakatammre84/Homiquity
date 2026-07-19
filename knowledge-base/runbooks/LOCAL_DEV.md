@@ -86,10 +86,11 @@ TEST_BASE_URL=http://localhost:5002 pnpm test:integration
 
 ## Landing work on GitHub
 
-`main` is protected — direct pushes are rejected by branch protection, so the old
-`pnpm save`/`pnpm sync` one-command scripts are **dead** (they die on the push
-step). Everything lands as a short-lived branch → PR → required `gate` check →
-squash merge ([CICD.md](./CICD.md) §Shipping):
+`main` is protected — direct pushes are blocked by branch protection and barred
+by doctrine; the old `pnpm save`/`pnpm sync` one-command scripts were **removed**
+(PR #251). Everything lands as a short-lived branch → PR → `gate` check green →
+squash merge ([CICD.md](./CICD.md) §Shipping; verify protection is live before
+trusting `--auto` — [TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6):
 
 ```bash
 git checkout -b <topic-branch>

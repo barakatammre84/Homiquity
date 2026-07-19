@@ -22,14 +22,24 @@ client component suites), a **blocking** `pnpm audit --prod --audit-level=high`,
 `pnpm guard:schema` (a schema change without a same-PR migration goes RED and
 cannot merge), and `pnpm guard:tokens` (the design-token ratchet — a raw palette
 class or bare white/black literal over baseline goes RED). Branch protection
-requires that check with `enforce_admins` ON, so **nobody direct-pushes `main`,
-founder included** (force-push and deletion of `main` are blocked too;
-`npm run save` / `npm run sync` predate this and now die on the push step — see
-Shipping). No required reviews: the author merges their own PR once the gate is
-green ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6). On merge, the same
-workflow's **`migrate-prod`** job auto-applies any pending `migrations/` to the
-production DB over a Neon DIRECT URL minted at run time from `NEON_API_KEY` — no
-prod DB password is stored in GitHub; full flow and its limits (a manual
+requires that check with `enforce_admins` ON — nobody direct-pushes `main`,
+founder included; force-push and deletion of `main` are blocked. No required
+reviews: the author merges their own PR once the gate is green
+([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6).
+**⚠️ Enforcement follows plan/visibility — verify it, don't assume it**
+*(2026-07-19)*: protection only exists here because the repo is **public** on the
+Free plan. When the repo went private for ~2½ hours that day, GitHub silently
+**deleted** the rule (API 404, not a suspension) and **#252–#259 merged
+pre-green** — with nothing required, `gh pr merge --auto` cannot arm and merges
+instantly, gate still running. The repo was made public again (founder: "for
+now, pro later") and the rule re-applied from the config recorded in
+[DB_MIGRATIONS.md](./DB_MIGRATIONS.md) §One-time setup, verified by probe PR
+#262. **Before relying on `--auto`, confirm
+`gh api repos/…/branches/main/protection` lists the `gate` context; on 403/404,
+use watch-then-merge and flag the founder** (TEAM_PRACTICES §6). On merge, the
+same workflow's **`migrate-prod`** job auto-applies any pending `migrations/` to
+the production DB over a Neon DIRECT URL minted at run time from `NEON_API_KEY`
+— no prod DB password is stored in GitHub; full flow and its limits (a manual
 `dry_run` reconciles the journal only, it never executes migration SQL) in
 [DB_MIGRATIONS.md](./DB_MIGRATIONS.md). ⚠️ The required-check string is matched
 **verbatim** (`gate (typecheck · tests · schema guard)`, U+00B7 middle dots) —
@@ -39,19 +49,23 @@ never rename the job without re-pointing branch protection in the same change
 ## Shipping
 
 ```bash
-git checkout -b <topic-branch>         # never commit on main — direct pushes are rejected
+git checkout -b <topic-branch>         # never commit on main — direct pushes are blocked + barred
 git push -u origin <topic-branch>
 gh pr create --fill                    # the gate runs automatically
-gh pr checks --watch                   # wait for green…
+gh pr checks --watch --fail-fast       # wait for green…
 gh pr merge --squash --delete-branch   # …then merge your own PR (no reviews required)
+# `--auto` only after verifying protection is live (gh api …/branches/main/protection
+# lists the gate as required). If that 403s/404s, --auto merges IMMEDIATELY with the
+# gate still running — the 2026-07-19 #252–#259 gap. Watch-then-merge is always safe.
 ```
 
 Every merge to `main` triggers a production deploy on Vercel (then run the
 post-deploy health check below — READY is not healthy). Every PR branch gets
 its own preview deployment automatically. One branch per isolated worktree,
 merged = deleted same day ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md)
-§4). The old `npm run save` / `npm run sync` scripts direct-push `main` and are
-dead — branch protection rejects the push.
+§4). The old `npm run save` / `npm run sync` scripts direct-pushed `main` and
+were removed in PR #251 — direct pushes are blocked by branch protection while
+it is live, and barred by doctrine always ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6).
 
 ## Reverting
 
@@ -60,8 +74,9 @@ Full detail in [ROLLBACK.md](./ROLLBACK.md). Short version:
 - **Prod is broken right now** → Vercel dashboard → Deployments → pick the last
   good one → **Promote to Production**. Instant, no rebuild.
 - **Undo the bad code** → `git revert <sha>` on a branch, landed through the
-  normal PR lane — direct pushes to `main` are rejected, and the gate still runs
-  (never `reset --hard` + force-push; break-glass per [ROLLBACK.md](./ROLLBACK.md) §2).
+  normal PR lane — direct pushes to `main` are blocked and barred, and the PR
+  lane runs the gate (never `reset --hard` + force-push; break-glass per
+  [ROLLBACK.md](./ROLLBACK.md) §2).
 - **Database** → schema changes ship as **hand-authored** versioned migration
   files in `migrations/`, applied with `npm run db:migrate` (**never `db:push`**,
   **never `drizzle-kit generate`** — see [ROLLBACK.md](./ROLLBACK.md) §3 and
@@ -222,7 +237,9 @@ rollback pointer.
 
 | Date | Change | Prod DB / env | Validation | Rollback |
 |---|---|---|---|---|
+| 2026-07-19 | **PR #261 — docs-only: the 2026-07-19 protection flip-gap-restore, recorded; doctrine hardened to "verify enforcement before trusting it"; this ledger row rides in the same PR.** Timeline: ~17:20Z the founder made the repo **private** (to protect the code) — on the Free plan GitHub then **deleted** the protection rule outright (API 404, not a suspension), and **#252–#259 merged pre-green** (`--auto` cannot arm with nothing required — it merges instantly, gate still running; all eight gates passed post-hoc, #259's squash tree verified == tested head). ~19:45Z the founder reversed to **public** ("for now, pro later"); a parallel session re-applied the rule from DB_MIGRATIONS' documented table and probe-verified BLOCKED via unmerged PR #262. Corpus updated to the durable doctrine — **platform enforcement follows plan/visibility; verify `gh api …/branches/main/protection` lists the gate before relying on `--auto`, else watch-then-merge** — in TEAM_PRACTICES §3/§5.4/§6 · this file (CI status/Shipping/Reverting) · PLAYBOOK step 9 · DB_MIGRATIONS (rule table = the proven restoration record) · ROLLBACK §2 · LOCAL_DEV · app-guide 01/10 · PRE_PRODUCTION_OPS · ASSUMPTIONS; security-governance claims made lapse-resilient in ACCESS_CONTROL_POLICY §5 · INFORMATION_SECURITY_POLICY §8 · Plaid Q7 (flagged accuracy note); ASSET_REGISTER GitHub row now records **public visibility** + world-readable kb + the secret-scanning/push-protection enable boxes. | **None** — docs-only; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change. | kb-index-guard **PASS** (103 docs, no dead links); corpus sweeps for stale protection phrasing → zero hits in living docs (immutable rows/logs/archive excepted); the gap bounded by merge-vs-gate timing (#250 merged 2s **after** its gate at 17:19Z; #252 merged ~2min **before** its gate at 17:42Z); 403/404 evidence and the restored rule both read live in-session; gate green on the PR; post-merge `/api/health` probe per the section above. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (docs only). |
 | 2026-07-19 | **PR #260 — fix(checkup): production-build check un-broken + orphan-scan learns the test-lane convention; this ledger row rides in the same PR.** The first full `pnpm checkup` after the week's train came back 10/12 with both fails in the **checkers**, not the code: (1) `pnpm build --silent` — pnpm v10 forwards post-scriptname flags into the script line, so `--silent` hit esbuild (last command of the `&&` chain) and the build check failed on a **healthy** build; `--silent` dropped from the test/build checks (output is captured to `$LOG` regardless), trap documented in-script. (2) `orphan-scan.cjs` flagged the 14 colocated `*.test.{ts,tsx}` from #253–#257 as never-imported — they are vitest glob ENTRIES; excluded from orphan *candidacy* only (still reference sources, so test-only-imported modules stay flagged). Rode along: checkup `PROD_URL` default → `https://www.homiquity.com` (canonical since the 07-13 cutover). | **None** — two ops scripts; nothing in the runtime bundle or the CI gate path; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change. | Orphan scan now "No orphaned files — codebase fully connected"; `bash -n` clean; plain `pnpm build` proven green on identical code; gate green on the PR; **full `pnpm checkup` re-run on the synced primary post-merge → expected 12/12** (recorded in the session); post-merge `/api/health` probe per the section above. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (ops scripts only). |
+| 2026-07-19 | **PR #259 — chore(checkup): `scripts/checkup.sh` `PROD_URL` default → `https://www.homiquity.com`** (canonical host since the 07-13 cutover; the old vercel.app domain still resolves — doctrine alignment, not breakage). **Row added retroactively in #261, same session** — the #259 session initially omitted it; the "rode along" checkup-`PROD_URL` line in #260's row above refers to this same change, which landed here. #259 is also the merge that **exposed the enforcement lapse** documented in #261's row: `gh pr merge --auto` merged it while its gate was still `in_progress`. | **None** — script-only; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change; not in the runtime bundle. | The script's exact probe run pre-merge against the new default → `"status":"ok"`; `grep` over `scripts/` → no other old-host references; gate green post-merge on both the PR head and the `main` push; squash tree verified == tested head; `/api/health` probed 19:19Z OK. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (script-only). |
 | 2026-07-19 | **PR #258 — ci: design-token ratchet promoted into the required gate; this ledger row rides in the same PR.** The last deferred intervention from the [adjudication log](../logs/2026-07-19-modular-architecture-pitch-adjudication.md) §4 (option 3), taken after #253–#257 stabilized baselines at **0 raw-palette / 97 bare-white-black**. New `pnpm guard:tokens` script + fifth `gate` step — **the job `name:` is untouched** (verbatim required-check string; rename = PR deadlock). Residual documented in-step + §Checks: the `strict:false` racing-merge window (the #112 baseline-race class) now surfaces on the **next** PR's gate instead of lingering until a manual run; fix forward by retokening or ratcheting the baseline. Docs same-PR: this file (diagram · CI-status · §Checks five-command list, guard removed from the manual list), 10-deploy-ops operator summary, ui-components skill. | **None** — CI workflow + package.json script + docs; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change; nothing enters the runtime bundle. | `pnpm guard:tokens` green at baseline (0/97) locally; gate job name byte-verified against the protected required-check string pre-push; **this PR's own gate run executes the new "Design-token ratchet" step end-to-end**; post-merge `/api/health` probe per the section above (CI/docs-only ⇒ no runtime delta). | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>` removes the step and restores the manual-list docs (safe; protection's required-check string never changed). |
 | 2026-07-19 | **PR #257 — refactor(borrower): boy-scout split #4 (FINAL), `Dashboard.tsx` 1,092 → 471 lines; this ledger row rides in the same PR.** Completes the giant-page decomposition (#254 → #255 → #256 → this): all four 1,000+-line pages are now feature folders with characterization tests. The page's five in-file components + pure helpers relocate verbatim into `borrowerDashboard/`: **model.ts** (types · `NEXT_ACTION_ICONS` · readiness/greeting/expiry/activity-time helpers; **8 unit tests — first-ever coverage**, readiness weights pinned exhaustively over the shared `LOAN_APP_STATUSES` so a new status cannot score silently), **FinancialSnapshot**, **CollapsibleActivity**, **LoanDetails** (3 tests incl. the expired-expiry suppression rule), **PreQualLetterCard**. | **None** — client-only; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change; no new dependencies. | `tsc` clean; `pnpm test` **1,356 node + 61 client green** (13 new); token guard **0/97 at baseline**; **live-driven on :5002 as buyer@test.com** (real pipeline data): extracted greeting renders the doc-collection subtitle, next-action card w/ icon map ("Upload your documents — 7 needed"), all three collapsible sections live in the DOM (details ×2 · activity ×5 · snapshot); gate green on the PR; post-merge `/api/health` probe per the section above. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (client-only). |
 | 2026-07-19 | **PR #256 — refactor(funnel): boy-scout split #3, `PreApproval.tsx` 1,371 → 906 lines; this ledger row rides in the same PR.** Deliberately conservative for the conversion-critical `/apply` funnel: **render-layer extractions only** — machine/gates/autosave/draft-restore/submit untouched; small form-entangled switch cases stay inline. Into `preApproval/`: **StateStep** (the licensed-state gate, mirrors the server 422; 3 tests pinned to the shared footprint — unlicensed shows shared `unlicensedStateMessage` + holds, licensed advances), **IncomeSourcesStep** (controlled on purpose — draft-restore's `applyIncomeSources` reseeds parent-owned stores; 5 tests incl. rental `annualAmount` derived Σ monthly×12), **FunnelChrome** (RestoreDraftBanner #249 one-decision-point · AuthGateOverlay · FunnelFooter; 3 tests incl. regulatory copy pins — soft-inquiry, not-a-commitment, broker disclosure, Equal Housing). | **None** — client-only; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change; no new dependencies. | `tsc` clean; `pnpm test` **1,356 node + 48 client green** (11 new); token guard **0/97 at baseline**; **live-driven on :5002** per the funnel recipe (step-counter assertions): extracted footer on every step; seeded draft ⇒ **RestoreDraftBanner appeared, Restore hydrated form+step** ("Progress restored", advisory computed DTI 29% / $2,413/mo from restored answers, landed Step 6); **Wisconsin ⇒ live unlicensed notice (Illinois-only, NMLS #427468) + held at Step 6; Illinois ⇒ advanced to Step 7**; gate green on the PR; post-merge `/api/health` probe per the section above. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (client-only). |
