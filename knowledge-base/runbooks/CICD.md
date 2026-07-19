@@ -8,17 +8,20 @@ revert.** No human review required — the machine gate is the only approval.
   PR ──▶ gate green ──▶ merge to main ──▶ Vercel builds & deploys
           │                  │                       │
           ▼                  ▼              broken?  ▼
-  typecheck · unit     migrate-prod applies    Vercel → Deployments →
-  tests · prod-dep     pending migrations      previous one → Promote
-  audit · schema       to the prod DB          (instant)
-  guard
+  typecheck · unit +   migrate-prod applies    Vercel → Deployments →
+  client tests ·       pending migrations      previous one → Promote
+  prod-dep audit ·     to the prod DB          (instant)
+  schema guard ·
+  token ratchet
 ```
 
-**CI status (corrected 2026-07-17): the gate is live and blocking.**
-[`ci.yml`](../../.github/workflows/ci.yml) runs a required **`gate`** job on
-every PR to `main` — `pnpm check`, `pnpm test` (unit suite), a **blocking**
-`pnpm audit --prod --audit-level=high`, and `pnpm guard:schema` (a schema change
-without a same-PR migration goes RED and cannot merge). Branch protection
+**CI status (corrected 2026-07-17; token ratchet gated 2026-07-19): the gate is
+live and blocking.** [`ci.yml`](../../.github/workflows/ci.yml) runs a required
+**`gate`** job on every PR to `main` — `pnpm check`, `pnpm test` (node unit +
+client component suites), a **blocking** `pnpm audit --prod --audit-level=high`,
+`pnpm guard:schema` (a schema change without a same-PR migration goes RED and
+cannot merge), and `pnpm guard:tokens` (the design-token ratchet — a raw palette
+class or bare white/black literal over baseline goes RED). Branch protection
 requires that check with `enforce_admins` ON, so **nobody direct-pushes `main`,
 founder included** (force-push and deletion of `main` are blocked too;
 `npm run save` / `npm run sync` predate this and now die on the push step — see
@@ -171,7 +174,7 @@ site (every route except `/api/*`) behind invite links while the
 
 ## Checks — what the gate enforces, and what stays manual
 
-The required `gate` check runs these four on every PR (same commands locally):
+The required `gate` check runs these five on every PR (same commands locally):
 
 ```bash
 pnpm check                             # typecheck
@@ -180,13 +183,21 @@ pnpm test                              # node unit suite (vitest.config.ts inclu
                                        #   happy-dom, glob: client/src/**/*.test.{ts,tsx})
 pnpm audit --prod --audit-level=high   # blocking prod-dependency scan (high+)
 pnpm guard:schema                      # schema ↔ migration drift guard
+pnpm guard:tokens                      # design-token ratchet (raw palette / bare white-black
+                                       #   counts vs scripts/design-token-baseline.json;
+                                       #   gated 2026-07-19 — counts may only go down)
 ```
+
+The token ratchet's residual is the `strict: false` racing-merge window
+(TEAM_PRACTICES §5 traps): two individually-green PRs can still combine into a
+red `main`, which the **next** PR's gate surfaces — fix forward in that PR by
+retokening or ratcheting the baseline (the #112 class, now caught in CI instead
+of lingering).
 
 Still **manual — CI never runs these**:
 
 ```bash
 TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration   # needs a running dev server
-node scripts/design-token-guard.cjs   # raw-color ratchet (baselines race — re-run right before merge)
 pnpm checkup                          # daily umbrella: the gate's checks + build, orphan scan,
                                       # token/kb guards, prod health — deliberately no integration
 ```
@@ -211,6 +222,7 @@ rollback pointer.
 
 | Date | Change | Prod DB / env | Validation | Rollback |
 |---|---|---|---|---|
+| 2026-07-19 | **PR #258 — ci: design-token ratchet promoted into the required gate; this ledger row rides in the same PR.** The last deferred intervention from the [adjudication log](../logs/2026-07-19-modular-architecture-pitch-adjudication.md) §4 (option 3), taken after #253–#257 stabilized baselines at **0 raw-palette / 97 bare-white-black**. New `pnpm guard:tokens` script + fifth `gate` step — **the job `name:` is untouched** (verbatim required-check string; rename = PR deadlock). Residual documented in-step + §Checks: the `strict:false` racing-merge window (the #112 baseline-race class) now surfaces on the **next** PR's gate instead of lingering until a manual run; fix forward by retokening or ratcheting the baseline. Docs same-PR: this file (diagram · CI-status · §Checks five-command list, guard removed from the manual list), 10-deploy-ops operator summary, ui-components skill. | **None** — CI workflow + package.json script + docs; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change; nothing enters the runtime bundle. | `pnpm guard:tokens` green at baseline (0/97) locally; gate job name byte-verified against the protected required-check string pre-push; **this PR's own gate run executes the new "Design-token ratchet" step end-to-end**; post-merge `/api/health` probe per the section above (CI/docs-only ⇒ no runtime delta). | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>` removes the step and restores the manual-list docs (safe; protection's required-check string never changed). |
 | 2026-07-19 | **PR #257 — refactor(borrower): boy-scout split #4 (FINAL), `Dashboard.tsx` 1,092 → 471 lines; this ledger row rides in the same PR.** Completes the giant-page decomposition (#254 → #255 → #256 → this): all four 1,000+-line pages are now feature folders with characterization tests. The page's five in-file components + pure helpers relocate verbatim into `borrowerDashboard/`: **model.ts** (types · `NEXT_ACTION_ICONS` · readiness/greeting/expiry/activity-time helpers; **8 unit tests — first-ever coverage**, readiness weights pinned exhaustively over the shared `LOAN_APP_STATUSES` so a new status cannot score silently), **FinancialSnapshot**, **CollapsibleActivity**, **LoanDetails** (3 tests incl. the expired-expiry suppression rule), **PreQualLetterCard**. | **None** — client-only; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change; no new dependencies. | `tsc` clean; `pnpm test` **1,356 node + 61 client green** (13 new); token guard **0/97 at baseline**; **live-driven on :5002 as buyer@test.com** (real pipeline data): extracted greeting renders the doc-collection subtitle, next-action card w/ icon map ("Upload your documents — 7 needed"), all three collapsible sections live in the DOM (details ×2 · activity ×5 · snapshot); gate green on the PR; post-merge `/api/health` probe per the section above. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (client-only). |
 | 2026-07-19 | **PR #256 — refactor(funnel): boy-scout split #3, `PreApproval.tsx` 1,371 → 906 lines; this ledger row rides in the same PR.** Deliberately conservative for the conversion-critical `/apply` funnel: **render-layer extractions only** — machine/gates/autosave/draft-restore/submit untouched; small form-entangled switch cases stay inline. Into `preApproval/`: **StateStep** (the licensed-state gate, mirrors the server 422; 3 tests pinned to the shared footprint — unlicensed shows shared `unlicensedStateMessage` + holds, licensed advances), **IncomeSourcesStep** (controlled on purpose — draft-restore's `applyIncomeSources` reseeds parent-owned stores; 5 tests incl. rental `annualAmount` derived Σ monthly×12), **FunnelChrome** (RestoreDraftBanner #249 one-decision-point · AuthGateOverlay · FunnelFooter; 3 tests incl. regulatory copy pins — soft-inquiry, not-a-commitment, broker disclosure, Equal Housing). | **None** — client-only; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change; no new dependencies. | `tsc` clean; `pnpm test` **1,356 node + 48 client green** (11 new); token guard **0/97 at baseline**; **live-driven on :5002** per the funnel recipe (step-counter assertions): extracted footer on every step; seeded draft ⇒ **RestoreDraftBanner appeared, Restore hydrated form+step** ("Progress restored", advisory computed DTI 29% / $2,413/mo from restored answers, landed Step 6); **Wisconsin ⇒ live unlicensed notice (Illinois-only, NMLS #427468) + held at Step 6; Illinois ⇒ advanced to Step 7**; gate green on the PR; post-merge `/api/health` probe per the section above. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (client-only). |
 | 2026-07-19 | **PR #255 — refactor(staff): boy-scout split #2, `StaffDashboard.tsx` 1,408 → 602 lines; this ledger row rides in the same PR.** Same recipe as #254 (row below). Four verbatim extractions into `staffDashboard/`: **CreateTaskDialog** (task-engine creation surface; 4 tests pin doc-request conditionality + priority/category/year pickers to the shared model lists; application select stays parent-controlled for the Review tab's Add-Task preselection), **MyQueueTab** (role-scoped SLA queue; 2 tests), **ReviewTab** (two-axis verdicts: verify ⇒ COMPLETED/verified, reject ⇒ OPEN/rejected; owns `updateTaskMutation`; 4 tests incl. onAddTask handoff + role-honest headings), **ComplianceTab** (GSE/ULDD/QM readiness · ECOA §1002.9 AA counters · FCRA/ECOA/GLBA retention report — owns the retention queries, now firing on tab mount not page load · audit/automation panels; 2 render tests incl. AA escalation copy). Type surfacing: `getUserName` prop typed `string \| null` (`User.email` nullable). | **None** — client-only; no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0037`**); no env-var change; no new dependencies. | `tsc` clean; `pnpm test` **1,356 node + 37 client green** (12 new); token guard **0/97 at baseline**; **live-driven on :5002 with three role fixtures** — admin: Pipeline w/ 143 real loans + CreateTaskDialog in doc-request mode; underwriter: default-lands on ReviewTab (empty state + "Team Applications"); processor: default-lands on MyQueueTab rendering **263 real SLA-sorted rows**; gate green on the PR; post-merge `/api/health` probe per the section above. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (client-only). |
