@@ -54,9 +54,12 @@ pnpm check              # TypeScript typecheck (see "known issues" below)
 pnpm test:unit          # fast pure-logic tests
 TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration   # API tests against a running server
 pnpm build && pnpm start # production build + run
-pnpm save               # commit-everything + pull + push (the daily driver)
 pnpm db:migrate         # apply versioned migrations (hand-authored SQL in migrations/)
 ```
+
+Landing work: branch → PR → required `gate` check → squash merge
+([CICD.md](../../runbooks/CICD.md) §Shipping). Direct pushes to `main` are
+rejected by branch protection — the old `pnpm save`/`pnpm sync` scripts are dead.
 
 ⚠️ Do **not** use `pnpm db:push` — the shared dev DB serves multiple branches and
 push drops other branches' columns; migrations are hand-authored (drizzle-kit generate

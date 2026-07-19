@@ -23,12 +23,13 @@ specific question for counsel.
 
 The TRID trigger adds one nullable column, `loan_applications.trid_triggered_at`.
 The project uses **versioned, hand-authored SQL migrations** (`migrations/`, applied with
-`npm run db:migrate` — **never `db:push`**; see [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)).
-It was applied and smoke-tested on the **dev** database only. **Production applies are
-founder-supervised**: apply the hand-authored migration via a direct `pg` client (the Neon
-pooler breaks `db:migrate` against prod) and record it in [CICD.md](../runbooks/CICD.md)'s production
-change ledger. The change is additive and nullable, so it is safe to leave in place across a
-code rollback.
+`pnpm db:migrate` locally — **never `db:push`**; see [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)).
+✅ **Resolved 2026-07-19:** the column ships in `migrations/0027_reconcile_dbpush_drift.sql`
+and is applied to production — prod's migration HEAD has since advanced well past it (0037 as
+of 2026-07-17). Prod migrations now **auto-apply on merge** via the `migrate-prod` CI job
+([DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md)); the founder-supervised manual-apply lane
+this section used to prescribe is retired. The change is additive and nullable, so it is safe
+to leave in place across a code rollback.
 
 ---
 
@@ -213,5 +214,5 @@ manual-review posture — no automated tolerance-baseline reset or charge compar
 - [ ] §3 — delivery, 30-day timing, 25-month retention confirmed
 - [ ] §4 — representative fees match actual charges; assumption disclosures adequate
 - [ ] §5 — six-piece definition and ESIGN consent confirmed
-- [ ] §0 — the `trid_triggered_at` migration applied to production (founder-supervised, per [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)) and recorded in CICD.md's change ledger
+- [x] §0 — the `trid_triggered_at` migration applied to production *(resolved 2026-07-19: ships in `0027_reconcile_dbpush_drift.sql`, auto-applied by the `migrate-prod` pipeline — see §0)*
 - [ ] §6 — COC manual-tolerance posture, regenerated-LE delivery treatment, and the (e)(4)(ii) closing-side boundary confirmed (added 2026-07-12)

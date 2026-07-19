@@ -5,7 +5,7 @@
 **Deeper dives:** the [`kb/app-guide/`](./app-guide/) handbook covers each subsystem in more detail. This playbook is the map; the handbook is the terrain.
 
 > **Golden rules**
-> 1. `main` is production. Every push deploys to Vercel. Revert commits are the rollback plan — no long-lived branches.
+> 1. `main` is production **and protected** — work lands as short-lived PR branches through the required `gate` check (squash-merge your own green PR; direct pushes are rejected, founder included — [CICD.md](../runbooks/CICD.md)). Every merge deploys to Vercel. Rollback = Vercel Promote first, then revert **via PR** ([ROLLBACK.md](../runbooks/ROLLBACK.md)).
 > 2. The client **never** imports from `server/`. The server **never** imports from `client/`. Both import from `shared/`.
 > 3. All vendor integrations (credit, AVM, GSE) run through adapter functions that are **deterministic simulations** until the real API keys exist. Never hardcode a vendor call outside its adapter.
 > 4. Anything that touches borrower PII goes through `server/services/encryptionService.ts` and gets an audit-log entry.
@@ -57,7 +57,8 @@ This is a single workspace, not a multi-package monorepo. The blueprint concepts
 │   ├── index-prod.ts           Persistent-server prod entry (VM/dist build)
 │   ├── db.ts                   Drizzle connection (Neon serverless driver, or
 │   │                           node-postgres automatically for localhost URLs)
-│   ├── storage.ts              Data-access layer — most DB reads/writes live here
+│   ├── storage/                Data-access layer — 22 domain files composed into
+│   │                           DatabaseStorage (index.ts; split from storage.ts in #182)
 │   ├── auth.ts                 Register/login/logout + /api/test-login fixtures
 │   ├── routes/                 One file per domain, registered in routes.ts
 │   │   ├── lending.ts          /api/dashboard hydration, loan application CRUD
@@ -223,7 +224,7 @@ There is no external lock-sync webhook today because there is no external PPE; w
 1. Edit the table in `shared/schema/<domain>.ts` (and re-export from the barrel if it's new).
 2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql`. **Never `drizzle-kit generate`** — it has snapshot drift and produces wrong output in this repo. **Never `pnpm db:push`** — it has no down-migration and, against the shared dev DB, drops columns belonging to other branches. Review the SQL like code, especially any `DROP`/`ALTER … TYPE`.
 3. Apply locally with `pnpm db:migrate`, then run the app + tests.
-4. Commit the migration file with the schema change. **Production applies are founder-supervised** — the Neon pooler breaks `db:migrate` against prod, so apply via a direct `pg` client and insert the migrations-journal row manually (verify it landed); snapshot Neon first if anything is dropped/renamed; record the apply in [CICD.md](../runbooks/CICD.md)'s production change ledger.
+4. Ship the migration **and its `migrations/meta/_journal.json` entry in the same PR as the schema change** — `pnpm guard:schema` runs in the required CI gate and goes RED otherwise. On merge, the **`migrate-prod` CI job auto-applies it to prod** (direct URL minted from `NEON_API_KEY`): **never hand-apply, never `db:push` to prod, never insert journal rows manually.** Contract steps (`SET NOT NULL`/`CHECK`/FK/type narrowing) need the read-only prod probe *before* authoring; snapshot Neon first if anything is dropped/renamed. Binding rules: [CLAUDE.md](../../CLAUDE.md) §Database; full flow: [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md). Record the apply in [CICD.md](../runbooks/CICD.md)'s production change ledger.
 5. Seeding: `server/seed.ts` (demo fixtures); pricing demo data (UWM lender + rate sheets) is seeded manually in local dev only.
 
 **Never** run destructive column changes without checking what production data is in the column first.
@@ -253,7 +254,7 @@ Honesty matters more than aspiration here. New engineers must know which guardra
 
 | Guardrail | Status | Intended shape |
 |---|---|---|
-| **NMLS state-licensing routing gate** | ❌ none — `server/config/company.ts` literally has `nmlsId: "PENDING"` (roadmap F2) | When LO assignment is built: a lookup table of licensed states per LO; the assignment engine must refuse to route an application in a regulated state (e.g., Illinois/IRMLA) to an unlicensed LO, and refuse to originate at all in states where the company isn't licensed. |
+| **NMLS state-licensing routing gate** | ◐ partial *(updated 2026-07-19)* — company licensure is real (`shared/companyIdentity.ts`: NMLS **#427468**, landed #154) and the **company-level footprint gate ships**: `LICENSED_STATES` (Illinois-only, #201) scopes soliciting/pricing surfaces (application creation, status decisions, the MCP pricing tool). Add a state **only when its license is issued** and verifiable on NMLS Consumer Access. Still missing: **per-LO licensing**. | When LO assignment is built: a lookup table of licensed states per MLO; the assignment engine must refuse to route an application in a regulated state (e.g., Illinois/IRMLA) to an unlicensed MLO. The company-level refusal already exists via `LICENSED_STATES`. |
 
 **Rule for contributors:** if you build any feature that sends an outbound message or assigns a human to a borrower, the corresponding guardrail above becomes your blocker (for outbound messages: route through `evaluateOutboundSms` / the quiet-hours gate). Do not ship around it.
 
@@ -291,5 +292,5 @@ Prereqs: Node 24.x (corepack ships with it), and either Docker **or** a local/ho
                              # note: creates loan applications for buyer@test.com
    ```
 8. **MCP server (stdio):** registered for Claude Code in `.mcp.json` as `homiquity`; run manually with `pnpm mcp`. Smoke test by piping newline-delimited JSON-RPC (`initialize` → `notifications/initialized` → `tools/list` → `tools/call`) into `npx tsx server/mcp/index.ts`. Tools: `run_soft_credit_pull`, `get_best_execution_rates`, `retrieve_property_valuation`. **Never** add a `console.log` to the MCP import graph — stdout is the protocol; `bootstrap.ts` rebinds logging to stderr and must remain the first import.
-9. **Ship:** commit to `main` and push — Vercel builds (`pnpm install --frozen-lockfile`, `pnpm vercel-build`) and deploys automatically. Verify `https://mortgage-stream.vercel.app/api/health` after deploy. Roll back with `git revert <sha> && git push`.
+9. **Ship:** branch → PR → the required `gate` check goes green → `gh pr merge --squash` (direct pushes to `main` are rejected by branch protection; full recipe in [CICD.md](../runbooks/CICD.md) §Shipping). Vercel builds (`pnpm install --frozen-lockfile`, `pnpm vercel-build`) and deploys every merge — then verify `https://www.homiquity.com/api/health` (**READY is not healthy**; [CICD.md](../runbooks/CICD.md) §Post-deploy health check). Roll back per [ROLLBACK.md](../runbooks/ROLLBACK.md): Vercel Promote first, then revert via PR.
 10. **Read next:** [`app-guide/01-start-here.md`](./app-guide/01-start-here.md) and the rest of the handbook for architecture, data flow, schema, and secrets deep-dives.

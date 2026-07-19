@@ -23,7 +23,7 @@
 | Environment | Database | How |
 |-------------|----------|-----|
 | Local dev | Native Postgres on `localhost:5432`, db `homiquity` | `DATABASE_URL` in `.env` |
-| Production (Vercel) | Neon (us-east-2, pooled) | `DATABASE_URL` in Vercel env; also stored locally as `PROD_DATABASE_URL` in `.env` for founder-supervised migration applies (see pre-flight below) |
+| Production (Vercel) | Neon (us-east-2, pooled) | `DATABASE_URL` in Vercel env. **No prod credential lives locally** — the `migrate-prod` CI job mints a DIRECT (unpooled) URL from `NEON_API_KEY` at run time, and prod data checks run *through CI* ([DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md)) |
 
 ## Schema domains (what lives where)
 
@@ -73,12 +73,16 @@
 3. From a **worktree**, never `pnpm db:push` against the shared dev DB — it
    drops other branches' columns; use targeted `ALTER TABLE` statements instead
    ([.agents/memory/db-push-blocker.md](../../../.agents/memory/db-push-blocker.md)).
-4. Production applies are **founder-supervised**
-   ([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §6). The Neon pooler breaks
-   `db:migrate` against prod — apply via a direct `pg` client and insert the
-   migrations-journal row manually; verify the journal row landed. **If the
-   change drops/renames anything, snapshot Neon first.** Record the apply in
-   CICD.md's production change ledger.
+4. Ship the migration **and its `migrations/meta/_journal.json` entry in the same
+   PR** as the schema change — `pnpm guard:schema` runs in the required CI gate
+   and goes RED otherwise. On merge, the **`migrate-prod` CI job auto-applies it
+   to prod**: never hand-apply, never `db:push` to prod, never insert journal
+   rows manually (the retired raw-`pg` recipe caused journal drift). Contract
+   steps (`SET NOT NULL`/`CHECK`/FK) need the read-only prod probe *before*
+   authoring. **If the change drops/renames anything, snapshot Neon first.**
+   Binding rules: [CLAUDE.md](../../../CLAUDE.md) §Database; full flow:
+   [DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md). Record the apply in
+   [CICD.md](../../runbooks/CICD.md)'s production change ledger.
 5. Drizzle infers insert/select types — use `createInsertSchema` (drizzle-zod)
    for request validation like the existing routes do.
 

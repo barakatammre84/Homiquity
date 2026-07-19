@@ -29,8 +29,8 @@ acting on a mid-afternoon report that the evening overtook.)*
 ## 3. Same-session commit rule
 
 Any file a session generates (reports, research notes, extracted data) is **committed
-before the session ends** — in the sanctioned lane for its type (routine reports commit
-to local main; evening triage publishes docs-only). An untracked file in one checkout is
+before the session ends** — in the sanctioned lane for its type: a **docs-only PR merged
+on green** (branch protection rejects direct pushes to `main` — §6). An untracked file in one checkout is
 invisible to every worktree and every other session. Code changes never ride along with a
 report commit. *(Prevents: the 2026-07-04 lo-audit report stranding — that report now lives
 at `knowledge-base/archive/lo-audit/2026-07-04-pm.md`.)*
@@ -86,34 +86,55 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
   never `--force` — [.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md).
 - **`drizzle-kit generate` has snapshot drift** in this repo — hand-author migration SQL
   (point 6 above; [CLAUDE.md](../../CLAUDE.md) database rules).
-- **Neon's pooled connection breaks `npm run db:migrate` against prod** — apply via a direct
-  `pg` client and insert the migrations-journal row manually
-  ([kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)).
+- **Prod migrations are auto-applied by CI — never hand-apply.** The `migrate-prod` job
+  applies pending `migrations/` on every merge to `main` (direct URL minted from
+  `NEON_API_KEY`; the retired raw-`pg` + manual-journal-insert recipe caused the journal
+  drift the dry-run pre-flight exists to reconcile). Break-glass:
+  `DATABASE_URL=<direct-url> pnpm db:migrate:prod` ([DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md)).
+- **A duplicated journal `when` silently skips a migration on prod** — the applier dedupes by
+  `_journal.json` `when` as well as by hash (`scripts/migrate-prod.cjs`), so a copy-pasted
+  `when` makes prod treat the new migration as already applied. Every `when` must be unique
+  and strictly increasing ([DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md) §Adding a migration).
 - **npm crashes mid-install on Vercel** ("Exit handler never called") — Vercel builds with
-  pnpm; after any dependency change run `npx pnpm@10 import` and commit **both** lockfiles
-  ([CICD.md](../runbooks/CICD.md)).
+  pnpm, and `pnpm-lock.yaml` is the **only** lockfile: after any dependency change run
+  `pnpm install` and commit `pnpm-lock.yaml`. Never resurrect `package-lock.json` via
+  `pnpm import` — it was deleted as proxy-poisoned (CH-1, 2026-07-08; [CICD.md](../runbooks/CICD.md)).
+- **Racing auto-merges can land a tree the gate never tested** — branch protection
+  deliberately runs with `strict` off, so a PR that merges while other PRs land is combined
+  with `main` untested. After a squash merge amid other merges, diff the squash commit
+  against your tested branch head before trusting green (discovered 2026-07-17).
 - **The integration suite trips the auth rate limiter** — boot the test server with
   `RATE_LIMIT_RELAXED=true` (point 3 above).
 
-## 6. Push and merge policy
+## 6. Push and merge policy *(rewritten 2026-07-19 for the 2026-07-17 branch protection)*
 
-- Pushes to `main` deploy production. They are **founder-approved**: either the founder
-  pushes, or a session pushes under an explicit, per-batch approval (the 2026-07-04
-  launch-integration push was such a one-time authorization — it does not generalize).
-- A push to `main` — and any action against the production DB or env — is not complete until
-  its entry lands in the **production change ledger** in [CICD.md](../runbooks/CICD.md), same session:
-  what shipped, prod DB/env actions, validation evidence, rollback pointer. *(Prevents: an
-  unledgered deploy invisible to the next incident responder.)*
-- Scheduled routines publish **docs-only** (the evening-triage gate inspects every
-  unpushed commit's paths before pushing).
-- Batch merges via integration push preserve PR head SHAs (`git merge --no-ff` per PR) so
-  GitHub marks the PRs merged. **Immediately after**: archive the finished sessions and
-  delete the merged branches — stale session chips claiming "open PR" cost the team a
+- **`main` is protected — nobody direct-pushes it, founder included.** The `gate` check is
+  required with `enforce_admins` on; force-push and deletion are blocked. Work lands as a
+  short-lived branch → PR → gate green → **squash merge**. No required reviews: the author
+  merges (or auto-merges) their own green PR. Recipe: [CICD.md](../runbooks/CICD.md) §Shipping.
+  *(The founder-approved direct-push lane this section used to describe — including the
+  2026-07-04 batch integration push — predates branch protection and no longer exists.
+  Break-glass for a genuine emergency is a deliberate `enforce_admins` toggle in GitHub
+  settings, never a workaround.)*
+- Every merge to `main` deploys production. A deploying merge — and any action against the
+  production DB or env — is not complete until its entry lands in the **production change
+  ledger** in [CICD.md](../runbooks/CICD.md), same session: what shipped, prod DB/env actions,
+  validation evidence, rollback pointer. Validation **must include the binding post-deploy
+  health probe** — `curl https://www.homiquity.com/api/health` — because Vercel READY attests
+  the build, not the runtime. *(Prevents: an unledgered deploy invisible to the next incident
+  responder — and the 2026-07-17 class of outage, where a READY deploy served a dead API.)*
+- Scheduled routines publish **docs-only, through the same PR lane** (docs-only branch →
+  gate → auto-merge; the routine inspects every commit's paths before opening the PR).
+  A routine never carries code.
+- **Immediately after a merge**: delete the merged branch (remote and local) and its worktree,
+  and archive the finished session — stale session chips claiming "open PR" cost the team a
   confused audit. *(Prevents: the post-batch "2 active sessions and 8 pull requests"
   ghost state.)*
-- Destructive production actions (grid reseed, migrations against prod, env flips,
-  credential rotation) are founder-supervised, never autonomous. Routines emit the exact
-  runbook line instead.
+- Destructive production actions (grid reseed, env flips, credential rotation, any contract
+  migration's data decision) are founder-supervised, never autonomous. Routines emit the exact
+  runbook line instead. The one automated prod-DB writer is the `migrate-prod` CI job; what
+  keeps it safe is the author-side discipline in [CLAUDE.md](../../CLAUDE.md) §Database
+  (same-PR migration, expand/contract, read-only prod probe before any contract step).
 
 ## 7. Documentation link and file rules
 

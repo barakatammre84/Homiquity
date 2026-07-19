@@ -2,20 +2,23 @@
 
 An AI-native mortgage **brokerage** platform: borrower intake (digital 1003), document
 collection, deterministic underwriting, MISMO 3.4 packaging, and delivery of complete
-loan files to wholesale lenders. Deployed at <https://mortgage-stream.vercel.app>.
+loan files to wholesale lenders. Deployed at <https://www.homiquity.com>
+(Vercel; the `mortgage-stream.vercel.app` platform domain still resolves).
 
-**Current status (2026-07-12): deployed in pre-license gated mode; gated-beta money path
-verified end-to-end.** The public site is live in production behind a **pre-license gate**
-(`server/services/prelaunchGate.ts`; fail-safe — gated whenever the company NMLS id is
-`PENDING`), so a stranger reaches educational content and a waitlist, never a
-mortgage-solicitation surface. The full commercial machine — intake, deterministic
-pre-approval, LO claim/handoff, dual-AUS run, MISMO packaging, wholesale delivery — is
-**built and verified end-to-end behind the gate against simulated vendors** (2026-07-12
-founder walkthrough, PRs #135–#139; see
+**Current status (2026-07-19): company NMLS licensure is real — NMLS #427468, Illinois
+(`shared/companyIdentity.ts`, #154/#201) — and the site remains in pre-launch gated mode
+pending the founder go-live flips.** The public site is live in production behind the
+**pre-launch gate** (`server/services/prelaunchGate.ts` — flag-driven, with a fail-safe
+that re-gates production if the NMLS id ever reads `PENDING`), so a stranger reaches
+educational content and a waitlist, never a mortgage-solicitation surface. The full
+commercial machine — intake, deterministic pre-approval, LO claim/handoff, dual-AUS run,
+MISMO packaging, wholesale delivery — is **built and verified end-to-end behind the gate
+against simulated vendors** (2026-07-12 founder walkthrough, PRs #135–#139; see
 [BETA_GO_LIVE_READINESS.md](knowledge-base/runbooks/BETA_GO_LIVE_READINESS.md)), one config
-flip from going live the day **F1 (NMLS licensing)** clears. Nothing commercial is legally
-real until then — see [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) for what is
-real, simulated, or pending, and [CTO_ROADMAP.md](CTO_ROADMAP.md) for the live work queue.
+flip from go-live (`VITE_PRELAUNCH_GATED` + beta access code — founder-only). Nothing
+commercial is legally real until that flip — see
+[ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) for what is real, simulated, or
+pending, and [CTO_ROADMAP.md](CTO_ROADMAP.md) for the live work queue.
 
 ## Quick start
 
@@ -99,7 +102,8 @@ history. Never act on these.
 
 ## Repository ground rules (summary — full rules in CLAUDE.md)
 
-- `main` is production: every push deploys to Vercel. Land work via short-lived PR branches.
+- `main` is production and protected: every merge deploys to Vercel. Land work via
+  short-lived PR branches through the required `gate` check — direct pushes are rejected.
 - `client/` and `server/` never import from each other; both import from `shared/`.
 - Vendor integrations are deterministic simulations behind adapters until real contracts exist.
 - Borrower PII goes through `server/services/encryptionService.ts` / `ssnVault.ts` + audit log.

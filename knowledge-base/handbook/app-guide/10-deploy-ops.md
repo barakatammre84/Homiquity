@@ -3,15 +3,19 @@
 The authoritative docs are [CICD.md](../../runbooks/CICD.md) (deploy) and
 [ROLLBACK.md](../../runbooks/ROLLBACK.md) (revert). This page is the operator's summary.
 
-## The flow (deliberately simple — no CI gates)
+## The flow (PR → required gate → merge deploys)
 
 ```
-git push to main  ──▶  Vercel auto-builds & deploys production
-PR branches       ──▶  automatic preview deployments
-broken prod?      ──▶  Vercel → Deployments → last good → Promote (instant)
+branch → PR      ──▶  required `gate` check (typecheck · unit tests · prod audit · schema guard)
+gate green       ──▶  squash-merge your own PR ──▶  Vercel builds & deploys production
+                      (+ `migrate-prod` auto-applies any pending migrations)
+PR branches      ──▶  automatic preview deployments
+broken prod?     ──▶  Vercel → Deployments → last good → Promote (instant)
 ```
 
-Ship with `pnpm save` (commit-all + pull + push) or plain `git push`.
+Ship via the PR flow in [CICD.md](../../runbooks/CICD.md) §Shipping — **direct pushes to
+`main` are rejected by branch protection** (the old `pnpm save`/`pnpm sync` one-command
+scripts die on the push step).
 
 ## How Vercel runs this app
 
@@ -27,16 +31,17 @@ Ship with `pnpm save` (commit-all + pull + push) or plain `git push`.
   22 and 24 alike, four deploys in a row, while the same install works locally.
   So `vercel.json` uses `pnpm install --frozen-lockfile --prod=false`
   (`--prod=false` matters: Vercel sets `NODE_ENV=production`, which otherwise
-  makes pnpm skip devDependencies like vite). `pnpm-lock.yaml` mirrors
-  `package-lock.json` via `pnpm import`. **After changing dependencies, run
-  `npx pnpm@10 import` and commit both lockfiles.** Local dev can keep using
-  npm. Node is pinned to 24.x; `.npmrc` silences audit/fund.
+  makes pnpm skip devDependencies like vite). `pnpm-lock.yaml` is the **single**
+  lockfile — the proxy-poisoned `package-lock.json` was deleted (CH-1,
+  2026-07-08); never resurrect it via `pnpm import`. **After changing
+  dependencies, run `pnpm install` and commit `pnpm-lock.yaml`.** Local dev uses
+  pnpm via corepack. Node is pinned to 24.x; `.npmrc` silences audit/fund.
 
 ## Environments
 
 | | Local dev | Production (Vercel) |
 |---|---|---|
-| Start | `pnpm dev` (port 5001) | automatic on push to `main` |
+| Start | `pnpm dev` (port 5001) | automatic on merge to `main` |
 | DB | native Postgres `localhost:5432` | Neon (serverless driver) |
 | Client | Vite middleware (HMR) | CDN static |
 | Secrets | `.env` (gitignored) | Vercel project env vars |
@@ -46,16 +51,20 @@ Ship with `pnpm save` (commit-all + pull + push) or plain `git push`.
 ## Operational checks
 
 - **Health**: `GET /api/health` → `{status:"ok"}` or 503 when the DB is
-  unreachable. First thing to curl when anything looks wrong.
+  unreachable. First thing to curl when anything looks wrong — and **after every
+  production deploy** (`curl https://www.homiquity.com/api/health`): Vercel
+  READY attests the build, not the runtime
+  ([CICD.md](../../runbooks/CICD.md) §Post-deploy health check).
 - **Logs**: Vercel → Deployments → Functions logs (server `log()` output).
   Sensitive response bodies are already suppressed.
-- **Apply a schema change to prod** (founder-supervised): **never `db:push`** — it
-  drops other branches' columns and has no rollback. Apply the hand-authored
-  `migrations/00NN_*.sql` via a direct `pg` client (the Neon pooler breaks
-  `db:migrate` against prod), then insert the `drizzle.__drizzle_migrations`
-  journal row manually and verify it landed. Snapshot/branch Neon first if the
-  change is destructive. Full recipe: [03-database.md](./03-database.md); ledger it
-  in [CICD.md](../../runbooks/CICD.md).
+- **Schema changes reach prod automatically**: the `migrate-prod` CI job applies
+  pending hand-authored `migrations/00NN_*.sql` on every merge to `main` (URL
+  minted from `NEON_API_KEY`). **Never `db:push`** (drops other branches'
+  columns, no rollback), never hand-apply, never insert journal rows manually.
+  Contract migrations need the read-only CI prod probe *before* authoring;
+  snapshot/branch Neon first if the change is destructive. Full flow:
+  [DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md) (+ pre-flight in
+  [03-database.md](./03-database.md)); ledger it in [CICD.md](../../runbooks/CICD.md).
 - **Seeding**: happens automatically at boot, idempotent (existence-checked).
 - **Scheduled jobs** (`vercel.json` crons, authenticated via `CRON_SECRET`; each also
   admin-triggerable): `/api/jobs/lifecycle` daily 13:00 UTC (refi/equity scans, graduation) ·
@@ -75,15 +84,14 @@ Ship with `pnpm save` (commit-all + pull + push) or plain `git push`.
 4. **PDF generation** (pdfkit) — verify fonts bundle correctly on Vercel the
    first time you exercise letter generation in prod.
 
-## Manual quality checks (nothing enforces these — run them yourself)
+## Quality checks — what CI enforces vs. what stays manual
+
+The required `gate` check already enforces `pnpm check`, `pnpm test`, a blocking
+`pnpm audit --prod --audit-level=high`, and `pnpm guard:schema` on every PR
+([CICD.md](../../runbooks/CICD.md) §Checks). Still **manual — CI never runs these**:
 
 ```bash
-pnpm check          # typecheck (currently clean — 0 errors)
-pnpm test:unit      # fast, no server needed
-TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration
-pnpm build          # prove the prod build compiles
+TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration   # needs a running dev server
+pnpm build                                                  # prove the prod build compiles
+node scripts/design-token-guard.cjs                         # raw-color ratchet
 ```
-
-If you later want enforcement, add a GitHub Actions workflow running those
-commands + branch protection — an earlier version existed and was removed by
-choice; its design is described in git history of `CICD.md`.

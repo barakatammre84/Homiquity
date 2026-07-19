@@ -4,14 +4,14 @@
 
 **How to use.** Copy the checklist into the launch ticket, run top to bottom, check each box, and paste the result into the [production change ledger](./CICD.md#production-change-ledger-append-only). **Every ⛔ BLOCKER must pass to launch.** A failed BLOCKER stops the launch and gets a ledger row + rollback ([ROLLBACK.md](./ROLLBACK.md)). ☑ SHOULD items are logged but don't individually block.
 
-**Environment.** Run against `https://mortgage-stream.vercel.app` (or `https://homiquity.com` once the custom domain is attached — see §1). Use the current production commit — confirm it matches `origin/main` HEAD before starting.
+**Environment.** Run against `https://www.homiquity.com` (the custom domain — live since the 2026-07-13 cutover; the `mortgage-stream.vercel.app` platform domain still resolves). Use the current production commit — confirm it matches `origin/main` HEAD before starting.
 
 ---
 
 ## 0. Preconditions (do these first)
 
 - [ ] **Confirm the deploy is live and current.** Vercel shows the latest `main` merge as **READY**, target `production` (`list_deployments` / dashboard). Prod commit SHA == `git rev-parse origin/main`.
-- [ ] **Confirm prod DB migration HEAD.** `drizzle."__drizzle_migrations"` row count == the repo journal entry count (`migrations/meta/_journal.json`). As of 2026-07-08: **12 rows (0000–0011)**. Read-only query; never `db:push` against prod ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5).
+- [ ] **Confirm prod DB migration HEAD.** Run the CI workflow with `dry_run: true` (Actions → CI → Run workflow) and confirm "up to date — no pending migrations" ([DB_MIGRATIONS.md](./DB_MIGRATIONS.md) §Pre-flight — prod isn't queryable from a laptop). As of 2026-07-19 the journal holds **38 entries (0000–0037)**. Never `db:push` against prod ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5).
 - [ ] **A rollback target is identified.** The previous known-good production deploy is a Vercel rollback candidate ([ROLLBACK.md](./ROLLBACK.md) §1).
 
 ---
