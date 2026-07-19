@@ -84,17 +84,21 @@ set -a; source .env; set +a
 TEST_BASE_URL=http://localhost:5002 pnpm test:integration
 ```
 
-## GitHub sync — one-command workflows
+## Landing work on GitHub
+
+`main` is protected — direct pushes are rejected by branch protection, so the old
+`pnpm save`/`pnpm sync` one-command scripts are **dead** (they die on the push
+step). Everything lands as a short-lived branch → PR → required `gate` check →
+squash merge ([CICD.md](./CICD.md) §Shipping):
 
 ```bash
-pnpm save   # commit everything with a timestamp + pull + push (daily driver)
-pnpm sync   # just pull + push (when you've already committed)
-pnpm db:start  # start (or first-time create) the local Postgres container
+git checkout -b <topic-branch>
+git push -u origin <topic-branch>
+gh pr create --fill          # the gate runs automatically
+gh pr merge --auto --squash --delete-branch   # merges itself when green
 ```
 
-`save` is the "back everything up now" button: stages all changes, commits with a
-timestamped message, pulls any remote changes (merge, no editor), and pushes.
-If you also push from another machine, `sync`/`save` handle the pull-before-push for you.
+Local Postgres: `pnpm db:start` starts (or first-time creates) the container.
 
 ## Reverting to a previous version
 
@@ -106,20 +110,19 @@ git log --oneline -20
 **Undo one bad commit (safest — keeps history):**
 ```bash
 git revert <commit-sha>     # creates a new commit that undoes that one
-pnpm sync
+# …then land it via the PR lane above (see also ROLLBACK.md §2 for prod)
 ```
 
 **Restore a single file from an older commit:**
 ```bash
 git checkout <commit-sha> -- path/to/file.tsx
-pnpm save
+git commit -m "restore file to <commit-sha>"   # …then the PR lane
 ```
 
 **Roll the whole project back to an older state (history-preserving):**
 ```bash
 git revert --no-commit <bad-sha-1> <bad-sha-2> ...   # or a range: <old-sha>..HEAD
-git commit -m "revert to known-good state"
-pnpm sync
+git commit -m "revert to known-good state"           # …then the PR lane
 ```
 
 **Just look around an old version (no changes):**

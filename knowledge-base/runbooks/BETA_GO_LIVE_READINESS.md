@@ -69,8 +69,10 @@ These are founder actions — prod env, credentials, counsel. `[GATE]` = regulat
 - [ ] `[ENV]` **Boot-required + ops secrets** — `DATABASE_URL`, `CREDIT_ENCRYPTION_KEY`,
   `PII_HASH_SALT`, `SESSION_SECRET`, `NODE_ENV=production`; plus `SENDGRID_API_KEY`
   (+SPF/DKIM), `SENTRY_DSN`, `CRON_SECRET` for the daily jobs.
-- [ ] `[OPS]` **Prod DB migrations reconciled** — confirm the prod `__drizzle_migrations`
-  count matches the journal; apply any unledgered migrations (raw-pg recipe). These four
+- [ ] `[OPS]` **Prod DB migrations reconciled** — run the CI `migrate-prod` workflow with
+  `dry_run: true` (Actions → CI → Run workflow) and confirm "up to date — no pending
+  migrations"; journal drift reconciles via `markMigrationsApplied.ts`, never a hand-apply
+  ([DB_MIGRATIONS.md](./DB_MIGRATIONS.md) — the old raw-pg recipe is retired). These four
   PRs add no migration.
 - [ ] `[OPS]` **Provision beta LO accounts** — admin-assign the staff role (never
   self-registered), then the LO can claim from the intake inbox.

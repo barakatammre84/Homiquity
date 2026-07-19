@@ -38,29 +38,36 @@ do the git/database steps calmly.
 ## 2. Roll back the code (git)
 
 The deployment rollback above changes what's *live* but not what's on `main`.
-The next push to `main` will redeploy `main`, so you must also fix the code.
+The next merge to `main` will redeploy `main`, so you must also fix the code.
 
 **Always prefer `git revert` over `git reset --hard` + force-push** — revert is
-append-only and won't fight other clones (Replit, teammates, CI).
+append-only (and force-pushing `main` is blocked by branch protection anyway).
+
+**`main` is protected: revert commits land through a PR like everything else** —
+direct pushes are rejected, and the gate still runs (a revert can break types or
+tests, e.g. reverting a dependency fix). §1's Vercel Promote has already stopped
+the bleeding, so the PR minutes cost nothing. For a genuine emergency where the
+gate itself is the obstacle, the break-glass is a deliberate `enforce_admins`
+toggle (GitHub → Settings → Branches), never a workaround.
 
 Undo one bad commit (keeps history):
 ```bash
+git checkout -b revert/<bad-sha>
 git revert <bad-sha>
-git push origin main
+git push -u origin revert/<bad-sha>
+gh pr create --fill && gh pr merge --auto --squash
 ```
 
-Undo a range / several commits:
+Undo a range / several commits (same branch → PR lane):
 ```bash
 git revert --no-commit <old-good-sha>..HEAD
 git commit -m "revert to known-good state"
-git push origin main
 ```
 
-Restore a single file from an older commit:
+Restore a single file from an older commit (same lane):
 ```bash
 git checkout <good-sha> -- path/to/file.tsx
 git commit -m "restore file to <good-sha>"
-git push origin main
 ```
 
 Just look at an old version without changing anything:
@@ -73,10 +80,9 @@ git checkout main       # come back
 Tag before every production deploy so rollback targets are obvious:
 ```bash
 git tag -a rel-2026-07-02 -m "prod deploy"
-git push origin rel-2026-07-02
-# later, to roll the code back to that tag:
+git push origin rel-2026-07-02          # tag pushes are fine — protection covers the branch
+# later, to roll the code back to that tag (lands via the §2 PR lane):
 git revert --no-commit rel-2026-07-02..HEAD && git commit -m "roll back to rel-2026-07-02"
-git push origin main
 ```
 
 ---
@@ -96,10 +102,11 @@ The workflow for a schema change (canonical: [kb/app-guide/03-database.md](../ha
 3. `npm run db:migrate` — applies pending migrations to `DATABASE_URL`. **Never
    `npm run db:push`**: it has no down-migration and, against the shared dev DB,
    drops columns belonging to other branches.
-4. Commit the migration file together with the schema change. Production applies
-   are founder-supervised — the Neon pooler breaks `db:migrate` against prod, so
-   apply via a direct `pg` client and insert the migrations-journal row manually
-   (snapshot Neon first if the change is destructive).
+4. Ship the migration + `_journal.json` entry in the **same PR** as the schema
+   change (`pnpm guard:schema` enforces it in CI). On merge, the `migrate-prod`
+   CI job auto-applies it to prod — never hand-apply, never insert journal rows
+   manually (snapshot Neon first if the change is destructive; full flow:
+   [DB_MIGRATIONS.md](./DB_MIGRATIONS.md)).
 
 Rules of thumb:
 - **Additive changes** (new nullable column, new table) are safe to leave in
@@ -122,16 +129,19 @@ Before any schema change that drops or rewrites data:
 1. **Stop the bleeding:** promote the last good Vercel deployment (§1). Confirm
    the site recovers.
 2. **Identify the bad change:** `git log --oneline -20` and the Vercel deploy logs.
-3. **Fix forward or revert:** `git revert` the bad commit(s) and push (§2).
+3. **Fix forward or revert:** `git revert` the bad commit(s) and land it via the
+   §2 PR lane (§1's promotion already stopped the bleeding, so the gate's minutes
+   are free; break-glass per §2 only if the gate itself is the obstacle).
 4. **Database:** only if the bad change ran a destructive migration — restore
    from the snapshot taken before it (§3).
-5. **Verify:** the new Vercel deploy is green, the site loads, and a smoke test
-   of the broken flow passes.
+5. **Verify:** the new Vercel deploy is green, `curl https://www.homiquity.com/api/health`
+   returns `{"status":"ok"}` (READY is not healthy — [CICD.md](./CICD.md) §Post-deploy
+   health check), the site loads, and a smoke test of the broken flow passes.
 6. **Write it down:** note what broke and why in the PR / an incident note so the
    next person isn't surprised.
 
 ---
 
 ## Related docs
-- [CICD.md](./CICD.md) — how deploys happen (push → Vercel).
-- [LOCAL_DEV.md](./LOCAL_DEV.md) — local setup, env vars, `npm run save`/`sync`.
+- [CICD.md](./CICD.md) — how deploys happen (PR → gate → merge → Vercel).
+- [LOCAL_DEV.md](./LOCAL_DEV.md) — local setup, env vars.

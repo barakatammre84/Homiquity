@@ -105,6 +105,11 @@ PR touches shared/schema/**
    (expand/contract — keep it backward-compatible). If the migration is a **contract** step rather
    than additive, do the data check in the next section *before* you author it.
 3. Add the `_journal.json` entry (`idx`, `version`, `when` = ms timestamp, `tag`, `breakpoints`).
+   **`when` must be unique and strictly increasing across the journal.** The applier dedupes by
+   `when` as well as by hash ([`migrate-prod.cjs`](../../scripts/migrate-prod.cjs) — the
+   `appliedWhens` check), so a `when` copy-pasted from an earlier entry makes prod treat the new
+   migration as already applied and **silently skip it**: green job, missing DDL. Take the current
+   timestamp, never an adjacent entry's.
 4. `pnpm guard:schema` must pass locally before you push.
 
 ## Contract migrations (`SET NOT NULL`, `CHECK`, `FK`, type narrowing)

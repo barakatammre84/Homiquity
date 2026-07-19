@@ -39,11 +39,11 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 
 | Assumption | Reality (verified 2026-07-04) | Unblocks |
 |---|---|---|
-| "Homiquity is a licensed broker" | **False.** `server/config/company.ts`: `nmlsId: "PENDING"`, `mersOrgId: "PENDING"`. Nothing commercial is real until F1 clears. | Everything |
+| "Homiquity is a licensed broker" | **True at company level** *(corrected 2026-07-19)*: `shared/companyIdentity.ts` carries NMLS **#427468** with an Illinois-only `LICENSED_STATES` footprint (#154/#201). `mersOrgId` is still `PENDING`, and go-live remains behind the founder's pre-launch-gate flips — nothing commercial is real until those flip. | Go-live flips |
 | "The app sends email" | **False in prod.** Code is complete (SendGrid + SMTP fallback) but no `SENDGRID_API_KEY` in Vercel → emails log to console | LS-2 |
 | "Production errors are visible" | **False.** Sentry-style reporter built, no-op until `SENTRY_DSN` is set; no uptime monitor | LS-2 |
 | "Uploaded documents persist in prod" | **False until LS-2.** Code side done (merged 2026-07-04, PR #44): the multer disk path is deleted, presigned-URL flow is the only path, and `request-url` returns a deliberate 503 `UPLOADS_UNCONFIGURED` until storage exists. Remaining = GCS bucket + credentials in Vercel, then the prod acceptance test | LS-2 |
-| "CI runs on every push" | **False on `main`.** `.github/` does not exist on `main`. *(Corrected 2026-07-12: the standby branches that carried the finished `ci.yml` — commit `4fa08ad` — were deleted in the 07-11 branch cleanup; the workflow must be **re-created**, and the automation token still lacks `workflow` scope, so **a human must push it**.)* Until then all checks are manual (`pnpm check`, `pnpm test`) | Roadmap #5 |
+| "CI runs on every push" | **True** *(corrected 2026-07-19; the 2026-07-12 "no `.github/` on `main`" note is obsolete)*: `.github/workflows/ci.yml` runs the required **`gate`** check (typecheck · unit tests · blocking prod audit · schema guard) on every PR, branch protection enforces it with `enforce_admins` on, and the `migrate-prod` job auto-applies migrations on merge ([CICD.md](../runbooks/CICD.md)). Integration tests and the design-token guard stay manual — CI never runs them. | — |
 | "Live mortgage rates" | Real vendor (realty-us RapidAPI) but key exists only in Vercel; local/dev sees simulated survey | — |
 
 ## 3. Uncited policy values — live code, unverified provenance

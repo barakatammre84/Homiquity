@@ -167,8 +167,11 @@ app won't boot or a core feature dies without it.
 | `PII_KMS_KEY_NAME`, `PII_KMS_WRAPPED_DEKS` | Cloud KMS envelope encryption — the KEK resource name and the wrapped Data Encryption Keys (JSON). Needs `npm i @google-cloud/kms` (optional dep, not in package.json) + GCP creds. |
 
 ### Where secrets live
-- **Local**: `.env` (gitignored; template in `.env.example`). The production
-  Neon URL is also stashed there as `PROD_DATABASE_URL` for schema pushes.
+- **Local**: `.env` (gitignored; template in `.env.example`). **No production
+  credential lives locally** — prod migrations auto-apply in CI from
+  `NEON_API_KEY`, and prod data checks run through CI
+  ([DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md)); the old
+  `PROD_DATABASE_URL` stash is retired.
 - **Production**: Vercel → Project → Settings → Environment Variables.
 - **Never in git.** `.gitignore` covers `.env*`; keep it that way. If a secret
   ever lands in a commit or a chat transcript, rotate it.

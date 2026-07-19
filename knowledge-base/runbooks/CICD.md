@@ -56,8 +56,9 @@ Full detail in [ROLLBACK.md](./ROLLBACK.md). Short version:
 
 - **Prod is broken right now** → Vercel dashboard → Deployments → pick the last
   good one → **Promote to Production**. Instant, no rebuild.
-- **Undo the bad code** → `git revert <sha> && git push` (never
-  `reset --hard` + force-push).
+- **Undo the bad code** → `git revert <sha>` on a branch, landed through the
+  normal PR lane — direct pushes to `main` are rejected, and the gate still runs
+  (never `reset --hard` + force-push; break-glass per [ROLLBACK.md](./ROLLBACK.md) §2).
 - **Database** → schema changes ship as **hand-authored** versioned migration
   files in `migrations/`, applied with `npm run db:migrate` (**never `db:push`**,
   **never `drizzle-kit generate`** — see [ROLLBACK.md](./ROLLBACK.md) §3 and
@@ -78,7 +79,8 @@ Full detail in [ROLLBACK.md](./ROLLBACK.md). Short version:
   time. The handler imports the bundle *dynamically* so any bootstrap failure
   returns a readable `bootError` JSON instead of an opaque crash. Two more
   serverless rules learned the hard way: never construct SDK clients at module
-  load (the OpenAI client throws without a key — build them lazily), and never
+  load (learned when the since-removed OpenAI client threw without a key —
+  build them lazily), and never
   write to the filesystem at module load (only the OS temp dir is writable).
 - **Why pnpm on Vercel (do not switch back to npm casually):** npm crashed
   mid-install on Vercel's build image with "Exit handler never called" on
@@ -103,9 +105,12 @@ Full detail in [ROLLBACK.md](./ROLLBACK.md). Short version:
   major-version jumps — then boot the built server, not just the build.
 - Env vars (Vercel → Settings → Environment Variables): `DATABASE_URL` (Neon,
   non-localhost), `SESSION_SECRET`, `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`,
-  `NODE_ENV=production`, plus optional `GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY`,
-  `OPENAI_API_KEY`, and for document storage `GCS_SERVICE_ACCOUNT_KEY`,
-  `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` (see `.env.example`).
+  `NODE_ENV=production`, plus optional `ANTHROPIC_API_KEY` (all AI surfaces —
+  coach, extraction; `AI_INTEGRATIONS_ANTHROPIC_API_KEY` overrides it for
+  extraction — the Gemini/OpenAI keys are retired), `GOOGLE_MAPS_API_KEY`,
+  `RAPIDAPI_KEY` (property data), and for document storage
+  `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS`.
+  The full contract is `.env.example` — a var that isn't there doesn't exist.
 
 Persistent hosts (Fly, a VPS) still work unchanged: `npm run build` +
 `npm start`.
