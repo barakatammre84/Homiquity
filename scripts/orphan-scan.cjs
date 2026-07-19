@@ -126,6 +126,11 @@ function walk(dir, out = []) {
 }
 
 const isSource = (f) => /\.(ts|tsx)$/.test(f) && !f.endsWith(".d.ts");
+// Colocated client component tests (client/src/**/*.test.{ts,tsx}) are vitest
+// ENTRIES — glob-included by vitest.client.config.ts, imported by nothing —
+// so they are excluded from orphan candidacy. They still count as reference
+// sources: a module imported only by its test remains (correctly) an orphan.
+const isTestEntry = (f) => /\.test\.(ts|tsx)$/.test(f);
 const rel = (f) => path.relative(ROOT, f);
 
 // Matches: import "x" (side-effect) | import/export ... from "x" | import("x")
@@ -176,7 +181,7 @@ function main() {
 
   const orphans = files
     .map(rel)
-    .filter((f) => !referenced.has(f) && !ENTRY_FILES.has(f))
+    .filter((f) => !referenced.has(f) && !ENTRY_FILES.has(f) && !isTestEntry(f))
     .sort();
 
   if (orphans.length === 0) {
