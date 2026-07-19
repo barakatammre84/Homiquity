@@ -130,13 +130,21 @@ policy, operationalized).
 **Comment:**
 > Yes — documented in our Access Control Policy (attached): least-privilege access held by
 > two named individuals, 2FA required on every console, quarterly access reviews, and
-> 24-hour revocation on departure. Production changes land only through pull requests gated
-> by required CI checks, with branch protection enforced for administrators; no standing
-> production database credential exists (connection strings are minted at run time from a
-> scoped API key). Within the application, every route enforces server-side role-based
-> access control with per-resource ownership checks; sensitive PII (SSNs, account numbers)
-> is stored write-only under field-level AES-256-GCM encryption, and staff access to it is
-> audit-logged with actor, IP, and timestamp.
+> 24-hour revocation on departure. Production changes land only through pull requests that
+> must pass CI checks (typecheck, tests, dependency audit, schema guard) before merge, per
+> our documented change-control procedure; no standing production database credential
+> exists (connection strings are minted at run time from a scoped API key). Within the
+> application, every route enforces server-side role-based access control with per-resource
+> ownership checks; sensitive PII (SSNs, account numbers) is stored write-only under
+> field-level AES-256-GCM encryption, and staff access to it is audit-logged with actor,
+> IP, and timestamp.
+
+⚠️ *Reworded 2026-07-19: the earlier draft claimed "branch protection enforced for
+administrators." That became untrue when the repository was deliberately made private
+(GitHub Free plan — no enforced branch protection on private repos); CI-before-merge is
+now a documented procedure, verified green at merge time, not a platform control. If
+Plaid requires technically-enforced branch protection, GitHub Pro (~US$4/mo) restores it
+— founder decision 2026-07-19 was to stay on Free.*
 
 **Attach:** Access Control Policy PDF.
 

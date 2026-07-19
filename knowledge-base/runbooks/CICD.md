@@ -16,42 +16,53 @@ revert.** No human review required — the machine gate is the only approval.
 ```
 
 **CI status (corrected 2026-07-17; token ratchet gated 2026-07-19): the gate is
-live and blocking.** [`ci.yml`](../../.github/workflows/ci.yml) runs a required
-**`gate`** job on every PR to `main` — `pnpm check`, `pnpm test` (node unit +
+live, and binding by procedure.** [`ci.yml`](../../.github/workflows/ci.yml) runs
+the **`gate`** job on every PR to `main` — `pnpm check`, `pnpm test` (node unit +
 client component suites), a **blocking** `pnpm audit --prod --audit-level=high`,
 `pnpm guard:schema` (a schema change without a same-PR migration goes RED and
-cannot merge), and `pnpm guard:tokens` (the design-token ratchet — a raw palette
-class or bare white/black literal over baseline goes RED). Branch protection
-requires that check with `enforce_admins` ON, so **nobody direct-pushes `main`,
-founder included** (force-push and deletion of `main` are blocked too;
-`npm run save` / `npm run sync` predate this and now die on the push step — see
-Shipping). No required reviews: the author merges their own PR once the gate is
-green ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6). On merge, the same
+must not merge), and `pnpm guard:tokens` (the design-token ratchet — a raw palette
+class or bare white/black literal over baseline goes RED).
+**Enforcement is procedural, not platform-side** *(2026-07-19)*: the repo is
+deliberately **private** (founder decision, to protect the code) on the GitHub
+**Free** plan, where private repos get no branch protection or rulesets — the
+2026-07-17 rule is stored but **inert**, and GitHub blocks neither direct pushes,
+force-pushes, deletion of `main`, nor pre-green merges. The doctrine is unchanged
+— **nobody direct-pushes `main`, founder included; every merge waits for the
+green gate** — enforced by the Shipping recipe below: **watch, then merge; never
+`gh pr merge --auto`** (with no required checks, `--auto` cannot arm — it merges
+instantly with the gate still running). No required reviews: the author merges
+their own PR once the gate is green
+([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6). On merge, the same
 workflow's **`migrate-prod`** job auto-applies any pending `migrations/` to the
 production DB over a Neon DIRECT URL minted at run time from `NEON_API_KEY` — no
 prod DB password is stored in GitHub; full flow and its limits (a manual
 `dry_run` reconciles the journal only, it never executes migration SQL) in
-[DB_MIGRATIONS.md](./DB_MIGRATIONS.md). ⚠️ The required-check string is matched
+[DB_MIGRATIONS.md](./DB_MIGRATIONS.md). ⚠️ If platform protection is ever
+restored (GitHub Pro or an org plan), the required-check string is matched
 **verbatim** (`gate (typecheck · tests · schema guard)`, U+00B7 middle dots) —
-never rename the job without re-pointing branch protection in the same change
+never rename the job without re-pointing the rule in the same change
 (procedure in the workflow's comments).
 
 ## Shipping
 
 ```bash
-git checkout -b <topic-branch>         # never commit on main — direct pushes are rejected
+git checkout -b <topic-branch>         # never commit on main — direct pushes barred (§6 doctrine)
 git push -u origin <topic-branch>
 gh pr create --fill                    # the gate runs automatically
-gh pr checks --watch                   # wait for green…
+gh pr checks --watch --fail-fast       # wait for green — this step is the merge gate
 gh pr merge --squash --delete-branch   # …then merge your own PR (no reviews required)
+# NEVER `gh pr merge --auto`: on the Free plan no check is "required", so --auto
+# cannot arm — it merges IMMEDIATELY, gate still running (how #252–#259 slipped).
 ```
 
 Every merge to `main` triggers a production deploy on Vercel (then run the
 post-deploy health check below — READY is not healthy). Every PR branch gets
 its own preview deployment automatically. One branch per isolated worktree,
 merged = deleted same day ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md)
-§4). The old `npm run save` / `npm run sync` scripts direct-push `main` and are
-dead — branch protection rejects the push.
+§4). The old `npm run save` / `npm run sync` scripts direct-pushed `main` and
+were removed in PR #251 — direct pushes are barred by doctrine, and on the Free
+plan nothing platform-side rejects them, which is exactly why the watch-then-merge
+recipe above is the control.
 
 ## Reverting
 
@@ -60,8 +71,9 @@ Full detail in [ROLLBACK.md](./ROLLBACK.md). Short version:
 - **Prod is broken right now** → Vercel dashboard → Deployments → pick the last
   good one → **Promote to Production**. Instant, no rebuild.
 - **Undo the bad code** → `git revert <sha>` on a branch, landed through the
-  normal PR lane — direct pushes to `main` are rejected, and the gate still runs
-  (never `reset --hard` + force-push; break-glass per [ROLLBACK.md](./ROLLBACK.md) §2).
+  normal PR lane — direct pushes to `main` are barred by doctrine, and the PR
+  lane runs the gate (never `reset --hard` + force-push; break-glass per
+  [ROLLBACK.md](./ROLLBACK.md) §2).
 - **Database** → schema changes ship as **hand-authored** versioned migration
   files in `migrations/`, applied with `npm run db:migrate` (**never `db:push`**,
   **never `drizzle-kit generate`** — see [ROLLBACK.md](./ROLLBACK.md) §3 and

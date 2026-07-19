@@ -41,14 +41,21 @@ The deployment rollback above changes what's *live* but not what's on `main`.
 The next merge to `main` will redeploy `main`, so you must also fix the code.
 
 **Always prefer `git revert` over `git reset --hard` + force-push** — revert is
-append-only (and force-pushing `main` is blocked by branch protection anyway).
+append-only. ⚠️ Force-pushing `main` is **no longer platform-blocked** (since
+2026-07-19 the repo is deliberately private on the GitHub Free plan, which
+enforces no branch protection) — it is barred by doctrine alone
+([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6); treat it as radioactive
+(the 2026-07-02 force-rewind incident is what it looks like when it goes wrong).
 
-**`main` is protected: revert commits land through a PR like everything else** —
-direct pushes are rejected, and the gate still runs (a revert can break types or
-tests, e.g. reverting a dependency fix). §1's Vercel Promote has already stopped
-the bleeding, so the PR minutes cost nothing. For a genuine emergency where the
-gate itself is the obstacle, the break-glass is a deliberate `enforce_admins`
-toggle (GitHub → Settings → Branches), never a workaround.
+**Revert commits land through a PR like everything else** — direct pushes to
+`main` are barred by §6 doctrine, and the PR lane runs the gate, watched to
+green before merging (a revert can break types or tests, e.g. reverting a
+dependency fix). §1's Vercel Promote has already stopped the bleeding, so the PR
+minutes cost nothing. For a genuine emergency where the gate itself is the
+obstacle, the break-glass is a deliberate **founder** direct push — technically
+possible precisely because nothing platform-side blocks it — done knowingly and
+ledgered in [CICD.md](./CICD.md)'s production change ledger, never an autonomous
+or silent workaround.
 
 Undo one bad commit (keeps history):
 ```bash

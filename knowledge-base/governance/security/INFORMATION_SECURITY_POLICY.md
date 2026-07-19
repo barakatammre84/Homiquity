@@ -89,9 +89,10 @@ additionally governed by the [AI Governance Policy](../AI_GOVERNANCE_POLICY.md).
 ## 8. Vulnerability & patch management
 
 - **Application dependencies:** every pull request runs `pnpm audit` over production
-  dependencies as a required CI check (fails on high/critical); Dependabot raises weekly
-  dependency-update PRs; the repo health script (`pnpm checkup`) additionally audits at
-  moderate level.
+  dependencies as a blocking step of the CI `gate` (fails on high/critical; merges wait
+  for a green gate per [TEAM_PRACTICES](../TEAM_PRACTICES.md) §6); Dependabot raises
+  weekly dependency-update PRs; the repo health script (`pnpm checkup`) additionally
+  audits at moderate level.
 - **Platform:** operating systems, runtimes, and network infrastructure are patched by the
   managed providers (Vercel, Neon, Google Cloud) under their SOC 2 programs — there are no
   mutable server instances for us to patch.
