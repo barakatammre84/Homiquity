@@ -1,29 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { StaffSignalsPanel } from "@/components/StaffSignalsPanel";
 import { useLocation } from "wouter";
 import { Link } from "wouter";
@@ -31,61 +16,44 @@ import { isStaffRole, isInternalStaffRole, ROLE_DISPLAY_NAMES } from "@shared/ro
 import IntelligenceTab from "./IntelligenceTab";
 import type { Task, LoanApplication, User } from "@shared/schema";
 import {
-  Plus,
   CheckCircle2,
-  Clock,
   AlertCircle,
   FileText,
-  User as UserIcon,
   Search,
-  Upload,
   Eye,
-  X,
-  ArrowUp,
   Inbox,
   Shield,
-  Zap,
-  Bot,
-  FileCheck,
   ClipboardCheck,
   DollarSign,
   Timer,
-  AlertTriangle,
   RefreshCw,
   Activity,
   BarChart3,
   Sparkles,
-  ScanLine,
-  Brain,
-  Database,
   Users,
   Scale,
   ShieldAlert,
-  Archive,
-  Mail,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { formatCurrency, formatTimeRemaining, getStatusLabel } from "@/lib/formatters";
-import { SLA_STATUS_COLORS, SLA_DOT_COLORS, SLA_SORT_ORDER } from "@/lib/sla";
+import { formatCurrency, getStatusLabel } from "@/lib/formatters";
+import { SLA_SORT_ORDER } from "@/lib/sla";
 import {
   type QueueTask,
   type QueueData,
   type ComplianceData,
-  type RetentionPolicy,
-  type RetentionReport,
   complianceScorePercent,
   coApplicantNames,
   STAGE_ORDER,
-  documentCategories,
-  documentYears,
-  priorityOptions,
   getRoleDefaultTab,
 } from "./staffDashboard/model";
-import { getStatusBadge, AutomationBadge, ComplianceChecklistInline } from "./staffDashboard/badges";
+import { ComplianceChecklistInline } from "./staffDashboard/badges";
+import { CreateTaskDialog } from "./staffDashboard/CreateTaskDialog";
+import { MyQueueTab } from "./staffDashboard/MyQueueTab";
+import { ReviewTab } from "./staffDashboard/ReviewTab";
+import { ComplianceTab } from "./staffDashboard/ComplianceTab";
 
 export default function StaffDashboard() {
   const { user, isLoading: authLoading } = useAuth();
-  const { toast } = useToast();
   const [, navigate] = useLocation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<string>("");
@@ -118,17 +86,6 @@ export default function StaffDashboard() {
     }
   }, [userRole]);
 
-  const [newTask, setNewTask] = useState({
-    title: "",
-    description: "",
-    taskType: "document_request",
-    documentCategory: "",
-    documentYear: "",
-    documentInstructions: "",
-    priority: "normal",
-    dueDate: "",
-  });
-
   const { data: tasksData, isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
     enabled: !authLoading && !!user,
@@ -159,84 +116,6 @@ export default function StaffDashboard() {
     queryKey: ["/api/compliance/dashboard"],
     enabled: !authLoading && !!user && isInternalStaff,
   });
-
-  const { data: retentionReport, isLoading: retentionLoading, refetch: refetchRetention } = useQuery<RetentionReport>({
-    queryKey: ["/api/credit/retention-report"],
-    enabled: !authLoading && !!user && isInternalStaff,
-  });
-
-  const { data: retentionPoliciesData } = useQuery<{ policies: Record<string, RetentionPolicy> }>({
-    queryKey: ["/api/credit/retention-policies"],
-    enabled: !authLoading && !!user && isInternalStaff,
-  });
-
-  const createTaskMutation = useMutation({
-    mutationFn: async (taskData: { applicationId: string; assignedToUserId: string; title: string; description: string; taskType: string; priority: string; dueDate: Date | string | null; documentCategory?: string | null; documentYear?: string | null; documentInstructions?: string | null }) => {
-      const response = await apiRequest("POST", "/api/tasks", taskData);
-      return await response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Task Created", description: "The task has been created and assigned." });
-      setCreateDialogOpen(false);
-      resetNewTaskForm();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message || "Failed to create task", variant: "destructive" });
-    },
-  });
-
-  const updateTaskMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Task> }) => {
-      const response = await apiRequest("PATCH", `/api/tasks/${id}`, data);
-      return await response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Task Updated", description: "The task has been updated successfully." });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message || "Failed to update task", variant: "destructive" });
-    },
-  });
-
-  const resetNewTaskForm = () => {
-    setNewTask({
-      title: "",
-      description: "",
-      taskType: "document_request",
-      documentCategory: "",
-      documentYear: "",
-      documentInstructions: "",
-      priority: "normal",
-      dueDate: "",
-    });
-    setSelectedApplication("");
-  };
-
-  const handleCreateTask = () => {
-    if (!selectedApplication) {
-      toast({ title: "Error", description: "Please select an application", variant: "destructive" });
-      return;
-    }
-    const application = applicationsData?.find(app => app.id === selectedApplication);
-    if (!application) return;
-    const taskTitle = newTask.documentCategory && newTask.documentYear
-      ? `Upload ${newTask.documentYear} ${documentCategories.find(c => c.value === newTask.documentCategory)?.label}`
-      : newTask.title;
-    createTaskMutation.mutate({
-      applicationId: selectedApplication,
-      assignedToUserId: application.userId,
-      title: taskTitle,
-      description: newTask.description,
-      taskType: newTask.taskType,
-      documentCategory: newTask.documentCategory || null,
-      documentYear: newTask.documentYear || null,
-      documentInstructions: newTask.documentInstructions || null,
-      priority: newTask.priority,
-      dueDate: newTask.dueDate ? new Date(newTask.dueDate) : null,
-    });
-  };
 
   const tasks = tasksData || [];
   const applications = applicationsData || [];
@@ -272,9 +151,6 @@ export default function StaffDashboard() {
 
   const totalVolume = pipeline.reduce((sum, l) => sum + (parseFloat(l.loanAmount || "0") || 0), 0);
   const complianceScore = complianceScorePercent(complianceData);
-  const aaUndelivered = complianceData?.adverseActionDelivery?.undelivered ?? 0;
-  const aaWarning = complianceData?.adverseActionDelivery?.warning ?? 0;
-  const aaBreach = complianceData?.adverseActionDelivery?.breach ?? 0;
 
   if (authLoading || tasksLoading || applicationsLoading) {
     return (
@@ -363,117 +239,14 @@ export default function StaffDashboard() {
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh All
               </Button>
-              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-white text-primary shadow-lg" data-testid="button-create-task">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Task
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Create New Task</DialogTitle>
-                    <DialogDescription>Assign a task to a borrower for document collection or verification.</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="application">Select Application</Label>
-                      <Select value={selectedApplication} onValueChange={setSelectedApplication}>
-                        <SelectTrigger data-testid="select-application">
-                          <SelectValue placeholder="Choose an application" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {applications.map(app => (
-                            <SelectItem key={app.id} value={app.id}>
-                              {getUserName(app.userId)} - {app.status}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="taskType">Task Type</Label>
-                      <Select value={newTask.taskType} onValueChange={(v) => setNewTask({ ...newTask, taskType: v })}>
-                        <SelectTrigger data-testid="select-task-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="document_request">Document Request</SelectItem>
-                          <SelectItem value="verification">Verification</SelectItem>
-                          <SelectItem value="review">Review</SelectItem>
-                          <SelectItem value="action">Action Required</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {newTask.taskType === "document_request" && (
-                      <>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Document Type</Label>
-                            <Select value={newTask.documentCategory} onValueChange={(v) => setNewTask({ ...newTask, documentCategory: v })}>
-                              <SelectTrigger data-testid="select-document-category"><SelectValue placeholder="Select type" /></SelectTrigger>
-                              <SelectContent>
-                                {documentCategories.map(cat => (<SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Year</Label>
-                            <Select value={newTask.documentYear} onValueChange={(v) => setNewTask({ ...newTask, documentYear: v })}>
-                              <SelectTrigger data-testid="select-document-year"><SelectValue placeholder="Select year" /></SelectTrigger>
-                              <SelectContent>
-                                {documentYears.map(year => (<SelectItem key={year} value={year}>{year}</SelectItem>))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Instructions for Borrower</Label>
-                          <Textarea
-                            placeholder="e.g., Please upload your complete tax return including all schedules..."
-                            value={newTask.documentInstructions}
-                            onChange={(e) => setNewTask({ ...newTask, documentInstructions: e.target.value })}
-                            data-testid="input-document-instructions"
-                          />
-                        </div>
-                      </>
-                    )}
-                    {newTask.taskType !== "document_request" && (
-                      <>
-                        <div className="space-y-2">
-                          <Label>Task Title</Label>
-                          <Input placeholder="Enter task title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} data-testid="input-task-title" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Description</Label>
-                          <Textarea placeholder="Describe what needs to be done..." value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} data-testid="input-task-description" />
-                        </div>
-                      </>
-                    )}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Priority</Label>
-                        <Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v })}>
-                          <SelectTrigger data-testid="select-priority"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {priorityOptions.map(opt => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Due Date</Label>
-                        <Input type="date" value={newTask.dueDate} onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })} data-testid="input-due-date" />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleCreateTask} disabled={createTaskMutation.isPending} data-testid="button-submit-task">
-                      {createTaskMutation.isPending ? "Creating..." : "Create Task"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <CreateTaskDialog
+                open={createDialogOpen}
+                onOpenChange={setCreateDialogOpen}
+                selectedApplication={selectedApplication}
+                onSelectedApplicationChange={setSelectedApplication}
+                applications={applications}
+                getUserName={getUserName}
+              />
             </div>
           </div>
         </div>
@@ -793,609 +566,30 @@ export default function StaffDashboard() {
           </TabsContent>
 
           <TabsContent value="my-queue">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <CardTitle data-testid="text-my-queue-title">My Queue</CardTitle>
-                    <CardDescription>Tasks assigned to your role, sorted by SLA urgency</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {queueBreached > 0 && (
-                      <Badge variant="destructive" data-testid="badge-breached-alert">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        {queueBreached} SLA breached
-                      </Badge>
-                    )}
-                    {automatedTasks.length > 0 && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge variant="outline" className="gap-1 bg-secondary text-primary border-border" data-testid="badge-auto-tasks-count">
-                            <Sparkles className="h-3 w-3" />
-                            {automatedTasks.length} automated
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent className="text-xs">
-                          <p>{automatedTasks.length} tasks were auto-created by the rule engine or document processing</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {queueLoading ? (
-                  <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}</div>
-                ) : sortedQueueTasks.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
-                    <p className="font-medium">Queue is clear</p>
-                    <p className="text-sm mt-1">No open tasks assigned to your role</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {sortedQueueTasks.map(task => (
-                      <div
-                        key={task.id}
-                        className="flex items-center justify-between gap-4 rounded-lg border p-4 hover-elevate cursor-pointer"
-                        onClick={() => navigate(`/borrower-file/${task.applicationId}`)}
-                        data-testid={`queue-task-${task.id}`}
-                      >
-                        <div className="flex items-center gap-4 min-w-0 flex-1">
-                          <div className={`flex h-3 w-3 rounded-full shrink-0 ${SLA_DOT_COLORS[task.slaStatus]}`} />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-medium truncate">{task.title}</p>
-                              {task.slaClass && (
-                                <Badge variant="outline" className="text-xs shrink-0">{task.slaClass}</Badge>
-                              )}
-                              <AutomationBadge source={task.triggerSource} />
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {task.taskType === "document_request" ? "Document Request" : task.taskType}
-                              {task.triggerSource && task.triggerSource !== "MANUAL" && ` · ${task.triggerSource.replace(/_/g, " ").toLowerCase()}`}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                          <span className={`text-sm font-medium ${SLA_STATUS_COLORS[task.slaStatus]}`} data-testid={`text-sla-status-${task.id}`}>
-                            {task.slaStatus === "red" ? (
-                              <span className="flex items-center gap-1">
-                                <ArrowUp className="h-3 w-3" />
-                                {formatTimeRemaining(task.timeRemaining)}
-                              </span>
-                            ) : formatTimeRemaining(task.timeRemaining)}
-                          </span>
-                          {(task.escalationLevel ?? 0) > 0 && (
-                            <Badge variant="destructive" className="text-xs" data-testid={`badge-escalation-${task.id}`}>
-                              L{task.escalationLevel}
-                            </Badge>
-                          )}
-                          <Badge variant={task.status === "OPEN" ? "outline" : "secondary"}>
-                            {task.status === "OPEN" ? "Open" : task.status === "IN_PROGRESS" ? "In Progress" : task.status}
-                          </Badge>
-                          <Button
-                            size="icon" aria-label="View"
-                            variant="ghost"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/borrower-file/${task.applicationId}`); }}
-                            data-testid={`button-view-file-${task.id}`}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <MyQueueTab
+              sortedQueueTasks={sortedQueueTasks}
+              queueLoading={queueLoading}
+              queueBreached={queueBreached}
+              automatedTasks={automatedTasks}
+            />
           </TabsContent>
 
           <TabsContent value="conditions">
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tasks Awaiting Review</CardTitle>
-                  <CardDescription>Review uploaded documents and verify borrower information</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {submittedTasks.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <CheckCircle2 className="mx-auto h-12 w-12 mb-4" />
-                      <p className="font-medium">Nothing awaiting review</p>
-                      <p className="text-sm mt-1">When a borrower submits a requested document, it lands here for your review.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {submittedTasks.map(task => (
-                        <div
-                          key={task.id}
-                          className="flex items-center justify-between gap-4 rounded-lg border p-4 bg-info-subtle border-border"
-                          data-testid={`review-task-${task.id}`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info-subtle">
-                              <Upload className="h-5 w-5 text-info" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{task.title}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Submitted by: {getUserName(task.assignedToUserId ?? "")}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "OPEN", verificationStatus: "rejected" } })}
-                              data-testid={`button-reject-${task.id}`}
-                            >
-                              <X className="mr-1 h-4 w-4" />
-                              Reject
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => updateTaskMutation.mutate({ id: task.id, data: { status: "COMPLETED", verificationStatus: "verified" } })}
-                              data-testid={`button-verify-${task.id}`}
-                            >
-                              <CheckCircle2 className="mr-1 h-4 w-4" />
-                              Verify
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>{isAdmin ? "All Applications" : "Team Applications"}</CardTitle>
-                  <CardDescription>
-                    {isAdmin
-                      ? "View every borrower application and assign tasks"
-                      : "View your deal-team applications and assign tasks"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {applications.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <UserIcon className="mx-auto h-12 w-12 mb-4" />
-                      <p className="font-medium">{isAdmin ? "No applications yet" : "No applications assigned to your team"}</p>
-                      <p className="text-sm mt-1">Applications assigned to your deal team will appear here as borrowers apply.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {applications.map(app => (
-                        <div
-                          key={app.id}
-                          className="flex items-center justify-between gap-4 rounded-lg border p-4 hover-elevate"
-                          data-testid={`application-row-${app.id}`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                              <UserIcon className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{getUserName(app.userId)}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {app.propertyState ? `Property in ${app.propertyState}` : "No property"}
-                                {app.purchasePrice ? ` - ${formatCurrency(app.purchasePrice)}` : ""}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            {getStatusBadge(app.status)}
-                            <span className="text-sm text-muted-foreground">
-                              {tasks.filter(t => t.applicationId === app.id).length} tasks
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => { setSelectedApplication(app.id); setCreateDialogOpen(true); }}
-                              data-testid={`button-add-task-${app.id}`}
-                            >
-                              <Plus className="mr-1 h-4 w-4" />
-                              Add Task
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            <ReviewTab
+              submittedTasks={submittedTasks}
+              applications={applications}
+              tasks={tasks}
+              isAdmin={isAdmin}
+              getUserName={getUserName}
+              onAddTask={(applicationId) => {
+                setSelectedApplication(applicationId);
+                setCreateDialogOpen(true);
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="compliance">
-            <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">GSE Ready</p>
-                        <p className="text-2xl font-bold text-success-subtle-foreground" data-testid="text-gse-ready">{complianceData?.gseReady || 0}</p>
-                      </div>
-                      <CheckCircle2 className="h-8 w-8 text-success-subtle-foreground/30" />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Ready for Fannie/Freddie</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">ULDD Compliant</p>
-                        <p className="text-2xl font-bold text-info" data-testid="text-uldd-compliant">{complianceData?.ulddCompliant || 0}</p>
-                      </div>
-                      <FileCheck className="h-8 w-8 text-info/30" />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Minimum data met</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Needs Attention</p>
-                        <p className="text-2xl font-bold text-warning-subtle-foreground" data-testid="text-needs-attention">{complianceData?.needsAttention || 0}</p>
-                      </div>
-                      <AlertTriangle className="h-8 w-8 text-warning-subtle-foreground/30" />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">Missing critical data</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Undelivered Notices</p>
-                        <p
-                          className={`text-2xl font-bold ${aaBreach > 0 ? "text-destructive" : aaWarning > 0 ? "text-warning-subtle-foreground" : ""}`}
-                          data-testid="text-aa-undelivered"
-                        >
-                          {aaUndelivered}
-                        </p>
-                      </div>
-                      <Mail className="h-8 w-8 text-muted-foreground/30" />
-                    </div>
-                    {aaBreach > 0 ? (
-                      <p className="text-xs text-destructive mt-1" data-testid="text-aa-delivery-status">{aaBreach} past 30-day ECOA window</p>
-                    ) : aaWarning > 0 ? (
-                      <p className="text-xs text-warning-subtle-foreground mt-1" data-testid="text-aa-delivery-status">{aaWarning} nearing 30-day deadline</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1" data-testid="text-aa-delivery-status">Adverse actions — ECOA §1002.9</p>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Regulatory Compliance Overview
-                  </CardTitle>
-                  <CardDescription>TRID timing, MISMO validation, and document compliance per loan</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {(complianceData?.applications || []).length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Shield className="mx-auto h-12 w-12 mb-4" />
-                      <p>No active loans to validate</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {(complianceData?.applications || []).map(app => (
-                        <div key={app.applicationId} className="rounded-lg border p-4" data-testid={`compliance-app-${app.applicationId}`}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <p className="font-medium">{app.borrowerName}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {app.status?.toUpperCase().replace(/_/g, " ")} {app.loanAmount ? `- ${formatCurrency(app.loanAmount)}` : ""}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap justify-end">
-                              {app.gseGatingFailed ? (
-                                <Badge variant="destructive" className="gap-1" data-testid={`badge-gating-${app.applicationId}`}>
-                                  <ShieldAlert className="h-3 w-3" />
-                                  Gating Failed
-                                </Badge>
-                              ) : app.gseReady ? (
-                                <Badge data-testid={`badge-gse-${app.applicationId}`}>GSE Ready</Badge>
-                              ) : app.ulddCompliant ? (
-                                <Badge variant="secondary">ULDD Compliant</Badge>
-                              ) : (
-                                <Badge variant="destructive">Incomplete</Badge>
-                              )}
-                              {app.qmStatus === "Non-QM" && (
-                                <Badge variant="destructive" className="gap-1" data-testid={`badge-qm-${app.applicationId}`}>
-                                  <Scale className="h-3 w-3" />
-                                  Non-QM
-                                </Badge>
-                              )}
-                              {app.qmStatus === "QM" && (
-                                <Badge variant="secondary" className="gap-1 bg-info-subtle text-info" data-testid={`badge-qm-${app.applicationId}`}>
-                                  <Scale className="h-3 w-3" />
-                                  QM
-                                </Badge>
-                              )}
-                              {(app.coApplicantCount || 0) > 0 &&
-                                coApplicantNames(app.coApplicants).map((name, i) => (
-                                  <Badge
-                                    key={i}
-                                    variant="outline"
-                                    className="gap-1"
-                                    data-testid={`badge-coapplicant-${app.applicationId}-${i}`}
-                                  >
-                                    <Users className="h-3 w-3" />
-                                    {name}
-                                  </Badge>
-                                ))}
-                              <Button size="sm" variant="outline" asChild>
-                                <Link href={`/borrower-file/${app.applicationId}`}>View</Link>
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span>ULAD Completeness</span>
-                              <span>{app.score}%</span>
-                            </div>
-                            <Progress value={app.score} className="h-1.5" />
-                          </div>
-                          {(app.criticalCount > 0 || app.missingDocsCount > 0) && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {app.criticalCount > 0 && (
-                                <Badge variant="outline" className="text-xs text-destructive">{app.criticalCount} critical errors</Badge>
-                              )}
-                              {app.missingDocsCount > 0 && (
-                                <Badge variant="outline" className="text-xs">{app.missingDocsCount} missing docs</Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Database className="h-5 w-5" />
-                        Data Retention & Archival
-                      </CardTitle>
-                      <CardDescription>FCRA, ECOA, and GLBA compliance tracking</CardDescription>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => refetchRetention()}
-                      data-testid="button-refresh-retention"
-                    >
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Refresh
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {retentionLoading ? (
-                    <div className="grid gap-4 md:grid-cols-4">
-                      {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20" />)}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-4">
-                        <div className="rounded-lg border p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm text-muted-foreground">Total Records</p>
-                            <Database className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <p className="text-2xl font-bold" data-testid="text-total-records">
-                            {Object.values(retentionReport?.recordCounts || {}).reduce((a, b) => a + b, 0)}
-                          </p>
-                        </div>
-                        <div className="rounded-lg border p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm text-muted-foreground">Archive Eligible</p>
-                            <Archive className="h-4 w-4 text-warning-subtle-foreground" />
-                          </div>
-                          <p className="text-2xl font-bold text-warning-subtle-foreground" data-testid="text-archive-eligible">
-                            {Object.values(retentionReport?.archiveEligibleCounts || {}).reduce((a, b) => a + b, 0)}
-                          </p>
-                        </div>
-                        <div className="rounded-lg border p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm text-muted-foreground">Retention Review</p>
-                            <Clock className="h-4 w-4 text-info" />
-                          </div>
-                          <p className="text-2xl font-bold text-info" data-testid="text-retention-review">
-                            {Object.values(retentionReport?.retentionReviewCounts || {}).reduce((a, b) => a + b, 0)}
-                          </p>
-                        </div>
-                        <div className="rounded-lg border p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm text-muted-foreground">Delete Eligible</p>
-                            <AlertTriangle className="h-4 w-4 text-destructive" />
-                          </div>
-                          <p className="text-2xl font-bold text-destructive" data-testid="text-delete-eligible">
-                            {Object.values(retentionReport?.deleteEligibleCounts || {}).reduce((a, b) => a + b, 0)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {retentionReport?.recommendations && retentionReport.recommendations.length > 0 && (
-                        <div className="space-y-2">
-                          {retentionReport.recommendations.map((rec, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
-                              data-testid={`alert-recommendation-${idx}`}
-                            >
-                              {rec.includes("No action") ? (
-                                <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground mt-0.5 flex-shrink-0" />
-                              ) : (
-                                <AlertTriangle className="h-5 w-5 text-warning-subtle-foreground mt-0.5 flex-shrink-0" />
-                              )}
-                              <span className="text-sm">{rec}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                          <p className="text-sm font-medium mb-2">Record Counts by Type</p>
-                          <div className="space-y-2">
-                            {Object.entries(retentionReport?.recordCounts || {}).map(([type, count]) => (
-                              <div
-                                key={type}
-                                className="flex items-center justify-between p-2 rounded-lg border"
-                                data-testid={`row-record-${type}`}
-                              >
-                                <div>
-                                  <p className="text-sm font-medium capitalize">{type.replace(/_/g, " ")}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {retentionPoliciesData?.policies?.[type]?.regulatoryReference || "N/A"}
-                                  </p>
-                                </div>
-                                <Badge variant="secondary">{count}</Badge>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-2">Retention Policies</p>
-                          <ScrollArea className="h-[250px]">
-                            <div className="space-y-2">
-                              {Object.entries(retentionPoliciesData?.policies || {}).map(([type, policy]) => (
-                                <div
-                                  key={type}
-                                  className="p-2 rounded-lg border"
-                                  data-testid={`row-policy-${type}`}
-                                >
-                                  <div className="flex items-center justify-between mb-1">
-                                    <p className="text-sm font-medium capitalize">{type.replace(/_/g, " ")}</p>
-                                    <Badge variant="outline">
-                                      {Math.round(policy.retentionPeriodDays / 365)} years
-                                    </Badge>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mb-1">{policy.legalBasis}</p>
-                                  <div className="flex gap-2 text-xs">
-                                    <span className="text-muted-foreground">Archive: {policy.archiveAfterDays} days</span>
-                                    <span className="text-muted-foreground">Delete: {policy.deleteAfterDays ? `${policy.deleteAfterDays} days` : "Never"}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </ScrollArea>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Compliance Audit Log
-                  </CardTitle>
-                  <CardDescription>Track all compliance-related activities with cryptographic verification</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3 mb-6">
-                    <div className="p-4 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Shield className="h-5 w-5 text-success-subtle-foreground" />
-                        <span className="font-medium text-sm">Hash Chain Verified</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">All audit entries are cryptographically linked</p>
-                    </div>
-                    <div className="p-4 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileCheck className="h-5 w-5 text-info" />
-                        <span className="font-medium text-sm">Export Ready</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">CSV and JSON formats for regulatory exams</p>
-                    </div>
-                    <div className="p-4 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Clock className="h-5 w-5 text-warning-subtle-foreground" />
-                        <span className="font-medium text-sm">7-Year Retention</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">FCRA compliant data retention</p>
-                    </div>
-                  </div>
-                  <div className="text-center text-muted-foreground py-4">
-                    <p className="text-sm">Access individual loan audit logs from the Borrower File page.</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-primary" />
-                    Automation Activity
-                  </CardTitle>
-                  <CardDescription>Tasks and checks handled automatically by the platform</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3 rounded-lg border p-3">
-                      <ScanLine className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">Document Classification</p>
-                        <p className="text-xs text-muted-foreground">
-                          Incoming documents are automatically classified (W-2, pay stub, bank statement) using AI. Up to 40% of manual document processing is eliminated.
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="shrink-0 bg-secondary text-primary">Active</Badge>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border p-3">
-                      <Brain className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">Income Verification</p>
-                        <p className="text-xs text-muted-foreground">
-                          AI extracts income data from uploaded documents, cross-references with application data, and flags discrepancies automatically.
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="shrink-0 bg-secondary text-primary">Active</Badge>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border p-3">
-                      <Zap className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">Compliance Rule Engine</p>
-                        <p className="text-xs text-muted-foreground">
-                          TRID timelines, disclosure deadlines, and regulatory checklists are auto-tracked. Tasks are auto-generated when deadlines approach.
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="shrink-0 bg-secondary text-primary">Active</Badge>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border p-3">
-                      <Bot className="h-5 w-5 text-primary mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">Form Pre-fill</p>
-                        <p className="text-xs text-muted-foreground">
-                          Borrower data from verified documents automatically pre-fills application fields, reducing data entry and errors across the lifecycle.
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="shrink-0 bg-secondary text-primary">Active</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <ComplianceTab complianceData={complianceData} />
           </TabsContent>
 
           <TabsContent value="intelligence">
