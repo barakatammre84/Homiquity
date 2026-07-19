@@ -15,7 +15,7 @@ Fast-start router. **Authoritative reference:** [`kb/compliance/UNDERWRITING_SCE
 - **Public / pre-launch surface (BUILD-1):** the calculators render **even in gated pre-launch mode** (`client/src/components/Navigation.tsx`, `client/src/pages/public/Waitlist.tsx`), so they sit under the advertising rails — free *estimate* calculators are fine, but **priced calculators and apply CTAs stay off the pre-license surface** (Reg Z trigger terms). See the `seo-content` skill for the full rail set.
 
 ## Where it lives
-- **Client (mostly pure, client-side math):** hub at `client/src/pages/calculators/CalculatorsHub.tsx` (`/calculators`) fronting 9 public calculators (`/calculators/*`, wrapped in `PublicPage`) — Affordability, Mortgage, Amortization, MortgagePayoff, DownPayment, HomeEquity, RentVsBuy, RentToOwnReadiness, plus military BAH; shared inputs via `client/src/hooks/useAffordability.ts`.
+- **Client (mostly pure, client-side math):** hub at `client/src/pages/calculators/CalculatorsHub.tsx` (`/calculators`) fronting 9 public calculators (`/calculators/*`, wrapped in `PageShell`) — Affordability, Mortgage, Amortization, MortgagePayoff, DownPayment, HomeEquity, RentVsBuy, RentToOwnReadiness, plus military BAH; shared inputs via `client/src/hooks/useAffordability.ts`.
 - **Server routes:** `server/routes/calculators.ts` — only `GET /api/calculators/credit-tiers` and `POST /api/calculators/extract-lease` (the calculator pages themselves add no server endpoints; the math is client-side).
 - **Pricing / LLPA:** `server/pricing.ts` (`calculateLLPA`), seam at `server/services/pricingAdapter.ts` (never price around it).
 - **Underwriting:** `server/underwritingEngine.ts` + `services/decisionEngine.ts`, `ruleEngine.ts`.
