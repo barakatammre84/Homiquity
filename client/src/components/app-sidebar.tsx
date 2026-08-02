@@ -1,4 +1,5 @@
 import { type ComponentType, useState } from "react";
+import { logout } from "@/lib/logout";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -422,12 +423,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               className="cursor-pointer"
               data-testid="link-logout"
-              onClick={async () => {
-                try {
-                  await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-                } catch {}
-                window.location.href = "/";
-              }}
+              onClick={() => void logout()}
             >
               <LogOut className="h-4 w-4" />
               <span>Log Out</span>

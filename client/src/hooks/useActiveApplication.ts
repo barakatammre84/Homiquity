@@ -19,7 +19,7 @@ export const ACTIVE_APP_PARAM = "app";
  * validated against the server-scoped list before use, so a stale entry (an
  * older session, a since-closed file) is inert rather than wrong.
  */
-const ACTIVE_APP_STORAGE_KEY = "homiquity_active_app";
+export const ACTIVE_APP_STORAGE_KEY = "homiquity_active_app";
 
 function readStoredApplicationId(): string | null {
   try {

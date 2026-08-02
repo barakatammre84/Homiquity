@@ -31,10 +31,8 @@ const ALLOWED_RAW_FETCH: Record<string, string> = {
     "public /api/track, fire-and-forget analytics — a 401 here must not navigate the user",
   "client/src/lib/errorReporter.ts":
     "public /api/client-errors — routing error reporting through the thing that throws risks a loop",
-  "client/src/components/Navigation.tsx":
-    "POST /api/auth/logout — session teardown; a 401 is the expected end state, not an expiry",
-  "client/src/components/app-sidebar.tsx":
-    "POST /api/auth/logout — session teardown (see Navigation.tsx)",
+  "client/src/lib/logout.ts":
+    "POST /api/auth/logout — session teardown; a dead session is the goal here, not an expiry to redirect on. THE single sign-out path (Navigation + app-sidebar call it)",
 
   // Public endpoints: no session to expire, and each owns error copy that
   // apiRequest's "<status>: <body>" throw would replace.
