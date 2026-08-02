@@ -65,7 +65,11 @@ const SIGNAL_META: Record<
  */
 export function StaffSignalsPanel() {
   const { data, isLoading } = useQuery<{ signals: StaffSignal[] }>({
-    queryKey: ["/api/signals/staff"],
+    // The deal-team-scoped feed (routes/cockpit.ts). NOT the old
+    // /api/signals/staff, which was the same builder run unscoped — it showed
+    // every internal staffer signals (with borrower names) for files outside
+    // their book. Admins still see everything; the scope helper returns "all".
+    queryKey: ["/api/staff/signals"],
     refetchInterval: 60_000,
   });
 

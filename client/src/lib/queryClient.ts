@@ -1,37 +1,50 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Latches while a redirect to /login is already in flight, so a burst of
+// concurrent 401s doesn't queue N navigations.
 let sessionExpiredHandled = false;
 
+/** Pre-auth surfaces: a 401 here is a *failed sign-in*, not an expired session. */
+const PRE_AUTH_PATHS = ["/", "/login", "/signup"];
+
 function handleSessionExpired() {
+  // Order matters. The path check MUST come before the latch is consumed:
+  // POST /api/auth/login answers 401 on a wrong password (server/auth.ts:155),
+  // so setting the latch first meant one typo on /login burned it for the whole
+  // tab — and the real session expiry, hours later, then redirected nowhere.
+  const currentPath = window.location.pathname;
+  if (PRE_AUTH_PATHS.includes(currentPath)) return;
+
   if (sessionExpiredHandled) return;
   sessionExpiredHandled = true;
-  
-  const currentPath = window.location.pathname;
-  if (currentPath === "/" || currentPath === "/login" || currentPath === "/signup") return;
-  
+
   setTimeout(() => {
     window.location.href = "/login";
   }, 100);
 }
 
 async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    if (res.status === 401) {
-      const url = typeof res.url === "string" ? res.url : "";
-      // Background shell polls should not trigger a login redirect on their own;
-      // /api/shell/badges is the consolidated badge poll that replaced the
-      // per-count polls.
-      const isBackgroundPoll =
-        url.includes("/api/auth/user") ||
-        url.includes("/api/notifications/unread-count") ||
-        url.includes("/api/shell/badges");
-      if (!isBackgroundPoll) {
-        handleSessionExpired();
-      }
-    }
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+  // Any 2xx proves the session is alive again, so the latch must not outlive it
+  // (re-login in the same tab, or a 401 that turned out to be transient).
+  if (res.ok) {
+    sessionExpiredHandled = false;
+    return;
   }
+  if (res.status === 401) {
+    const url = typeof res.url === "string" ? res.url : "";
+    // Background shell polls should not trigger a login redirect on their own;
+    // /api/shell/badges is the consolidated badge poll that replaced the
+    // per-count polls.
+    const isBackgroundPoll =
+      url.includes("/api/auth/user") ||
+      url.includes("/api/notifications/unread-count") ||
+      url.includes("/api/shell/badges");
+    if (!isBackgroundPoll) {
+      handleSessionExpired();
+    }
+  }
+  const text = (await res.text()) || res.statusText;
+  throw new Error(`${res.status}: ${text}`);
 }
 
 export async function apiRequest(

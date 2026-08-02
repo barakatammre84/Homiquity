@@ -138,6 +138,25 @@ export function pickActiveLoanApplication<T extends { status: string }>(
   return applications.find((a) => isInFlightLoanAppStatus(a.status));
 }
 
+/**
+ * THE selector for "the file the borrower is currently working on" — in-flight
+ * OR still a draft, but never a closed one. Borrower-facing surfaces need this
+ * wider notion than `pickActiveLoanApplication`: a draft is a real file the
+ * borrower can resume and attach documents to, it just hasn't been submitted.
+ *
+ * Callers that must distinguish the two branch on `status === "draft"` (the
+ * Dashboard hides the journey tracker and predictions for drafts).
+ *
+ * Use this over `pickActiveLoanApplication(apps) ?? apps[0]`: the `?? apps[0]`
+ * fallback silently resurrects denied/withdrawn/funded files, which is how
+ * document uploads once landed on a closed loan.
+ */
+export function pickWorkableLoanApplication<T extends { status: string }>(
+  applications: readonly T[],
+): T | undefined {
+  return applications.find((a) => !isTerminalLoanAppStatus(a.status));
+}
+
 export interface LoanAppStatusMeta {
   /** Short badge/label text. */
   label: string;
