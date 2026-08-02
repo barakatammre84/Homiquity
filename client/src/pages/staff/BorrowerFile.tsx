@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState } from "react";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { useParams, useSearch, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, ApiError } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -84,17 +85,16 @@ export default function BorrowerFile() {
   const handleExportMismo = async () => {
     setExportingMismo(true);
     try {
-      const res = await fetch(`/api/loan-applications/${applicationId}/mismo-export`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(
-          res.status === 403
-            ? "MISMO export is restricted to internal staff with access to this application."
-            : body?.error || "Failed to generate the MISMO file.",
-        );
-      }
+      const res = await apiRequest("GET", `/api/loan-applications/${applicationId}/mismo-export`).catch(
+        (err: unknown) => {
+          if (err instanceof ApiError && err.status === 403) {
+            throw new Error(
+              "MISMO export is restricted to internal staff with access to this application.",
+            );
+          }
+          throw new Error(friendlyApiError(err, "Failed to generate the MISMO file."));
+        },
+      );
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

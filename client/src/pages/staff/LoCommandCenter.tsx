@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -539,8 +539,9 @@ function ActionsRail({
       const res = await apiRequest("POST", `/api/loan-applications/${applicationId}/generate-letter`, {});
       await res.json().catch(() => null);
       // Download the freshly generated PDF.
-      const pdf = await fetch(`/api/loan-applications/${applicationId}/letter-pdf`, { credentials: "include" });
-      if (!pdf.ok) throw new Error("The letter was generated but the PDF isn't ready yet.");
+      const pdf = await apiRequest("GET", `/api/loan-applications/${applicationId}/letter-pdf`).catch(() => {
+        throw new Error("The letter was generated but the PDF isn't ready yet.");
+      });
       const blob = await pdf.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -821,14 +822,15 @@ export default function LoCommandCenter() {
   const handleExportMismo = async (applicationId: string) => {
     setExportingId(applicationId);
     try {
-      const res = await fetch(`/api/loan-applications/${applicationId}/mismo-export`, { credentials: "include" });
-      if (!res.ok) {
-        throw new Error(
-          res.status === 403
-            ? "MISMO export is restricted to internal staff with access to this application."
-            : "Failed to generate the MISMO file.",
-        );
-      }
+      const res = await apiRequest("GET", `/api/loan-applications/${applicationId}/mismo-export`).catch(
+        (err: unknown) => {
+          throw new Error(
+            err instanceof ApiError && err.status === 403
+              ? "MISMO export is restricted to internal staff with access to this application."
+              : "Failed to generate the MISMO file.",
+          );
+        },
+      );
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

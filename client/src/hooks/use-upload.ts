@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState } from "react";
+import { friendlyApiError } from "@/lib/errorMessage";
+import { apiRequest } from "@/lib/queryClient";
 
 interface UploadMetadata {
   name: string;
@@ -69,22 +71,13 @@ export function useUpload(options: UseUploadOptions = {}): UseUploadReturn {
    */
   const requestUploadUrl = useCallback(
     async (file: File): Promise<UploadResponse> => {
-      const response = await fetch("/api/uploads/request-url", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: file.name,
-          size: file.size,
-          contentType: file.type || "application/octet-stream",
-        }),
+      const response = await apiRequest("POST", "/api/uploads/request-url", {
+        name: file.name,
+        size: file.size,
+        contentType: file.type || "application/octet-stream",
+      }).catch((err: unknown) => {
+        throw new Error(friendlyApiError(err, "Failed to get upload URL"));
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to get upload URL");
-      }
 
       return response.json();
     },

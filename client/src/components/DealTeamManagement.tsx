@@ -118,10 +118,7 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
   const { data: team, isLoading: teamLoading } = useQuery<DealTeamMember[]>({
     queryKey: ["/api/applications", applicationId, "team"],
     queryFn: async () => {
-      const res = await fetch(`/api/applications/${applicationId}/team`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch team");
+      const res = await apiRequest("GET", `/api/applications/${applicationId}/team`);
       return res.json();
     },
   });
@@ -129,10 +126,7 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
   const { data: availableStaff } = useQuery<StaffMember[]>({
     queryKey: ["/api/available-staff"],
     queryFn: async () => {
-      const res = await fetch("/api/available-staff", {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch staff");
+      const res = await apiRequest("GET", "/api/available-staff");
       return res.json();
     },
   });

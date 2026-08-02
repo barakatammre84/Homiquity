@@ -161,16 +161,14 @@ export default function AutopilotConsole() {
     // Re-fetches when the range changes (rangeDays is part of the key).
     queryKey: ["/api/autopilot/metrics", rangeDays],
     queryFn: async () => {
-      const res = await fetch(`/api/autopilot/metrics?${rangeParams()}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load metrics");
+      const res = await apiRequest("GET", `/api/autopilot/metrics?${rangeParams()}`);
       return res.json();
     },
   });
   const { data: trend, isLoading: trendLoading } = useQuery<AutopilotTrendResp>({
     queryKey: ["/api/autopilot/metrics/trend", rangeDays],
     queryFn: async () => {
-      const res = await fetch(`/api/autopilot/metrics/trend?${rangeParams()}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load trend");
+      const res = await apiRequest("GET", `/api/autopilot/metrics/trend?${rangeParams()}`);
       return res.json();
     },
   });
