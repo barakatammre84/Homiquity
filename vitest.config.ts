@@ -95,6 +95,7 @@ export default defineConfig({
       "tests/borrowerOfferView.test.ts",
       "tests/queryParams.test.ts",
       "tests/vercelEntryHelpers.test.ts",
+      "tests/spaCatchAll.test.ts",
       "tests/coachProfileSync.test.ts",
       "tests/coachTools.test.ts",
       "tests/coachLintFilter.test.ts",
