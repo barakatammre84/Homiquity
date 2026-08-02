@@ -130,7 +130,10 @@ export function registerDocumentRoutes(
     },
   );
 
-  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
+  // Express 5 / path-to-regexp v8 removed the `:param(regex)` form; `*name` is
+  // the wildcard spelling. The handler resolves the document from `req.path`,
+  // so the capture itself is unused (v8 would hand it back as a segment array).
+  app.get("/objects/*objectPath", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
 

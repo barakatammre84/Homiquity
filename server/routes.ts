@@ -117,7 +117,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerSeoRoutes(app);
   registerAutopilotAdminRoutes(app);
 
-  app.all("/api/*", (_req, res) => {
+  // `*` alone is not a valid path-to-regexp v8 pattern; wildcards must be named.
+  app.all("/api/*splat", (_req, res) => {
     res.status(404).json({ error: "Not found" });
   });
 
