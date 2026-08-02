@@ -9,7 +9,7 @@ import { QueryBoundary } from "@/components/ui/query-boundary";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication } from "@shared/schema";
-import { isTerminalLoanAppStatus } from "@shared/schema";
+import { pickWorkableLoanApplication } from "@shared/schema";
 import {
   Home,
   ChevronRight,
@@ -62,9 +62,7 @@ export default function ApplicationSummary() {
         <QueryBoundary query={query} loading={loadingSkeleton} data-testid="application-summary">
           {(data) => {
             const applications = data.applications || [];
-            const activeApplication = applications.find(
-              (app) => !isTerminalLoanAppStatus(app.status)
-            );
+            const activeApplication = pickWorkableLoanApplication(applications);
 
             if (!activeApplication) {
               return (
