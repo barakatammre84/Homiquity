@@ -154,8 +154,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       plaid:
-        specifier: ^41.4.0
-        version: 41.4.0
+        specifier: ^43.0.0
+        version: 43.0.0
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -3107,8 +3107,8 @@ packages:
     resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
 
-  plaid@41.4.0:
-    resolution: {integrity: sha512-Ku5W9Ufsa2+TS0/kY8jS6RFPtBUbTq1xNyod89qQt/Jy2L9q9CYAnNL0WlUGa+Y5HEGP990BxCUUS2lGMRxY3g==}
+  plaid@43.0.0:
+    resolution: {integrity: sha512-dOML4mIYMmmAblujNKQV81yf7S/xk4+Mm8C5Zh06mES4mrakxgem6L+UvfkTXLHmevvZf6VGvdfBaxUTwhIllA==}
     engines: {node: '>=10.0.0'}
 
   png-js@1.1.0:
@@ -6330,7 +6330,7 @@ snapshots:
 
   pkce-challenge@5.0.1: {}
 
-  plaid@41.4.0:
+  plaid@43.0.0:
     dependencies:
       axios: 1.18.1
     transitivePeerDependencies:
