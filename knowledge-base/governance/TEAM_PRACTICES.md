@@ -107,10 +107,20 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
   `pnpm install` and commit `pnpm-lock.yaml`. Never resurrect `package-lock.json` via
   `pnpm import` — it was deleted as proxy-poisoned (CH-1, 2026-07-08; [CICD.md](../runbooks/CICD.md)).
 - **Racing merges can land a tree the gate never tested** — the gate runs on the PR branch
-  as pushed (there is no up-to-date-with-`main` requirement), so a PR that merges while
-  other PRs land is combined with `main` untested. After a squash merge amid other merges,
-  diff the squash commit against your tested branch head before trusting green
-  (discovered 2026-07-17).
+  as pushed, so a PR that merges while other PRs land is combined with `main` untested
+  (discovered 2026-07-17). The control is `strict: true` on `main`'s required status checks
+  ("require branches to be up to date before merging"): a PR must be rebuilt on current
+  `main` before it can merge, so a green gate can no longer be green against a base that has
+  moved. **Verify it, don't assume it** (§6, §8) —
+  `gh api repos/OWNER/REPO/branches/main/protection/required_status_checks --jq .strict`
+  must print `true`. Whenever it is `false`, the hazard is live and the fallback is manual:
+  after a squash merge amid other merges, diff the squash commit against your tested branch
+  head before trusting green. Two costs to know going in: on a busy `main` every open PR
+  must update before merging, so merges serialise; and the PATCH that sets `strict` must
+  re-send `contexts[]` **verbatim** — the separators in
+  `gate (typecheck · tests · schema guard)` are U+00B7 MIDDLE DOTs, and a mismatch deadlocks
+  every future PR on "Expected — Waiting for status" with no admin bypass
+  ([ci.yml](../../.github/workflows/ci.yml) carries the rename/recovery procedure).
 - **The integration suite trips the auth rate limiter** — boot the test server with
   `RATE_LIMIT_RELAXED=true` (point 3 above).
 
