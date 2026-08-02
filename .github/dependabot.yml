@@ -12,6 +12,16 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # typescript 7 is the native Go port. Vercel's Node builder loads the
+      # project's own compiler through the legacy CommonJS API (ts.sys.readFile),
+      # which the port does not expose, so every deploy fails with
+      # "Cannot read properties of undefined (reading 'readFile')" — while `tsc`
+      # itself passes, so the gate stays green and prod silently freezes on the
+      # last good deployment. That is #268 → #279; do not re-take the bump until
+      # Vercel's builder supports the native port, then remove this entry.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
