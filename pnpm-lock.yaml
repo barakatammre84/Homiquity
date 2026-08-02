@@ -169,8 +169,8 @@ importers:
         specifier: ^5.7.0
         version: 5.7.0(react@18.3.1)
       react-plaid-link:
-        specifier: ^4.1.1
-        version: 4.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^5.0.0
+        version: 5.0.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       recharts:
         specifier: ^3.10.1
         version: 3.10.1(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react-is@18.3.1)(react@18.3.1)(redux@5.0.1)
@@ -3215,8 +3215,8 @@ packages:
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
 
-  react-plaid-link@4.1.1:
-    resolution: {integrity: sha512-xzAYWQIT/gk+u6lwFAMEZ20f9+AUsCwVyfm64/iudMsyuWANta4wm3Jb7N+APSwuKIR9VUlTkYDhPjLamIGcPA==}
+  react-plaid-link@5.0.0:
+    resolution: {integrity: sha512-DZ/6C7hf+xhEIG9ElCqjk1lty/z+y+wQuV/A29EUx4fxiPLPe7CXN811C3MrCzI7grV45LD7NRS0Do0ma8KIBg==}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
       react-dom: ^16.8.0 || ^17 || ^18 || ^19
@@ -6351,7 +6351,7 @@ snapshots:
 
   react-is@18.3.1: {}
 
-  react-plaid-link@4.1.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-plaid-link@5.0.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       prop-types: 15.8.1
       react: 18.3.1
