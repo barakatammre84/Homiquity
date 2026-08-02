@@ -9,6 +9,7 @@ import {
 } from "@shared/schema";
 import { logAudit } from "../auditLog";
 import { z } from "zod";
+import { routeParam } from "../http/routeParams";
 
 // Typed against the canonical POLICY_STATUSES vocabulary — a phantom key or
 // target cannot compile.
@@ -58,7 +59,7 @@ export function registerPolicyOpsRoutes(
   app.get("/api/policy-profiles/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const profile = await storage.getPolicyProfile(req.params.id);
+      const profile = await storage.getPolicyProfile(routeParam(req, "id"));
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
       }
@@ -68,9 +69,9 @@ export function registerPolicyOpsRoutes(
       }
 
       const [thresholds, approvals, overlays] = await Promise.all([
-        storage.getPolicyThresholds(req.params.id),
-        storage.getPolicyApprovals(req.params.id),
-        storage.getPolicyLenderOverlays(req.params.id),
+        storage.getPolicyThresholds(routeParam(req, "id")),
+        storage.getPolicyApprovals(routeParam(req, "id")),
+        storage.getPolicyLenderOverlays(routeParam(req, "id")),
       ]);
 
       res.json({ ...profile, thresholds, approvals, overlays });
@@ -109,7 +110,7 @@ export function registerPolicyOpsRoutes(
   app.patch("/api/policy-profiles/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const profile = await storage.getPolicyProfile(req.params.id);
+      const profile = await storage.getPolicyProfile(routeParam(req, "id"));
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
       }
@@ -133,9 +134,9 @@ export function registerPolicyOpsRoutes(
         }
       }
 
-      const updated = await storage.updatePolicyProfile(req.params.id, updates);
+      const updated = await storage.updatePolicyProfile(routeParam(req, "id"), updates);
 
-      await logAudit(req, "POLICY_UPDATE", "policy_profile", req.params.id, {
+      await logAudit(req, "POLICY_UPDATE", "policy_profile", routeParam(req, "id"), {
         profileId: profile.profileId,
         updatedFields: Object.keys(updates),
       });
@@ -154,7 +155,7 @@ export function registerPolicyOpsRoutes(
   app.post("/api/policy-profiles/:id/submit", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const profile = await storage.getPolicyProfile(req.params.id);
+      const profile = await storage.getPolicyProfile(routeParam(req, "id"));
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
       }
@@ -172,10 +173,10 @@ export function registerPolicyOpsRoutes(
         return res.status(400).json({ error: "Justification is required for submission" });
       }
 
-      const updated = await storage.updatePolicyProfile(req.params.id, { status: "PENDING_APPROVAL" });
+      const updated = await storage.updatePolicyProfile(routeParam(req, "id"), { status: "PENDING_APPROVAL" });
 
       await storage.createPolicyApproval({
-        policyProfileId: req.params.id,
+        policyProfileId: routeParam(req, "id"),
         fromStatus: profile.status,
         toStatus: "PENDING_APPROVAL",
         action: "SUBMIT",
@@ -184,7 +185,7 @@ export function registerPolicyOpsRoutes(
         bulletinReference: req.body.bulletinReference || null,
       });
 
-      await logAudit(req, "POLICY_SUBMIT", "policy_profile", req.params.id, {
+      await logAudit(req, "POLICY_SUBMIT", "policy_profile", routeParam(req, "id"), {
         profileId: profile.profileId,
         fromStatus: profile.status,
         justification,
@@ -199,7 +200,7 @@ export function registerPolicyOpsRoutes(
 
   app.post("/api/policy-profiles/:id/approve", requireRole("admin"), async (req, res) => {
     try {
-      const profile = await storage.getPolicyProfile(req.params.id);
+      const profile = await storage.getPolicyProfile(routeParam(req, "id"));
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
       }
@@ -217,14 +218,14 @@ export function registerPolicyOpsRoutes(
         return res.status(400).json({ error: "Justification is required for approval" });
       }
 
-      const updated = await storage.updatePolicyProfile(req.params.id, {
+      const updated = await storage.updatePolicyProfile(routeParam(req, "id"), {
         status: "APPROVED",
         approvedBy: req.user!.id,
         approvedAt: new Date(),
       });
 
       await storage.createPolicyApproval({
-        policyProfileId: req.params.id,
+        policyProfileId: routeParam(req, "id"),
         fromStatus: "PENDING_APPROVAL",
         toStatus: "APPROVED",
         action: "APPROVE",
@@ -233,7 +234,7 @@ export function registerPolicyOpsRoutes(
         bulletinReference: req.body.bulletinReference || null,
       });
 
-      await logAudit(req, "POLICY_APPROVE", "policy_profile", req.params.id, {
+      await logAudit(req, "POLICY_APPROVE", "policy_profile", routeParam(req, "id"), {
         profileId: profile.profileId,
         approvedBy: req.user!.id,
         justification,
@@ -248,7 +249,7 @@ export function registerPolicyOpsRoutes(
 
   app.post("/api/policy-profiles/:id/reject", requireRole("admin"), async (req, res) => {
     try {
-      const profile = await storage.getPolicyProfile(req.params.id);
+      const profile = await storage.getPolicyProfile(routeParam(req, "id"));
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
       }
@@ -262,10 +263,10 @@ export function registerPolicyOpsRoutes(
         return res.status(400).json({ error: "Rejection reason is required" });
       }
 
-      const updated = await storage.updatePolicyProfile(req.params.id, { status: "DRAFT" });
+      const updated = await storage.updatePolicyProfile(routeParam(req, "id"), { status: "DRAFT" });
 
       await storage.createPolicyApproval({
-        policyProfileId: req.params.id,
+        policyProfileId: routeParam(req, "id"),
         fromStatus: "PENDING_APPROVAL",
         toStatus: "DRAFT",
         action: "REJECT",
@@ -273,7 +274,7 @@ export function registerPolicyOpsRoutes(
         rejectionReason,
       });
 
-      await logAudit(req, "POLICY_REJECT", "policy_profile", req.params.id, {
+      await logAudit(req, "POLICY_REJECT", "policy_profile", routeParam(req, "id"), {
         profileId: profile.profileId,
         rejectionReason,
       });
@@ -287,7 +288,7 @@ export function registerPolicyOpsRoutes(
 
   app.post("/api/policy-profiles/:id/activate", requireRole("admin"), async (req, res) => {
     try {
-      const profile = await storage.getPolicyProfile(req.params.id);
+      const profile = await storage.getPolicyProfile(routeParam(req, "id"));
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
       }
@@ -296,14 +297,14 @@ export function registerPolicyOpsRoutes(
         return res.status(400).json({ error: "Policy must be in APPROVED status to activate" });
       }
 
-      const updated = await storage.updatePolicyProfile(req.params.id, {
+      const updated = await storage.updatePolicyProfile(routeParam(req, "id"), {
         status: "ACTIVE",
         activatedBy: req.user!.id,
         activatedAt: new Date(),
       });
 
       await storage.createPolicyApproval({
-        policyProfileId: req.params.id,
+        policyProfileId: routeParam(req, "id"),
         fromStatus: "APPROVED",
         toStatus: "ACTIVE",
         action: "ACTIVATE",
@@ -311,7 +312,7 @@ export function registerPolicyOpsRoutes(
         justification: req.body.justification || "Policy activated",
       });
 
-      await logAudit(req, "POLICY_ACTIVATE", "policy_profile", req.params.id, {
+      await logAudit(req, "POLICY_ACTIVATE", "policy_profile", routeParam(req, "id"), {
         profileId: profile.profileId,
         activatedBy: req.user!.id,
       });
@@ -325,7 +326,7 @@ export function registerPolicyOpsRoutes(
 
   app.post("/api/policy-profiles/:id/retire", requireRole("admin"), async (req, res) => {
     try {
-      const profile = await storage.getPolicyProfile(req.params.id);
+      const profile = await storage.getPolicyProfile(routeParam(req, "id"));
       if (!profile) {
         return res.status(404).json({ error: "Policy profile not found" });
       }
@@ -339,7 +340,7 @@ export function registerPolicyOpsRoutes(
         return res.status(400).json({ error: "Justification is required for retirement" });
       }
 
-      const updated = await storage.updatePolicyProfile(req.params.id, {
+      const updated = await storage.updatePolicyProfile(routeParam(req, "id"), {
         status: "RETIRED",
         retiredBy: req.user!.id,
         retiredAt: new Date(),
@@ -347,7 +348,7 @@ export function registerPolicyOpsRoutes(
       });
 
       await storage.createPolicyApproval({
-        policyProfileId: req.params.id,
+        policyProfileId: routeParam(req, "id"),
         fromStatus: "ACTIVE",
         toStatus: "RETIRED",
         action: "RETIRE",
@@ -355,7 +356,7 @@ export function registerPolicyOpsRoutes(
         justification,
       });
 
-      await logAudit(req, "POLICY_RETIRE", "policy_profile", req.params.id, {
+      await logAudit(req, "POLICY_RETIRE", "policy_profile", routeParam(req, "id"), {
         profileId: profile.profileId,
         retiredBy: req.user!.id,
         justification,
@@ -434,7 +435,7 @@ export function registerPolicyOpsRoutes(
   app.patch("/api/policy-thresholds/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const threshold = await storage.getPolicyThreshold(req.params.id);
+      const threshold = await storage.getPolicyThreshold(routeParam(req, "id"));
       if (!threshold) {
         return res.status(404).json({ error: "Threshold not found" });
       }
@@ -469,9 +470,9 @@ export function registerPolicyOpsRoutes(
         }
       }
 
-      const updated = await storage.updatePolicyThreshold(req.params.id, updates);
+      const updated = await storage.updatePolicyThreshold(routeParam(req, "id"), updates);
 
-      await logAudit(req, "THRESHOLD_UPDATE", "policy_threshold", req.params.id, {
+      await logAudit(req, "THRESHOLD_UPDATE", "policy_threshold", routeParam(req, "id"), {
         policyProfileId: threshold.policyProfileId,
         thresholdKey: threshold.thresholdKey,
         updatedFields: Object.keys(updates),
@@ -491,7 +492,7 @@ export function registerPolicyOpsRoutes(
   app.delete("/api/policy-thresholds/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const threshold = await storage.getPolicyThreshold(req.params.id);
+      const threshold = await storage.getPolicyThreshold(routeParam(req, "id"));
       if (!threshold) {
         return res.status(404).json({ error: "Threshold not found" });
       }
@@ -505,9 +506,9 @@ export function registerPolicyOpsRoutes(
         return res.status(400).json({ error: `Cannot delete thresholds from a policy in ${profile.status} status` });
       }
 
-      await storage.deletePolicyThreshold(req.params.id);
+      await storage.deletePolicyThreshold(routeParam(req, "id"));
 
-      await logAudit(req, "THRESHOLD_DELETE", "policy_threshold", req.params.id, {
+      await logAudit(req, "THRESHOLD_DELETE", "policy_threshold", routeParam(req, "id"), {
         policyProfileId: threshold.policyProfileId,
         thresholdKey: threshold.thresholdKey,
         category: threshold.category,
@@ -550,7 +551,7 @@ export function registerPolicyOpsRoutes(
   app.get("/api/policy-overlays/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const overlay = await storage.getPolicyLenderOverlay(req.params.id);
+      const overlay = await storage.getPolicyLenderOverlay(routeParam(req, "id"));
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
       }
@@ -603,7 +604,7 @@ export function registerPolicyOpsRoutes(
   app.patch("/api/policy-overlays/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const overlay = await storage.getPolicyLenderOverlay(req.params.id);
+      const overlay = await storage.getPolicyLenderOverlay(routeParam(req, "id"));
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
       }
@@ -627,9 +628,9 @@ export function registerPolicyOpsRoutes(
         }
       }
 
-      const updated = await storage.updatePolicyLenderOverlay(req.params.id, updates);
+      const updated = await storage.updatePolicyLenderOverlay(routeParam(req, "id"), updates);
 
-      await logAudit(req, "OVERLAY_UPDATE", "policy_lender_overlay", req.params.id, {
+      await logAudit(req, "OVERLAY_UPDATE", "policy_lender_overlay", routeParam(req, "id"), {
         lenderId: overlay.lenderId,
         updatedFields: Object.keys(updates),
       });
@@ -644,7 +645,7 @@ export function registerPolicyOpsRoutes(
   app.delete("/api/policy-overlays/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const overlay = await storage.getPolicyLenderOverlay(req.params.id);
+      const overlay = await storage.getPolicyLenderOverlay(routeParam(req, "id"));
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
       }
@@ -657,9 +658,9 @@ export function registerPolicyOpsRoutes(
         return res.status(400).json({ error: `Cannot delete an overlay in ${overlay.status} status` });
       }
 
-      await storage.deletePolicyLenderOverlay(req.params.id);
+      await storage.deletePolicyLenderOverlay(routeParam(req, "id"));
 
-      await logAudit(req, "OVERLAY_DELETE", "policy_lender_overlay", req.params.id, {
+      await logAudit(req, "OVERLAY_DELETE", "policy_lender_overlay", routeParam(req, "id"), {
         lenderId: overlay.lenderId,
         lenderName: overlay.lenderName,
       });
@@ -679,12 +680,12 @@ export function registerPolicyOpsRoutes(
     try {
       const user = req.user as any;
       if (user.role !== "admin") {
-        const profile = await storage.getPolicyProfile(req.params.policyProfileId);
+        const profile = await storage.getPolicyProfile(routeParam(req, "policyProfileId"));
         if (!profile || profile.createdBy !== user.id) {
           return res.status(403).json({ error: "Access denied" });
         }
       }
-      const approvals = await storage.getPolicyApprovals(req.params.policyProfileId);
+      const approvals = await storage.getPolicyApprovals(routeParam(req, "policyProfileId"));
       res.json(approvals);
     } catch (error) {
       console.error("Get policy approvals error:", error);

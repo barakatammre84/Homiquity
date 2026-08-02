@@ -9,6 +9,7 @@ import {
   statusFingerprint,
   type AutopilotStatus,
 } from "../services/autopilot/events";
+import { routeParams } from "../http/routeParams";
 
 /**
  * Autopilot real-time surfacing routes (Phase 4).
@@ -31,7 +32,7 @@ const MAX_CONNECTION_MS = 55_000;
 export function registerAutopilotRoutes(app: Express) {
   app.get("/api/autopilot/status/:applicationId", isAuthenticated, async (req, res) => {
     const user = req.user as User;
-    const { applicationId } = req.params;
+    const { applicationId } = routeParams(req);
     const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
     if (!application) return res.status(404).json({ error: "Application not found" });
     return res.json(await buildAutopilotStatus(applicationId));
@@ -39,7 +40,7 @@ export function registerAutopilotRoutes(app: Express) {
 
   app.get("/api/autopilot/stream/:applicationId", isAuthenticated, async (req, res) => {
     const user = req.user as User;
-    const { applicationId } = req.params;
+    const { applicationId } = routeParams(req);
     const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
     if (!application) return res.status(404).json({ error: "Application not found" });
 

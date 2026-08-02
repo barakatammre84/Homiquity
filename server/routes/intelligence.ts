@@ -31,6 +31,7 @@ import {
   updateReadinessField,
   getReadinessScore,
 } from "../services/intentTracker";
+import { routeParam, routeParams } from "../http/routeParams";
 
 export function registerIntelligenceRoutes(
   app: Express,
@@ -101,12 +102,12 @@ export function registerIntelligenceRoutes(
     try {
       const user = req.user as User;
       const [existing] = await db.select().from(realEstateOwned)
-        .where(eq(realEstateOwned.id, req.params.id)).limit(1);
+        .where(eq(realEstateOwned.id, routeParam(req, "id"))).limit(1);
       if (!existing || existing.userId !== user.id) {
         return res.status(404).json({ error: "Property not found" });
       }
       await db.delete(realEstateOwned)
-        .where(eq(realEstateOwned.id, req.params.id));
+        .where(eq(realEstateOwned.id, routeParam(req, "id")));
       res.json({ success: true });
     } catch (error) {
       console.error("Delete REO error:", error);
@@ -262,7 +263,7 @@ export function registerIntelligenceRoutes(
   app.put("/api/intelligence/readiness/:fieldName", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { fieldName } = req.params;
+      const { fieldName } = routeParams(req);
       const { verificationStatus, sourceTable, sourceField, sourceRecordId } = req.body;
 
       await updateReadinessField(user.id, fieldName, {
@@ -305,7 +306,7 @@ export function registerIntelligenceRoutes(
       const data = insertLenderProductSchema.partial().parse(req.body);
       const [updated] = await db.update(lenderProducts)
         .set({ ...data, updatedAt: new Date() })
-        .where(eq(lenderProducts.id, req.params.id))
+        .where(eq(lenderProducts.id, routeParam(req, "id")))
         .returning();
       res.json(updated);
     } catch (error) {
@@ -316,7 +317,7 @@ export function registerIntelligenceRoutes(
 
   app.delete("/api/admin/lender-products/:id", requireRole("admin"), async (req, res) => {
     try {
-      await db.delete(lenderProducts).where(eq(lenderProducts.id, req.params.id));
+      await db.delete(lenderProducts).where(eq(lenderProducts.id, routeParam(req, "id")));
       res.json({ success: true });
     } catch (error) {
       console.error("Delete lender product error:", error);
@@ -326,7 +327,7 @@ export function registerIntelligenceRoutes(
 
   app.get("/api/staff/borrower/:userId/state", requireRole("admin"), async (req, res) => {
     try {
-      const { userId } = req.params;
+      const { userId } = routeParams(req);
       const current = await getCurrentState(userId);
       const metadata = getStateMetadata(current);
       const history = await getStateHistory(userId);
@@ -340,7 +341,7 @@ export function registerIntelligenceRoutes(
   app.post("/api/staff/borrower/:userId/state/transition", requireRole("admin"), async (req, res) => {
     try {
       const staffUser = req.user as User;
-      const { userId } = req.params;
+      const { userId } = routeParams(req);
       const { toState, trigger, applicationId, metadata } = req.body;
 
       const result = await transitionState(userId, toState as BorrowerState, trigger as TransitionTrigger, {

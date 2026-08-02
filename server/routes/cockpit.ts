@@ -12,6 +12,7 @@ import {
   type DealTeamMember,
   type LoanApplication,
 } from "@shared/schema";
+import { routeParam } from "../http/routeParams";
 
 /**
  * LO Command Center cockpit routes (LO Advisor Program prompt LO-1).
@@ -102,7 +103,7 @@ export function registerCockpitRoutes(app: Express, storage: IStorage) {
     async (req, res) => {
       try {
         const user = req.user as User;
-        const applicationId = req.params.id;
+        const applicationId = routeParam(req, "id");
 
         // Assignment-scoped: the same gate the rate-lock desk and simulator use.
         const allowed = await verifyInternalStaffApplicationAccess(storage, applicationId, user.id, user.role);

@@ -15,6 +15,7 @@ import { evaluateTridTrigger } from "../../services/trid";
 // External partner roles (broker, lender) are NOT permitted by this helper.
 // Exported: the LO-2 scenario route reuses this gate (one access model, no forks).
 import { maskUrlaPersonalInfo } from "./access";
+import { routeParams } from "../../http/routeParams";
 
 export function registerUrlaRoutes(
   app: Express,
@@ -24,7 +25,7 @@ export function registerUrlaRoutes(
   app.get("/api/urla/:applicationId", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -59,7 +60,7 @@ export function registerUrlaRoutes(
   app.post("/api/urla/:applicationId/personal-info", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -107,7 +108,7 @@ export function registerUrlaRoutes(
   app.get("/api/urla/:applicationId/ssn", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const seq = Math.max(parseInt(String(req.query.borrowerSequenceNumber ?? "1"), 10) || 1, 1);
 
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
@@ -140,7 +141,7 @@ export function registerUrlaRoutes(
   app.post("/api/urla/:applicationId/employment", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -157,7 +158,7 @@ export function registerUrlaRoutes(
   app.patch("/api/urla/employment/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const record = await storage.getEmploymentHistoryById(id);
       if (!record) {
         return res.status(404).json({ error: "Employment record not found" });
@@ -182,7 +183,7 @@ export function registerUrlaRoutes(
   app.delete("/api/urla/employment/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const record = await storage.getEmploymentHistoryById(id);
       if (!record) {
         return res.status(404).json({ error: "Employment record not found" });
@@ -206,7 +207,7 @@ export function registerUrlaRoutes(
   app.put("/api/urla/employment/:id/self-employment", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const record = await storage.getEmploymentHistoryById(id);
       if (!record) {
         return res.status(404).json({ error: "Employment record not found" });
@@ -249,7 +250,7 @@ export function registerUrlaRoutes(
   app.post("/api/urla/:applicationId/other-income", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -266,7 +267,7 @@ export function registerUrlaRoutes(
   app.delete("/api/urla/other-income/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const record = await storage.getOtherIncomeSourceById(id);
       if (!record) {
         return res.status(404).json({ error: "Income source not found" });
@@ -286,7 +287,7 @@ export function registerUrlaRoutes(
   app.post("/api/urla/:applicationId/assets", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -303,7 +304,7 @@ export function registerUrlaRoutes(
   app.patch("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const record = await storage.getUrlaAssetById(id);
       if (!record) {
         return res.status(404).json({ error: "Asset not found" });
@@ -328,7 +329,7 @@ export function registerUrlaRoutes(
   app.delete("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const record = await storage.getUrlaAssetById(id);
       if (!record) {
         return res.status(404).json({ error: "Asset not found" });
@@ -348,7 +349,7 @@ export function registerUrlaRoutes(
   app.post("/api/urla/:applicationId/liabilities", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -365,7 +366,7 @@ export function registerUrlaRoutes(
   app.patch("/api/urla/liabilities/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const record = await storage.getUrlaLiabilityById(id);
       if (!record) {
         return res.status(404).json({ error: "Liability not found" });
@@ -390,7 +391,7 @@ export function registerUrlaRoutes(
   app.delete("/api/urla/liabilities/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const record = await storage.getUrlaLiabilityById(id);
       if (!record) {
         return res.status(404).json({ error: "Liability not found" });
@@ -410,7 +411,7 @@ export function registerUrlaRoutes(
   app.post("/api/urla/:applicationId/property-info", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -428,7 +429,7 @@ export function registerUrlaRoutes(
   app.post("/api/urla/:applicationId/save", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const { personalInfo, employmentHistory, otherIncomeSources, assets, liabilities, propertyInfo, declarations, demographics, coApplicants } = req.body;
 
       // Verify the requesting user owns (or has staff access to) this application

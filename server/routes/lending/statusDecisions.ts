@@ -13,6 +13,7 @@ import { sendNotificationEmail } from "../../services/emailService";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 import { assertStageRequirements } from "@shared/stageRequirements";
 import { evaluateTridTrigger, tridHardStopError } from "../../services/trid";
+import { routeParams } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -30,7 +31,7 @@ export function registerStatusDecisionRoutes(
   app.patch("/api/loan-applications/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       
       const application = await storage.getLoanApplication(id);
       if (!application) {
@@ -126,7 +127,7 @@ export function registerStatusDecisionRoutes(
     try {
       const user = req.user as User;
 
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const parsed = staffStatusSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid status", details: parsed.error.errors });
@@ -327,7 +328,7 @@ export function registerStatusDecisionRoutes(
     async (req, res) => {
       try {
         const user = req.user as User;
-        const { id } = req.params;
+        const { id } = routeParams(req);
 
         const application = await storage.getLoanApplication(id);
         if (!application) {
@@ -378,7 +379,7 @@ export function registerStatusDecisionRoutes(
     async (req, res) => {
       try {
         const user = req.user as User;
-        const { id, dimension } = req.params;
+        const { id, dimension } = routeParams(req);
         if (!["income", "assets", "credit"].includes(dimension)) {
           return res.status(400).json({ error: "dimension must be income, assets, or credit" });
         }

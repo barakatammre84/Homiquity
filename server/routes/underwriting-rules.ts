@@ -5,6 +5,7 @@ import { insertUnderwritingRuleDslSchema } from "@shared/schema";
 import { logAudit } from "../auditLog";
 import { executeRules } from "../services/ruleEngine";
 import { z } from "zod";
+import { routeParam } from "../http/routeParams";
 
 export function registerUnderwritingRulesRoutes(
   app: Express,
@@ -28,7 +29,7 @@ export function registerUnderwritingRulesRoutes(
 
   app.get("/api/underwriting-rules/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
-      const rule = await storage.getUnderwritingRule(req.params.id);
+      const rule = await storage.getUnderwritingRule(routeParam(req, "id"));
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
       }
@@ -74,7 +75,7 @@ export function registerUnderwritingRulesRoutes(
   app.patch("/api/underwriting-rules/:id", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const rule = await storage.getUnderwritingRule(req.params.id);
+      const rule = await storage.getUnderwritingRule(routeParam(req, "id"));
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
       }
@@ -101,9 +102,9 @@ export function registerUnderwritingRulesRoutes(
         }
       }
 
-      const updated = await storage.updateUnderwritingRule(req.params.id, updates);
+      const updated = await storage.updateUnderwritingRule(routeParam(req, "id"), updates);
 
-      await logAudit(req, "RULE_UPDATE", "underwriting_rule", req.params.id, {
+      await logAudit(req, "RULE_UPDATE", "underwriting_rule", routeParam(req, "id"), {
         ruleCode: rule.ruleCode,
         updatedFields: Object.keys(updates),
       });
@@ -117,17 +118,17 @@ export function registerUnderwritingRulesRoutes(
 
   app.delete("/api/underwriting-rules/:id", requireRole("admin"), async (req, res) => {
     try {
-      const rule = await storage.getUnderwritingRule(req.params.id);
+      const rule = await storage.getUnderwritingRule(routeParam(req, "id"));
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
       }
 
-      const updated = await storage.updateUnderwritingRule(req.params.id, {
+      const updated = await storage.updateUnderwritingRule(routeParam(req, "id"), {
         isActive: false,
         expirationDate: new Date(),
       });
 
-      await logAudit(req, "RULE_DEACTIVATE", "underwriting_rule", req.params.id, {
+      await logAudit(req, "RULE_DEACTIVATE", "underwriting_rule", routeParam(req, "id"), {
         ruleCode: rule.ruleCode,
         ruleName: rule.ruleName,
       });
@@ -142,7 +143,7 @@ export function registerUnderwritingRulesRoutes(
   app.post("/api/underwriting-rules/:id/version", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      const rule = await storage.getUnderwritingRule(req.params.id);
+      const rule = await storage.getUnderwritingRule(routeParam(req, "id"));
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
       }
@@ -187,7 +188,7 @@ export function registerUnderwritingRulesRoutes(
 
   app.post("/api/underwriting-rules/:id/approve", requireRole("admin"), async (req, res) => {
     try {
-      const rule = await storage.getUnderwritingRule(req.params.id);
+      const rule = await storage.getUnderwritingRule(routeParam(req, "id"));
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
       }
@@ -200,7 +201,7 @@ export function registerUnderwritingRulesRoutes(
         return res.status(400).json({ error: "Cannot approve your own rule (four-eyes principle)" });
       }
 
-      const updated = await storage.updateUnderwritingRule(req.params.id, {
+      const updated = await storage.updateUnderwritingRule(routeParam(req, "id"), {
         approvedBy: req.user!.id,
         approvedAt: new Date(),
         isActive: true,
@@ -213,7 +214,7 @@ export function registerUnderwritingRulesRoutes(
         });
       }
 
-      await logAudit(req, "RULE_APPROVE", "underwriting_rule", req.params.id, {
+      await logAudit(req, "RULE_APPROVE", "underwriting_rule", routeParam(req, "id"), {
         ruleCode: rule.ruleCode,
         ruleName: rule.ruleName,
         approvedBy: req.user!.id,
@@ -229,7 +230,7 @@ export function registerUnderwritingRulesRoutes(
 
   app.post("/api/underwriting-rules/:id/retire", requireRole("admin"), async (req, res) => {
     try {
-      const rule = await storage.getUnderwritingRule(req.params.id);
+      const rule = await storage.getUnderwritingRule(routeParam(req, "id"));
       if (!rule) {
         return res.status(404).json({ error: "Rule not found" });
       }
@@ -238,12 +239,12 @@ export function registerUnderwritingRulesRoutes(
         return res.status(400).json({ error: "Rule is already inactive" });
       }
 
-      const updated = await storage.updateUnderwritingRule(req.params.id, {
+      const updated = await storage.updateUnderwritingRule(routeParam(req, "id"), {
         isActive: false,
         expirationDate: new Date(),
       });
 
-      await logAudit(req, "RULE_RETIRE", "underwriting_rule", req.params.id, {
+      await logAudit(req, "RULE_RETIRE", "underwriting_rule", routeParam(req, "id"), {
         ruleCode: rule.ruleCode,
         ruleName: rule.ruleName,
         retiredBy: req.user!.id,
@@ -296,7 +297,7 @@ export function registerUnderwritingRulesRoutes(
 
   app.get("/api/underwriting-rules/execution-log/:snapshotId", requireRole("admin", "underwriter"), async (req, res) => {
     try {
-      const logs = await storage.getRuleExecutionLogs(req.params.snapshotId);
+      const logs = await storage.getRuleExecutionLogs(routeParam(req, "snapshotId"));
       res.json(logs);
     } catch (error) {
       console.error("Get rule execution logs error:", error);

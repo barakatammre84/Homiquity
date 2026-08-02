@@ -4,6 +4,7 @@ import type { Express } from "express";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertDocumentPackageSchema, insertDocumentPackageItemSchema, isStaffRole, type User } from "@shared/schema";
+import { routeParams } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -74,7 +75,7 @@ export function registerDocumentPackageRoutes(
   // Get document packages for application
   app.get("/api/applications/:applicationId/document-packages", isAuthenticated, async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const user = req.user as User;
 
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
@@ -93,7 +94,7 @@ export function registerDocumentPackageRoutes(
   // Get single document package with items
   app.get("/api/document-packages/:id", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const user = req.user as User;
 
       const pkg = await storage.getDocumentPackage(id);
@@ -117,7 +118,7 @@ export function registerDocumentPackageRoutes(
   // Update document package
   app.patch("/api/document-packages/:id", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const user = req.user as User;
       
       if (!isStaffRole(user.role)) {
@@ -165,7 +166,7 @@ export function registerDocumentPackageRoutes(
   // Delete document package
   app.delete("/api/document-packages/:id", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const user = req.user as User;
       
       if (!isStaffRole(user.role)) {
@@ -195,7 +196,7 @@ export function registerDocumentPackageRoutes(
   // Add document to package
   app.post("/api/document-packages/:packageId/items", isAuthenticated, async (req, res) => {
     try {
-      const { packageId } = req.params;
+      const { packageId } = routeParams(req);
       const user = req.user as User;
       
       if (!isStaffRole(user.role)) {
@@ -245,7 +246,7 @@ export function registerDocumentPackageRoutes(
   // Update package item
   app.patch("/api/document-package-items/:id", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const user = req.user as User;
       
       if (!isStaffRole(user.role)) {
@@ -286,7 +287,7 @@ export function registerDocumentPackageRoutes(
   // Remove document from package
   app.delete("/api/document-package-items/:id", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const user = req.user as User;
       
       if (!isStaffRole(user.role)) {
@@ -318,7 +319,7 @@ export function registerDocumentPackageRoutes(
   // Get documents for application (for package builder)
   app.get("/api/applications/:applicationId/documents", isAuthenticated, async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const user = req.user as User;
 
       // Use getLoanApplicationWithAccess so broker/lender are checked against deal-team

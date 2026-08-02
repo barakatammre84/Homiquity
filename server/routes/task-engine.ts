@@ -12,6 +12,7 @@ import {
 import { parseBodyOr400 } from "./validate";
 import { firstQueryValue } from "./queryParams";
 import { z } from "zod";
+import { routeParam, routeParams } from "../http/routeParams";
 
 // Narrow an optional ?status= query value to the canonical vocabulary.
 // Returns undefined for absent, null for a phantom value (caller 400s) — a
@@ -160,7 +161,7 @@ export async function registerTaskEngineRoutes(
 
   app.get("/api/tasks/user/:userId", isAuthenticated, async (req, res) => {
     try {
-      const { userId } = req.params;
+      const { userId } = routeParams(req);
       const requestingUserId = req.user!.id;
       const userRole = req.user?.role || "";
 
@@ -181,7 +182,7 @@ export async function registerTaskEngineRoutes(
 
   app.get("/api/tasks/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
 
@@ -203,7 +204,7 @@ export async function registerTaskEngineRoutes(
 
   app.get("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
-      const task = await storage.getTask(req.params.id);
+      const task = await storage.getTask(routeParam(req, "id"));
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
       }
@@ -275,7 +276,7 @@ export async function registerTaskEngineRoutes(
 
   app.patch("/api/tasks/:id", isAuthenticated, async (req, res) => {
     try {
-      const task = await storage.getTask(req.params.id);
+      const task = await storage.getTask(routeParam(req, "id"));
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
       }
@@ -342,7 +343,7 @@ export async function registerTaskEngineRoutes(
         }
       }
 
-      const updated = await storage.updateTask(req.params.id, updateData);
+      const updated = await storage.updateTask(routeParam(req, "id"), updateData);
       res.json(updated);
     } catch (error) {
       console.error("Update task error:", error);
@@ -371,7 +372,7 @@ export async function registerTaskEngineRoutes(
       );
       if (data === undefined) return;
 
-      const task = await taskEngine.cancelTask(req.params.id, req.user!.id, data.reason);
+      const task = await taskEngine.cancelTask(routeParam(req, "id"), req.user!.id, data.reason);
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
       }
@@ -392,7 +393,7 @@ export async function registerTaskEngineRoutes(
   // Task Document Routes
   app.post("/api/tasks/:taskId/documents", isAuthenticated, async (req, res) => {
     try {
-      const { taskId } = req.params;
+      const { taskId } = routeParams(req);
       const task = await storage.getTask(taskId);
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
@@ -456,7 +457,7 @@ export async function registerTaskEngineRoutes(
 
   app.get("/api/tasks/:taskId/documents", isAuthenticated, async (req, res) => {
     try {
-      const { taskId } = req.params;
+      const { taskId } = routeParams(req);
       const task = await storage.getTask(taskId);
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
@@ -492,7 +493,7 @@ export async function registerTaskEngineRoutes(
         return res.status(403).json({ error: "Only internal staff can verify documents" });
       }
 
-      const { taskId, docId } = req.params;
+      const { taskId, docId } = routeParams(req);
       const { isVerified, verificationNotes } = req.body;
 
       // Object-level gate: non-admin staff must be a deal-team member on the application.
@@ -589,7 +590,7 @@ export async function registerTaskEngineRoutes(
       if (!isInternalStaffRole(userRole)) {
         return res.status(403).json({ error: "Internal staff access required for full task list" });
       }
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       // All staff roles must have application-level access; admin always passes.
       const allowed = await verifyTaskApplicationAccess(storage, applicationId, userId, userRole);
       if (!allowed) {
@@ -606,7 +607,7 @@ export async function registerTaskEngineRoutes(
   // Get borrower-visible tasks (verify ownership)
   app.get("/api/task-engine/applications/:applicationId/borrower-tasks", isAuthenticated, async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
 
@@ -632,7 +633,7 @@ export async function registerTaskEngineRoutes(
   app.get("/api/task-engine/tasks/by-role/:role", isAuthenticated, async (req, res) => {
     try {
       const userRole = req.user?.role || "";
-      if (!canAccessRoleQueue(userRole, req.params.role)) {
+      if (!canAccessRoleQueue(userRole, routeParam(req, "role"))) {
         return res.status(403).json({ error: "Forbidden" });
       }
       // Normalize to owner-role form (e.g. "underwriter" -> "UW") so the lookup is
@@ -641,7 +642,7 @@ export async function registerTaskEngineRoutes(
       if (status === null) {
         return res.status(400).json({ error: `Invalid status filter — allowed: ${TASK_STATUSES.join(", ")}` });
       }
-      const tasks = await taskEngine.getTasksByOwnerRole(userRoleToOwnerRole(req.params.role), status);
+      const tasks = await taskEngine.getTasksByOwnerRole(userRoleToOwnerRole(routeParam(req, "role")), status);
       res.json(tasks);
     } catch (error) {
       console.error("Get tasks by role error:", error);
@@ -723,7 +724,7 @@ export async function registerTaskEngineRoutes(
   // Update task status (staff or assigned user only)
   app.patch("/api/task-engine/tasks/:taskId/status", isAuthenticated, async (req, res) => {
     try {
-      const { taskId } = req.params;
+      const { taskId } = routeParams(req);
       const { status, notes } = req.body;
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
@@ -776,7 +777,7 @@ export async function registerTaskEngineRoutes(
         return res.status(403).json({ error: "Internal staff access required" });
       }
 
-      const { taskId } = req.params;
+      const { taskId } = routeParams(req);
       const { reason } = req.body;
 
       // Non-admin internal staff must be deal-team members on the application.
@@ -811,7 +812,7 @@ export async function registerTaskEngineRoutes(
         return res.status(403).json({ error: "Internal staff access required" });
       }
 
-      const { taskId } = req.params;
+      const { taskId } = routeParams(req);
 
       // Non-admin internal staff must be deal-team members on the application.
       const existingTask = await storage.getTask(taskId);

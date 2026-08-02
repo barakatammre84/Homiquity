@@ -11,6 +11,7 @@ import * as creditService from "../../services/creditService";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { computeOffers, type BorrowerPricingProfile } from "../../services/pricingAdapter";
 import { toBorrowerOfferViews } from "@shared/borrowerOfferView";
+import { routeParam } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -28,7 +29,7 @@ export function registerPricingRoutes(
   app.get("/api/loan-applications/:id/offers", isAuthenticated, async (req, res) => {
     try {
       const application = await storage.getLoanApplicationWithAccess(
-        req.params.id,
+        routeParam(req, "id"),
         req.user!.id,
         req.user!.role,
       );
@@ -131,7 +132,7 @@ export function registerPricingRoutes(
   // why their rate is their rate (points ÷ 4 ≈ rate-equivalent adjustment).
   app.get("/api/loan-options/:id/pricing-breakdown", isAuthenticated, async (req, res) => {
     try {
-      const option = await storage.getLoanOption(req.params.id);
+      const option = await storage.getLoanOption(routeParam(req, "id"));
       if (!option) {
         return res.status(404).json({ error: "Loan option not found" });
       }
@@ -181,7 +182,7 @@ export function registerPricingRoutes(
 
   app.post("/api/loan-options/:id/lock", isAuthenticated, async (req, res) => {
     try {
-      const existing = await storage.getLoanOption(req.params.id);
+      const existing = await storage.getLoanOption(routeParam(req, "id"));
       if (!existing) {
         return res.status(404).json({ error: "Loan option not found" });
       }
@@ -210,7 +211,7 @@ export function registerPricingRoutes(
         }
       }
 
-      const option = await storage.lockLoanOption(req.params.id);
+      const option = await storage.lockLoanOption(routeParam(req, "id"));
       if (!option) {
         return res.status(404).json({ error: "Loan option not found" });
       }

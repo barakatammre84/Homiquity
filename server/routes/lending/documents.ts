@@ -11,6 +11,7 @@ import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
 import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import { logAudit } from "../../auditLog";
 import * as creditService from "../../services/creditService";
+import { routeParams } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -27,7 +28,7 @@ export function registerDocumentRoutes(
 ) {
   app.get("/api/loan-applications/:id/declarations", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       // Use ownership-scoped query - authorization happens at database level
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role || "");
       
@@ -45,7 +46,7 @@ export function registerDocumentRoutes(
 
   app.post("/api/loan-applications/:id/declarations", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       
       // Validate request body with Zod schema
       const parseResult = declarationsValidationSchema.safeParse(req.body);

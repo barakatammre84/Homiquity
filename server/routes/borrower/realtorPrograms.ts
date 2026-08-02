@@ -5,6 +5,7 @@ import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
 import { firstQueryValue } from "../queryParams";
+import { routeParam } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -69,14 +70,14 @@ export function registerRealtorProgramRoutes(
       }
       // Object-level authorization: external partners (broker/lender) may only
       // update escalations they reported; internal staff work the whole queue.
-      const existing = await storage.getDealRescueEscalation(req.params.id);
+      const existing = await storage.getDealRescueEscalation(routeParam(req, "id"));
       if (!existing) {
         return res.status(404).json({ error: "Escalation not found" });
       }
       if (!isInternalStaffRole(req.user!.role) && existing.reportedByUserId !== req.user!.id) {
         return res.status(403).json({ error: "You may only update escalations you reported" });
       }
-      const escalation = await storage.updateDealRescueEscalation(req.params.id, req.body);
+      const escalation = await storage.updateDealRescueEscalation(routeParam(req, "id"), req.body);
       if (!escalation) {
         return res.status(404).json({ error: "Escalation not found" });
       }
@@ -126,14 +127,14 @@ export function registerRealtorProgramRoutes(
       }
       // Object-level authorization: sessions belong to the agent who booked
       // them (agentUserId); internal staff may manage any session.
-      const existing = await storage.getStrategySession(req.params.id);
+      const existing = await storage.getStrategySession(routeParam(req, "id"));
       if (!existing) {
         return res.status(404).json({ error: "Strategy session not found" });
       }
       if (!isInternalStaffRole(req.user!.role) && existing.agentUserId !== req.user!.id) {
         return res.status(403).json({ error: "You may only update your own strategy sessions" });
       }
-      const session = await storage.updateStrategySession(req.params.id, req.body);
+      const session = await storage.updateStrategySession(routeParam(req, "id"), req.body);
       if (!session) {
         return res.status(404).json({ error: "Strategy session not found" });
       }
@@ -218,10 +219,10 @@ export function registerRealtorProgramRoutes(
   app.put("/api/accelerator/enrollment/:id", isAuthenticated, async (req, res) => {
     try {
       const enrollment = await storage.getAcceleratorEnrollment(req.user!.id);
-      if (!enrollment || enrollment.id !== req.params.id) {
+      if (!enrollment || enrollment.id !== routeParam(req, "id")) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const updated = await storage.updateAcceleratorEnrollment(req.params.id, req.body);
+      const updated = await storage.updateAcceleratorEnrollment(routeParam(req, "id"), req.body);
       if (!updated) {
         return res.status(404).json({ error: "Enrollment not found" });
       }
@@ -236,10 +237,10 @@ export function registerRealtorProgramRoutes(
     try {
       const user = req.user as User;
       const enrollment = await storage.getAcceleratorEnrollment(user.id);
-      if (!enrollment || enrollment.id !== req.params.enrollmentId) {
+      if (!enrollment || enrollment.id !== routeParam(req, "enrollmentId")) {
         return res.status(404).json({ error: "Enrollment not found" });
       }
-      const milestones = await storage.getAcceleratorMilestones(req.params.enrollmentId);
+      const milestones = await storage.getAcceleratorMilestones(routeParam(req, "enrollmentId"));
       res.json(milestones);
     } catch (error) {
       console.error("Get accelerator milestones error:", error);
@@ -254,13 +255,13 @@ export function registerRealtorProgramRoutes(
       if (!enrollment) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const existing = await storage.getAcceleratorMilestoneById(req.params.id);
+      const existing = await storage.getAcceleratorMilestoneById(routeParam(req, "id"));
       if (!existing || existing.enrollmentId !== enrollment.id) {
         return res.status(404).json({ error: "Milestone not found" });
       }
       // Strip enrollmentId from body to prevent ownership-link reassignment
       const { enrollmentId: _stripM, ...milestoneBody } = req.body;
-      const milestone = await storage.updateAcceleratorMilestone(req.params.id, milestoneBody, enrollment.id);
+      const milestone = await storage.updateAcceleratorMilestone(routeParam(req, "id"), milestoneBody, enrollment.id);
       if (!milestone) {
         return res.status(404).json({ error: "Milestone not found" });
       }
@@ -275,10 +276,10 @@ export function registerRealtorProgramRoutes(
     try {
       const user = req.user as User;
       const enrollment = await storage.getAcceleratorEnrollment(user.id);
-      if (!enrollment || enrollment.id !== req.params.enrollmentId) {
+      if (!enrollment || enrollment.id !== routeParam(req, "enrollmentId")) {
         return res.status(404).json({ error: "Enrollment not found" });
       }
-      const sessions = await storage.getCoachingSessions(req.params.enrollmentId);
+      const sessions = await storage.getCoachingSessions(routeParam(req, "enrollmentId"));
       res.json(sessions);
     } catch (error) {
       console.error("Get coaching sessions error:", error);
@@ -308,13 +309,13 @@ export function registerRealtorProgramRoutes(
       if (!enrollment) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const existing = await storage.getCoachingSessionById(req.params.id);
+      const existing = await storage.getCoachingSessionById(routeParam(req, "id"));
       if (!existing || existing.enrollmentId !== enrollment.id) {
         return res.status(404).json({ error: "Coaching session not found" });
       }
       // Strip enrollmentId from body to prevent ownership-link reassignment
       const { enrollmentId: _stripC, ...sessionBody } = req.body;
-      const session = await storage.updateCoachingSession(req.params.id, sessionBody, enrollment.id);
+      const session = await storage.updateCoachingSession(routeParam(req, "id"), sessionBody, enrollment.id);
       if (!session) {
         return res.status(404).json({ error: "Coaching session not found" });
       }

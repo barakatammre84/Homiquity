@@ -14,6 +14,7 @@ import {
   aggregateAnonymizedData,
   calculateAgentCommission,
 } from "../services/optimizationEngine";
+import { routeParams } from "../http/routeParams";
 
 export function registerOptimizationRoutes(app: Express) {
   app.get("/api/optimizations/pre-fill", isAuthenticated, async (req, res) => {
@@ -142,7 +143,7 @@ export function registerOptimizationRoutes(app: Express) {
 
   app.post("/api/optimizations/calculate-commission/:applicationId", requireRole("admin"), async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const { fundedAmount } = req.body;
 
       if (!fundedAmount || fundedAmount <= 0) {

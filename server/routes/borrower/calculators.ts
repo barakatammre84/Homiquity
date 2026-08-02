@@ -5,6 +5,7 @@ import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertCalculatorResultSchema, type User } from "@shared/schema";
 import { z } from "zod";
+import { routeParams } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -56,7 +57,7 @@ export function registerCalculatorRoutes(
   app.get("/api/calculator-results/:type", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { type } = req.params;
+      const { type } = routeParams(req);
       const result = await storage.getLatestCalculatorResult(user.id, type);
       
       if (!result) {
@@ -108,7 +109,7 @@ export function registerCalculatorRoutes(
 
   app.get("/api/calculator-profiles/check/:email", async (req, res) => {
     try {
-      const { email } = req.params;
+      const { email } = routeParams(req);
       const profile = await storage.getCalculatorProfileByEmail(email);
       if (!profile) {
         return res.status(404).json({ exists: false });

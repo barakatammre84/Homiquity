@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { InsertLead } from "@shared/schema";
 import { intakePausedGate } from "../services/maintenanceMode";
 import { notifyNewLead } from "../services/leadNotifications";
+import { routeParam } from "../http/routeParams";
 
 // Which staff work leads: the sales funnel (admin + loan officers + assistants).
 // Processors/underwriters/closers act post-application, so they're excluded here.
@@ -160,7 +161,7 @@ export function registerLeadRoutes(app: Express, storage: IStorage) {
 
   app.get("/api/leads/:id", requireRole(...LEAD_STAFF_ROLES), async (req, res) => {
     try {
-      const lead = await storage.getLead(req.params.id);
+      const lead = await storage.getLead(routeParam(req, "id"));
       if (!lead) return res.status(404).json({ error: "Lead not found" });
       res.json(lead);
     } catch (error) {
@@ -172,9 +173,9 @@ export function registerLeadRoutes(app: Express, storage: IStorage) {
   // Admin-only removal (spam pruning, CCPA/GDPR erasure, test cleanup).
   app.delete("/api/leads/:id", requireRole("admin"), async (req, res) => {
     try {
-      const removed = await storage.deleteLead(req.params.id);
+      const removed = await storage.deleteLead(routeParam(req, "id"));
       if (!removed) return res.status(404).json({ error: "Lead not found" });
-      logAudit(req, "lead.deleted", "lead", req.params.id, {});
+      logAudit(req, "lead.deleted", "lead", routeParam(req, "id"), {});
       res.json({ success: true });
     } catch (error) {
       console.error("Delete lead error:", error);

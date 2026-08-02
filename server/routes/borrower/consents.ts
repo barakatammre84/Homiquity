@@ -8,6 +8,7 @@ import { type User } from "@shared/schema";
 import crypto from "crypto";
 import { z } from "zod";
 import { firstQueryValue } from "../queryParams";
+import { routeParams } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -140,7 +141,7 @@ export function registerConsentRoutes(
   app.post("/api/consents/:consentType/revoke", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { consentType } = req.params;
+      const { consentType } = routeParams(req);
 
       if (!SELF_REVOCABLE_CONSENT_TYPES.has(consentType)) {
         return res.status(400).json({ error: "This consent type cannot be revoked from here" });
@@ -194,7 +195,7 @@ export function registerConsentRoutes(
   app.get("/api/consents/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -211,7 +212,7 @@ export function registerConsentRoutes(
   app.get("/api/consents/check/:applicationId/:consentType", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId, consentType } = req.params;
+      const { applicationId, consentType } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });

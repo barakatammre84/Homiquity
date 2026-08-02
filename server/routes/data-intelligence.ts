@@ -29,6 +29,7 @@ import {
 } from "../services/predictiveEngine";
 import type { AnalyticsDomain } from "@shared/schema";
 import { firstQueryValue } from "./queryParams";
+import { routeParam, routeParams } from "../http/routeParams";
 
 export function registerDataIntelligenceRoutes(app: Express) {
 
@@ -62,7 +63,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin", "lo", "loa", "processor", "underwriter"),
     async (req, res) => {
       try {
-        const domain = req.params.domain as AnalyticsDomain;
+        const domain = routeParam(req, "domain") as AnalyticsDomain;
         const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 30;
         const insights = await getDomainInsights(domain, daysBack);
         res.json(insights);
@@ -128,7 +129,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     requireRole("admin", "lo", "loa", "processor", "underwriter"),
     async (req, res) => {
       try {
-        const field = req.params.field as "creditScoreBucket" | "loanPurpose" | "productType" | "propertyState";
+        const field = routeParam(req, "field") as "creditScoreBucket" | "loanPurpose" | "productType" | "propertyState";
         const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 90;
         const segments = await getOutcomesBySegment(field, daysBack);
         res.json(segments);
@@ -201,7 +202,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     async (req, res) => {
       try {
         const daysBack = parseInt(firstQueryValue(req.query.days) ?? "") || 90;
-        const trend = await getConfidenceTrend(req.params.docType, daysBack);
+        const trend = await getConfidenceTrend(routeParam(req, "docType"), daysBack);
         res.json(trend);
       } catch (error) {
         console.error("Confidence trend error:", error);
@@ -215,7 +216,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     async (req, res) => {
       try {
         const user = req.user as User;
-        const { documentId } = req.params;
+        const { documentId } = routeParams(req);
         const { fieldsCorrect, fieldsCorrected, fieldsMissed } = req.body;
         await recordHumanReview(documentId, user.id, {
           fieldsCorrect: fieldsCorrect || 0,
@@ -258,7 +259,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
     async (req, res) => {
       try {
         const caller = req.user as User;
-        const { userId } = req.params;
+        const { userId } = routeParams(req);
         const applicationId = firstQueryValue(req.query.applicationId);
 
         if (caller.role !== "admin") {

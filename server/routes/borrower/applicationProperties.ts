@@ -4,6 +4,7 @@ import type { Express } from "express";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
+import { routeParams } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -18,7 +19,7 @@ export function registerApplicationPropertyRoutes(
   // Application Properties Routes - multi-property support
   app.get("/api/loan-applications/:id/properties", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -33,7 +34,7 @@ export function registerApplicationPropertyRoutes(
 
   app.get("/api/loan-applications/:id/current-property", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -48,7 +49,7 @@ export function registerApplicationPropertyRoutes(
 
   app.post("/api/loan-applications/:id/properties", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -108,7 +109,7 @@ export function registerApplicationPropertyRoutes(
 
   app.post("/api/loan-applications/:id/properties/:propertyId/switch", isAuthenticated, async (req, res) => {
     try {
-      const { id, propertyId } = req.params;
+      const { id, propertyId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -155,7 +156,7 @@ export function registerApplicationPropertyRoutes(
 
   app.post("/api/loan-applications/:id/properties/:propertyId/deal-fell-through", isAuthenticated, async (req, res) => {
     try {
-      const { id, propertyId } = req.params;
+      const { id, propertyId } = routeParams(req);
       const { reason } = req.body;
       
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
@@ -186,7 +187,7 @@ export function registerApplicationPropertyRoutes(
 
   app.patch("/api/loan-applications/:id/properties/:propertyId", isAuthenticated, async (req, res) => {
     try {
-      const { id, propertyId } = req.params;
+      const { id, propertyId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });

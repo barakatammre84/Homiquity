@@ -20,6 +20,7 @@ import {
 } from "@shared/schema";
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
+import { routeParams } from "../../http/routeParams";
 
 
 export function registerProfileBrokerRoutes(
@@ -188,7 +189,7 @@ export function registerProfileBrokerRoutes(
     try {
       const user = req.user as User;
 
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const body = parseBodyOr400(
         z.object({

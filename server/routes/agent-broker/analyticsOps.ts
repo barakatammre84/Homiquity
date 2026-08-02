@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
+import { routeParams } from "../../http/routeParams";
 
 
 export function registerAnalyticsOpsRoutes(
@@ -121,7 +122,7 @@ export function registerAnalyticsOpsRoutes(
   // Get application milestones
   app.get("/api/application-milestones/:applicationId", isAuthenticated, async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const userId = (req.user as User).id;
       const userRole = (req.user as User).role;
 
@@ -161,7 +162,7 @@ export function registerAnalyticsOpsRoutes(
   // by any staff role without requiring a deal-team assignment table.
   app.patch("/api/application-milestones/:applicationId", requireRole("admin"), async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
 
       // Verify the application exists before writing milestone data
       const application = await storage.getLoanApplication(applicationId);

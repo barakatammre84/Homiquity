@@ -4,6 +4,7 @@ import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { requireRole } from "../../auth";
 import * as creditService from "../../services/creditService";
+import { routeParams } from "../../http/routeParams";
 
 export function registerDecisionRoutes(
   app: Express,
@@ -14,7 +15,7 @@ export function registerDecisionRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -36,7 +37,7 @@ export function registerDecisionRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -60,7 +61,7 @@ export function registerDecisionRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });

@@ -4,6 +4,7 @@ import type { Express } from "express";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { isStaffRole } from "@shared/schema";
+import { routeParam } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -41,14 +42,14 @@ export function registerGuaranteeHomeownerRoutes(
         return res.status(403).json({ error: "Staff access required" });
       }
       const application = await storage.getLoanApplicationWithAccess(
-        req.params.applicationId,
+        routeParam(req, "applicationId"),
         req.user!.id,
         req.user!.role
       );
       if (!application) {
         return res.status(403).json({ error: "Access denied to this loan file" });
       }
-      const guarantees = await storage.getClosingGuarantees(req.params.applicationId);
+      const guarantees = await storage.getClosingGuarantees(routeParam(req, "applicationId"));
       res.json(guarantees);
     } catch (error) {
       console.error("Get closing guarantees error:", error);
@@ -89,7 +90,7 @@ export function registerGuaranteeHomeownerRoutes(
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
-      const existing = await storage.getClosingGuarantee(req.params.id);
+      const existing = await storage.getClosingGuarantee(routeParam(req, "id"));
       if (!existing) {
         return res.status(404).json({ error: "Closing guarantee not found" });
       }
@@ -105,7 +106,7 @@ export function registerGuaranteeHomeownerRoutes(
       // callers cannot reassign the record to a different application or forge
       // timestamps by including them in req.body.
       const { id: _id, applicationId: _appId, createdAt: _ca, updatedAt: _ua, ...safeUpdate } = req.body;
-      const guarantee = await storage.updateClosingGuarantee(req.params.id, safeUpdate);
+      const guarantee = await storage.updateClosingGuarantee(routeParam(req, "id"), safeUpdate);
       if (!guarantee) {
         return res.status(404).json({ error: "Closing guarantee not found" });
       }
@@ -145,10 +146,10 @@ export function registerGuaranteeHomeownerRoutes(
   app.put("/api/homeowner/profile/:id", isAuthenticated, async (req, res) => {
     try {
       const profile = await storage.getHomeownerProfile(req.user!.id);
-      if (!profile || profile.id !== req.params.id) {
+      if (!profile || profile.id !== routeParam(req, "id")) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const updated = await storage.updateHomeownerProfile(req.params.id, req.body);
+      const updated = await storage.updateHomeownerProfile(routeParam(req, "id"), req.body);
       if (!updated) {
         return res.status(404).json({ error: "Homeowner profile not found" });
       }
@@ -162,10 +163,10 @@ export function registerGuaranteeHomeownerRoutes(
   app.get("/api/homeowner/refi-alerts/:profileId", isAuthenticated, async (req, res) => {
     try {
       const profile = await storage.getHomeownerProfile(req.user!.id);
-      if (!profile || profile.id !== req.params.profileId) {
+      if (!profile || profile.id !== routeParam(req, "profileId")) {
         return res.status(404).json({ error: "Profile not found" });
       }
-      const alerts = await storage.getRefiAlerts(req.params.profileId);
+      const alerts = await storage.getRefiAlerts(routeParam(req, "profileId"));
       res.json(alerts);
     } catch (error) {
       console.error("Get refi alerts error:", error);
@@ -194,13 +195,13 @@ export function registerGuaranteeHomeownerRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       // Fetch the alert BEFORE writing to verify ownership
-      const existing = await storage.getRefiAlertById(req.params.id);
+      const existing = await storage.getRefiAlertById(routeParam(req, "id"));
       if (!existing || existing.homeownerProfileId !== profile.id) {
         return res.status(404).json({ error: "Refi alert not found" });
       }
       // Strip homeownerProfileId from body to prevent ownership-link reassignment
       const { homeownerProfileId: _stripR, ...alertBody } = req.body;
-      const updated = await storage.updateRefiAlert(req.params.id, alertBody, profile.id);
+      const updated = await storage.updateRefiAlert(routeParam(req, "id"), alertBody, profile.id);
       if (!updated) {
         return res.status(404).json({ error: "Refi alert not found" });
       }
@@ -214,7 +215,7 @@ export function registerGuaranteeHomeownerRoutes(
   app.get("/api/homeowner/equity/:profileId", isAuthenticated, async (req, res) => {
     try {
       const profile = await storage.getHomeownerProfile(req.user!.id);
-      if (!profile || profile.id !== req.params.profileId) {
+      if (!profile || profile.id !== routeParam(req, "profileId")) {
         return res.status(403).json({ error: "Forbidden" });
       }
       const snapshots = await storage.getEquitySnapshots(profile.id);

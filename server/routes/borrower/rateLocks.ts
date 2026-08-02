@@ -13,6 +13,7 @@ import { firstQueryValue } from "../queryParams";
 // External partner roles (broker, lender) are NOT permitted by this helper.
 // Exported: the LO-2 scenario route reuses this gate (one access model, no forks).
 import { verifyInternalStaffApplicationAccess } from "./access";
+import { routeParams } from "../../http/routeParams";
 
 export function registerRateLockRoutes(
   app: Express,
@@ -102,7 +103,7 @@ export function registerRateLockRoutes(
   app.get("/api/rate-locks/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -151,7 +152,7 @@ export function registerRateLockRoutes(
         return res.status(403).json({ error: "Internal staff only can extend rate locks" });
       }
 
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const { additionalDays, extensionFee } = req.body;
 
       const lock = await storage.getRateLock(id);
@@ -207,7 +208,7 @@ export function registerRateLockRoutes(
         return res.status(403).json({ error: "Internal staff only can cancel rate locks" });
       }
 
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const { reason } = req.body;
 
       const lock = await storage.getRateLock(id);
