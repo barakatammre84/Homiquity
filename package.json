@@ -94,7 +94,7 @@
     "vitest": "^4.1.10",
     "wouter": "^3.10.0",
     "ws": "^8.21.1",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
