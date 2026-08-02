@@ -23,6 +23,23 @@ function handleSessionExpired() {
   }, 100);
 }
 
+/**
+ * What `apiRequest` throws on a non-2xx. The `message` keeps the historical
+ * `"<status>: <body>"` shape that `friendlyApiError` parses, so nothing that
+ * only reads the message needs to change; `status` is added so a caller can
+ * branch on it (e.g. 403 → "restricted to internal staff") without parsing the
+ * string back out.
+ */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   // Any 2xx proves the session is alive again, so the latch must not outlive it
   // (re-login in the same tab, or a 401 that turned out to be transient).
@@ -44,7 +61,7 @@ async function throwIfResNotOk(res: Response) {
     }
   }
   const text = (await res.text()) || res.statusText;
-  throw new Error(`${res.status}: ${text}`);
+  throw new ApiError(res.status, `${res.status}: ${text}`);
 }
 
 export async function apiRequest(

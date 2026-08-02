@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
 import type { AutopilotStatus } from "@shared/autopilotStatus";
 
 /**
@@ -22,8 +23,8 @@ export function useAutopilotStatus(applicationId?: string | null): AutopilotStat
     let es: EventSource | null = null;
 
     // Immediate snapshot so the banner shows without waiting for the stream.
-    fetch(`/api/autopilot/status/${applicationId}`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
+    apiRequest("GET", `/api/autopilot/status/${applicationId}`)
+      .then((r) => r.json())
       .then((s: AutopilotStatus | null) => {
         if (!cancelled && s) setStatus(s);
       })

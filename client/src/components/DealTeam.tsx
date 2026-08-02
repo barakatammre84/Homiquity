@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -76,10 +77,7 @@ export function DealTeam({ applicationId, compact = false }: DealTeamProps) {
   const { data: team, isLoading } = useQuery<DealTeamMember[]>({
     queryKey: ["/api/applications", applicationId, "team"],
     queryFn: async () => {
-      const res = await fetch(`/api/applications/${applicationId}/team`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to fetch team");
+      const res = await apiRequest("GET", `/api/applications/${applicationId}/team`);
       return res.json();
     },
     enabled: !!applicationId,

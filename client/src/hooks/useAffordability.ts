@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
 export interface AffordabilityResult {
@@ -18,8 +19,7 @@ export function useAffordability(price: number | null | undefined) {
   return useQuery<AffordabilityResult>({
     queryKey: ['/api/borrower-graph/affordability', roundedPrice],
     queryFn: async () => {
-      const res = await fetch(`/api/borrower-graph/affordability?price=${roundedPrice}`, { credentials: "include" });
-      if (!res.ok) { const text = (await res.text()) || res.statusText; throw new Error(`${res.status}: ${text}`); }
+      const res = await apiRequest("GET", `/api/borrower-graph/affordability?price=${roundedPrice}`);
       return res.json();
     },
     enabled: !!user && !!roundedPrice && roundedPrice > 0,

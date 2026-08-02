@@ -57,8 +57,7 @@ export function PreApprovedCard({ applicationId, amount, validUntil }: PreApprov
 
   const handleDownload = async () => {
     try {
-      const res = await fetch(`/api/loan-applications/${applicationId}/prequal-pdf`, { credentials: "include" });
-      if (!res.ok) throw new Error("Download failed");
+      const res = await apiRequest("GET", `/api/loan-applications/${applicationId}/prequal-pdf`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
