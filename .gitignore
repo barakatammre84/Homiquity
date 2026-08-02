@@ -13,3 +13,7 @@ api/_app.mjs
 # MISMO XML exports (generated at runtime, not source)
 mismo-*.xml
 .vite-cache/
+
+# Per-session git worktrees (TEAM_PRACTICES §4: one session = one worktree =
+# one branch). They live inside the repo but are never part of it.
+.claude/worktrees/
