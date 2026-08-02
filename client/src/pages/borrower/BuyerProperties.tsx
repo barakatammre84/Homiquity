@@ -163,13 +163,12 @@ export default function BuyerProperties() {
     queryKey: ["/api/properties"],
   });
 
-  // Get the latest pre-approved application
+  // The approval we shop against. No `|| applications[0]` fallback: a closed
+  // file still carries annualIncome, so falling back to one made `hasPreApproval`
+  // go true and showed affordability math to a borrower who was denied.
   const preApproval = useMemo(() => {
     if (!applications?.length) return null;
-    const approved = applications.find(
-      (app) => isApprovedGradeLoanAppStatus(app.status)
-    );
-    return approved || applications[0];
+    return applications.find((app) => isApprovedGradeLoanAppStatus(app.status)) ?? null;
   }, [applications]);
 
   const hasPreApproval = preApproval && 

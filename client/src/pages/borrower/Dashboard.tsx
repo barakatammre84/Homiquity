@@ -24,7 +24,7 @@ import { ContactCard } from "@/components/dashboard/ContactCard";
 import { LoanTeamCard } from "@/components/dashboard/LoanTeamCard";
 import { RenterHome } from "@/pages/borrower/RenterHome";
 import { isStaffRole } from "@shared/roles";
-import { isTerminalLoanAppStatus } from "@shared/schema";
+import { pickWorkableLoanApplication } from "@shared/schema";
 import PredictionInsights from "@/components/borrower/PredictionInsights";
 import type { LoanApplication, DealActivity, LoanAppStatus } from "@shared/schema";
 import {
@@ -131,8 +131,8 @@ export default function Dashboard() {
   // (tolerant of not-yet-loaded data); the hook re-subscribes when the id changes.
   const statusApps = data?.applications || [];
   const statusActiveApp = selectedAppId
-    ? statusApps.find((a) => a.id === selectedAppId) || statusApps.find((a) => !isTerminalLoanAppStatus(a.status))
-    : statusApps.find((a) => !isTerminalLoanAppStatus(a.status));
+    ? statusApps.find((a) => a.id === selectedAppId) || pickWorkableLoanApplication(statusApps)
+    : pickWorkableLoanApplication(statusApps);
   const autopilotStatus = useAutopilotStatus(statusActiveApp?.id);
 
   if (authLoading || isLoading || isStaff) {
@@ -152,9 +152,7 @@ export default function Dashboard() {
   const unreadMessages = data?.unreadMessages || 0;
   const pendingTasksByApplication = data?.pendingTasksByApplication || {};
 
-  const defaultApp = applications.find(
-    (app) => !isTerminalLoanAppStatus(app.status)
-  );
+  const defaultApp = pickWorkableLoanApplication(applications);
 
   // Post-close borrowers graduate to the Homeowner module (equity tracking,
   // refi alerts). This is the only in-app path to /homeowner-dashboard.
