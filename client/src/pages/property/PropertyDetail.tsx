@@ -176,10 +176,12 @@ export default function PropertyDetail() {
     enabled: !!property?.agentId,
   });
 
-  // Get pre-approval data
+  // Get pre-approval data. No `|| applications[0]` fallback: a closed file still
+  // carries annualIncome, so falling back to one made `hasPreApproval` go true
+  // and showed qualification math to a borrower who was denied.
   const preApproval = useMemo(() => {
     if (!applications?.length) return null;
-    return applications.find(app => isApprovedGradeLoanAppStatus(app.status)) || applications[0];
+    return applications.find(app => isApprovedGradeLoanAppStatus(app.status)) ?? null;
   }, [applications]);
 
   const hasPreApproval = preApproval && 

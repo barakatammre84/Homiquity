@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import type { Task, LoanApplication, TaskPriority } from "@shared/schema";
-import { isTerminalLoanAppStatus } from "@shared/schema";
+import { pickWorkableLoanApplication } from "@shared/schema";
 import {
   CheckCircle2,
   Clock,
@@ -218,9 +218,7 @@ export default function Tasks() {
   }
 
   const applications = dashboardData?.applications || [];
-  const activeApplication = applications.find(
-    (app) => !isTerminalLoanAppStatus(app.status)
-  );
+  const activeApplication = pickWorkableLoanApplication(applications);
 
   // Scope to the ACTIVE application — tasks from old/denied applications are
   // noise, not next steps (the "56 pending tasks" defect). EXPIRED tasks are

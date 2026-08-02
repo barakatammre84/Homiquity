@@ -2,7 +2,6 @@ import type { Express, Request } from "express";
 import { requireRole } from "../auth";
 import { runLifecycleSweep, graduateClosedLoan } from "../services/lifecycleEngine";
 import { sweepUndeliveredAdverseActions } from "../services/adverseActionDelivery";
-import { buildStaffSignals } from "../services/signalEngine";
 import { aggregateAnonymizedData } from "../services/optimizationEngine";
 import { runRateLockAlertSweep } from "../services/rateLockAlerts";
 import { logAudit } from "../auditLog";
@@ -138,21 +137,12 @@ export function registerJobRoutes(app: Express) {
     });
   });
 
-  // The loan-officer signals feed: one prioritized "who needs attention"
-  // queue derived from the platform's machine-generated signals.
-  app.get(
-    "/api/signals/staff",
-    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
-    async (_req, res) => {
-      try {
-        const signals = await buildStaffSignals();
-        res.json({ signals });
-      } catch (err) {
-        console.error("[signals] Staff feed failed:", err);
-        res.status(500).json({ error: "Failed to build signals feed" });
-      }
-    },
-  );
+  // NOTE: the loan-officer signals feed used to live here as an UNSCOPED
+  // GET /api/signals/staff (buildStaffSignals() over every active file). It was
+  // removed rather than patched: GET /api/staff/signals in routes/cockpit.ts is
+  // the same feed already scoped to the caller's deal-team book, so keeping a
+  // second, unscoped copy behind the same requireRole list only let the two
+  // drift — which is exactly what happened. One feed, scoped, is the contract.
 
   // Read-only scenario catalog — a projection of the implemented rules for
   // staff tooling, lender due-diligence, and duplicate-prevention when
