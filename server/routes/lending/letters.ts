@@ -13,6 +13,7 @@ import * as creditService from "../../services/creditService";
 import { sendNotificationEmail } from "../../services/emailService";
 import { COMPANY_CONFIG } from "../../config/company";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
+import { routeParams } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -45,7 +46,7 @@ export function registerLetterRoutes(
   app.post("/api/loan-applications/:id/generate-letter", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
       if (!application) {
@@ -300,7 +301,7 @@ export function registerLetterRoutes(
   app.get("/api/loan-applications/:id/letter-pdf", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
       if (!application) {
@@ -434,7 +435,7 @@ export function registerLetterRoutes(
   app.get("/api/loan-applications/:id/letter-status", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
       if (!application) {
@@ -471,7 +472,7 @@ export function registerLetterRoutes(
   app.post("/api/loan-applications/:id/generate-prequal", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
       if (!application) {
@@ -589,7 +590,7 @@ export function registerLetterRoutes(
   app.get("/api/loan-applications/:id/prequal-pdf", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
       if (!application) {
@@ -664,7 +665,7 @@ export function registerLetterRoutes(
   app.get("/api/loan-applications/:id/prequal-status", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
       if (!application) {

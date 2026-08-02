@@ -2,6 +2,7 @@ import type { Express } from "express";
 import type { IStorage } from "../storage";
 import type { User } from "@shared/schema";
 import { isAuthenticated } from "../auth";
+import { routeParam } from "../http/routeParams";
 
 export function registerNotificationRoutes(app: Express, storage: IStorage) {
   app.get("/api/notifications", isAuthenticated, async (req, res) => {
@@ -30,11 +31,11 @@ export function registerNotificationRoutes(app: Express, storage: IStorage) {
     try {
       const user = req.user as User;
       const notifications = await storage.getNotificationsByUser(user.id);
-      const owns = notifications.some(n => String(n.id) === req.params.id);
+      const owns = notifications.some(n => String(n.id) === routeParam(req, "id"));
       if (!owns) {
         return res.status(403).json({ error: "Unauthorized" });
       }
-      await storage.markNotificationRead(req.params.id);
+      await storage.markNotificationRead(routeParam(req, "id"));
       res.json({ success: true });
     } catch (error) {
       console.error("Error marking notification read:", error);

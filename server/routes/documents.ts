@@ -23,6 +23,7 @@ import { type User } from "@shared/schema";
 import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
+import { routeParam, routeParams } from "../http/routeParams";
 
 const objectStorageService = new ObjectStorageService();
 
@@ -107,7 +108,7 @@ export function registerDocumentRoutes(
       if (!isLocalFallbackEnabled()) {
         return res.status(404).json({ error: "Not found" });
       }
-      const { objectId } = req.params;
+      const { objectId } = routeParams(req);
       if (!isValidObjectId(objectId)) {
         return res.status(400).json({ error: "Invalid object id" });
       }
@@ -191,7 +192,7 @@ export function registerDocumentRoutes(
   app.get("/api/documents/:id/download", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const document = await storage.getDocument(req.params.id);
+      const document = await storage.getDocument(routeParam(req, "id"));
 
       if (!document) {
         return res.status(404).json({ error: "Document not found" });
@@ -262,7 +263,7 @@ export function registerDocumentRoutes(
 
   app.post("/api/documents/:id/extract", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const user = req.user as User;
       const document = await storage.getDocument(id);
 
@@ -415,14 +416,14 @@ export function registerDocumentRoutes(
     } catch (error) {
       console.error("Document extraction error:", error);
       
-      const document = await storage.getDocument(req.params.id);
+      const document = await storage.getDocument(routeParam(req, "id"));
       if (document?.applicationId) {
         const { taskEventEmitter } = await import("../services/taskEventEmitter");
         // The real error is already logged above; the task event carries a
         // plain, reviewer-facing message rather than raw exception text.
         await taskEventEmitter.emitDocumentEvent("DOCUMENT_EXTRACTION_FAILED", {
           applicationId: document.applicationId,
-          documentId: req.params.id,
+          documentId: routeParam(req, "id"),
           documentType: document.documentType,
           errorMessage: "We couldn't process this document automatically. Please upload a clear copy, or our team will review it.",
         });
@@ -441,7 +442,7 @@ export function registerDocumentRoutes(
     async (req, res) => {
       try {
         const user = req.user as User;
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const { status, reason } = req.body as { status?: string; reason?: string };
 
         if (status !== DOCUMENT_STATUS.VERIFIED && status !== DOCUMENT_STATUS.REJECTED) {

@@ -12,6 +12,7 @@ import { assertStageRequirements } from "@shared/stageRequirements";
 import { tridHardStopError } from "../../services/trid";
 import * as creditService from "../../services/creditService";
 import { updateConditionMetrics } from "../../services/outcomeTracker";
+import { routeParams } from "../../http/routeParams";
 
 /**
  * Checks whether a staff user is authorized to mutate a specific loan application.
@@ -45,7 +46,7 @@ export function registerPipelineRoutes(
 ) {
   app.get("/api/loan-applications/:id/pipeline", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -74,7 +75,7 @@ export function registerPipelineRoutes(
 
   app.get("/api/loan-applications/:id/conditions", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -105,7 +106,7 @@ export function registerPipelineRoutes(
 
   app.patch("/api/conditions/:id", requireRole("admin", "lo", "processor", "underwriter", "closer"), async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const condition = await storage.getLoanCondition(id);
       if (!condition) {
         return res.status(404).json({ error: "Condition not found" });
@@ -233,7 +234,7 @@ export function registerPipelineRoutes(
 
   app.get("/api/loan-applications/:id/milestones", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -249,7 +250,7 @@ export function registerPipelineRoutes(
 
   app.post("/api/loan-applications/:id/advance-stage", requireRole("admin", "lo", "processor", "underwriter", "closer"), async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
@@ -484,7 +485,7 @@ export function registerPipelineRoutes(
   app.post("/api/loan-applications/:applicationId/claim", requireRole("lo", "loa"), async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplication(applicationId);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });

@@ -5,6 +5,7 @@ import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertHomeownershipGoalSchema, insertCreditActionSchema, insertSavingsTransactionSchema, type User } from "@shared/schema";
 import { z } from "zod";
+import { routeParam } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -213,7 +214,7 @@ export function registerJourneyGoalRoutes(
       if (!goal) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const existing = await storage.getCreditActionById(req.params.id);
+      const existing = await storage.getCreditActionById(routeParam(req, "id"));
       if (!existing || existing.goalId !== goal.id) {
         return res.status(404).json({ error: "Credit action not found" });
       }
@@ -223,7 +224,7 @@ export function registerJourneyGoalRoutes(
       const { goalId: _strip, ...bodyWithoutOwner } = req.body;
       const validated = updateSchema.parse(bodyWithoutOwner);
       
-      const action = await storage.updateCreditAction(req.params.id, validated, goal.id);
+      const action = await storage.updateCreditAction(routeParam(req, "id"), validated, goal.id);
       
       if (!action) {
         return res.status(404).json({ error: "Credit action not found" });

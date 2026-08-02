@@ -13,6 +13,7 @@ import { firstQueryValue } from "../queryParams";
 // External partner roles (broker, lender) are NOT permitted by this helper.
 // Exported: the LO-2 scenario route reuses this gate (one access model, no forks).
 import { verifyInternalStaffApplicationAccess } from "./access";
+import { routeParams } from "../../http/routeParams";
 
 export function registerPartnerOrderRoutes(
   app: Express,
@@ -133,7 +134,7 @@ export function registerPartnerOrderRoutes(
   app.get("/api/partner-orders/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
@@ -154,7 +155,7 @@ export function registerPartnerOrderRoutes(
         return res.status(403).json({ error: "Internal staff only" });
       }
 
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const schema = z.object({
         status: z.enum(["pending", "submitted", "in_progress", "completed", "failed", "cancelled"]).optional(),
         resultSummary: z.record(z.any()).optional(),

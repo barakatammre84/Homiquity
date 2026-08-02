@@ -6,6 +6,7 @@ import { logAudit } from "../auditLog";
 import { z } from "zod";
 import crypto from "crypto";
 import type { User, CpaPartner } from "@shared/schema";
+import { routeParam } from "../http/routeParams";
 
 /**
  * CPA partner channel (Phase 1 of the tax-insight pipeline).
@@ -132,7 +133,7 @@ export function registerCpaPartnerRoutes(app: Express, storage: IStorage) {
   // ---- Public: validate a referral code for the branded landing --------------
   app.get("/api/cpa/validate/:code", async (req, res) => {
     try {
-      const partner = await storage.getCpaPartnerByCode(req.params.code);
+      const partner = await storage.getCpaPartnerByCode(routeParam(req, "code"));
       if (!partner || partner.status !== "active") {
         return res.status(404).json({ error: "Invalid or inactive referral link" });
       }

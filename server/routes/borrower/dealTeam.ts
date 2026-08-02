@@ -6,6 +6,7 @@ import { isAuthenticated, requireRole } from "../../auth";
 import { isStaffRole, isInternalStaffRole, LOAN_APP_TERMINAL_STATUSES, type User } from "@shared/schema";
 import { updatePipelineStage } from "../../pipelineEngine";
 import { z } from "zod";
+import { routeParams } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -21,7 +22,7 @@ export function registerDealTeamRoutes(
   app.get("/api/applications/:applicationId/team", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
 
       // Verify access to application
       const app = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
@@ -44,7 +45,7 @@ export function registerDealTeamRoutes(
     try {
       const user = req.user as User;
 
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const schema = z.object({
         userId: z.string().optional(),
         teamRole: z.string().min(1),
@@ -94,7 +95,7 @@ export function registerDealTeamRoutes(
   app.post("/api/loan-applications/:applicationId/withdraw", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
 
       const schema = z.object({
         reason: z.string().min(1),
@@ -168,7 +169,7 @@ export function registerDealTeamRoutes(
   app.patch("/api/deal-team/:id", requireRole("admin"), async (req, res) => {
     try {
 
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const schema = z.object({
         teamRole: z.string().optional(),
         externalName: z.string().optional(),
@@ -208,7 +209,7 @@ export function registerDealTeamRoutes(
     try {
       const user = req.user as User;
 
-      const { id } = req.params;
+      const { id } = routeParams(req);
       
       const member = await storage.getDealTeamMember(id);
       if (!member) {
@@ -240,7 +241,7 @@ export function registerDealTeamRoutes(
   app.patch("/api/loan-applications/:applicationId/loan-officer", requireRole("admin"), async (req, res) => {
     try {
       const user = req.user as User;
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
 
       const schema = z.object({
         loanOfficerId: z.string().min(1).nullable(),

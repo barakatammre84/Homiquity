@@ -17,6 +17,7 @@ import { microCache } from "../middleware/httpCache";
 import { prelaunchGate } from "../services/prelaunchGate";
 import { parseBodyOr400 } from "./validate";
 import { firstQueryValue } from "./queryParams";
+import { routeParam } from "../http/routeParams";
 
 export function registerAdminRoutes(
   app: Express,
@@ -76,16 +77,16 @@ export function registerAdminRoutes(
       if (!ALL_ROLES.includes(role)) {
         return res.status(400).json({ error: "Invalid role" });
       }
-      const existingUser = await storage.getUser(req.params.id);
+      const existingUser = await storage.getUser(routeParam(req, "id"));
       if (!existingUser) {
         return res.status(404).json({ error: "User not found" });
       }
       const previousRole = existingUser.role;
-      const user = await storage.updateUserRole(req.params.id, role);
+      const user = await storage.updateUserRole(routeParam(req, "id"), role);
       if (!user) {
         return res.status(500).json({ error: "Failed to update role" });
       }
-      logAudit(req, "user.role_change", "user", req.params.id, { newRole: role, previousRole });
+      logAudit(req, "user.role_change", "user", routeParam(req, "id"), { newRole: role, previousRole });
       res.json(user);
     } catch (error) {
       console.error("Update user role error:", error);
@@ -130,7 +131,7 @@ export function registerAdminRoutes(
     try {
       const data = parseBodyOr400(insertContentCategorySchema.partial(), req.body, res);
       if (data === undefined) return;
-      const updated = await storage.updateContentCategory(req.params.id, data);
+      const updated = await storage.updateContentCategory(routeParam(req, "id"), data);
       if (!updated) {
         return res.status(404).json({ error: "Category not found" });
       }
@@ -144,7 +145,7 @@ export function registerAdminRoutes(
   // Delete category (admin)
   app.delete("/api/admin/content-categories/:id", requireRole("admin"), async (req, res) => {
     try {
-      await storage.deleteContentCategory(req.params.id);
+      await storage.deleteContentCategory(routeParam(req, "id"));
       res.status(204).send();
     } catch (error) {
       console.error("Delete category error:", error);
@@ -168,7 +169,7 @@ export function registerAdminRoutes(
   // Get single article (admin)
   app.get("/api/admin/articles/:id", requireRole("admin"), async (req, res) => {
     try {
-      const article = await storage.getArticle(req.params.id);
+      const article = await storage.getArticle(routeParam(req, "id"));
       if (!article) {
         return res.status(404).json({ error: "Article not found" });
       }
@@ -206,13 +207,13 @@ export function registerAdminRoutes(
       const updateData: Record<string, unknown> = { ...data };
       // Set publishedAt when publishing for the first time
       if (data.status === "published") {
-        const existing = await storage.getArticle(req.params.id);
+        const existing = await storage.getArticle(routeParam(req, "id"));
         if (existing && existing.status !== "published") {
           updateData.publishedAt = new Date();
         }
       }
 
-      const updated = await storage.updateArticle(req.params.id, updateData);
+      const updated = await storage.updateArticle(routeParam(req, "id"), updateData);
       if (!updated) {
         return res.status(404).json({ error: "Article not found" });
       }
@@ -226,7 +227,7 @@ export function registerAdminRoutes(
   // Delete article (admin)
   app.delete("/api/admin/articles/:id", requireRole("admin"), async (req, res) => {
     try {
-      await storage.deleteArticle(req.params.id);
+      await storage.deleteArticle(routeParam(req, "id"));
       res.status(204).send();
     } catch (error) {
       console.error("Delete article error:", error);
@@ -250,7 +251,7 @@ export function registerAdminRoutes(
   // Get single FAQ (admin)
   app.get("/api/admin/faqs/:id", requireRole("admin"), async (req, res) => {
     try {
-      const faq = await storage.getFaq(req.params.id);
+      const faq = await storage.getFaq(routeParam(req, "id"));
       if (!faq) {
         return res.status(404).json({ error: "FAQ not found" });
       }
@@ -284,7 +285,7 @@ export function registerAdminRoutes(
     try {
       const data = parseBodyOr400(insertFaqSchema.omit({ authorId: true }).partial(), req.body, res);
       if (data === undefined) return;
-      const updated = await storage.updateFaq(req.params.id, data);
+      const updated = await storage.updateFaq(routeParam(req, "id"), data);
       if (!updated) {
         return res.status(404).json({ error: "FAQ not found" });
       }
@@ -298,7 +299,7 @@ export function registerAdminRoutes(
   // Delete FAQ (admin)
   app.delete("/api/admin/faqs/:id", requireRole("admin"), async (req, res) => {
     try {
-      await storage.deleteFaq(req.params.id);
+      await storage.deleteFaq(routeParam(req, "id"));
       res.status(204).send();
     } catch (error) {
       console.error("Delete FAQ error:", error);
@@ -346,7 +347,7 @@ export function registerAdminRoutes(
   // Get single article by slug (public)
   app.get("/api/articles/:slug", async (req, res) => {
     try {
-      const article = await storage.getArticleBySlug(req.params.slug);
+      const article = await storage.getArticleBySlug(routeParam(req, "slug"));
       if (!article || article.status !== "published") {
         return res.status(404).json({ error: "Article not found" });
       }
@@ -388,7 +389,7 @@ export function registerAdminRoutes(
   // Get single FAQ and increment view (public)
   app.get("/api/faqs/:id", async (req, res) => {
     try {
-      const faq = await storage.getFaq(req.params.id);
+      const faq = await storage.getFaq(routeParam(req, "id"));
       if (!faq || faq.status !== "published") {
         return res.status(404).json({ error: "FAQ not found" });
       }
@@ -411,12 +412,12 @@ export function registerAdminRoutes(
         return res.status(400).json({ error: "helpful must be a boolean" });
       }
       
-      const faq = await storage.getFaq(req.params.id);
+      const faq = await storage.getFaq(routeParam(req, "id"));
       if (!faq || faq.status !== "published") {
         return res.status(404).json({ error: "FAQ not found" });
       }
       
-      await storage.markFaqHelpful(req.params.id, helpful);
+      await storage.markFaqHelpful(routeParam(req, "id"), helpful);
       res.json({ success: true });
     } catch (error) {
       console.error("FAQ feedback error:", error);
@@ -514,7 +515,7 @@ export function registerAdminRoutes(
     try {
       const data = parseBodyOr400(insertMortgageRateProgramSchema.partial(), req.body, res);
       if (data === undefined) return;
-      const program = await storage.updateMortgageRateProgram(req.params.id, data);
+      const program = await storage.updateMortgageRateProgram(routeParam(req, "id"), data);
       if (!program) {
         return res.status(404).json({ error: "Program not found" });
       }
@@ -528,7 +529,7 @@ export function registerAdminRoutes(
   // Delete a rate program (admin only)
   app.delete("/api/admin/mortgage-rate-programs/:id", requireRole("admin"), async (req, res) => {
     try {
-      await storage.deleteMortgageRateProgram(req.params.id);
+      await storage.deleteMortgageRateProgram(routeParam(req, "id"));
       res.json({ success: true });
     } catch (error) {
       console.error("Delete mortgage rate program error:", error);
@@ -556,7 +557,7 @@ export function registerAdminRoutes(
       const user = req.user as User;
       const data = parseBodyOr400(insertMortgageRateSchema.omit({ createdBy: true, updatedBy: true }).partial(), req.body, res);
       if (data === undefined) return;
-      const rate = await storage.updateMortgageRate(req.params.id, { ...data, updatedBy: user.id });
+      const rate = await storage.updateMortgageRate(routeParam(req, "id"), { ...data, updatedBy: user.id });
       if (!rate) {
         return res.status(404).json({ error: "Rate not found" });
       }
@@ -570,7 +571,7 @@ export function registerAdminRoutes(
   // Delete a mortgage rate (admin only)
   app.delete("/api/admin/mortgage-rates/:id", requireRole("admin"), async (req, res) => {
     try {
-      await storage.deleteMortgageRate(req.params.id);
+      await storage.deleteMortgageRate(routeParam(req, "id"));
       res.json({ success: true });
     } catch (error) {
       console.error("Delete mortgage rate error:", error);

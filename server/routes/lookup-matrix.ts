@@ -5,6 +5,7 @@ import { logAudit } from "../auditLog";
 import { lookupMatrixCellSchema } from "@shared/schema";
 import { LookupResolverService } from "../services/lookupResolver";
 import { z } from "zod";
+import { routeParam } from "../http/routeParams";
 
 /**
  * Staff admin surface for the versioned, date-effective lookup matrices that
@@ -124,7 +125,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
     requireRole("admin", "underwriter"),
     async (req, res) => {
       try {
-        const matrix = await storage.getLookupMatrix(req.params.id);
+        const matrix = await storage.getLookupMatrix(routeParam(req, "id"));
         if (!matrix) {
           return res.status(404).json({ error: "Lookup matrix not found" });
         }
@@ -211,7 +212,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
     requireRole("admin"),
     async (req, res) => {
       try {
-        const matrix = await storage.getLookupMatrix(req.params.id);
+        const matrix = await storage.getLookupMatrix(routeParam(req, "id"));
         if (!matrix) {
           return res.status(404).json({ error: "Lookup matrix not found" });
         }
@@ -247,7 +248,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
           return coverageGapResponse(res, matrix.matrixCode, "Activating this matrix");
         }
 
-        const updated = await storage.updateLookupMatrix(req.params.id, {
+        const updated = await storage.updateLookupMatrix(routeParam(req, "id"), {
           lifecycleStatus: "ACTIVE",
         });
 
@@ -285,7 +286,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
     requireRole("admin"),
     async (req, res) => {
       try {
-        const matrix = await storage.getLookupMatrix(req.params.id);
+        const matrix = await storage.getLookupMatrix(routeParam(req, "id"));
         if (!matrix) {
           return res.status(404).json({ error: "Lookup matrix not found" });
         }
@@ -308,7 +309,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
           return coverageGapResponse(res, matrix.matrixCode, "Retiring this matrix");
         }
 
-        const updated = await storage.updateLookupMatrix(req.params.id, {
+        const updated = await storage.updateLookupMatrix(routeParam(req, "id"), {
           lifecycleStatus: "RETIRED",
           expirationDate: new Date(),
         });
@@ -336,7 +337,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
     requireRole("admin"),
     async (req, res) => {
       try {
-        const matrix = await storage.getLookupMatrix(req.params.id);
+        const matrix = await storage.getLookupMatrix(routeParam(req, "id"));
         if (!matrix) {
           return res.status(404).json({ error: "Lookup matrix not found" });
         }
@@ -403,7 +404,7 @@ export function registerLookupMatrixRoutes(app: Express, storage: IStorage) {
         }
 
         const updated = await storage.updateLookupMatrix(
-          req.params.id,
+          routeParam(req, "id"),
           updates,
         );
 

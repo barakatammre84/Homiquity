@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
 import { isAuthenticated, requireRole } from "../auth";
+import { routeParam } from "../http/routeParams";
 
 export function registerStaffInviteRoutes(app: Express, storage: IStorage) {
   app.post("/api/staff-invites", requireRole("admin"), async (req, res) => {
@@ -60,7 +61,7 @@ export function registerStaffInviteRoutes(app: Express, storage: IStorage) {
 
   app.get("/api/staff-invites/validate/:code", async (req, res) => {
     try {
-      const invite = await storage.getStaffInviteByCode(req.params.code);
+      const invite = await storage.getStaffInviteByCode(routeParam(req, "code"));
       if (!invite) {
         return res.status(404).json({ valid: false, error: "Invalid invite code" });
       }

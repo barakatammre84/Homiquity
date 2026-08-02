@@ -146,6 +146,12 @@ function run(
 
 function buildApp(): Express {
   const app = express();
+  // Mirror server/app.ts. Express 4 defaulted `query parser` to "extended", so
+  // a bare app nested brackets for free; Express 5 defaults to "simple". The
+  // real app now sets this explicitly, and this fixture stands in for the real
+  // app — without it these tests would assert against a framework default the
+  // production server no longer uses.
+  app.set("query parser", "extended");
   app.get("/echo", (req, res) => res.json({ query: req.query }));
   app.get("/redir", (req, res) => res.redirect("/target"));
   // Mirrors server/routes/geocode.ts:27 — the live probe used to confirm the

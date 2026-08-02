@@ -20,6 +20,7 @@ import { creditConsents, dealActivities, hmdaDemographics, loanOptions, tasks, v
 import { and, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import * as creditService from "../../services/creditService";
+import { routeParams } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -227,7 +228,7 @@ export function registerDashboardRoutes(
   // rules live in the pure builder (server/services/documentChecklist.ts).
   app.get("/api/applications/:applicationId/document-checklist", isAuthenticated, async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const userId = req.user!.id;
       const userRole = (req.user as User).role;
 
@@ -260,7 +261,7 @@ export function registerDashboardRoutes(
   // Action Items API - shows pending tasks and required actions
   app.get("/api/applications/:applicationId/action-items", isAuthenticated, async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const user = req.user as User;
 
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);

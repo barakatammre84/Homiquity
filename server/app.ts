@@ -28,6 +28,16 @@ export const app = express();
 
 app.set("trust proxy", 1);
 
+// Express 5 changed the default `query parser` from "extended" (qs) to "simple"
+// (Node's querystring), which stops nesting brackets: `?arr[]=a&obj[k]=v` parses
+// to the literal keys "arr[]" and "obj[k]" instead of an array and an object.
+// This app was built against qs semantics and tests/vercelEntryHelpers.test.ts
+// pins them — that assertion came from a live prod probe where a scalar cast
+// meeting an array surfaced as a handler error rather than a silent empty
+// result. Keep the Express 4 behaviour explicit rather than inheriting a
+// default that just changed underneath us.
+app.set("query parser", "extended");
+
 // Content Security Policy — the authorized-script control for PCI DSS 4.0.1
 // Req 6.4.3 / 11.6.1. Every third-party origin listed here is a deliberate,
 // documented authorization (script inventory lives in knowledge-base/handbook/app-guide/06):

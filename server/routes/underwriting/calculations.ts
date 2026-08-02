@@ -6,6 +6,7 @@ import { isAuthenticated } from "../../auth";
 import { qualifyIncome, verifyAssets, assessLiabilities, calculateDTI, checkPropertyEligibility } from "../../underwriting";
 import { calculateLLPA, getAreaMedianIncome } from "../../pricing";
 import * as creditService from "../../services/creditService";
+import { routeParams } from "../../http/routeParams";
 
 export function registerCalculationRoutes(
   app: Express,
@@ -17,7 +18,7 @@ export function registerCalculationRoutes(
 
   app.post("/api/loan-applications/:id/calculate-income", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -40,7 +41,7 @@ export function registerCalculationRoutes(
 
   app.post("/api/loan-applications/:id/calculate-assets", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -60,7 +61,7 @@ export function registerCalculationRoutes(
 
   app.post("/api/loan-applications/:id/calculate-liabilities", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -77,7 +78,7 @@ export function registerCalculationRoutes(
 
   app.post("/api/loan-applications/:id/calculate-dti", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -114,7 +115,7 @@ export function registerCalculationRoutes(
 
   app.post("/api/loan-applications/:id/check-property-eligibility", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -179,7 +180,7 @@ export function registerCalculationRoutes(
 
   app.post("/api/loan-applications/:id/calculate-pricing", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });

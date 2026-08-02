@@ -7,6 +7,7 @@ import { CONDITION_PRIORITY } from "@shared/schema";
 import { z } from "zod";
 import * as creditService from "../../services/creditService";
 import { updateConditionMetrics } from "../../services/outcomeTracker";
+import { routeParams } from "../../http/routeParams";
 
 export function registerSubmissionRoutes(
   app: Express,
@@ -14,7 +15,7 @@ export function registerSubmissionRoutes(
 ) {
   app.get("/api/loan-applications/:id/mismo-validation", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -38,7 +39,7 @@ export function registerSubmissionRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -72,7 +73,7 @@ export function registerSubmissionRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -114,7 +115,7 @@ export function registerSubmissionRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -153,7 +154,7 @@ export function registerSubmissionRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id, submissionId } = req.params;
+        const { id, submissionId } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -199,7 +200,7 @@ export function registerSubmissionRoutes(
         if (!parsed.success) {
           return res.status(400).json({ error: "Invalid conditions payload", details: parsed.error.flatten() });
         }
-        const { id, submissionId } = req.params;
+        const { id, submissionId } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -255,7 +256,7 @@ export function registerSubmissionRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { submissionId } = req.params;
+        const { submissionId } = routeParams(req);
         const submission = await storage.getLenderSubmission(submissionId);
         if (!submission) {
           return res.status(404).json({ error: "Submission not found" });

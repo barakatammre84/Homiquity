@@ -6,6 +6,7 @@ import { isAuthenticated } from "../../auth";
 import crypto from "crypto";
 import { z } from "zod";
 import { firstQueryValue } from "../queryParams";
+import { routeParam } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -58,7 +59,7 @@ export function registerOnboardingRoutes(
   // Get specific DPA program
   app.get("/api/dpa-programs/:id", async (req, res) => {
     try {
-      const program = await storage.getDpaProgram(req.params.id);
+      const program = await storage.getDpaProgram(routeParam(req, "id"));
       if (!program) {
         return res.status(404).json({ error: "Program not found" });
       }
@@ -151,7 +152,7 @@ export function registerOnboardingRoutes(
   // Update onboarding profile
   app.patch("/api/onboarding/profile/:id", isAuthenticated, async (req, res) => {
     try {
-      const profile = await storage.getOnboardingProfile(req.params.id);
+      const profile = await storage.getOnboardingProfile(routeParam(req, "id"));
       if (!profile || profile.userId !== req.user!.id) {
         return res.status(404).json({ error: "Profile not found" });
       }
@@ -168,7 +169,7 @@ export function registerOnboardingRoutes(
         }
       }
 
-      const updated = await storage.updateOnboardingProfile(req.params.id, safeUpdate);
+      const updated = await storage.updateOnboardingProfile(routeParam(req, "id"), safeUpdate);
       res.json(updated);
     } catch (error) {
       console.error("Update onboarding profile error:", error);
@@ -227,7 +228,7 @@ export function registerOnboardingRoutes(
   // KBA - Submit answers
   app.post("/api/onboarding/kba/:id/submit", isAuthenticated, async (req, res) => {
     try {
-      const session = await storage.getKbaSession(req.params.id);
+      const session = await storage.getKbaSession(routeParam(req, "id"));
       if (!session || session.userId !== req.user!.id) {
         return res.status(404).json({ error: "Session not found" });
       }

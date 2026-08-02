@@ -8,6 +8,7 @@ import { logAudit } from "../auditLog";
 import { db } from "../db";
 import { intentEvents } from "@shared/schema";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { routeParam } from "../http/routeParams";
 
 /**
  * Scheduled-job endpoints.
@@ -202,8 +203,8 @@ export function registerJobRoutes(app: Express) {
   // (the automatic hook only fires on NEW funded transitions).
   app.post("/api/jobs/graduate/:applicationId", requireRole("admin"), async (req, res) => {
     try {
-      await graduateClosedLoan(req.params.applicationId);
-      logAudit(req, "jobs.graduate_loan", "loan_application", req.params.applicationId);
+      await graduateClosedLoan(routeParam(req, "applicationId"));
+      logAudit(req, "jobs.graduate_loan", "loan_application", routeParam(req, "applicationId"));
       res.json({ ok: true });
     } catch (err) {
       console.error("[jobs] Graduation failed:", err);

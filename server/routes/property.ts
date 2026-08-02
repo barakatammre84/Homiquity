@@ -7,6 +7,7 @@ import { lookupResolver } from "../services/lookupResolver";
 import { parseValueEstimate } from "../services/valueEstimate";
 import { parseBodyOr400 } from "./validate";
 import { firstQueryValue } from "./queryParams";
+import { routeParam } from "../http/routeParams";
 
 export function registerPropertyRoutes(
   app: Express,
@@ -477,7 +478,7 @@ export function registerPropertyRoutes(
 
   app.get("/api/properties/:id", async (req, res) => {
     try {
-      const property = await storage.getProperty(req.params.id);
+      const property = await storage.getProperty(routeParam(req, "id"));
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
       }
@@ -492,7 +493,7 @@ export function registerPropertyRoutes(
   app.post("/api/properties/:id/affordability", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const property = await storage.getProperty(req.params.id);
+      const property = await storage.getProperty(routeParam(req, "id"));
       
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
@@ -635,7 +636,7 @@ export function registerPropertyRoutes(
         return res.status(403).json({ error: "Staff or partner access required" });
       }
 
-      const property = await storage.getProperty(req.params.id);
+      const property = await storage.getProperty(routeParam(req, "id"));
 
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
@@ -651,7 +652,7 @@ export function registerPropertyRoutes(
       // agentId omitted so an agent cannot reassign a listing to another agent.
       const data = parseBodyOr400(insertPropertySchema.omit({ agentId: true }).partial(), req.body, res);
       if (data === undefined) return;
-      const updated = await storage.updateProperty(req.params.id, data);
+      const updated = await storage.updateProperty(routeParam(req, "id"), data);
       res.json(updated);
     } catch (error) {
       console.error("Update property error:", error);
@@ -668,7 +669,7 @@ export function registerPropertyRoutes(
         return res.status(403).json({ error: "Staff or partner access required" });
       }
 
-      const property = await storage.getProperty(req.params.id);
+      const property = await storage.getProperty(routeParam(req, "id"));
 
       if (!property) {
         return res.status(404).json({ error: "Property not found" });
@@ -679,7 +680,7 @@ export function registerPropertyRoutes(
         return res.status(403).json({ error: "Not authorized to delete this property" });
       }
 
-      await storage.deleteProperty(req.params.id);
+      await storage.deleteProperty(routeParam(req, "id"));
       
       if (property.status === "active" && agentProfile) {
         await storage.updateAgentProfile(agentProfile.id, {

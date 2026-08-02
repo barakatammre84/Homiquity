@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
+import { routeParams } from "../../http/routeParams";
 
 
 export function registerInviteRoutes(
@@ -119,7 +120,7 @@ export function registerInviteRoutes(
   // Validate invite token (public endpoint for when client clicks link)
   app.get("/api/application-invites/validate/:token", async (req, res) => {
     try {
-      const { token } = req.params;
+      const { token } = routeParams(req);
       const invite = await storage.getApplicationInviteByToken(token);
 
       if (!invite) {
@@ -171,7 +172,7 @@ export function registerInviteRoutes(
   app.post("/api/application-invites/:id/applied", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const { loanApplicationId } = req.body;
 
       if (!loanApplicationId || typeof loanApplicationId !== "string") {
@@ -203,7 +204,7 @@ export function registerInviteRoutes(
   app.post("/api/application-invites/:id/resend", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const { expiresInDays } = req.body;
 
       const invites = await storage.getApplicationInvitesByReferrer(user.id);
@@ -235,7 +236,7 @@ export function registerInviteRoutes(
   app.post("/api/application-invites/:id/revoke", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const invites = await storage.getApplicationInvitesByReferrer(user.id);
       const invite = invites.find(i => i.id === id);
