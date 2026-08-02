@@ -13,6 +13,7 @@ export default defineConfig({
     include: [
       "tests/accessControl.test.ts",
       "tests/apiRequestConvergence.test.ts",
+      "tests/vercelDeploymentGuard.test.ts",
       "tests/loCommsLint.test.ts",
       "tests/scenarioSimulator.test.ts",
       "tests/cockpitScoping.test.ts",

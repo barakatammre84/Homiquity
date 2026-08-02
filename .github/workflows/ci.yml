@@ -110,6 +110,25 @@ jobs:
         # typescript majors. (Job `name:` above deliberately unchanged — verbatim
         # required-check string; see the rename warning.)
         run: pnpm vercel-build
+      - name: Vercel deployability
+        # `pnpm vercel-build` above proves OUR build works. It cannot prove the
+        # DEPLOYMENT works: on TypeScript 7 vite and esbuild both finished and
+        # Vercel's own post-build step died afterwards, so #268 went in green and
+        # froze prod for three merges. This reads the deployment's real state from
+        # the Vercel API — the signal that was correct all along (it showed ERROR
+        # on #268's previews before it merged, while the GitHub "Vercel" status
+        # said `pending`, which is why that status is NOT the required check: it
+        # never resolves on a PR head and requiring it deadlocks every PR).
+        #
+        # No-ops with a warning until VERCEL_TOKEN exists, so adding this cannot
+        # red the gate. (Job `name:` above deliberately unchanged — verbatim
+        # required-check string; see the rename warning.)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          # The PR HEAD, not github.sha: on pull_request that is a synthetic merge
+          # commit which Vercel never builds, so it would never match a deployment.
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/vercel-deployment-guard.cjs
 
   migrate-prod:
     name: migrate-prod (apply pending migrations)
