@@ -23,6 +23,17 @@ updates:
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
+      # drizzle-zod 0.8 imports from `zod/v4` and therefore emits Zod 4 schema
+      # types, while this codebase's routes validate with the Zod 3 classic API
+      # (ZodTypeAny). The two type systems do not unify: taking 0.8.3 in #282
+      # produced 214 typecheck errors across the route layer. `zod` itself is
+      # unchanged at ^3.25.76 — this is drizzle-zod switching surface, not a zod
+      # bump, which is why a 0.x MINOR is breaking here and the group would keep
+      # re-proposing it. Adopting it is a Zod v3 -> v4 migration; do that in its
+      # own PR, then remove this entry.
+      - dependency-name: "drizzle-zod"
+        versions: [">=0.8.0"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
