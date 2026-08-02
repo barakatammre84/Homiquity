@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { pickWorkableLoanApplication } from "@shared/schema";
+import { useActiveApplication } from "@/hooks/useActiveApplication";
 import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
 import { canonicalDocumentType } from "@shared/documentTypes";
 import { validateUploadFile } from "@shared/uploads";
@@ -412,7 +412,8 @@ export default function Documents() {
     queryKey: ["/api/loan-applications"],
     enabled: !authLoading,
   });
-  const focusAppId = pickWorkableLoanApplication(myApps ?? [])?.id;
+  const { activeApplication } = useActiveApplication(myApps ?? []);
+  const focusAppId = activeApplication?.id;
 
   const { data: focusPipeline, isLoading: focusLoading } = useQuery<{ conditions: LoanCondition[] }>({
     queryKey: ["/api/loan-applications", focusAppId, "pipeline"],
