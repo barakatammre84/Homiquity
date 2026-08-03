@@ -38,6 +38,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { QUESTIONS_BY_ID } from "./preApproval/questions";
 import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
+import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
 import { StateStep } from "./preApproval/StateStep";
 import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
 import { RestoreDraftBanner, AuthGateOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
@@ -291,21 +292,9 @@ function PreApprovalFunnel() {
     }
   }, [progress.index, progress.total, stepId, track]);
 
-  // Load coach intake data to pre-fill empty fields
+  // Load coach intake data to gap-fill fields the borrower has left blank.
   const { data: coachIntake } = useQuery<{
-    intake: {
-      annualIncome?: string;
-      monthlyDebts?: string;
-      creditScore?: string;
-      employmentType?: string;
-      employmentYears?: string;
-      downPayment?: string;
-      purchasePrice?: string;
-      propertyType?: string;
-      loanPurpose?: string;
-      isVeteran?: boolean;
-      isFirstTimeBuyer?: boolean;
-    } | null;
+    intake: CoachIntake | null;
     readinessTier?: string;
     completionPercentage?: number;
   } | null>({
@@ -313,53 +302,12 @@ function PreApprovalFunnel() {
     enabled: isAuthenticated,
   });
 
-  const [prefillApplied, setPrefillApplied] = useState(false);
-
-  // Gap-fill from the coach conversation's intake. Saved-draft answers are
+  // Gap-fill from the coach conversation's intake: blank fields only, never an
+  // answer the borrower already gave (see preApproval/coachPrefill.ts for the
+  // rule and the overwrite bug it replaces). Saved-draft answers are
   // deliberately NOT applied here — adopting a draft (data + PATCH target) is
   // consent-gated through useDraftRestore's banner.
-  useEffect(() => {
-    if (prefillApplied) return;
-
-    const formData: Partial<PreApprovalFormData> = {};
-    let hasData = false;
-
-    const ci = coachIntake?.intake;
-    if (ci) {
-      const validEmploymentTypes = ["employed", "self_employed", "retired", "other"] as const;
-      const validPropertyTypes = ["single_family", "condo", "townhouse", "multi_family"] as const;
-      const validLoanPurposes = ["purchase", "refinance", "cash_out"] as const;
-      const validCreditScores = ["760", "720", "680", "640", "600", "not_sure"] as const;
-
-      if (!formData.annualIncome && ci.annualIncome) formData.annualIncome = ci.annualIncome.replace(/[^0-9.]/g, "");
-      if (!formData.monthlyDebts && ci.monthlyDebts) formData.monthlyDebts = ci.monthlyDebts.replace(/[^0-9.]/g, "");
-      if (!formData.creditScore && ci.creditScore) {
-        const score = parseInt(ci.creditScore.replace(/[^0-9]/g, ""), 10);
-        const matched = validCreditScores.find(v => Math.abs(parseInt(v) - score) <= 30);
-        if (matched) formData.creditScore = matched;
-      }
-      if (!formData.employmentType && ci.employmentType && validEmploymentTypes.includes(ci.employmentType as any)) {
-        formData.employmentType = ci.employmentType as PreApprovalFormData["employmentType"];
-      }
-      if (!formData.employmentYears && ci.employmentYears) formData.employmentYears = ci.employmentYears.replace(/[^0-9]/g, "");
-      if (!formData.downPayment && ci.downPayment) formData.downPayment = ci.downPayment.replace(/[^0-9.]/g, "");
-      if (!formData.purchasePrice && ci.purchasePrice) formData.purchasePrice = ci.purchasePrice.replace(/[^0-9.]/g, "");
-      if (!formData.propertyType && ci.propertyType && validPropertyTypes.includes(ci.propertyType as any)) {
-        formData.propertyType = ci.propertyType as PreApprovalFormData["propertyType"];
-      }
-      if (!formData.loanPurpose && ci.loanPurpose && validLoanPurposes.includes(ci.loanPurpose as any)) {
-        formData.loanPurpose = ci.loanPurpose as PreApprovalFormData["loanPurpose"];
-      }
-      if (formData.isVeteran === undefined && ci.isVeteran !== undefined) formData.isVeteran = ci.isVeteran;
-      if (formData.isFirstTimeBuyer === undefined && ci.isFirstTimeBuyer !== undefined) formData.isFirstTimeBuyer = ci.isFirstTimeBuyer;
-      hasData = true;
-    }
-
-    if (hasData) {
-      form.reset({ ...form.getValues(), ...formData } as PreApprovalFormData);
-      setPrefillApplied(true);
-    }
-  }, [coachIntake, form, prefillApplied]);
+  useCoachPrefill(form, coachIntake?.intake);
 
   // Create/update application mutation
   const submitMutation = useMutation({
