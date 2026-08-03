@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { getRoleHomeRoute } from "@/lib/roleRoutes";
 import { 
   Wrench, 
   UserCheck, 
@@ -59,15 +60,10 @@ export default function TestLogin() {
         description: `Welcome, ${data.user.firstName}! Role: ${data.user.role}`,
       });
 
-      // Route based on role type
-      const staffRoles = ["admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"];
-      if (data.user.role === "admin") {
-        setLocation("/admin");
-      } else if (staffRoles.includes(data.user.role)) {
-        setLocation("/staff-dashboard");
-      } else {
-        setLocation("/dashboard");
-      }
+      // Land where the real login lands. This used to restate a staff-role list
+      // and send every staff role to /staff-dashboard, which meant a broker, CPA
+      // or realtor test account landed somewhere production would never put them.
+      setLocation(getRoleHomeRoute(data.user.role));
     } catch (error) {
       toast({
         title: "Login failed",

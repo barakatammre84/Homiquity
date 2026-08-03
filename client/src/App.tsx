@@ -9,6 +9,8 @@ import { PrivateLayout } from "@/components/layouts/PrivateLayout";
 import { BareLayout } from "@/components/layouts/BareLayout";
 import { Loader2 } from "lucide-react";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { ROUTE_GATES } from "@/lib/routeGates";
 
 // Lazy — this modal is the only eager import that pulls framer-motion, so
 // loading it eagerly shipped the whole animation library in the main chunk on
@@ -173,45 +175,40 @@ function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
 }
 
+// Route gates live in @/lib/routeGates — one definition shared with the sidebar,
+// so the nav and the router can't disagree about who may reach a page. Each gate
+// documents the server-side authorization it mirrors.
+
 function BorrowerPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["aspiring_owner", "active_buyer"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.borrower}>{children}</PrivateLayout>;
 }
 
 function StaffPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.staff}>{children}</PrivateLayout>;
 }
 
-// Internal operations pages. External partners (broker, lender) are staff *roles*
-// but not internal staff — they must not reach the internal cockpits. Mirrors the
-// server-side requireRole lists on the APIs these pages call.
 function InternalStaffPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.internalStaff}>{children}</PrivateLayout>;
 }
 
-// Policy/pricing/SLA governance surfaces: server APIs behind these pages are
-// requireRole("admin", "underwriter") — the client gate must match.
 function UnderwriterOpsPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin", "underwriter"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.underwriterOps}>{children}</PrivateLayout>;
 }
 
-// Application-invite tooling: POST /api/application-invites is admin/lo/loa only
-// (brokers/lenders refer via their referral codes instead).
 function LoTeamPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin", "lo", "loa"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.loTeam}>{children}</PrivateLayout>;
 }
 
 function CpaPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["cpa", "admin"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.cpaPortal}>{children}</PrivateLayout>;
 }
 
-// PartnerHub (PH-1): self-registering partner personas + admin. Exact roles
-// only — partners are never staff (shared/roles.ts PARTNER_ROLES).
 function PartnerPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["realtor", "cpa", "admin"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.partnerHub}>{children}</PrivateLayout>;
 }
 
 function AdminPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.adminOnly}>{children}</PrivateLayout>;
 }
 
 function AnyAuthPage({ children }: { children: React.ReactNode }) {
@@ -578,7 +575,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        {/* Inner boundary: a route whose lazy chunk fails to load is contained
+            here, so the Toaster and the providers stay mounted. The root
+            boundary in main.tsx backstops the providers themselves. */}
+        <AppErrorBoundary>
+          <Router />
+        </AppErrorBoundary>
         <EmailCaptureGate />
       </TooltipProvider>
     </QueryClientProvider>
