@@ -40,6 +40,10 @@ export default function HelocRates() {
     queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode, loanType: "heloc" }],
     queryFn: async () => {
       const params = new URLSearchParams();
+      // The server returns HELOC programs only, so everything below renders
+      // under the "HELOC rates today" heading exactly as advertised. Without
+      // this the endpoint hands back every product it has.
+      params.append("loanType", "heloc");
       if (searchZipcode) {
         params.append("zipcode", searchZipcode);
         const stateFromZip = getStateFromZip(searchZipcode);
