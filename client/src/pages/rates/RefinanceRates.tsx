@@ -31,15 +31,21 @@ function getStateFromZip(zip: string): string | undefined {
   return undefined;
 }
 
+// Refinancing is a transaction purpose, not a product: what is offered for it
+// is a conforming first mortgage. The one constant feeds both the request and
+// the query key, so the cache can never describe a request that wasn't made.
+const RATE_LOAN_TYPE = "conventional";
+
 export default function RefinanceRates() {
   usePageView("/rates/refinance");
   const [zipcode, setZipcode] = useState("");
   const [searchZipcode, setSearchZipcode] = useState("");
 
   const { data: rates, isLoading, isFetching } = useQuery<MortgageRateWithProgram[]>({
-    queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode, loanType: "refinance" }],
+    queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode, loanType: RATE_LOAN_TYPE }],
     queryFn: async () => {
       const params = new URLSearchParams();
+      params.append("loanType", RATE_LOAN_TYPE);
       if (searchZipcode) {
         params.append("zipcode", searchZipcode);
         const stateFromZip = getStateFromZip(searchZipcode);
@@ -57,9 +63,8 @@ export default function RefinanceRates() {
     }
   }, [zipcode]);
 
-  const refinanceRates = rates?.filter(r => 
-    r.program.loanType === "conventional" || r.program.loanType === null
-  );
+  // Narrowed server-side by RATE_LOAN_TYPE — no render-path filter to forget.
+  const refinanceRates = rates;
 
   const formatTerm = (rate: MortgageRateWithProgram) => formatRateTerm(rate);
   const formatPoints = (rate: MortgageRateWithProgram) => formatRatePoints(rate);
