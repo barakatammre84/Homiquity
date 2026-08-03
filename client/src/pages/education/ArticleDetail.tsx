@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { getPublicQueryFn } from "@/lib/queryClient";
 import { Link, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,14 +24,8 @@ export default function ArticleDetail() {
 
   const { data: article, isLoading, error } = useQuery<Article>({
     queryKey: ["/api/articles", slug],
-    queryFn: async () => {
-      const response = await fetch(`/api/articles/${slug}`);
-      if (!response.ok) {
-        if (response.status === 404) throw new Error("Article not found");
-        throw new Error("Failed to fetch article");
-      }
-      return response.json();
-    },
+    // ["/api/articles", slug] joins to /api/articles/<slug>.
+    queryFn: getPublicQueryFn<Article>(),
     enabled: !!slug,
   });
 

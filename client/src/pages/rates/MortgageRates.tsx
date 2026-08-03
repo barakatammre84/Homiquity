@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getPublicQueryFn } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { usePageView } from "@/hooks/useActivityTracker";
 import type { MortgageRateWithProgram } from "@/types/rates";
@@ -33,18 +34,16 @@ export default function MortgageRates() {
   usePageView("/rates");
 
   const { data: rates, isLoading } = useQuery<MortgageRateWithProgram[]>({
-    queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (searchZipcode) {
-        params.append("zipcode", searchZipcode);
-        const stateFromZip = getStateFromZip(searchZipcode);
-        if (stateFromZip) params.append("state", stateFromZip);
-      }
-      const res = await fetch(`/api/mortgage-rates${params.toString() ? `?${params}` : ""}`);
-      if (!res.ok) throw new Error("Failed to fetch rates");
-      return res.json();
-    },
+    // The key carries the exact request params — getPublicQueryFn builds the URL
+    // from it, so the cache identity and the request can't drift apart.
+    queryKey: [
+      "/api/mortgage-rates",
+      {
+        zipcode: searchZipcode,
+        state: getStateFromZip(searchZipcode),
+      },
+    ],
+    queryFn: getPublicQueryFn<MortgageRateWithProgram[]>(),
   });
 
   const handleSearch = () => {

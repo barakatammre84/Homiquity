@@ -20,7 +20,7 @@ import {
   BookOpen,
   Star,
 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getPublicQueryFn } from "@/lib/queryClient";
 import type { Faq, ContentCategory } from "@shared/schema";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { SEOHead } from "@/components/SEOHead";
@@ -38,23 +38,12 @@ export default function FAQ() {
 
   const { data: faqs = [], isLoading } = useQuery<Faq[]>({
     queryKey: ["/api/faqs", { search: searchQuery, category: selectedCategory }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (searchQuery) params.set("search", searchQuery);
-      if (selectedCategory) params.set("category", selectedCategory);
-      const response = await fetch(`/api/faqs?${params.toString()}`);
-      if (!response.ok) throw new Error("Failed to fetch FAQs");
-      return response.json();
-    },
+    queryFn: getPublicQueryFn<Faq[]>(),
   });
 
   const { data: popularFaqs = [] } = useQuery<Faq[]>({
     queryKey: ["/api/faqs", { popular: true }],
-    queryFn: async () => {
-      const response = await fetch("/api/faqs?popular=true");
-      if (!response.ok) throw new Error("Failed to fetch popular FAQs");
-      return response.json();
-    },
+    queryFn: getPublicQueryFn<Faq[]>(),
     enabled: !searchQuery && !selectedCategory,
   });
 

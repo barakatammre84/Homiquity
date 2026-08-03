@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { getPublicQueryFn } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
@@ -779,16 +780,13 @@ export default function FindAnAgent() {
   const [hasSearched, setHasSearched] = useState(false);
 
   const agentsQuery = useQuery<AgentResult[]>({
-    queryKey: ["/api/agents/search", searchLocation, searchSpecialty],
+    // Params live in the key, so the cache entry and the request agree.
+    queryKey: [
+      "/api/agents/search",
+      { location: searchLocation, specialty: searchSpecialty },
+    ],
     enabled: hasSearched,
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (searchLocation) params.set("location", searchLocation);
-      if (searchSpecialty) params.set("specialty", searchSpecialty);
-      const res = await fetch(`/api/agents/search?${params.toString()}`);
-      if (!res.ok) throw new Error("Search failed");
-      return res.json();
-    },
+    queryFn: getPublicQueryFn<AgentResult[]>(),
   });
 
   const handleHeroSearch = (loc: string) => {
