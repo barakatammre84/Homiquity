@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePlaidLink } from "react-plaid-link";
+import { usePlaidLink, type PlaidLinkOnSuccess } from "react-plaid-link";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -95,7 +95,17 @@ export function PlaidConnectButton({
     },
   });
 
-  const handleSuccess = useCallback((publicToken: string) => exchange.mutate(publicToken), [exchange]);
+  // react-plaid-link v5 types public_token as `string | null` and passes link
+  // metadata as a second argument. The null case is real — Link can complete
+  // without a token — and exchanging `null` would post a malformed body, so it
+  // is dropped here rather than handed to the mutation.
+  const handleSuccess = useCallback<PlaidLinkOnSuccess>(
+    (publicToken) => {
+      if (!publicToken) return;
+      exchange.mutate(publicToken);
+    },
+    [exchange],
+  );
 
   const { open, ready } = usePlaidLink({
     token: linkToken,
