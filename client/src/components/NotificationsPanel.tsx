@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { isStaffRole } from "@shared/roles";
+import { useAuth } from "@/hooks/useAuth";
 import { useShellBadges } from "@/hooks/useShellBadges";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -151,22 +153,34 @@ function realNotificationToItem(n: RealNotification): NotificationItem {
   };
 }
 
-interface NotificationsBellProps {
-  unreadCount: number;
-  activities: DealActivity[];
-}
-
-export function NotificationsBell({ unreadCount, activities }: NotificationsBellProps) {
+export function NotificationsBell() {
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
 
-  // Unread notification count comes from the shared shell-badges poll (one
-  // request for the whole shell) instead of a dedicated 15s poll here.
+  // Every shell badge count comes from the single shared shell-badges poll
+  // (useShellBadges) — the same source the sidebar and mobile nav read. The
+  // bell no longer takes drilled counts/activities from a second /api/dashboard
+  // poll in the layout; that double-poll (and the double-count it produced) is
+  // gone. Staff have no borrower task queue, so — exactly like the sidebar —
+  // pendingTasks is suppressed for them.
   const badges = useShellBadges();
+  const isStaff = isStaffRole(user?.role ?? "");
+  const pendingTasks = isStaff ? 0 : badges.pendingTasks;
 
   const { data: notifData, isLoading: notifLoading } = useQuery<{ notifications: RealNotification[] }>({
     queryKey: ["/api/notifications"],
     enabled: open,
   });
+
+  // The deal-activity feed shown inside the popover is fetched lazily on open
+  // (like /api/notifications above), sharing the ["/api/dashboard"] cache key so
+  // borrower pages that already loaded it reuse the warm cache instead of the
+  // layout re-polling this heavy endpoint on every page for every role.
+  const { data: dashData } = useQuery<{ activities: DealActivity[] }>({
+    queryKey: ["/api/dashboard"],
+    enabled: open,
+  });
+  const activities = dashData?.activities ?? [];
 
   const realNotifications = (notifData?.notifications || []).map(realNotificationToItem);
   const activityNotifications = activities
@@ -174,7 +188,7 @@ export function NotificationsBell({ unreadCount, activities }: NotificationsBell
     .map((a, i) => activityToNotification(a, i));
 
   const realUnread = badges.unreadNotifications;
-  const totalUnread = Math.max(realUnread + unreadCount, 0);
+  const totalUnread = badges.unreadMessages + realUnread + pendingTasks;
 
   const allNotifications = [...realNotifications, ...activityNotifications];
 

@@ -1,8 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePendingAttribution } from "@/hooks/usePendingAttribution";
-import { useLocation } from "wouter";
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -10,9 +8,7 @@ import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { NotificationsBell } from "@/components/NotificationsPanel";
 import { SkipLink } from "@/components/SkipLink";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { getRoleHomeRoute } from "@/lib/roleRoutes";
 import type { UserRole } from "@shared/roles";
-import type { DealActivity } from "@shared/schema";
 
 interface PrivateLayoutProps {
   children: React.ReactNode;
@@ -27,39 +23,21 @@ interface PrivateLayoutProps {
 }
 
 export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const [, navigate] = useLocation();
+  const { user } = useAuth();
+  // Single authorization decision + redirect. All gating lives in the guard;
+  // this component only renders off the resulting status.
+  const status = useAuthGuard(requiredRoles);
 
   // Apply any pre-signup attribution code (LO /ref or CPA /cpa) once the user is
   // authenticated, no matter which authenticated page they first land on.
   usePendingAttribution();
 
-  const { data: dashboardData } = useQuery<{
-    activities: DealActivity[];
-    unreadMessages: number;
-    pendingTaskCount: number;
-  }>({
-    queryKey: ["/api/dashboard"],
-    enabled: isAuthenticated && !isLoading,
-    refetchInterval: 30000,
-  });
+  // Badge counts and the notification feed are owned by NotificationsBell (via
+  // the shared useShellBadges poll + a lazy on-open activities fetch). The
+  // layout no longer runs its own /api/dashboard poll — that removed the
+  // second badge poll and the double-count it fed the bell.
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      window.location.href = "/login";
-    }
-  }, [isLoading, isAuthenticated, navigate]);
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && requiredRoles && requiredRoles.length > 0) {
-      const hasRequiredRole = requiredRoles.some(role => user?.role === role);
-      if (!hasRequiredRole && user?.role) {
-        navigate(getRoleHomeRoute(user.role));
-      }
-    }
-  }, [isLoading, isAuthenticated, user, requiredRoles, navigate]);
-
-  if (isLoading) {
+  if (status === "loading") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -67,32 +45,19 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
     );
   }
 
-  if (!isAuthenticated) {
+  // Not authorized: the guard is already navigating away. Show a neutral
+  // redirecting state until the navigation lands.
+  if (status !== "authorized") {
+    const label = status === "unauthenticated" ? "Redirecting to login..." : "Redirecting...";
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Redirecting to login...</p>
+          <p className="text-muted-foreground">{label}</p>
         </div>
       </div>
     );
   }
-
-  if (requiredRoles && requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.some(role => user?.role === role);
-    if (!hasRequiredRole) {
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-muted-foreground">Access denied. Redirecting...</p>
-          </div>
-        </div>
-      );
-    }
-  }
-
-  const totalUnread = (dashboardData?.unreadMessages || 0) + (dashboardData?.pendingTaskCount || 0);
-  const activities = dashboardData?.activities || [];
 
   const sidebarStyle = {
     "--sidebar-width": "16rem",
@@ -111,7 +76,7 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
               <span className="text-sm font-semibold tracking-tight text-primary md:hidden" data-testid="text-mobile-brand">homiquity</span>
             </div>
             <div className="flex items-center gap-2">
-              <NotificationsBell unreadCount={totalUnread} activities={activities} />
+              <NotificationsBell />
               {user && (
                 <Avatar className="h-8 w-8 md:hidden">
                   <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
