@@ -11,6 +11,7 @@ import {
   LICENSE_VERIFICATION_STATUSES,
   PARTNER_PROFILE_STATUSES,
 } from "@shared/schema";
+import { routeParam } from "../http/routeParams";
 
 /**
  * PartnerHub identity spine (PH-1 — knowledge-base/specs/PARTNER_HUB_PROGRAM.md).
@@ -176,7 +177,7 @@ export function registerPartnerRoutes(app: Express, storage: IStorage) {
   // ---- Public: co-brand branding for the /p/:slug landing ---------------------
   app.get("/api/p/:slug", async (req, res) => {
     try {
-      const profile = await storage.getPartnerProfileBySlug(req.params.slug);
+      const profile = await storage.getPartnerProfileBySlug(routeParam(req, "slug"));
       if (!profile || profile.status !== "active") {
         return res.status(404).json({ error: "Invalid or inactive referral link" });
       }
@@ -362,7 +363,7 @@ export function registerPartnerRoutes(app: Express, storage: IStorage) {
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid decision" });
       }
-      const updated = await storage.updatePartnerProfileReview(req.params.id, {
+      const updated = await storage.updatePartnerProfileReview(routeParam(req, "id"), {
         licenseVerificationStatus: parsed.data.decision,
       });
       if (!updated) {
@@ -385,7 +386,7 @@ export function registerPartnerRoutes(app: Express, storage: IStorage) {
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid status" });
       }
-      const updated = await storage.updatePartnerProfileReview(req.params.id, {
+      const updated = await storage.updatePartnerProfileReview(routeParam(req, "id"), {
         status: parsed.data.status,
       });
       if (!updated) {
@@ -404,7 +405,7 @@ export function registerPartnerRoutes(app: Express, storage: IStorage) {
   // ---- Admin: waitlist → activation conversion --------------------------------
   app.post("/api/admin/partner-waitlist/:id/invite", requireRole("admin"), async (req, res) => {
     try {
-      const row = await storage.markPartnerWaitlistInvited(req.params.id);
+      const row = await storage.markPartnerWaitlistInvited(routeParam(req, "id"));
       if (!row) {
         return res.status(404).json({ error: "Waitlist entry not found" });
       }

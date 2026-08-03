@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { friendlyApiError } from "@/lib/errorMessage";
+import { apiRequest } from "@/lib/queryClient";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -49,21 +51,22 @@ export default function RedeemInvite() {
     }
     setRedeeming(true);
     try {
-      const res = await fetch("/api/staff-invites/redeem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.toUpperCase() }),
+      const res = await apiRequest("POST", "/api/staff-invites/redeem", {
+        code: code.toUpperCase(),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (data.success) {
         setRedeemed(true);
         setNewRole(data.role);
         toast({ title: data.message });
       } else {
         toast({ title: data.error || "Failed to redeem invite", variant: "destructive" });
       }
-    } catch {
-      toast({ title: "Failed to redeem invite", variant: "destructive" });
+    } catch (err) {
+      // apiRequest throws on non-2xx, so the server's specific copy ("this
+      // invite has already been used", "invite expired") now arrives here
+      // rather than in the `else` above — friendlyApiError unwraps it.
+      toast({ title: friendlyApiError(err, "Failed to redeem invite"), variant: "destructive" });
     } finally {
       setRedeeming(false);
     }

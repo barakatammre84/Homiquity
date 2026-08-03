@@ -9,7 +9,7 @@ import { QueryBoundary } from "@/components/ui/query-boundary";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication } from "@shared/schema";
-import { isTerminalLoanAppStatus } from "@shared/schema";
+import { useActiveApplication } from "@/hooks/useActiveApplication";
 import {
   Home,
   ChevronRight,
@@ -37,6 +37,10 @@ export default function ApplicationSummary() {
     enabled: !authLoading,
   });
 
+  // Resolved here rather than inside the QueryBoundary render-prop below: that
+  // callback is not a component, so it cannot call hooks.
+  const { activeApplication } = useActiveApplication(query.data?.applications ?? []);
+
   const applicantName = user?.firstName && user?.lastName
     ? `${user.firstName} ${user.lastName}`
     : user?.email?.split("@")[0] || "Applicant";
@@ -60,12 +64,7 @@ export default function ApplicationSummary() {
       contentClassName="space-y-6"
     >
         <QueryBoundary query={query} loading={loadingSkeleton} data-testid="application-summary">
-          {(data) => {
-            const applications = data.applications || [];
-            const activeApplication = applications.find(
-              (app) => !isTerminalLoanAppStatus(app.status)
-            );
-
+          {() => {
             if (!activeApplication) {
               return (
                 <EmptyState

@@ -4,6 +4,7 @@ import { type Server } from "node:http";
 
 import express, { type Express } from "express";
 import runApp from "./app";
+import { SPA_CATCH_ALL_PATTERN } from "./spaCatchAll";
 
 export async function serveStatic(app: Express, _server: Server) {
   const distPath = path.resolve(import.meta.dirname, "public");
@@ -17,7 +18,7 @@ export async function serveStatic(app: Express, _server: Server) {
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.use(SPA_CATCH_ALL_PATTERN, (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

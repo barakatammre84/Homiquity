@@ -12,8 +12,10 @@ import {
   APPROVAL_OUTCOME_STATUSES,
   CREDIT_DECISION_ROLES,
   isInFlightLoanAppStatus,
+  isTerminalLoanAppStatus,
   isValidLoanAppTransition,
   pickActiveLoanApplication,
+  pickWorkableLoanApplication,
   TASK_STATUSES,
   ACTIVE_TASK_STATUSES,
   TERMINAL_TASK_STATUSES,
@@ -680,5 +682,41 @@ describe("in-flight set and the active-application selector", () => {
     expect(
       pickActiveLoanApplication(LOAN_APP_TERMINAL_STATUSES.map((status) => ({ status }))),
     ).toBeUndefined();
+  });
+
+  it("pickWorkableLoanApplication keeps drafts but never a closed file", () => {
+    // The borrower's newest file is closed; the one they're working is older.
+    // The API returns newest-created first, so a bare [0] picked the dead one.
+    const apps = [
+      { id: "newest-denied", status: "denied" },
+      { id: "working", status: "doc_collection" },
+    ];
+    expect(pickWorkableLoanApplication(apps)?.id).toBe("working");
+
+    // A draft IS workable — it's resumable and can carry documents.
+    expect(pickWorkableLoanApplication([{ id: "d", status: "draft" }])?.id).toBe("d");
+
+    // Nothing open => undefined, so callers fall back to their no-application
+    // state rather than attaching work to a closed loan.
+    expect(pickWorkableLoanApplication([])).toBeUndefined();
+    expect(
+      pickWorkableLoanApplication(LOAN_APP_TERMINAL_STATUSES.map((status) => ({ status }))),
+    ).toBeUndefined();
+  });
+
+  it("workable is strictly wider than active, and both exclude closed files", () => {
+    for (const status of LOAN_APP_STATUSES) {
+      const apps = [{ status }];
+      if (pickActiveLoanApplication(apps)) {
+        expect(pickWorkableLoanApplication(apps), `${status}`).toBeDefined();
+      }
+      if (isTerminalLoanAppStatus(status)) {
+        expect(pickWorkableLoanApplication(apps), `${status}`).toBeUndefined();
+        expect(pickActiveLoanApplication(apps), `${status}`).toBeUndefined();
+      }
+    }
+    // The one status that separates them.
+    expect(pickWorkableLoanApplication([{ status: "draft" }])).toBeDefined();
+    expect(pickActiveLoanApplication([{ status: "draft" }])).toBeUndefined();
   });
 });

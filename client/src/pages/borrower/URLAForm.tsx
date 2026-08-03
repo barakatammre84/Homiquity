@@ -22,7 +22,7 @@ import type {
   BorrowerDeclarations,
   HmdaDemographics,
 } from "@shared/schema";
-import { isTerminalLoanAppStatus } from "@shared/schema";
+import { useActiveApplication } from "@/hooks/useActiveApplication";
 import {
   Users,
   FileText,
@@ -176,9 +176,7 @@ export default function URLAForm() {
   });
 
   const applications = dashboardData?.applications || [];
-  const activeApplication = applications.find(
-    (app) => !isTerminalLoanAppStatus(app.status)
-  );
+  const { activeApplication } = useActiveApplication(applications);
 
   const {
     data: urlaData,

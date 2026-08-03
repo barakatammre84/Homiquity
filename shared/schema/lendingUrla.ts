@@ -567,7 +567,7 @@ export type RentalPropertyEntry = z.infer<typeof rentalPropertyEntrySchema>;
 export const incomeSourceEntrySchema = z.object({
   type: z.enum(
     ["w2", "self_employed", "rental", "social_security", "pension", "investment", "other"],
-    { errorMap: () => ({ message: "Please select a valid income type" }) }
+    { error: () => "Please select a valid income type" }
   ),
   annualAmount: z.string()
     .min(1, "Income amount is required")
@@ -595,7 +595,7 @@ const preApprovalFormBaseSchema = z.object({
   annualIncome: positiveCurrencyString("Annual income"),
   employmentType: z.enum(
     ["employed", "self_employed", "retired", "other"],
-    { errorMap: () => ({ message: "Please select your employment status" }) }
+    { error: () => "Please select your employment status" }
   ),
   employmentYears: z.string()
     .min(1, "Years at current job is required")
@@ -625,11 +625,11 @@ const preApprovalFormBaseSchema = z.object({
 
   loanPurpose: z.enum(
     ["purchase", "refinance", "cash_out"],
-    { errorMap: () => ({ message: "Please select what you're looking to do" }) }
+    { error: () => "Please select what you're looking to do" }
   ),
   propertyType: z.enum(
     ["single_family", "condo", "townhouse", "multi_family"],
-    { errorMap: () => ({ message: "Please select a property type" }) }
+    { error: () => "Please select a property type" }
   ),
   purchasePrice: positiveCurrencyString("Purchase price"),
   downPayment: currencyString("Down payment"),

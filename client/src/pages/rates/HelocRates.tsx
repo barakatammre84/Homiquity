@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getPublicQueryFn } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,18 +38,18 @@ export default function HelocRates() {
   const [searchZipcode, setSearchZipcode] = useState("");
 
   const { data: rates, isLoading, isFetching } = useQuery<MortgageRateWithProgram[]>({
-    queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode, loanType: "heloc" }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (searchZipcode) {
-        params.append("zipcode", searchZipcode);
-        const stateFromZip = getStateFromZip(searchZipcode);
-        if (stateFromZip) params.append("state", stateFromZip);
-      }
-      const res = await fetch(`/api/mortgage-rates?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch rates");
-      return res.json();
-    },
+    // Their loanType (the Reg Z product-heading fix, now enforced in SQL)
+    // rides in the key, and getPublicQueryFn builds the URL from the key —
+    // so the cache can never describe a request that was not made.
+    queryKey: [
+      "/api/mortgage-rates",
+      {
+        loanType: "heloc",
+        zipcode: searchZipcode,
+        state: getStateFromZip(searchZipcode),
+      },
+    ],
+    queryFn: getPublicQueryFn<MortgageRateWithProgram[]>(),
   });
 
   const handleSearch = useCallback(() => {

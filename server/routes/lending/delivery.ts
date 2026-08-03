@@ -7,6 +7,7 @@ import { insertBorrowerDeclarationsSchema } from "@shared/schema";
 import { generateMISMO34XML, type MISMOLoanDTO } from "../../mismo";
 import { z } from "zod";
 import * as creditService from "../../services/creditService";
+import { routeParams } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -23,7 +24,7 @@ export function registerDeliveryRoutes(
 ) {
   app.get("/api/loan-applications/:id/mismo-export", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       // Object-level check kept as defense-in-depth alongside the role gate.
       const authorizedApp = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
@@ -72,7 +73,7 @@ export function registerDeliveryRoutes(
   // Data Quality Scoring API - for broker dashboard (ownership-scoped query)
   app.get("/api/loan-applications/:id/data-quality", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       // Use ownership-scoped query - authorization happens at database level
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role || "");
       

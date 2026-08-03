@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
+import { routeParam, routeParams } from "../../http/routeParams";
 
 
 export function registerReferralCoBrandRoutes(
@@ -101,7 +102,7 @@ export function registerReferralCoBrandRoutes(
   // Validate a referral code and get LO info (public route for landing page)
   app.get("/api/referral/:code", async (req, res) => {
     try {
-      const { code } = req.params;
+      const { code } = routeParams(req);
       const referrer = await storage.getUserByReferralCode(code);
       
       if (!referrer) {
@@ -225,7 +226,7 @@ export function registerReferralCoBrandRoutes(
       if (!isStaffRole(req.user!.role)) {
         return res.status(403).json({ error: "Staff or partner access required" });
       }
-      const profile = await storage.getCoBrandProfile(req.params.id);
+      const profile = await storage.getCoBrandProfile(routeParam(req, "id"));
       if (!profile || profile.userId !== req.user!.id) {
         return res.status(404).json({ error: "Profile not found" });
       }
@@ -240,7 +241,7 @@ export function registerReferralCoBrandRoutes(
         if (req.body[key] !== undefined) safeUpdate[key] = req.body[key];
       }
 
-      const updated = await storage.updateCoBrandProfile(req.params.id, safeUpdate);
+      const updated = await storage.updateCoBrandProfile(routeParam(req, "id"), safeUpdate);
       res.json(updated);
     } catch (error) {
       console.error("Update co-brand profile error:", error);
@@ -251,9 +252,9 @@ export function registerReferralCoBrandRoutes(
   // Public endpoint - Get co-brand profile by user ID (for public landing pages)
   app.get("/api/co-brand/public/:id", async (req, res) => {
     try {
-      let profile = await storage.getCoBrandProfile(req.params.id);
+      let profile = await storage.getCoBrandProfile(routeParam(req, "id"));
       if (!profile) {
-        profile = await storage.getCoBrandProfileByUser(req.params.id);
+        profile = await storage.getCoBrandProfileByUser(routeParam(req, "id"));
       }
       if (!profile || !profile.isActive) {
         return res.status(404).json({ error: "Profile not found" });

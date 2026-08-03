@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -94,13 +95,12 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
   const handleDownloadAdverseActionPdf = async (adverseActionId: string) => {
     setDownloadingNotice(true);
     try {
-      const res = await fetch(`/api/credit/adverse-action/${adverseActionId}/letter-pdf`, {
-        credentials: "include",
+      const res = await apiRequest(
+        "GET",
+        `/api/credit/adverse-action/${adverseActionId}/letter-pdf`,
+      ).catch((err: unknown) => {
+        throw new Error(friendlyApiError(err, "Failed to generate the notice PDF."));
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error || "Failed to generate the notice PDF.");
-      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

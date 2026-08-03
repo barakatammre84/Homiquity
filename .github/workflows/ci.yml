@@ -93,6 +93,42 @@ jobs:
         # PR. (Job `name:` above deliberately unchanged — verbatim required-check
         # string; see the rename warning.)
         run: pnpm guard:tokens
+      - name: Production build
+        # The gate used to prove only that the code TYPECHECKS. `tsc --noEmit` never
+        # runs vite or esbuild, so a broken import, a failing vite plugin, or a
+        # client-library bump that only explodes at bundle time reached `main` green
+        # and died in Vercel — where a failed build is invisible, because Vercel keeps
+        # the last good deployment serving (that is how #268/#278/#277 sat unshipped
+        # for half an hour with the site up and every check green).
+        #
+        # Scope honestly: this runs OUR build (the same command Vercel runs), so it
+        # catches our build breaking. It would NOT have caught #279's TypeScript 7
+        # failure — that build log shows vite and esbuild both finishing before
+        # Vercel's own post-build step died loading the user-provided compiler.
+        # Catching that class needs the deployment's real state, which means a
+        # VERCEL_TOKEN secret; until then it is covered by the dependabot ignore on
+        # typescript majors. (Job `name:` above deliberately unchanged — verbatim
+        # required-check string; see the rename warning.)
+        run: pnpm vercel-build
+      - name: Vercel deployability
+        # `pnpm vercel-build` above proves OUR build works. It cannot prove the
+        # DEPLOYMENT works: on TypeScript 7 vite and esbuild both finished and
+        # Vercel's own post-build step died afterwards, so #268 went in green and
+        # froze prod for three merges. This reads the deployment's real state from
+        # the Vercel API — the signal that was correct all along (it showed ERROR
+        # on #268's previews before it merged, while the GitHub "Vercel" status
+        # said `pending`, which is why that status is NOT the required check: it
+        # never resolves on a PR head and requiring it deadlocks every PR).
+        #
+        # No-ops with a warning until VERCEL_TOKEN exists, so adding this cannot
+        # red the gate. (Job `name:` above deliberately unchanged — verbatim
+        # required-check string; see the rename warning.)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          # The PR HEAD, not github.sha: on pull_request that is a synthetic merge
+          # commit which Vercel never builds, so it would never match a deployment.
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/vercel-deployment-guard.cjs
 
   migrate-prod:
     name: migrate-prod (apply pending migrations)

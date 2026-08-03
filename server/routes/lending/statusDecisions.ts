@@ -3,7 +3,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
-import { insertBorrowerDeclarationsSchema, loanApplicationIntakeUpdateSchema, STAFF_SETTABLE_STATUSES, CREDIT_DECISION_ROLES, isProtectedCreditDecisionStatus, isApprovalOutcomeStatus, type User } from "@shared/schema";
+import { insertBorrowerDeclarationsSchema, loanApplicationIntakeUpdateSchema, STAFF_SETTABLE_STATUSES, CREDIT_DECISION_ROLES, FINANCIAL_VERIFICATION_ROLES, isProtectedCreditDecisionStatus, isApprovalOutcomeStatus, type User } from "@shared/schema";
 import { updatePipelineStage, PipelineTransitionError } from "../../pipelineEngine";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { sendNotificationEmail } from "../../services/emailService";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 import { assertStageRequirements } from "@shared/stageRequirements";
 import { evaluateTridTrigger, tridHardStopError } from "../../services/trid";
+import { routeParams } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -30,7 +31,7 @@ export function registerStatusDecisionRoutes(
   app.patch("/api/loan-applications/:id", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const { id } = req.params;
+      const { id } = routeParams(req);
       
       const application = await storage.getLoanApplication(id);
       if (!application) {
@@ -126,10 +127,10 @@ export function registerStatusDecisionRoutes(
     try {
       const user = req.user as User;
 
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const parsed = staffStatusSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid status", details: parsed.error.errors });
+        return res.status(400).json({ error: "Invalid status", details: parsed.error.issues });
       }
 
       const application = await storage.getLoanApplication(id);
@@ -323,11 +324,11 @@ export function registerStatusDecisionRoutes(
   // pre-approval-letter generation. Restricted to staff who review documents.
   app.post(
     "/api/loan-applications/:id/verify-financials",
-    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    requireRole(...FINANCIAL_VERIFICATION_ROLES),
     async (req, res) => {
       try {
         const user = req.user as User;
-        const { id } = req.params;
+        const { id } = routeParams(req);
 
         const application = await storage.getLoanApplication(id);
         if (!application) {
@@ -374,11 +375,11 @@ export function registerStatusDecisionRoutes(
   // staff confirm each source as it's reviewed instead of one all-or-nothing toggle.
   app.post(
     "/api/loan-applications/:id/verify/:dimension",
-    requireRole("admin", "lo", "loa", "processor", "underwriter"),
+    requireRole(...FINANCIAL_VERIFICATION_ROLES),
     async (req, res) => {
       try {
         const user = req.user as User;
-        const { id, dimension } = req.params;
+        const { id, dimension } = routeParams(req);
         if (!["income", "assets", "credit"].includes(dimension)) {
           return res.status(400).json({ error: "dimension must be income, assets, or credit" });
         }

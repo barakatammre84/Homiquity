@@ -12,15 +12,19 @@ import {
   type DealTeamMember,
   type LoanApplication,
 } from "@shared/schema";
+import { routeParam } from "../http/routeParams";
 
 /**
  * LO Command Center cockpit routes (LO Advisor Program prompt LO-1).
  *
  * Two internal-staff, deal-team-scoped reads that turn the pipeline list into
  * an advisory cockpit without navigating away from a file:
- *   - GET /api/staff/signals — the prioritized "who needs attention" feed
- *     (signalEngine, previously only wired to the notification cron), scoped to
- *     the caller's book (admins see all).
+ *   - GET /api/staff/signals — THE prioritized "who needs attention" feed
+ *     (signalEngine), scoped to the caller's book (admins see all). This is the
+ *     only route permitted to serve it: an unscoped twin at GET
+ *     /api/signals/staff was removed after it was found serving
+ *     borrower-identifying signals across deal teams. tests/cockpitScoping.test.ts
+ *     fails the build if a second or unscoped caller reappears.
  *   - GET /api/staff/applications/:id/cockpit — the active-borrower panel + call
  *     prep, composed in ONE access-checked read: operational summary, latest UAL
  *     income evaluation, conditions, document checklist, recent messages, and
@@ -99,7 +103,7 @@ export function registerCockpitRoutes(app: Express, storage: IStorage) {
     async (req, res) => {
       try {
         const user = req.user as User;
-        const applicationId = req.params.id;
+        const applicationId = routeParam(req, "id");
 
         // Assignment-scoped: the same gate the rate-lock desk and simulator use.
         const allowed = await verifyInternalStaffApplicationAccess(storage, applicationId, user.id, user.role);

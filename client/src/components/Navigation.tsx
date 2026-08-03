@@ -1,8 +1,8 @@
 import { Link, useLocation } from "wouter";
+import { logout } from "@/lib/logout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -291,13 +291,7 @@ export function Navigation() {
                   <DropdownMenuItem
                     className="w-full cursor-pointer text-destructive"
                     data-testid="button-logout"
-                    onClick={async () => {
-                      try {
-                        await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-                      } catch {}
-                      queryClient.clear();
-                      window.location.href = "/";
-                    }}
+                    onClick={() => void logout()}
                   >
                     Sign out
                   </DropdownMenuItem>
@@ -397,13 +391,9 @@ export function Navigation() {
                       size="lg"
                       className="w-full text-destructive"
                       data-testid="mobile-button-logout"
-                      onClick={async () => {
+                      onClick={() => {
                         setMobileMenuOpen(false);
-                        try {
-                          await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-                        } catch {}
-                        queryClient.clear();
-                        window.location.href = "/";
+                        void logout();
                       }}
                     >
                       Sign out

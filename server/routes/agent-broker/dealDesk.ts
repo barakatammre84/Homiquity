@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
+import { routeParam, routeParams } from "../../http/routeParams";
 
 
 export function registerDealDeskRoutes(
@@ -73,7 +74,7 @@ export function registerDealDeskRoutes(
   // Get a specific thread with messages
   app.get("/api/deal-desk/threads/:id", isAuthenticated, async (req, res) => {
     try {
-      const thread = await storage.getDealDeskThread(req.params.id);
+      const thread = await storage.getDealDeskThread(routeParam(req, "id"));
       if (!thread) {
         return res.status(404).json({ error: "Thread not found" });
       }
@@ -100,7 +101,7 @@ export function registerDealDeskRoutes(
   // Add message to a deal desk thread
   app.post("/api/deal-desk/threads/:id/messages", isAuthenticated, async (req, res) => {
     try {
-      const thread = await storage.getDealDeskThread(req.params.id);
+      const thread = await storage.getDealDeskThread(routeParam(req, "id"));
       if (!thread) {
         return res.status(404).json({ error: "Thread not found" });
       }
@@ -129,7 +130,7 @@ export function registerDealDeskRoutes(
   // Close a deal desk thread
   app.patch("/api/deal-desk/threads/:id/close", isAuthenticated, async (req, res) => {
     try {
-      const thread = await storage.getDealDeskThread(req.params.id);
+      const thread = await storage.getDealDeskThread(routeParam(req, "id"));
       if (!thread || thread.agentUserId !== req.user!.id) {
         return res.status(404).json({ error: "Thread not found" });
       }
@@ -159,7 +160,7 @@ export function registerDealDeskRoutes(
   // =============================================
   app.get("/api/pre-approval-letters/:id/co-brand-preview", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const agentProfileId = firstQueryValue(req.query.agentProfileId);
 
       if (!agentProfileId) {
@@ -205,7 +206,7 @@ export function registerDealDeskRoutes(
 
   app.put("/api/pre-approval-letters/:id/co-brand", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"), async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const coBrandSchema = z.object({
         agentName: z.string(),
         agentNmlsId: z.string().optional(),
@@ -237,7 +238,7 @@ export function registerDealDeskRoutes(
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid input", details: error.errors });
+        return res.status(400).json({ error: "Invalid input", details: error.issues });
       }
       console.error("Co-brand update error:", error);
       res.status(500).json({ error: "Failed to update co-branding" });

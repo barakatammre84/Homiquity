@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
 import type { Task, LoanApplication, TaskPriority } from "@shared/schema";
-import { isTerminalLoanAppStatus } from "@shared/schema";
+import { useActiveApplication } from "@/hooks/useActiveApplication";
 import {
   CheckCircle2,
   Clock,
@@ -104,6 +104,11 @@ export default function Tasks() {
     queryKey: ["/api/dashboard"],
     enabled: !authLoading,
   });
+
+  // Resolved up here (not at the point of use) because Rules of Hooks bars a
+  // hook call after the loading/error early returns below.
+  const applications = dashboardData?.applications || [];
+  const { activeApplication } = useActiveApplication(applications);
 
   const {
     data: tasks,
@@ -216,11 +221,6 @@ export default function Tasks() {
       </PageShell>
     );
   }
-
-  const applications = dashboardData?.applications || [];
-  const activeApplication = applications.find(
-    (app) => !isTerminalLoanAppStatus(app.status)
-  );
 
   // Scope to the ACTIVE application — tasks from old/denied applications are
   // noise, not next steps (the "56 pending tasks" defect). EXPIRED tasks are

@@ -138,6 +138,25 @@ export function pickActiveLoanApplication<T extends { status: string }>(
   return applications.find((a) => isInFlightLoanAppStatus(a.status));
 }
 
+/**
+ * THE selector for "the file the borrower is currently working on" — in-flight
+ * OR still a draft, but never a closed one. Borrower-facing surfaces need this
+ * wider notion than `pickActiveLoanApplication`: a draft is a real file the
+ * borrower can resume and attach documents to, it just hasn't been submitted.
+ *
+ * Callers that must distinguish the two branch on `status === "draft"` (the
+ * Dashboard hides the journey tracker and predictions for drafts).
+ *
+ * Use this over `pickActiveLoanApplication(apps) ?? apps[0]`: the `?? apps[0]`
+ * fallback silently resurrects denied/withdrawn/funded files, which is how
+ * document uploads once landed on a closed loan.
+ */
+export function pickWorkableLoanApplication<T extends { status: string }>(
+  applications: readonly T[],
+): T | undefined {
+  return applications.find((a) => !isTerminalLoanAppStatus(a.status));
+}
+
 export interface LoanAppStatusMeta {
   /** Short badge/label text. */
   label: string;
@@ -212,6 +231,24 @@ export const PROTECTED_CREDIT_DECISION_STATUSES: readonly LoanAppStatus[] = [
 ] as const;
 
 export const CREDIT_DECISION_ROLES: readonly string[] = ["admin", "underwriter"] as const;
+
+/**
+ * Staff roles permitted to mark a borrower's financials verified — the gate that
+ * lets a file proceed to approval and pre-approval-letter generation.
+ *
+ * Read by BOTH the requireRole list on POST /api/loan-applications/:id/verify-financials
+ * and the "Mark Financials Verified" button in BorrowerFile, so the client can never
+ * offer an action the server will reject. `closer` is deliberately excluded (a
+ * closing-stage role, not a document reviewer), as are the external partner roles
+ * (broker, lender), which never review borrower documentation.
+ */
+export const FINANCIAL_VERIFICATION_ROLES: readonly string[] = [
+  "admin",
+  "lo",
+  "loa",
+  "processor",
+  "underwriter",
+] as const;
 
 export function isProtectedCreditDecisionStatus(value: string): boolean {
   return (PROTECTED_CREDIT_DECISION_STATUSES as readonly string[]).includes(value);

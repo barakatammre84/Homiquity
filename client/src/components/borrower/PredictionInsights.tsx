@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -56,8 +57,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
   const { data: prediction, isLoading: predLoading } = useQuery<Prediction>({
     queryKey: ["/api/predictions/me", applicationId],
     queryFn: async () => {
-      const res = await fetch(predUrl, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch prediction");
+      const res = await apiRequest("GET", predUrl);
       return res.json();
     },
   });

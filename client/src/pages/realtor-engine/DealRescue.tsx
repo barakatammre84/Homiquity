@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AddressInput } from "@/components/AddressInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
@@ -310,7 +311,13 @@ export default function DealRescue() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [resolveTarget, setResolveTarget] = useState<DealRescueEscalation | null>(null);
 
-  const { data: escalations = [], isLoading } = useQuery<DealRescueEscalation[]>({
+  const {
+    data: escalations = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<DealRescueEscalation[]>({
     queryKey: ["/api/deal-rescue"],
   });
 
@@ -332,6 +339,21 @@ export default function DealRescue() {
     const avgMs = totalMs / resolvedItems.length;
     const avgHours = Math.round(avgMs / (1000 * 60 * 60));
     avgResolution = avgHours < 24 ? `${avgHours}h` : `${Math.round(avgHours / 24)}d`;
+  }
+
+  // A failed load must not render as "0 open, 0 critical" — on an escalation
+  // desk that reads as an all-clear when the API is actually down (ux-01).
+  if (isError) {
+    return (
+      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+        <QueryErrorState
+          error={error}
+          onRetry={() => void refetch()}
+          title="We couldn't load deal rescue escalations"
+          data-testid="deal-rescue-error"
+        />
+      </div>
+    );
   }
 
   if (isLoading) {

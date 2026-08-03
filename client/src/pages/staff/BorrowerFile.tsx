@@ -1,7 +1,8 @@
 import { lazy, Suspense, useState } from "react";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { useParams, useSearch, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, ApiError } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,7 +37,7 @@ import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { canReviewDocuments } from "@shared/documentStatus";
 import { formatCurrency } from "@/lib/formatters";
 import { DocumentReviewPanel } from "@/components/staff/DocumentReviewPanel";
-import { CREDIT_DECISION_ROLES, type UrlaPersonalInfo } from "@shared/schema";
+import { CREDIT_DECISION_ROLES, FINANCIAL_VERIFICATION_ROLES, type UrlaPersonalInfo } from "@shared/schema";
 
 import { type ApplicationData, type PipelineData } from "./borrowerFile/model";
 import { StatusUpdateDialog } from "./borrowerFile/StatusUpdateDialog";
@@ -84,17 +85,16 @@ export default function BorrowerFile() {
   const handleExportMismo = async () => {
     setExportingMismo(true);
     try {
-      const res = await fetch(`/api/loan-applications/${applicationId}/mismo-export`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(
-          res.status === 403
-            ? "MISMO export is restricted to internal staff with access to this application."
-            : body?.error || "Failed to generate the MISMO file.",
-        );
-      }
+      const res = await apiRequest("GET", `/api/loan-applications/${applicationId}/mismo-export`).catch(
+        (err: unknown) => {
+          if (err instanceof ApiError && err.status === 403) {
+            throw new Error(
+              "MISMO export is restricted to internal staff with access to this application.",
+            );
+          }
+          throw new Error(friendlyApiError(err, "Failed to generate the MISMO file."));
+        },
+      );
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -180,6 +180,10 @@ export default function BorrowerFile() {
   // Mirrors the server's role gate on PATCH /:id/status (statusDecisions.ts):
   // final credit decisions are 403'd for everyone else, so grey them out here.
   const canSetCreditDecisions = CREDIT_DECISION_ROLES.includes(user?.role || "");
+  // Mirrors requireRole on POST /:id/verify-financials — closer, broker, and lender
+  // are 403'd there, so they must not be offered the button. Both sides read
+  // FINANCIAL_VERIFICATION_ROLES (shared/schema/lendingCore.ts) so they can't drift.
+  const canVerifyFinancials = FINANCIAL_VERIFICATION_ROLES.includes(user?.role || "");
 
   // Pre-underwriting validator flags (loan_applications.pre_uw_flags) — the
   // machine-readable signal staff should see before opening any tab.
@@ -264,7 +268,7 @@ export default function BorrowerFile() {
                       <Badge variant="outline" className="border-border text-warning-subtle-foreground">
                         Financials Unverified
                       </Badge>
-                      {isStaff2 && (
+                      {canVerifyFinancials && (
                         <Button
                           size="sm"
                           variant="outline"

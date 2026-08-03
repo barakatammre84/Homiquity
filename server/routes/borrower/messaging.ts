@@ -8,6 +8,7 @@ import { lintOutboundText, REG_Z_ADVERTISING_DISCLOSURE_BLOCK } from "@shared/co
 import { isStaffRole, type User } from "@shared/schema";
 import { z } from "zod";
 import { sendNotificationEmail } from "../../services/emailService";
+import { routeParams } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -100,7 +101,7 @@ export function registerMessagingRoutes(
   app.get("/api/messages/:otherUserId", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const { otherUserId } = req.params;
+      const { otherUserId } = routeParams(req);
       
       const messages = await storage.getMessages(userId, otherUserId);
       
@@ -308,7 +309,7 @@ export function registerMessagingRoutes(
   // Update document request status (when borrower uploads or staff approves)
   app.patch("/api/messages/:messageId/document-request", isAuthenticated, async (req, res) => {
     try {
-      const { messageId } = req.params;
+      const { messageId } = routeParams(req);
       const { status, documentId } = req.body;
       const user = req.user as User;
 

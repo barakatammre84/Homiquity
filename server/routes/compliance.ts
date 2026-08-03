@@ -7,6 +7,7 @@ import * as creditService from "../services/creditService";
 import { encryptToken } from "../services/piiVault";
 import { sendNotificationEmail } from "../services/emailService";
 import { firstQueryValue } from "./queryParams";
+import { routeParam, routeParams } from "../http/routeParams";
 
 export function registerComplianceRoutes(
   app: Express,
@@ -181,7 +182,7 @@ export function registerComplianceRoutes(
   // Get verifications for an application
   app.get("/api/verifications/application/:applicationId", isAuthenticated, async (req, res) => {
     try {
-      const { applicationId } = req.params;
+      const { applicationId } = routeParams(req);
       const userId = req.user!.id;
       const userRole = req.user?.role || "";
 
@@ -225,7 +226,7 @@ export function registerComplianceRoutes(
   // Get verification status
   app.get("/api/verifications/:id", isAuthenticated, async (req, res) => {
     try {
-      const verification = await storage.getVerification(req.params.id);
+      const verification = await storage.getVerification(routeParam(req, "id"));
       if (!verification) {
         return res.status(404).json({ error: "Verification not found" });
       }
@@ -282,7 +283,7 @@ export function registerComplianceRoutes(
   // be able to approve or reject another borrower's verification.
   app.patch("/api/verifications/:id", requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"), async (req, res) => {
     try {
-      const verification = await storage.getVerification(req.params.id);
+      const verification = await storage.getVerification(routeParam(req, "id"));
       if (!verification) {
         return res.status(404).json({ error: "Verification not found" });
       }
@@ -304,7 +305,7 @@ export function registerComplianceRoutes(
       }
 
       const { status, reviewNotes } = req.body;
-      const updated = await storage.updateVerification(req.params.id, {
+      const updated = await storage.updateVerification(routeParam(req, "id"), {
         status,
         reviewNotes,
         reviewedByUserId: userId,
@@ -380,7 +381,7 @@ export function registerComplianceRoutes(
       if (isInternalStaffRole(user.role)) {
         // Admin has unrestricted access; all other internal staff must be on the deal team.
         if (user.role !== "admin") {
-          const teamMembers = await storage.getDealTeamMembers(req.params.id);
+          const teamMembers = await storage.getDealTeamMembers(routeParam(req, "id"));
           const isMember = teamMembers.some(m => m.userId === user.id);
           if (!isMember) {
             return res.status(403).json({ error: "Access denied" });
@@ -388,13 +389,13 @@ export function registerComplianceRoutes(
         }
       } else {
         // Borrower path: must own the application.
-        const application = await storage.getLoanApplication(req.params.id);
+        const application = await storage.getLoanApplication(routeParam(req, "id"));
         if (!application || application.userId !== user.id) {
           return res.status(403).json({ error: "Access denied" });
         }
       }
 
-      const consent = await creditService.getActiveConsent(req.params.id);
+      const consent = await creditService.getActiveConsent(routeParam(req, "id"));
       res.json({ consent });
     } catch (error) {
       console.error("Get consent error:", error);
@@ -406,7 +407,7 @@ export function registerComplianceRoutes(
   app.post("/api/loan-applications/:id/credit/consent", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplication(routeParam(req, "id"));
       
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -434,7 +435,7 @@ export function registerComplianceRoutes(
       }
       
       const consent = await creditService.createCreditConsent({
-        applicationId: req.params.id,
+        applicationId: routeParam(req, "id"),
         userId: user.id,
         consentType: consentType || "hard_pull",
         borrowerFullName,
@@ -447,7 +448,7 @@ export function registerComplianceRoutes(
 
       // FCRA audit trail: record credit-pull consent capture.
       const { logAudit } = await import("../auditLog");
-      logAudit(req, "credit_consent.created", "loan_application", req.params.id, {
+      logAudit(req, "credit_consent.created", "loan_application", routeParam(req, "id"), {
         consentId: consent.id,
         consentType: consentType || "hard_pull",
         consentGiven,
@@ -470,7 +471,7 @@ export function registerComplianceRoutes(
       const user = req.user as User;
       const { reason } = req.body;
 
-      const consent = await creditService.getConsentById(req.params.consentId);
+      const consent = await creditService.getConsentById(routeParam(req, "consentId"));
       if (!consent) {
         return res.status(404).json({ error: "Consent not found" });
       }
@@ -493,7 +494,7 @@ export function registerComplianceRoutes(
       }
 
       await creditService.revokeConsent(
-        req.params.consentId,
+        routeParam(req, "consentId"),
         reason || "Borrower requested revocation",
         user.id,
         req.ip
@@ -501,8 +502,8 @@ export function registerComplianceRoutes(
 
       // FCRA audit trail: record consent revocation.
       const { logAudit } = await import("../auditLog");
-      logAudit(req, "credit_consent.revoked", "loan_application", consent.applicationId ?? req.params.consentId, {
-        consentId: req.params.consentId,
+      logAudit(req, "credit_consent.revoked", "loan_application", consent.applicationId ?? routeParam(req, "consentId"), {
+        consentId: routeParam(req, "consentId"),
         revokedBy: user.id,
         reason: reason || "Borrower requested revocation",
       });
@@ -517,7 +518,7 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/credit/draft", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplication(routeParam(req, "id"));
       
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -527,7 +528,7 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const draft = await creditService.getDraftConsent(req.params.id, user.id);
+      const draft = await creditService.getDraftConsent(routeParam(req, "id"), user.id);
       res.json({ draft });
     } catch (error) {
       console.error("Get draft consent error:", error);
@@ -538,7 +539,7 @@ export function registerComplianceRoutes(
   app.post("/api/loan-applications/:id/credit/draft", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplication(routeParam(req, "id"));
       
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -548,7 +549,7 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Only the borrower can save draft consent" });
       }
       
-      const draft = await creditService.saveDraftConsent(req.params.id, user.id, req.body);
+      const draft = await creditService.saveDraftConsent(routeParam(req, "id"), user.id, req.body);
       res.json({ draft });
     } catch (error) {
       console.error("Save draft consent error:", error);
@@ -559,7 +560,7 @@ export function registerComplianceRoutes(
   app.delete("/api/loan-applications/:id/credit/draft", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplication(routeParam(req, "id"));
       
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -569,7 +570,7 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       
-      await creditService.deleteDraftConsent(req.params.id, user.id);
+      await creditService.deleteDraftConsent(routeParam(req, "id"), user.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Delete draft consent error:", error);
@@ -582,7 +583,7 @@ export function registerComplianceRoutes(
     try {
       const user = req.user as User;
       
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplication(routeParam(req, "id"));
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
@@ -590,14 +591,14 @@ export function registerComplianceRoutes(
       // Non-admin staff must be assigned to the application before they can
       // initiate a credit pull, which is a regulated FCRA action.
       if (user.role !== "admin") {
-        const teamMembers = await storage.getDealTeamMembers(req.params.id);
+        const teamMembers = await storage.getDealTeamMembers(routeParam(req, "id"));
         const isMember = teamMembers.some(m => m.userId === user.id);
         if (!isMember) {
           return res.status(403).json({ error: "You are not assigned to this application" });
         }
       }
       
-      const consent = await creditService.getActiveConsent(req.params.id);
+      const consent = await creditService.getActiveConsent(routeParam(req, "id"));
       if (!consent) {
         return res.status(400).json({ error: "Valid consent required before credit pull" });
       }
@@ -605,7 +606,7 @@ export function registerComplianceRoutes(
       const { pullType, bureaus } = req.body;
       
       const pull = await creditService.requestCreditPull({
-        applicationId: req.params.id,
+        applicationId: routeParam(req, "id"),
         consentId: consent.id,
         requestedBy: user.id,
         pullType: pullType || "tri_merge",
@@ -618,14 +619,14 @@ export function registerComplianceRoutes(
       
       // Update loan application with the representative credit score
       if (completedPull.representativeScore) {
-        await storage.updateLoanApplication(req.params.id, {
+        await storage.updateLoanApplication(routeParam(req, "id"), {
           creditScore: completedPull.representativeScore,
         });
       }
 
       // FCRA audit trail: record who pulled credit, when, and under which consent.
       const { logAudit } = await import("../auditLog");
-      logAudit(req, "credit.pulled", "loan_application", req.params.id, {
+      logAudit(req, "credit.pulled", "loan_application", routeParam(req, "id"), {
         pullId: completedPull.id,
         pullType: pullType || "tri_merge",
         consentId: consent.id,
@@ -635,7 +636,7 @@ export function registerComplianceRoutes(
       // Credit is now verified by the pull: mark the dimension (auto-promotes the
       // application to VERIFIED once income + assets are also verified) and recalc.
       import("../services/verification")
-        .then((m) => m.markDimensionVerified(req.params.id, "credit", user.id))
+        .then((m) => m.markDimensionVerified(routeParam(req, "id"), "credit", user.id))
         .catch(() => {});
 
       res.status(201).json({ pull: completedPull });
@@ -649,13 +650,13 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/credit/pulls", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
+      const application = await storage.getLoanApplicationWithAccess(routeParam(req, "id"), user.id, user.role);
       
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const pulls = await creditService.getCreditPullsByApplication(req.params.id);
+      const pulls = await creditService.getCreditPullsByApplication(routeParam(req, "id"));
       res.json({ pulls });
     } catch (error) {
       console.error("Get credit pulls error:", error);
@@ -667,13 +668,13 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/credit/latest", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
+      const application = await storage.getLoanApplicationWithAccess(routeParam(req, "id"), user.id, user.role);
       
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const pull = await creditService.getLatestCreditPull(req.params.id);
+      const pull = await creditService.getLatestCreditPull(routeParam(req, "id"));
       res.json({ pull });
     } catch (error) {
       console.error("Get latest credit pull error:", error);
@@ -744,11 +745,11 @@ export function registerComplianceRoutes(
       if (!isStaffRole(user.role)) {
         return res.status(403).json({ error: "Staff access required" });
       }
-      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
+      const application = await storage.getLoanApplicationWithAccess(routeParam(req, "id"), user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const status = await creditService.getApplicationRetentionStatus(req.params.id);
+      const status = await creditService.getApplicationRetentionStatus(routeParam(req, "id"));
       res.json(status);
     } catch (error) {
       console.error("Get retention status error:", error);
@@ -765,7 +766,7 @@ export function registerComplianceRoutes(
       }
 
       // Resolve the pull to its parent application so we can enforce assignment.
-      const pull = await creditService.getCreditPullById(req.params.pullId);
+      const pull = await creditService.getCreditPullById(routeParam(req, "pullId"));
       if (!pull) {
         return res.status(404).json({ error: "Credit pull not found" });
       }
@@ -779,7 +780,7 @@ export function registerComplianceRoutes(
       }
 
       const { reason } = req.body;
-      await creditService.archiveCreditPull(req.params.pullId, reason || "Retention policy", user.id);
+      await creditService.archiveCreditPull(routeParam(req, "pullId"), reason || "Retention policy", user.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Archive credit pull error:", error);
@@ -833,7 +834,7 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Internal staff access required" });
       }
       
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplication(routeParam(req, "id"));
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
@@ -841,7 +842,7 @@ export function registerComplianceRoutes(
       // Non-admin internal staff must be assigned to the application to generate
       // an adverse-action notice — this is a regulated, borrower-facing credit action.
       if (user.role !== "admin") {
-        const teamMembers = await storage.getDealTeamMembers(req.params.id);
+        const teamMembers = await storage.getDealTeamMembers(routeParam(req, "id"));
         const isMember = teamMembers.some(m => m.userId === user.id);
         if (!isMember) {
           return res.status(403).json({ error: "You are not assigned to this application" });
@@ -851,7 +852,7 @@ export function registerComplianceRoutes(
       // Validate request body using Zod schema
       const parseResult = adverseActionRequestSchema.safeParse(req.body);
       if (!parseResult.success) {
-        const errorMessages = parseResult.error.errors.map(e => e.message).join("; ");
+        const errorMessages = parseResult.error.issues.map(e => e.message).join("; ");
         return res.status(400).json({ error: errorMessages });
       }
       
@@ -865,7 +866,7 @@ export function registerComplianceRoutes(
       } = parseResult.data;
       
       const adverseAction = await creditService.generateAdverseAction({
-        applicationId: req.params.id,
+        applicationId: routeParam(req, "id"),
         creditPullId,
         userId: application.userId,
         actionType,
@@ -878,7 +879,7 @@ export function registerComplianceRoutes(
 
       // ECOA/FCRA audit trail: record adverse-action generation with reasons.
       const { logAudit } = await import("../auditLog");
-      logAudit(req, "adverse_action.generated", "loan_application", req.params.id, {
+      logAudit(req, "adverse_action.generated", "loan_application", routeParam(req, "id"), {
         adverseActionId: adverseAction.id,
         actionType,
         primaryReason,
@@ -897,7 +898,7 @@ export function registerComplianceRoutes(
           title: "Important notice about your application",
           body: "A required disclosure about a decision on your application is now available to view.",
           entityType: "loan_application",
-          entityId: req.params.id,
+          entityId: routeParam(req, "id"),
           status: "unread",
         });
         const borrower = await storage.getUser(application.userId);
@@ -923,13 +924,13 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/credit/adverse-actions", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
+      const application = await storage.getLoanApplicationWithAccess(routeParam(req, "id"), user.id, user.role);
       
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const adverseActions = await creditService.getAdverseActionsByApplication(req.params.id);
+      const adverseActions = await creditService.getAdverseActionsByApplication(routeParam(req, "id"));
       res.json({ adverseActions });
     } catch (error) {
       console.error("Get adverse actions error:", error);
@@ -954,7 +955,7 @@ export function registerComplianceRoutes(
       }
 
       // Resolve the adverse action to its parent application before authorizing.
-      const action = await creditService.getAdverseActionById(req.params.actionId);
+      const action = await creditService.getAdverseActionById(routeParam(req, "actionId"));
       if (!action) {
         return res.status(404).json({ error: "Adverse action not found" });
       }
@@ -1024,7 +1025,7 @@ export function registerComplianceRoutes(
       }
 
       // Resolve the adverse action to its parent application before authorizing.
-      const action = await creditService.getAdverseActionById(req.params.actionId);
+      const action = await creditService.getAdverseActionById(routeParam(req, "actionId"));
       if (!action) {
         return res.status(404).json({ error: "Adverse action not found" });
       }
@@ -1040,7 +1041,7 @@ export function registerComplianceRoutes(
       const { deliveryMethod, deliveryConfirmation } = req.body;
       
       await creditService.markAdverseActionDelivered(
-        req.params.actionId,
+        routeParam(req, "actionId"),
         deliveryMethod || "in_app",
         deliveryConfirmation
       );
@@ -1048,7 +1049,7 @@ export function registerComplianceRoutes(
       // ECOA audit trail: record delivery of the adverse-action notice.
       const { logAudit } = await import("../auditLog");
       logAudit(req, "adverse_action.delivered", "loan_application", action.applicationId, {
-        adverseActionId: req.params.actionId,
+        adverseActionId: routeParam(req, "actionId"),
         deliveryMethod: deliveryMethod || "in_app",
         deliveredBy: user.id,
       });
@@ -1070,13 +1071,13 @@ export function registerComplianceRoutes(
       }
       
       // Use getLoanApplicationWithAccess: broker/lender must be deal-team members.
-      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
+      const application = await storage.getLoanApplicationWithAccess(routeParam(req, "id"), user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
       
       const limit = parseInt(firstQueryValue(req.query.limit) ?? "") || 100;
-      const auditLog = await creditService.getCreditAuditLog(req.params.id, limit);
+      const auditLog = await creditService.getCreditAuditLog(routeParam(req, "id"), limit);
       res.json({ auditLog });
     } catch (error) {
       console.error("Get credit audit log error:", error);
@@ -1092,12 +1093,12 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Staff access required" });
       }
       
-      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
+      const application = await storage.getLoanApplicationWithAccess(routeParam(req, "id"), user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
       
-      const result = await creditService.verifyAuditLogIntegrity(req.params.id);
+      const result = await creditService.verifyAuditLogIntegrity(routeParam(req, "id"));
       res.json(result);
     } catch (error) {
       console.error("Verify audit log error:", error);
@@ -1113,7 +1114,7 @@ export function registerComplianceRoutes(
         return res.status(403).json({ error: "Staff access required" });
       }
       
-      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
+      const application = await storage.getLoanApplicationWithAccess(routeParam(req, "id"), user.id, user.role);
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
@@ -1121,12 +1122,12 @@ export function registerComplianceRoutes(
       const format = firstQueryValue(req.query.format) || "json";
       
       if (format === "csv") {
-        const csv = await creditService.generateCSVExport(req.params.id);
+        const csv = await creditService.generateCSVExport(routeParam(req, "id"));
         res.setHeader("Content-Type", "text/csv");
-        res.setHeader("Content-Disposition", `attachment; filename="audit-log-${req.params.id}.csv"`);
+        res.setHeader("Content-Disposition", `attachment; filename="audit-log-${routeParam(req, "id")}.csv"`);
         res.send(csv);
       } else {
-        const exportPackage = await creditService.generateAuditExportPackage(req.params.id, user.id);
+        const exportPackage = await creditService.generateAuditExportPackage(routeParam(req, "id"), user.id);
         res.json(exportPackage);
       }
     } catch (error) {
@@ -1145,17 +1146,17 @@ export function registerComplianceRoutes(
       const user = req.user as User;
       const isExternalPartner = user.role === "broker" || user.role === "lender";
 
-      const application = await storage.getLoanApplicationWithAccess(req.params.id, user.id, user.role);
+      const application = await storage.getLoanApplicationWithAccess(routeParam(req, "id"), user.id, user.role);
       
       if (!application) {
         return res.status(403).json({ error: "Access denied" });
       }
       
       const [consent, latestPull, pulls, adverseActions] = await Promise.all([
-        creditService.getActiveConsent(req.params.id),
-        creditService.getLatestCreditPull(req.params.id),
-        creditService.getCreditPullsByApplication(req.params.id),
-        creditService.getAdverseActionsByApplication(req.params.id),
+        creditService.getActiveConsent(routeParam(req, "id")),
+        creditService.getLatestCreditPull(routeParam(req, "id")),
+        creditService.getCreditPullsByApplication(routeParam(req, "id")),
+        creditService.getAdverseActionsByApplication(routeParam(req, "id")),
       ]);
       
       res.json({
@@ -1181,7 +1182,7 @@ export function registerComplianceRoutes(
   app.get("/api/loan-applications/:id/hmda", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
       if (!application) {
@@ -1206,7 +1207,7 @@ export function registerComplianceRoutes(
   app.post("/api/loan-applications/:id/hmda", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const { id } = req.params;
+      const { id } = routeParams(req);
 
       const application = await storage.getLoanApplicationWithAccess(id, user.id, user.role);
       if (!application) {

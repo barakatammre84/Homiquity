@@ -19,6 +19,7 @@ import {
 } from "@shared/schema";
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
+import { routeParam } from "../../http/routeParams";
 
 
 export function registerAgentDirectoryRoutes(
@@ -113,7 +114,7 @@ export function registerAgentDirectoryRoutes(
     } catch (error) {
       console.error("Create referral request error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+        return res.status(400).json({ error: "Invalid request data", details: error.issues });
       }
       res.status(500).json({ error: "Failed to submit referral request" });
     }
@@ -131,7 +132,7 @@ export function registerAgentDirectoryRoutes(
 
   app.get("/api/agents/:agentId", async (req, res) => {
     try {
-      const agent = await storage.getAgentProfile(req.params.agentId);
+      const agent = await storage.getAgentProfile(routeParam(req, "agentId"));
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
       }
@@ -149,7 +150,7 @@ export function registerAgentDirectoryRoutes(
 
   app.get("/api/agents/:agentId/listings", async (req, res) => {
     try {
-      const properties = await storage.getPropertiesByAgent(req.params.agentId);
+      const properties = await storage.getPropertiesByAgent(routeParam(req, "agentId"));
       res.json(properties.filter(p => p.status === "active"));
     } catch (error) {
       console.error("Get agent listings error:", error);

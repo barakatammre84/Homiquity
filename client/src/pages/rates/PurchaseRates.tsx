@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getPublicQueryFn } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,25 +32,29 @@ function getStateFromZip(zip: string): string | undefined {
   return undefined;
 }
 
+// Purchasing is a transaction purpose, not a product: what is offered for it is
+// a conforming first mortgage. The one constant feeds both the request and the
+// query key, so the cache can never describe a request that wasn't made.
+const RATE_LOAN_TYPE = "conventional";
+
 export default function PurchaseRates() {
   usePageView("/rates/purchase");
   const [zipcode, setZipcode] = useState("");
   const [searchZipcode, setSearchZipcode] = useState("");
 
   const { data: rates, isLoading, isFetching } = useQuery<MortgageRateWithProgram[]>({
-    queryKey: ["/api/mortgage-rates", { zipcode: searchZipcode, loanType: "conventional" }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.append("loanType", "conventional");
-      if (searchZipcode) {
-        params.append("zipcode", searchZipcode);
-        const stateFromZip = getStateFromZip(searchZipcode);
-        if (stateFromZip) params.append("state", stateFromZip);
-      }
-      const res = await fetch(`/api/mortgage-rates?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch rates");
-      return res.json();
-    },
+    // Their loanType (the Reg Z product-heading fix, now enforced in SQL)
+    // rides in the key, and getPublicQueryFn builds the URL from the key —
+    // so the cache can never describe a request that was not made.
+    queryKey: [
+      "/api/mortgage-rates",
+      {
+        loanType: RATE_LOAN_TYPE,
+        zipcode: searchZipcode,
+        state: getStateFromZip(searchZipcode),
+      },
+    ],
+    queryFn: getPublicQueryFn<MortgageRateWithProgram[]>(),
   });
 
   const handleSearch = useCallback(() => {
@@ -58,9 +63,8 @@ export default function PurchaseRates() {
     }
   }, [zipcode]);
 
-  const purchaseRates = rates?.filter(r => 
-    r.program.loanType === "conventional" || r.program.loanType === null
-  );
+  // Narrowed server-side by RATE_LOAN_TYPE — no render-path filter to forget.
+  const purchaseRates = rates;
 
   const formatTerm = (rate: MortgageRateWithProgram) => formatRateTerm(rate);
   const formatPoints = (rate: MortgageRateWithProgram) => formatRatePoints(rate);

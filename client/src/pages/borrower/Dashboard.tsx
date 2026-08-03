@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useActiveApplication } from "@/hooks/useActiveApplication";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useAutopilotStatus } from "@/hooks/useAutopilotStatus";
@@ -24,7 +25,6 @@ import { ContactCard } from "@/components/dashboard/ContactCard";
 import { LoanTeamCard } from "@/components/dashboard/LoanTeamCard";
 import { RenterHome } from "@/pages/borrower/RenterHome";
 import { isStaffRole } from "@shared/roles";
-import { isTerminalLoanAppStatus } from "@shared/schema";
 import PredictionInsights from "@/components/borrower/PredictionInsights";
 import type { LoanApplication, DealActivity, LoanAppStatus } from "@shared/schema";
 import {
@@ -75,7 +75,6 @@ export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   usePageView("/dashboard");
   const [, navigate] = useLocation();
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
 
   const isStaff = isStaffRole(user?.role || "");
 
@@ -126,14 +125,11 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
-  // Rules of Hooks: the Autopilot status hook must run before the early returns
-  // below. Resolve the active application id the same way activeApplication does
-  // (tolerant of not-yet-loaded data); the hook re-subscribes when the id changes.
-  const statusApps = data?.applications || [];
-  const statusActiveApp = selectedAppId
-    ? statusApps.find((a) => a.id === selectedAppId) || statusApps.find((a) => !isTerminalLoanAppStatus(a.status))
-    : statusApps.find((a) => !isTerminalLoanAppStatus(a.status));
-  const autopilotStatus = useAutopilotStatus(statusActiveApp?.id);
+  // Rules of Hooks: both of these must run before the early returns below, so
+  // the selection is resolved once here (tolerant of not-yet-loaded data) and
+  // reused after the guards; the Autopilot hook re-subscribes when the id changes.
+  const { activeApplication, selectApplication } = useActiveApplication(data?.applications ?? []);
+  const autopilotStatus = useAutopilotStatus(activeApplication?.id);
 
   if (authLoading || isLoading || isStaff) {
     return (
@@ -152,19 +148,11 @@ export default function Dashboard() {
   const unreadMessages = data?.unreadMessages || 0;
   const pendingTasksByApplication = data?.pendingTasksByApplication || {};
 
-  const defaultApp = applications.find(
-    (app) => !isTerminalLoanAppStatus(app.status)
-  );
-
   // Post-close borrowers graduate to the Homeowner module (equity tracking,
   // refi alerts). This is the only in-app path to /homeowner-dashboard.
   // ("funded" is the canonical post-close status — the old check for "closed"
   // matched a value no backend path ever wrote, so this link never appeared.)
   const hasClosedLoan = applications.some((app) => app.status === "funded");
-
-  const activeApplication = selectedAppId
-    ? applications.find(app => app.id === selectedAppId) || defaultApp
-    : defaultApp;
 
   const isPreApproved = activeApplication?.status === "pre_approved";
   const expirationInfo = activeApplication ? getExpirationInfo(activeApplication) : null;
@@ -289,7 +277,7 @@ export default function Dashboard() {
                 <ApplicationSwitcher
                   applications={applications}
                   activeApplicationId={activeApplication?.id}
-                  onSelectApplication={(app) => setSelectedAppId(app.id)}
+                  onSelectApplication={selectApplication}
                 />
               </div>
             )}

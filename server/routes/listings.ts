@@ -1,6 +1,7 @@
 // Uses Redfin unofficial API. No API key required. Monitor for breaking changes.
 
 import type { Express, Request, Response } from "express";
+import { routeParams } from "../http/routeParams";
 
 interface CacheEntry<T> {
   data: T;
@@ -420,7 +421,7 @@ export function registerListingsRoutes(app: Express) {
 
   app.get("/api/listings/:id", async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const cacheKey = `detail:${id}`;
 
       const cached = getCached<any>(cacheKey);

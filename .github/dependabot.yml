@@ -12,9 +12,45 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # typescript 7 is the native Go port. Vercel's Node builder loads the
+      # project's own compiler through the legacy CommonJS API (ts.sys.readFile),
+      # which the port does not expose, so every deploy fails with
+      # "Cannot read properties of undefined (reading 'readFile')" — while `tsc`
+      # itself passes, so the gate stays green and prod silently freezes on the
+      # last good deployment. That is #268 → #279; do not re-take the bump until
+      # Vercel's builder supports the native port, then remove this entry.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+
+
+      # @hookform/resolvers 5 is blocked by the same input-vs-output problem,
+      # independently of zod's version. Its peer range is already satisfied
+      # (5.5.7 accepts `zod: ^3.25.0 || ^4.0.0`, and react-hook-form 7.84 is
+      # new enough). The break is the third `Resolver` generic: v5 threads a
+      # schema's INPUT type and its OUTPUT type separately, and every form whose
+      # schema uses `.default()` has `isPublished?: boolean | undefined` going in
+      # and `isPublished: boolean` coming out, so the resolver no longer matches
+      # the form it is handed to (AdminContent alone reports 6).
+      # Fixing means giving those useForm calls explicit input/output generics —
+      # a forms migration. Remove this entry when that is done.
+      - dependency-name: "@hookform/resolvers"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
+    ignore:
+      # Workflows pin the floating major tag (`pnpm/action-setup@v6`), which
+      # already resolves to the newest 6.x at run time — including security
+      # patches, with no PR needed. A PR moving `@v6` to `@6.0.9` would pin us
+      # BELOW that floating tag and then re-open on every future patch, which is
+      # churn in exchange for less coverage. Majors still come through, because
+      # those are the ones that need a workflow edit.
+      - dependency-name: "pnpm/action-setup"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"

@@ -25,7 +25,7 @@ import {
   CheckCheck,
 } from "lucide-react";
 import type { DealActivity } from "@shared/schema";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface NotificationItem {
   id: string;
@@ -193,20 +193,14 @@ export function NotificationsBell() {
   const allNotifications = [...realNotifications, ...activityNotifications];
 
   async function handleMarkAllRead() {
-    await fetch("/api/notifications/read-all", {
-      method: "PATCH",
-      credentials: "include",
-    });
+    await apiRequest("PATCH", "/api/notifications/read-all");
     queryClient.invalidateQueries({ queryKey: ["/api/shell/badges"] });
     queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
   }
 
   async function handleNotificationClick(notif: NotificationItem) {
     if (notif.isReal && notif.realId) {
-      await fetch(`/api/notifications/${notif.realId}/read`, {
-        method: "PATCH",
-        credentials: "include",
-      });
+      await apiRequest("PATCH", `/api/notifications/${notif.realId}/read`);
       queryClient.invalidateQueries({ queryKey: ["/api/shell/badges"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
     }

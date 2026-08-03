@@ -7,6 +7,7 @@ import { requireConsent } from "../../consentGate";
 import { z } from "zod";
 import { COC_REASON_TYPES } from "@shared/compliance/changeOfCircumstance";
 import * as creditService from "../../services/creditService";
+import { routeParams } from "../../http/routeParams";
 
 export function registerDeliveryRoutes(
   app: Express,
@@ -17,7 +18,7 @@ export function registerDeliveryRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -41,7 +42,7 @@ export function registerDeliveryRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -76,7 +77,7 @@ export function registerDeliveryRoutes(
 
   app.get("/api/loan-applications/:id/loan-estimate", isAuthenticated, requireConsent("e_disclosure"), async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
@@ -141,7 +142,7 @@ export function registerDeliveryRoutes(
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (req, res) => {
       try {
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -170,7 +171,7 @@ export function registerDeliveryRoutes(
           return res.status(400).json({ error: "informationReceivedAt cannot be in the future" });
         }
 
-        const { id } = req.params;
+        const { id } = routeParams(req);
         const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
@@ -208,7 +209,7 @@ export function registerDeliveryRoutes(
         if (!parsed.success) {
           return res.status(400).json({ error: "A void reason is required", details: parsed.error.flatten() });
         }
-        const { cocId } = req.params;
+        const { cocId } = routeParams(req);
         const coc = await storage.getChangeOfCircumstance(cocId);
         if (!coc) {
           return res.status(404).json({ error: "Change of circumstance not found" });

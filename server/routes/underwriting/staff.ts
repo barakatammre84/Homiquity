@@ -5,6 +5,7 @@ import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
 import type { User } from "@shared/schema";
 import * as creditService from "../../services/creditService";
+import { routeParams } from "../../http/routeParams";
 
 export function registerStaffRoutes(
   app: Express,
@@ -72,7 +73,7 @@ export function registerStaffRoutes(
 
   app.get("/api/loan-applications/:id/underwriting-snapshots", isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });

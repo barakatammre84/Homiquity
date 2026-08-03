@@ -9,6 +9,7 @@ import { createServer as createViteServer, createLogger } from "vite";
 
 import viteConfig from "../vite.config";
 import runApp from "./app";
+import { SPA_CATCH_ALL_PATTERN } from "./spaCatchAll";
 
 export async function setupVite(app: Express, server: Server) {
   const viteLogger = createLogger();
@@ -33,7 +34,7 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  app.use(SPA_CATCH_ALL_PATTERN, async (req, res, next) => {
     const url = req.originalUrl;
 
     try {

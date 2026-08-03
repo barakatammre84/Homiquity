@@ -3,6 +3,7 @@ import { db } from "./db";
 import { consentTemplates } from "@shared/schema";
 import { and, eq } from "drizzle-orm";
 import { storage } from "./storage";
+import { routeParam } from "./http/routeParams";
 
 /**
  * ESIGN / Reg-Z consent gate.
@@ -176,7 +177,7 @@ export function ensureComplianceTemplates(): Promise<void> {
 export function requireConsent(consentType: string): RequestHandler {
   return async (req, res, next) => {
     try {
-      const applicationId = (req.params.id ?? req.params.applicationId) as string | undefined;
+      const applicationId = (routeParam(req, "id") ?? routeParam(req, "applicationId")) as string | undefined;
       if (!applicationId) {
         return res.status(400).json({ error: "Application id required" });
       }

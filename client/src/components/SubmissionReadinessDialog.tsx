@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
@@ -94,7 +94,7 @@ export function SubmissionReadinessDialog({
   const { toast } = useToast();
 
   const { data: readiness, isLoading } = useQuery<ReadinessReport>({
-    queryKey: [`/api/loan-applications/${applicationId}/submission-readiness`],
+    queryKey: loanApplicationKeys.submissionReadiness(applicationId),
     enabled: open,
   });
   const { data: lenders } = useQuery<WholesaleLender[]>({
@@ -102,7 +102,7 @@ export function SubmissionReadinessDialog({
     enabled: open,
   });
   const { data: submissions } = useQuery<LenderSubmissionRow[]>({
-    queryKey: [`/api/loan-applications/${applicationId}/lender-submissions`],
+    queryKey: loanApplicationKeys.lenderSubmissions(applicationId),
     enabled: open,
   });
 
@@ -115,7 +115,7 @@ export function SubmissionReadinessDialog({
     },
     onSuccess: (submission: LenderSubmissionRow) => {
       queryClient.invalidateQueries({
-        queryKey: [`/api/loan-applications/${applicationId}/lender-submissions`],
+        queryKey: loanApplicationKeys.lenderSubmissions(applicationId),
       });
       toast({
         title: "Submitted to lender",
@@ -140,7 +140,7 @@ export function SubmissionReadinessDialog({
     },
     onSuccess: (data: { recommendation?: string; findings?: { simulated?: boolean } }) => {
       queryClient.invalidateQueries({
-        queryKey: [`/api/loan-applications/${applicationId}/submission-readiness`],
+        queryKey: loanApplicationKeys.submissionReadiness(applicationId),
       });
       toast({
         title: "Automated underwriting complete (DU + LPA)",
@@ -166,10 +166,15 @@ export function SubmissionReadinessDialog({
     },
     onSuccess: (data: { conditions: unknown[] }) => {
       queryClient.invalidateQueries({
-        queryKey: [`/api/loan-applications/${applicationId}/lender-submissions`],
+        queryKey: loanApplicationKeys.lenderSubmissions(applicationId),
       });
+      // The conditions list is served by the *pipeline* query — BorrowerFile
+      // reads `pipelineData.conditions` and passes it down to ConditionsTab.
+      // This previously invalidated `/api/loan-applications/<id>/conditions`,
+      // a key no query subscribes to, so freshly logged lender conditions did
+      // not appear in the Conditions tab until a full reload.
       queryClient.invalidateQueries({
-        queryKey: [`/api/loan-applications/${applicationId}/conditions`],
+        queryKey: loanApplicationKeys.pipeline(applicationId),
       });
       setLogConditionsFor(null);
       setConditionText("");

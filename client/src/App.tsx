@@ -9,7 +9,8 @@ import { PrivateLayout } from "@/components/layouts/PrivateLayout";
 import { BareLayout } from "@/components/layouts/BareLayout";
 import { Loader2 } from "lucide-react";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
-import { ROLE_GROUPS } from "@/lib/roleGroups";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { ROUTE_GATES } from "@/lib/routeGates";
 
 // Lazy — this modal is the only eager import that pulls framer-motion, so
 // loading it eagerly shipped the whole animation library in the main chunk on
@@ -174,39 +175,40 @@ function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
 }
 
-// Role groups are the single source of truth in @/lib/roleGroups (which sources
-// the shared canonical role sets). Each wrapper just names the surface; the
-// role→surface mapping and its server-mirror rationale live in one place there.
+// Route gates live in @/lib/routeGates — one definition shared with the sidebar,
+// so the nav and the router can't disagree about who may reach a page. Each gate
+// documents the server-side authorization it mirrors.
+
 function BorrowerPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={ROLE_GROUPS.borrower}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.borrower}>{children}</PrivateLayout>;
 }
 
 function StaffPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={ROLE_GROUPS.staff}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.staff}>{children}</PrivateLayout>;
 }
 
 function InternalStaffPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={ROLE_GROUPS.internalStaff}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.internalStaff}>{children}</PrivateLayout>;
 }
 
 function UnderwriterOpsPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={ROLE_GROUPS.underwriterOps}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.underwriterOps}>{children}</PrivateLayout>;
 }
 
 function LoTeamPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={ROLE_GROUPS.loTeam}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.loTeam}>{children}</PrivateLayout>;
 }
 
 function CpaPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={ROLE_GROUPS.cpa}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.cpaPortal}>{children}</PrivateLayout>;
 }
 
 function PartnerPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={ROLE_GROUPS.partner}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.partnerHub}>{children}</PrivateLayout>;
 }
 
 function AdminPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={ROLE_GROUPS.admin}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROUTE_GATES.adminOnly}>{children}</PrivateLayout>;
 }
 
 function AnyAuthPage({ children }: { children: React.ReactNode }) {
@@ -491,8 +493,12 @@ function Router() {
         <Route path="/strategy-sessions">
           <StaffPage><StrategySessions /></StaffPage>
         </Route>
+        {/* The page's primary query is GET /api/closing-guarantees, which returns
+            every guarantee system-wide and is admin-only on the server (it cannot be
+            scoped without enumerating the caller's assigned files). The other seven
+            staff roles reached this page and got nothing but a 403. */}
         <Route path="/closing-guarantee">
-          <StaffPage><ClosingGuarantee /></StaffPage>
+          <AdminPage><ClosingGuarantee /></AdminPage>
         </Route>
         <Route path="/policy-ops">
           <UnderwriterOpsPage><PolicyOps /></UnderwriterOpsPage>
@@ -573,7 +579,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        {/* Inner boundary: a route whose lazy chunk fails to load is contained
+            here, so the Toaster and the providers stay mounted. The root
+            boundary in main.tsx backstops the providers themselves. */}
+        <AppErrorBoundary>
+          <Router />
+        </AppErrorBoundary>
         <EmailCaptureGate />
       </TooltipProvider>
     </QueryClientProvider>

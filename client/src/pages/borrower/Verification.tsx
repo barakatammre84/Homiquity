@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { usePlaidLink } from "react-plaid-link";
+import { usePlaidLink, type PlaidLinkOnSuccess } from "react-plaid-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import type { LoanApplication, Verification } from "@shared/schema";
-import { isTerminalLoanAppStatus } from "@shared/schema";
+import { useActiveApplication } from "@/hooks/useActiveApplication";
 import {
   CheckCircle2,
   Clock,
@@ -143,8 +143,11 @@ function PlaidLinkButton({
     },
   });
 
-  const handlePlaidSuccess = useCallback(
-    (publicToken: string) => {
+  // v5 types public_token as `string | null` and adds a metadata argument.
+  // Exchanging `null` would post a malformed body, so drop it instead.
+  const handlePlaidSuccess = useCallback<PlaidLinkOnSuccess>(
+    (publicToken) => {
+      if (!publicToken) return;
       exchangeTokenMutation.mutate(publicToken);
     },
     [exchangeTokenMutation]
@@ -209,9 +212,7 @@ export default function VerificationPage() {
   });
 
   const applications = dashboardData?.applications || [];
-  const activeApplication = applications.find(
-    (app) => !isTerminalLoanAppStatus(app.status)
-  );
+  const { activeApplication } = useActiveApplication(applications);
 
   const { data: verifications, isLoading: verificationsLoading, refetch } = useQuery<Verification[]>({
     queryKey: ["/api/verifications/application", activeApplication?.id],

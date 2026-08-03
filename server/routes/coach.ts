@@ -13,6 +13,7 @@ import {
 import { pickActiveLoanApplication } from "@shared/schema";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
+import { routeParam } from "../http/routeParams";
 
 const messageSchema = z.object({
   message: z.string().min(1).max(5000),
@@ -300,7 +301,7 @@ export function registerCoachRoutes(app: Express) {
   app.get("/api/coach/conversations/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const conversation = await storage.getCoachConversation(req.params.id);
+      const conversation = await storage.getCoachConversation(routeParam(req, "id"));
       if (!conversation || conversation.userId !== user.id) {
         return res.status(404).json({ error: "Conversation not found" });
       }
@@ -333,7 +334,7 @@ export function registerCoachRoutes(app: Express) {
     const user = req.user as User;
     const parsed = messageSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid message", details: parsed.error.errors });
+      res.status(400).json({ error: "Invalid message", details: parsed.error.issues });
       return null;
     }
 
@@ -670,13 +671,13 @@ export function registerCoachRoutes(app: Express) {
   app.patch("/api/coach/conversations/:id/action-plan/:itemId", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const conversation = await storage.getCoachConversation(req.params.id);
+      const conversation = await storage.getCoachConversation(routeParam(req, "id"));
       if (!conversation || conversation.userId !== user.id) {
         return res.status(404).json({ error: "Conversation not found" });
       }
 
       const plan = (conversation.actionPlan as any[]) || [];
-      const itemIndex = plan.findIndex((item: any) => item.id === req.params.itemId);
+      const itemIndex = plan.findIndex((item: any) => item.id === routeParam(req, "itemId"));
       if (itemIndex === -1) {
         return res.status(404).json({ error: "Action item not found" });
       }

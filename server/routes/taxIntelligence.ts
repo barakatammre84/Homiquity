@@ -29,6 +29,7 @@ import { recalculateDecision } from "../services/decisionEngine";
 import { logAudit } from "../auditLog";
 import { logFriction } from "../services/frictionLog";
 import { firstQueryValue } from "./queryParams";
+import { routeParam } from "../http/routeParams";
 
 /**
  * Tax Document Intelligence routes (UAL P2a — Situation Identification Engine).
@@ -87,7 +88,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
   app.post("/api/documents/:id/tax-intelligence", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const document = await storage.getDocument(req.params.id);
+      const document = await storage.getDocument(routeParam(req, "id"));
       if (!document) {
         return res.status(404).json({ error: "Document not found" });
       }
@@ -194,7 +195,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
   app.get("/api/documents/:id/tax-intelligence", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const document = await storage.getDocument(req.params.id);
+      const document = await storage.getDocument(routeParam(req, "id"));
       if (!document) {
         return res.status(404).json({ error: "Document not found" });
       }
@@ -411,7 +412,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
       const [item] = await db
         .select()
         .from(reviewItems)
-        .where(eq(reviewItems.id, req.params.id))
+        .where(eq(reviewItems.id, routeParam(req, "id")))
         .limit(1);
       if (!item) {
         return res.status(404).json({ error: "Review item not found" });
@@ -460,7 +461,7 @@ export function registerTaxIntelligenceRoutes(app: Express, storage: IStorage) {
   app.post("/api/applications/:id/bank-statement-analysis", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      const application = await storage.getLoanApplication(req.params.id);
+      const application = await storage.getLoanApplication(routeParam(req, "id"));
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }

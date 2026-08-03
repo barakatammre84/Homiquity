@@ -13,6 +13,7 @@ import { sendNotificationEmail } from "../../services/emailService";
 import { evaluateTridTrigger } from "../../services/trid";
 import { intakePausedGate } from "../../services/maintenanceMode";
 import { prelaunchGate } from "../../services/prelaunchGate";
+import { routeParam } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -243,7 +244,7 @@ export function registerApplicationRoutes(
   app.get("/api/loan-applications/:id", isAuthenticated, async (req, res) => {
     try {
       const application = await storage.getLoanApplicationWithAccess(
-        req.params.id, 
+        routeParam(req, "id"), 
         req.user!.id, 
         req.user!.role
       );
@@ -252,9 +253,9 @@ export function registerApplicationRoutes(
       }
       
       const [options, documents, activities] = await Promise.all([
-        storage.getLoanOptionsByApplication(req.params.id),
-        storage.getDocumentsByApplication(req.params.id),
-        storage.getDealActivitiesByApplication(req.params.id),
+        storage.getLoanOptionsByApplication(routeParam(req, "id")),
+        storage.getDocumentsByApplication(routeParam(req, "id")),
+        storage.getDealActivitiesByApplication(routeParam(req, "id")),
       ]);
 
       res.json({
@@ -278,7 +279,7 @@ export function registerApplicationRoutes(
   app.get("/api/loan-applications/:id/options", isAuthenticated, async (req, res) => {
     try {
       const application = await storage.getLoanApplicationWithAccess(
-        req.params.id, 
+        routeParam(req, "id"), 
         req.user!.id, 
         req.user!.role
       );
@@ -286,7 +287,7 @@ export function registerApplicationRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
-      const options = await storage.getLoanOptionsByApplication(req.params.id);
+      const options = await storage.getLoanOptionsByApplication(routeParam(req, "id"));
       
       res.json({
         application,
