@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   Lock,
 } from "lucide-react";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { PageShell } from "@/components/PageShell";
 
 type LifecycleStatus = "DRAFT" | "ACTIVE" | "RETIRED";
@@ -132,7 +133,13 @@ export default function PricingMatrices() {
   const [scheduleMatrix, setScheduleMatrix] = useState<LookupMatrixListItem | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
 
-  const { data: matrices = [], isLoading } = useQuery<LookupMatrixListItem[]>({
+  const {
+    data: matrices = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<LookupMatrixListItem[]>({
     queryKey: ["/api/lookup-matrices"],
     enabled: canRead,
   });
@@ -187,6 +194,17 @@ export default function PricingMatrices() {
         )
       }
     >
+      {/* Before the stat tiles: the counts below are derived from `matrices`, so
+          a failed load would render "0 active / 0 draft" — on a pricing
+          governance screen that reads as a published state, not an outage. */}
+      {isError && (
+        <QueryErrorState
+          error={error}
+          onRetry={() => void refetch()}
+          title="We couldn't load pricing matrices"
+          data-testid="pricing-matrices-error"
+        />
+      )}
 
       <div className="grid gap-6 md:grid-cols-4">
         <Card>
@@ -195,7 +213,7 @@ export default function PricingMatrices() {
               <div>
                 <p className="text-sm text-muted-foreground">Active</p>
                 <p className="text-2xl font-bold" data-testid="stat-active">
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : activeCount}
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isError ? "—" : activeCount}
                 </p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-primary/20" />
@@ -208,7 +226,7 @@ export default function PricingMatrices() {
               <div>
                 <p className="text-sm text-muted-foreground">Drafts</p>
                 <p className="text-2xl font-bold" data-testid="stat-draft">
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : draftCount}
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isError ? "—" : draftCount}
                 </p>
               </div>
               <Edit className="h-8 w-8 text-primary/20" />
@@ -221,7 +239,7 @@ export default function PricingMatrices() {
               <div>
                 <p className="text-sm text-muted-foreground">Retired</p>
                 <p className="text-2xl font-bold" data-testid="stat-retired">
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : retiredCount}
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isError ? "—" : retiredCount}
                 </p>
               </div>
               <Archive className="h-8 w-8 text-primary/20" />
@@ -234,7 +252,7 @@ export default function PricingMatrices() {
               <div>
                 <p className="text-sm text-muted-foreground">Matrix Codes</p>
                 <p className="text-2xl font-bold" data-testid="stat-codes">
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : codeCount}
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : isError ? "—" : codeCount}
                 </p>
               </div>
               <Layers className="h-8 w-8 text-primary/20" />

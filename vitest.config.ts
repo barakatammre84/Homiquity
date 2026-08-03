@@ -12,7 +12,10 @@ export default defineConfig({
     // vitest.integration.config.ts instead.
     include: [
       "tests/accessControl.test.ts",
+      "tests/routeGates.test.ts",
+      "tests/queryErrorHandling.test.ts",
       "tests/apiRequestConvergence.test.ts",
+      "tests/queryKeyConvergence.test.ts",
       "tests/vercelDeploymentGuard.test.ts",
       "tests/loCommsLint.test.ts",
       "tests/scenarioSimulator.test.ts",
