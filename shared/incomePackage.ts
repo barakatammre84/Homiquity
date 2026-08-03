@@ -48,7 +48,7 @@ const confirmedWorksheetSchema = z.object({
   /** Provenance link back to the source tax insight/extraction, when smart-filled. */
   sourceTaxInsightId: z.string().nullable(),
   /** The confirmed worksheet figures (already PII-safe: no SSN/full EIN). */
-  worksheet: z.record(z.unknown()),
+  worksheet: z.record(z.string(), z.unknown()),
 });
 
 const situationSummarySchema = z.object({

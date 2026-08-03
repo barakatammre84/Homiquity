@@ -114,7 +114,7 @@ export function registerAgentDirectoryRoutes(
     } catch (error) {
       console.error("Create referral request error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+        return res.status(400).json({ error: "Invalid request data", details: error.issues });
       }
       res.status(500).json({ error: "Failed to submit referral request" });
     }

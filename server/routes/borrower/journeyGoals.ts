@@ -99,7 +99,7 @@ export function registerJourneyGoalRoutes(
     } catch (error) {
       console.error("Update homeownership goal error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid data", details: error.errors });
+        return res.status(400).json({ error: "Invalid data", details: error.issues });
       }
       res.status(500).json({ error: "Failed to update homeownership goal" });
     }
@@ -234,7 +234,7 @@ export function registerJourneyGoalRoutes(
     } catch (error) {
       console.error("Update credit action error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid data", details: error.errors });
+        return res.status(400).json({ error: "Invalid data", details: error.issues });
       }
       res.status(500).json({ error: "Failed to update credit action" });
     }

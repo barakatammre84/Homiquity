@@ -30,7 +30,7 @@ export function registerCalculatorRoutes(
       if (!validationResult.success) {
         return res.status(400).json({ 
           error: "Invalid request data", 
-          details: validationResult.error.errors 
+          details: validationResult.error.issues 
         });
       }
       
@@ -87,8 +87,8 @@ export function registerCalculatorRoutes(
           name: z.string(),
           monthlyPayment: z.number(),
         })).optional(),
-        calculatorInputs: z.record(z.unknown()).optional(),
-        calculatorResults: z.record(z.unknown()).optional(),
+        calculatorInputs: z.record(z.string(), z.unknown()).optional(),
+        calculatorResults: z.record(z.string(), z.unknown()).optional(),
         maxHomePrice: z.number().optional(),
         zipCode: z.string().optional(),
       });
