@@ -40,6 +40,19 @@ function report(message: string, stack?: string) {
   }
 }
 
+/**
+ * Report an error React already caught in an error boundary. Those never reach
+ * the `window.error` listener below — React swallows them — so a boundary has
+ * to forward them here explicitly or they go untelemetered. Shares the same
+ * throttle as the uncaught-error path.
+ */
+export function reportCaughtError(error: unknown, componentStack?: string) {
+  const err = error as { message?: string; stack?: string } | undefined;
+  const message = err?.message || String(error) || "Caught render error";
+  const stack = [err?.stack, componentStack].filter(Boolean).join("\n\n");
+  report(message, stack || undefined);
+}
+
 export function installErrorReporter() {
   window.addEventListener("error", (event) => {
     report(event.message || String(event.error), event.error?.stack);
