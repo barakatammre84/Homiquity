@@ -37,7 +37,7 @@ import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { canReviewDocuments } from "@shared/documentStatus";
 import { formatCurrency } from "@/lib/formatters";
 import { DocumentReviewPanel } from "@/components/staff/DocumentReviewPanel";
-import { CREDIT_DECISION_ROLES, type UrlaPersonalInfo } from "@shared/schema";
+import { CREDIT_DECISION_ROLES, FINANCIAL_VERIFICATION_ROLES, type UrlaPersonalInfo } from "@shared/schema";
 
 import { type ApplicationData, type PipelineData } from "./borrowerFile/model";
 import { StatusUpdateDialog } from "./borrowerFile/StatusUpdateDialog";
@@ -180,6 +180,10 @@ export default function BorrowerFile() {
   // Mirrors the server's role gate on PATCH /:id/status (statusDecisions.ts):
   // final credit decisions are 403'd for everyone else, so grey them out here.
   const canSetCreditDecisions = CREDIT_DECISION_ROLES.includes(user?.role || "");
+  // Mirrors requireRole on POST /:id/verify-financials — closer, broker, and lender
+  // are 403'd there, so they must not be offered the button. Both sides read
+  // FINANCIAL_VERIFICATION_ROLES (shared/schema/lendingCore.ts) so they can't drift.
+  const canVerifyFinancials = FINANCIAL_VERIFICATION_ROLES.includes(user?.role || "");
 
   // Pre-underwriting validator flags (loan_applications.pre_uw_flags) — the
   // machine-readable signal staff should see before opening any tab.
@@ -264,7 +268,7 @@ export default function BorrowerFile() {
                       <Badge variant="outline" className="border-border text-warning-subtle-foreground">
                         Financials Unverified
                       </Badge>
-                      {isStaff2 && (
+                      {canVerifyFinancials && (
                         <Button
                           size="sm"
                           variant="outline"

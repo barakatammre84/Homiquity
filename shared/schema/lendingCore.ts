@@ -232,6 +232,24 @@ export const PROTECTED_CREDIT_DECISION_STATUSES: readonly LoanAppStatus[] = [
 
 export const CREDIT_DECISION_ROLES: readonly string[] = ["admin", "underwriter"] as const;
 
+/**
+ * Staff roles permitted to mark a borrower's financials verified — the gate that
+ * lets a file proceed to approval and pre-approval-letter generation.
+ *
+ * Read by BOTH the requireRole list on POST /api/loan-applications/:id/verify-financials
+ * and the "Mark Financials Verified" button in BorrowerFile, so the client can never
+ * offer an action the server will reject. `closer` is deliberately excluded (a
+ * closing-stage role, not a document reviewer), as are the external partner roles
+ * (broker, lender), which never review borrower documentation.
+ */
+export const FINANCIAL_VERIFICATION_ROLES: readonly string[] = [
+  "admin",
+  "lo",
+  "loa",
+  "processor",
+  "underwriter",
+] as const;
+
 export function isProtectedCreditDecisionStatus(value: string): boolean {
   return (PROTECTED_CREDIT_DECISION_STATUSES as readonly string[]).includes(value);
 }
