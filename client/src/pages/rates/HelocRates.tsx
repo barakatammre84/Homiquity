@@ -38,11 +38,13 @@ export default function HelocRates() {
   const [searchZipcode, setSearchZipcode] = useState("");
 
   const { data: rates, isLoading, isFetching } = useQuery<MortgageRateWithProgram[]>({
-    // The key carries the exact request params — getPublicQueryFn builds the URL
-    // from it, so the cache identity and the request can't drift apart.
+    // Their loanType (the Reg Z product-heading fix, now enforced in SQL)
+    // rides in the key, and getPublicQueryFn builds the URL from the key —
+    // so the cache can never describe a request that was not made.
     queryKey: [
       "/api/mortgage-rates",
       {
+        loanType: "heloc",
         zipcode: searchZipcode,
         state: getStateFromZip(searchZipcode),
       },

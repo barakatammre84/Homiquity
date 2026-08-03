@@ -32,18 +32,23 @@ function getStateFromZip(zip: string): string | undefined {
   return undefined;
 }
 
+// The one constant feeds both the request and the query key, so the cache can
+// never describe a request that wasn't made.
+const RATE_LOAN_TYPE = "va";
+
 export default function VaRates() {
   usePageView("/rates/va");
   const [zipcode, setZipcode] = useState("");
   const [searchZipcode, setSearchZipcode] = useState("");
 
   const { data: rates, isLoading, isFetching } = useQuery<MortgageRateWithProgram[]>({
-    // The key carries the exact request params — getPublicQueryFn builds the URL
-    // from it, so the cache identity and the request can't drift apart.
+    // Their loanType (the Reg Z product-heading fix, now enforced in SQL)
+    // rides in the key, and getPublicQueryFn builds the URL from the key —
+    // so the cache can never describe a request that was not made.
     queryKey: [
       "/api/mortgage-rates",
       {
-        loanType: "va",
+        loanType: RATE_LOAN_TYPE,
         zipcode: searchZipcode,
         state: getStateFromZip(searchZipcode),
       },
@@ -57,7 +62,8 @@ export default function VaRates() {
     }
   }, [zipcode]);
 
-  const vaRates = rates?.filter(r => r.program.loanType === "va");
+  // Narrowed server-side by RATE_LOAN_TYPE — no render-path filter to forget.
+  const vaRates = rates;
 
   const formatTerm = (rate: MortgageRateWithProgram) => formatRateTerm(rate);
   const formatPoints = (rate: MortgageRateWithProgram) => formatRatePoints(rate);

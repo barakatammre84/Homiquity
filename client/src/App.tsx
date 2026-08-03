@@ -493,8 +493,12 @@ function Router() {
         <Route path="/strategy-sessions">
           <StaffPage><StrategySessions /></StaffPage>
         </Route>
+        {/* The page's primary query is GET /api/closing-guarantees, which returns
+            every guarantee system-wide and is admin-only on the server (it cannot be
+            scoped without enumerating the caller's assigned files). The other seven
+            staff roles reached this page and got nothing but a 403. */}
         <Route path="/closing-guarantee">
-          <StaffPage><ClosingGuarantee /></StaffPage>
+          <AdminPage><ClosingGuarantee /></AdminPage>
         </Route>
         <Route path="/policy-ops">
           <UnderwriterOpsPage><PolicyOps /></UnderwriterOpsPage>

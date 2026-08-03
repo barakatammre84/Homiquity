@@ -17,6 +17,7 @@ import { microCache } from "../middleware/httpCache";
 import { prelaunchGate } from "../services/prelaunchGate";
 import { parseBodyOr400 } from "./validate";
 import { firstQueryValue } from "./queryParams";
+import { RATE_LOAN_TYPES, isRateLoanType } from "@shared/rateLoanTypes";
 import { routeParam } from "../http/routeParams";
 
 export function registerAdminRoutes(
@@ -446,12 +447,26 @@ export function registerAdminRoutes(
     }
   });
 
-  // Get mortgage rates for a location (public)
+  // Get mortgage rates for a location (public).
+  //
+  // `loanType` narrows the response to one advertisable product; omitting it
+  // returns every product, which is what /rates (the "all rates" page) wants.
+  // An unrecognized value is a 400 rather than a silent fall-through to every
+  // product: falling through is how a product page ends up advertising rates
+  // that aren't its product (see shared/rateLoanTypes.ts).
   app.get("/api/mortgage-rates", prelaunchGate, microCache(60), async (req, res) => {
     try {
+      const requestedLoanType = firstQueryValue(req.query.loanType);
+      if (requestedLoanType !== undefined && !isRateLoanType(requestedLoanType)) {
+        return res.status(400).json({
+          error: `Unsupported loanType. Expected one of: ${RATE_LOAN_TYPES.join(", ")}`,
+        });
+      }
+
       const rates = await storage.getMortgageRatesForLocation(
         firstQueryValue(req.query.state),
-        firstQueryValue(req.query.zipcode)
+        firstQueryValue(req.query.zipcode),
+        requestedLoanType
       );
       res.json(rates);
     } catch (error) {

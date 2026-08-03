@@ -320,6 +320,11 @@ export default function TaskOperations() {
   const userRole = user?.role || "";
   const taskRole = USER_ROLE_TO_TASK_ROLE[userRole] || "all";
   const [selectedRole, setSelectedRole] = useState<string>(taskRole);
+  // POST /api/task-engine/run-escalation is admin-only (inline check in
+  // server/routes/task-engine.ts), and canAccessRoleQueue (server/services/taskEngine.ts)
+  // lets a non-admin read ONLY its own role's queue. This page is admin+underwriter, so
+  // an underwriter must not be offered the escalation trigger or the other roles' queues.
+  const isAdmin = userRole === "admin";
   const [escalateDialogOpen, setEscalateDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [escalationReason, setEscalationReason] = useState("");
@@ -425,16 +430,18 @@ export default function TaskOperations() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => runEscalationMutation.mutate()}
-            disabled={runEscalationMutation.isPending}
-            data-testid="button-run-escalation"
-          >
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Run Escalation Check
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => runEscalationMutation.mutate()}
+              disabled={runEscalationMutation.isPending}
+              data-testid="button-run-escalation"
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Run Escalation Check
+            </Button>
+          )}
         </div>
       }
     >
@@ -548,12 +555,22 @@ export default function TaskOperations() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="LO">Loan Officer</SelectItem>
-                  <SelectItem value="LOA">LO Assistant</SelectItem>
-                  <SelectItem value="PROCESSOR">Processor</SelectItem>
-                  <SelectItem value="UW">Underwriter</SelectItem>
-                  <SelectItem value="CLOSER">Closer</SelectItem>
-                  <SelectItem value="BORROWER">Borrower</SelectItem>
+                  {isAdmin ? (
+                    <>
+                      <SelectItem value="LO">Loan Officer</SelectItem>
+                      <SelectItem value="LOA">LO Assistant</SelectItem>
+                      <SelectItem value="PROCESSOR">Processor</SelectItem>
+                      <SelectItem value="UW">Underwriter</SelectItem>
+                      <SelectItem value="CLOSER">Closer</SelectItem>
+                      <SelectItem value="BORROWER">Borrower</SelectItem>
+                    </>
+                  ) : (
+                    // Non-admins may only read their own role's queue (canAccessRoleQueue);
+                    // every other option here would 403.
+                    taskRole !== "all" && (
+                      <SelectItem value={taskRole}>{ROLE_LABELS[taskRole] || taskRole}</SelectItem>
+                    )
+                  )}
                 </SelectContent>
               </Select>
             </div>

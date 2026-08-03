@@ -1,11 +1,12 @@
 // Storage domain: Mortgage rate programs + rates.
 // One link in the DatabaseStorage inheritance chain — see ./index.ts.
 import { db } from "../db";
-import { eq, desc, and, asc } from "drizzle-orm";
+import { eq, desc, and, or, asc, isNull } from "drizzle-orm";
 // SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
 // branch — main leaves account numbers plaintext).
 
 import { mortgageRatePrograms, mortgageRates, type MortgageRateProgram, type InsertMortgageRateProgram, type MortgageRate, type InsertMortgageRate } from "@shared/schema";
+import { rateLoanTypeIncludesUnclassified, type RateLoanType } from "@shared/rateLoanTypes";
 import { ContentStorage } from "./content";
 export class RatesStorage extends ContentStorage {
   // Mortgage Rate Programs
@@ -83,7 +84,22 @@ export class RatesStorage extends ContentStorage {
       .where(eq(mortgageRates.programId, programId));
   }
 
-  async getMortgageRatesForLocation(state?: string, zipcode?: string): Promise<(MortgageRate & { program: MortgageRateProgram })[]> {
+  /**
+   * Public rate lookup.
+   *
+   * `loanType` narrows to the products advertisable under one product heading
+   * (see `shared/rateLoanTypes.ts` for why this is enforced here rather than in
+   * each page's render path). Omit it for the "all rates" surfaces.
+   */
+  async getMortgageRatesForLocation(state?: string, zipcode?: string, loanType?: RateLoanType): Promise<(MortgageRate & { program: MortgageRateProgram })[]> {
+    // A null program.loan_type counts as the requested type only where an
+    // unclassified program is indistinguishable from it — conventional today.
+    const loanTypeFilter = loanType
+      ? (rateLoanTypeIncludesUnclassified(loanType)
+          ? or(eq(mortgageRatePrograms.loanType, loanType), isNull(mortgageRatePrograms.loanType))
+          : eq(mortgageRatePrograms.loanType, loanType))
+      : undefined;
+
     // Get rates with location matching: zipcode > state > national (null)
     const results = await db
       .select({
@@ -111,7 +127,8 @@ export class RatesStorage extends ContentStorage {
       .innerJoin(mortgageRatePrograms, eq(mortgageRates.programId, mortgageRatePrograms.id))
       .where(and(
         eq(mortgageRates.isActive, true),
-        eq(mortgageRatePrograms.isActive, true)
+        eq(mortgageRatePrograms.isActive, true),
+        loanTypeFilter
       ))
       .orderBy(asc(mortgageRatePrograms.displayOrder));
 

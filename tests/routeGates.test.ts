@@ -124,46 +124,11 @@ describe("gate wiring", () => {
   });
 });
 
-describe("known client/server gate drift", () => {
-  // Verified against the server on 2026-08-02. Each entry is a place the client
-  // gate admits a role the server then 403s, so the user reaches a page that
-  // cannot load. Recorded — not silently narrowed — because changing a role gate
-  // requires the §9 security review.
-  //
-  // When one is fixed, delete its entry. This test only pins that the list has
-  // not grown by accident.
-  const KNOWN_SERVER_DRIFT = {
-    "staff → GET /api/closing-guarantees (admin-only, guaranteesHomeowner.ts:24)":
-      ["lo", "loa", "processor", "underwriter", "closer", "broker", "lender"],
-    "staff → StaffDashboard internal-only APIs (staff.ts:14,41; pipeline.ts:406)":
-      ["broker", "lender"],
-    "partnerHub → /api/partners/me (realtor+admin, partners.ts:199,213)": ["cpa"],
-    "internalStaff → POST /api/loan-applications/:id/claim (lo,loa only, pipeline.ts:485)":
-      ["admin", "processor", "underwriter", "closer"],
-    "underwriterOps → PricingMatrices writes + run-escalation (admin-only)": ["underwriter"],
-  };
-
-  it("records every known drift against roles that are actually in the gate", () => {
-    // Keeps the ledger honest: if a gate is narrowed, its drift entry must go
-    // too, rather than lingering as a stale claim.
-    const gateFor: Record<string, readonly string[]> = {
-      staff: ROUTE_GATES.staff,
-      partnerHub: ROUTE_GATES.partnerHub,
-      internalStaff: ROUTE_GATES.internalStaff,
-      underwriterOps: ROUTE_GATES.underwriterOps,
-    };
-    for (const [label, roles] of Object.entries(KNOWN_SERVER_DRIFT)) {
-      const gateName = label.split(" ")[0];
-      for (const role of roles) {
-        expect(
-          gateFor[gateName],
-          `drift entry "${label}" names ${role}, which is no longer in ROUTE_GATES.${gateName} — delete the entry`,
-        ).toContain(role);
-      }
-    }
-  });
-
-  it("has not grown — a new drift means a gate was widened without checking the server", () => {
-    expect(Object.keys(KNOWN_SERVER_DRIFT).length).toBe(5);
-  });
-});
+// The client/server gate drift this file originally tracked is now owned by
+// tests/routeGateDrift.test.ts, landed with #293. That PR fixed three of the
+// drifts (/closing-guarantee narrowed to AdminPage, TaskOperations' admin-only
+// escalation + role filter, BorrowerFile's FINANCIAL_VERIFICATION_ROLES) and
+// established that the other four were never real — StaffDashboard, PartnersHub,
+// LoCommandCenter and PricingMatrices each already self-defend by branching or
+// by gating the query with `enabled`. Keeping a second ledger here would just
+// restate claims that are no longer true.
