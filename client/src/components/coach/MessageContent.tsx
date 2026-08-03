@@ -2,6 +2,8 @@
 // AICoach.tsx). Supports **bold**, ##/### headings, and bullet/numbered lists —
 // exactly what the coach prompt is allowed to emit.
 
+import type { JSX } from "react";
+
 function renderInlineMarkdown(text: string): (string | JSX.Element)[] {
   const result: (string | JSX.Element)[] = [];
   const parts = text.split(/(\*\*.*?\*\*)/g);

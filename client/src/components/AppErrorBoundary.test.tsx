@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import type { JSX } from "react";
 import { AppErrorBoundary } from "./AppErrorBoundary";
 import * as errorReporter from "@/lib/errorReporter";
 
