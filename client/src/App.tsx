@@ -9,6 +9,7 @@ import { PrivateLayout } from "@/components/layouts/PrivateLayout";
 import { BareLayout } from "@/components/layouts/BareLayout";
 import { Loader2 } from "lucide-react";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
+import { ROLE_GROUPS } from "@/lib/roleGroups";
 
 // Lazy — this modal is the only eager import that pulls framer-motion, so
 // loading it eagerly shipped the whole animation library in the main chunk on
@@ -173,45 +174,39 @@ function PublicPage({ children }: { children: React.ReactNode }) {
   return <PublicLayout>{children}</PublicLayout>;
 }
 
+// Role groups are the single source of truth in @/lib/roleGroups (which sources
+// the shared canonical role sets). Each wrapper just names the surface; the
+// role→surface mapping and its server-mirror rationale live in one place there.
 function BorrowerPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["aspiring_owner", "active_buyer"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROLE_GROUPS.borrower}>{children}</PrivateLayout>;
 }
 
 function StaffPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer", "broker", "lender"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROLE_GROUPS.staff}>{children}</PrivateLayout>;
 }
 
-// Internal operations pages. External partners (broker, lender) are staff *roles*
-// but not internal staff — they must not reach the internal cockpits. Mirrors the
-// server-side requireRole lists on the APIs these pages call.
 function InternalStaffPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin", "lo", "loa", "processor", "underwriter", "closer"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROLE_GROUPS.internalStaff}>{children}</PrivateLayout>;
 }
 
-// Policy/pricing/SLA governance surfaces: server APIs behind these pages are
-// requireRole("admin", "underwriter") — the client gate must match.
 function UnderwriterOpsPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin", "underwriter"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROLE_GROUPS.underwriterOps}>{children}</PrivateLayout>;
 }
 
-// Application-invite tooling: POST /api/application-invites is admin/lo/loa only
-// (brokers/lenders refer via their referral codes instead).
 function LoTeamPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin", "lo", "loa"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROLE_GROUPS.loTeam}>{children}</PrivateLayout>;
 }
 
 function CpaPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["cpa", "admin"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROLE_GROUPS.cpa}>{children}</PrivateLayout>;
 }
 
-// PartnerHub (PH-1): self-registering partner personas + admin. Exact roles
-// only — partners are never staff (shared/roles.ts PARTNER_ROLES).
 function PartnerPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["realtor", "cpa", "admin"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROLE_GROUPS.partner}>{children}</PrivateLayout>;
 }
 
 function AdminPage({ children }: { children: React.ReactNode }) {
-  return <PrivateLayout requiredRoles={["admin"]}>{children}</PrivateLayout>;
+  return <PrivateLayout requiredRoles={ROLE_GROUPS.admin}>{children}</PrivateLayout>;
 }
 
 function AnyAuthPage({ children }: { children: React.ReactNode }) {

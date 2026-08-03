@@ -3,12 +3,16 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 let sessionExpiredHandled = false;
 
 function handleSessionExpired() {
-  if (sessionExpiredHandled) return;
-  sessionExpiredHandled = true;
-  
+  // Public paths that never redirect on a 401 (a logged-out visitor here is
+  // expected). Check this BEFORE latching the flag — otherwise a benign 401 on
+  // one of these paths would set sessionExpiredHandled=true and permanently
+  // suppress the redirect for the next *genuine* expiry on a protected page.
   const currentPath = window.location.pathname;
   if (currentPath === "/" || currentPath === "/login" || currentPath === "/signup") return;
-  
+
+  if (sessionExpiredHandled) return;
+  sessionExpiredHandled = true;
+
   setTimeout(() => {
     window.location.href = "/login";
   }, 100);
