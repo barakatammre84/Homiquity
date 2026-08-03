@@ -121,7 +121,7 @@ export function registerAdminRoutes(
     } catch (error) {
       console.error("Create category error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Validation error", details: error.errors });
+        return res.status(400).json({ error: "Validation error", details: error.issues });
       }
       res.status(500).json({ error: "Failed to create category" });
     }
@@ -194,7 +194,7 @@ export function registerAdminRoutes(
     } catch (error) {
       console.error("Create article error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Validation error", details: error.errors });
+        return res.status(400).json({ error: "Validation error", details: error.issues });
       }
       res.status(500).json({ error: "Failed to create article" });
     }
@@ -275,7 +275,7 @@ export function registerAdminRoutes(
     } catch (error) {
       console.error("Create FAQ error:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Validation error", details: error.errors });
+        return res.status(400).json({ error: "Validation error", details: error.issues });
       }
       res.status(500).json({ error: "Failed to create FAQ" });
     }

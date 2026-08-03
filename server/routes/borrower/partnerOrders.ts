@@ -158,7 +158,7 @@ export function registerPartnerOrderRoutes(
       const { id } = routeParams(req);
       const schema = z.object({
         status: z.enum(["pending", "submitted", "in_progress", "completed", "failed", "cancelled"]).optional(),
-        resultSummary: z.record(z.any()).optional(),
+        resultSummary: z.record(z.string(), z.any()).optional(),
         creditScoreExperian: z.number().optional(),
         creditScoreEquifax: z.number().optional(),
         creditScoreTransUnion: z.number().optional(),

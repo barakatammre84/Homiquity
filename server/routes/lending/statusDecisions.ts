@@ -130,7 +130,7 @@ export function registerStatusDecisionRoutes(
       const { id } = routeParams(req);
       const parsed = staffStatusSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json({ error: "Invalid status", details: parsed.error.errors });
+        return res.status(400).json({ error: "Invalid status", details: parsed.error.issues });
       }
 
       const application = await storage.getLoanApplication(id);

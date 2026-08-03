@@ -23,52 +23,7 @@ updates:
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
-      # drizzle-zod 0.8 emits against zod's v4 type surface. The peer range
-      # LOOKS satisfied — 0.8.3 declares `zod: ^3.25.0 || ^4.0.0` and resolves
-      # against our zod@3.25.76 — but 3.25 ships BOTH surfaces, and the v4
-      # types do not structurally match the v3-style ZodTypeAny our route
-      # handlers pass to. Result: 214 typecheck errors, 181 of them
-      # "missing _type, _parse, _getType, _getOrReturnCtx from ZodType".
-      # Measured 2026-08-02: reverting drizzle-zod alone, with the other 30
-      # bumps in place, takes 214 -> 0. One dependency was poisoning the whole
-      # group, which is why the same PR kept coming back blocked:
-      # #264 -> #269 -> #274 -> #282.
-      # This is a migration (move the affected schemas to zod v4 style, or
-      # migrate zod itself), not a bump. Remove this entry when that is done —
-      # zod 4 is proposed in #290; when THAT lands, drop this whole block rather
-      # than loosening the bound.
-      #
-      # `versions`, not `update-types`: the boundary that matters is the surface
-      # switch at 0.8, not a semver category. An `update-types: [semver-minor]`
-      # rule (what #284 first shipped) catches 0.7.1 -> 0.8.3, but a later
-      # 0.7.x -> 1.0.0 classifies as semver-MAJOR and would sail straight
-      # through, re-poisoning the group with a bigger break than the one being
-      # guarded against. Pinning >=0.8.0 blocks every version that carries the
-      # zod/v4 surface, whatever semver calls it. (Constraint from #285, which
-      # reached the same diagnosis independently.)
-      - dependency-name: "drizzle-zod"
-        versions: [">=0.8.0"]
 
-      # zod 4 is a migration, not a bump — and it is the linchpin: landing it is
-      # what unblocks the drizzle-zod entry above.
-      #
-      # Measured against ffc2f2f on 2026-08-03 (zod 4.4.3 installed, tsc run):
-      # 29 typecheck errors across 15 files, of which
-      #   - 12 are the mechanical `ZodError.errors` -> `.issues` rename
-      #   - the rest are TS2554 arity changes on the issue/error constructors,
-      #     TS2345 mismatches where a zod-inferred `any` narrowed, and one
-      #     implicit-any parameter.
-      # Small enough to be tractable — deliberately NOT taken as part of a
-      # dependency sweep, because zod validates URLA, loan-delivery and
-      # compliance payloads at 116 parse sites. Typecheck-green does not
-      # demonstrate that validation SEMANTICS are unchanged on regulated data,
-      # and v4 changes error formatting (`.format()` is superseded by
-      # `z.treeifyError`), coercion, and default/optional handling.
-      #
-      # Do it as its own PR with the compliance suites as the acceptance
-      # evidence, then delete BOTH this entry and the drizzle-zod one above.
-      - dependency-name: "zod"
-        update-types: ["version-update:semver-major"]
 
       # @hookform/resolvers 5 is blocked by the same input-vs-output problem,
       # independently of zod's version. Its peer range is already satisfied

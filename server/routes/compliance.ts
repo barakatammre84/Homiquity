@@ -852,7 +852,7 @@ export function registerComplianceRoutes(
       // Validate request body using Zod schema
       const parseResult = adverseActionRequestSchema.safeParse(req.body);
       if (!parseResult.success) {
-        const errorMessages = parseResult.error.errors.map(e => e.message).join("; ");
+        const errorMessages = parseResult.error.issues.map(e => e.message).join("; ");
         return res.status(400).json({ error: errorMessages });
       }
       

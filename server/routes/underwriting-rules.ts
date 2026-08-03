@@ -261,7 +261,7 @@ export function registerUnderwritingRulesRoutes(
     try {
       const schema = z.object({
         snapshotId: z.string(),
-        context: z.record(z.any()),
+        context: z.record(z.string(), z.any()),
         ruleIds: z.array(z.string()).optional(),
       });
 

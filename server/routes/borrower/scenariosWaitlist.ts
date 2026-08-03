@@ -91,7 +91,7 @@ export function registerScenarioWaitlistRoutes(
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid input", details: error.errors });
+        return res.status(400).json({ error: "Invalid input", details: error.issues });
       }
       console.error("Scenario calculator error:", error);
       res.status(500).json({ error: "Failed to calculate scenario" });
@@ -101,7 +101,7 @@ export function registerScenarioWaitlistRoutes(
   const trackSchema = z.object({
     activityType: z.string().min(1).max(64).regex(/^[a-z_]+$/),
     page: z.string().max(256).optional(),
-    metadata: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+    metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
     sessionId: z.string().max(64).optional(),
   });
 

@@ -334,7 +334,7 @@ export function registerCoachRoutes(app: Express) {
     const user = req.user as User;
     const parsed = messageSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid message", details: parsed.error.errors });
+      res.status(400).json({ error: "Invalid message", details: parsed.error.issues });
       return null;
     }
 
