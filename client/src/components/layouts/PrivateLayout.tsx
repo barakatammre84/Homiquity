@@ -11,11 +11,19 @@ import { NotificationsBell } from "@/components/NotificationsPanel";
 import { SkipLink } from "@/components/SkipLink";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getRoleHomeRoute } from "@/lib/roleRoutes";
+import type { UserRole } from "@shared/roles";
 import type { DealActivity } from "@shared/schema";
 
 interface PrivateLayoutProps {
   children: React.ReactNode;
-  requiredRoles?: string[];
+  /**
+   * Roles allowed on this route. Typed as `UserRole` (not `string`) so a typo
+   * or a retired role is a build error rather than a gate that silently admits
+   * nobody — `requiredRoles.some(r => user.role === r)` can never match a
+   * misspelled role, so the page would just bounce every user to their home
+   * route with no error anywhere.
+   */
+  requiredRoles?: readonly UserRole[];
 }
 
 export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {

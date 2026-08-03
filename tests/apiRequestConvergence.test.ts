@@ -34,26 +34,23 @@ const ALLOWED_RAW_FETCH: Record<string, string> = {
   "client/src/lib/logout.ts":
     "POST /api/auth/logout — session teardown; a dead session is the goal here, not an expiry to redirect on. THE single sign-out path (Navigation + app-sidebar call it)",
 
-  // Public endpoints: no session to expire, and each owns error copy that
-  // apiRequest's "<status>: <body>" throw would replace.
-  "client/src/components/AddressInput.tsx": "public /api/geocode/* autocomplete",
-  "client/src/components/EmailCaptureModal.tsx": "public /api/email-capture",
-  "client/src/pages/public/Waitlist.tsx": "public /api/email-capture",
-  "client/src/pages/public/PartnerWaitlist.tsx": "public /api/partner-waitlist",
+  // Public POSTs and event-handler fetches. These are not `useQuery` calls, so
+  // `getPublicQueryFn` (the shared public GET path) does not apply; each owns
+  // error copy that apiRequest's "<status>: <body>" throw would replace.
+  //
+  // Public *queries* are no longer listed here: the rates, FAQ, article and
+  // agent-search pages now use `getPublicQueryFn` from lib/queryClient, which
+  // throws ApiError and deliberately skips the session-expiry redirect. Reach
+  // for that instead of a hand-rolled fetch in a queryFn.
+  "client/src/components/AddressInput.tsx": "public /api/geocode/* autocomplete, called from an input handler (not a query)",
+  "client/src/components/EmailCaptureModal.tsx": "public POST /api/email-capture",
+  "client/src/pages/public/Waitlist.tsx": "public POST /api/email-capture",
+  "client/src/pages/public/PartnerWaitlist.tsx": "public POST /api/partner-waitlist",
   "client/src/pages/public/RedeemInvite.tsx":
-    "public /api/staff-invites/validate/:code (the authenticated redeem call uses apiRequest)",
-  "client/src/pages/agent-broker/ApplyInvite.tsx": "public /api/application-invites/validate/:token",
-  "client/src/pages/agent-broker/FindAnAgent.tsx": "public /api/agents/search",
-  "client/src/pages/education/FAQ.tsx": "public /api/faqs",
-  "client/src/pages/education/ArticleDetail.tsx": "public /api/articles/:slug",
-  "client/src/pages/education/LearningCenter.tsx": "public /api/articles",
-  "client/src/pages/calculators/RentToOwnReadiness.tsx": "public /api/calculators/extract-lease",
-  "client/src/pages/rates/MortgageRates.tsx": "public /api/mortgage-rates",
-  "client/src/pages/rates/PurchaseRates.tsx": "public /api/mortgage-rates",
-  "client/src/pages/rates/RefinanceRates.tsx": "public /api/mortgage-rates",
-  "client/src/pages/rates/CashOutRates.tsx": "public /api/mortgage-rates",
-  "client/src/pages/rates/HelocRates.tsx": "public /api/mortgage-rates",
-  "client/src/pages/rates/VaRates.tsx": "public /api/mortgage-rates",
+    "public /api/staff-invites/validate/:code, fetched in a submit handler (the authenticated redeem call uses apiRequest)",
+  "client/src/pages/agent-broker/ApplyInvite.tsx":
+    "public /api/application-invites/validate/:token — renders the server's error text verbatim (expired vs invalid copy), which ApiError's '<status>: <body>' shape would change",
+  "client/src/pages/calculators/RentToOwnReadiness.tsx": "public POST /api/calculators/extract-lease",
 };
 
 function sourceFiles(dir: string): string[] {

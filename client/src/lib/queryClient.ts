@@ -40,14 +40,22 @@ export class ApiError extends Error {
   }
 }
 
-async function throwIfResNotOk(res: Response) {
+async function throwIfResNotOk(
+  res: Response,
+  /**
+   * Set false for endpoints that serve signed-out visitors. A 401 there is not
+   * an expired session (there was never a session), so bouncing to /login would
+   * throw a browsing visitor out of a public page.
+   */
+  { sessionRedirect = true }: { sessionRedirect?: boolean } = {},
+) {
   // Any 2xx proves the session is alive again, so the latch must not outlive it
   // (re-login in the same tab, or a 401 that turned out to be transient).
   if (res.ok) {
     sessionExpiredHandled = false;
     return;
   }
-  if (res.status === 401) {
+  if (res.status === 401 && sessionRedirect) {
     const url = typeof res.url === "string" ? res.url : "";
     // Background shell polls should not trigger a login redirect on their own;
     // /api/shell/badges is the consolidated badge poll that replaced the
@@ -80,6 +88,66 @@ export async function apiRequest(
   return res;
 }
 
+/**
+ * Build a request URL from a query key.
+ *
+ * Scalar segments join with "/" (the historical behaviour); a trailing plain
+ * object becomes the query string. That makes `["/api/faqs", { search, category }]`
+ * a complete description of the request — which matters because the key is
+ * *already* how the cache identifies it, so the two can never disagree.
+ *
+ * Empty, null and undefined params are dropped, so an unset filter produces
+ * `/api/faqs` rather than `/api/faqs?search=&category=`.
+ */
+export function buildQueryUrl(queryKey: readonly unknown[]): string {
+  const last = queryKey[queryKey.length - 1];
+  const hasParams =
+    typeof last === "object" && last !== null && !Array.isArray(last);
+
+  const segments = (hasParams ? queryKey.slice(0, -1) : queryKey).filter(
+    (s) => s !== undefined && s !== null && s !== "",
+  );
+  const path = segments.join("/");
+  if (!hasParams) return path;
+
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(last as Record<string, unknown>)) {
+    if (value === undefined || value === null || value === "") continue;
+    params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+/**
+ * Query function for endpoints that serve signed-out visitors (rates, articles,
+ * FAQs, agent search, invite validation).
+ *
+ * Public pages used to hand-roll `fetch` + `if (!res.ok) throw new Error(...)`
+ * inside every `queryFn`. That produced a second, quieter transport contract:
+ * a bare `Error` instead of `ApiError`, so `friendlyApiError` could not read the
+ * server's own message envelope and a deliberate 503 (INTAKE_PAUSED) surfaced as
+ * "Failed to fetch rates". It was also copy-paste bait — the pattern carries no
+ * signal that it drops 401 handling, so an authed page cloned from a rates page
+ * would silently lose the session-expiry redirect.
+ *
+ * This keeps the one thing those hand-rolled fetches got right — no redirect on
+ * 401 — but makes it an explicit, documented mode of the shared transport rather
+ * than a side effect of bypassing it. Errors are `ApiError`, so public and
+ * authed surfaces report failures identically.
+ *
+ * Use `getQueryFn` (the default) for anything behind the session.
+ */
+export const getPublicQueryFn =
+  <T>(): QueryFunction<T> =>
+  async ({ queryKey }) => {
+    // No `credentials: "include"` — these endpoints are public, so there is no
+    // reason to attach the session cookie.
+    const res = await fetch(buildQueryUrl(queryKey));
+    await throwIfResNotOk(res, { sessionRedirect: false });
+    return (await res.json()) as T;
+  };
+
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
@@ -97,6 +165,41 @@ export const getQueryFn: <T>(options: {
     await throwIfResNotOk(res);
     return await res.json();
   };
+
+/**
+ * THE query keys for the loan-application resource family.
+ *
+ * The default `getQueryFn` above builds the URL with `queryKey.join("/")`, so a
+ * key written as one template string (`` [`/api/loan-applications/${id}/options`] ``)
+ * and one written as segments (`["/api/loan-applications", id, "options"]`)
+ * fetch the *same URL* — but they are two different cache entries, and only the
+ * segmented form participates in prefix invalidation.
+ *
+ * That distinction was silently breaking refreshes: `invalidateQueries({
+ * queryKey: ["/api/loan-applications", id] })` — fired from BorrowerFile,
+ * StatusUpdateDialog, CreditTab, ConditionsTab, DocumentReviewPanel and
+ * LoanPipeline — matches every segmented child but *cannot* match a
+ * single-string key, so the submission-readiness and lender-submission panels
+ * kept rendering pre-change data until a hard reload.
+ *
+ * Always build loan-application keys from here. Never hand-write a
+ * `` [`/api/loan-applications/${id}/...`] `` template key — `pnpm guard:querykeys`
+ * fails the build on one.
+ */
+export const loanApplicationKeys = {
+  /** The whole family — invalidates every application query, list included. */
+  all: () => ["/api/loan-applications"] as const,
+  /** One file and everything nested under it (the common invalidation prefix). */
+  detail: (id: string) => ["/api/loan-applications", id] as const,
+  pipeline: (id: string) => ["/api/loan-applications", id, "pipeline"] as const,
+  options: (id: string) => ["/api/loan-applications", id, "options"] as const,
+  submissionReadiness: (id: string) =>
+    ["/api/loan-applications", id, "submission-readiness"] as const,
+  lenderSubmissions: (id: string) =>
+    ["/api/loan-applications", id, "lender-submissions"] as const,
+  changeOfCircumstances: (id: string) =>
+    ["/api/loan-applications", id, "change-of-circumstances"] as const,
+};
 
 export const queryClient = new QueryClient({
   defaultOptions: {

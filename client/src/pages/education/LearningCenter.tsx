@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getPublicQueryFn } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { Button } from "@/components/ui/button";
@@ -123,14 +124,7 @@ export default function LearningCenter() {
 
   const { data: articles = [], isLoading: articlesLoading } = useQuery<Article[]>({
     queryKey: ["/api/articles", { search: searchQuery, category: selectedCategory }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (searchQuery) params.set("search", searchQuery);
-      if (selectedCategory) params.set("category", selectedCategory);
-      const response = await fetch(`/api/articles?${params.toString()}`);
-      if (!response.ok) throw new Error("Failed to fetch articles");
-      return response.json();
-    },
+    queryFn: getPublicQueryFn<Article[]>(),
   });
 
   const articlesByCategory = categories.reduce((acc, cat) => {

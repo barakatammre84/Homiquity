@@ -21,7 +21,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { getPresenceColor } from "@/lib/formatters";
-import { isStaffRole, isInternalStaffRole, isPartnerRole, ROLE_DISPLAY_NAMES } from "@shared/roles";
+import { isStaffRole, isInternalStaffRole, isPartnerRole, ROLE_DISPLAY_NAMES, type UserRole } from "@shared/roles";
+import { ROUTE_GATES } from "@/lib/routeGates";
 import { useShellBadges } from "@/hooks/useShellBadges";
 import {
   LayoutDashboard,
@@ -75,7 +76,8 @@ interface NavItem {
   testId: string;
   showBadge?: boolean;
   showMessageBadge?: boolean;
-  roles?: string[];
+  /** Typed so a typo is a build error, not a link that silently shows nobody. */
+  roles?: readonly UserRole[];
 }
 
 interface NavSection {
@@ -134,9 +136,11 @@ const staffNavigation: NavSection[] = [
       { title: "LO Command Center", href: "/lo-command-center", icon: Gauge, testId: "link-lo-command-center" },
       // Task/Policy/Pricing governance is requireRole("admin","underwriter") on the
       // server — only show the links to roles that can actually load the pages.
-      { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations", roles: ["admin", "underwriter"] },
-      { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops", roles: ["admin", "underwriter"] },
-      { title: "Pricing Matrices", href: "/pricing-matrices", icon: Grid3x3, testId: "link-pricing-matrices", roles: ["admin", "underwriter"] },
+      // The gate is shared with the router (ROUTE_GATES.underwriterOps) so the
+      // nav can't offer a link the route would bounce.
+      { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations", roles: ROUTE_GATES.underwriterOps },
+      { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops", roles: ROUTE_GATES.underwriterOps },
+      { title: "Pricing Matrices", href: "/pricing-matrices", icon: Grid3x3, testId: "link-pricing-matrices", roles: ROUTE_GATES.underwriterOps },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
@@ -146,7 +150,7 @@ const staffNavigation: NavSection[] = [
       { title: "Broker Dashboard", href: "/broker-dashboard", icon: DollarSign, testId: "link-broker-dashboard" },
       { title: "Client Pipeline", href: "/agent-pipeline", icon: ClipboardList, testId: "link-agent-pipeline" },
       // Application invites are an LO-team tool (POST is admin/lo/loa on the server).
-      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients", roles: ["admin", "lo", "loa"] },
+      { title: "Invite Clients", href: "/invite-clients", icon: Link2, testId: "link-invite-clients", roles: ROUTE_GATES.loTeam },
       { title: "Co-Branding", href: "/co-branding", icon: Palette, testId: "link-co-branding" },
     ],
   },
@@ -278,8 +282,11 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {navigation.map((section) => {
+          // `.some(r => r === userRole)` rather than `.includes(userRole)`:
+          // userRole is a bare string off the user record, and this matches how
+          // PrivateLayout tests the same gate.
           const visibleItems = section.items.filter(
-            (item) => !item.roles || item.roles.includes(userRole),
+            (item) => !item.roles || item.roles.some((r) => r === userRole),
           );
           if (visibleItems.length === 0) return null;
           return (

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/formatters";
 import { Card, CardContent } from "@/components/ui/card";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -224,7 +225,13 @@ function LoadingSkeleton() {
 }
 
 export default function AgentPipeline() {
-  const { data: pipeline = [], isLoading } = useQuery<PipelineItem[]>({
+  const {
+    data: pipeline = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<PipelineItem[]>({
     queryKey: ["/api/agent-pipeline"],
   });
 
@@ -254,7 +261,16 @@ export default function AgentPipeline() {
         </div>
       )}
 
-      {isLoading ? (
+      {/* Error before empty: "No referred clients yet" would otherwise tell an
+          agent their referrals produced nothing when the API simply failed. */}
+      {isError ? (
+        <QueryErrorState
+          error={error}
+          onRetry={() => void refetch()}
+          title="We couldn't load your pipeline"
+          data-testid="agent-pipeline-error"
+        />
+      ) : isLoading ? (
         <LoadingSkeleton />
       ) : pipeline.length === 0 ? (
         <EmptyState

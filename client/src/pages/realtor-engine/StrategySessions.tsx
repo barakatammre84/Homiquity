@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -201,7 +202,13 @@ export default function StrategySessions() {
     actionItems: "",
   });
 
-  const { data: sessions = [], isLoading } = useQuery<StrategySession[]>({
+  const {
+    data: sessions = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<StrategySession[]>({
     queryKey: ["/api/strategy-sessions"],
   });
 
@@ -271,6 +278,21 @@ export default function StrategySessions() {
       data.completedAt = new Date().toISOString();
     }
     updateMutation.mutate({ id: activeSession.id, data });
+  }
+
+  // Without this a failed load renders as "no upcoming sessions" — the agent
+  // reads it as an empty calendar rather than a broken one (ux-01).
+  if (isError) {
+    return (
+      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+        <QueryErrorState
+          error={error}
+          onRetry={() => void refetch()}
+          title="We couldn't load your strategy sessions"
+          data-testid="strategy-sessions-error"
+        />
+      </div>
+    );
   }
 
   if (isLoading) {
