@@ -22,10 +22,11 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     ...authState,
     isError: false,
+    // Mirrors the real useAuth impl (fail-closed on user first) so the guard's
+    // role decision is genuinely exercised, not stubbed away.
     hasRole: (roles?: readonly string[]) =>
-      !roles || roles.length === 0
-        ? true
-        : !!authState.user && roles.some((r) => r === authState.user!.role),
+      !!authState.user &&
+      (!roles || roles.length === 0 || roles.some((r) => r === authState.user!.role)),
   }),
 }));
 

@@ -22,9 +22,14 @@ export function useAuth(): UseAuthReturn {
     retry: false,
   });
 
+  // Fail closed on the user first: an empty/undefined `roles` means "any
+  // AUTHENTICATED user", never "anyone". Without the leading !!user, a future
+  // caller using hasRole() standalone as an auth check would get `true` for a
+  // signed-out visitor. useAuthGuard checks isAuthenticated before ever calling
+  // this, so today it is belt-and-braces — but the trap is one careless caller away.
   const hasRole = useCallback(
     (roles?: readonly string[]) =>
-      !roles || roles.length === 0 ? true : !!user && roles.some((r) => r === user.role),
+      !!user && (!roles || roles.length === 0 || roles.some((r) => r === user.role)),
     [user],
   );
 
