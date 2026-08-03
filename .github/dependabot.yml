@@ -34,9 +34,20 @@ updates:
       # group, which is why the same PR kept coming back blocked:
       # #264 -> #269 -> #274 -> #282.
       # This is a migration (move the affected schemas to zod v4 style, or
-      # migrate zod itself), not a bump. Remove this entry when that is done.
+      # migrate zod itself), not a bump. Remove this entry when that is done —
+      # zod 4 is proposed in #290; when THAT lands, drop this whole block rather
+      # than loosening the bound.
+      #
+      # `versions`, not `update-types`: the boundary that matters is the surface
+      # switch at 0.8, not a semver category. An `update-types: [semver-minor]`
+      # rule (what #284 first shipped) catches 0.7.1 -> 0.8.3, but a later
+      # 0.7.x -> 1.0.0 classifies as semver-MAJOR and would sail straight
+      # through, re-poisoning the group with a bigger break than the one being
+      # guarded against. Pinning >=0.8.0 blocks every version that carries the
+      # zod/v4 surface, whatever semver calls it. (Constraint from #285, which
+      # reached the same diagnosis independently.)
       - dependency-name: "drizzle-zod"
-        update-types: ["version-update:semver-minor"]
+        versions: [">=0.8.0"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
