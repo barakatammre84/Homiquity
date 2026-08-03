@@ -49,8 +49,53 @@ updates:
       - dependency-name: "drizzle-zod"
         versions: [">=0.8.0"]
 
+      # zod 4 is a migration, not a bump — and it is the linchpin: landing it is
+      # what unblocks the drizzle-zod entry above.
+      #
+      # Measured against ffc2f2f on 2026-08-03 (zod 4.4.3 installed, tsc run):
+      # 29 typecheck errors across 15 files, of which
+      #   - 12 are the mechanical `ZodError.errors` -> `.issues` rename
+      #   - the rest are TS2554 arity changes on the issue/error constructors,
+      #     TS2345 mismatches where a zod-inferred `any` narrowed, and one
+      #     implicit-any parameter.
+      # Small enough to be tractable — deliberately NOT taken as part of a
+      # dependency sweep, because zod validates URLA, loan-delivery and
+      # compliance payloads at 116 parse sites. Typecheck-green does not
+      # demonstrate that validation SEMANTICS are unchanged on regulated data,
+      # and v4 changes error formatting (`.format()` is superseded by
+      # `z.treeifyError`), coercion, and default/optional handling.
+      #
+      # Do it as its own PR with the compliance suites as the acceptance
+      # evidence, then delete BOTH this entry and the drizzle-zod one above.
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
+
+      # @hookform/resolvers 5 is blocked by the same input-vs-output problem,
+      # independently of zod's version. Its peer range is already satisfied
+      # (5.5.7 accepts `zod: ^3.25.0 || ^4.0.0`, and react-hook-form 7.84 is
+      # new enough). The break is the third `Resolver` generic: v5 threads a
+      # schema's INPUT type and its OUTPUT type separately, and every form whose
+      # schema uses `.default()` has `isPublished?: boolean | undefined` going in
+      # and `isPublished: boolean` coming out, so the resolver no longer matches
+      # the form it is handed to (AdminContent alone reports 6).
+      # Fixing means giving those useForm calls explicit input/output generics —
+      # a forms migration. Remove this entry when that is done.
+      - dependency-name: "@hookform/resolvers"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
+    ignore:
+      # Workflows pin the floating major tag (`pnpm/action-setup@v6`), which
+      # already resolves to the newest 6.x at run time — including security
+      # patches, with no PR needed. A PR moving `@v6` to `@6.0.9` would pin us
+      # BELOW that floating tag and then re-open on every future patch, which is
+      # churn in exchange for less coverage. Majors still come through, because
+      # those are the ones that need a workflow edit.
+      - dependency-name: "pnpm/action-setup"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
