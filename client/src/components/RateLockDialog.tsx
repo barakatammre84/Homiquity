@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +60,7 @@ export function RateLockDialog({ applicationId, borrowerName }: RateLockDialogPr
     enabled: open,
   });
   const { data: optionsData } = useQuery<{ options: LoanOption[] }>({
-    queryKey: [`/api/loan-applications/${applicationId}/options`],
+    queryKey: loanApplicationKeys.options(applicationId),
     enabled: open,
   });
 

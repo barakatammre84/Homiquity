@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -59,13 +59,13 @@ export function ChangeOfCircumstancePanel({ applicationId }: { applicationId: st
   const [voidReason, setVoidReason] = useState("");
   const { toast } = useToast();
 
-  const listKey = [`/api/loan-applications/${applicationId}/change-of-circumstances`];
+  const listKey = loanApplicationKeys.changeOfCircumstances(applicationId);
   const { data: rows } = useQuery<CocRow[]>({ queryKey: listKey });
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: listKey });
     queryClient.invalidateQueries({
-      queryKey: [`/api/loan-applications/${applicationId}/submission-readiness`],
+      queryKey: loanApplicationKeys.submissionReadiness(applicationId),
     });
   };
 
