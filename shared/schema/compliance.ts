@@ -727,3 +727,49 @@ export const insertChangeOfCircumstanceSchema = createInsertSchema(changeOfCircu
 });
 export type InsertChangeOfCircumstance = z.infer<typeof insertChangeOfCircumstanceSchema>;
 export type ChangeOfCircumstance = typeof changeOfCircumstances.$inferSelect;
+
+// =============================================================================
+// ISSUED LOAN ESTIMATE DISCLOSURES (Reg Z §1026.19(e)(3) tolerance baseline)
+// =============================================================================
+// The Loan Estimate is generated from live file data, so without this table
+// there is no record of what was actually disclosed — the numbers a borrower
+// saw on day one silently become different numbers on day ten, and no
+// good-faith tolerance comparison is possible because the baseline is gone.
+//
+// One row per ISSUED disclosure (version 1 = the original LE; each valid
+// redisclosure appends). `snapshot` is the tolerance-bucketed fee set from
+// shared/compliance/feeTolerance.ts. A row is immutable once written — it is
+// the evidentiary record of a disclosure, not a cache.
+//
+// `cocId` links a revised disclosure to the §1026.19(e)(3)(iv) record that
+// authorized resetting the baseline. Version 1 has none; any later version
+// without one is a redisclosure that reset nothing and whose increases are a
+// cure (services/leDisclosureBaseline.ts enforces this).
+export const loanEstimateDisclosures = pgTable(
+  "loan_estimate_disclosures",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+    /** 1 = original LE; increments on each valid redisclosure. */
+    version: integer("version").notNull(),
+    issuedAt: timestamp("issued_at").defaultNow().notNull(),
+    /** Tolerance-bucketed fee set + loan terms (DisclosureSnapshot). */
+    snapshot: jsonb("snapshot").notNull(),
+    /** The change of circumstance that authorized this baseline, when any. */
+    cocId: varchar("coc_id").references(() => changeOfCircumstances.id),
+    /** ToleranceEvaluation against the previous version; null on version 1. */
+    toleranceEvaluation: jsonb("tolerance_evaluation"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("loan_estimate_disclosures_app_idx").on(table.applicationId, table.version),
+    uniqueIndex("loan_estimate_disclosures_app_version_key").on(table.applicationId, table.version),
+  ],
+);
+
+export const insertLoanEstimateDisclosureSchema = createInsertSchema(loanEstimateDisclosures).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertLoanEstimateDisclosure = z.infer<typeof insertLoanEstimateDisclosureSchema>;
+export type LoanEstimateDisclosure = typeof loanEstimateDisclosures.$inferSelect;

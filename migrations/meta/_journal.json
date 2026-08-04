@@ -274,6 +274,20 @@
       "when": 1785084000000,
       "tag": "0038_lo_compensation_model",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1785170400000,
+      "tag": "0039_rate_lock_lender_confirmation",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1785256800000,
+      "tag": "0040_loan_estimate_disclosures",
+      "breakpoints": true
     }
   ]
 }

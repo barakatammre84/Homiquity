@@ -21,17 +21,17 @@ where the debt has accumulated.
 
 ## Severity-ordered summary
 
-> **Remediation status (2026-08-04, same day).** **F-1 and F-2 are FIXED** — see
+> **Remediation status (2026-08-04, same day).** **F-1, F-2, F-3 and F-4 are FIXED** — see
 > §"Remediation" at the end of this document for what shipped, what is covered by tests, and
-> the two items that were deliberately left open rather than implemented on unverified
-> regulatory text. Every other finding below is unaddressed.
+> the items deliberately left open rather than implemented on unverified regulatory text.
+> Every other finding below is unaddressed.
 
 | # | Finding | Area | Severity |
 |---|---|---|---|
 | F-1 | Fee schedule creates a dual-compensation transaction on every file (Reg Z §1026.36(d)(2)) | Risk | **Critical** — ✅ fixed |
 | F-2 | QM points-and-fees cap is structurally unenforced — and the fee schedule breaches it | Risk | **Critical** — ✅ fixed |
-| F-3 | "Phantom lock": rate commitments issued with no lender-side lock | Capital flow | **High** |
-| F-4 | Zero-tolerance cure liability is unmodeled and untracked | Risk | **High** |
+| F-3 | "Phantom lock": rate commitments issued with no lender-side lock | Capital flow | **High** — ✅ fixed |
+| F-4 | Zero-tolerance cure liability is unmodeled and untracked | Risk | **High** — ✅ fixed |
 | F-5 | Counterparty capacity is zero and submission does not check for it | Risk | **High** |
 | F-6 | No revenue, receivable, or comp representation anywhere in the system | Unit economics | **High** |
 | F-7 | Loan Estimate Section A omits the largest fee line from its itemization | Risk | Medium |
@@ -573,3 +573,97 @@ backfill**. The compensation model is a fact about how a transaction was papered
 for existing rows would falsify a compliance record — the same principle as the standing rule
 against backfilling guessed values on provenance columns. Existing files read as "not elected"
 and fail closed until staff elect a model, which is the correct outcome rather than a gap.
+
+---
+
+## Remediation — F-3 and F-4 (2026-08-04)
+
+### F-3 — a lock now requires a lender
+
+**What shipped.** `rate_locks` gained the fields that make a lock a commitment — `lenderId`,
+`lockConfirmationNumber`, `confirmedRate`, `confirmedExpiresAt`, `confirmedBy`/`confirmedAt`, and
+a `simulated` flag mirroring `lender_submissions` (migration `0039`).
+`POST /api/rate-locks` now **requires all four confirmation fields**, validates the lender
+against the `shared/wholesaleLenders.ts` catalog, and rejects an already-expired confirmation.
+
+Three consequences worth naming:
+
+- **The lender's confirmed expiration is authoritative.** `expiresAt` is no longer
+  `now + lockPeriodDays`; local math describes what we *asked* for, never what we got.
+- **The lock carries the lender's rate**, not the quoted loan option's. When they differ the
+  activity log records `rateDriftFromQuote` — a lender confirming a different rate is a
+  redisclosure trigger, and it now feeds F-4's tolerance evaluation instead of vanishing.
+- **Extension needs its own confirmation.** `POST /api/rate-locks/:id/extend` previously read
+  `additionalDays` and `extensionFee` straight off `req.body` with no validation and extended the
+  expiry by local arithmetic — manufacturing a longer commitment nobody had granted. It is now
+  Zod-validated, requires a confirmation number and the lender's confirmed expiration, must move
+  the expiry forward, and refuses outright to extend an unconfirmed row.
+
+**Legacy rows are not backfilled.** `shared/rateLockConfirmation.ts` is the single place that
+answers "is this a real commitment?", and rows written before `0039` resolve to
+`unconfirmed_quote` — which is what they always were. Inventing a confirmation number to make
+them look like locks would repeat the original error in the database. The list endpoint annotates
+every row with `kind` / `lenderConfirmed` / `label`, and the borrower-facing copy for an
+unconfirmed row says *"NOT a lender-confirmed lock"* rather than the old
+`Rate locked at X% for N days` — a test pins that the old claim cannot reappear.
+
+**Not done:** `lock_requests` (the dormant request→response table) stays dormant. Its `NOT NULL`
+FKs point at `lender_offers` and `underwriting_snapshots`, and nothing creates lender offers
+(F-6), so wiring it would have meant resurrecting three dead tables to hold one confirmation
+number. Recording the confirmation on the lock itself enforces the same invariant — no lock
+without a lender commitment — without that. Revisit when a lender API actually lands (F-5).
+
+### F-4 — the Loan Estimate now has a baseline
+
+**The real defect was worse than "cure math isn't automated."** `generateLoanEstimate()` builds
+the LE from live file data on every fetch and nothing was persisted, so the figures a borrower
+saw on day one silently became different figures on day ten. No tolerance comparison was possible
+because **the baseline did not exist anywhere**.
+
+**What shipped.** A new immutable `loan_estimate_disclosures` table (migration `0040`) — one row
+per issued disclosure, holding the tolerance-bucketed fee snapshot, and linking any revision to
+the change-of-circumstance record that authorized it. Plus a pure tolerance engine
+(`shared/compliance/feeTolerance.ts`) and the IO seam around it
+(`server/services/leDisclosureBaseline.ts`).
+
+The rule now enforced on borrower delivery:
+
+| Situation | Behavior |
+|---|---|
+| First delivery | Persist version 1. That is the baseline. |
+| Nothing increased | Baseline stands; serve it. |
+| Increases **with** an open CoC | Redisclose: persist version n+1 linked to that CoC, resetting the baseline. |
+| Increases **with no** CoC | **Do not redisclose.** Serve the disclosed figures; record the delta as a cure. |
+
+That last row is the fix. Silently regenerating a higher LE is not a disclosure — it is the
+tolerance violation, hidden. `applyDisclosedFees()` overlays the disclosed fees back onto the LE
+and recomputes every dependent total, so the borrower sees the document that was issued rather
+than whatever the fee model produces today. Staff previews never create or reset a baseline;
+only borrower delivery does.
+
+`GET /api/loan-applications/:id/le-tolerance` (internal staff) answers "what would this file owe
+in cures if it closed on today's numbers?" without writing anything, and every
+redisclosure/blocked event writes a `trid.tolerance_evaluated` audit entry carrying the cure
+amount.
+
+**Bucket classification, and the one judgment call.** Section A + Section B + transfer taxes are
+zero-tolerance; recording fees are the 10% cumulative tier; prepaids and escrows carry no numeric
+tolerance. **LE Section C (shoppable services) is classified zero-tolerance, not ten-percent** —
+the 10% tier is conditioned on the consumer picking a provider from the creditor's written list
+(§1026.19(e)(1)(vi)), and this platform has no written-list feature at all, so no consumer can
+satisfy that condition. That is both the conservative and the likely-correct reading; it errs
+toward flagging more, never less. Recorded in ledger entry `trid-1026-19e3-fee-tolerance` with
+the same 14-day interval and the same honest verification status as F-1/F-2 — the network block
+described above applied to this work too.
+
+**Scope boundary:** this raises a redisclosure gate and quantifies exposure. It does not decide a
+legal cure, and the figure must not be used to pay or decline one until the tier composition is
+verified against the regulation.
+
+### Combined verification
+
+Typecheck clean · **1,473 unit tests green** (up from 1,421 at audit time; +52 across
+`loCompensation`, `feeTolerance`, `rateLockConfirmation`, `leDisclosureBaseline`, and 4 added to
+`mismoValidation`) · schema-migration guard, design-token ratchet, regulatory-freshness gate and
+production build all pass. Migrations `0038`–`0040` are expand-only and idempotent; none
+backfills.

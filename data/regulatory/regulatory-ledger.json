@@ -495,6 +495,17 @@
       "lastVerified": "2026-08-04",
       "reviewIntervalDays": 14,
       "notes": "The tiered CAPS are verified (shared/fannieMae/qmThresholds.ts, cited to the local 2026 job aid). The INCLUSION LIST is not: the job aid defines RegulationZTotalPointsAndFeesAmount only as 'calculated in accordance with Regulation Z', and every regulatory host was blocked by network policy on 2026-08-04. The code therefore does not claim to produce the Regulation Z figure - it produces a monotone lower bound, and correctness rests on monotonicity (any item the real definition adds can only raise the total), not on completeness. Consequence: over_cap verdicts are sound; under-cap verdicts are reported as 'not cleared', never as compliant. A human must confirm 1026.32(b)(1)(ii) (creditor-paid broker compensation) and 1026.32(b)(4) (Total Loan Amount) and then decide whether the floor can be promoted to an authoritative calculation. Related open item: whether lender-paid broker compensation is a finance charge under 1026.4(a)(3) - the APR math was deliberately left unchanged pending that answer (see server/services/loanCosts.ts prepaidFinanceCharges)."
+    },
+    {
+      "id": "trid-1026-19e3-fee-tolerance",
+      "rule": "Good-faith fee tolerance tiers: ZERO tolerance for charges paid to the creditor/loan originator/affiliate, services the consumer cannot shop for, and transfer taxes; TEN PERCENT cumulative for recording fees and shoppable services taken from the creditor's written provider list; NO numeric tolerance for prepaid interest, insurance premiums and escrow deposits. Baselines reset only on a valid changed circumstance.",
+      "value": "0% / 10% cumulative / good-faith",
+      "citation": "Regulation Z, 12 CFR 1026.19(e)(3)(i)-(iii); reset per (e)(3)(iv); refund per 1026.19(f)(2)(v) (TIER COMPOSITION VERBATIM VERIFICATION PENDING - see notes)",
+      "sourceUrl": "https://www.ecfr.gov/current/title-12/chapter-X/subchapter-C/part-1026/subpart-E/section-1026.19",
+      "codeRef": "shared/compliance/feeTolerance.ts buildDisclosureSnapshot/evaluateTolerance; server/services/leDisclosureBaseline.ts reconcileDisclosure",
+      "lastVerified": "2026-08-04",
+      "reviewIntervalDays": 14,
+      "notes": "VERBATIM TEXT NOT YET VERIFIED - same blocked-network condition as regz-1026-36d2-dual-compensation (ecfr.gov, law.cornell.edu, consumerfinance.gov, govinfo.gov all CONNECT 403 on 2026-08-04; no local Reg Z copy in docs/). The tier STRUCTURE is mirrored by the Loan Estimate section layout the codebase already builds. Two classification choices are deliberate and conservative, and are called out in the module header: (1) LE Section C shoppable services are classified ZERO tolerance, not ten-percent, because the ten-percent tier is conditioned on the consumer selecting a provider from the creditor's written list under 1026.19(e)(1)(vi) and this platform has no written-list feature at all, so no consumer can satisfy that condition; (2) transfer taxes zero / recording fees ten-percent. Both err toward flagging more. The module raises a redisclosure gate and records an exposure figure; it does not decide a legal cure. A human must confirm the tier composition before any figure here is used to pay or decline a cure, then reset reviewIntervalDays to 180."
     }
   ]
 }

@@ -18,6 +18,9 @@ import {
   changeOfCircumstances,
   type ChangeOfCircumstance,
   type InsertChangeOfCircumstance,
+  loanEstimateDisclosures,
+  type LoanEstimateDisclosure,
+  type InsertLoanEstimateDisclosure,
 } from "@shared/schema";
 import { RealtorHomeownerStorage } from "./realtorHomeowner";
 export class NotificationsOpsStorage extends RealtorHomeownerStorage {
@@ -56,6 +59,34 @@ export class NotificationsOpsStorage extends RealtorHomeownerStorage {
       .where(eq(changeOfCircumstances.id, id))
       .returning();
     return updated;
+  }
+
+  // ===== ISSUED LOAN ESTIMATE DISCLOSURES (TRID tolerance baseline) =====
+  // Rows are immutable evidence of what was disclosed — there is deliberately
+  // no update method.
+
+  async createLoanEstimateDisclosure(data: InsertLoanEstimateDisclosure): Promise<LoanEstimateDisclosure> {
+    const [row] = await db.insert(loanEstimateDisclosures).values(data).returning();
+    return row;
+  }
+
+  /** The disclosure currently in force — the tolerance baseline. */
+  async getLatestLoanEstimateDisclosure(applicationId: string): Promise<LoanEstimateDisclosure | undefined> {
+    const [row] = await db
+      .select()
+      .from(loanEstimateDisclosures)
+      .where(eq(loanEstimateDisclosures.applicationId, applicationId))
+      .orderBy(desc(loanEstimateDisclosures.version))
+      .limit(1);
+    return row;
+  }
+
+  async getLoanEstimateDisclosures(applicationId: string): Promise<LoanEstimateDisclosure[]> {
+    return db
+      .select()
+      .from(loanEstimateDisclosures)
+      .where(eq(loanEstimateDisclosures.applicationId, applicationId))
+      .orderBy(desc(loanEstimateDisclosures.version));
   }
 
   // Single batched update (never update in a loop).

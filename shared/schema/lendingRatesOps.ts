@@ -147,7 +147,31 @@ export const rateLocks = pgTable("rate_locks", {
   lockPeriodDays: integer("lock_period_days").notNull(),
   lockedAt: timestamp("locked_at").defaultNow().notNull(),
   expiresAt: timestamp("expires_at").notNull(),
-  
+
+  // ---------------------------------------------------------------------
+  // Lender-side confirmation. A broker cannot lock a rate — only the
+  // wholesale lender can. Without these fields a row is a QUOTE the platform
+  // made up, not a commitment anybody is obliged to honor, and the borrower
+  // must never be told otherwise (shared/rateLockConfirmation.ts).
+  //
+  // Nullable because rows written before this existed genuinely have no
+  // confirmation; they are reported as unconfirmed quotes rather than
+  // backfilled with an invented confirmation number. New locks cannot be
+  // created without them (routes/borrower/rateLocks.ts).
+  // ---------------------------------------------------------------------
+  /** Wholesale lender id from shared/wholesaleLenders.ts. */
+  lenderId: varchar("lender_id", { length: 40 }),
+  /** The lender's own lock confirmation / commitment number. */
+  lockConfirmationNumber: varchar("lock_confirmation_number", { length: 60 }),
+  /** Rate the lender confirmed — may differ from the quoted loan option. */
+  confirmedRate: decimal("confirmed_rate", { precision: 5, scale: 3 }),
+  /** Expiration the lender confirmed; authoritative over any local math. */
+  confirmedExpiresAt: timestamp("confirmed_expires_at"),
+  confirmedBy: varchar("confirmed_by").references(() => users.id),
+  confirmedAt: timestamp("confirmed_at"),
+  /** True while the lender leg is the deterministic simulation. */
+  simulated: boolean("simulated").notNull().default(true),
+
   status: varchar("status", { length: 50 }).$type<RateLockStatus>().default("active").notNull(),
 
   extensionCount: integer("extension_count").default(0),
