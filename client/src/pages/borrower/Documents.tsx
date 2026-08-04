@@ -18,6 +18,7 @@ import { PageShell } from "@/components/PageShell";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import { DocumentItemRow, type DocRow } from "@/components/DocumentItemRow";
+import { DocumentRequestReasons } from "@/components/borrower/DocumentRequestReasons";
 import {
   DOCUMENT_CATEGORIES,
   CONDITION_CATEGORY_META,
@@ -461,6 +462,13 @@ export default function Documents() {
             </div>
             <p className="text-sm text-muted-foreground">{statusInfo.subtitle}</p>
           </div>
+        </div>
+
+        {/* Why-we-need-these: tie-out-driven reasons from the borrower's own
+            SituationProfile (owner-readable endpoint; renders nothing when the
+            file has no generated requests). */}
+        <div className="mb-6">
+          <DocumentRequestReasons />
         </div>
 
         <div className="space-y-4">
