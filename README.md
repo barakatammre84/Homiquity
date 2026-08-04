@@ -1,9 +1,8 @@
-# Homiquity (MortgageStream)
+# Homiquity
 
 An AI-native mortgage **brokerage** platform: borrower intake (digital 1003), document
 collection, deterministic underwriting, MISMO 3.4 packaging, and delivery of complete
-loan files to wholesale lenders. Deployed at <https://www.homiquity.com>
-(Vercel; the `mortgage-stream.vercel.app` platform domain still resolves).
+loan files to wholesale lenders. Deployed at <https://www.homiquity.com> (Vercel).
 
 **Current status (2026-07-19): company NMLS licensure is real — NMLS #427468, Illinois
 (`shared/companyIdentity.ts`, #154/#201) — and the site remains in pre-launch gated mode

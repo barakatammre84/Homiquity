@@ -266,7 +266,7 @@ Prereqs: Node 24.x (corepack ships with it), and either Docker **or** a local/ho
 
 1. **Clone and install**
    ```bash
-   git clone https://github.com/barakatammre84/MortgageStream.git homiquity
+   git clone https://github.com/barakatammre84/Homiquity.git homiquity
    cd homiquity
    corepack enable        # one-time: activates the pinned pnpm (pnpm-lock.yaml is the only lockfile)
    pnpm install

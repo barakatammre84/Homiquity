@@ -1,5 +1,12 @@
 # Deploy & Revert
 
+> **Naming note (rebrand, 2026-08-04).** This product was formerly called
+> **MortgageStream**. Ledger rows, PR links, and postmortems below that predate
+> 2026-08-04 are left exactly as written — they were accurate at the time, and the
+> GitHub URLs still resolve because GitHub redirects renamed repositories. Read
+> `MortgageStream` / `mortgage-stream.vercel.app` in historical rows as the former
+> names of Homiquity / the `homiquity` Vercel project.
+
 Homiquity ships with a deliberately simple flow: **branch → PR → the required
 `gate` check goes green → merge, and Vercel deploys `main`. If it breaks,
 revert.** No human review required — the machine gate is the only approval.

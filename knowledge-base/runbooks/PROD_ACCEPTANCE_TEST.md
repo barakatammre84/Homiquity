@@ -4,7 +4,7 @@
 
 **How to use.** Copy the checklist into the launch ticket, run top to bottom, check each box, and paste the result into the [production change ledger](./CICD.md#production-change-ledger-append-only). **Every ⛔ BLOCKER must pass to launch.** A failed BLOCKER stops the launch and gets a ledger row + rollback ([ROLLBACK.md](./ROLLBACK.md)). ☑ SHOULD items are logged but don't individually block.
 
-**Environment.** Run against `https://www.homiquity.com` (the custom domain — live since the 2026-07-13 cutover; the `mortgage-stream.vercel.app` platform domain still resolves). Use the current production commit — confirm it matches `origin/main` HEAD before starting.
+**Environment.** Run against `https://www.homiquity.com` (the custom domain — live since the 2026-07-13 cutover). Use the current production commit — confirm it matches `origin/main` HEAD before starting.
 
 ---
 
