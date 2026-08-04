@@ -21,7 +21,7 @@ where the debt has accumulated.
 
 ## Severity-ordered summary
 
-> **Remediation status (2026-08-04, same day).** **F-1 through F-6 are FIXED** — see the
+> **Remediation status (2026-08-04, same day).** **F-1 through F-8 are FIXED** — see the
 > §"Remediation" sections at the end of this document for what shipped, what is covered by
 > tests, and the items deliberately left open rather than implemented on unverified regulatory
 > text. **F-5's gate is a live behavior change in production** — read that section before the
@@ -35,8 +35,8 @@ where the debt has accumulated.
 | F-4 | Zero-tolerance cure liability is unmodeled and untracked | Risk | **High** — ✅ fixed |
 | F-5 | Counterparty capacity is zero and submission does not check for it | Risk | **High** — ✅ fixed |
 | F-6 | No revenue, receivable, or comp representation anywhere in the system | Unit economics | **High** — ✅ fixed |
-| F-7 | Loan Estimate Section A omits the largest fee line from its itemization | Risk | Medium |
-| F-8 | EPO/EPC compensation clawback exposure is entirely unrepresented | Balance sheet | Medium |
+| F-7 | Loan Estimate Section A omits the largest fee line from its itemization | Risk | Medium — ✅ fixed |
+| F-8 | EPO/EPC compensation clawback exposure is entirely unrepresented | Balance sheet | Medium — ✅ fixed |
 | F-9 | Third-party fee constants are unsourced national guesses in a zero-tolerance bucket | Risk | Medium |
 | F-10 | Lock-extension fee has no payer attribution | Capital flow | Medium |
 | F-11 | No cost side: no cost-per-file, vendor cost ledger, or pull-through | Unit economics | Medium |
@@ -748,3 +748,72 @@ regulatory-freshness gate and production build all pass. Migration `0041` is exp
 idempotent, and does not backfill: submissions predating it have no captured expectation, and
 computing one retroactively from today's comp plan would invent a revenue record. They report as
 `pending` — an honest gap.
+
+---
+
+## Remediation — F-7 and F-8 (2026-08-04)
+
+### F-7 — the origination fee has a name now
+
+`originationFee` is an itemized line in `closingCostDetails.loanCosts.originationCharges`
+(`server/services/loanEstimate.ts`) and renders as **"Origination Fee"** above Points,
+Application Fee and Underwriting Fee on the borrower's disclosure
+(`client/src/pages/lending/LoanEstimate.tsx`).
+
+The client was showing the defect literally: four `CostLineItem` rows and a `Subtotal` that
+exceeded them by 1% of the loan amount — $4,000 unlabeled on a $400k loan, against
+§1026.37(f)(1)'s requirement that each origination charge be itemized by name and amount.
+
+`snapshotFromLoanEstimate` no longer reconstructs the fee by subtracting the itemized lines from
+the section total; it reads the field. Tests pin the invariant that Section A's total equals the
+sum of its named lines, so the gap cannot silently reopen.
+
+Worth noting what this also fixed: the platform's **largest single revenue line** previously had
+no name anywhere on the document that discloses it. F-6 made revenue visible internally; this
+makes it visible to the borrower, which is the part the regulation is about.
+
+### F-8 — the clawback register exists
+
+**What shipped.** `shared/compensationClawback.ts` — a pure exposure model — plus surfacing on
+the admin stats and the compensation report. No migration: it reads the `fundedAt` /
+`compensationReceivedAmount` columns F-6 added.
+
+Per funded loan it answers: is the compensation still reclaimable, how much, until when, and is
+the window **contracted or assumed**. The register rolls that into `atRiskCount`, `totalAtRisk`
+(the reserve figure), `indeterminateCount`, `nextExpiry`, and `usesAssumedWindow`.
+
+Three deliberate choices:
+
+- **The window is a flagged assumption, not an invented fact.** `DEFAULT_EPO_CLAWBACK_DAYS = 180`
+  is labelled a PLATFORM ASSUMPTION in code and in ledger entry `platform-epo-clawback-window`.
+  `WholesaleLender.epoClawbackDays` is where a real contracted term goes — `undefined` means *no
+  agreement exists yet*, not *no clawback*. Every exposure computed from the default carries
+  `windowSource: "assumed"`, and the register raises `usesAssumedWindow` so **no reserve figure
+  can silently rest on a guess**. Fill the term in from each signed agreement, alongside flipping
+  `approvalStatus` (F-5).
+- **Unknown ≠ zero.** A funded loan inside its window with no remittance recorded is `atRisk`
+  with `amountAtRisk: 0` *and* `indeterminate: true`. It is counted as an unknown rather than
+  summed into the reserve as nothing.
+- **`nextExpiry` is reported** — the register is a cash-planning tool, not just a total.
+
+**The interaction that mattered most.** `lifecycleEngine.ts` raises a refi alert whenever market
+rates sit 25 bps below a homeowner's rate. Pointed at a loan Homiquity funded six weeks ago, that
+feature solicits the exact early payoff that triggers our own clawback — paying the lender back
+the entire commission for the privilege of originating the refinance. The sweep now consults
+`resolveClawbackForHomeowner` and withholds the alert while the window is open, counting
+suppressions in the sweep summary.
+
+That guard is **deliberately asymmetric**: when the funding lender cannot be resolved, or the
+lookup fails, it falls back to the profile's close date and the assumed window — i.e. it
+suppresses. A missed refi lead costs a lead; a solicited early payoff costs the whole commission.
+
+**What this does not do.** It quantifies the exposure; it does not reserve against it, and it
+does not cover EPD (early-payment-default) repurchase provisions, surety-bond or minimum-net-worth
+requirements — the rest of F-13's register. Nor does it monitor for actual payoffs: nothing tells
+the platform a loan paid off, so `totalAtRisk` is exposure, not realized loss.
+
+### Verification
+
+Typecheck clean · **1,505 unit tests green** (+16) · schema guard, design-token ratchet,
+regulatory-freshness gate and production build all pass. No migration — F-8 reads columns
+migration `0041` already added.

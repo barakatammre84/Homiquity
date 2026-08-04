@@ -359,12 +359,28 @@ export function registerSubmissionRoutes(
         }))
         .filter(row => row.status === "short_paid" || row.status === "over_paid" || row.status === "pending");
 
+      // Contingent liability (F-8): compensation the lenders can still
+      // reclaim if these loans pay off early. For an asset-light broker this
+      // is the balance sheet, and it existed nowhere before.
+      const { buildClawbackRegister } = await import("@shared/compensationClawback");
+      const clawback = buildClawbackRegister(
+        submissions.map(s => ({
+          submissionId: s.id,
+          applicationId: s.applicationId,
+          status: s.status,
+          lenderId: s.lenderId,
+          fundedAt: s.fundedAt,
+          compensationReceivedAmount: s.compensationReceivedAmount,
+        })),
+      );
+
       res.json({
         ...summary,
         // The binding constraint on all of the above: with no approved
         // counterparty there is no revenue capacity at all (F-5).
         approvedLenderCount: approvedLenderCount(),
         discrepancies,
+        clawbackExposure: clawback,
       });
     } catch (error) {
       console.error("Compensation report error:", error);

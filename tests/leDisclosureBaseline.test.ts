@@ -41,9 +41,15 @@ function le(overrides: { appraisal?: number; originationTotal?: number; recordin
     costsAtClosing: { estimatedClosingCosts: 0, estimatedCashToClose: 0 },
     closingCostDetails: {
       loanCosts: {
-        // Section A's itemization omits the origination fee; the total carries
-        // it (finding F-7). The snapshot must recover it, not lose it.
-        originationCharges: { points: 0, applicationFee: 500, underwritingFee: 1_500, total: originationTotal },
+        // Since F-7 the origination fee is its own named line and the section
+        // total is the sum of the lines above it.
+        originationCharges: {
+          originationFee: originationTotal - 2_000,
+          points: 0,
+          applicationFee: 500,
+          underwritingFee: 1_500,
+          total: originationTotal,
+        },
         servicesYouCannotShopFor: {
           appraisal: overrides.appraisal ?? 650,
           creditReport: 75,
@@ -82,15 +88,17 @@ beforeEach(() => {
 });
 
 describe("F-4 — snapshot extraction", () => {
-  it("recovers the origination fee that Section A's itemization omits", () => {
+  it("carries the itemized origination fee into the baseline", () => {
     const s = snapshotFromLoanEstimate(le());
-    // total 6,000 − (0 points + 500 app + 1,500 UW) = 4,000
     expect(s.fees.find(f => f.id === "origination_fee")?.amount).toBe(4_000);
   });
 
-  it("never produces a negative origination fee from an inconsistent LE", () => {
-    const s = snapshotFromLoanEstimate(le({ originationTotal: 100 }));
-    expect(s.fees.find(f => f.id === "origination_fee")?.amount).toBe(0);
+  it("keeps Section A's total equal to the sum of its lines (F-7)", () => {
+    // The defect: `total` included the origination fee while the itemized
+    // lines did not, so a borrower saw a $6,000 subtotal above lines summing
+    // to $2,000 — §1026.37(f)(1) requires each charge itemized by name.
+    const a = le().closingCostDetails.loanCosts.originationCharges;
+    expect(a.originationFee + a.points + a.applicationFee + a.underwritingFee).toBe(a.total);
   });
 });
 
@@ -166,10 +174,16 @@ describe("F-4 — serving the figures that were disclosed", () => {
     expect(held.costsAtClosing.estimatedCashToClose).toBe(held.cashToClose.cashToClose);
   });
 
-  it("keeps Section A's total carrying the origination fee after the overlay", async () => {
+  it("emits a Section A whose total equals the sum of its named lines (F-7)", async () => {
     const first = await reconcileDisclosure("app-1", le());
     const held = applyDisclosedFees(le({ appraisal: 1_200 }), first.disclosure.snapshot as any);
-    expect(held.closingCostDetails.loanCosts.originationCharges.total).toBe(6_000);
+    const a = held.closingCostDetails.loanCosts.originationCharges;
+
+    expect(a.originationFee).toBe(4_000);
+    expect(a.total).toBe(6_000);
+    // The invariant that was broken: an unlabeled $4,000 sat between the
+    // itemized lines and the subtotal the borrower read.
+    expect(a.originationFee + a.points + a.applicationFee + a.underwritingFee).toBe(a.total);
   });
 });
 

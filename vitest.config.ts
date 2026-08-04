@@ -25,6 +25,7 @@ export default defineConfig({
       "tests/rateLockConfirmation.test.ts",
       "tests/leDisclosureBaseline.test.ts",
       "tests/counterpartyAndCompensation.test.ts",
+      "tests/compensationClawback.test.ts",
       "tests/scenarioSimulator.test.ts",
       "tests/cockpitScoping.test.ts",
       "tests/signalEngine.test.ts",

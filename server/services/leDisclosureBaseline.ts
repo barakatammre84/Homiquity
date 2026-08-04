@@ -42,18 +42,12 @@ export function snapshotFromLoanEstimate(le: LoanEstimateData): DisclosureSnapsh
   const costs = le.closingCostDetails;
   const origination = costs.loanCosts.originationCharges;
 
-  // Section A's itemized lines do not include the origination fee (it is
-  // folded into the section total — audit finding F-7, still open). Recover it
-  // from the total so the baseline records the charge that was actually
-  // disclosed rather than an understated one.
-  const itemized = origination.points + origination.applicationFee + origination.underwritingFee;
-  const originationFee = Math.max(0, origination.total - itemized);
-
   return buildDisclosureSnapshot({
     loanAmount: le.loanTerms.loanAmount,
     interestRate: le.loanTerms.interestRate,
     originationCharges: {
-      originationFee,
+      // Itemized since F-7; before that it was folded into the section total.
+      originationFee: origination.originationFee,
       points: origination.points,
       applicationFee: origination.applicationFee,
       underwritingFee: origination.underwritingFee,
@@ -143,6 +137,7 @@ export function applyDisclosedFees(le: LoanEstimateData, snapshot: DisclosureSna
     closingCostDetails: {
       loanCosts: {
         originationCharges: {
+          originationFee: r(originationFee),
           points: r(points),
           applicationFee: r(applicationFee),
           underwritingFee: r(underwritingFee),

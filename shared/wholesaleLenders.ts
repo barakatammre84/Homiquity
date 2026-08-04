@@ -21,6 +21,18 @@ export interface WholesaleLender {
    * (UAL P6) includes the non-QM path sections only for these lenders.
    */
   nonQm?: boolean;
+  /**
+   * Early-payoff (EPO) clawback window in days, from the executed broker
+   * agreement: if the loan pays off inside it, the lender reclaims the
+   * compensation it paid us.
+   *
+   * Undefined means NO AGREEMENT EXISTS YET, not "no clawback" — every
+   * wholesale broker agreement contains an EPO clause. Exposure for these
+   * lenders is computed against `DEFAULT_EPO_CLAWBACK_DAYS` and flagged as an
+   * assumption (shared/compensationClawback.ts). Fill this in from the signed
+   * agreement, alongside flipping `approvalStatus`.
+   */
+  epoClawbackDays?: number;
 }
 
 export const WHOLESALE_LENDERS: WholesaleLender[] = [

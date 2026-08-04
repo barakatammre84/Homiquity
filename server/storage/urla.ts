@@ -33,6 +33,7 @@ import {
   type LoanDeliveryData,
   type InsertLoanDeliveryData,
   lenderSubmissions,
+  loanApplications,
   type LenderSubmission,
   type InsertLenderSubmission,
   realEstateOwned,
@@ -395,6 +396,21 @@ export class UrlaStorage extends TasksStorage {
       .from(lenderSubmissions)
       .where(eq(lenderSubmissions.applicationId, applicationId))
       .orderBy(desc(lenderSubmissions.submittedAt));
+  }
+
+  /**
+   * Funded submissions belonging to one borrower. Feeds the EPO clawback
+   * guard in the lifecycle sweep: we must not solicit a refinance on a loan
+   * whose compensation the lender can still reclaim.
+   */
+  async getFundedLenderSubmissionsByUser(userId: string): Promise<LenderSubmission[]> {
+    return await db
+      .select({ submission: lenderSubmissions })
+      .from(lenderSubmissions)
+      .innerJoin(loanApplications, eq(lenderSubmissions.applicationId, loanApplications.id))
+      .where(and(eq(loanApplications.userId, userId), eq(lenderSubmissions.status, "funded")))
+      .orderBy(desc(lenderSubmissions.fundedAt))
+      .then(rows => rows.map(r => r.submission));
   }
 
   /** Company-wide, for the broker revenue report. Admin-gated at the route. */

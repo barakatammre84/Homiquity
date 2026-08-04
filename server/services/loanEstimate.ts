@@ -42,6 +42,14 @@ export interface LoanEstimateData {
   closingCostDetails: {
     loanCosts: {
       originationCharges: {
+        /**
+         * Borrower-paid origination fee. §1026.37(f)(1) requires every
+         * origination charge itemized by name and amount — this line used to
+         * be folded silently into `total`, so the subtotal exceeded the lines
+         * above it by 1% of the loan amount and the platform's largest fee had
+         * no name anywhere on the disclosure.
+         */
+        originationFee: number;
         points: number;
         applicationFee: number;
         underwritingFee: number;
@@ -337,6 +345,7 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     closingCostDetails: {
       loanCosts: {
         originationCharges: {
+          originationFee: Math.round(originationFee),
           points: Math.round(points),
           applicationFee: Math.round(applicationFee),
           underwritingFee: Math.round(underwritingFee),

@@ -506,6 +506,17 @@
       "lastVerified": "2026-08-04",
       "reviewIntervalDays": 14,
       "notes": "VERBATIM TEXT NOT YET VERIFIED - same blocked-network condition as regz-1026-36d2-dual-compensation (ecfr.gov, law.cornell.edu, consumerfinance.gov, govinfo.gov all CONNECT 403 on 2026-08-04; no local Reg Z copy in docs/). The tier STRUCTURE is mirrored by the Loan Estimate section layout the codebase already builds. Two classification choices are deliberate and conservative, and are called out in the module header: (1) LE Section C shoppable services are classified ZERO tolerance, not ten-percent, because the ten-percent tier is conditioned on the consumer selecting a provider from the creditor's written list under 1026.19(e)(1)(vi) and this platform has no written-list feature at all, so no consumer can satisfy that condition; (2) transfer taxes zero / recording fees ten-percent. Both err toward flagging more. The module raises a redisclosure gate and records an exposure figure; it does not decide a legal cure. A human must confirm the tier composition before any figure here is used to pay or decline a cure, then reset reviewIntervalDays to 180."
+    },
+    {
+      "id": "platform-epo-clawback-window",
+      "rule": "Early-payoff (EPO) compensation clawback window used to compute contingent-liability exposure for lenders whose executed broker agreement has not supplied a term",
+      "value": "180 days",
+      "citation": "PLATFORM ASSUMPTION - no regulatory or contractual source. Each executed wholesale broker agreement states its own EPO period, which MUST replace this per lender via WholesaleLender.epoClawbackDays.",
+      "sourceUrl": "https://singlefamily.fanniemae.com/job-aid/loan-delivery",
+      "codeRef": "shared/compensationClawback.ts DEFAULT_EPO_CLAWBACK_DAYS; server/services/lifecycleEngine.ts resolveClawbackForHomeowner",
+      "lastVerified": "2026-08-04",
+      "reviewIntervalDays": 90,
+      "notes": "Not a regulatory value - recorded here because it drives a reserve figure and must not go unreviewed. 180 days is the common wholesale EPO period; no agreement has been executed, so today every exposure computed from it is flagged windowSource='assumed' and the register reports usesAssumedWindow=true. No reserve derived from this may be treated as contractual. Replace per lender as agreements land (same edit as flipping approvalStatus for F-5). sourceUrl is a placeholder - there is no authoritative public source for a contract term."
     }
   ]
 }
