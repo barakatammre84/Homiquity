@@ -206,7 +206,13 @@ export const glossaryTerms: GlossaryTerm[] = [
     term: "Down payment",
     definition:
       'A down payment is the amount of cash you pay upfront toward the purchase of a home. It\'s often expressed as a percentage of the selling price of a home—typically 5–20% depending on the type of loan. The difference between your down payment and the price of the home is what you finance with a mortgage. Generally, if you put less than 20% "down" on a home, private mortgage insurance (PMI) is required in addition to your monthly payment.',
-    related: ["private-mortgage-insurance-pmi"],
+    related: ["private-mortgage-insurance-pmi", "down-payment-assistance-dpa"],
+  },
+  {
+    term: "Down payment assistance (DPA)",
+    definition:
+      "Down payment assistance (DPA) is money from a state or local government agency or nonprofit that covers part of your down payment or closing costs. Depending on the program it arrives as a grant you never repay, a loan forgiven over time, or a low- or no-interest loan repaid when you sell or refinance. Each program sets its own eligibility rules — income and purchase-price limits, minimum credit scores, homebuyer education, and owner-occupancy requirements — and terms can change or funding can pause without notice, so confirm current details with the administering agency or a HUD-approved housing counselor.",
+    related: ["down-payment", "cash-to-close", "gift-letter"],
   },
   {
     term: "Earnest money/good faith deposit",

@@ -1,10 +1,15 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { join } from "path";
 import {
   ILLINOIS_DPA_ARTICLES,
   ILLINOIS_DPA_PROGRAMS,
 } from "../server/seedData/illinoisDpa";
 import { buildSitemapXml } from "../shared/seo/routeMeta";
 import { SITE_URL } from "../shared/seo/schema";
+
+const ROOT = join(__dirname, "..");
+const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 
 // The DPA articles are public strings on the pre-license educational surface.
 // The Armed Launch Charter's Lane 2 (public-word compliance) bans solicitation
@@ -119,5 +124,48 @@ describe("Illinois DPA seed programs", () => {
       // Every entry must date its facts so staleness is visible in the UI.
       expect(program.eligibilityNotes ?? "").toContain("as of July 2026");
     }
+  });
+});
+
+// Source-text pins on the wizard page and its API route, added by the
+// 2026-08-04 renter-incubation adjudication (§3.1–§3.4, §3.6): the wizard is a
+// public, indexable, pre-license surface, so its copy may not carry unbacked
+// market claims or promise money-math the platform doesn't perform, and its
+// honesty must not depend on the directory happening to be Illinois-only.
+describe("DownPaymentWizard public copy (renter-incubation adjudication §3)", () => {
+  const wizardSource = read("client/src/pages/education/DownPaymentWizard.tsx");
+
+  it("carries no unbacked market or eligibility-likelihood claims", () => {
+    expect(wizardSource).not.toMatch(/\$?\d+\s*billion/i);
+    expect(wizardSource).not.toMatch(/available nationwide/i);
+    expect(wizardSource).not.toMatch(/most first-time buyers qualify/i);
+  });
+
+  it("does not promise automatic DPA handling in pre-approval", () => {
+    // DPA touches zero money math (loanCosts/LE/pricing are DPA-clean);
+    // the CTA may not promise otherwise.
+    expect(wizardSource).not.toMatch(/we'?ll factor/i);
+    expect(wizardSource).not.toMatch(/automatically/i);
+  });
+
+  it("frames the licensed footprint instead of relying on empty non-IL data", () => {
+    expect(wizardSource).toContain("unlicensedStateMessage");
+    expect(wizardSource).toContain("card-unlicensed-state-notice");
+    expect(wizardSource).toMatch(/educational information/i);
+  });
+
+  it("hides the income filter until sourced income-limit data exists", () => {
+    // Self-releasing pin: the seeded rows carry no maxIncome, so an income
+    // input can only imply eligibility screening that never happens. The day
+    // sourced income-limit data lands, this assertion stops applying.
+    if (!ILLINOIS_DPA_PROGRAMS.some((p) => p.maxIncome != null)) {
+      expect(wizardSource).not.toContain("input-income");
+    }
+  });
+
+  it("keeps the DPA route validated (no untyped filters)", () => {
+    const routeSource = read("server/routes/borrower/onboarding.ts");
+    expect(routeSource).toContain("dpaProgramsQuerySchema.safeParse");
+    expect(routeSource).not.toContain("filters: any");
   });
 });
