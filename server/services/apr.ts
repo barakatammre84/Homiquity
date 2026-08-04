@@ -13,6 +13,12 @@
 // (§1026.4(c)(7)) and recording/transfer taxes (§1026.4(e)) are NOT.
 // ---------------------------------------------------------------------------
 
+import {
+  ORIGINATION_FEE_RATE,
+  PLATFORM_APPLICATION_FEE,
+  PLATFORM_UNDERWRITING_FEE,
+} from "./loanCosts";
+
 export function monthlyPrincipalAndInterest(loanAmount: number, annualRatePct: number, termMonths: number): number {
   if (annualRatePct === 0) return loanAmount / termMonths;
   const r = annualRatePct / 100 / 12;
@@ -118,14 +124,25 @@ export interface AdvertisedFeeModelOptions {
   isFHA?: boolean;
 }
 
+/**
+ * Representative fee model for ADVERTISED rates only — there is no borrower and
+ * therefore no elected compensation model on a marketing surface. It keeps the
+ * borrower-paid origination fee unconditionally, which is the conservative
+ * direction for advertising (a higher disclosed APR, never a lower one).
+ *
+ * services/loanCosts.ts is the transaction-level schedule and does NOT work
+ * this way: there the origination fee is zero under a lender-paid plan
+ * (§1026.36(d)(2)). The two are intentionally different; do not "reconcile"
+ * them by making this one conditional on a model that does not exist here.
+ */
 export function estimatePrepaidFinanceCharges(
   loanAmount: number,
   noteRatePct: number,
   options: AdvertisedFeeModelOptions = {},
 ): number {
-  const originationFee = loanAmount * 0.01;
-  const applicationFee = 500;
-  const underwritingFee = 1500;
+  const originationFee = loanAmount * ORIGINATION_FEE_RATE;
+  const applicationFee = PLATFORM_APPLICATION_FEE;
+  const underwritingFee = PLATFORM_UNDERWRITING_FEE;
   const taxServiceFee = 100;
   const prepaidInterest = ((loanAmount * (noteRatePct / 100)) / 365) * 15;
   // FHA up-front MIP (1.75%) is a prepaid finance charge.

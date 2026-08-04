@@ -21,10 +21,15 @@ where the debt has accumulated.
 
 ## Severity-ordered summary
 
+> **Remediation status (2026-08-04, same day).** **F-1 and F-2 are FIXED** — see
+> §"Remediation" at the end of this document for what shipped, what is covered by tests, and
+> the two items that were deliberately left open rather than implemented on unverified
+> regulatory text. Every other finding below is unaddressed.
+
 | # | Finding | Area | Severity |
 |---|---|---|---|
-| F-1 | Fee schedule creates a dual-compensation transaction on every file (Reg Z §1026.36(d)(2)) | Risk | **Critical** |
-| F-2 | QM points-and-fees cap is structurally unenforced — and the fee schedule breaches it | Risk | **Critical** |
+| F-1 | Fee schedule creates a dual-compensation transaction on every file (Reg Z §1026.36(d)(2)) | Risk | **Critical** — ✅ fixed |
+| F-2 | QM points-and-fees cap is structurally unenforced — and the fee schedule breaches it | Risk | **Critical** — ✅ fixed |
 | F-3 | "Phantom lock": rate commitments issued with no lender-side lock | Capital flow | **High** |
 | F-4 | Zero-tolerance cure liability is unmodeled and untracked | Risk | **High** |
 | F-5 | Counterparty capacity is zero and submission does not check for it | Risk | **High** |
@@ -494,3 +499,77 @@ cadence.
 **Not found wanting:** RESPA §8 discipline (F-15), the asset-light structure (F-16), the
 determinism of the underwriting engine, and the honesty of `ASSUMPTIONS.md` — which correctly
 flags every simulated vendor leg and is why this audit could be conducted at all.
+
+---
+
+## Remediation — F-1 and F-2 (2026-08-04)
+
+Both criticals shared one root, so they shared one fix: **the closing-cost schedule now takes
+the compensation model as a required input instead of being blind to it.**
+
+### What shipped
+
+| Change | File |
+|---|---|
+| Compensation model, dual-comp gate, points-and-fees floor | `shared/compliance/loCompensation.ts` (new) |
+| Origination fee is `0` under a lender-paid plan; compensation carried separately; throws with no model | `server/services/loanCosts.ts` |
+| LE fails closed without an election | `server/services/loanEstimate.ts` |
+| Simulator lists a missing election as a named gap (`NEEDS_MORE_INFO`) rather than pricing blind | `server/services/scenarioSimulator.ts` |
+| QM check falls back to the computed floor; **never returns "compliant" off missing evidence** | `server/services/mismoValidation.ts` |
+| Staff election endpoint, assignment-scoped, audit-logged, frozen after LE issuance | `server/routes/lending/pricing.ts` |
+| Two nullable columns, deliberately not backfilled | `shared/schema/lendingCore.ts`, `migrations/0038_lo_compensation_model.sql` |
+| 22 new tests (`tests/loCompensation.test.ts` + 4 in `tests/mismoValidation.test.ts`) | suite 1443 green |
+
+**F-1.** `computeClosingCosts` consults `borrowerPaidOriginationAllowed(model)`. Lender-paid ⇒
+the borrower-paid origination fee is **zero**, and `lenderPaidCompensation` is reported on a
+separate field that no borrower-facing total includes (property-tested: varying comp from 100 to
+275 bps moves no number the borrower sees). There is no default model anywhere in the chain —
+every entry point fails closed, because a guessed model *is* the violation.
+
+**F-2.** The gate no longer reads a column nothing writes. Evidence is now two-tiered: the
+authoritative `totalPointsAndFees` when present, otherwise a **computed lower bound** from the
+platform's own charges plus compensation. The verdict is three-valued and the middle state is
+the point — a floor under the cap returns `not_cleared` (a warning), never a pass. Only
+`over_cap` blocks, and it blocks correctly: the audit's 275 bps / $400k case now produces a
+critical error and `gseReady: false` where it previously passed silently.
+
+### Why a floor and not the real figure
+
+The complete §1026.32(b)(1) inclusion list could not be verified: this environment's network
+policy blocked `ecfr.gov`, `law.cornell.edu`, `consumerfinance.gov`, and `govinfo.gov` (all
+CONNECT 403), the local Loan Delivery job aid defines the field only as *"calculated in
+accordance with Regulation Z"*, and `docs/` holds no Reg Z copy. Per the repo's
+no-citation-no-implementation rule, the code therefore does not claim to produce the Regulation Z
+figure.
+
+Its correctness rests on **monotonicity, not completeness**: every item the real definition adds
+can only raise the total, so `floor > cap` is sound and `floor ≤ cap` proves nothing. That is
+exactly what the three-valued verdict encodes. The design can over-flag; it cannot under-flag.
+
+### Deliberately left open — needs a human with the regulation
+
+1. **Verbatim verification of §1026.36(d)(2) and §1026.32(b)(1)(ii).** Ledger entries
+   `regz-1026-36d2-dual-compensation` and `regz-1026-32b1-points-and-fees-floor` carry a
+   **14-day** review interval (vs. the usual 90–180) so `pnpm checkup` goes loud if this is
+   forgotten. Both record precisely what was and was not verified. Shipping ahead of
+   verification is safe in one direction only — both changes are conservative (they remove a
+   borrower charge and add a warning), so neither can create the violation it guards.
+2. **§1026.4(a)(3) — is lender-paid broker compensation a finance charge?** If it is, it belongs
+   in `prepaidFinanceCharges` and changes every lender-paid APR. The APR math was left
+   **unchanged** rather than altered on an unverified reading; the open item is flagged in
+   `loanCosts.ts` at the `prepaidFinanceCharges` computation.
+3. **Fee re-baselining is a business decision, not an engineering one.** The fix makes the
+   constraint visible; it does not resolve it. $2,000 of fixed platform fees consumes a third of
+   the QM cap on a $200k loan, and at the seeded comp plans the QM-safe ceiling is 147 bps at
+   $400k and 95 bps at $200k. Someone has to decide whether the fee schedule or the target comp
+   plan moves. See §3's note on the implicit minimum viable loan amount.
+4. **No client UI for the election.** The endpoint exists and is the only writer; wiring it into
+   the staff BorrowerFile surface is follow-on work.
+
+### Migration note
+
+`0038` is expand-only and idempotent (`ADD COLUMN IF NOT EXISTS`), and **deliberately does not
+backfill**. The compensation model is a fact about how a transaction was papered; inventing one
+for existing rows would falsify a compliance record — the same principle as the standing rule
+against backfilling guessed values on provenance columns. Existing files read as "not elected"
+and fail closed until staff elect a model, which is the correct outcome rather than a gap.

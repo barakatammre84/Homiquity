@@ -379,6 +379,65 @@ describe("ATR/QM points-and-fees 3% cap", () => {
     expect(result.qmStatus).toBe("Unknown");
     expect(result.pointsAndFeesCompliant).toBe(true);
   });
+
+  // -------------------------------------------------------------------------
+  // Fallback to the computed floor when the closing-side figure is absent.
+  // `totalPointsAndFees` is never written by any product code path, so this
+  // fallback is the check that actually runs on a live file.
+  // -------------------------------------------------------------------------
+
+  it("warns rather than silently passing when no figure and no comp election exist", async () => {
+    setFixtures({
+      application: { totalPointsAndFees: null, loCompensationModel: null, loCompensationBps: null },
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("Unknown");
+    expect(result.warnings.some(w => /no loan originator compensation elected/i.test(w))).toBe(true);
+  });
+
+  it("blocks on the computed floor when comp pushes the file over the cap", async () => {
+    // 400k loan, 3% cap = 12,000. Lender-paid 275 bps = 11,000, plus the
+    // platform's $500 application and $1,500 underwriting fees = 13,000.
+    setFixtures({
+      application: {
+        totalPointsAndFees: null,
+        loCompensationModel: "lender_paid",
+        loCompensationBps: 275,
+      },
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("Non-QM");
+    expect(result.pointsAndFeesCompliant).toBe(false);
+    expect(result.gseReady).toBe(false);
+    expect(result.criticalErrors.some(e => /exceed the QM cap/i.test(e))).toBe(true);
+  });
+
+  it("warns — never passes clean — when the floor fits under the cap", async () => {
+    setFixtures({
+      application: {
+        totalPointsAndFees: null,
+        loCompensationModel: "lender_paid",
+        loCompensationBps: 200,
+      },
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("Unknown");
+    expect(result.criticalErrors.some(e => /ATR\/QM/.test(e))).toBe(false);
+    expect(result.warnings.some(w => /lower bound/i.test(w))).toBe(true);
+  });
+
+  it("prefers the authoritative figure over the floor when both are available", async () => {
+    setFixtures({
+      application: {
+        totalPointsAndFees: "12000",
+        loCompensationModel: "lender_paid",
+        loCompensationBps: 275, // floor would be over the cap; the real figure is not
+      },
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("QM");
+    expect(result.pointsAndFeesCompliant).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

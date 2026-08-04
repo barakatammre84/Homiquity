@@ -267,6 +267,13 @@
       "when": 1784997600000,
       "tag": "0037_departing_residence_disposition",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1785084000000,
+      "tag": "0038_lo_compensation_model",
+      "breakpoints": true
     }
   ]
 }

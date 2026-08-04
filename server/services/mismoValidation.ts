@@ -1,6 +1,16 @@
 import { storage } from "../storage";
 import { addBusinessDays, subtractBusinessDays } from "./businessDays";
 import { evaluateCoveredPointsAndFees } from "@shared/fannieMae/qmThresholds";
+import {
+  borrowerPaidOriginationAllowed,
+  evaluatePointsAndFeesFloor,
+  resolveCompensation,
+} from "@shared/compliance/loCompensation";
+import {
+  ORIGINATION_FEE_RATE,
+  PLATFORM_APPLICATION_FEE,
+  PLATFORM_UNDERWRITING_FEE,
+} from "./loanCosts";
 import type {
   LoanApplication,
   UrlaPersonalInfo,
@@ -407,47 +417,126 @@ function validateArm(application: LoanApplication): MISMOValidationResult["armVa
   return { applicable: true, valid: issues.length === 0, issues };
 }
 
+/**
+ * ATR/QM points-and-fees check, Reg Z 1026.43(e)(2)(iii) tiered caps
+ * (8% / $ / 5% / $ / 3% by loan amount) per the Loan Delivery QM Edits Job Aid.
+ *
+ * Two evidence tiers, because pre-closing there is rarely an authoritative
+ * figure:
+ *
+ *   1. `totalPointsAndFees` present — the closing-side figure. Conclusive
+ *      either way.
+ *   2. Absent — compute the LOWER BOUND from the platform's own charges plus
+ *      originator compensation (shared/compliance/loCompensation.ts). A floor
+ *      over the cap is a definitive failure; a floor under it proves nothing
+ *      and is reported as a warning, never as a pass.
+ *
+ * This function previously returned `compliant: true` whenever the figure was
+ * missing — and nothing in the product ever wrote that column, so the gate
+ * passed every file silently. Missing evidence now produces a warning or a
+ * block, never a clean bill.
+ */
 function evaluatePointsAndFees(application: LoanApplication): {
   qmStatus: "QM" | "Non-QM" | "Unknown";
   compliant: boolean;
   issue: string | null;
+  warning: string | null;
 } {
   const loanAmount = application.purchasePrice && application.downPayment
     ? Number(application.purchasePrice) - Number(application.downPayment)
     : null;
   const pointsAndFees = hasValue(application.totalPointsAndFees) ? Number(application.totalPointsAndFees) : null;
 
-  if (loanAmount === null || loanAmount <= 0 || pointsAndFees === null) {
-    return { qmStatus: "Unknown", compliant: true, issue: null };
+  if (loanAmount === null || loanAmount <= 0) {
+    return { qmStatus: "Unknown", compliant: true, issue: null, warning: null };
   }
 
-  // Reg Z 1026.43(e)(2)(iii) tiered caps (8% / $ / 5% / $ / 3% by loan
-  // amount), per the Loan Delivery QM Edits Job Aid. Thresholds are selected
-  // by note-date year; pre-closing there is no note date yet, so the closing
-  // date (when scheduled) or today's date stands in as the expected note
-  // year. The delivery-readiness edits re-check against the actual note date.
+  // Thresholds are selected by note-date year; pre-closing there is no note
+  // date yet, so the closing date (when scheduled) or today's date stands in
+  // as the expected note year. The delivery-readiness edits re-check against
+  // the actual note date.
   const estimatedNoteDate = parseDate(application.closingDate) ?? new Date();
-  const evaluation = evaluateCoveredPointsAndFees(
+
+  // The Regulation Z Total Loan Amount (note amount minus prepaid finance
+  // charges) is not computed until closing. Standing in the note amount makes
+  // the percentage cap LARGER than the true one, so this check is permissive
+  // here, not conservative — a near-cap file must still be re-checked at
+  // delivery against the real figure.
+  const regZTotalLoanAmountStandIn = loanAmount;
+
+  if (pointsAndFees !== null) {
+    const evaluation = evaluateCoveredPointsAndFees(
+      estimatedNoteDate,
+      loanAmount,
+      regZTotalLoanAmountStandIn,
+      pointsAndFees,
+    );
+    if (!evaluation.evaluated) {
+      return {
+        qmStatus: "Unknown",
+        compliant: true,
+        issue: null,
+        warning: evaluation.reason ?? "QM points-and-fees cap could not be evaluated",
+      };
+    }
+    if (!evaluation.compliant) {
+      return {
+        qmStatus: "Non-QM",
+        compliant: false,
+        issue: `Points and fees ($${pointsAndFees.toFixed(2)}) exceed the QM cap ($${evaluation.maxAllowableAmount?.toFixed(2)}; ${evaluation.tierDescription})`,
+        warning: null,
+      };
+    }
+    return { qmStatus: "QM", compliant: true, issue: null, warning: null };
+  }
+
+  // No authoritative figure. Fall back to the computed floor.
+  const compensation = resolveCompensation(
+    application.loCompensationModel,
+    application.loCompensationBps,
+  );
+  if (!compensation) {
+    return {
+      qmStatus: "Unknown",
+      compliant: true,
+      issue: null,
+      warning:
+        "Points and fees not evaluated: no loan originator compensation elected on this file " +
+        "(12 CFR 1026.36(d)(2)), so the QM cap cannot be checked even approximately.",
+    };
+  }
+
+  const originationFee = borrowerPaidOriginationAllowed(compensation.model)
+    ? loanAmount * ORIGINATION_FEE_RATE
+    : 0;
+  const floorEvaluation = evaluatePointsAndFeesFloor(
     estimatedNoteDate,
     loanAmount,
-    // Application-stage estimate: the Regulation Z Total Loan Amount (note
-    // amount minus finance charges) is not computed until closing, so the
-    // loan amount is the best available stand-in and errs conservative-high.
-    loanAmount,
-    pointsAndFees,
+    regZTotalLoanAmountStandIn,
+    {
+      loanAmount,
+      originationFee,
+      points: 0,
+      applicationFee: PLATFORM_APPLICATION_FEE,
+      underwritingFee: PLATFORM_UNDERWRITING_FEE,
+      compensation,
+    },
   );
 
-  if (!evaluation.evaluated) {
-    return { qmStatus: "Unknown", compliant: true, issue: null };
-  }
-  if (!evaluation.compliant) {
+  if (floorEvaluation.verdict === "over_cap") {
     return {
       qmStatus: "Non-QM",
       compliant: false,
-      issue: `Points and fees ($${pointsAndFees.toFixed(2)}) exceed the QM cap ($${evaluation.maxAllowableAmount?.toFixed(2)}; ${evaluation.tierDescription})`,
+      issue: floorEvaluation.message,
+      warning: null,
     };
   }
-  return { qmStatus: "QM", compliant: true, issue: null };
+  return {
+    qmStatus: "Unknown",
+    compliant: true,
+    issue: null,
+    warning: floorEvaluation.message,
+  };
 }
 
 function validateHmdaLar(application: LoanApplication): MISMOValidationResult["hmdaLar"] {
@@ -633,6 +722,9 @@ export async function validateMISMOCompleteness(applicationId: string): Promise<
   const pointsAndFees = evaluatePointsAndFees(application);
   if (pointsAndFees.issue) {
     criticalErrors.push(`ATR/QM: ${pointsAndFees.issue}`);
+  }
+  if (pointsAndFees.warning) {
+    warnings.push(`ATR/QM: ${pointsAndFees.warning}`);
   }
 
   const hmdaLar = validateHmdaLar(application);

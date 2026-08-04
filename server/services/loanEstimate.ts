@@ -3,6 +3,7 @@ import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
 import { computeClosingCosts, calculatePMI } from "./loanCosts";
+import { resolveCompensation } from "@shared/compliance/loCompensation";
 import type { LoanApplication } from "@shared/schema";
 
 export interface LoanEstimateData {
@@ -172,6 +173,18 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   if (!propertyState) {
     throw new Error("Property state is required to generate a loan estimate");
   }
+  // §1026.36(d)(2): the fee schedule cannot be built without knowing who pays
+  // the originator — a guessed model produces either an unlawful borrower
+  // charge or an understated disclosure. Fail closed.
+  const compensation = resolveCompensation(
+    application.loCompensationModel,
+    application.loCompensationBps,
+  );
+  if (!compensation) {
+    throw new Error(
+      "Loan originator compensation model and rate are required to generate a loan estimate (12 CFR 1026.36(d)(2))",
+    );
+  }
   
   const ltv = (loanAmount / purchasePrice) * 100;
   const isVeteran = application.isVeteran || false;
@@ -230,6 +243,7 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     interestRate,
     monthlyPMI,
     prepaidInterestDays: prepaidInterestDaysFor(closingDate),
+    compensation,
     lenderCredits: llpaResult.fthbWaiver > 0 ? llpaResult.fthbWaiver * loanAmount / 100 : 0,
   });
   const {
