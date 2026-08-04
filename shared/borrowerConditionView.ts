@@ -23,9 +23,10 @@ import { WHOLESALE_LENDERS } from "./wholesaleLenders";
  * full legal name nor the hyphenated id matches. Derived per lender: the id
  * with hyphens as spaces ("angel oak", "rocket pro tpo") and the first two
  * words of the display name ("Angel Oak", "United Wholesale"). §9 review
- * F-1 (2026-08-04) probed exactly these bypasses.
+ * F-1 (2026-08-04) probed exactly these bypasses. Exported for reuse by other
+ * borrower-view mappers (borrowerActivityView scrubs feed text with it).
  */
-const LENDER_IDENTIFIERS: readonly string[] = WHOLESALE_LENDERS.flatMap((l) => {
+export const LENDER_IDENTIFIERS: readonly string[] = WHOLESALE_LENDERS.flatMap((l) => {
   const nameWords = l.name.split(/\s+/);
   return [
     l.name,

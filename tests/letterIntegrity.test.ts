@@ -8,6 +8,9 @@
 //     no regeneration from live application data, no letter minted by the
 //     download route, prior letters superseded on reissue, and issuance
 //     failing loudly when the row cannot be recorded.
+//  3. The §3.2 lifecycle follow-ups: effectiveLetterStatus (computed-at-read
+//     expiry), the staff revocation route, and the persisting expiry sweep
+//     (source guards + the vercel.json cron entry that actually runs it).
 
 import { describe, it, expect } from "vitest";
 import { readFile } from "node:fs/promises";
@@ -17,6 +20,7 @@ import {
   STANDARD_PRE_APPROVAL_CONDITIONS,
   type StoredPreApprovalLetter,
 } from "../server/services/pdfLetterGenerator";
+import { effectiveLetterStatus } from "../shared/letters";
 
 const storedRow: StoredPreApprovalLetter = {
   letterNumber: "BN-TEST123-ABCD",
@@ -134,6 +138,166 @@ describe("letters route source guards", () => {
     expect(
       source.includes("Letter could not be recorded and was not issued"),
       "expected generate-letter to fail loudly (500) when the pre_approval_letters insert fails, instead of handing out a PDF the system cannot account for",
+    ).toBe(true);
+  });
+});
+
+describe("effectiveLetterStatus", () => {
+  const NOW = new Date("2026-08-04T12:00:00.000Z");
+
+  it("issued and unexpired reads issued", () => {
+    expect(
+      effectiveLetterStatus({ status: "issued", expirationDate: "2026-11-02T00:00:00.000Z" }, NOW),
+    ).toBe("issued");
+  });
+
+  it("issued past expiration reads expired", () => {
+    expect(
+      effectiveLetterStatus({ status: "issued", expirationDate: "2026-08-04T11:59:59.999Z" }, NOW),
+    ).toBe("expired");
+  });
+
+  it("the letter remains issued through its stored expiration instant", () => {
+    expect(
+      effectiveLetterStatus({ status: "issued", expirationDate: NOW }, NOW),
+    ).toBe("issued");
+  });
+
+  it("revocation wins over expiry — a revoked letter never re-reads expired", () => {
+    expect(
+      effectiveLetterStatus({ status: "revoked", expirationDate: "2020-01-01T00:00:00.000Z" }, NOW),
+    ).toBe("revoked");
+  });
+
+  it("superseded stays superseded past expiration", () => {
+    expect(
+      effectiveLetterStatus({ status: "superseded", expirationDate: "2020-01-01T00:00:00.000Z" }, NOW),
+    ).toBe("superseded");
+  });
+
+  it("accepts Date objects for expirationDate", () => {
+    expect(
+      effectiveLetterStatus({ status: "issued", expirationDate: new Date("2020-01-01T00:00:00.000Z") }, NOW),
+    ).toBe("expired");
+  });
+});
+
+describe("letter lifecycle route guards", () => {
+  const lettersSource = () =>
+    readFile(join(__dirname, "../server/routes/lending/letters.ts"), "utf8");
+
+  it("revocation is gated to the credit-decision role class", async () => {
+    const source = await lettersSource();
+    expect(
+      source.includes("requireRole(...CREDIT_DECISION_ROLES)"),
+      "expected the revoke route to require CREDIT_DECISION_ROLES — revoking a creditworthiness document is the same class of action as setting an approval outcome",
+    ).toBe(true);
+  });
+
+  it("lifecycle transitions guard on issued IN SQL (supersede + revoke)", async () => {
+    const source = await lettersSource();
+    expect(
+      (source.match(/eq\(preApprovalLetters\.status, "issued"\)/g) || []).length,
+      "expected exactly two atomic issued-only guards: the supersede-on-reissue writer and the revocation writer — the status check must compare in SQL, not in JS",
+    ).toBe(2);
+  });
+
+  it("a revocation requires a recorded reason", async () => {
+    const source = await lettersSource();
+    expect(
+      source.includes("revocationReason: parsed.data.reason"),
+      "expected the revoke route to persist the staff-supplied revocationReason on the letter row",
+    ).toBe(true);
+  });
+
+  it("letter-pdf refuses to serve a revoked letter", async () => {
+    const source = await lettersSource();
+    expect(
+      source.includes('"letter_revoked"'),
+      "expected the letter-pdf route to surface revoked status (409, code letter_revoked) instead of serving the PDF silently",
+    ).toBe(true);
+  });
+
+  it("revocation is audited", async () => {
+    const source = await lettersSource();
+    expect(
+      source.includes('"pre_approval_letter.revoked"'),
+      "expected the revoke route to write a pre_approval_letter.revoked audit entry",
+    ).toBe(true);
+  });
+
+  it("status endpoints report the computed status, expiry included", async () => {
+    const source = await lettersSource();
+    expect(
+      (source.match(/status: effectiveLetterStatus\(letter\)/g) || []).length,
+      "expected both letter-status and prequal-status to report effectiveLetterStatus(letter) — the API must never assert 'issued' on an expired letter, whatever the sweep's timing",
+    ).toBe(2);
+  });
+
+  it("revocation validates with the shared schema; letter-status exposes the revocation target", async () => {
+    const source = await lettersSource();
+    expect(
+      source.includes("letterRevocationSchema.safeParse"),
+      "expected the revoke route to validate with the SHARED letterRevocationSchema (shared/letters.ts) — the staff dialog gates its confirm button with the same schema, so the two cannot drift",
+    ).toBe(true);
+    expect(
+      source.includes("letterId: letter.id"),
+      "expected letter-status to expose letterId — the staff revocation card's mutation target",
+    ).toBe(true);
+  });
+
+  it("borrower-facing responses never carry the revocation reason", async () => {
+    const source = await lettersSource();
+    // revocationReason appears exactly once: the revoke route's own write.
+    // letter-status / letter-pdf must not echo staff free text to borrowers.
+    expect(
+      (source.match(/revocationReason/g) || []).length,
+      "expected revocationReason to appear only at its single write site — status and pdf responses must not echo staff free text",
+    ).toBe(1);
+  });
+});
+
+describe("letter expiry sweep", () => {
+  const sweepSource = () =>
+    readFile(join(__dirname, "../server/services/letterExpiry.ts"), "utf8");
+
+  it("flips only issued rows past their expiration date, both letter tables", async () => {
+    const source = await sweepSource();
+    expect(
+      source.includes('eq(preApprovalLetters.status, "issued")'),
+      "expected the sweep to flip only issued pre-approval letters — revoked/superseded are terminal and must never be overwritten by a clock",
+    ).toBe(true);
+    expect(
+      source.includes("lt(preApprovalLetters.expirationDate, now)"),
+      "expected the sweep to compare expiration in SQL",
+    ).toBe(true);
+    expect(
+      source.includes('eq(preQualificationLetters.status, "issued")'),
+      "expected the sweep to cover pre-qualification letters too — same issued-past-expiration defect",
+    ).toBe(true);
+  });
+
+  it("writes a letter_expired ledger row per expired pre-approval letter", async () => {
+    const source = await sweepSource();
+    expect(
+      source.includes('"letter_expired"'),
+      "expected the sweep to record letter_expired in letter_generation_logs",
+    ).toBe(true);
+  });
+
+  it("is registered as a job and actually scheduled", async () => {
+    const jobsSource = await readFile(join(__dirname, "../server/routes/jobs.ts"), "utf8");
+    expect(
+      jobsSource.includes('"/api/jobs/letter-expiry"'),
+      "expected /api/jobs/letter-expiry registered in jobs.ts with the dual-trigger shape",
+    ).toBe(true);
+
+    const vercelConfig = JSON.parse(
+      await readFile(join(__dirname, "../vercel.json"), "utf8"),
+    ) as { crons?: { path: string; schedule: string }[] };
+    expect(
+      (vercelConfig.crons || []).some((c) => c.path === "/api/jobs/letter-expiry"),
+      "expected a vercel.json cron entry for /api/jobs/letter-expiry — a sweep nobody schedules never runs",
     ).toBe(true);
   });
 });

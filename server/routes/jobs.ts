@@ -4,6 +4,7 @@ import { runLifecycleSweep, graduateClosedLoan } from "../services/lifecycleEngi
 import { sweepUndeliveredAdverseActions } from "../services/adverseActionDelivery";
 import { aggregateAnonymizedData } from "../services/optimizationEngine";
 import { runRateLockAlertSweep } from "../services/rateLockAlerts";
+import { runLetterExpirySweep } from "../services/letterExpiry";
 import { logAudit } from "../auditLog";
 import { db } from "../db";
 import { intentEvents } from "@shared/schema";
@@ -75,6 +76,33 @@ export function registerJobRoutes(app: Express) {
       } catch (err) {
         console.error("[jobs] Rate-lock alert sweep failed:", err);
         res.status(500).json({ ok: false, error: "Rate-lock alert sweep failed" });
+      }
+    });
+  });
+
+  // Letter-expiry sweep. Same dual-trigger shape as the lifecycle sweep:
+  // Vercel cron (CRON_SECRET) or an admin session. Persists "expired" onto
+  // issued letters past their expiration date so the stored row matches what
+  // the read paths already compute (shared/letters.ts effectiveLetterStatus).
+  app.get("/api/jobs/letter-expiry", async (req, res) => {
+    if (isCronRequest(req)) {
+      try {
+        const result = await runLetterExpirySweep();
+        return res.json({ ok: true, trigger: "cron", ...result });
+      } catch (err) {
+        console.error("[jobs] Letter-expiry sweep failed:", err);
+        return res.status(500).json({ ok: false, error: "Letter-expiry sweep failed" });
+      }
+    }
+    // Not a cron call — fall through to the admin-authenticated variant.
+    return requireRole("admin")(req, res, async () => {
+      try {
+        const result = await runLetterExpirySweep();
+        logAudit(req, "jobs.letter_expiry_sweep", "system", "pre_approval_letter", { ...result });
+        res.json({ ok: true, trigger: "manual", ...result });
+      } catch (err) {
+        console.error("[jobs] Letter-expiry sweep failed:", err);
+        res.status(500).json({ ok: false, error: "Letter-expiry sweep failed" });
       }
     });
   });

@@ -174,8 +174,11 @@ export function registerApplicationPropertyRoutes(
         applicationId: id,
         activityType: "status_change",
         title: "Deal Fell Through",
-        description: `The deal for ${property.address} did not proceed. Reason: ${reason || "Not specified"}`,
+        // Derived copy only — free-text reason rides metadata, which the
+        // borrower activity view embargoes (shared/borrowerActivityView.ts).
+        description: `The deal for ${property.address} did not proceed.`,
         performedBy: req.user!.id,
+        metadata: { reason: reason || "Not specified" },
       });
 
       res.json(property);

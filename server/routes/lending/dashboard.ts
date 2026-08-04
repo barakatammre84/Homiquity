@@ -5,12 +5,14 @@ import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import {
   insertBorrowerDeclarationsSchema,
+  isStaffRole,
   ACTIVE_TASK_STATUSES,
   TERMINAL_TASK_STATUSES,
   TASK_PRIORITY_RANK,
   type TaskPriority,
   type User,
 } from "@shared/schema";
+import { toBorrowerActivityViews } from "@shared/borrowerActivityView";
 import { computeNextAction } from "../../services/nextAction";
 import { toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { getUserActivitySummary } from "../../services/activitySummary";
@@ -142,9 +144,17 @@ export function registerDashboardRoutes(
         loanOptionCounts[appId] = options.length;
       }
 
+      // Non-staff callers get the whitelist view BEFORE the per-app slice:
+      // staff clearance notes, wholesale-lender names, internal ops entries,
+      // and activity metadata never leave the server (borrower transparency
+      // doctrine — shared/borrowerActivityView.ts). Staff keep full rows.
+      const visibleActivityRows = isStaffRole((req.user as User).role)
+        ? activityRows
+        : toBorrowerActivityViews(activityRows, userId);
+
       const activitiesMap: Record<string, any[]> = {};
       for (const appId of topAppIds) {
-        activitiesMap[appId] = activityRows.filter((a) => a.applicationId === appId).slice(0, 10);
+        activitiesMap[appId] = visibleActivityRows.filter((a) => a.applicationId === appId).slice(0, 10);
       }
 
       // ACTIVE_TASK_STATUSES, not a hand-listed array: the previous filter
