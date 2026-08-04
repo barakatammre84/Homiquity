@@ -35,21 +35,6 @@ import {
 const REPO_ROOT = join(__dirname, "..");
 const CLIENT_SRC = join(REPO_ROOT, "client", "src");
 
-/**
- * Template-string query keys that are correct as they are.
- * Key = "path:line-content-substring", value = why it must stay one string.
- */
-const ALLOWED_TEMPLATE_KEYS: Record<string, string> = {
-  // A query string cannot be expressed as path segments — join("/") would turn
-  // "?input=x" into a path. These are leaf keys with no prefix invalidation.
-  "client/src/components/ScenarioSimulatorDialog.tsx":
-    "query-string URLs (/api/properties/auto-complete?input=, /detail-live?propertyId=) — not path segments, and nothing invalidates them by prefix",
-  // Self-consistent: both sites use the identical template, so they share one
-  // cache entry, and no code invalidates the /api/staff/applications prefix.
-  "client/src/pages/staff/LoCommandCenter.tsx":
-    "/api/staff/applications/:id/cockpit — both call sites use the identical template (one cache entry) and no prefix invalidation targets this family",
-};
-
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
@@ -77,6 +62,10 @@ function templateKeySites(): Array<{ file: string; line: number; text: string }>
       // Only interpolated keys can fragment a resource family; a constant
       // template string is just a plain key.
       if (!url.includes("${")) return;
+      // A query-string key ("?input=x") cannot be expressed as path segments and
+      // is never invalidated by prefix — allowed as a leaf. Mirrors the semantic
+      // rule in scripts/query-key-guard.cjs (keep the two in step).
+      if (url.includes("?")) return;
       hits.push({
         file: relative(REPO_ROOT, file),
         line: i + 1,
@@ -88,26 +77,19 @@ function templateKeySites(): Array<{ file: string; line: number; text: string }>
 }
 
 describe("query-key convergence", () => {
-  it("writes nested resource keys as segments, not template strings", () => {
-    const offenders = templateKeySites().filter(
-      (h) => !(h.file in ALLOWED_TEMPLATE_KEYS),
-    );
+  it("writes path-style keys as segments, not interpolated template strings (surface-wide)", () => {
+    // Surface-wide, not limited to the migrated families: any `${...}` in a
+    // path-style /api key is the drift hazard. Query-string keys are excluded in
+    // templateKeySites() above. Same rule the gate runs via guard:querykeys.
+    const offenders = templateKeySites();
 
     expect(
       offenders.map((o) => `${o.file}:${o.line}  ${o.text}`),
       "A template-string queryKey is invisible to array-prefix invalidateQueries, " +
-        "so mutations elsewhere will not refresh it. Use a key factory such as " +
-        "loanApplicationKeys in client/src/lib/queryClient.ts, or add the file to " +
-        "ALLOWED_TEMPLATE_KEYS in this test with the reason it must stay one string.",
+        "so mutations elsewhere will not refresh it. Write it as segments " +
+        '(["/api/x", id, "y"]) — from a factory in client/src/lib/queryClient.ts ' +
+        "where the resource has one.",
     ).toEqual([]);
-  });
-
-  it("keeps the allowlist honest — every entry still has a template key", () => {
-    const filesWithTemplateKeys = new Set(templateKeySites().map((h) => h.file));
-    const stale = Object.keys(ALLOWED_TEMPLATE_KEYS).filter(
-      (f) => !filesWithTemplateKeys.has(f),
-    );
-    expect(stale, "these allowlist entries no longer contain a template query key").toEqual([]);
   });
 
   it("no loan-application key is written as a template string", () => {
