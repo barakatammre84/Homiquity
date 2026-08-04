@@ -6,7 +6,10 @@ import { eq, desc, and, sql } from "drizzle-orm";
 // branch — main leaves account numbers plaintext).
 import { AMOUNT_BEARING_STATUSES } from "@shared/stageRequirements";
 
-import { users, loanApplications, loanOptions, documents, isApprovedGradeLoanAppStatus } from "@shared/schema";
+import { users, loanApplications, loanOptions, documents, lenderSubmissions, isApprovedGradeLoanAppStatus } from "@shared/schema";
+import { summarizeCompensation } from "@shared/compensationLedger";
+import { buildClawbackRegister } from "@shared/compensationClawback";
+import { approvedLenderCount } from "@shared/wholesaleLenders";
 import { PropertiesStorage } from "./properties";
 export class StatsStorage extends PropertiesStorage {
   // Stats
@@ -78,10 +81,46 @@ export class StatsStorage extends PropertiesStorage {
       volume: loansByTypeMap.get(type)?.volume ?? "0",
     }));
 
+    // Revenue reality (F-6). `totalLoanVolume` above is PIPELINE volume —
+    // purchase prices of applications that mostly have not funded and may
+    // never fund. Presenting it as the company's only financial number made
+    // an unfunded pipeline look like performance, so the funded book, what it
+    // earned, and the counterparty capacity behind it now sit beside it.
+    const submissions = await db
+      .select({
+        status: lenderSubmissions.status,
+        lenderId: lenderSubmissions.lenderId,
+        fundedAt: lenderSubmissions.fundedAt,
+        fundedLoanAmount: lenderSubmissions.fundedLoanAmount,
+        compensationExpectedAmount: lenderSubmissions.compensationExpectedAmount,
+        compensationReceivedAmount: lenderSubmissions.compensationReceivedAmount,
+      })
+      .from(lenderSubmissions);
+    const compensation = summarizeCompensation(submissions);
+
+    // Contingent liability (F-8): compensation the lenders can still reclaim
+    // on an early payoff. For an asset-light broker this IS the balance sheet
+    // — revenue already banked that is not yet earned.
+    const clawback = buildClawbackRegister(submissions);
+
     return {
       totalUsers: userCount.count,
       totalApplications,
+      /** PIPELINE volume — not funded, not revenue. See `compensation`. */
       totalLoanVolume,
+      compensation: {
+        ...compensation,
+        // The binding constraint on every number above it: zero approved
+        // counterparties means zero revenue capacity (F-5).
+        approvedLenderCount: approvedLenderCount(),
+      },
+      clawbackExposure: {
+        atRiskCount: clawback.atRiskCount,
+        totalAtRisk: clawback.totalAtRisk,
+        indeterminateCount: clawback.indeterminateCount,
+        usesAssumedWindow: clawback.usesAssumedWindow,
+        nextExpiry: clawback.nextExpiry,
+      },
       approvalRate,
       applicationsByStatus: appStats.map(s => ({ status: s.status, count: s.count })),
       loansByType,

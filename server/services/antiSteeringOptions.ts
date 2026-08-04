@@ -56,6 +56,22 @@ export interface AntiSteeringOptionSet {
    * risky feature (impossible in today's catalog, kept honest anyway).
    */
   hasNoRiskyFeatureOption: boolean;
+  /**
+   * True when every option came from ONE creditor.
+   *
+   * (e)(3)(i) requires options obtained from "a significant number of the
+   * creditors with which the originator regularly does business", and the
+   * safe harbor is not available without them. What counts as significant is
+   * a counsel determination, so this flag deliberately asserts only the case
+   * that needs no interpretation: a single creditor is not several, so an
+   * option set built from one cannot satisfy the requirement however the
+   * threshold is later drawn.
+   *
+   * Directly downstream of counterparty concentration (audit F-5): with one
+   * approved wholesale lender, every option set the platform can produce is
+   * single-creditor.
+   */
+  singleCreditor: boolean;
 }
 
 /** Risky-feature markers per (e)(3)(i)(B), derivable from today's catalog. */
@@ -132,6 +148,7 @@ export function deriveAntiSteeringOptions(offers: ComputedOffer[]): AntiSteering
       creditorsQuoted,
       options: [],
       hasNoRiskyFeatureOption: false,
+      singleCreditor: false,
     };
   }
 
@@ -154,5 +171,6 @@ export function deriveAntiSteeringOptions(offers: ComputedOffer[]): AntiSteering
     creditorsQuoted,
     options,
     hasNoRiskyFeatureOption: lowestRateNoRisky !== null,
+    singleCreditor: creditorsQuoted <= 1,
   };
 }

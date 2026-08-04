@@ -18,6 +18,12 @@ import {
   changeOfCircumstances,
   type ChangeOfCircumstance,
   type InsertChangeOfCircumstance,
+  loanEstimateDisclosures,
+  type LoanEstimateDisclosure,
+  type InsertLoanEstimateDisclosure,
+  loanCostEntries,
+  type LoanCostEntry,
+  type InsertLoanCostEntry,
 } from "@shared/schema";
 import { RealtorHomeownerStorage } from "./realtorHomeowner";
 export class NotificationsOpsStorage extends RealtorHomeownerStorage {
@@ -56,6 +62,68 @@ export class NotificationsOpsStorage extends RealtorHomeownerStorage {
       .where(eq(changeOfCircumstances.id, id))
       .returning();
     return updated;
+  }
+
+  // ===== ISSUED LOAN ESTIMATE DISCLOSURES (TRID tolerance baseline) =====
+  // Rows are immutable evidence of what was disclosed — there is deliberately
+  // no update method.
+
+  async createLoanEstimateDisclosure(data: InsertLoanEstimateDisclosure): Promise<LoanEstimateDisclosure> {
+    const [row] = await db.insert(loanEstimateDisclosures).values(data).returning();
+    return row;
+  }
+
+  /** The disclosure currently in force — the tolerance baseline. */
+  async getLatestLoanEstimateDisclosure(applicationId: string): Promise<LoanEstimateDisclosure | undefined> {
+    const [row] = await db
+      .select()
+      .from(loanEstimateDisclosures)
+      .where(eq(loanEstimateDisclosures.applicationId, applicationId))
+      .orderBy(desc(loanEstimateDisclosures.version))
+      .limit(1);
+    return row;
+  }
+
+  async getLoanEstimateDisclosures(applicationId: string): Promise<LoanEstimateDisclosure[]> {
+    return db
+      .select()
+      .from(loanEstimateDisclosures)
+      .where(eq(loanEstimateDisclosures.applicationId, applicationId))
+      .orderBy(desc(loanEstimateDisclosures.version));
+  }
+
+  // ===== LOAN COST LEDGER (unit economics) =====
+  // Append-only by convention: a correction is a negative reversal row, never
+  // an edit, so there is deliberately no update or delete method.
+
+  async createLoanCostEntry(data: InsertLoanCostEntry): Promise<LoanCostEntry> {
+    const [row] = await db.insert(loanCostEntries).values(data).returning();
+    return row;
+  }
+
+  async getLoanCostEntries(applicationId: string): Promise<LoanCostEntry[]> {
+    return db
+      .select()
+      .from(loanCostEntries)
+      .where(eq(loanCostEntries.applicationId, applicationId))
+      .orderBy(desc(loanCostEntries.incurredAt));
+  }
+
+  /**
+   * Every issued disclosure company-wide. Feeds the contingent-liability
+   * register, which needs the LATEST row per application — callers group by
+   * applicationId and take the highest version.
+   */
+  async getAllLoanEstimateDisclosures(): Promise<LoanEstimateDisclosure[]> {
+    return db
+      .select()
+      .from(loanEstimateDisclosures)
+      .orderBy(desc(loanEstimateDisclosures.version));
+  }
+
+  /** Company-wide, for the unit-economics report. Admin-gated at the route. */
+  async getAllLoanCostEntries(): Promise<LoanCostEntry[]> {
+    return db.select().from(loanCostEntries).orderBy(desc(loanCostEntries.incurredAt));
   }
 
   // Single batched update (never update in a loop).

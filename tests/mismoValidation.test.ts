@@ -357,16 +357,35 @@ describe("TRID business-day math (weekends + federal holidays)", () => {
 
 // ---------------------------------------------------------------------------
 describe("ATR/QM points-and-fees 3% cap", () => {
-  // loanAmount = 500000 - 100000 = 400000; 3% cap = 12000.
+  // loanAmount = 500000 - 100000 = 400000.
+  //
+  // The cap is 3% of the Regulation Z TOTAL LOAN AMOUNT, not of the note
+  // amount (§1026.32(b)(4)) — the note amount less the financed points and
+  // fees. With no compensation elected the platform's known prepaid finance
+  // charges are $500 app + $1,500 underwriting + $100 tax service = $2,100, so
+  // the basis is $397,900 and the cap is $11,937 — NOT the $12,000 the old
+  // note-amount stand-in produced (audit F-12: that stand-in was permissive,
+  // never conservative).
+  const QM_CAP = 11_937;
+
   it("is QM exactly at the 3% cap (boundary inclusive)", async () => {
-    setFixtures({ application: { totalPointsAndFees: "12000" } });
+    setFixtures({ application: { totalPointsAndFees: String(QM_CAP) } });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.qmStatus).toBe("QM");
     expect(result.pointsAndFeesCompliant).toBe(true);
   });
 
+  it("is tighter than the old note-amount cap (F-12)", async () => {
+    // $11,950 fit under the discarded $12,000 note-amount cap and does not fit
+    // under the real one. This is the file the old check waved through.
+    setFixtures({ application: { totalPointsAndFees: "11950" } });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("Non-QM");
+    expect(result.pointsAndFeesCompliant).toBe(false);
+  });
+
   it("is Non-QM just over the 3% cap", async () => {
-    setFixtures({ application: { totalPointsAndFees: "12000.01" } });
+    setFixtures({ application: { totalPointsAndFees: String(QM_CAP + 0.01) } });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.qmStatus).toBe("Non-QM");
     expect(result.pointsAndFeesCompliant).toBe(false);
@@ -377,6 +396,65 @@ describe("ATR/QM points-and-fees 3% cap", () => {
     setFixtures({ application: { totalPointsAndFees: null } });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.qmStatus).toBe("Unknown");
+    expect(result.pointsAndFeesCompliant).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // Fallback to the computed floor when the closing-side figure is absent.
+  // `totalPointsAndFees` is never written by any product code path, so this
+  // fallback is the check that actually runs on a live file.
+  // -------------------------------------------------------------------------
+
+  it("warns rather than silently passing when no figure and no comp election exist", async () => {
+    setFixtures({
+      application: { totalPointsAndFees: null, loCompensationModel: null, loCompensationBps: null },
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("Unknown");
+    expect(result.warnings.some(w => /no loan originator compensation elected/i.test(w))).toBe(true);
+  });
+
+  it("blocks on the computed floor when comp pushes the file over the cap", async () => {
+    // 400k loan, 3% cap = 12,000. Lender-paid 275 bps = 11,000, plus the
+    // platform's $500 application and $1,500 underwriting fees = 13,000.
+    setFixtures({
+      application: {
+        totalPointsAndFees: null,
+        loCompensationModel: "lender_paid",
+        loCompensationBps: 275,
+      },
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("Non-QM");
+    expect(result.pointsAndFeesCompliant).toBe(false);
+    expect(result.gseReady).toBe(false);
+    expect(result.criticalErrors.some(e => /exceed the QM cap/i.test(e))).toBe(true);
+  });
+
+  it("warns — never passes clean — when the floor fits under the cap", async () => {
+    setFixtures({
+      application: {
+        totalPointsAndFees: null,
+        loCompensationModel: "lender_paid",
+        loCompensationBps: 200,
+      },
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("Unknown");
+    expect(result.criticalErrors.some(e => /ATR\/QM/.test(e))).toBe(false);
+    expect(result.warnings.some(w => /lower bound/i.test(w))).toBe(true);
+  });
+
+  it("prefers the authoritative figure over the floor when both are available", async () => {
+    setFixtures({
+      application: {
+        totalPointsAndFees: "11900", // under the $11,937 Reg Z cap
+        loCompensationModel: "lender_paid",
+        loCompensationBps: 275, // floor would be over the cap; the real figure is not
+      },
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("QM");
     expect(result.pointsAndFeesCompliant).toBe(true);
   });
 });

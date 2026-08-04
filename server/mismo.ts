@@ -19,6 +19,7 @@ import type {
 } from "@shared/schema";
 import { isApprovedGradeLoanAppStatus } from "@shared/schema";
 import { COMPANY_CONFIG } from "./config/company";
+import { mersOrgIdApplicable } from "@shared/businessChannel";
 import {
   MISMO_NAMESPACE,
   XLINK_NAMESPACE,
@@ -1193,7 +1194,9 @@ export function validateULDDCompliance(dto: MISMOLoanDTO): ULDDValidationResult 
     warnings.push("Employment information should be provided");
   }
 
-  if (!/^\d{1,7}$/.test(COMPANY_CONFIG.mersOrgId)) {
+  // A broker registers no notes in MERS, so a missing org id is expected, not
+  // a gap to warn about (F-14). Warn only where it would actually be needed.
+  if (mersOrgIdApplicable() && !/^\d{1,7}$/.test(COMPANY_CONFIG.mersOrgId)) {
     warnings.push("MERS Org ID is not configured; a MERS MIN cannot be generated for loan delivery");
   }
 

@@ -22,6 +22,7 @@ import {
 import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { computeClosingCosts, calculatePMI } from "./loanCosts";
+import { resolveCompensation, type CompensationModel } from "@shared/compliance/loCompensation";
 import { classifyAsset, sumOpenMonthlyLiabilities } from "./decisionEngine";
 import {
   deriveAntiSteeringOptions,
@@ -212,6 +213,9 @@ export interface ScenarioFacts {
     isFirstTimeBuyer: boolean;
     householdFamilySize: number | null;
     homeSquareFootage: number | null;
+    /** Reg Z 1026.36(d)(2) election — drives the borrower-paid origination fee. */
+    loCompensationModel: CompensationModel | null;
+    loCompensationBps: number | null;
   };
   scenario: ScenarioRequest;
   urlaOccupancyType: string | null;
@@ -260,6 +264,16 @@ export function normalizeScenario(
 
   const fico = raw.ficoWhatIf ?? app.creditScore ?? null;
   if (fico === null) missing.push("Credit score (none on file — set a hypothetical FICO)");
+
+  // §1026.36(d)(2): cash-to-close is not defined until the compensation model
+  // is elected — under a lender-paid plan the borrower pays no origination
+  // fee. Name the gap the way the other gaps are named rather than quoting a
+  // fee the borrower may not lawfully be charged.
+  if (!resolveCompensation(app.loCompensationModel, app.loCompensationBps)) {
+    missing.push(
+      "Loan originator compensation (elect lender-paid or borrower-paid, with the plan's bps, before pricing)",
+    );
+  }
 
   const propertyState = raw.propertyState ?? app.propertyState ?? null;
   if (app.isVeteran) {
@@ -363,6 +377,8 @@ export async function composeScenario(
 
   const app = facts.application;
   const loanAmount = cents(scenario.purchasePrice - scenario.downPayment);
+  // Non-null past normalizeScenario, which lists a missing election as a gap.
+  const compensation = resolveCompensation(app.loCompensationModel, app.loCompensationBps)!;
 
   const offers = facts.offers.slice(0, MAX_EVALUATED_OFFERS);
   const evaluated: EvaluatedOffer[] = [];
@@ -386,6 +402,7 @@ export async function composeScenario(
       interestRate: offer.adjustedRate,
       monthlyPMI,
       prepaidInterestDays: SCENARIO_PREPAID_INTEREST_DAYS,
+      compensation,
       annualPropertyTaxes: scenario.annualPropertyTaxes ?? undefined,
       annualHomeownersInsurance: scenario.annualHomeownersInsurance ?? undefined,
       lenderCredits: facts.fthbLenderCredits,
@@ -623,6 +640,8 @@ export async function runScenario(
     isFirstTimeBuyer: application.isFirstTimeBuyer ?? false,
     householdFamilySize: application.householdFamilySize ?? null,
     homeSquareFootage: application.homeSquareFootage ?? null,
+    loCompensationModel: application.loCompensationModel ?? null,
+    loCompensationBps: application.loCompensationBps ?? null,
   };
 
   const { scenario } = normalizeScenario({

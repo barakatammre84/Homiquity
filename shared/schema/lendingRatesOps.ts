@@ -132,6 +132,17 @@ export type RateLockStatus = (typeof RATE_LOCK_STATUSES)[number];
 /** A live lock: "extended" is still open — only cancellation closes one. */
 export const OPEN_RATE_LOCK_STATUSES: readonly RateLockStatus[] = ["active", "extended"];
 
+/**
+ * Who bears a rate-lock extension fee.
+ *
+ * "broker" means Homiquity absorbs it — a real cost against the file, and the
+ * usual answer when the delay is ours. "borrower" means it is passed through,
+ * which is a disclosed charge and needs a changed-circumstance record.
+ * "lender" means the lender waived it.
+ */
+export const EXTENSION_FEE_PAYERS = ["borrower", "broker", "lender"] as const;
+export type ExtensionFeePayer = (typeof EXTENSION_FEE_PAYERS)[number];
+
 export const rateLocks = pgTable("rate_locks", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   
@@ -147,12 +158,53 @@ export const rateLocks = pgTable("rate_locks", {
   lockPeriodDays: integer("lock_period_days").notNull(),
   lockedAt: timestamp("locked_at").defaultNow().notNull(),
   expiresAt: timestamp("expires_at").notNull(),
-  
+
+  // ---------------------------------------------------------------------
+  // Lender-side confirmation. A broker cannot lock a rate — only the
+  // wholesale lender can. Without these fields a row is a QUOTE the platform
+  // made up, not a commitment anybody is obliged to honor, and the borrower
+  // must never be told otherwise (shared/rateLockConfirmation.ts).
+  //
+  // Nullable because rows written before this existed genuinely have no
+  // confirmation; they are reported as unconfirmed quotes rather than
+  // backfilled with an invented confirmation number. New locks cannot be
+  // created without them (routes/borrower/rateLocks.ts).
+  // ---------------------------------------------------------------------
+  /** Wholesale lender id from shared/wholesaleLenders.ts. */
+  lenderId: varchar("lender_id", { length: 40 }),
+  /** The lender's own lock confirmation / commitment number. */
+  lockConfirmationNumber: varchar("lock_confirmation_number", { length: 60 }),
+  /** Rate the lender confirmed — may differ from the quoted loan option. */
+  confirmedRate: decimal("confirmed_rate", { precision: 5, scale: 3 }),
+  /** Expiration the lender confirmed; authoritative over any local math. */
+  confirmedExpiresAt: timestamp("confirmed_expires_at"),
+  confirmedBy: varchar("confirmed_by").references(() => users.id),
+  confirmedAt: timestamp("confirmed_at"),
+  /** True while the lender leg is the deterministic simulation. */
+  simulated: boolean("simulated").notNull().default(true),
+
   status: varchar("status", { length: 50 }).$type<RateLockStatus>().default("active").notNull(),
 
   extensionCount: integer("extension_count").default(0),
   originalExpiresAt: timestamp("original_expires_at"),
   extensionFee: decimal("extension_fee", { precision: 10, scale: 2 }),
+  /**
+   * WHO PAYS the extension fee — the entire economic content of the
+   * transaction, and previously unrecorded (EXTENSION_FEE_PAYERS).
+   *
+   * In the wholesale model the lender charges the BROKER for an extension.
+   * Whether that lands on Homiquity's P&L or is passed to the borrower is the
+   * difference between a cost and a disclosure, and passing it to the borrower
+   * without a documented changed circumstance is a tolerance violation —
+   * hence `extensionFeeCocId` below.
+   */
+  extensionFeePaidBy: varchar("extension_fee_paid_by", { length: 20 }).$type<ExtensionFeePayer>(),
+  /**
+   * The §1026.19(e)(3)(iv) record authorizing a borrower-paid extension fee.
+   * Required whenever extensionFeePaidBy is "borrower" — a rate lock is itself
+   * an enumerated changed-circumstance reason, so the record should exist.
+   */
+  extensionFeeCocId: varchar("extension_fee_coc_id"),
   
   lockedBy: varchar("locked_by").references(() => users.id).notNull(),
   cancelledBy: varchar("cancelled_by").references(() => users.id),
@@ -171,6 +223,7 @@ export const rateLocks = pgTable("rate_locks", {
 
 export const insertRateLockSchema = createInsertSchema(rateLocks, {
   status: z.enum(RATE_LOCK_STATUSES).optional(),
+  extensionFeePaidBy: z.enum(EXTENSION_FEE_PAYERS).nullish(),
 }).omit({
   id: true,
   createdAt: true,

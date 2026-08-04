@@ -61,7 +61,7 @@ interface LoanEstimateData {
   };
   closingCostDetails: {
     loanCosts: {
-      originationCharges: { points: number; applicationFee: number; underwritingFee: number; total: number; };
+      originationCharges: { originationFee: number; points: number; applicationFee: number; underwritingFee: number; total: number; };
       servicesYouCannotShopFor: { appraisal: number; creditReport: number; floodDetermination: number; taxService: number; total: number; };
       servicesYouCanShopFor: { titleInsurance: number; titleSearch: number; surveyFee: number; pestInspection: number; total: number; };
       totalLoanCosts: number;
@@ -356,6 +356,7 @@ export default function LoanEstimate() {
                       <div className="space-y-4">
                         <div className="rounded-lg border p-3">
                           <h5 className="font-medium mb-2">Origination Charges</h5>
+                          <CostLineItem label="Origination Fee" amount={le.closingCostDetails.loanCosts.originationCharges.originationFee} />
                           <CostLineItem label="Points" amount={le.closingCostDetails.loanCosts.originationCharges.points} />
                           <CostLineItem label="Application Fee" amount={le.closingCostDetails.loanCosts.originationCharges.applicationFee} />
                           <CostLineItem label="Underwriting Fee" amount={le.closingCostDetails.loanCosts.originationCharges.underwritingFee} />

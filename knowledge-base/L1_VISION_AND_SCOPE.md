@@ -1,5 +1,7 @@
 # Homiquity — Vision & Scope (L1)
 
+> **Freshness:** last verified 2026-07-17 · review every 90 days — enforced by `scripts/doc-freshness-guard.cjs`.
+
 > **This is L1 — the top of the source-of-truth hierarchy.** It decides *what we build*.
 > **L2 `COMPLIANCE_AND_LOGIC.md`** (the regulatory/financial guardrails) overrides anything
 > here when they conflict. **L3 `[Feature]_SPECS.md`** files execute under both and MUST cite the

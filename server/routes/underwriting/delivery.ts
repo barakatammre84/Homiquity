@@ -6,6 +6,9 @@ import { isAuthenticated, requireRole } from "../../auth";
 import { requireConsent } from "../../consentGate";
 import { z } from "zod";
 import { COC_REASON_TYPES } from "@shared/compliance/changeOfCircumstance";
+import type { DisclosureSnapshot } from "@shared/compliance/feeTolerance";
+import { applyDisclosedFees } from "../../services/leDisclosureBaseline";
+import { isInternalStaffRole } from "@shared/roles";
 import * as creditService from "../../services/creditService";
 import { routeParams } from "../../http/routeParams";
 
@@ -117,11 +120,67 @@ export function registerDeliveryRoutes(
         }
       }
 
+      // TRID good-faith tolerance (Reg Z §1026.19(e)(3)). The LE above is
+      // computed from live file data; what the BORROWER is entitled to see is
+      // the disclosure that was issued, until a changed circumstance resets
+      // it. reconcileDisclosure persists version 1 on first delivery and,
+      // thereafter, either rediscloses under an open CoC or holds the baseline
+      // and records the delta as a cure. Staff previews never touch it.
+      const isBorrower = application.userId === req.user!.id;
+      if (isBorrower) {
+        const { reconcileDisclosure } = await import("../../services/leDisclosureBaseline");
+        const decision = await reconcileDisclosure(id, le);
+
+        if (decision.action === "blocked_no_coc" || decision.action === "redisclosed") {
+          const { logAudit } = await import("../../auditLog");
+          logAudit(req, "trid.tolerance_evaluated", "loan_application", id, {
+            action: decision.action,
+            verdict: decision.evaluation?.verdict ?? null,
+            cureAmount: decision.evaluation?.cureAmount ?? null,
+            zeroToleranceIncrease: decision.evaluation?.zeroToleranceIncrease ?? null,
+            cocId: decision.cocId,
+            disclosureVersion: decision.disclosure.version,
+          });
+        }
+
+        // Hold the issued figures. Regenerating a higher LE without a changed
+        // circumstance is not a redisclosure — it is the violation, hidden.
+        if (decision.action === "blocked_no_coc") {
+          const formattedBaseline = formatLoanEstimateForDisplay(
+            applyDisclosedFees(le, decision.disclosure.snapshot as DisclosureSnapshot),
+          );
+          return res.json(formattedBaseline);
+        }
+      }
+
       const formatted = formatLoanEstimateForDisplay(le);
       res.json(formatted);
     } catch (error) {
       console.error("Loan estimate error:", error);
       res.status(500).json({ error: "Failed to generate loan estimate" });
+    }
+  });
+
+  // Staff-only tolerance posture: what would this file owe in cures if it
+  // closed on today's numbers? Read-only — never creates or resets a baseline.
+  app.get("/api/loan-applications/:id/le-tolerance", isAuthenticated, async (req, res) => {
+    try {
+      const { id } = routeParams(req);
+      if (!isInternalStaffRole(req.user!.role)) {
+        return res.status(403).json({ error: "Internal staff only" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { generateLoanEstimate } = await import("../../services/loanEstimate");
+      const { getToleranceReview } = await import("../../services/leDisclosureBaseline");
+      const le = await generateLoanEstimate(id);
+      res.json(await getToleranceReview(id, le));
+    } catch (error) {
+      console.error("LE tolerance review error:", error);
+      res.status(500).json({ error: "Failed to evaluate fee tolerance" });
     }
   });
 

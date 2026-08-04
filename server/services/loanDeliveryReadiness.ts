@@ -32,10 +32,19 @@ import {
   type SfcValidationResult,
 } from "@shared/fannieMae/specialFeatureCodes";
 import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
+import { deliveryStackApplicability, type ChannelApplicability } from "@shared/businessChannel";
 import type { LoanApplication, LoanDeliveryData } from "@shared/schema";
 
 export interface DeliveryReadinessReport {
   applicationId: string;
+  /**
+   * Whether this report describes an obligation Homiquity actually owes
+   * (audit F-14). In the broker channel it does not: the wholesale lender is
+   * the seller/servicer and performs GSE delivery itself. The report stays
+   * useful as a data-quality pre-flight, but must never read as a delivery
+   * gate we are subject to.
+   */
+  channelApplicability: ChannelApplicability;
   /** True when every locally evaluable gate passes. */
   readyForDelivery: boolean;
   urla: {
@@ -231,6 +240,7 @@ export async function evaluateDeliveryReadiness(applicationId: string): Promise<
 
   return {
     applicationId,
+    channelApplicability: deliveryStackApplicability(),
     readyForDelivery:
       deliveryDataCaptured &&
       edits.deliverable &&

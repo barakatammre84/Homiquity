@@ -45,6 +45,18 @@ doc-drift bug to fix):
 - [TEAM_PRACTICES.md](governance/TEAM_PRACTICES.md) — how we work (the house-style exemplar).
 - [AI_GOVERNANCE_POLICY.md](governance/AI_GOVERNANCE_POLICY.md) · [MODEL_RISK_GOVERNANCE.md](governance/MODEL_RISK_GOVERNANCE.md)
   · [ASSUMPTIONS.md](governance/ASSUMPTIONS.md) · [ARMED_LAUNCH_CHARTER_2026-07-07.md](governance/ARMED_LAUNCH_CHARTER_2026-07-07.md)
+- [CHANNEL_DECISION.md](governance/CHANNEL_DECISION.md) — **OPEN, founder-owned:** broker or
+  mini-correspondent. One constant in `shared/businessChannel.ts`; the largest unanswered question
+  about the capital structure. The Fannie delivery stack is frozen (`pnpm guard:channel`) until it lands.
+- [CONTINGENT_LIABILITY_REGISTER.md](governance/CONTINGENT_LIABILITY_REGISTER.md) — what we could owe and
+  whether the reserve covers it. For an asset-light broker the contingent exposures *are* the balance
+  sheet; live figures at `GET /api/reports/contingent-liabilities`.
+- [UNCONSUMED_CAPABILITIES.md](governance/UNCONSUMED_CAPABILITIES.md) — capability built ahead of a
+  consumer, each with a **decide-by date**: wire a consumer or freeze it. Exists because the Fannie
+  delivery stack accreted to 1,482 lines with zero callers before anyone asked "who calls this?".
+
+> The living docs above carry a **Freshness** line (`pnpm guard:docs`). Dated logs under
+> [`logs/`](logs/) deliberately do not — a log is history, not a claim about the present.
 - [security/](governance/security/) — the security governance pack (vendor-diligence ready; drafted for the Plaid
   clearance): [Information Security Policy](governance/security/INFORMATION_SECURITY_POLICY.md)
   · [Access Control Policy](governance/security/ACCESS_CONTROL_POLICY.md) · [Asset & Endpoint Register](governance/security/ASSET_REGISTER.md)

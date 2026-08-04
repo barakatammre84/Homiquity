@@ -97,6 +97,8 @@ function facts(overrides: Partial<ScenarioFacts> = {}): ScenarioFacts {
       isFirstTimeBuyer: false,
       householdFamilySize: null,
       homeSquareFootage: null,
+      loCompensationModel: "lender_paid",
+      loCompensationBps: 200,
     },
     scenario: { purchasePrice: 400000, downPaymentPercent: 20 },
     urlaOccupancyType: null,
@@ -307,6 +309,8 @@ describe("deriveAntiSteeringOptions (§1026.36(e)(3))", () => {
   });
 });
 
+const BORROWER_PAID = { model: "borrower_paid", bps: 100 } as const;
+
 describe("computeClosingCosts (shared LE fee schedule)", () => {
   it("reproduces the Loan Estimate fee schedule for a fixture loan", () => {
     const costs = computeClosingCosts({
@@ -316,6 +320,7 @@ describe("computeClosingCosts (shared LE fee schedule)", () => {
       interestRate: 6.875,
       monthlyPMI: 150,
       prepaidInterestDays: 15,
+      compensation: BORROWER_PAID,
     });
     expect(costs.originationFee).toBe(3600); // 1% of loan amount
     expect(costs.applicationFee).toBe(500);
@@ -345,6 +350,7 @@ describe("computeClosingCosts (shared LE fee schedule)", () => {
       interestRate: 6.875,
       monthlyPMI: 0,
       prepaidInterestDays: 15,
+      compensation: BORROWER_PAID,
       annualPropertyTaxes: 9600,
       annualHomeownersInsurance: 2400,
     });
@@ -360,6 +366,7 @@ describe("computeClosingCosts (shared LE fee schedule)", () => {
       interestRate: 6.875,
       monthlyPMI: 0,
       prepaidInterestDays: 15,
+      compensation: BORROWER_PAID,
     });
     const credited = computeClosingCosts({
       purchasePrice: 400000,
@@ -368,6 +375,7 @@ describe("computeClosingCosts (shared LE fee schedule)", () => {
       interestRate: 6.875,
       monthlyPMI: 0,
       prepaidInterestDays: 15,
+      compensation: BORROWER_PAID,
       lenderCredits: 1000,
     });
     expect(credited.cashToClose).toBeCloseTo(base.cashToClose - 1000, 6);

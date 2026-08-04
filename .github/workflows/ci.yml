@@ -83,6 +83,15 @@ jobs:
         run: pnpm audit --prod --audit-level=high
       - name: Schema ↔ migration drift guard
         run: pnpm guard:schema
+      - name: Delivery-stack freeze (F-14 channel decision)
+        # A broker never delivers to Fannie Mae — the wholesale lender is the
+        # seller/servicer. While shared/businessChannel.ts says "broker", the GSE
+        # delivery stack may shrink but not grow, so the channel decision is not
+        # made by accretion while it sits open. Turns itself off if the channel
+        # flips to correspondent. (Job `name:` above deliberately unchanged — it is
+        # the verbatim required-check string; see the rename warning.)
+        run: pnpm guard:channel
+
       - name: Design-token ratchet
         # Raw-palette / bare-white-black counts vs scripts/design-token-baseline.json
         # (ratchet: counts may only go down). Gated 2026-07-19 — adjudication log §4

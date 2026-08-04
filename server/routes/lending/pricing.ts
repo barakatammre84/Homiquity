@@ -4,8 +4,11 @@ import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertBorrowerDeclarationsSchema } from "@shared/schema";
-import { isStaffRole } from "@shared/roles";
+import { isInternalStaffRole, isStaffRole } from "@shared/roles";
 import { z } from "zod";
+import { logAudit } from "../../auditLog";
+import { verifyInternalStaffApplicationAccess } from "../borrower/access";
+import { COMPENSATION_MODELS, resolveCompensation } from "@shared/compliance/loCompensation";
 import { hasBorrowerConsent } from "../../consentGate";
 import * as creditService from "../../services/creditService";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
@@ -26,6 +29,89 @@ export function registerPricingRoutes(
   app: Express,
   storage: IStorage,
 ) {
+  // -------------------------------------------------------------------------
+  // Loan-originator compensation election (Reg Z 1026.36(d)(2)).
+  //
+  // Nothing downstream can price a file without this: the fee schedule refuses
+  // to build closing costs, the Loan Estimate refuses to generate, and the
+  // scenario simulator lists it as a missing item. That is deliberate — the
+  // alternative is guessing the model, which is the dual-compensation error
+  // itself (a borrower-paid origination fee charged alongside lender-paid
+  // compensation).
+  //
+  // Internal staff only, assignment-scoped, and frozen once the Loan Estimate
+  // has issued: changing who pays the originator after disclosure is a
+  // changed-circumstance/tolerance event, not a quiet field edit.
+  // -------------------------------------------------------------------------
+  const compensationSchema = z.object({
+    model: z.enum(COMPENSATION_MODELS),
+    bps: z.number().int().min(0).max(1000),
+  });
+
+  app.patch("/api/loan-applications/:id/compensation", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = routeParam(req, "id");
+
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff only can elect the compensation model" });
+      }
+      const allowed = await verifyInternalStaffApplicationAccess(storage, id, user.id, user.role);
+      if (!allowed) {
+        return res.status(403).json({ error: "Access denied to this application" });
+      }
+
+      const parsed = compensationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
+      }
+
+      const application = await storage.getLoanApplication(id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const { model, bps } = parsed.data;
+      const alreadyElected = resolveCompensation(
+        application.loCompensationModel,
+        application.loCompensationBps,
+      );
+      const isChange = !!alreadyElected && (alreadyElected.model !== model || alreadyElected.bps !== bps);
+
+      if (isChange && application.leIssuedDate) {
+        return res.status(409).json({
+          error:
+            "The Loan Estimate has already issued for this file. Changing the compensation model now " +
+            "requires a documented changed circumstance and a redisclosure — it cannot be edited here.",
+          code: "compensation_locked_after_le",
+        });
+      }
+
+      const updated = await storage.updateLoanApplication(id, {
+        loCompensationModel: model,
+        loCompensationBps: bps,
+      });
+      if (!updated) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      logAudit(req, "loan_application.compensation_elected", "loan_application", id, {
+        model,
+        bps,
+        previousModel: alreadyElected?.model ?? null,
+        previousBps: alreadyElected?.bps ?? null,
+      });
+
+      res.json({
+        loCompensationModel: updated.loCompensationModel,
+        loCompensationBps: updated.loCompensationBps,
+      });
+    } catch (error) {
+      console.error("Elect compensation error:", error);
+      res.status(500).json({ error: "Failed to record the compensation election" });
+    }
+  });
+
   app.get("/api/loan-applications/:id/offers", isAuthenticated, async (req, res) => {
     try {
       const application = await storage.getLoanApplicationWithAccess(
