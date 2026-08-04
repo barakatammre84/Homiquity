@@ -476,3 +476,166 @@ describe("AI governance (AG-2): the MCP surface authenticates WHICH agent it ser
     expect(read("server/services/creditAudit.ts")).toMatch(/agentContext/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Compliance-critical field registry (audit F-2 class).
+//
+// The worst defect the 2026-08-04 financial architecture audit found was not
+// wrong logic — it was a DEAD COLUMN feeding a LIVE GATE.
+// `loanApplications.totalPointsAndFees` was read by the QM points-and-fees
+// check and written by nothing, so the gate returned "compliant" on every
+// file. Dead data reaching a regulated decision is invisible in review: the
+// code reads correctly, the column exists, the tests pass on fixtures that
+// populate it by hand.
+//
+// This registry is the standing guard against that shape. Every field a
+// regulated decision depends on is listed with where it is READ and where it
+// is WRITTEN — and the binding rule is:
+//
+//   A field with NO production writer MUST declare how its gate fails CLOSED.
+//
+// Neither a writer nor a documented fallback is the F-2 bug, and this test
+// fails on it. Adding a compliance-gating field means adding it here, which
+// is the point: the omission becomes a build failure rather than a discovery
+// a year later.
+// ---------------------------------------------------------------------------
+
+interface ComplianceCriticalField {
+  /** camelCase property as it appears in code. */
+  field: string;
+  table: string;
+  /** The regulated decision that consumes it. */
+  gate: string;
+  /** File where the gate reads it. */
+  readBy: string;
+  /** Files that write a real value. Empty means none exist. */
+  writtenBy: string[];
+  /**
+   * Set when the write goes through a schema spread rather than a literal
+   * mention (e.g. `...parsed.data`), so the name-match check is skipped and
+   * the indirection is documented instead of silently tolerated.
+   */
+  indirectWrite?: string;
+  /**
+   * REQUIRED when `writtenBy` is empty: where the gate handles absence
+   * without passing. This is the F-2 contract.
+   */
+  failsClosedBy?: string;
+  why: string;
+}
+
+const COMPLIANCE_CRITICAL_FIELDS: ComplianceCriticalField[] = [
+  {
+    field: "totalPointsAndFees",
+    table: "loan_applications",
+    gate: "QM points-and-fees cap (Reg Z 1026.43(e)(2)(iii))",
+    readBy: "server/services/mismoValidation.ts",
+    writtenBy: [], // still none — the original F-2 defect, now mitigated not cured
+    failsClosedBy: "shared/compliance/loCompensation.ts",
+    why:
+      "Absent, the gate falls back to the computed points-and-fees FLOOR and can return " +
+      "over_cap or not_cleared — never a clean pass. Before F-2 it returned compliant:true.",
+  },
+  {
+    field: "loCompensationModel",
+    table: "loan_applications",
+    gate: "Dual compensation (Reg Z 1026.36(d)(2)) + the borrower-paid origination fee",
+    // loanCosts.ts takes compensation as a PARAMETER; the column itself is read
+    // here, where the application is resolved. (The first run of this guard
+    // caught that distinction — the registry originally named loanCosts.)
+    readBy: "server/services/loanEstimate.ts",
+    writtenBy: ["server/routes/lending/pricing.ts"],
+    why: "No election means no Loan Estimate — generateLoanEstimate throws rather than guessing.",
+  },
+  {
+    field: "loCompensationBps",
+    table: "loan_applications",
+    gate: "QM points-and-fees floor — creditor-paid broker comp counts toward the cap",
+    readBy: "server/services/mismoValidation.ts",
+    writtenBy: ["server/routes/lending/pricing.ts"],
+    why: "A model without a rate cannot be scored against the cap; resolveCompensation rejects it.",
+  },
+  {
+    field: "lockConfirmationNumber",
+    table: "rate_locks",
+    gate: "A rate lock is a lender commitment, not a broker assertion",
+    readBy: "shared/rateLockConfirmation.ts",
+    writtenBy: ["server/routes/borrower/rateLocks.ts"],
+    why: "Absent, the row resolves to unconfirmed_quote and is never called a lock to a borrower.",
+  },
+  {
+    field: "compensationReceivedAmount",
+    table: "lender_submissions",
+    gate: "EPO clawback exposure + compensation variance (short-pay detection)",
+    readBy: "shared/compensationClawback.ts",
+    writtenBy: ["server/services/lenderSubmission.ts"],
+    why:
+      "Required to mark a submission funded. Absent on an at-risk loan, the exposure is " +
+      "reported indeterminate rather than $0 — an unknown is not an absence of risk.",
+  },
+  {
+    field: "regulationZTotalPointsAndFeesAmount",
+    table: "loan_delivery_data",
+    gate: "Loan Delivery edit 3128 / C87-C88 (QM cap at delivery)",
+    readBy: "shared/fannieMae/loanDeliveryEdits.ts",
+    writtenBy: ["server/routes/underwriting/delivery.ts"],
+    indirectWrite:
+      "Written through insertLoanDeliveryDataSchema via `...parsed.data`, so the field name " +
+      "never appears literally in the route.",
+    why: "Edit 3128 fails when absent — the delivery edits already fail closed on this one.",
+  },
+];
+
+describe("compliance-critical field registry (F-2 class: dead data feeding a live gate)", () => {
+  it("registers at least the fields the 2026-08-04 audit identified", () => {
+    expect(COMPLIANCE_CRITICAL_FIELDS.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it.each(COMPLIANCE_CRITICAL_FIELDS.map((f) => [f.field, f] as const))(
+    "%s — the gate that reads it still reads it",
+    (_name, entry) => {
+      expect(read(entry.readBy)).toContain(entry.field);
+    },
+  );
+
+  it.each(COMPLIANCE_CRITICAL_FIELDS.map((f) => [f.field, f] as const))(
+    "%s — every declared writer exists and writes it",
+    (_name, entry) => {
+      for (const writer of entry.writtenBy) {
+        const source = read(writer);
+        if (entry.indirectWrite) {
+          // The write is a schema spread; assert the file is real, and rely on
+          // the documented note rather than pretending to detect the name.
+          expect(source.length).toBeGreaterThan(0);
+        } else {
+          expect(source).toContain(entry.field);
+        }
+      }
+    },
+  );
+
+  // THE invariant. A compliance gate whose input has no writer and no
+  // documented fallback is the F-2 bug, whatever else is true of it.
+  it.each(COMPLIANCE_CRITICAL_FIELDS.map((f) => [f.field, f] as const))(
+    "%s — has a writer, or declares how its gate fails closed",
+    (_name, entry) => {
+      const hasWriter = entry.writtenBy.length > 0;
+      if (!hasWriter) {
+        expect(
+          entry.failsClosedBy,
+          `${entry.field} has no production writer and no failsClosedBy. Its gate (${entry.gate}) ` +
+            `can therefore pass on missing data — the exact defect that made the QM cap ` +
+            `wave through every file. Either wire a writer or document the fail-closed path.`,
+        ).toBeTruthy();
+        expect(read(entry.failsClosedBy!).length).toBeGreaterThan(0);
+      }
+    },
+  );
+
+  it("every entry explains why the field matters", () => {
+    for (const entry of COMPLIANCE_CRITICAL_FIELDS) {
+      expect(entry.why.length).toBeGreaterThan(30);
+      expect(entry.gate.length).toBeGreaterThan(10);
+    }
+  });
+});

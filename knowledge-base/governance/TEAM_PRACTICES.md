@@ -45,6 +45,31 @@ at `knowledge-base/archive/lo-audit/2026-07-04-pm.md`.)*
 - Deliberately kept-back work (standby branches) **must exist on origin**. A laptop-only
   branch is one disk failure from gone.
 
+### PR size: one CI cycle *(added 2026-08-04)*
+
+**If a PR cannot survive one CI cycle without going stale, it is too big for this repo's
+cadence.** That is the rule, and the number comes from observation rather than taste: `main`
+merges something roughly every 15 minutes at peak, and the gate takes ~3.5 minutes. A PR that
+takes a day to assemble races ~30 commits.
+
+This is not hypothetical. The 2026-08-04 financial-architecture PR was **69 files / 7,292
+additions**, and in the time it took to open, `main` landed a migration at the same index —
+`0038` on both sides. Caught only because the branch was merged up *before* opening the PR; had it
+merged as-is, two entries would have shared `idx: 38` in the journal and the post-merge
+`migrate-prod` job would have applied them in an undefined order. **On a prod database that
+auto-applies migrations, a stale branch is a correctness risk, not an inconvenience.**
+
+Practically:
+
+- Split by seam, not by size. That PR was four: compensation, disclosure, economics, governance.
+  Each would have merged inside an hour and never met a conflict.
+- Land the shared reference (an audit log, a spec) as its own PR first. It is pure addition,
+  merges immediately, and gives the follow-ups something to cite.
+- Merge `main` **before** opening, not after CI goes green — that is when a migration collision
+  is cheap to fix.
+- If a PR must be large (a mechanical rename, a dependency migration), say so in the body and
+  expect to re-merge `main` more than once.
+
 ## 5. Definition of done (every PR, no exceptions)
 
 1. `npm run check` clean (tsc).

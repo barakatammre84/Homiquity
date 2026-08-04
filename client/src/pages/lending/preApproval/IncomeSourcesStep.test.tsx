@@ -9,11 +9,6 @@ import type { RentalPropertyEntry, IncomeSourceEntry, PreApprovalFormData } from
 // the parent). This harness hosts the state exactly like PreApproval does and
 // captures every rebuilt incomeSources payload.
 
-const formatCurrency = (value: string) => {
-  const numbers = value.replace(/\D/g, "");
-  return numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-};
-
 function Harness({
   employmentType = "employed",
   onEntries,
@@ -34,7 +29,6 @@ function Harness({
       setIncomeDetails={setIncomeDetails}
       setRentalProperties={setRentalProperties}
       setIncomeSources={onEntries}
-      formatCurrency={formatCurrency}
     />
   );
 }

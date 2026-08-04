@@ -7,6 +7,51 @@ import { encryptSensitiveData, computeHash } from "./encryptionService";
 import { logCreditAction } from "./creditAuditChain";
 import { getActiveConsent } from "./creditConsents";
 
+/**
+ * Per-pull vendor cost, in dollars, by pull type.
+ *
+ * PLATFORM ASSUMPTION — no credit vendor contract exists (roadmap F3), so
+ * these are working figures, not contracted rates. They exist so the spend is
+ * METERED rather than invisible; replace them with the vendor's actual price
+ * sheet when the contract lands. Every entry booked from them is flagged
+ * `simulated` while the credit adapter is a simulation, so they cannot leak
+ * into a real margin figure. Ledger: `platform-credit-pull-unit-cost`.
+ */
+export const CREDIT_PULL_UNIT_COST: Record<"soft" | "hard" | "tri_merge", number> = {
+  soft: 5,
+  hard: 15,
+  tri_merge: 30,
+};
+
+/** True while the credit vendor leg is the deterministic simulation. */
+function creditVendorIsSimulated(): boolean {
+  return !process.env.CREDIT_VENDOR_API_KEY;
+}
+
+async function recordCreditPullCost(input: {
+  applicationId: string;
+  creditPullId: string;
+  pullType: "soft" | "hard" | "tri_merge";
+  bureaus: string[];
+  requestedBy: string;
+}): Promise<void> {
+  const { storage } = await import("../storage");
+  const unitCost = CREDIT_PULL_UNIT_COST[input.pullType] ?? 0;
+  if (unitCost <= 0) return;
+
+  await storage.createLoanCostEntry({
+    applicationId: input.applicationId,
+    category: "credit_report",
+    vendor: "credit-bureau-adapter",
+    amount: unitCost.toFixed(2),
+    incurredAt: new Date(),
+    automatic: true,
+    simulated: creditVendorIsSimulated(),
+    description: `${input.pullType} pull (${input.bureaus.join(", ") || "no bureaus listed"}) — pull ${input.creditPullId}`,
+    recordedBy: input.requestedBy,
+  });
+}
+
 export async function requestCreditPull(
   data: {
     applicationId: string;
@@ -37,6 +82,24 @@ export async function requestCreditPull(
   };
 
   const [result] = await db.insert(creditPulls).values(pull).returning();
+
+  // Meter the cost at the moment we incur it (audit F-11). A tri-merge pull is
+  // real money and the task engine deliberately re-runs them (CRD_EXPIRED), so
+  // a stalled file quietly accumulates spend. Booked automatically rather than
+  // recalled from an invoice later — and flagged `simulated` while the vendor
+  // leg is the deterministic simulation, so demo spend never lands in a real
+  // margin figure. Non-fatal: a ledger failure must never block a credit pull.
+  try {
+    await recordCreditPullCost({
+      applicationId: data.applicationId,
+      creditPullId: result.id,
+      pullType: data.pullType,
+      bureaus: data.bureaus,
+      requestedBy: data.requestedBy,
+    });
+  } catch (err) {
+    console.warn("[creditPulls] cost ledger entry failed (non-fatal):", err);
+  }
 
   await logCreditAction({
     applicationId: data.applicationId,

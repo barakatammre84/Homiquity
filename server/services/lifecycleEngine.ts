@@ -20,6 +20,7 @@ import { fetchAvm } from "../mcp/vendors";
 import { toNum } from "@shared/lib/number";
 import { documentTypesMatch } from "@shared/documentTypes";
 import { sendNotificationEmail } from "./emailService";
+import { evaluateClawbackExposure } from "@shared/compensationClawback";
 
 /**
  * Lifecycle engine — the "evergreen client" automation (CTO_ROADMAP #9).
@@ -41,6 +42,47 @@ import { sendNotificationEmail } from "./emailService";
 
 export const PMI_REMOVAL_LTV_THRESHOLD = 80;
 export const REFI_ALERT_RATE_DROP = 0.25; // percentage points below current rate
+
+/**
+ * Is this homeowner's loan still inside its EPO clawback window?
+ *
+ * Resolves the funding lender from their funded submission so a contracted
+ * window is used when one exists. When no funded submission is on file — a
+ * loan that closed before submission tracking, or one originated elsewhere —
+ * falls back to the profile's close date and the assumed window, which
+ * suppresses rather than solicits (see the call site).
+ */
+async function resolveClawbackForHomeowner(profile: {
+  userId: string;
+  loanCloseDate?: Date | string | null;
+}): Promise<{ atRisk: boolean; daysRemaining: number | null }> {
+  try {
+    const funded = await storage.getFundedLenderSubmissionsByUser(profile.userId);
+    const submission = funded[0];
+    if (submission) {
+      const exposure = evaluateClawbackExposure({
+        lenderId: submission.lenderId,
+        fundedAt: submission.fundedAt ?? profile.loanCloseDate ?? null,
+        compensationReceivedAmount: submission.compensationReceivedAmount,
+      });
+      return { atRisk: exposure.atRisk, daysRemaining: exposure.daysRemaining };
+    }
+  } catch (err) {
+    // A lookup failure must not silently re-enable solicitation. Treat an
+    // unknown as in-window and move on.
+    console.warn("[lifecycle] clawback lookup failed; suppressing refi alert:", err);
+    return { atRisk: true, daysRemaining: null };
+  }
+
+  if (!profile.loanCloseDate) return { atRisk: false, daysRemaining: null };
+  const exposure = evaluateClawbackExposure({
+    // Unknown lender → the platform-assumed window (compensationClawback.ts).
+    lenderId: "",
+    fundedAt: profile.loanCloseDate,
+    compensationReceivedAmount: null,
+  });
+  return { atRisk: exposure.atRisk, daysRemaining: exposure.daysRemaining };
+}
 
 /** Standard amortized monthly P&I payment. */
 export function monthlyPayment(principal: number, annualRatePct: number, termMonths = 360): number {
@@ -127,6 +169,8 @@ interface SweepResult {
   snapshotsCreated: number;
   pmiAlerts: number;
   refiAlertsCreated: number;
+  /** Refi alerts withheld because the loan is inside its EPO clawback window. */
+  refiAlertsSuppressedByClawback: number;
   docExpiryNudges: number;
   missingDocNudges: number;
   stuckIntakeRecovered: number;
@@ -455,7 +499,22 @@ async function sweepProfile(
   }
 
   // --- Signal: market rate ≥25bps below the homeowner's rate → refi alert --
-  if (marketRate !== null && !isNaN(rate) && marketRate <= rate - REFI_ALERT_RATE_DROP) {
+  //
+  // EPO clawback guard (audit F-8). Soliciting a refinance on a loan we funded
+  // recently invites the early payoff that makes the lender reclaim the entire
+  // commission we were paid — the platform paying to cannibalize its own book.
+  // Suppress while the clawback window is open.
+  //
+  // Deliberately asymmetric: when the funding lender cannot be resolved we
+  // fall back to loanCloseDate and the assumed window, i.e. we suppress. A
+  // missed refi lead costs a lead; a solicited early payoff costs the whole
+  // commission.
+  const clawback = await resolveClawbackForHomeowner(profile);
+  if (clawback.atRisk) {
+    counters.refiAlertsSuppressedByClawback += 1;
+  }
+
+  if (!clawback.atRisk && marketRate !== null && !isNaN(rate) && marketRate <= rate - REFI_ALERT_RATE_DROP) {
     const [openAlert] = await db
       .select({ id: refiAlerts.id })
       .from(refiAlerts)
@@ -510,6 +569,7 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
     snapshotsCreated: 0,
     pmiAlerts: 0,
     refiAlertsCreated: 0,
+    refiAlertsSuppressedByClawback: 0,
     docExpiryNudges: 0,
     missingDocNudges: 0,
     stuckIntakeRecovered: 0,
@@ -557,7 +617,8 @@ export async function runLifecycleSweep(): Promise<SweepResult> {
   console.log(
     `[lifecycle] Sweep complete: ${counters.profilesProcessed} profiles, ` +
       `${counters.snapshotsCreated} snapshots, ${counters.pmiAlerts} PMI alerts, ` +
-      `${counters.refiAlertsCreated} refi alerts, ${counters.docExpiryNudges} doc nudges, ` +
+      `${counters.refiAlertsCreated} refi alerts (${counters.refiAlertsSuppressedByClawback} suppressed: EPO clawback window), ` +
+      `${counters.docExpiryNudges} doc nudges, ` +
       `${counters.missingDocNudges} missing-doc nudges, ` +
       `${counters.stuckIntakeRecovered} stuck-intake recovered, ${counters.errors} errors` +
       (marketRate === null ? " (no market rate data — refi checks skipped)" : ""),

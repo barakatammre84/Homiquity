@@ -15,6 +15,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { users } from "./core";
+import { COMPENSATION_MODELS, type CompensationModel } from "../compliance/loCompensation";
 
 // Loan application status — the canonical vocabulary.
 //
@@ -450,8 +451,18 @@ export const loanApplications = pgTable("loan_applications", {
   armLifetimeCap: decimal("arm_lifetime_cap", { precision: 6, scale: 3 }),
   armAdjustmentFrequencyMonths: integer("arm_adjustment_frequency_months"),
 
-  // ATR/QM points and fees (Reg Z 1026.43)
+  // ATR/QM points and fees (Reg Z 1026.43). Authoritative closing-side figure;
+  // absent pre-closing, which is why the pre-delivery check falls back to the
+  // computed floor in shared/compliance/loCompensation.ts.
   totalPointsAndFees: decimal("total_points_and_fees", { precision: 12, scale: 2 }),
+
+  // Loan-originator compensation elected for THIS transaction (Reg Z
+  // 1026.36(d)(2)). Both columns are nullable in the database because existing
+  // rows predate them, but the fee schedule and the Loan Estimate fail closed
+  // when either is missing — a guessed model is the dual-compensation error
+  // itself. Vocabulary: shared/compliance/loCompensation.ts COMPENSATION_MODELS.
+  loCompensationModel: varchar("lo_compensation_model", { length: 20 }).$type<CompensationModel>(),
+  loCompensationBps: integer("lo_compensation_bps"),
 
   // HMDA LAR action taken / denial reasons (Reg C)
   hmdaActionTaken: varchar("hmda_action_taken", { length: 30 }),
@@ -506,6 +517,7 @@ export const insertLoanApplicationSchema = createInsertSchema(loanApplications)
   .extend({
     currentPropertyDisposition: z.enum(CURRENT_PROPERTY_DISPOSITIONS).nullish(),
     departingResidence: departingResidenceSchema.nullish(),
+    loCompensationModel: z.enum(COMPENSATION_MODELS).nullish(),
   });
 
 export type InsertLoanApplication = z.infer<typeof insertLoanApplicationSchema>;

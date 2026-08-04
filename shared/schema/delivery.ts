@@ -152,6 +152,28 @@ export const lenderSubmissions = pgTable(
     incomePackageJson: jsonb("income_package_json"),
     incomePackageHash: varchar("income_package_hash", { length: 64 }),
     incomePackageGeneratedAt: timestamp("income_package_generated_at"),
+    // -----------------------------------------------------------------
+    // Broker compensation lifecycle (shared/compensationLedger.ts).
+    //
+    // Revenue was represented nowhere in the platform, so a funded loan
+    // earned an unknown amount and a lender short-paying us was invisible.
+    // Expected is SNAPSHOTTED at submission from the elected comp plan so a
+    // later plan edit cannot rewrite what we thought we were owed; received
+    // is recorded at funding, and the difference is the only thing that can
+    // surface a discrepancy.
+    // -----------------------------------------------------------------
+    /** lender_paid | borrower_paid, as elected when this file was submitted. */
+    compensationModel: varchar("compensation_model", { length: 20 }),
+    compensationExpectedBps: integer("compensation_expected_bps"),
+    compensationExpectedAmount: decimal("compensation_expected_amount", { precision: 12, scale: 2 }),
+    /** The lender's actual remittance. Required to mark a submission funded. */
+    compensationReceivedAmount: decimal("compensation_received_amount", { precision: 12, scale: 2 }),
+    compensationReceivedAt: timestamp("compensation_received_at"),
+    compensationRecordedBy: varchar("compensation_recorded_by"),
+    /** Final loan amount at funding — the basis comp is actually paid on. */
+    fundedLoanAmount: decimal("funded_loan_amount", { precision: 12, scale: 2 }),
+    fundedAt: timestamp("funded_at"),
+
     /** Staff user who performed the submission. */
     submittedBy: varchar("submitted_by").notNull(),
     submittedAt: timestamp("submitted_at").defaultNow().notNull(),

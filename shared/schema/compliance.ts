@@ -727,3 +727,119 @@ export const insertChangeOfCircumstanceSchema = createInsertSchema(changeOfCircu
 });
 export type InsertChangeOfCircumstance = z.infer<typeof insertChangeOfCircumstanceSchema>;
 export type ChangeOfCircumstance = typeof changeOfCircumstances.$inferSelect;
+
+// =============================================================================
+// ISSUED LOAN ESTIMATE DISCLOSURES (Reg Z §1026.19(e)(3) tolerance baseline)
+// =============================================================================
+// The Loan Estimate is generated from live file data, so without this table
+// there is no record of what was actually disclosed — the numbers a borrower
+// saw on day one silently become different numbers on day ten, and no
+// good-faith tolerance comparison is possible because the baseline is gone.
+//
+// One row per ISSUED disclosure (version 1 = the original LE; each valid
+// redisclosure appends). `snapshot` is the tolerance-bucketed fee set from
+// shared/compliance/feeTolerance.ts. A row is immutable once written — it is
+// the evidentiary record of a disclosure, not a cache.
+//
+// `cocId` links a revised disclosure to the §1026.19(e)(3)(iv) record that
+// authorized resetting the baseline. Version 1 has none; any later version
+// without one is a redisclosure that reset nothing and whose increases are a
+// cure (services/leDisclosureBaseline.ts enforces this).
+export const loanEstimateDisclosures = pgTable(
+  "loan_estimate_disclosures",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+    /** 1 = original LE; increments on each valid redisclosure. */
+    version: integer("version").notNull(),
+    issuedAt: timestamp("issued_at").defaultNow().notNull(),
+    /** Tolerance-bucketed fee set + loan terms (DisclosureSnapshot). */
+    snapshot: jsonb("snapshot").notNull(),
+    /** The change of circumstance that authorized this baseline, when any. */
+    cocId: varchar("coc_id").references(() => changeOfCircumstances.id),
+    /** ToleranceEvaluation against the previous version; null on version 1. */
+    toleranceEvaluation: jsonb("tolerance_evaluation"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    index("loan_estimate_disclosures_app_idx").on(table.applicationId, table.version),
+    uniqueIndex("loan_estimate_disclosures_app_version_key").on(table.applicationId, table.version),
+  ],
+);
+
+export const insertLoanEstimateDisclosureSchema = createInsertSchema(loanEstimateDisclosures).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertLoanEstimateDisclosure = z.infer<typeof insertLoanEstimateDisclosureSchema>;
+export type LoanEstimateDisclosure = typeof loanEstimateDisclosures.$inferSelect;
+
+// =============================================================================
+// LOAN COST LEDGER (unit economics — cost per file, cost per funded loan)
+// =============================================================================
+// The platform had a revenue side (lender_submissions compensation columns)
+// and no cost side at all: no cost-per-file, no vendor invoice tracking, no LO
+// commission. Gross margin per loan was uncomputable, and the one recurring
+// hard cost the platform actually triggers — credit pulls, which the task
+// engine deliberately re-runs via CRD_EXPIRED — was unmetered.
+//
+// The metric that matters is not cost per LOAN but cost per FUNDED loan: costs
+// are incurred on every file, revenue arrives only on the ones that close, so
+// the denominator is the funded count, not the application count.
+//
+// One row per cost incurred against a file. Immutable — a correction is a new
+// row (a reversal), never an edit, so the ledger stays auditable.
+export const LOAN_COST_CATEGORIES = [
+  "credit_report",
+  "appraisal",
+  "avm",
+  "verification",
+  "aus",
+  "title",
+  "flood",
+  "rate_lock_extension",
+  "marketing",
+  "other",
+] as const;
+export type LoanCostCategory = (typeof LOAN_COST_CATEGORIES)[number];
+
+export const loanCostEntries = pgTable(
+  "loan_cost_entries",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+    /** One of LOAN_COST_CATEGORIES. */
+    category: varchar("category", { length: 30 }).$type<LoanCostCategory>().notNull(),
+    /** Who we paid — the vendor/adapter name. */
+    vendor: varchar("vendor", { length: 100 }),
+    /** Dollars. Negative is permitted for an explicit reversal/refund row. */
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    incurredAt: timestamp("incurred_at").defaultNow().notNull(),
+    /**
+     * True when the platform booked this automatically at the moment it
+     * triggered the cost (e.g. a credit pull), false when staff keyed an
+     * invoice. Distinguishes a metered cost from a recalled one.
+     */
+    automatic: boolean("automatic").notNull().default(false),
+    /**
+     * True while the underlying vendor leg is a deterministic simulation, so
+     * simulated spend never masquerades as real spend in a margin figure.
+     */
+    simulated: boolean("simulated").notNull().default(false),
+    description: text("description"),
+    recordedBy: varchar("recorded_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("loan_cost_entries_app_idx").on(table.applicationId, table.incurredAt)],
+);
+
+export const insertLoanCostEntrySchema = createInsertSchema(loanCostEntries)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    category: z.enum(LOAN_COST_CATEGORIES),
+  });
+export type InsertLoanCostEntry = z.infer<typeof insertLoanCostEntrySchema>;
+export type LoanCostEntry = typeof loanCostEntries.$inferSelect;

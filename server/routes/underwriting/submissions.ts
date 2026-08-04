@@ -270,9 +270,31 @@ export function registerSubmissionRoutes(
 
         const toStatus = typeof req.body?.status === "string" ? req.body.status : "";
         const notes = typeof req.body?.notes === "string" ? req.body.notes.slice(0, 2000) : undefined;
+
+        // Funding is where revenue is realized, so the transition to "funded"
+        // carries the figures that make it measurable (F-6). The service
+        // rejects the transition without them.
+        let funding: { fundedLoanAmount: number; compensationReceivedAmount: number } | undefined;
+        if (toStatus === "funded") {
+          const fundingSchema = z.object({
+            fundedLoanAmount: z.number().positive(),
+            compensationReceivedAmount: z.number().min(0),
+          });
+          const parsedFunding = fundingSchema.safeParse(req.body?.funding);
+          if (!parsedFunding.success) {
+            return res.status(400).json({
+              error:
+                "Marking a submission funded requires funding.fundedLoanAmount and " +
+                "funding.compensationReceivedAmount.",
+              details: parsedFunding.error.flatten().fieldErrors,
+            });
+          }
+          funding = parsedFunding.data;
+        }
+
         const { updateSubmissionStatus, SubmissionBlockedError } = await import("../../services/lenderSubmission");
         try {
-          const updated = await updateSubmissionStatus(submissionId, toStatus, notes, req.user!.id);
+          const updated = await updateSubmissionStatus(submissionId, toStatus, notes, req.user!.id, funding);
 
           // Autopilot decision relay: on a terminal lender decision, tell the
           // borrower they're approved / funded (Reg N), or flag the deal team
@@ -301,6 +323,180 @@ export function registerSubmissionRoutes(
       } catch (error) {
         console.error("Update lender submission error:", error);
         res.status(500).json({ error: "Failed to update submission" });
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------------
+  // Broker revenue report (F-6). What did the book actually earn, did the
+  // lenders pay what the comp plans say, and how much of the pipeline
+  // converts? Admin-only: this is company-level financial data, not a
+  // per-file view.
+  // ---------------------------------------------------------------------
+  app.get("/api/reports/compensation", requireRole("admin"), async (_req, res) => {
+    try {
+      const submissions = await storage.getAllLenderSubmissions();
+      const { summarizeCompensation, evaluateCompensationVariance } = await import(
+        "@shared/compensationLedger"
+      );
+      const { approvedLenderCount, getWholesaleLender } = await import("@shared/wholesaleLenders");
+
+      const summary = summarizeCompensation(submissions);
+
+      // Discrepancies worth a human: funded loans that were short-paid, or
+      // funded with no remittance recorded at all.
+      const discrepancies = submissions
+        .filter(s => s.status === "funded")
+        .map(s => ({
+          submissionId: s.id,
+          applicationId: s.applicationId,
+          lender: getWholesaleLender(s.lenderId)?.name ?? s.lenderId,
+          fundedAt: s.fundedAt,
+          ...evaluateCompensationVariance({
+            expectedAmount: s.compensationExpectedAmount,
+            receivedAmount: s.compensationReceivedAmount,
+          }),
+        }))
+        .filter(row => row.status === "short_paid" || row.status === "over_paid" || row.status === "pending");
+
+      // Contingent liability (F-8): compensation the lenders can still
+      // reclaim if these loans pay off early. For an asset-light broker this
+      // is the balance sheet, and it existed nowhere before.
+      const { buildClawbackRegister } = await import("@shared/compensationClawback");
+      const clawback = buildClawbackRegister(
+        submissions.map(s => ({
+          submissionId: s.id,
+          applicationId: s.applicationId,
+          status: s.status,
+          lenderId: s.lenderId,
+          fundedAt: s.fundedAt,
+          compensationReceivedAmount: s.compensationReceivedAmount,
+        })),
+      );
+
+      // Cost side + margin (F-11). Revenue alone is not unit economics: costs
+      // are incurred on every file and revenue arrives only on the ones that
+      // close, so the meaningful denominator is the funded count.
+      const { summarizeCosts, computeUnitEconomics } = await import("@shared/costLedger");
+      const costEntries = await storage.getAllLoanCostEntries();
+      const costs = summarizeCosts(costEntries);
+      const unitEconomics = computeUnitEconomics({
+        receivedCompensation: summary.receivedCompensation,
+        fundedCount: summary.fundedCount,
+        costs,
+      });
+
+      res.json({
+        ...summary,
+        // The binding constraint on all of the above: with no approved
+        // counterparty there is no revenue capacity at all (F-5).
+        approvedLenderCount: approvedLenderCount(),
+        discrepancies,
+        clawbackExposure: clawback,
+        costs,
+        unitEconomics,
+      });
+    } catch (error) {
+      console.error("Compensation report error:", error);
+      res.status(500).json({ error: "Failed to build the compensation report" });
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Contingent-liability register (F-13). For an asset-light broker these
+  // exposures ARE the balance sheet: obligations that exist only if something
+  // happens. Admin-only — company-level financial data.
+  //
+  // The response deliberately reports a `quantifiedFloor` plus an
+  // `unquantifiedCount`, never a "total": TILA damages, the surety bond and
+  // minimum net worth are real exposures with no figure here, and a number
+  // that looked complete would be worse than no number.
+  // ---------------------------------------------------------------------
+  app.get("/api/reports/contingent-liabilities", requireRole("admin"), async (_req, res) => {
+    try {
+      const { buildLiveContingentLiabilityRegister } = await import(
+        "../../services/contingentLiabilityRegister"
+      );
+      res.json(await buildLiveContingentLiabilityRegister());
+    } catch (error) {
+      console.error("Contingent liability register error:", error);
+      res.status(500).json({ error: "Failed to build the contingent-liability register" });
+    }
+  });
+
+  // ---------------------------------------------------------------------
+  // Per-file cost ledger (F-11). Vendor spend the platform does not book
+  // automatically — appraisal invoices, verification services, AMC charges.
+  // Append-only: a correction is a negative reversal entry, never an edit.
+  // ---------------------------------------------------------------------
+  app.get(
+    "/api/loan-applications/:id/costs",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = routeParams(req);
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        const entries = await storage.getLoanCostEntries(id);
+        const { summarizeCosts } = await import("@shared/costLedger");
+        res.json({ entries, summary: summarizeCosts(entries) });
+      } catch (error) {
+        console.error("Loan cost ledger error:", error);
+        res.status(500).json({ error: "Failed to load the cost ledger" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/loan-applications/:id/costs",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = routeParams(req);
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { LOAN_COST_CATEGORIES } = await import("@shared/costLedger");
+        const costSchema = z.object({
+          category: z.enum(LOAN_COST_CATEGORIES),
+          // Negative is permitted: that is how a reversal is recorded.
+          amount: z.number().finite(),
+          vendor: z.string().trim().min(1).max(100).optional(),
+          description: z.string().trim().max(1000).optional(),
+          incurredAt: z.coerce.date().optional(),
+        });
+        const parsed = costSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
+        }
+
+        const entry = await storage.createLoanCostEntry({
+          applicationId: id,
+          category: parsed.data.category,
+          amount: parsed.data.amount.toFixed(2),
+          vendor: parsed.data.vendor ?? null,
+          description: parsed.data.description ?? null,
+          incurredAt: parsed.data.incurredAt ?? new Date(),
+          automatic: false,
+          simulated: false,
+          recordedBy: req.user!.id,
+        });
+
+        const { logAudit } = await import("../../auditLog");
+        logAudit(req, "loan_cost.recorded", "loan_application", id, {
+          costEntryId: entry.id,
+          category: parsed.data.category,
+          amount: parsed.data.amount,
+        });
+
+        res.status(201).json(entry);
+      } catch (error) {
+        console.error("Record loan cost error:", error);
+        res.status(500).json({ error: "Failed to record the cost entry" });
       }
     },
   );

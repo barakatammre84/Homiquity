@@ -17,12 +17,18 @@
 import { createHash } from "node:crypto";
 import { storage } from "../storage";
 import {
+  evaluateLenderSubmissionEligibility,
   getWholesaleLender,
   isValidSubmissionTransition,
   LENDER_SUBMISSION_STATUSES,
   type LenderSubmissionStatus,
   type WholesaleLender,
 } from "@shared/wholesaleLenders";
+import {
+  compensationAmount,
+  resolveCompensation,
+} from "@shared/compliance/loCompensation";
+import { evaluateCompensationVariance } from "@shared/compensationLedger";
 import type { LenderSubmission } from "@shared/schema";
 import type { BrokerSubmissionReadiness } from "./brokerSubmissionReadiness";
 import { generateMISMO34XML, validateMISMOXML, type MISMOLoanDTO } from "../mismo";
@@ -114,6 +120,21 @@ export async function submitToWholesaleLender(
     throw new SubmissionBlockedError(`Unknown wholesale lender "${lenderId}"`, []);
   }
 
+  // Counterparty gate (F-5). Nothing used to check whether we actually have a
+  // relationship with this lender, so the system would record a "submitted"
+  // status — and transmit a borrower's file — to a company that has never
+  // heard of us. Production requires a signed agreement; dev/demo may exercise
+  // the path as an explicit simulation.
+  const eligibility = evaluateLenderSubmissionEligibility(lender, {
+    isProduction: process.env.NODE_ENV === "production",
+  });
+  if (!eligibility.allowed) {
+    throw new SubmissionBlockedError(eligibility.reason, eligibility.remediation);
+  }
+  if (eligibility.simulated) {
+    console.warn(`[lender-submission] ${eligibility.reason}`);
+  }
+
   // One live submission per lender: withdrawn/denied submissions may be
   // superseded, active ones may not.
   const existing = await storage.getLenderSubmissionsByApplication(applicationId);
@@ -195,11 +216,29 @@ export async function submitToWholesaleLender(
     submittedAt,
   );
 
+  // Snapshot what this file is expected to earn, from the comp plan elected on
+  // the application (Reg Z §1026.36(d)(2) election) and the loan amount as
+  // submitted. Snapshotted rather than derived on read: a later plan edit must
+  // not rewrite what we believed we were owed on a loan already in flight.
+  const application = await storage.getLoanApplication(applicationId);
+  const compensation = resolveCompensation(
+    application?.loCompensationModel,
+    application?.loCompensationBps,
+  );
+  const submittedLoanAmount = expectedLoanAmount(application);
+  const expectedComp =
+    compensation && submittedLoanAmount !== null
+      ? compensationAmount(submittedLoanAmount, compensation)
+      : null;
+
   const submission = await storage.createLenderSubmission({
     applicationId,
     lenderId,
     status: "submitted",
     simulated: ack.simulated,
+    compensationModel: compensation?.model ?? null,
+    compensationExpectedBps: compensation?.bps ?? null,
+    compensationExpectedAmount: expectedComp === null ? null : expectedComp.toFixed(2),
     confirmationId: ack.confirmationId,
     readinessSnapshot: { ...(readiness as unknown as Record<string, unknown>), xsdConformance },
     mismoPackageXml: pkg.xml,
@@ -222,11 +261,29 @@ export async function submitToWholesaleLender(
   return { submission, readiness };
 }
 
+/** Loan amount as submitted: purchase price − down payment. Pure. */
+function expectedLoanAmount(application: { purchasePrice?: unknown; downPayment?: unknown } | undefined | null): number | null {
+  if (!application) return null;
+  const price = Number(application.purchasePrice);
+  const down = Number(application.downPayment);
+  if (!Number.isFinite(price) || !Number.isFinite(down)) return null;
+  const amount = price - down;
+  return amount > 0 ? amount : null;
+}
+
+/** What staff must record to mark a submission funded. */
+export interface FundingDetails {
+  fundedLoanAmount: number;
+  compensationReceivedAmount: number;
+  fundedAt?: Date;
+}
+
 export async function updateSubmissionStatus(
   submissionId: string,
   toStatus: string,
   notes: string | undefined,
   performedBy: string,
+  funding?: FundingDetails,
 ): Promise<LenderSubmission> {
   if (!(LENDER_SUBMISSION_STATUSES as readonly string[]).includes(toStatus)) {
     throw new SubmissionBlockedError(`"${toStatus}" is not a valid submission status`, []);
@@ -240,16 +297,60 @@ export async function updateSubmissionStatus(
     throw new SubmissionBlockedError(`Cannot move a submission from "${from}" to "${toStatus}"`, []);
   }
 
+  // Funding is where revenue is realized, so it is where revenue gets
+  // captured. Marking a loan funded without recording what the lender actually
+  // paid is exactly how the platform ended up unable to state its own revenue
+  // — so the status machine refuses it rather than leaving it to discipline.
+  let fundingUpdate: Record<string, unknown> = {};
+  let variance: ReturnType<typeof evaluateCompensationVariance> | null = null;
+
+  if (toStatus === "funded") {
+    if (!funding) {
+      throw new SubmissionBlockedError(
+        "Marking a submission funded requires the funded loan amount and the compensation received.",
+        [
+          "Record the final funded loan amount from the lender's closing figures.",
+          "Record the compensation actually remitted by the lender.",
+        ],
+      );
+    }
+    const fundedAt = funding.fundedAt ?? new Date();
+    variance = evaluateCompensationVariance({
+      expectedAmount: submission.compensationExpectedAmount,
+      receivedAmount: funding.compensationReceivedAmount,
+    });
+    fundingUpdate = {
+      fundedLoanAmount: funding.fundedLoanAmount.toFixed(2),
+      fundedAt,
+      compensationReceivedAmount: funding.compensationReceivedAmount.toFixed(2),
+      compensationReceivedAt: fundedAt,
+      compensationRecordedBy: performedBy,
+    };
+  }
+
   const updated = await storage.updateLenderSubmission(submissionId, {
     status: toStatus,
     ...(notes !== undefined ? { notes } : {}),
+    ...fundingUpdate,
   });
 
   await storage.createDealActivity({
     applicationId: submission.applicationId,
     activityType: "note",
     title: `Lender submission ${toStatus.replace(/_/g, " ")}`,
-    description: `${getWholesaleLender(submission.lenderId)?.name ?? submission.lenderId}: ${from} → ${toStatus}${notes ? ` — ${notes}` : ""}`,
+    description:
+      `${getWholesaleLender(submission.lenderId)?.name ?? submission.lenderId}: ${from} → ${toStatus}` +
+      (notes ? ` — ${notes}` : "") +
+      (variance ? ` — ${variance.message}` : ""),
+    metadata: variance
+      ? {
+          submissionId,
+          compensationStatus: variance.status,
+          expectedAmount: variance.expectedAmount,
+          receivedAmount: variance.receivedAmount,
+          variance: variance.variance,
+        }
+      : undefined,
     performedBy,
   });
 

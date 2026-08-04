@@ -72,8 +72,10 @@ function baseDto(id: string): MISMOLoanDTO {
 }
 
 describe("generateMISMO34XML MERS handling", () => {
-  it("omits MERS_REGISTRATION and emits no NaN when org id is unconfigured (PENDING)", () => {
-    // Default company config carries mersOrgId "PENDING".
+  it("omits MERS_REGISTRATION and emits no NaN when no org id applies", () => {
+    // In the broker channel the default config carries
+    // "NOT_APPLICABLE_BROKER_CHANNEL" — a broker holds no notes to register
+    // (F-14). Non-numeric either way, so the guard behaves identically.
     const xml = generateMISMO34XML(baseDto("3f8a-9c2d-11ee-8c90-0242ac120002"));
     expect(xml).not.toContain("NaN");
     expect(xml).not.toContain("MERS_REGISTRATION");

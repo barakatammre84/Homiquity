@@ -13,7 +13,53 @@
 // derives it from its estimated closing date; the simulator uses the same
 // 15-day assumption as the advertised-fee model) so callers stay
 // deterministic.
+//
+// COMPENSATION IS A REQUIRED INPUT (12 CFR §1026.36(d)(2)). A loan originator
+// may not be paid by the consumer and by another person on the same
+// transaction, so the borrower-paid origination fee is not a constant — it is
+// a function of how the originator is paid. Under a lender-paid plan it is
+// ZERO, and the compensation the lender pays is reported separately (it is not
+// a charge to the borrower and does not appear in the borrower's cost totals,
+// but it does count toward the QM points-and-fees cap — see
+// shared/compliance/loCompensation.ts).
+//
+// There is deliberately no default: a missing compensation model must stop the
+// Loan Estimate, because assuming one is exactly the §1026.36(d)(2) mistake.
 // ---------------------------------------------------------------------------
+
+import {
+  borrowerPaidOriginationAllowed,
+  compensationAmount,
+  type OriginatorCompensation,
+} from "@shared/compliance/loCompensation";
+import { resolveFeeAmount, type ActualFeeMap } from "@shared/compliance/feeProvenance";
+
+/** Borrower-paid origination fee as a fraction of the loan amount. */
+export const ORIGINATION_FEE_RATE = 0.01;
+/**
+ * Flat platform fees. Exported because the QM points-and-fees floor
+ * (services/mismoValidation.ts) must score the same numbers the Loan Estimate
+ * discloses — two surfaces, one schedule.
+ */
+export const PLATFORM_APPLICATION_FEE = 500;
+export const PLATFORM_UNDERWRITING_FEE = 1500;
+export const PLATFORM_TAX_SERVICE_FEE = 100;
+
+/**
+ * Prepaid finance charges the platform can determine WITHOUT a closing date —
+ * its own origination-side charges (§1026.4). Deliberately excludes prepaid
+ * interest and prepaid MI, which need a closing date and a rate.
+ *
+ * Used to derive a Regulation Z Total Loan Amount before closing
+ * (services/mismoValidation.ts). Because it UNDER-counts the true prepaid
+ * finance charges, the total loan amount it yields is an upper bound on the
+ * true one — so the QM percentage cap computed from it stays slightly
+ * permissive, but is strictly tighter than standing in the note amount.
+ * Never the reverse.
+ */
+export function knownPrepaidFinanceCharges(originationFee: number, points = 0): number {
+  return originationFee + points + PLATFORM_APPLICATION_FEE + PLATFORM_UNDERWRITING_FEE + PLATFORM_TAX_SERVICE_FEE;
+}
 
 export interface ClosingCostInputs {
   purchasePrice: number;
@@ -25,6 +71,23 @@ export interface ClosingCostInputs {
   monthlyPMI: number;
   /** Days of prepaid interest collected at closing. */
   prepaidInterestDays: number;
+  /**
+   * How the loan originator is paid on this transaction. Required — see the
+   * header. Determines whether the borrower is charged an origination fee.
+   */
+  compensation: OriginatorCompensation;
+  /**
+   * Real, known third-party charges for THIS file (the AMC's appraisal quote,
+   * the title company's figure) keyed by the fee ids in
+   * shared/compliance/feeProvenance.ts. Any fee present here is disclosed at
+   * its actual amount instead of the platform estimate.
+   *
+   * This is the practical half of the F-9 fix: the fee constants below are
+   * unverified national figures sitting in a zero-tolerance bucket, and the
+   * appraisal is the largest single variance on a file. Disclosing the real
+   * number when it is known removes the cure rather than measuring it.
+   */
+  actualFees?: ActualFeeMap;
   /** Annual property taxes; defaults to the platform 1.2%-of-price model. */
   annualPropertyTaxes?: number;
   /** Annual homeowner's insurance; defaults to max($1,200, 0.3% of price). */
@@ -34,7 +97,16 @@ export interface ClosingCostInputs {
 }
 
 export interface ClosingCostStructure {
+  /** Borrower-paid origination fee. Always 0 under a lender-paid plan. */
   originationFee: number;
+  /**
+   * Compensation the wholesale lender pays the originator. NOT a borrower
+   * charge — excluded from every borrower-facing total below, and excluded
+   * from the Loan Estimate (which has no "paid by others" column; that column
+   * exists only on the Closing Disclosure). Carried here because the QM
+   * points-and-fees cap counts it.
+   */
+  lenderPaidCompensation: number;
   points: number;
   applicationFee: number;
   underwritingFee: number;
@@ -98,7 +170,13 @@ export function calculatePMI(loanAmount: number, propertyValue: number, creditSc
 }
 
 export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStructure {
-  const { purchasePrice, downPayment, loanAmount, interestRate, monthlyPMI } = input;
+  const { purchasePrice, downPayment, loanAmount, interestRate, monthlyPMI, compensation } = input;
+
+  if (!compensation) {
+    throw new Error(
+      "Originator compensation model is required to compute closing costs (12 CFR 1026.36(d)(2))",
+    );
+  }
 
   const annualPropertyTax = input.annualPropertyTaxes ?? purchasePrice * 0.012;
   const monthlyPropertyTax = annualPropertyTax / 12;
@@ -107,20 +185,36 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
   const monthlyHomeownersInsurance = annualHomeownersInsurance / 12;
   const monthlyEscrow = monthlyPropertyTax + monthlyHomeownersInsurance;
 
-  const originationFee = loanAmount * 0.01;
+  // §1026.36(d)(2): charge the borrower an origination fee ONLY when the
+  // originator takes compensation from nobody else on this transaction.
+  const originationFee = borrowerPaidOriginationAllowed(compensation.model)
+    ? loanAmount * ORIGINATION_FEE_RATE
+    : 0;
+  const lenderPaidCompensation =
+    compensation.model === "lender_paid" ? compensationAmount(loanAmount, compensation) : 0;
   const points = 0;
-  const applicationFee = 500;
-  const underwritingFee = 1500;
-  const appraisalFee = 650;
-  const creditReportFee = 75;
-  const floodDeterminationFee = 25;
-  const taxServiceFee = 100;
-  const titleInsurance = loanAmount * 0.005;
-  const titleSearch = 350;
-  const surveyFee = 450;
-  const pestInspectionFee = 150;
-  const recordingFees = 150;
-  const transferTaxes = purchasePrice * 0.001;
+  const applicationFee = PLATFORM_APPLICATION_FEE;
+  const underwritingFee = PLATFORM_UNDERWRITING_FEE;
+  // Third-party charges. Every constant below is an UNVERIFIED national
+  // working figure with no citation — provenance and the known-suspect entries
+  // are catalogued in shared/compliance/feeProvenance.ts (audit F-9). A file
+  // with a real quote recorded discloses that instead.
+  const actuals = input.actualFees ?? {};
+  const fee = (id: string, estimate: number) => resolveFeeAmount(id, estimate, actuals);
+
+  const appraisalFee = fee("appraisal", 650);
+  const creditReportFee = fee("credit_report", 75);
+  const floodDeterminationFee = fee("flood_determination", 25);
+  const taxServiceFee = fee("tax_service", PLATFORM_TAX_SERVICE_FEE);
+  const titleInsurance = fee("title_insurance", loanAmount * 0.005);
+  const titleSearch = fee("title_search", 350);
+  const surveyFee = fee("survey_fee", 450);
+  const pestInspectionFee = fee("pest_inspection", 150);
+  const recordingFees = fee("recording_fees", 150);
+  // SUSPECT (F-9): a single national percentage applied to an Illinois-only
+  // footprint, where transfer tax is levied at state, county AND municipal
+  // level. Zero-tolerance, so an understatement is a dollar-for-dollar cure.
+  const transferTaxes = fee("transfer_taxes", purchasePrice * 0.001);
 
   const dailyInterest = (loanAmount * (interestRate / 100)) / 365;
   const prepaidInterest = dailyInterest * input.prepaidInterestDays;
@@ -149,6 +243,14 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
   // underwriting fees, tax service, prepaid interest, and prepaid MI.
   // Appraisal, credit report, title, survey, pest, and recording/transfer
   // charges are excluded (§1026.4(c)(7), (e)).
+  //
+  // OPEN ITEM — lender-paid compensation and the APR. §1026.4(a)(3) governs
+  // whether a fee payable to a mortgage broker is a finance charge when the
+  // creditor rather than the consumer pays it. That text could not be
+  // verified when this was written (ledger: regz-1026-36d2-dual-compensation),
+  // so `lenderPaidCompensation` is deliberately NOT added here — the APR math
+  // is unchanged from its previously-verified state rather than altered on an
+  // unverified reading. Resolve before the first real lender-paid file.
   const prepaidFinanceCharges =
     originationFee + points + applicationFee + underwritingFee + taxServiceFee +
     prepaidInterest + prepaidMortgageInsurance;
@@ -158,6 +260,7 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
 
   return {
     originationFee,
+    lenderPaidCompensation,
     points,
     applicationFee,
     underwritingFee,

@@ -21,6 +21,18 @@ export interface WholesaleLender {
    * (UAL P6) includes the non-QM path sections only for these lenders.
    */
   nonQm?: boolean;
+  /**
+   * Early-payoff (EPO) clawback window in days, from the executed broker
+   * agreement: if the loan pays off inside it, the lender reclaims the
+   * compensation it paid us.
+   *
+   * Undefined means NO AGREEMENT EXISTS YET, not "no clawback" — every
+   * wholesale broker agreement contains an EPO clause. Exposure for these
+   * lenders is computed against `DEFAULT_EPO_CLAWBACK_DAYS` and flagged as an
+   * assumption (shared/compensationClawback.ts). Fill this in from the signed
+   * agreement, alongside flipping `approvalStatus`.
+   */
+  epoClawbackDays?: number;
 }
 
 export const WHOLESALE_LENDERS: WholesaleLender[] = [
@@ -35,6 +47,86 @@ const BY_ID = new Map(WHOLESALE_LENDERS.map(l => [l.id, l]));
 
 export function getWholesaleLender(id: string): WholesaleLender | undefined {
   return BY_ID.get(id);
+}
+
+// ---------------------------------------------------------------------------
+// Counterparty capacity
+//
+// Revenue capacity is a step function of the number of SIGNED broker
+// agreements, and `approvalStatus` is the only record of one. A lender at
+// "target" is a business-development wish: sending them a borrower's file
+// means transmitting PII to a company that has no relationship with us and no
+// obligation to us.
+//
+// The count of approved lenders is the binding constraint on the business —
+// more so than any engineering item — which is why it is surfaced as a metric
+// (server/storage/stats.ts) rather than left implicit in this array.
+// ---------------------------------------------------------------------------
+
+export function isApprovedLender(lender: WholesaleLender): boolean {
+  return lender.approvalStatus === "approved";
+}
+
+export function approvedWholesaleLenders(): WholesaleLender[] {
+  return WHOLESALE_LENDERS.filter(isApprovedLender);
+}
+
+/** Launch KPI: how many counterparties can we actually deliver a loan to? */
+export function approvedLenderCount(): number {
+  return approvedWholesaleLenders().length;
+}
+
+export interface LenderSubmissionEligibility {
+  allowed: boolean;
+  /** True when the leg must be recorded as a deterministic simulation. */
+  simulated: boolean;
+  reason: string;
+  remediation: string[];
+}
+
+/**
+ * May we submit a file to this lender?
+ *
+ * Approved            → yes, for real.
+ * Not approved, prod  → NO. Production must never transmit a borrower file to
+ *                       a company we have no agreement with.
+ * Not approved, dev   → yes, but strictly as a simulation. The demo and the
+ *                       beta walkthrough exercise this path, and the existing
+ *                       `simulated` column already says what it is.
+ *
+ * The authorization lives in the catalog data, not in code: flipping a lender
+ * to "approved" when the agreement is signed is what unblocks production.
+ */
+export function evaluateLenderSubmissionEligibility(
+  lender: WholesaleLender,
+  opts: { isProduction: boolean },
+): LenderSubmissionEligibility {
+  if (isApprovedLender(lender)) {
+    return { allowed: true, simulated: false, reason: "Approved wholesale lender", remediation: [] };
+  }
+
+  if (opts.isProduction) {
+    return {
+      allowed: false,
+      simulated: true,
+      reason:
+        `${lender.name} is not an approved wholesale lender (status: ${lender.approvalStatus}). ` +
+        `Submitting would transmit a borrower's file to a company with no broker agreement in place.`,
+      remediation: [
+        `Execute a broker agreement with ${lender.name} and obtain wholesale credentials.`,
+        `Set approvalStatus to "approved" for "${lender.id}" in shared/wholesaleLenders.ts.`,
+      ],
+    };
+  }
+
+  return {
+    allowed: true,
+    simulated: true,
+    reason:
+      `${lender.name} is not approved (status: ${lender.approvalStatus}) — recording a SIMULATED ` +
+      `submission. This path is blocked in production.`,
+    remediation: [],
+  };
 }
 
 // ---------------------------------------------------------------------------

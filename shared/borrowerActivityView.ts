@@ -80,24 +80,41 @@ const VERBATIM_ACTIVITY_TYPES: ReadonlySet<string> = new Set([
  * contract landed can carry staff free text in description — the pre-contract
  * statusDecisions writer put staff decision notes there, the deal-fell-through
  * writer appended a free-text reason, and the task-engine upload writer
- * embedded staff-owned task titles. Those historical rows are not rewritten
- * (the feed is append-only history), so the view masks them instead: at or
- * after the cutover the description passes through (scrubbed); before it —
- * or when createdAt is missing/unparseable — only the title survives, which
- * every audited writer of these types has always derived from fixed copy.
- * The cutover is deliberately set AFTER the merge date so a slow deploy can
- * only over-mask (new-writer rows briefly lose descriptions), never leak.
+ * embedded staff-owned task titles. The feed is append-only history, so those
+ * rows are never rewritten; the view masks them instead, keeping only the
+ * title, which every audited writer of these types has always derived from
+ * fixed copy.
+ *
+ * The boundary is a per-row MARKER, not a wall-clock cutover. `created_at` is
+ * `timestamp without time zone` filled entirely by the column default (no
+ * writer passes it), so the zone it means is whichever the writing database
+ * session had — the dev branch reports America/Chicago — while a reader parses
+ * it in the Node process's zone. Probed 2026-08-04: a row reading
+ * `2026-08-04 12:13:20` came back as 19:13:20Z from a PDT process, a 7-hour
+ * shift, and a UTC process would read the same row 5 hours early. No cutover
+ * instant can be made sound against that, least of all a per-second one.
+ *
+ * So storage.createDealActivity — the single insert path for this table —
+ * stamps WRITER_CONTRACT_KEY into metadata, which this view already embargoes.
+ * A row carrying the marker was written by code that includes the fixed
+ * writers, and its description is derived copy by construction; a row without
+ * it is legacy and loses its description. Marker absence is the safe default,
+ * so a chokepoint that stops stamping over-masks rather than leaks.
  */
 const LEGACY_FREETEXT_TYPES: ReadonlySet<string> = new Set([
   "status_change",
   "document_uploaded",
 ]);
-const WRITER_CONTRACT_CUTOVER_MS = Date.parse("2026-08-06T00:00:00Z");
 
-function isUnderWriterContract(createdAt: Date | string | null | undefined): boolean {
-  if (!createdAt) return false;
-  const t = new Date(createdAt).getTime();
-  return Number.isFinite(t) && t >= WRITER_CONTRACT_CUTOVER_MS;
+/** Reserved `deal_activities.metadata` key stamped by the insert chokepoint. */
+export const WRITER_CONTRACT_KEY = "writerContract";
+/** Bump only if the description-is-derived-copy contract itself changes. */
+export const WRITER_CONTRACT_VERSION = 1;
+
+/** True when the row was written under the description-is-derived-copy contract. */
+export function hasWriterContract(metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false;
+  return (metadata as Record<string, unknown>)[WRITER_CONTRACT_KEY] === WRITER_CONTRACT_VERSION;
 }
 
 /**
@@ -165,7 +182,7 @@ export function toBorrowerActivityView(
     const scrub = (text: string) => scrubLenderIdentity(text, LENDER_IDENTIFIERS);
     const descriptionMasked =
       LEGACY_FREETEXT_TYPES.has(activity.activityType) &&
-      !isUnderWriterContract(activity.createdAt);
+      !hasWriterContract(activity.metadata);
     const description =
       activity.description && !descriptionMasked ? scrub(activity.description) : undefined;
     return {
