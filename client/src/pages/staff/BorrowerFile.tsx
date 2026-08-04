@@ -3,6 +3,7 @@ import { friendlyApiError } from "@/lib/errorMessage";
 import { useParams, useSearch, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, ApiError, loanApplicationKeys } from "@/lib/queryClient";
+import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -95,15 +96,7 @@ export default function BorrowerFile() {
           throw new Error(friendlyApiError(err, "Failed to generate the MISMO file."));
         },
       );
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mismo-${applicationId}.xml`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadResponseAsFile(res, `mismo-${applicationId}.xml`);
       toast({
         title: "MISMO 3.4 exported",
         description: "The lender-ready XML file has been downloaded.",
