@@ -14,6 +14,13 @@ import { routeParam } from "../../http/routeParams";
 // External partner roles (broker, lender) are NOT permitted by this helper.
 // Exported: the LO-2 scenario route reuses this gate (one access model, no forks).
 
+const dpaProgramsQuerySchema = z.object({
+  state: z.string().trim().toUpperCase().length(2).optional(),
+  firstTimeBuyer: z.enum(["true", "false"]).optional(),
+  minCreditScore: z.coerce.number().int().min(300).max(850).optional(),
+  maxIncome: z.coerce.number().positive().optional(),
+});
+
 export function registerOnboardingRoutes(
   app: Express,
   storage: IStorage,
@@ -21,42 +28,38 @@ export function registerOnboardingRoutes(
   // DPA Programs API Routes
   // ================================
 
-  // Get DPA programs with optional filters
+  // Get DPA programs with optional filters.
+  // PUBLIC BY DECISION: an educational directory of government assistance
+  // programs — no PII, no pricing; consumed by the indexable pre-auth
+  // /down-payment-wizard page. Content is seed-verified
+  // (tests/illinoisDpaSeed.test.ts).
   app.get("/api/dpa-programs", async (req, res) => {
     try {
-      const state = firstQueryValue(req.query.state);
-      const firstTimeBuyer = firstQueryValue(req.query.firstTimeBuyer);
-      const minCreditScore = firstQueryValue(req.query.minCreditScore);
-      const maxIncome = firstQueryValue(req.query.maxIncome);
-      const filters: any = {};
-      if (state) filters.state = state;
-      if (firstTimeBuyer === "true") filters.firstTimeBuyer = true;
-      if (minCreditScore) filters.minCreditScore = parseInt(minCreditScore);
-      if (maxIncome) filters.maxIncome = parseFloat(maxIncome);
-
-      const programs = await storage.getDpaPrograms(Object.keys(filters).length > 0 ? filters : undefined);
-
-      let filtered = programs;
-      if (filters.firstTimeBuyer === true) {
-        // Show all programs (both first-time-only and general) since first-time buyers qualify for both
-      } else if (filters.firstTimeBuyer === false) {
-        filtered = programs.filter(p => !p.firstTimeBuyerOnly);
+      const parsed = dpaProgramsQuerySchema.safeParse({
+        state: firstQueryValue(req.query.state),
+        firstTimeBuyer: firstQueryValue(req.query.firstTimeBuyer),
+        minCreditScore: firstQueryValue(req.query.minCreditScore),
+        maxIncome: firstQueryValue(req.query.maxIncome),
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid filters", details: parsed.error.flatten().fieldErrors });
       }
-      if (filters.minCreditScore) {
-        filtered = filtered.filter(p => !p.minCreditScore || p.minCreditScore <= filters.minCreditScore);
-      }
-      if (filters.maxIncome) {
-        filtered = filtered.filter(p => !p.maxIncome || parseFloat(p.maxIncome) >= filters.maxIncome);
-      }
-
-      res.json(filtered);
+      const { state, firstTimeBuyer, minCreditScore, maxIncome } = parsed.data;
+      const programs = await storage.getDpaPrograms({
+        state,
+        firstTimeBuyer: firstTimeBuyer === undefined ? undefined : firstTimeBuyer === "true",
+        minCreditScore,
+        maxIncome,
+      });
+      res.json(programs);
     } catch (error) {
       console.error("Get DPA programs error:", error);
       res.status(500).json({ error: "Failed to get DPA programs" });
     }
   });
 
-  // Get specific DPA program
+  // Get specific DPA program. PUBLIC BY DECISION (same rationale as the list
+  // endpoint above).
   app.get("/api/dpa-programs/:id", async (req, res) => {
     try {
       const program = await storage.getDpaProgram(routeParam(req, "id"));
