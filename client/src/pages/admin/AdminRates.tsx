@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -35,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
+import { useAdminCrudMutations } from "@/hooks/useAdminCrudMutations";
 import {
   Plus,
   Pencil,
@@ -107,7 +106,6 @@ interface ProgramFormData {
 
 export default function AdminRates() {
   const { user, isLoading: authLoading } = useAuth();
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("rates");
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
   const [programDialogOpen, setProgramDialogOpen] = useState(false);
@@ -124,93 +122,27 @@ export default function AdminRates() {
     enabled: !!user && user.role === "admin",
   });
 
-  const createRateMutation = useMutation({
-    mutationFn: async (data: RateFormData) => {
-      const res = await apiRequest("POST", "/api/admin/mortgage-rates", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/mortgage-rates"] });
+  // Both entities follow the admin REST convention, so create/update/delete come
+  // from the shared hook. Note these dialogs do NOT reset their form on save
+  // (unlike AdminContent's) - onSaved only closes and clears the edit target,
+  // preserving the existing behavior.
+  const rateMutations = useAdminCrudMutations<RateFormData>({
+    endpoint: "/api/admin/mortgage-rates",
+    successLabel: "Rate",
+    errorLabel: "rate",
+    onSaved: () => {
       setRateDialogOpen(false);
       setEditingRate(null);
-      toast({ title: "Rate created successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to create rate", variant: "destructive" });
     },
   });
 
-  const updateRateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: RateFormData }) => {
-      const res = await apiRequest("PATCH", `/api/admin/mortgage-rates/${id}`, data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/mortgage-rates"] });
-      setRateDialogOpen(false);
-      setEditingRate(null);
-      toast({ title: "Rate updated successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to update rate", variant: "destructive" });
-    },
-  });
-
-  const deleteRateMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/admin/mortgage-rates/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/mortgage-rates"] });
-      toast({ title: "Rate deleted successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete rate", variant: "destructive" });
-    },
-  });
-
-  const createProgramMutation = useMutation({
-    mutationFn: async (data: ProgramFormData) => {
-      const res = await apiRequest("POST", "/api/admin/mortgage-rate-programs", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/mortgage-rate-programs"] });
+  const programMutations = useAdminCrudMutations<ProgramFormData>({
+    endpoint: "/api/admin/mortgage-rate-programs",
+    successLabel: "Program",
+    errorLabel: "program",
+    onSaved: () => {
       setProgramDialogOpen(false);
       setEditingProgram(null);
-      toast({ title: "Program created successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to create program", variant: "destructive" });
-    },
-  });
-
-  const updateProgramMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: ProgramFormData }) => {
-      const res = await apiRequest("PATCH", `/api/admin/mortgage-rate-programs/${id}`, data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/mortgage-rate-programs"] });
-      setProgramDialogOpen(false);
-      setEditingProgram(null);
-      toast({ title: "Program updated successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to update program", variant: "destructive" });
-    },
-  });
-
-  const deleteProgramMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/admin/mortgage-rate-programs/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/mortgage-rate-programs"] });
-      toast({ title: "Program deleted successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete program", variant: "destructive" });
     },
   });
 
@@ -291,12 +223,12 @@ export default function AdminRates() {
                     programs={programs || []}
                     onSave={(data) => {
                       if (editingRate) {
-                        updateRateMutation.mutate({ id: editingRate.id, data });
+                        rateMutations.update.mutate({ id: editingRate.id, data });
                       } else {
-                        createRateMutation.mutate(data);
+                        rateMutations.create.mutate(data);
                       }
                     }}
-                    isPending={createRateMutation.isPending || updateRateMutation.isPending}
+                    isPending={rateMutations.isSaving}
                   />
                 </Dialog>
               </CardHeader>
@@ -368,8 +300,8 @@ export default function AdminRates() {
                               <Button
                                 variant="ghost"
                                 size="icon" aria-label="Delete"
-                                onClick={() => deleteRateMutation.mutate(rate.id)}
-                                disabled={deleteRateMutation.isPending}
+                                onClick={() => rateMutations.remove.mutate(rate.id)}
+                                disabled={rateMutations.remove.isPending}
                                 data-testid={`button-delete-rate-${rate.id}`}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -419,12 +351,12 @@ export default function AdminRates() {
                     program={editingProgram}
                     onSave={(data) => {
                       if (editingProgram) {
-                        updateProgramMutation.mutate({ id: editingProgram.id, data });
+                        programMutations.update.mutate({ id: editingProgram.id, data });
                       } else {
-                        createProgramMutation.mutate(data);
+                        programMutations.create.mutate(data);
                       }
                     }}
-                    isPending={createProgramMutation.isPending || updateProgramMutation.isPending}
+                    isPending={programMutations.isSaving}
                   />
                 </Dialog>
               </CardHeader>
@@ -486,8 +418,8 @@ export default function AdminRates() {
                               <Button
                                 variant="ghost"
                                 size="icon" aria-label="Delete"
-                                onClick={() => deleteProgramMutation.mutate(program.id)}
-                                disabled={deleteProgramMutation.isPending}
+                                onClick={() => programMutations.remove.mutate(program.id)}
+                                disabled={programMutations.remove.isPending}
                                 data-testid={`button-delete-program-${program.id}`}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
