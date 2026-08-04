@@ -17,6 +17,7 @@ export default defineConfig({
       "tests/queryErrorHandling.test.ts",
       "tests/apiRequestConvergence.test.ts",
       "tests/queryKeyConvergence.test.ts",
+      "tests/borrowerTaskView.test.ts",
       "tests/rateProductHeadings.test.ts",
       "tests/vercelDeploymentGuard.test.ts",
       "tests/loCommsLint.test.ts",
