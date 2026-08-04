@@ -1,4 +1,5 @@
 import { COMPANY_IDENTITY } from "@shared/companyIdentity";
+import { mersOrgIdApplicable } from "@shared/businessChannel";
 
 // Server-side company config. Public identity (legal name, NMLS ID, contact)
 // lives in shared/companyIdentity.ts so the client renders the same values;
@@ -6,7 +7,20 @@ import { COMPANY_IDENTITY } from "@shared/companyIdentity";
 // existing importers (mismo, emails, credit service, pre-underwriting).
 export const COMPANY_CONFIG = {
   ...COMPANY_IDENTITY,
-  mersOrgId: "PENDING",
+  /**
+   * MERS organisation id.
+   *
+   * MERS registers the notes an entity HOLDS. A broker holds none, so in the
+   * broker channel this is not a pending task — it is inapplicable, and
+   * pursuing an org id would be an annual membership fee for a registry with
+   * nothing to register (audit F-14). It was previously "PENDING", which read
+   * as merely late and kept the item on the roadmap.
+   *
+   * Becomes a real, required id the moment the channel flips to
+   * correspondent — see shared/businessChannel.ts and
+   * knowledge-base/governance/CHANNEL_DECISION.md.
+   */
+  mersOrgId: mersOrgIdApplicable() ? "PENDING" : "NOT_APPLICABLE_BROKER_CHANNEL",
   get contactInfo() {
     return `${this.contactEmail} | ${this.contactPhone}`;
   },

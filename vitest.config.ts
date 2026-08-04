@@ -29,6 +29,7 @@ export default defineConfig({
       "tests/feeProvenanceAndCosts.test.ts",
       "tests/extensionFeeAndRegZBasis.test.ts",
       "tests/contingentLiabilities.test.ts",
+      "tests/businessChannel.test.ts",
       "tests/scenarioSimulator.test.ts",
       "tests/cockpitScoping.test.ts",
       "tests/signalEngine.test.ts",

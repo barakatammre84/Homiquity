@@ -21,7 +21,8 @@ where the debt has accumulated.
 
 ## Severity-ordered summary
 
-> **Remediation status (2026-08-04, same day).** **F-1 through F-13 are FIXED** — see the
+> **Remediation status (2026-08-04, same day).** **F-1 through F-13 are FIXED**, and **F-14's
+> ambiguity is closed** (the business decision itself remains founder-owned — see its section) — see the
 > §"Remediation" sections at the end of this document for what shipped, what is covered by
 > tests, and the items deliberately left open rather than implemented on unverified regulatory
 > text. **F-5's gate is a live behavior change in production** — read that section before the
@@ -42,7 +43,7 @@ where the debt has accumulated.
 | F-11 | No cost side: no cost-per-file, vendor cost ledger, or pull-through | Unit economics | Medium — ✅ fixed |
 | F-12 | Reg Z Total Loan Amount stand-in errs permissive, and its comment says the opposite | Risk | Low — ✅ fixed |
 | F-13 | Contingent-liability register does not exist; reserve adequacy is unassessable | Balance sheet | Medium — ✅ fixed |
-| F-14 | Seller/servicer delivery infrastructure built for a business that will never deliver | Capital efficiency | **Escalation** |
+| F-14 | Seller/servicer delivery infrastructure built for a business that will never deliver | Capital efficiency | **Escalation** — ⚠️ ambiguity closed & stack frozen; **decision still open** |
 | F-15 | RESPA §8 handled correctly and deliberately | Risk | ✅ Sound |
 | F-16 | Asset-light structure is correct | Balance sheet | ✅ Sound |
 
@@ -1005,3 +1006,74 @@ question stays unanswerable until someone with the state statute fills that line
 Typecheck clean · **1,544 unit tests green** (+15) · schema guard, design-token ratchet, KB index
 guard, regulatory-freshness gate and production build all pass. No migration — the register reads
 tables migrations `0040`–`0043` already added.
+
+---
+
+## Remediation — F-14 (2026-08-04)
+
+### What could and could not be fixed in code
+
+F-14 was escalated twice as a founder decision, and that has not changed: **nothing here picks
+broker or correspondent.** Choosing would have meant either deleting ~1,500 lines of correct work
+on a guess, or starting to build warehouse infrastructure on an unverified premise.
+
+What *was* fixable is the part that is genuinely engineering: **the codebase could not state which
+business it was in, and was accreting toward both answers at once.** That ambiguity was the
+defect. It is now closed.
+
+### What shipped
+
+**The channel is declared.** [`shared/businessChannel.ts`](../../shared/businessChannel.ts) holds
+`BUSINESS_CHANNEL = "broker"` — one edit point, with `isSellerServicerChannel()`,
+`holdsFundingRisk()` and `mersOrgIdApplicable()` hanging off it. An implicit assumption became a
+stated fact.
+
+**The stack is frozen, not deleted.** `pnpm guard:channel`
+([`scripts/delivery-stack-freeze-guard.cjs`](../../scripts/delivery-stack-freeze-guard.cjs)) runs
+in the CI gate: while the channel is `broker`, the 1,482 tracked lines may shrink but **not grow**.
+Same ratchet idiom as the design-token guard. It asks nobody to delete working code — it stops the
+decision being made by accretion while it sits open, and turns itself off if the channel flips.
+Verified to actually fail on growth, not just to pass.
+
+MISMO 3.4 *export to a wholesale lender* is deliberately excluded from the freeze: that is core
+broker work in every channel.
+
+**The delivery report says what it is.** `DeliveryReadinessReport` now carries
+`channelApplicability`, stating plainly that in the broker channel these results are a
+data-quality pre-flight on our own file — **not a delivery obligation we owe** — and that nothing
+in it gates a broker submission. The report stays available because it is genuinely useful; it can
+no longer be misread as a compliance gate we are subject to.
+
+**MERS stopped implying it was merely late.** `mersOrgId` was `"PENDING"`, which read as a roadmap
+item someone should chase. MERS registers the notes an entity *holds*; a broker holds none. It is
+now `NOT_APPLICABLE_BROKER_CHANNEL`, and the "MERS Org ID is not configured" validation warning no
+longer fires in a channel where it cannot apply. Pursuing an org ID today would be an annual
+membership fee for a registry with nothing to register.
+
+**The decision is now actionable.**
+[CHANNEL_DECISION.md](../governance/CHANNEL_DECISION.md) sets out the evidence, both readings,
+what each costs, and an eight-item checklist of what must be true before `"correspondent"` is an
+honest thing to write — including that **F-16 dies** under that reading and the contingent-liability
+register becomes materially incomplete without warehouse, repurchase and mark-to-market exposures.
+
+### Quantified, so the decision has a number
+
+| | |
+|---|---|
+| Frozen delivery-stack code | **1,482 lines** across 4 files |
+| Plus tests | ~690 lines |
+| Server routes consuming it | **1 route pair** |
+| Client surface | **none** (zero callers, verified) |
+
+### What is still open
+
+**The business question.** Broker or mini-correspondent. One line of code, and the largest
+unanswered question about the company's capital structure. The engineering cost of leaving it open
+is now bounded and visible: frozen code that costs nothing until someone tries to grow it, at
+which point CI asks the question again.
+
+### Verification
+
+Typecheck clean · **1,552 unit tests green** (+8) · schema guard, design-token ratchet, the new
+delivery-stack freeze guard, KB index guard, regulatory-freshness gate and production build all
+pass. No migration. Nothing deleted.
