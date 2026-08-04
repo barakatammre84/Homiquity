@@ -5,6 +5,7 @@ import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertBorrowerDeclarationsSchema, loanApplicationIntakeSchema, type User } from "@shared/schema";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
+import { toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { finalizeIntake } from "../../services/loanAnalysis";
 import { z } from "zod";
 import { logAudit } from "../../auditLog";
@@ -261,13 +262,9 @@ export function registerApplicationRoutes(
       res.json({
         application,
         options,
-        // The encrypted raw extraction response never leaves the server — same
-        // doctrine as publicExtraction() in routes/documents.ts. Ciphertext is
-        // useless without the server-side key, but there is no reason to ship
-        // it to the browser at all.
-        documents: documents.map(
-          ({ extractionRawEncrypted, extractionRawIv, extractionRawKeyId, ...doc }) => doc,
-        ),
+        // Ciphertext trio never ships; reviewedByUserId is staff-only —
+        // see shared/borrowerDocumentView.ts.
+        documents: toDocumentViewsForRole(documents, req.user!.role),
         activities,
       });
     } catch (error) {

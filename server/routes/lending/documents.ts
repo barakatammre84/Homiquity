@@ -5,6 +5,7 @@ import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertBorrowerDeclarationsSchema, type User } from "@shared/schema";
 import { isStaffRole } from "@shared/roles";
+import { toDocumentViewForRole, toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { z } from "zod";
 import { allowedUploadTypes } from "../utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
@@ -301,7 +302,7 @@ export function registerDocumentRoutes(
       }
 
       res.status(201).json({
-        ...document,
+        ...toDocumentViewForRole(document, user.role),
         similarDocument: similar
           ? { id: similar.id, fileName: similar.fileName, uploadedAt: similar.createdAt }
           : null,
@@ -324,7 +325,7 @@ export function registerDocumentRoutes(
     try {
       const userId = req.user!.id;
       const documents = await storage.getDocumentsByUser(userId);
-      res.json(documents);
+      res.json(toDocumentViewsForRole(documents, (req.user as User).role));
     } catch (error) {
       console.error("Get documents error:", error);
       res.status(500).json({ error: "Failed to get documents" });

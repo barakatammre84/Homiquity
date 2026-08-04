@@ -27,6 +27,7 @@
  */
 
 import type { Task, TaskDocument, Document } from "./schema";
+import { toBorrowerDocumentView, type BorrowerDocumentView } from "./borrowerDocumentView";
 
 export type BorrowerTaskSlaStatus = "green" | "amber" | "red";
 
@@ -239,16 +240,13 @@ export function toBorrowerTaskViews(
  *
  * The joined document row is the borrower's own application document —
  * a borrower-authorized resource with its own surfaces — so it passes through
- * subtractively rather than via a second whitelist. The subtraction follows
- * the publicExtraction() doctrine (server/routes/documents.ts): the encrypted
- * extraction payload (ciphertext/IV/key id) is server-side only, and the
- * reviewer's user id is staff metadata; rejectionReason stays — it IS the
- * borrower-facing "what to re-upload" copy.
+ * subtractively rather than via a second whitelist. The subtraction itself
+ * lives in shared/borrowerDocumentView.ts (one definition for every route
+ * that serializes documents rows): the encrypted extraction payload is
+ * server-side only, the reviewer's user id is staff metadata, and
+ * rejectionReason stays — it IS the borrower-facing "what to re-upload" copy.
  */
-export type BorrowerTaskDocument = Omit<
-  Document,
-  "extractionRawEncrypted" | "extractionRawIv" | "extractionRawKeyId" | "reviewedByUserId"
->;
+export type BorrowerTaskDocument = BorrowerDocumentView;
 
 export interface BorrowerTaskDocumentView {
   id: string;
@@ -270,9 +268,7 @@ export function toBorrowerTaskDocumentView(
     createdAt: taskDoc.createdAt,
   };
   if (taskDoc.document !== undefined) {
-    const { extractionRawEncrypted, extractionRawIv, extractionRawKeyId, reviewedByUserId, ...rest } =
-      taskDoc.document;
-    view.document = rest;
+    view.document = toBorrowerDocumentView(taskDoc.document);
   }
   return view;
 }
