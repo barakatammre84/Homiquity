@@ -28,7 +28,9 @@ returns 404 in prod; 503 if `DEV_TEST_PASSWORD` is unset).
 
 ## Usage
 
-UI: navigate to `/test-login` for one-click login buttons.
+UI: navigate to `/test-login`, enter the shared `DEV_TEST_PASSWORD` once in the field above
+the cards, then every account card is one-click. (The cards briefly carried fake per-account
+passwords the server never accepted — fixed 2026-08-04; the shared password is the only one.)
 
 API:
 
