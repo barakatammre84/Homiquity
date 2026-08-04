@@ -7,7 +7,7 @@ import { AutopilotBanner } from "@/components/AutopilotBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, dashboardKeys, coachConversationKeys } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
 import { hasPendingPreApprovalSubmit } from "@/lib/pendingAttribution";
 import { Button } from "@/components/ui/button";
@@ -96,12 +96,12 @@ export default function Dashboard() {
   }, [authLoading, isStaff, navigate]);
 
   const { data, isLoading } = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: !authLoading && !isStaff,
   });
 
   const { data: coachConversations } = useQuery<{ id: number }[]>({
-    queryKey: ["/api/coach/conversations"],
+    queryKey: coachConversationKeys.all(),
     enabled: !authLoading && !isStaff,
   });
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -51,8 +51,8 @@ export function StatusUpdateDialog({
       return apiRequest("PATCH", `/api/loan-applications/${applicationId}/status`, { status, notes, denialReasons });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'pipeline'] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.detail(applicationId) });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.pipeline(applicationId) });
       toast({ title: "Status Updated", description: `Application status has been changed.` });
       setStatusUpdate({ open: false, status: "", notes: "", denialReasons: [] });
     },

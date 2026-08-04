@@ -2,7 +2,7 @@ import { useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,12 +46,12 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
   const { toast } = useToast();
 
   const { data: creditData, isLoading: creditLoading } = useQuery<CreditSummary>({
-    queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'],
+    queryKey: loanApplicationKeys.credit.summary(applicationId),
     enabled: !!applicationId,
   });
 
   const { data: auditLog } = useQuery<{ auditLog: CreditAuditEntry[] }>({
-    queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'],
+    queryKey: loanApplicationKeys.credit.auditLog(applicationId),
     enabled: !!applicationId,
   });
 
@@ -64,9 +64,9 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.summary(applicationId) });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.auditLog(applicationId) });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.detail(applicationId) });
       toast({
         title: "Credit Pull Complete",
         description: "Credit report has been successfully retrieved.",
@@ -133,8 +133,8 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
       });
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.summary(applicationId) });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.auditLog(applicationId) });
       setNoticeDelivery({ open: false, method: "mail", confirmation: "" });
       toast({
         title: "Delivery Confirmed",

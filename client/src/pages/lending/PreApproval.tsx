@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
 import {
   PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
@@ -340,8 +340,8 @@ function PreApprovalFunnel() {
     },
     onSuccess: async (result) => {
       clearAutosave();
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
 
       if (inviteId.current) {
         sessionStorage.removeItem("inviteId");

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, onboardingStatusKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -122,7 +122,7 @@ function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: Onboardi
     onSuccess: async (res) => {
       const data = await res.json();
       setResult(data);
-      queryClient.invalidateQueries({ queryKey: ["/api/onboarding/status"] });
+      queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() });
       if (data.passed) {
         onComplete();
         toast({ title: "Identity Verified", description: "You passed the knowledge-based authentication." });
@@ -244,10 +244,10 @@ function KYCAMLStatus({ kyc, applicationId }: { kyc: KycStatus | null; applicati
     mutationFn: () => apiRequest("POST", "/api/onboarding/kyc/screen", { applicationId }),
     onSuccess: () => {
       toast({ title: "Screening Started", description: "Compliance checks are running. This takes about 10 seconds." });
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["/api/onboarding/status"] }), 3000);
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["/api/onboarding/status"] }), 6000);
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["/api/onboarding/status"] }), 9000);
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["/api/onboarding/status"] }), 12000);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() }), 3000);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() }), 6000);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() }), 9000);
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() }), 12000);
     },
     onError: () => toast({ title: "Error", description: "Failed to start screening", variant: "destructive" }),
   });
@@ -306,7 +306,7 @@ function KYCAMLStatus({ kyc, applicationId }: { kyc: KycStatus | null; applicati
 
 export default function IdentityVerification() {
   const { data: status, isLoading, isError, error, refetch } = useQuery<OnboardingStatus>({
-    queryKey: ["/api/onboarding/status"],
+    queryKey: onboardingStatusKeys.root(),
     refetchInterval: 5000,
   });
 
@@ -405,7 +405,7 @@ export default function IdentityVerification() {
             <KBAFlow
               kbaStatus={kbaStatus ?? null}
               applicationId={applicationId}
-              onComplete={() => queryClient.invalidateQueries({ queryKey: ["/api/onboarding/status"] })}
+              onComplete={() => queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() })}
             />
           </CardContent>
         </Card>

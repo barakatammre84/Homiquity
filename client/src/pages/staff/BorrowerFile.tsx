@@ -2,7 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { useParams, useSearch, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, ApiError } from "@/lib/queryClient";
+import { queryClient, apiRequest, ApiError, loanApplicationKeys } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,12 +67,12 @@ export default function BorrowerFile() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
 
   const { data: appData, isLoading: appLoading } = useQuery<ApplicationData>({
-    queryKey: ['/api/loan-applications', applicationId],
+    queryKey: loanApplicationKeys.detail(applicationId),
     enabled: !!applicationId && !authLoading,
   });
 
   const { data: pipelineData, isLoading: pipelineLoading } = useQuery<PipelineData>({
-    queryKey: ['/api/loan-applications', applicationId, 'pipeline'],
+    queryKey: loanApplicationKeys.pipeline(applicationId),
     enabled: !!applicationId && !authLoading,
   });
 
@@ -124,7 +124,7 @@ export default function BorrowerFile() {
       return apiRequest("POST", `/api/loan-applications/${applicationId}/verify-financials`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.detail(applicationId) });
       toast({
         title: "Financials Verified",
         description: "This application can now proceed to approval.",

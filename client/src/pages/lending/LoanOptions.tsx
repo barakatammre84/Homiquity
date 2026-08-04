@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
 import { formatCurrency, formatPercent, getLoanTypeLabel } from "@/lib/formatters";
 import type { LoanApplication, LoanOption } from "@shared/schema";
 import type { BorrowerOfferView } from "@shared/borrowerOfferView";
@@ -374,14 +374,14 @@ export default function LoanOptions() {
   const [viewMode, setViewMode] = useState<"cards" | "compare">("cards");
 
   const { data, isLoading, error } = useQuery<LoanOptionsData>({
-    queryKey: ['/api/loan-applications', id, 'options'],
+    queryKey: loanApplicationKeys.options(id),
     enabled: !!id,
   });
 
   // Live wholesale pricing — repriced server-side on every request from the
   // active rate sheets, so vendor-fed market updates show up automatically.
   const { data: market } = useQuery<MarketOffersResponse>({
-    queryKey: ['/api/loan-applications', id, 'offers'],
+    queryKey: loanApplicationKeys.offers(id),
     enabled: !!id,
     staleTime: 60_000,
   });
@@ -405,7 +405,7 @@ export default function LoanOptions() {
       return await apiRequest("POST", `/api/loan-options/${optionId}/lock`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', id, 'options'] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.options(id) });
       toast({
         title: "Rate Locked!",
         description: "Your rate has been locked for 30 days.",
@@ -804,7 +804,7 @@ function PreQualLetterButton({ applicationId, status }: { applicationId: string;
   const { toast } = useToast();
 
   const prequalStatusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string; estimatedAmount?: string }>({
-    queryKey: ["/api/loan-applications", applicationId, "prequal-status"],
+    queryKey: loanApplicationKeys.prequalStatus(applicationId),
   });
 
   const generateMutation = useMutation({
@@ -814,7 +814,7 @@ function PreQualLetterButton({ applicationId, status }: { applicationId: string;
     },
     onSuccess: (data: { letterNumber: string }) => {
       toast({ title: "Letter Generated", description: `Pre-qualification letter #${data.letterNumber} is ready.` });
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "prequal-status"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.prequalStatus(applicationId) });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to generate pre-qualification letter.", variant: "destructive" });
@@ -874,7 +874,7 @@ function GenerateLetterButton({ applicationId, status }: { applicationId: string
   const { toast } = useToast();
 
   const letterStatusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string }>({
-    queryKey: ["/api/loan-applications", applicationId, "letter-status"],
+    queryKey: loanApplicationKeys.letterStatus(applicationId),
   });
 
   const generateMutation = useMutation({
@@ -884,7 +884,7 @@ function GenerateLetterButton({ applicationId, status }: { applicationId: string
     },
     onSuccess: (data: { letterNumber: string }) => {
       toast({ title: "Letter Generated", description: `Pre-approval letter #${data.letterNumber} is ready.` });
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "letter-status"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.letterStatus(applicationId) });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to generate letter. Please try again.", variant: "destructive" });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, taskKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +87,7 @@ export default function StaffDashboard() {
   }, [userRole]);
 
   const { data: tasksData, isLoading: tasksLoading } = useQuery<Task[]>({
-    queryKey: ["/api/tasks"],
+    queryKey: taskKeys.all(),
     enabled: !authLoading && !!user,
   });
 
@@ -231,7 +231,7 @@ export default function StaffDashboard() {
                 className="bg-white/10 border-white/20 text-white"
                 onClick={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/pipeline/queue"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+                  queryClient.invalidateQueries({ queryKey: taskKeys.all() });
                   queryClient.invalidateQueries({ queryKey: ["/api/compliance/dashboard"] });
                 }}
                 data-testid="button-refresh-all"

@@ -25,7 +25,7 @@ import {
   CheckCheck,
 } from "lucide-react";
 import type { DealActivity } from "@shared/schema";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, dashboardKeys } from "@/lib/queryClient";
 
 interface NotificationItem {
   id: string;
@@ -177,7 +177,7 @@ export function NotificationsBell() {
   // borrower pages that already loaded it reuse the warm cache instead of the
   // layout re-polling this heavy endpoint on every page for every role.
   const { data: dashData } = useQuery<{ activities: DealActivity[] }>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: open,
   });
   const activities = dashData?.activities ?? [];
