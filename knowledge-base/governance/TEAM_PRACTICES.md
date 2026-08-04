@@ -166,7 +166,7 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
   (founder: "for now, pro later") and the rule re-applied from the documented config in
   [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md) §One-time setup. So the standing habit:
   **before relying on `--auto`, verify enforcement is live** —
-  `gh api repos/barakatammre84/MortgageStream/branches/main/protection` must list the
+  `gh api repos/barakatammre84/Homiquity/branches/main/protection` must list the
   `gate` context as required. If it 403s/404s or lists no checks, enforcement is OFF:
   fall back to **watch-then-merge** (`gh pr checks <n> --watch --fail-fast` → green →
   `gh pr merge <n> --squash`), flag it to the founder, and never merge red/pending.

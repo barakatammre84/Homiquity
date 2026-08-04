@@ -206,6 +206,7 @@ const adminNavigation: NavSection[] = [
       { title: "Policy Operations", href: "/admin/policy-ops", icon: Scale, testId: "link-admin-policy-ops" },
       { title: "Pricing Matrices", href: "/admin/pricing-matrices", icon: Grid3x3, testId: "link-admin-pricing-matrices" },
       { title: "Autopilot", href: "/admin/autopilot", icon: Brain, testId: "link-admin-autopilot" },
+      { title: "Financial Reports", href: "/admin/financial-reports", icon: Scale, testId: "link-admin-financial-reports" },
     ],
   },
 ];

@@ -27,8 +27,7 @@ export const COMPANY_CONFIG = {
   equalHousingLender: true,
   // Canonical production base URL — the single source for any customer-facing
   // link (SMS/email document links, etc.). Override with APP_BASE_URL per env.
-  // DOMAIN CUTOVER: once homiquity.com is attached in Vercel, flip this default
-  // to "https://homiquity.com" (or just set APP_BASE_URL) — one change, nothing
-  // else to edit. Defaults to the current live domain until then.
-  baseUrl: process.env.APP_BASE_URL || "https://mortgage-stream.vercel.app",
+  // Cutover complete (2026-07-13): www.homiquity.com is the live custom domain.
+  // Override with APP_BASE_URL per environment.
+  baseUrl: process.env.APP_BASE_URL || "https://www.homiquity.com",
 } as const;

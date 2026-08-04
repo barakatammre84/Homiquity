@@ -42,6 +42,7 @@ import { CREDIT_DECISION_ROLES, FINANCIAL_VERIFICATION_ROLES, type UrlaPersonalI
 
 import { type ApplicationData, type PipelineData } from "./borrowerFile/model";
 import { StatusUpdateDialog } from "./borrowerFile/StatusUpdateDialog";
+import { CompensationCard } from "./borrowerFile/CompensationCard";
 import { ConditionsTab } from "./borrowerFile/ConditionsTab";
 import { CreditTab } from "./borrowerFile/CreditTab";
 import { TimelineTab } from "./borrowerFile/TimelineTab";
@@ -386,6 +387,15 @@ export default function BorrowerFile() {
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
+                  {/* Compensation election (Reg Z §1026.36(d)(2)) — full width and
+                      first: with no election the Loan Estimate cannot generate,
+                      so this is the file's blocking state, not a detail. */}
+                  <CompensationCard
+                    applicationId={application.id}
+                    model={application.loCompensationModel ?? null}
+                    bps={application.loCompensationBps ?? null}
+                    leIssued={!!application.leIssuedDate}
+                  />
                   <div className="grid gap-4 md:grid-cols-2">
                     <Card>
                       <CardHeader>

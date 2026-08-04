@@ -15,7 +15,7 @@ const deployment = (over: Record<string, unknown>) => ({
   id: "dpl_x",
   created: 1_785_693_000_000,
   state: "READY",
-  url: "mortgage-stream-x.vercel.app",
+  url: "homiquity-x.vercel.app",
   meta: { githubCommitSha: "abc123" },
   ...over,
 });
