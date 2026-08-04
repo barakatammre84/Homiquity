@@ -20,3 +20,26 @@ export const PREQUAL_ELIGIBLE_STATUSES: readonly LoanAppStatus[] = [
   "pre_approved",
   "underwriting",
 ];
+
+/**
+ * The status a letter should read as RIGHT NOW, expiry included.
+ *
+ * The stored status flips to "expired" only when the daily sweep runs
+ * (server/services/letterExpiry.ts), which leaves a window where the row
+ * still says "issued" on a letter past its expiration date. Read paths
+ * (letter-status / prequal-status) go through this helper so the API never
+ * asserts "issued" on an expired letter, whatever the sweep's timing.
+ *
+ * Terminal statuses (revoked, superseded) are already persisted at write
+ * time and win over expiry — a revoked letter stays revoked. Expiry is
+ * strict: the letter remains issued through its stored expiration instant.
+ */
+export function effectiveLetterStatus<S extends string>(
+  letter: { status: S; expirationDate: Date | string },
+  now: Date = new Date(),
+): S | "expired" {
+  if (letter.status === "issued" && new Date(letter.expirationDate).getTime() < now.getTime()) {
+    return "expired";
+  }
+  return letter.status;
+}
