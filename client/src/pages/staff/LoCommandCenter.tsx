@@ -316,7 +316,7 @@ function AttentionRail({
 // -----------------------------------------------------------------------------
 function ActiveBorrowerPane({ applicationId, onBack }: { applicationId: string; onBack: () => void }) {
   const { data, isLoading, isError } = useQuery<CockpitData>({
-    queryKey: [`/api/staff/applications/${applicationId}/cockpit`],
+    queryKey: ["/api/staff/applications", applicationId, "cockpit"],
   });
 
   if (isLoading) {
@@ -628,7 +628,7 @@ function CallPrepDialog({
 }) {
   const [open, setOpen] = useState(false);
   const { data } = useQuery<CockpitData>({
-    queryKey: [`/api/staff/applications/${applicationId}/cockpit`],
+    queryKey: ["/api/staff/applications", applicationId, "cockpit"],
     enabled: open,
   });
 

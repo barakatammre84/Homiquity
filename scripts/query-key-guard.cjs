@@ -11,18 +11,23 @@
  * therefore refreshes every segmented child and silently misses every
  * template-string one — the #297 stale-panel class of bug.
  *
- * This guard FAILS (exit 1) on any interpolated template-string queryKey whose
- * path belongs to one of the factory families below, outside the factory itself.
- * The fix is always: build the key from the factory in
- * client/src/lib/queryClient.ts (loanApplicationKeys, taskKeys, …).
+ * This guard FAILS (exit 1) on any INTERPOLATED template-string queryKey for an
+ * `/api/` endpoint, anywhere under client/src outside the factory itself. It is
+ * surface-wide, not limited to the migrated families: a `${...}` in a path-style
+ * key is the drift hazard regardless of which resource it names. The fix is to
+ * write the key as segments — ["/api/x", id, "y"] — building it from a factory in
+ * client/src/lib/queryClient.ts when the resource has one.
  *
- * It is blocking because it is green as written — the #297 fix already segmented
- * every loan-application key and the other families only ever used plain string
- * keys, so there is nothing to migrate before turning it on. Runs in the `gate`
- * job of .github/workflows/ci.yml alongside guard:schema and guard:tokens.
+ * ALLOWED — a template key whose URL contains "?" (a query string). "?input=x"
+ * cannot be expressed as path segments (join("/") would turn it into a path), so
+ * these are necessarily single-string leaf keys, and nothing invalidates them by
+ * prefix. This is a semantic rule, not a hand-maintained file allowlist: a new
+ * query-string key is auto-allowed, a new path-style `${...}` key is caught.
  *
- * Zero-dependency; no network. The vitest `queryKeyConvergence.test.ts` is the
- * companion check that verifies the factory outputs themselves.
+ * Runs in the `gate` job of .github/workflows/ci.yml alongside guard:schema and
+ * guard:tokens. Zero-dependency; no network. The vitest
+ * `queryKeyConvergence.test.ts` is the companion check — it verifies the factory
+ * outputs themselves and re-asserts this same rule.
  */
 const fs = require("fs");
 const path = require("path");
@@ -30,17 +35,6 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const CLIENT_SRC = path.join(ROOT, "client", "src");
 const FACTORY_FILE = path.join(CLIENT_SRC, "lib", "queryClient.ts");
-
-// The resource path prefixes owned by a batch-1 key factory. A template-string
-// queryKey that interpolates within one of these families is drift.
-const GUARDED_PREFIXES = [
-  "/api/loan-applications",
-  "/api/dashboard",
-  "/api/tasks",
-  "/api/calculator-results",
-  "/api/coach/conversations",
-  "/api/onboarding/status",
-];
 
 /** `queryKey: [` whose first element is a backtick template literal. */
 const TEMPLATE_KEY = /queryKey:\s*\[\s*`([^`]*)`/;
@@ -68,7 +62,8 @@ function findOffenders() {
       if (!match) return;
       const url = match[1];
       if (!url.includes("${")) return; // a constant template is just a plain key
-      if (!GUARDED_PREFIXES.some((p) => url.startsWith(p))) return;
+      if (!url.startsWith("/api/")) return; // only our own endpoints
+      if (url.includes("?")) return; // query-string leaf keys can't be segmented
       offenders.push({
         file: path.relative(ROOT, file),
         line: i + 1,
@@ -82,15 +77,15 @@ function findOffenders() {
 const offenders = findOffenders();
 
 if (offenders.length === 0) {
-  console.log("guard:querykeys — OK (no template-string keys in guarded families)");
+  console.log("guard:querykeys — OK (no path-style template queryKeys for /api endpoints)");
   process.exit(0);
 }
 
 const header =
-  `guard:querykeys — ${offenders.length} template-string queryKey(s) in a ` +
-  `factory-owned family. Build these from the factories in ` +
-  `client/src/lib/queryClient.ts (loanApplicationKeys, taskKeys, …) so array-` +
-  `prefix invalidation can reach them:`;
+  `guard:querykeys — ${offenders.length} interpolated template-string queryKey(s) ` +
+  `for an /api endpoint. A \`${"$"}{...}\` path key is invisible to array-prefix ` +
+  `invalidateQueries. Write it as segments — ["/api/x", id, "y"] — from a factory ` +
+  `in client/src/lib/queryClient.ts where one exists:`;
 console.log("❌ " + header);
 for (const o of offenders) console.log(`   ${o.file}:${o.line}  ${o.text}`);
 process.exit(1);
