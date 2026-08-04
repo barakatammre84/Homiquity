@@ -466,7 +466,12 @@ export async function registerTaskEngineRoutes(
         applicationId: task.applicationId,
         activityType: "document_uploaded",
         title: "Document Uploaded for Task",
-        description: `Document uploaded for task: ${task.title}`,
+        // Staff-owned task titles are internal working text (borrowerTaskView
+        // doctrine) — only borrower-owned titles may ride the shared feed.
+        description:
+          task.ownerRole === "BORROWER"
+            ? `Document uploaded for task: ${task.title}`
+            : "A document was uploaded for an internal task.",
         performedBy: userId,
       });
 
