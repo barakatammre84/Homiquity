@@ -21,7 +21,7 @@ where the debt has accumulated.
 
 ## Severity-ordered summary
 
-> **Remediation status (2026-08-04, same day).** **F-1 through F-9 and F-11 are FIXED** — see the
+> **Remediation status (2026-08-04, same day).** **F-1 through F-12 are FIXED** — see the
 > §"Remediation" sections at the end of this document for what shipped, what is covered by
 > tests, and the items deliberately left open rather than implemented on unverified regulatory
 > text. **F-5's gate is a live behavior change in production** — read that section before the
@@ -38,9 +38,9 @@ where the debt has accumulated.
 | F-7 | Loan Estimate Section A omits the largest fee line from its itemization | Risk | Medium — ✅ fixed |
 | F-8 | EPO/EPC compensation clawback exposure is entirely unrepresented | Balance sheet | Medium — ✅ fixed |
 | F-9 | Third-party fee constants are unsourced national guesses in a zero-tolerance bucket | Risk | Medium — ⚠️ partly fixed (architecture only; values still unverified) |
-| F-10 | Lock-extension fee has no payer attribution | Capital flow | Medium |
+| F-10 | Lock-extension fee has no payer attribution | Capital flow | Medium — ✅ fixed |
 | F-11 | No cost side: no cost-per-file, vendor cost ledger, or pull-through | Unit economics | Medium — ✅ fixed |
-| F-12 | Reg Z Total Loan Amount stand-in errs permissive, and its comment says the opposite | Risk | Low |
+| F-12 | Reg Z Total Loan Amount stand-in errs permissive, and its comment says the opposite | Risk | Low — ✅ fixed |
 | F-13 | Contingent-liability register does not exist; reserve adequacy is unassessable | Balance sheet | Medium |
 | F-14 | Seller/servicer delivery infrastructure built for a business that will never deliver | Capital efficiency | **Escalation** |
 | F-15 | RESPA §8 handled correctly and deliberately | Risk | ✅ Sound |
@@ -891,3 +891,58 @@ would be the same class of error as reporting pipeline volume as revenue.
 Typecheck clean · **1,521 unit tests green** (+16) · schema guard, design-token ratchet,
 regulatory-freshness gate and production build all pass. Migration `0042` is expand-only and
 idempotent.
+
+---
+
+## Remediation — F-10 and F-12 (2026-08-04)
+
+### F-10 — the extension fee now has a payer
+
+`rate_locks` gained `extensionFeePaidBy` (`borrower` | `broker` | `lender`) and
+`extensionFeeCocId` (migration `0043`). The extend endpoint enforces two rules:
+
+1. **A fee requires a payer.** Any `extensionFee > 0` must name who bears it. An amount with no
+   payer cannot distinguish a cost we absorbed from a charge we passed through — which was the
+   entire economic content of the transaction, unrecorded.
+2. **A borrower-paid fee requires a change of circumstance.** Passing the fee through increases a
+   disclosed charge, so it must cite a §1026.19(e)(3)(iv) record — and the route verifies the
+   record exists, belongs to *this* application, and is not voided, so the citation cannot be
+   decoration. A rate lock is itself an enumerated changed-circumstance reason
+   (`rate_lock` in the COC catalog), so the record should genuinely exist.
+
+**Broker-paid fees are booked as costs.** When `paidBy === "broker"` the extension writes a
+`rate_lock_extension` entry to the F-11 cost ledger, so it reaches the margin figures instead of
+sitting inert on the lock row. Borrower- and lender-paid fees are not our cost and are
+deliberately not booked. This is where F-10 and F-11 meet: the finding was that the fee lands
+*somewhere*, and now the ledger says where.
+
+(The Zod validation the audit also asked for landed earlier, with F-3.)
+
+### F-12 — the Reg Z basis no longer flatters the file
+
+`evaluatePointsAndFees` passed the **note amount** as the Regulation Z Total Loan Amount. The
+real figure (§1026.32(b)(4)) is the amount financed less the financed points and fees — always
+*lower* — so the percentage cap computed from the note amount is **larger** than the true one.
+The check was permissive, and the comment claimed it "errs conservative-high," which was the
+opposite of what the code did.
+
+The basis is now derived from `knownPrepaidFinanceCharges()`: the platform's own origination-side
+charges, which are known before closing. On a $400k file with no compensation elected that is
+$2,100, so the basis is $397,900 and the cap **$11,937 — not $12,000**.
+
+The direction is what matters. This still **under**-counts the true prepaid finance charges
+(prepaid interest and prepaid MI need a closing date), so the result remains an upper bound on
+the true Total Loan Amount and the cap it yields is still slightly permissive — but strictly
+tighter than the note amount, **never looser**. Same monotone discipline as F-2's floor: it can
+only over-flag.
+
+A test pins the file the old cap waved through: $11,950 of points and fees fit under the
+discarded $12,000 and does not fit under the real one. Three existing boundary tests encoded the
+old permissive cap and were updated — that shift *is* the fix.
+
+### Verification
+
+Typecheck clean · **1,529 unit tests green** (+8, plus 3 boundary tests re-based) · schema guard,
+design-token ratchet, regulatory-freshness gate and production build all pass. Migration `0043`
+is expand-only, idempotent, and does not backfill — existing locks genuinely have no recorded
+payer, and guessing one would falsify a fee record.

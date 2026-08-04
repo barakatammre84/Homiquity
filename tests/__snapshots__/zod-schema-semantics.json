@@ -446,14 +446,14 @@
     "string": "reject:",
     "number": "reject:",
     "true": "reject:",
-    "all-keys-typed": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
-    "missing-applicationId": "reject:applicationId,cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
-    "missing-loanOptionId": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,interestRate,loanAmount,loanOptionId,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
-    "missing-interestRate": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
-    "missing-points": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
-    "missing-loanAmount": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
-    "missing-loanType": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,interestRate,loanAmount,loanTerm,loanType,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
-    "wrongtype-applicationId": "reject:applicationId,cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status"
+    "all-keys-typed": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
+    "missing-applicationId": "reject:applicationId,cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
+    "missing-loanOptionId": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanOptionId,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
+    "missing-interestRate": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
+    "missing-points": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
+    "missing-loanAmount": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
+    "missing-loanType": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,loanType,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
+    "wrongtype-applicationId": "reject:applicationId,cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status"
   },
   "schema.insertApplicationMilestoneSchema": {
     "undefined": "reject:",

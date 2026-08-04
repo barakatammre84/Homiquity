@@ -797,6 +797,7 @@ export const LOAN_COST_CATEGORIES = [
   "aus",
   "title",
   "flood",
+  "rate_lock_extension",
   "marketing",
   "other",
 ] as const;

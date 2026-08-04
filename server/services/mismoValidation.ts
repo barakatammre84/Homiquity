@@ -7,6 +7,7 @@ import {
   resolveCompensation,
 } from "@shared/compliance/loCompensation";
 import {
+  knownPrepaidFinanceCharges,
   ORIGINATION_FEE_RATE,
   PLATFORM_APPLICATION_FEE,
   PLATFORM_UNDERWRITING_FEE,
@@ -457,12 +458,31 @@ function evaluatePointsAndFees(application: LoanApplication): {
   // the actual note date.
   const estimatedNoteDate = parseDate(application.closingDate) ?? new Date();
 
-  // The Regulation Z Total Loan Amount (note amount minus prepaid finance
-  // charges) is not computed until closing. Standing in the note amount makes
-  // the percentage cap LARGER than the true one, so this check is permissive
-  // here, not conservative — a near-cap file must still be re-checked at
-  // delivery against the real figure.
-  const regZTotalLoanAmountStandIn = loanAmount;
+  // Regulation Z Total Loan Amount (§1026.32(b)(4)) — the amount financed less
+  // the financed points and fees. It is ALWAYS less than the note amount, so
+  // standing in the note amount (as this did) overstates the percentage cap and
+  // makes the check permissive, not conservative — the opposite of what the
+  // old comment claimed (audit F-12).
+  //
+  // Derived here from the platform's own origination-side prepaid finance
+  // charges, which are known before closing. That under-counts the true prepaid
+  // finance charges (prepaid interest and prepaid MI need a closing date), so
+  // the result remains an UPPER bound on the true Total Loan Amount and the cap
+  // it yields is still slightly permissive — but strictly tighter than the note
+  // amount, never looser. A near-cap file is still re-checked at delivery
+  // against the real figure.
+  const compensationForBasis = resolveCompensation(
+    application.loCompensationModel,
+    application.loCompensationBps,
+  );
+  const originationFeeForBasis =
+    compensationForBasis && borrowerPaidOriginationAllowed(compensationForBasis.model)
+      ? loanAmount * ORIGINATION_FEE_RATE
+      : 0;
+  const regZTotalLoanAmountStandIn = Math.max(
+    0,
+    loanAmount - knownPrepaidFinanceCharges(originationFeeForBasis),
+  );
 
   if (pointsAndFees !== null) {
     const evaluation = evaluateCoveredPointsAndFees(
@@ -491,10 +511,7 @@ function evaluatePointsAndFees(application: LoanApplication): {
   }
 
   // No authoritative figure. Fall back to the computed floor.
-  const compensation = resolveCompensation(
-    application.loCompensationModel,
-    application.loCompensationBps,
-  );
+  const compensation = compensationForBasis;
   if (!compensation) {
     return {
       qmStatus: "Unknown",
@@ -506,16 +523,13 @@ function evaluatePointsAndFees(application: LoanApplication): {
     };
   }
 
-  const originationFee = borrowerPaidOriginationAllowed(compensation.model)
-    ? loanAmount * ORIGINATION_FEE_RATE
-    : 0;
   const floorEvaluation = evaluatePointsAndFeesFloor(
     estimatedNoteDate,
     loanAmount,
     regZTotalLoanAmountStandIn,
     {
       loanAmount,
-      originationFee,
+      originationFee: originationFeeForBasis,
       points: 0,
       applicationFee: PLATFORM_APPLICATION_FEE,
       underwritingFee: PLATFORM_UNDERWRITING_FEE,

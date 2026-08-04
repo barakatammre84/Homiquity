@@ -3,7 +3,7 @@
 import type { Express } from "express";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
-import { isInternalStaffRole, OPEN_RATE_LOCK_STATUSES, type User } from "@shared/schema";
+import { EXTENSION_FEE_PAYERS, isInternalStaffRole, OPEN_RATE_LOCK_STATUSES, type User } from "@shared/schema";
 import { getWholesaleLender } from "@shared/wholesaleLenders";
 import {
   isLenderConfirmed,
@@ -226,17 +226,38 @@ export function registerRateLockRoutes(
       // req.body with no validation, and extended the expiry by local math —
       // producing a longer commitment nobody had granted. Only the lender can
       // extend a lock, so an extension needs its own confirmation.
-      const extendSchema = z.object({
-        additionalDays: z.number().int().min(1).max(90),
-        extensionFee: z.number().min(0).optional(),
-        lockConfirmationNumber: z.string().min(1).max(60),
-        confirmedExpiresAt: z.coerce.date(),
-      });
+      //
+      // The fee also needs a PAYER (F-10). An amount with no payer cannot
+      // distinguish a cost we absorbed from a charge we passed through, and
+      // passing one to the borrower without a changed-circumstance record is a
+      // tolerance violation — so a borrower-paid fee must cite one.
+      const extendSchema = z
+        .object({
+          additionalDays: z.number().int().min(1).max(90),
+          extensionFee: z.number().min(0).optional(),
+          extensionFeePaidBy: z.enum(EXTENSION_FEE_PAYERS).optional(),
+          extensionFeeCocId: z.string().min(1).optional(),
+          lockConfirmationNumber: z.string().min(1).max(60),
+          confirmedExpiresAt: z.coerce.date(),
+        })
+        .refine(v => !(v.extensionFee && v.extensionFee > 0) || !!v.extensionFeePaidBy, {
+          message: "extensionFeePaidBy is required when an extension fee is charged",
+          path: ["extensionFeePaidBy"],
+        })
+        .refine(v => v.extensionFeePaidBy !== "borrower" || !!v.extensionFeeCocId, {
+          message:
+            "A borrower-paid extension fee increases a disclosed charge, so it requires a " +
+            "change-of-circumstance record (12 CFR 1026.19(e)(3)(iv)).",
+          path: ["extensionFeeCocId"],
+        });
       const extendResult = extendSchema.safeParse(req.body);
       if (!extendResult.success) {
         return res.status(400).json({ error: "Invalid input", details: extendResult.error.format() });
       }
-      const { additionalDays, extensionFee, lockConfirmationNumber, confirmedExpiresAt } = extendResult.data;
+      const {
+        additionalDays, extensionFee, extensionFeePaidBy, extensionFeeCocId,
+        lockConfirmationNumber, confirmedExpiresAt,
+      } = extendResult.data;
 
       const lock = await storage.getRateLock(id);
       if (!lock) {
@@ -256,6 +277,24 @@ export function registerRateLockRoutes(
           error: "The extended expiration must be later than the current one",
           code: "extension_not_forward",
         });
+      }
+
+      // A cited change of circumstance must actually exist, belong to this
+      // file, and not be voided — otherwise the citation is decoration.
+      if (extensionFeeCocId) {
+        const coc = await storage.getChangeOfCircumstance(extensionFeeCocId);
+        if (!coc || coc.applicationId !== lock.applicationId) {
+          return res.status(400).json({
+            error: "The cited change-of-circumstance record does not exist on this application",
+            code: "coc_not_found",
+          });
+        }
+        if (coc.status === "voided") {
+          return res.status(400).json({
+            error: "The cited change-of-circumstance record has been voided and cannot justify a charge",
+            code: "coc_voided",
+          });
+        }
       }
 
       // Verify caller is assigned to this application (assignment-scoped)
@@ -282,8 +321,32 @@ export function registerRateLockRoutes(
         extensionCount: (lock.extensionCount || 0) + 1,
         originalExpiresAt: lock.originalExpiresAt || lock.expiresAt,
         extensionFee: extensionFee?.toString(),
+        extensionFeePaidBy: extensionFeePaidBy ?? null,
+        extensionFeeCocId: extensionFeeCocId ?? null,
         status: "extended",
       });
+
+      // A broker-paid extension fee is a real cost against this file — book it
+      // where costs live (F-11) so it reaches the margin figures instead of
+      // sitting inert on the lock row. Borrower- and lender-paid fees are not
+      // our cost and are deliberately not booked. Non-fatal.
+      if (extensionFee && extensionFee > 0 && extensionFeePaidBy === "broker") {
+        try {
+          await storage.createLoanCostEntry({
+            applicationId: lock.applicationId,
+            category: "rate_lock_extension",
+            vendor: getWholesaleLender(lock.lenderId ?? "")?.name ?? lock.lenderId ?? null,
+            amount: extensionFee.toFixed(2),
+            incurredAt: new Date(),
+            automatic: true,
+            simulated: false,
+            description: `Rate-lock extension (${additionalDays} days, confirmation ${lockConfirmationNumber})`,
+            recordedBy: user.id,
+          });
+        } catch (err) {
+          console.warn("[rateLocks] extension-fee cost entry failed (non-fatal):", err);
+        }
+      }
 
       // Log activity
       await storage.createDealActivity({
@@ -292,12 +355,17 @@ export function registerRateLockRoutes(
         title: "Rate Lock Extended",
         description:
           `Rate lock extended by ${additionalDays} days to ${confirmedExpiresAt.toISOString().split("T")[0]}, ` +
-          `confirmed by the lender (${lockConfirmationNumber}).`,
+          `confirmed by the lender (${lockConfirmationNumber}).` +
+          (extensionFee && extensionFee > 0
+            ? ` Extension fee $${extensionFee.toFixed(2)} paid by ${extensionFeePaidBy}.`
+            : " No extension fee."),
         metadata: {
           rateLockId: id,
           lockConfirmationNumber,
           confirmedExpiresAt: confirmedExpiresAt.toISOString(),
           extensionFee: extensionFee ?? null,
+          extensionFeePaidBy: extensionFeePaidBy ?? null,
+          extensionFeeCocId: extensionFeeCocId ?? null,
         },
         performedBy: user.id,
       });

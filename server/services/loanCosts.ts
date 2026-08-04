@@ -43,6 +43,23 @@ export const ORIGINATION_FEE_RATE = 0.01;
  */
 export const PLATFORM_APPLICATION_FEE = 500;
 export const PLATFORM_UNDERWRITING_FEE = 1500;
+export const PLATFORM_TAX_SERVICE_FEE = 100;
+
+/**
+ * Prepaid finance charges the platform can determine WITHOUT a closing date —
+ * its own origination-side charges (§1026.4). Deliberately excludes prepaid
+ * interest and prepaid MI, which need a closing date and a rate.
+ *
+ * Used to derive a Regulation Z Total Loan Amount before closing
+ * (services/mismoValidation.ts). Because it UNDER-counts the true prepaid
+ * finance charges, the total loan amount it yields is an upper bound on the
+ * true one — so the QM percentage cap computed from it stays slightly
+ * permissive, but is strictly tighter than standing in the note amount.
+ * Never the reverse.
+ */
+export function knownPrepaidFinanceCharges(originationFee: number, points = 0): number {
+  return originationFee + points + PLATFORM_APPLICATION_FEE + PLATFORM_UNDERWRITING_FEE + PLATFORM_TAX_SERVICE_FEE;
+}
 
 export interface ClosingCostInputs {
   purchasePrice: number;
@@ -188,7 +205,7 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
   const appraisalFee = fee("appraisal", 650);
   const creditReportFee = fee("credit_report", 75);
   const floodDeterminationFee = fee("flood_determination", 25);
-  const taxServiceFee = fee("tax_service", 100);
+  const taxServiceFee = fee("tax_service", PLATFORM_TAX_SERVICE_FEE);
   const titleInsurance = fee("title_insurance", loanAmount * 0.005);
   const titleSearch = fee("title_search", 350);
   const surveyFee = fee("survey_fee", 450);

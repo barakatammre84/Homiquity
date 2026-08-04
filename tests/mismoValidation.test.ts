@@ -357,16 +357,35 @@ describe("TRID business-day math (weekends + federal holidays)", () => {
 
 // ---------------------------------------------------------------------------
 describe("ATR/QM points-and-fees 3% cap", () => {
-  // loanAmount = 500000 - 100000 = 400000; 3% cap = 12000.
+  // loanAmount = 500000 - 100000 = 400000.
+  //
+  // The cap is 3% of the Regulation Z TOTAL LOAN AMOUNT, not of the note
+  // amount (§1026.32(b)(4)) — the note amount less the financed points and
+  // fees. With no compensation elected the platform's known prepaid finance
+  // charges are $500 app + $1,500 underwriting + $100 tax service = $2,100, so
+  // the basis is $397,900 and the cap is $11,937 — NOT the $12,000 the old
+  // note-amount stand-in produced (audit F-12: that stand-in was permissive,
+  // never conservative).
+  const QM_CAP = 11_937;
+
   it("is QM exactly at the 3% cap (boundary inclusive)", async () => {
-    setFixtures({ application: { totalPointsAndFees: "12000" } });
+    setFixtures({ application: { totalPointsAndFees: String(QM_CAP) } });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.qmStatus).toBe("QM");
     expect(result.pointsAndFeesCompliant).toBe(true);
   });
 
+  it("is tighter than the old note-amount cap (F-12)", async () => {
+    // $11,950 fit under the discarded $12,000 note-amount cap and does not fit
+    // under the real one. This is the file the old check waved through.
+    setFixtures({ application: { totalPointsAndFees: "11950" } });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(result.qmStatus).toBe("Non-QM");
+    expect(result.pointsAndFeesCompliant).toBe(false);
+  });
+
   it("is Non-QM just over the 3% cap", async () => {
-    setFixtures({ application: { totalPointsAndFees: "12000.01" } });
+    setFixtures({ application: { totalPointsAndFees: String(QM_CAP + 0.01) } });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.qmStatus).toBe("Non-QM");
     expect(result.pointsAndFeesCompliant).toBe(false);
@@ -429,7 +448,7 @@ describe("ATR/QM points-and-fees 3% cap", () => {
   it("prefers the authoritative figure over the floor when both are available", async () => {
     setFixtures({
       application: {
-        totalPointsAndFees: "12000",
+        totalPointsAndFees: "11900", // under the $11,937 Reg Z cap
         loCompensationModel: "lender_paid",
         loCompensationBps: 275, // floor would be over the cap; the real figure is not
       },

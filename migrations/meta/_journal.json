@@ -302,6 +302,13 @@
       "when": 1785429600000,
       "tag": "0042_loan_cost_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1785516000000,
+      "tag": "0043_rate_lock_extension_fee_payer",
+      "breakpoints": true
     }
   ]
 }
