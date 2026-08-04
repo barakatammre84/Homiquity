@@ -4,6 +4,7 @@ import {
   getPersonalizedGreeting,
   getExpirationInfo,
   formatActivityTime,
+  showIncubatorHome,
   NEXT_ACTION_ICONS,
 } from "./model";
 import { LOAN_APP_STATUSES } from "@shared/schema";
@@ -92,6 +93,34 @@ describe("formatActivityTime", () => {
     expect(formatActivityTime("2026-07-19T06:00:00Z")).toBe("6h ago");
     expect(formatActivityTime("2026-07-16T12:00:00Z")).toBe("3d ago");
     expect(formatActivityTime("2026-06-01T12:00:00Z")).toMatch(/Jun 1/);
+  });
+});
+
+describe("showIncubatorHome", () => {
+  const s = (status: string) => ({ status });
+
+  it("keeps the first-visit behavior: no applications → Incubator", () => {
+    expect(showIncubatorHome([], undefined)).toBe(true);
+  });
+
+  it("routes terminal-only borrowers to the Incubator instead of a re-apply dashboard", () => {
+    expect(showIncubatorHome([s("denied")], undefined)).toBe(true);
+    expect(showIncubatorHome([s("withdrawn")], undefined)).toBe(true);
+    expect(showIncubatorHome([s("expired")], undefined)).toBe(true);
+    expect(showIncubatorHome([s("denied"), s("withdrawn")], undefined)).toBe(true);
+  });
+
+  it("never hijacks a borrower with a funded loan", () => {
+    expect(showIncubatorHome([s("denied"), s("funded")], undefined)).toBe(false);
+    expect(showIncubatorHome([s("funded")], undefined)).toBe(false);
+  });
+
+  it("defers to any resolved active application (workable or deep-linked terminal)", () => {
+    expect(showIncubatorHome([s("pre_approved")], s("pre_approved"))).toBe(false);
+    expect(showIncubatorHome([s("draft")], s("draft"))).toBe(false);
+    // ?app=<deniedId> deep link: resolveActiveApplication returns the closed
+    // file, and the Dashboard must still render it.
+    expect(showIncubatorHome([s("denied")], s("denied"))).toBe(false);
   });
 });
 

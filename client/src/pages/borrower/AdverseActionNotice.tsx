@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { FileText, AlertTriangle, Printer, ArrowLeft } from "lucide-react";
+import { FileText, AlertTriangle, Printer, ArrowLeft, Sprout } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { titleCaseFromSnake } from "@/lib/formatters";
+import { RECOVERY_CARD } from "./adverseActionRecoveryCopy";
 
 interface AdverseAction {
   id: string;
@@ -162,6 +163,32 @@ export default function AdverseActionNotice() {
           </Card>
         ))}
       </div>
+
+      {/* Path forward — subordinate to the notice (rendered after it, never in
+          print). Copy is compliance-pinned in adverseActionRecoveryCopy.ts. */}
+      {notices.length > 0 && (
+        <Card className="mt-6 print:hidden" data-testid="card-recovery">
+          <CardContent className="p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                <Sprout className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">{RECOVERY_CARD.title}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{RECOVERY_CARD.body}</p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <Button asChild size="sm" data-testid="button-recovery-readiness">
+                    <Link href={RECOVERY_CARD.primaryCta.href}>{RECOVERY_CARD.primaryCta.label}</Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm" data-testid="button-recovery-gap">
+                    <Link href={RECOVERY_CARD.secondaryCta.href}>{RECOVERY_CARD.secondaryCta.label}</Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </PageShell>
   );
 }
