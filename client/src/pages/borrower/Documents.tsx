@@ -26,13 +26,22 @@ import {
   getUploadNextStep,
 } from "./documentCategories";
 import {
+  groupDocumentsByType,
+  countPendingCatalogDocs,
+  countPendingChecklistItems,
+  buildPersonalizedGroups,
+  rowFromChecklistItem,
+  rowFromCatalogDoc,
+  getChecklistStatusInfo,
+  getCategoryStatus,
+  type ChecklistItemView,
+} from "@/lib/documentChecklist";
+import {
   FileText,
   Download,
   Upload,
   CheckCircle2,
-  AlertCircle,
   ClipboardList,
-  Clock,
   ChevronDown,
   ChevronUp,
   FileCheck,
@@ -40,27 +49,6 @@ import {
 
 interface DashboardData {
   documents: Document[];
-}
-
-// Personalized checklist item as served by /document-checklist (built from the
-// pipeline engine's loan_conditions — see server/services/documentChecklist.ts).
-interface ChecklistItemView {
-  id: string;
-  source: "condition" | "standard" | "task";
-  conditionId?: string;
-  category: string;
-  documentType: string;
-  acceptedTypes: string[];
-  label: string;
-  description?: string;
-  required: boolean;
-  status: "needed" | "uploaded" | "verifying" | "verified" | "rejected";
-  documentId?: string;
-  fileName?: string;
-  uploadedAt?: string;
-  rejectionReason?: string | null;
-  documentYear?: string;
-  instructions?: string;
 }
 
 export default function Documents() {
@@ -275,100 +263,20 @@ export default function Documents() {
 
   const documents = data?.documents || [];
 
-  // Create a map of uploaded documents by type
-  const documentsByType = documents.reduce((acc, doc) => {
-    if (!acc[doc.documentType]) {
-      acc[doc.documentType] = [];
-    }
-    acc[doc.documentType].push(doc);
-    return acc;
-  }, {} as Record<string, Document[]>);
+  const documentsByType = groupDocumentsByType(documents);
 
-  // Calculate current status - count pending required items
-  const allRequiredDocs = DOCUMENT_CATEGORIES.flatMap(cat =>
-    cat.documents.filter(d => d.required)
-  );
-  // A required item is pending when nothing was uploaded OR the latest upload
-  // bounced (rejected latest = action still needed, not "complete").
-  const pendingRequiredDocs = allRequiredDocs.filter(d => {
-    const docs = documentsByType[d.type];
-    return !docs?.length || docs[0]?.status === "rejected";
-  });
-  // Personalized mode counts the pipeline's own items instead.
-  const personalizedPending = personalizedItems.filter(
-    (i) => i.status === "needed" || i.status === "rejected",
-  ).length;
-  const pendingCount = personalized ? personalizedPending : pendingRequiredDocs.length;
+  // Calculate current status - count pending required items. Personalized
+  // mode counts the pipeline's own items instead of the static catalog.
+  const pendingCount = personalized
+    ? countPendingChecklistItems(personalizedItems)
+    : countPendingCatalogDocs(DOCUMENT_CATEGORIES.flatMap((cat) => cat.documents), documentsByType);
   const isAllCaughtUp = pendingCount === 0;
 
-  // Group personalized items into the same visual category cards the static
-  // catalog uses (unknown categories fold into "other").
-  const personalizedGroups = new Map<string, ChecklistItemView[]>();
-  if (personalized) {
-    for (const item of personalizedItems) {
-      const cat = CONDITION_CATEGORY_META[item.category] ? item.category : "other";
-      const group = personalizedGroups.get(cat) ?? [];
-      group.push(item);
-      personalizedGroups.set(cat, group);
-    }
-  }
+  const personalizedGroups = personalized ? buildPersonalizedGroups(personalizedItems) : new Map<string, ChecklistItemView[]>();
 
-  const rowFromItem = (item: ChecklistItemView): DocRow => ({
-    key: item.documentType,
-    uploadKey: item.id,
-    uploadType: item.documentType,
-    name: item.label,
-    description: item.description,
-    year: item.documentYear,
-    instructions: item.instructions,
-    required: item.required,
-    status: item.status,
-    fileName: item.fileName,
-    uploadedAt: item.uploadedAt,
-    documentId: item.documentId,
-    rejectionReason: item.rejectionReason,
-    focused: !!conditionId && item.conditionId === conditionId,
-  });
+  const rowFromItem = (item: ChecklistItemView): DocRow => rowFromChecklistItem(item, conditionId);
 
-  // Determine status message and styling
-  const getStatusInfo = () => {
-    if (isAllCaughtUp) {
-      return {
-        icon: CheckCircle2,
-        iconColor: "text-success-subtle-foreground",
-        bgColor: "bg-success/20",
-        borderColor: "border-border/30",
-        title: "You're all caught up!",
-        subtitle: "All currently requested documents have been submitted",
-        badgeText: "Complete",
-        badgeColor: "bg-success text-success-foreground",
-      };
-    } else if (pendingCount <= 3) {
-      return {
-        icon: Clock,
-        iconColor: "text-warning-subtle-foreground",
-        bgColor: "bg-warning/20",
-        borderColor: "border-border/30",
-        title: "Almost there!",
-        subtitle: `${pendingCount} document${pendingCount > 1 ? "s" : ""} still needed`,
-        badgeText: "Action Needed",
-        badgeColor: "bg-warning text-warning-foreground",
-      };
-    } else {
-      return {
-        icon: AlertCircle,
-        iconColor: "text-destructive",
-        bgColor: "bg-destructive/20",
-        borderColor: "border-border/30",
-        title: "Documents needed",
-        subtitle: `${pendingCount} documents still required`,
-        badgeText: "Pending",
-        badgeColor: "bg-destructive text-destructive-foreground",
-      };
-    }
-  };
-
-  const statusInfo = getStatusInfo();
+  const statusInfo = getChecklistStatusInfo(isAllCaughtUp, pendingCount);
   const StatusIcon = statusInfo.icon;
 
   return (
@@ -546,30 +454,13 @@ export default function Documents() {
 
           // Calculate category status
           const requiredInCategory = category.documents.filter(d => d.required);
-          const pendingInCategory = requiredInCategory.filter(d => {
-            const docs = documentsByType[d.type];
-            return !docs?.length || docs[0]?.status === "rejected";
-          }).length;
+          const pendingInCategory = countPendingCatalogDocs(category.documents, documentsByType);
           const uploadedCount = category.documents.filter(d => documentsByType[d.type]?.length > 0).length;
 
           const allCaughtUp = pendingInCategory === 0;
           const hasUploads = uploadedCount > 0;
 
-          // Category status badge
-          const getCategoryStatus = () => {
-            if (requiredInCategory.length === 0) {
-              return { text: "Optional", color: "bg-muted text-muted-foreground" };
-            }
-            if (allCaughtUp) {
-              return { text: "Complete", color: "bg-success-subtle text-success-subtle-foreground" };
-            }
-            if (pendingInCategory === 1) {
-              return { text: "1 needed", color: "bg-warning-subtle text-warning-subtle-foreground" };
-            }
-            return { text: `${pendingInCategory} needed`, color: "bg-warning-subtle text-warning-subtle-foreground" };
-          };
-
-          const categoryStatus = getCategoryStatus();
+          const categoryStatus = getCategoryStatus(requiredInCategory.length, pendingInCategory);
 
           return (
             <Card key={category.id} className="shadow-lg border-0" data-testid={`card-category-${category.id}`}>
@@ -615,27 +506,7 @@ export default function Documents() {
                   <div className="border-t pt-4">
                     <div className="space-y-3">
                       {category.documents.map((docType) => {
-                        const uploadedDocs = documentsByType[docType.type] || [];
-                        // The dashboard document list is newest-first, so the
-                        // latest upload of a type is [0] — [length - 1] was the
-                        // OLDEST, which froze the row on a re-upload's stale status.
-                        const latestDoc = uploadedDocs[0];
-                        const row: DocRow = {
-                          key: docType.type,
-                          uploadKey: docType.type,
-                          uploadType: docType.type,
-                          name: docType.name,
-                          description: docType.description,
-                          required: docType.required,
-                          status: latestDoc
-                            ? ((latestDoc.status as DocRow["status"]) || "uploaded")
-                            : "needed",
-                          fileName: latestDoc?.fileName,
-                          uploadedAt: latestDoc?.createdAt,
-                          documentId: latestDoc?.id,
-                          rejectionReason: latestDoc?.rejectionReason,
-                          focused: focusTypes.has(canonicalDocumentType(docType.type)),
-                        };
+                        const row = rowFromCatalogDoc(docType, documentsByType, focusTypes);
                         return (
                           <DocumentItemRow
                             key={row.key}
