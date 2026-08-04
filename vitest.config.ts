@@ -19,6 +19,7 @@ export default defineConfig({
       "tests/queryKeyConvergence.test.ts",
       "tests/borrowerTaskView.test.ts",
       "tests/borrowerDocumentView.test.ts",
+      "tests/borrowerActivityView.test.ts",
       "tests/rateProductHeadings.test.ts",
       "tests/vercelDeploymentGuard.test.ts",
       "tests/loCommsLint.test.ts",
