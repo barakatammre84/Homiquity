@@ -21,7 +21,7 @@ where the debt has accumulated.
 
 ## Severity-ordered summary
 
-> **Remediation status (2026-08-04, same day).** **F-1 through F-8 are FIXED** — see the
+> **Remediation status (2026-08-04, same day).** **F-1 through F-9 and F-11 are FIXED** — see the
 > §"Remediation" sections at the end of this document for what shipped, what is covered by
 > tests, and the items deliberately left open rather than implemented on unverified regulatory
 > text. **F-5's gate is a live behavior change in production** — read that section before the
@@ -37,9 +37,9 @@ where the debt has accumulated.
 | F-6 | No revenue, receivable, or comp representation anywhere in the system | Unit economics | **High** — ✅ fixed |
 | F-7 | Loan Estimate Section A omits the largest fee line from its itemization | Risk | Medium — ✅ fixed |
 | F-8 | EPO/EPC compensation clawback exposure is entirely unrepresented | Balance sheet | Medium — ✅ fixed |
-| F-9 | Third-party fee constants are unsourced national guesses in a zero-tolerance bucket | Risk | Medium |
+| F-9 | Third-party fee constants are unsourced national guesses in a zero-tolerance bucket | Risk | Medium — ⚠️ partly fixed (architecture only; values still unverified) |
 | F-10 | Lock-extension fee has no payer attribution | Capital flow | Medium |
-| F-11 | No cost side: no cost-per-file, vendor cost ledger, or pull-through | Unit economics | Medium |
+| F-11 | No cost side: no cost-per-file, vendor cost ledger, or pull-through | Unit economics | Medium — ✅ fixed |
 | F-12 | Reg Z Total Loan Amount stand-in errs permissive, and its comment says the opposite | Risk | Low |
 | F-13 | Contingent-liability register does not exist; reserve adequacy is unassessable | Balance sheet | Medium |
 | F-14 | Seller/servicer delivery infrastructure built for a business that will never deliver | Capital efficiency | **Escalation** |
@@ -817,3 +817,77 @@ the platform a loan paid off, so `totalAtRisk` is exposure, not realized loss.
 Typecheck clean · **1,505 unit tests green** (+16) · schema guard, design-token ratchet,
 regulatory-freshness gate and production build all pass. No migration — F-8 reads columns
 migration `0041` already added.
+
+---
+
+## Remediation — F-9 and F-11 (2026-08-04)
+
+### F-9 — ⚠️ architecture fixed, values still unverified
+
+**Read this before treating F-9 as closed.** The audit said these constants need "a cited
+state/county/municipal table verified against current statute." **That did not happen, and could
+not:** this environment's network policy blocked `ilga.gov`, `tax.illinois.gov` and `chicago.gov`
+exactly as it blocked every federal regulatory host, and no Illinois fee schedule exists under
+`docs/`. Inventing statutory rates would have been worse than leaving them flagged.
+
+So this pass fixed **the thing that made F-9 systemic** — nothing distinguished a verified number
+from a guess — and left the numbers themselves untouched and labelled:
+
+- **`shared/compliance/feeProvenance.ts`** gives every third-party charge a provenance tier:
+  `actual` (a real quote for this file) → `cited` (a published schedule with a source) →
+  `platform_estimate`. All ten entries are currently `platform_estimate`, which is now *visible*
+  rather than implied.
+- **Transfer taxes carry `suspectedInaccurate: true`** — a single national 0.1%-of-price constant
+  applied to an Illinois-only footprint where transfer tax is levied at state, county *and*
+  municipal level. It is a zero-tolerance charge, so an understatement is a dollar-for-dollar cure.
+- **`reportFeeProvenance()`** answers the question the audit actually asked: how much of this
+  file's disclosure rests on guesses, and how many of those sit in the zero-tolerance bucket.
+- Ledger entry `platform-closing-cost-fee-schedule` carries a **30-day** review interval so the
+  gap stays loud.
+
+**The practical half, which does change outcomes.** `ClosingCostInputs.actualFees` lets a file
+disclose a *real* charge instead of the estimate, and `generateLoanEstimate` now populates it from
+the F-11 cost ledger: an appraisal invoice booked against the file becomes the disclosed appraisal
+fee. That matters because the appraisal is the largest single zero-tolerance variance and is
+usually known before the LE has to go out — disclosing $1,200 up front **removes** the $550 cure
+rather than measuring it after the fact.
+
+**Still open:** upgrading each fee to `cited`, starting with transfer taxes. That is a
+human-with-a-statute task, not an engineering one.
+
+### F-11 — the cost side exists
+
+**What shipped.** `loan_cost_entries` (migration `0042`) — append-only, one row per cost incurred
+against a file — plus a pure roll-up in `shared/costLedger.ts`.
+
+**Credit pulls are metered automatically.** `requestCreditPull` books a cost entry at the moment
+it incurs one. This was the audit's specific example: the task engine deliberately re-runs pulls
+via `CRD_EXPIRED`, so a stalled file silently accumulated spend that no surface reported. Entries
+are flagged `simulated` while the credit adapter is a simulation, so demo spend can never land in
+a real margin figure. Booking is non-fatal — a ledger failure must not block a credit pull.
+Unit costs are a flagged platform assumption (`platform-credit-pull-unit-cost`), replaceable when
+the F3 vendor contract lands.
+
+**Staff record everything else** through `GET`/`POST /api/loan-applications/:id/costs`.
+Append-only by design: a correction is a negative reversal row, never an edit, so the ledger stays
+auditable. Negative amounts are therefore explicitly permitted.
+
+**The metric that matters is cost per FUNDED loan.** Costs are incurred on every file; revenue
+arrives only on the ones that close. `computeUnitEconomics` reports both `costPerFundedLoan` and
+`costPerFileTouched` and names which is which — dividing by files touched flatters the business by
+exactly the pull-through gap. With $710 of cost across three files and one funded, a closing costs
+$710, not $237.
+
+`/api/reports/compensation` now returns revenue, cost, gross margin, margin per funded loan, and
+the cost breakdown largest-first alongside the F-6 revenue roll-up and the F-8 clawback register.
+
+**Gross margin is explicitly an upper bound**, and the payload says so in `notes`: this ledger
+captures direct vendor spend only. Loan-officer compensation, processing labour and overhead are
+modeled nowhere, so the real margin is lower by whatever those cost. Reporting it as complete
+would be the same class of error as reporting pipeline volume as revenue.
+
+### Verification
+
+Typecheck clean · **1,521 unit tests green** (+16) · schema guard, design-token ratchet,
+regulatory-freshness gate and production build all pass. Migration `0042` is expand-only and
+idempotent.

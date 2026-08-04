@@ -32,6 +32,7 @@ import {
   compensationAmount,
   type OriginatorCompensation,
 } from "@shared/compliance/loCompensation";
+import { resolveFeeAmount, type ActualFeeMap } from "@shared/compliance/feeProvenance";
 
 /** Borrower-paid origination fee as a fraction of the loan amount. */
 export const ORIGINATION_FEE_RATE = 0.01;
@@ -58,6 +59,18 @@ export interface ClosingCostInputs {
    * header. Determines whether the borrower is charged an origination fee.
    */
   compensation: OriginatorCompensation;
+  /**
+   * Real, known third-party charges for THIS file (the AMC's appraisal quote,
+   * the title company's figure) keyed by the fee ids in
+   * shared/compliance/feeProvenance.ts. Any fee present here is disclosed at
+   * its actual amount instead of the platform estimate.
+   *
+   * This is the practical half of the F-9 fix: the fee constants below are
+   * unverified national figures sitting in a zero-tolerance bucket, and the
+   * appraisal is the largest single variance on a file. Disclosing the real
+   * number when it is known removes the cure rather than measuring it.
+   */
+  actualFees?: ActualFeeMap;
   /** Annual property taxes; defaults to the platform 1.2%-of-price model. */
   annualPropertyTaxes?: number;
   /** Annual homeowner's insurance; defaults to max($1,200, 0.3% of price). */
@@ -165,16 +178,26 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
   const points = 0;
   const applicationFee = PLATFORM_APPLICATION_FEE;
   const underwritingFee = PLATFORM_UNDERWRITING_FEE;
-  const appraisalFee = 650;
-  const creditReportFee = 75;
-  const floodDeterminationFee = 25;
-  const taxServiceFee = 100;
-  const titleInsurance = loanAmount * 0.005;
-  const titleSearch = 350;
-  const surveyFee = 450;
-  const pestInspectionFee = 150;
-  const recordingFees = 150;
-  const transferTaxes = purchasePrice * 0.001;
+  // Third-party charges. Every constant below is an UNVERIFIED national
+  // working figure with no citation — provenance and the known-suspect entries
+  // are catalogued in shared/compliance/feeProvenance.ts (audit F-9). A file
+  // with a real quote recorded discloses that instead.
+  const actuals = input.actualFees ?? {};
+  const fee = (id: string, estimate: number) => resolveFeeAmount(id, estimate, actuals);
+
+  const appraisalFee = fee("appraisal", 650);
+  const creditReportFee = fee("credit_report", 75);
+  const floodDeterminationFee = fee("flood_determination", 25);
+  const taxServiceFee = fee("tax_service", 100);
+  const titleInsurance = fee("title_insurance", loanAmount * 0.005);
+  const titleSearch = fee("title_search", 350);
+  const surveyFee = fee("survey_fee", 450);
+  const pestInspectionFee = fee("pest_inspection", 150);
+  const recordingFees = fee("recording_fees", 150);
+  // SUSPECT (F-9): a single national percentage applied to an Illinois-only
+  // footprint, where transfer tax is levied at state, county AND municipal
+  // level. Zero-tolerance, so an understatement is a dollar-for-dollar cure.
+  const transferTaxes = fee("transfer_taxes", purchasePrice * 0.001);
 
   const dailyInterest = (loanAmount * (interestRate / 100)) / 365;
   const prepaidInterest = dailyInterest * input.prepaidInterestDays;

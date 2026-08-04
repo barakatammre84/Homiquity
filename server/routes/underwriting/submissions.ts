@@ -374,6 +374,18 @@ export function registerSubmissionRoutes(
         })),
       );
 
+      // Cost side + margin (F-11). Revenue alone is not unit economics: costs
+      // are incurred on every file and revenue arrives only on the ones that
+      // close, so the meaningful denominator is the funded count.
+      const { summarizeCosts, computeUnitEconomics } = await import("@shared/costLedger");
+      const costEntries = await storage.getAllLoanCostEntries();
+      const costs = summarizeCosts(costEntries);
+      const unitEconomics = computeUnitEconomics({
+        receivedCompensation: summary.receivedCompensation,
+        fundedCount: summary.fundedCount,
+        costs,
+      });
+
       res.json({
         ...summary,
         // The binding constraint on all of the above: with no approved
@@ -381,12 +393,91 @@ export function registerSubmissionRoutes(
         approvedLenderCount: approvedLenderCount(),
         discrepancies,
         clawbackExposure: clawback,
+        costs,
+        unitEconomics,
       });
     } catch (error) {
       console.error("Compensation report error:", error);
       res.status(500).json({ error: "Failed to build the compensation report" });
     }
   });
+
+  // ---------------------------------------------------------------------
+  // Per-file cost ledger (F-11). Vendor spend the platform does not book
+  // automatically — appraisal invoices, verification services, AMC charges.
+  // Append-only: a correction is a negative reversal entry, never an edit.
+  // ---------------------------------------------------------------------
+  app.get(
+    "/api/loan-applications/:id/costs",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = routeParams(req);
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+        const entries = await storage.getLoanCostEntries(id);
+        const { summarizeCosts } = await import("@shared/costLedger");
+        res.json({ entries, summary: summarizeCosts(entries) });
+      } catch (error) {
+        console.error("Loan cost ledger error:", error);
+        res.status(500).json({ error: "Failed to load the cost ledger" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/loan-applications/:id/costs",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const { id } = routeParams(req);
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { LOAN_COST_CATEGORIES } = await import("@shared/costLedger");
+        const costSchema = z.object({
+          category: z.enum(LOAN_COST_CATEGORIES),
+          // Negative is permitted: that is how a reversal is recorded.
+          amount: z.number().finite(),
+          vendor: z.string().trim().min(1).max(100).optional(),
+          description: z.string().trim().max(1000).optional(),
+          incurredAt: z.coerce.date().optional(),
+        });
+        const parsed = costSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
+        }
+
+        const entry = await storage.createLoanCostEntry({
+          applicationId: id,
+          category: parsed.data.category,
+          amount: parsed.data.amount.toFixed(2),
+          vendor: parsed.data.vendor ?? null,
+          description: parsed.data.description ?? null,
+          incurredAt: parsed.data.incurredAt ?? new Date(),
+          automatic: false,
+          simulated: false,
+          recordedBy: req.user!.id,
+        });
+
+        const { logAudit } = await import("../../auditLog");
+        logAudit(req, "loan_cost.recorded", "loan_application", id, {
+          costEntryId: entry.id,
+          category: parsed.data.category,
+          amount: parsed.data.amount,
+        });
+
+        res.status(201).json(entry);
+      } catch (error) {
+        console.error("Record loan cost error:", error);
+        res.status(500).json({ error: "Failed to record the cost entry" });
+      }
+    },
+  );
 
   // Fannie Mae delivery readiness: URLA gating + Loan Delivery / UCD /
   // EarlyCheck edit mirror + Special Feature Code derivation. Internal staff

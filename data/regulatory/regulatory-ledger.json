@@ -517,6 +517,28 @@
       "lastVerified": "2026-08-04",
       "reviewIntervalDays": 90,
       "notes": "Not a regulatory value - recorded here because it drives a reserve figure and must not go unreviewed. 180 days is the common wholesale EPO period; no agreement has been executed, so today every exposure computed from it is flagged windowSource='assumed' and the register reports usesAssumedWindow=true. No reserve derived from this may be treated as contractual. Replace per lender as agreements land (same edit as flipping approvalStatus for F-5). sourceUrl is a placeholder - there is no authoritative public source for a contract term."
+    },
+    {
+      "id": "platform-closing-cost-fee-schedule",
+      "rule": "Third-party closing-cost estimates disclosed on the Loan Estimate (appraisal, credit report, flood determination, tax service, title insurance/search, survey, pest, recording, transfer taxes)",
+      "value": "unverified national working figures",
+      "citation": "PLATFORM ESTIMATE - no citation. Transfer taxes in particular require a cited Illinois state/county/municipal table verified against current statute.",
+      "sourceUrl": "https://tax.illinois.gov/",
+      "codeRef": "server/services/loanCosts.ts computeClosingCosts; shared/compliance/feeProvenance.ts THIRD_PARTY_FEE_DEFINITIONS",
+      "lastVerified": "2026-08-04",
+      "reviewIntervalDays": 30,
+      "notes": "VALUES NOT VERIFIED. Sources were unreachable when this entry was written - network policy blocked ilga.gov, tax.illinois.gov and chicago.gov (as it blocked every federal regulatory host), and no Illinois fee schedule exists under docs/. The 2026-08-04 work fixed the ARCHITECTURE, not the numbers: every third-party fee now carries a provenance tier (actual | cited | platform_estimate), a file can disclose a real quote via the cost ledger instead of the estimate, and reportFeeProvenance answers 'which of these disclosed figures is a guess'. Four estimates sit in the TRID ZERO-tolerance bucket, so error is a dollar-for-dollar cure. transfer_taxes is flagged suspectedInaccurate: a single national 0.1%-of-price constant applied to an Illinois-only footprint where transfer tax is levied at state, county AND municipal level. Upgrade each entry to tier 'cited' as sources are obtained; 30-day interval so this stays loud."
+    },
+    {
+      "id": "platform-credit-pull-unit-cost",
+      "rule": "Per-pull credit vendor cost booked to the loan cost ledger (soft / hard / tri-merge)",
+      "value": "$5 / $15 / $30",
+      "citation": "PLATFORM ASSUMPTION - no credit vendor contract exists (roadmap F3), so these are working figures, not contracted rates.",
+      "sourceUrl": "https://singlefamily.fanniemae.com/job-aid/loan-delivery",
+      "codeRef": "server/services/creditPulls.ts CREDIT_PULL_UNIT_COST",
+      "lastVerified": "2026-08-04",
+      "reviewIntervalDays": 90,
+      "notes": "Exists so credit-pull spend is METERED rather than invisible - the task engine deliberately re-runs pulls (CRD_EXPIRED), so a stalled file silently accumulates cost. Every entry booked from these figures is flagged simulated:true while CREDIT_VENDOR_API_KEY is unset, so simulated spend cannot leak into a real margin figure. Replace with the vendor's actual price sheet when the F3 contract lands. sourceUrl is a placeholder - there is no authoritative public source for a vendor's pricing."
     }
   ]
 }

@@ -2249,6 +2249,26 @@
     "missing-toleranceEvaluation": "reject:issuedAt,version",
     "wrongtype-applicationId": "reject:applicationId,issuedAt,version"
   },
+  "schema.insertLoanCostEntrySchema": {
+    "undefined": "reject:",
+    "null": "reject:",
+    "empty-object": "reject:amount,applicationId,category",
+    "empty-array": "reject:",
+    "empty-string": "reject:",
+    "zero": "reject:",
+    "false": "reject:",
+    "string": "reject:",
+    "number": "reject:",
+    "true": "reject:",
+    "all-keys-typed": "reject:amount,automatic,category,incurredAt,simulated",
+    "missing-applicationId": "reject:amount,applicationId,automatic,category,incurredAt,simulated",
+    "missing-category": "reject:amount,automatic,category,incurredAt,simulated",
+    "missing-vendor": "reject:amount,automatic,category,incurredAt,simulated",
+    "missing-amount": "reject:amount,automatic,category,incurredAt,simulated",
+    "missing-incurredAt": "reject:amount,automatic,category,simulated",
+    "missing-automatic": "reject:amount,category,incurredAt,simulated",
+    "wrongtype-applicationId": "reject:amount,applicationId,automatic,category,incurredAt,simulated"
+  },
   "schema.insertCoachingSessionSchema": {
     "undefined": "reject:",
     "null": "reject:",

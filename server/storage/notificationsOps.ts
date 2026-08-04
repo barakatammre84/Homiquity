@@ -21,6 +21,9 @@ import {
   loanEstimateDisclosures,
   type LoanEstimateDisclosure,
   type InsertLoanEstimateDisclosure,
+  loanCostEntries,
+  type LoanCostEntry,
+  type InsertLoanCostEntry,
 } from "@shared/schema";
 import { RealtorHomeownerStorage } from "./realtorHomeowner";
 export class NotificationsOpsStorage extends RealtorHomeownerStorage {
@@ -87,6 +90,28 @@ export class NotificationsOpsStorage extends RealtorHomeownerStorage {
       .from(loanEstimateDisclosures)
       .where(eq(loanEstimateDisclosures.applicationId, applicationId))
       .orderBy(desc(loanEstimateDisclosures.version));
+  }
+
+  // ===== LOAN COST LEDGER (unit economics) =====
+  // Append-only by convention: a correction is a negative reversal row, never
+  // an edit, so there is deliberately no update or delete method.
+
+  async createLoanCostEntry(data: InsertLoanCostEntry): Promise<LoanCostEntry> {
+    const [row] = await db.insert(loanCostEntries).values(data).returning();
+    return row;
+  }
+
+  async getLoanCostEntries(applicationId: string): Promise<LoanCostEntry[]> {
+    return db
+      .select()
+      .from(loanCostEntries)
+      .where(eq(loanCostEntries.applicationId, applicationId))
+      .orderBy(desc(loanCostEntries.incurredAt));
+  }
+
+  /** Company-wide, for the unit-economics report. Admin-gated at the route. */
+  async getAllLoanCostEntries(): Promise<LoanCostEntry[]> {
+    return db.select().from(loanCostEntries).orderBy(desc(loanCostEntries.incurredAt));
   }
 
   // Single batched update (never update in a loop).

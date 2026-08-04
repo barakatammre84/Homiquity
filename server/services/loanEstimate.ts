@@ -4,6 +4,7 @@ import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
 import { computeClosingCosts, calculatePMI } from "./loanCosts";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
+import { toActualFeeMap, type ActualFeeMap } from "@shared/compliance/feeProvenance";
 import type { LoanApplication } from "@shared/schema";
 
 export interface LoanEstimateData {
@@ -155,6 +156,55 @@ function prepaidInterestDaysFor(closingDate: Date): number {
   return daysInMonth - closingDate.getDate();
 }
 
+/**
+ * Cost-ledger categories that correspond to a disclosed third-party fee. A
+ * real invoice booked against the file becomes the disclosed amount.
+ *
+ * Only categories that map 1:1 to a single LE line are listed — "verification"
+ * and "marketing" are real costs but not borrower charges, and must never
+ * silently inflate a disclosure.
+ */
+const COST_CATEGORY_TO_FEE_ID: Record<string, string> = {
+  appraisal: "appraisal",
+  credit_report: "credit_report",
+  flood: "flood_determination",
+  title: "title_insurance",
+};
+
+/**
+ * Actual third-party charges recorded for a file, keyed by fee id. Multiple
+ * entries in a category sum (a supplemental appraisal invoice adds to the
+ * first); simulated and reversal-negative entries are respected because they
+ * are part of the real total. Failures degrade to "no actuals" — a ledger
+ * problem must not stop a Loan Estimate from being produced.
+ */
+async function resolveActualFeesFor(applicationId: string): Promise<ActualFeeMap> {
+  try {
+    const entries = await storage.getLoanCostEntries(applicationId);
+    const totals: Record<string, number> = {};
+    for (const entry of entries) {
+      const feeId = COST_CATEGORY_TO_FEE_ID[entry.category];
+      if (!feeId) continue;
+      totals[feeId] = (totals[feeId] ?? 0) + Number(entry.amount || 0);
+    }
+    // A category that nets to zero or below is not a disclosable charge.
+    for (const key of Object.keys(totals)) {
+      if (!(totals[key] > 0)) delete totals[key];
+    }
+    return toActualFeeMap(
+      Object.entries(totals).map(([feeId, amount]) => ({
+        feeId,
+        amount,
+        source: "loan cost ledger",
+        recordedAt: new Date().toISOString(),
+      })),
+    );
+  } catch (err) {
+    console.warn("[loanEstimate] actual-fee lookup failed; using estimates:", err);
+    return {};
+  }
+}
+
 export async function generateLoanEstimate(applicationId: string): Promise<LoanEstimateData> {
   const application = await storage.getLoanApplication(applicationId);
   if (!application) {
@@ -252,6 +302,11 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     monthlyPMI,
     prepaidInterestDays: prepaidInterestDaysFor(closingDate),
     compensation,
+    // Real quotes for this file replace the unverified national estimates
+    // (F-9). Derived from the cost ledger: an appraisal invoice already booked
+    // against the file is the actual charge, so disclose it rather than the
+    // $650 working figure and remove the cure instead of measuring it.
+    actualFees: await resolveActualFeesFor(applicationId),
     lenderCredits: llpaResult.fthbWaiver > 0 ? llpaResult.fthbWaiver * loanAmount / 100 : 0,
   });
   const {

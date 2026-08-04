@@ -773,3 +773,72 @@ export const insertLoanEstimateDisclosureSchema = createInsertSchema(loanEstimat
 });
 export type InsertLoanEstimateDisclosure = z.infer<typeof insertLoanEstimateDisclosureSchema>;
 export type LoanEstimateDisclosure = typeof loanEstimateDisclosures.$inferSelect;
+
+// =============================================================================
+// LOAN COST LEDGER (unit economics — cost per file, cost per funded loan)
+// =============================================================================
+// The platform had a revenue side (lender_submissions compensation columns)
+// and no cost side at all: no cost-per-file, no vendor invoice tracking, no LO
+// commission. Gross margin per loan was uncomputable, and the one recurring
+// hard cost the platform actually triggers — credit pulls, which the task
+// engine deliberately re-runs via CRD_EXPIRED — was unmetered.
+//
+// The metric that matters is not cost per LOAN but cost per FUNDED loan: costs
+// are incurred on every file, revenue arrives only on the ones that close, so
+// the denominator is the funded count, not the application count.
+//
+// One row per cost incurred against a file. Immutable — a correction is a new
+// row (a reversal), never an edit, so the ledger stays auditable.
+export const LOAN_COST_CATEGORIES = [
+  "credit_report",
+  "appraisal",
+  "avm",
+  "verification",
+  "aus",
+  "title",
+  "flood",
+  "marketing",
+  "other",
+] as const;
+export type LoanCostCategory = (typeof LOAN_COST_CATEGORIES)[number];
+
+export const loanCostEntries = pgTable(
+  "loan_cost_entries",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    applicationId: varchar("application_id").references(() => loanApplications.id).notNull(),
+    /** One of LOAN_COST_CATEGORIES. */
+    category: varchar("category", { length: 30 }).$type<LoanCostCategory>().notNull(),
+    /** Who we paid — the vendor/adapter name. */
+    vendor: varchar("vendor", { length: 100 }),
+    /** Dollars. Negative is permitted for an explicit reversal/refund row. */
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    incurredAt: timestamp("incurred_at").defaultNow().notNull(),
+    /**
+     * True when the platform booked this automatically at the moment it
+     * triggered the cost (e.g. a credit pull), false when staff keyed an
+     * invoice. Distinguishes a metered cost from a recalled one.
+     */
+    automatic: boolean("automatic").notNull().default(false),
+    /**
+     * True while the underlying vendor leg is a deterministic simulation, so
+     * simulated spend never masquerades as real spend in a margin figure.
+     */
+    simulated: boolean("simulated").notNull().default(false),
+    description: text("description"),
+    recordedBy: varchar("recorded_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => [index("loan_cost_entries_app_idx").on(table.applicationId, table.incurredAt)],
+);
+
+export const insertLoanCostEntrySchema = createInsertSchema(loanCostEntries)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    category: z.enum(LOAN_COST_CATEGORIES),
+  });
+export type InsertLoanCostEntry = z.infer<typeof insertLoanCostEntrySchema>;
+export type LoanCostEntry = typeof loanCostEntries.$inferSelect;
