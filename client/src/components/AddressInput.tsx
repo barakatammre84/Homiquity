@@ -39,7 +39,7 @@ export function AddressInput({ onSelect, onChange, placeholder = "Enter an addre
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const fetchSuggestions = useCallback(async (input: string) => {
     if (input.length < 3) {
