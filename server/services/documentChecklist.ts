@@ -40,6 +40,7 @@ export type ChecklistTask = Pick<
   | "id"
   | "taskType"
   | "documentCategory"
+  | "documentYear"
   | "title"
   | "status"
   | "verificationStatus"
@@ -80,10 +81,17 @@ export interface ChecklistItemDto {
   uploadedAt?: string;
   rejectionReason?: string | null;
   reviewedAt?: string | null;
+  /**
+   * Borrower-facing context only: `notes`/`instructions` carry the
+   * staff-authored documentInstructions — NEVER tasks.verificationNotes,
+   * which is staff review-axis free text.
+   */
   notes?: string;
   requestingTeam?: string;
   isCustomRequest?: boolean;
   instructions?: string;
+  /** Which year's document ("2023") — from the requesting task; conditions have no year. */
+  documentYear?: string;
 }
 
 export interface ChecklistStats {
@@ -203,10 +211,11 @@ export function buildDocumentChecklist(input: {
           acceptedTypes: [std.type],
           label: std.label,
           required: std.required,
-          notes: task?.verificationNotes ?? undefined,
+          notes: task?.documentInstructions ?? undefined,
           requestingTeam: task?.requestingTeam ?? undefined,
           isCustomRequest: task?.isCustomRequest ?? undefined,
           instructions: task?.documentInstructions ?? undefined,
+          documentYear: task?.documentYear ?? undefined,
         },
         doc,
         taskAwaitingReview(task) ? "verifying" : "needed",
@@ -237,6 +246,7 @@ export function buildDocumentChecklist(input: {
           requestingTeam: task.requestingTeam ?? undefined,
           isCustomRequest: task.isCustomRequest ?? undefined,
           instructions: task.documentInstructions ?? undefined,
+          documentYear: task.documentYear ?? undefined,
         },
         doc,
         taskAwaitingReview(task) ? "verifying" : "needed",
