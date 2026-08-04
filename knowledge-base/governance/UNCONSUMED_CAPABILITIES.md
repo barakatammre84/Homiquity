@@ -45,13 +45,6 @@ surface** — the precise shape that produced F-14.
 | Contingent-liability register | `GET /api/reports/contingent-liabilities` | none |
 | TRID fee-tolerance review | `GET /api/loan-applications/:id/le-tolerance` | none |
 | Per-file cost ledger | `GET`/`POST /api/loan-applications/:id/costs` | none |
-| LO compensation election | `PATCH /api/loan-applications/:id/compensation` | none |
-
-**Note the asymmetry.** The compensation election is *load-bearing without a UI*: the Loan
-Estimate now refuses to generate without it, so until a staff surface exists, someone must call
-that endpoint directly for any file to price. That one is not "unconsumed pending a decision" — it
-is **a gap that blocks the loop**, and it should be wired first regardless of what happens to the
-reports.
 
 The four report endpoints are the genuine judgement call. They answer questions the business could
 not previously ask (what does a funded loan earn, what could we owe, which disclosed figures are
@@ -63,7 +56,9 @@ guesses) — but an answer nobody reads is not an answer.
 
 ## Closed entries
 
-*(none yet — this register opened 2026-08-04)*
+| Capability | Outcome | When | How |
+|---|---|---|---|
+| LO compensation election (`PATCH /api/loan-applications/:id/compensation`) | **Consumed** | 2026-08-04 | `CompensationCard` on the staff BorrowerFile overview tab. This was the register's flagged asymmetry — load-bearing without a UI (the Loan Estimate refused to generate without an election) — and was wired the same day, first, as the register demanded. |
 
 ---
 
