@@ -1,8 +1,8 @@
--- 0042: per-file cost ledger — the unit-economics cost side (audit finding F-11)
+-- 0043: per-file cost ledger — the unit-economics cost side (audit finding F-11)
 -- Expand-only, idempotent: a new table plus its index. Nothing existing is
 -- altered, so the currently-deployed app is unaffected by its presence.
 --
--- The platform had a revenue side (0041) and no cost side at all: no
+-- The platform had a revenue side (0042) and no cost side at all: no
 -- cost-per-file, no vendor invoice tracking, no commission. Gross margin per
 -- loan was uncomputable, and the one recurring hard cost the platform itself
 -- triggers — credit pulls, which the task engine deliberately re-runs via

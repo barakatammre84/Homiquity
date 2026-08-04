@@ -31,6 +31,7 @@ export default defineConfig({
       "tests/counterpartyAndCompensation.test.ts",
       "tests/compensationClawback.test.ts",
       "tests/feeProvenanceAndCosts.test.ts",
+      "tests/leDisclosedFeeProvenance.test.ts",
       "tests/extensionFeeAndRegZBasis.test.ts",
       "tests/contingentLiabilities.test.ts",
       "tests/businessChannel.test.ts",

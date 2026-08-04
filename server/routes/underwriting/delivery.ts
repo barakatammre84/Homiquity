@@ -105,27 +105,22 @@ export function registerDeliveryRoutes(
         });
       }
 
-      // Revised-LE delivery (Reg Z §1026.19(e)(4)): the LE is regenerated from
-      // current file data on every fetch, so a borrower retrieval also
-      // satisfies any open change-of-circumstance redisclosures — same ESIGN
-      // electronic-delivery rationale as the leIssuedDate stamp above.
-      if (application.userId === req.user!.id) {
-        const { markRevisedLeDelivered } = await import("../../services/changeOfCircumstance");
-        const stamped = await markRevisedLeDelivered(id);
-        if (stamped.length > 0) {
-          const { logAudit } = await import("../../auditLog");
-          logAudit(req, "trid.revised_le_delivered", "loan_application", id, {
-            cocIds: stamped.map(c => c.id),
-          });
-        }
-      }
-
       // TRID good-faith tolerance (Reg Z §1026.19(e)(3)). The LE above is
       // computed from live file data; what the BORROWER is entitled to see is
       // the disclosure that was issued, until a changed circumstance resets
       // it. reconcileDisclosure persists version 1 on first delivery and,
       // thereafter, either rediscloses under an open CoC or holds the baseline
       // and records the delta as a cure. Staff previews never touch it.
+      //
+      // ORDER IS LOAD-BEARING: reconcileDisclosure asks storage for the OPEN
+      // changes of circumstance, and markRevisedLeDelivered (below) closes them
+      // by setting status to "redisclosed". Stamping first — as this route did
+      // originally — meant reconcile always saw an empty list, so
+      // `increase_justified` was unreachable and every CoC-backed increase was
+      // booked as a cure forever. It also stamped "revised LE delivered" on the
+      // same request that served the borrower the OLD baseline figures, which
+      // asserts a §1026.19(e)(4)(i) delivery that did not happen. Reconcile
+      // first, then stamp only what was actually redisclosed.
       const isBorrower = application.userId === req.user!.id;
       if (isBorrower) {
         const { reconcileDisclosure } = await import("../../services/leDisclosureBaseline");
@@ -145,11 +140,27 @@ export function registerDeliveryRoutes(
 
         // Hold the issued figures. Regenerating a higher LE without a changed
         // circumstance is not a redisclosure — it is the violation, hidden.
+        // Returns before the stamp below: nothing was redisclosed here, so
+        // recording a revised-LE delivery would falsify the record.
         if (decision.action === "blocked_no_coc") {
           const formattedBaseline = formatLoanEstimateForDisplay(
             applyDisclosedFees(le, decision.disclosure.snapshot as DisclosureSnapshot),
           );
           return res.json(formattedBaseline);
+        }
+
+        // Revised-LE delivery (Reg Z §1026.19(e)(4)): the borrower is being
+        // served figures that reflect the current file, so any open change of
+        // circumstance has now been redisclosed to them — same ESIGN
+        // electronic-delivery rationale as the leIssuedDate stamp above.
+        const { markRevisedLeDelivered } = await import("../../services/changeOfCircumstance");
+        const stamped = await markRevisedLeDelivered(id);
+        if (stamped.length > 0) {
+          const { logAudit } = await import("../../auditLog");
+          logAudit(req, "trid.revised_le_delivered", "loan_application", id, {
+            cocIds: stamped.map(c => c.id),
+            reconcileAction: decision.action,
+          });
         }
       }
 

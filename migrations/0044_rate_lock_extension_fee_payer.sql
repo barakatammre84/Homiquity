@@ -1,4 +1,4 @@
--- 0043: who pays a rate-lock extension fee (audit finding F-10)
+-- 0044: who pays a rate-lock extension fee (audit finding F-10)
 -- Expand-only, idempotent. The currently-deployed app tolerates the new
 -- columns and vice-versa.
 --

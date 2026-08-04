@@ -174,15 +174,28 @@ const COST_CATEGORY_TO_FEE_ID: Record<string, string> = {
 /**
  * Actual third-party charges recorded for a file, keyed by fee id. Multiple
  * entries in a category sum (a supplemental appraisal invoice adds to the
- * first); simulated and reversal-negative entries are respected because they
- * are part of the real total. Failures degrade to "no actuals" — a ledger
- * problem must not stop a Loan Estimate from being produced.
+ * first) and reversal-negative entries are respected, because both are part of
+ * the real invoiced total. Failures degrade to "no actuals" — a ledger problem
+ * must not stop a Loan Estimate from being produced.
+ *
+ * SIMULATED ENTRIES ARE EXCLUDED. The cost ledger records what Homiquity pays
+ * a vendor; this function turns that into what the BORROWER is charged on a
+ * disclosure. While an adapter is a deterministic simulation it books its
+ * platform-assumption unit cost — creditPulls.ts books a soft pull at $5
+ * against an estimated $75 credit-report line — and letting that through
+ * replaced a disclosed fee with a made-up one. `credit_report` is a
+ * zero-tolerance line (shared/compliance/feeTolerance.ts), where an
+ * understatement at closing is a dollar-for-dollar cure, so the simulation
+ * would have manufactured real liability. creditPulls.ts sets `simulated`
+ * precisely "so they cannot leak"; honoring that flag here is what makes the
+ * claim true. Only a real invoice may move a disclosed number.
  */
 async function resolveActualFeesFor(applicationId: string): Promise<ActualFeeMap> {
   try {
     const entries = await storage.getLoanCostEntries(applicationId);
     const totals: Record<string, number> = {};
     for (const entry of entries) {
+      if (entry.simulated) continue;
       const feeId = COST_CATEGORY_TO_FEE_ID[entry.category];
       if (!feeId) continue;
       totals[feeId] = (totals[feeId] ?? 0) + Number(entry.amount || 0);
