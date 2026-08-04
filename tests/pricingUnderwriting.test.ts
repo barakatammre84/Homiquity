@@ -75,6 +75,7 @@ async function publicGet(path: string) {
 
 describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => {
   let cookie: string;
+  let staffCookie: string;
   let applicationId: string;
   let propertyId: string | undefined;
 
@@ -99,6 +100,11 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
 
   beforeAll(async () => {
     cookie = await login("buyer@test.com", process.env.DEV_TEST_PASSWORD!);
+    // The engine-calculation family is staff-gated (FINANCIAL_VERIFICATION_ROLES,
+    // 2026-08-04 sovereign-stack adjudication §3.1). admin passes
+    // getLoanApplicationWithAccess on any file, so no deal-team seeding is needed
+    // for the fixture application the buyer creates below.
+    staffCookie = await login("admin@test.com", process.env.DEV_TEST_PASSWORD!);
 
     // Self-cleaning by reuse: find an existing fixture application before
     // creating one, so consecutive runs don't accumulate orphan pre-approved
@@ -143,11 +149,40 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
   });
 
   // ==========================================================================
+  // 0. Staff gate — the engine family is not borrower-reachable
+  // ==========================================================================
+  describe("engine calculation endpoints refuse the borrower (403)", () => {
+    // Same boundary the source guard in tests/routeGateDrift.test.ts pins:
+    // requireRole(...FINANCIAL_VERIFICATION_ROLES). This block proves it at the
+    // HTTP layer — a borrower 403s on every engine endpoint even for their OWN
+    // application (the figures are staff analysis over unverified inputs).
+    const ENGINE_ENDPOINTS = [
+      "calculate-income",
+      "calculate-assets",
+      "calculate-liabilities",
+      "calculate-dti",
+      "check-property-eligibility",
+      "calculate-pricing",
+    ];
+
+    it("borrower session gets 403 on all six, even on their own application", async () => {
+      for (const endpoint of ENGINE_ENDPOINTS) {
+        const res = await authPost(
+          cookie,
+          `/api/loan-applications/${applicationId}/${endpoint}`,
+          {},
+        );
+        expect(res.status, `${endpoint} must be staff-gated`).toBe(403);
+      }
+    });
+  });
+
+  // ==========================================================================
   // 1. calculate-dti — policy scalars CONVENTIONAL_DTI_CAP (43) + STRETCH (50)
   // ==========================================================================
   describe("POST /api/loan-applications/:id/calculate-dti", () => {
     it("computes ratios and resolves DTI caps from the matrices (pass)", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-dti`, {
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-dti`, {
         qualifyingIncome: "10000",
         housingExpense: "2500",
         nonHousingDebts: "500",
@@ -168,7 +203,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
     });
 
     it("flags a stretch DTI between the 43 cap and the 50 stretch limit", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-dti`, {
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-dti`, {
         qualifyingIncome: "10000",
         housingExpense: "4000",
         nonHousingDebts: "500",
@@ -179,7 +214,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
     });
 
     it("fails a DTI above the 50 stretch limit", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-dti`, {
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-dti`, {
         qualifyingIncome: "10000",
         housingExpense: "5500",
         nonHousingDebts: "500",
@@ -190,7 +225,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
     });
 
     it("rejects missing parameters with 400", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-dti`, {
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-dti`, {
         qualifyingIncome: "10000",
       });
       expect(res.status).toBe(400);
@@ -202,7 +237,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
   // ==========================================================================
   describe("POST /api/loan-applications/:id/calculate-pricing", () => {
     it("resolves LLPA points and PMI from the matrices (FICO 700 @ 85% LTV)", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-pricing`, {
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-pricing`, {
         loanAmount: "200000",
         creditScore: "700",
         ltv: "85",
@@ -221,7 +256,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
     });
 
     it("returns zero LLPA and zero PMI below the MI trigger (FICO 800 @ 75% LTV)", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-pricing`, {
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-pricing`, {
         loanAmount: "300000",
         creditScore: "800",
         ltv: "75",
@@ -232,7 +267,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
     });
 
     it("resolves a high-LTV low-FICO LLPA cell (FICO 660 @ 97% LTV)", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-pricing`, {
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-pricing`, {
         loanAmount: "300000",
         creditScore: "660",
         ltv: "97",
@@ -242,7 +277,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
     });
 
     it("rejects missing parameters with 400", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-pricing`, {
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-pricing`, {
         loanAmount: "200000",
       });
       expect(res.status).toBe(400);
@@ -255,7 +290,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
   describe("POST /api/loan-applications/:id/check-property-eligibility", () => {
     it("applies the seeded 95% LTV cap and returns a stable shape", async () => {
       const res = await authPost(
-        cookie,
+        staffCookie,
         `/api/loan-applications/${applicationId}/check-property-eligibility`,
         {
           borrowerAssets: "100000",
@@ -281,7 +316,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
 
     it("rejects missing parameters with 400", async () => {
       const res = await authPost(
-        cookie,
+        staffCookie,
         `/api/loan-applications/${applicationId}/check-property-eligibility`,
         { borrowerAssets: "100000" },
       );
@@ -295,7 +330,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
   // ==========================================================================
   describe("POST /api/loan-applications/:id/calculate-income|assets|liabilities", () => {
     it("calculate-income returns the qualifying-income shape", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-income`, {});
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-income`, {});
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty("baseMonthlyIncome");
       expect(res.body).toHaveProperty("totalQualifyingIncome");
@@ -304,7 +339,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
     });
 
     it("calculate-assets returns the verified-assets shape", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-assets`, {
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-assets`, {
         downPaymentAndClosing: "50000",
       });
       expect(res.status).toBe(200);
@@ -315,7 +350,7 @@ describe("Pricing & Underwriting live endpoints (post matrix-migration)", () => 
     });
 
     it("calculate-liabilities returns the assessed-liabilities shape", async () => {
-      const res = await authPost(cookie, `/api/loan-applications/${applicationId}/calculate-liabilities`, {});
+      const res = await authPost(staffCookie, `/api/loan-applications/${applicationId}/calculate-liabilities`, {});
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty("totalMonthlyPayment");
       expect(res.body).toHaveProperty("excludedDebts");

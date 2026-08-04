@@ -205,3 +205,10 @@ PR body (part of the §5.8 contract).
 - **Outbound messaging:** `server/services/emailService.ts`,
   `server/services/smsCompliance.ts`, webhook receivers under `/api/webhooks/*`.
 - **Logging near PII:** any widening of `RESPONSE_BODY_LOG_ALLOWLIST` in `server/app.ts`.
+- **New PII sub-processor:** any PR that introduces or activates an external service
+  receiving borrower PII (storage, OCR/extraction, income/asset verification, transcript
+  retrieval, messaging providers). The review covers the egress path end-to-end, and a
+  vendor-diligence note lands in `governance/security/` in the same program (pattern: the
+  Plaid clearance pack). *(Added by the
+  [2026-08-04 sovereign-stack adjudication](../logs/2026-08-04-sovereign-underwriting-stack-pitch-adjudication.md)
+  §3.4 — every external pitch in that series proposed an unreviewed new PII processor.)*

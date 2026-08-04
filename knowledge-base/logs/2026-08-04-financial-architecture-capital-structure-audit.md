@@ -519,7 +519,7 @@ the compensation model as a required input instead of being blind to it.**
 | Simulator lists a missing election as a named gap (`NEEDS_MORE_INFO`) rather than pricing blind | `server/services/scenarioSimulator.ts` |
 | QM check falls back to the computed floor; **never returns "compliant" off missing evidence** | `server/services/mismoValidation.ts` |
 | Staff election endpoint, assignment-scoped, audit-logged, frozen after LE issuance | `server/routes/lending/pricing.ts` |
-| Two nullable columns, deliberately not backfilled | `shared/schema/lendingCore.ts`, `migrations/0038_lo_compensation_model.sql` |
+| Two nullable columns, deliberately not backfilled | `shared/schema/lendingCore.ts`, `migrations/0039_lo_compensation_model.sql` |
 | 22 new tests (`tests/loCompensation.test.ts` + 4 in `tests/mismoValidation.test.ts`) | suite 1443 green |
 
 **F-1.** `computeClosingCosts` consults `borrowerPaidOriginationAllowed(model)`. Lender-paid ⇒
@@ -570,7 +570,7 @@ exactly what the three-valued verdict encodes. The design can over-flag; it cann
 
 ### Migration note
 
-`0038` is expand-only and idempotent (`ADD COLUMN IF NOT EXISTS`), and **deliberately does not
+`0039` is expand-only and idempotent (`ADD COLUMN IF NOT EXISTS`), and **deliberately does not
 backfill**. The compensation model is a fact about how a transaction was papered; inventing one
 for existing rows would falsify a compliance record — the same principle as the standing rule
 against backfilling guessed values on provenance columns. Existing files read as "not elected"
@@ -584,7 +584,7 @@ and fail closed until staff elect a model, which is the correct outcome rather t
 
 **What shipped.** `rate_locks` gained the fields that make a lock a commitment — `lenderId`,
 `lockConfirmationNumber`, `confirmedRate`, `confirmedExpiresAt`, `confirmedBy`/`confirmedAt`, and
-a `simulated` flag mirroring `lender_submissions` (migration `0039`).
+a `simulated` flag mirroring `lender_submissions` (migration `0040`).
 `POST /api/rate-locks` now **requires all four confirmation fields**, validates the lender
 against the `shared/wholesaleLenders.ts` catalog, and rejects an already-expired confirmation.
 
@@ -602,7 +602,7 @@ Three consequences worth naming:
   the expiry forward, and refuses outright to extend an unconfirmed row.
 
 **Legacy rows are not backfilled.** `shared/rateLockConfirmation.ts` is the single place that
-answers "is this a real commitment?", and rows written before `0039` resolve to
+answers "is this a real commitment?", and rows written before `0040` resolve to
 `unconfirmed_quote` — which is what they always were. Inventing a confirmation number to make
 them look like locks would repeat the original error in the database. The list endpoint annotates
 every row with `kind` / `lenderConfirmed` / `label`, and the borrower-facing copy for an
@@ -622,7 +622,7 @@ the LE from live file data on every fetch and nothing was persisted, so the figu
 saw on day one silently became different figures on day ten. No tolerance comparison was possible
 because **the baseline did not exist anywhere**.
 
-**What shipped.** A new immutable `loan_estimate_disclosures` table (migration `0040`) — one row
+**What shipped.** A new immutable `loan_estimate_disclosures` table (migration `0041`) — one row
 per issued disclosure, holding the tolerance-bucketed fee snapshot, and linking any revision to
 the change-of-circumstance record that authorized it. Plus a pure tolerance engine
 (`shared/compliance/feeTolerance.ts`) and the IO seam around it
@@ -667,7 +667,7 @@ verified against the regulation.
 Typecheck clean · **1,473 unit tests green** (up from 1,421 at audit time; +52 across
 `loCompensation`, `feeTolerance`, `rateLockConfirmation`, `leDisclosureBaseline`, and 4 added to
 `mismoValidation`) · schema-migration guard, design-token ratchet, regulatory-freshness gate and
-production build all pass. Migrations `0038`–`0040` are expand-only and idempotent; none
+production build all pass. Migrations `0039`–`0041` are expand-only and idempotent; none
 backfills.
 
 ---
@@ -710,7 +710,7 @@ Two supporting pieces:
 
 ### F-6 — revenue now exists
 
-**What shipped.** A two-sided compensation lifecycle on `lender_submissions` (migration `0041`)
+**What shipped.** A two-sided compensation lifecycle on `lender_submissions` (migration `0042`)
 plus a pure ledger module (`shared/compensationLedger.ts`):
 
 - **Expected** is snapshotted at submission from the comp plan elected on the application (F-1's
@@ -745,7 +745,7 @@ remains uncomputable. Pull-through, previously unmeasurable, now is.
 ### Verification
 
 Typecheck clean · **1,489 unit tests green** (+16) · schema guard, design-token ratchet,
-regulatory-freshness gate and production build all pass. Migration `0041` is expand-only,
+regulatory-freshness gate and production build all pass. Migration `0042` is expand-only,
 idempotent, and does not backfill: submissions predating it have no captured expectation, and
 computing one retroactively from today's comp plan would invent a revenue record. They report as
 `pending` — an honest gap.
@@ -817,7 +817,7 @@ the platform a loan paid off, so `totalAtRisk` is exposure, not realized loss.
 
 Typecheck clean · **1,505 unit tests green** (+16) · schema guard, design-token ratchet,
 regulatory-freshness gate and production build all pass. No migration — F-8 reads columns
-migration `0041` already added.
+migration `0042` already added.
 
 ---
 
@@ -858,7 +858,7 @@ human-with-a-statute task, not an engineering one.
 
 ### F-11 — the cost side exists
 
-**What shipped.** `loan_cost_entries` (migration `0042`) — append-only, one row per cost incurred
+**What shipped.** `loan_cost_entries` (migration `0043`) — append-only, one row per cost incurred
 against a file — plus a pure roll-up in `shared/costLedger.ts`.
 
 **Credit pulls are metered automatically.** `requestCreditPull` books a cost entry at the moment
@@ -890,7 +890,7 @@ would be the same class of error as reporting pipeline volume as revenue.
 ### Verification
 
 Typecheck clean · **1,521 unit tests green** (+16) · schema guard, design-token ratchet,
-regulatory-freshness gate and production build all pass. Migration `0042` is expand-only and
+regulatory-freshness gate and production build all pass. Migration `0043` is expand-only and
 idempotent.
 
 ---
@@ -900,7 +900,7 @@ idempotent.
 ### F-10 — the extension fee now has a payer
 
 `rate_locks` gained `extensionFeePaidBy` (`borrower` | `broker` | `lender`) and
-`extensionFeeCocId` (migration `0043`). The extend endpoint enforces two rules:
+`extensionFeeCocId` (migration `0044`). The extend endpoint enforces two rules:
 
 1. **A fee requires a payer.** Any `extensionFee > 0` must name who bears it. An amount with no
    payer cannot distinguish a cost we absorbed from a charge we passed through — which was the
@@ -944,7 +944,7 @@ old permissive cap and were updated — that shift *is* the fix.
 ### Verification
 
 Typecheck clean · **1,529 unit tests green** (+8, plus 3 boundary tests re-based) · schema guard,
-design-token ratchet, regulatory-freshness gate and production build all pass. Migration `0043`
+design-token ratchet, regulatory-freshness gate and production build all pass. Migration `0044`
 is expand-only, idempotent, and does not backfill — existing locks genuinely have no recorded
 payer, and guessing one would falsify a fee record.
 
@@ -1005,7 +1005,7 @@ question stays unanswerable until someone with the state statute fills that line
 
 Typecheck clean · **1,544 unit tests green** (+15) · schema guard, design-token ratchet, KB index
 guard, regulatory-freshness gate and production build all pass. No migration — the register reads
-tables migrations `0040`–`0043` already added.
+tables migrations `0041`–`0044` already added.
 
 ---
 

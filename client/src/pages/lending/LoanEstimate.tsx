@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { loanApplicationKeys } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { ConsentGateCard } from "@/components/ConsentGateCard";
 import { useParams, Link } from "wouter";
@@ -116,7 +117,7 @@ export default function LoanEstimate() {
 
   const queryClient = useQueryClient();
   const { data: le, isLoading, error } = useQuery<LoanEstimateData>({
-    queryKey: ['/api/loan-applications', id, 'loan-estimate'],
+    queryKey: loanApplicationKeys.loanEstimate(id),
     enabled: !!id && !authLoading,
     retry: (failureCount, err) =>
       !(err instanceof Error && err.message.includes("CONSENT_REQUIRED")) && failureCount < 2,
@@ -145,7 +146,7 @@ export default function LoanEstimate() {
           applicationId={id}
           consentType="e_disclosure"
           onConsented={() =>
-            queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', id, 'loan-estimate'] })
+            queryClient.invalidateQueries({ queryKey: loanApplicationKeys.loanEstimate(id) })
           }
         />
       </div>

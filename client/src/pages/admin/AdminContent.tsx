@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,14 +13,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Form,
   FormControl,
   FormField,
   FormItem,
@@ -44,7 +34,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
+import { useAdminCrudMutations } from "@/hooks/useAdminCrudMutations";
+import { AdminEntityDialog } from "./AdminEntityDialog";
 import {
   Plus,
   Pencil,
@@ -116,7 +107,6 @@ type CategoryFormData = z.infer<typeof categoryFormSchema>;
 
 export default function AdminContent() {
   const { user, isLoading: authLoading } = useAuth();
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("articles");
   const [articleDialogOpen, setArticleDialogOpen] = useState(false);
   const [faqDialogOpen, setFaqDialogOpen] = useState(false);
@@ -173,164 +163,46 @@ export default function AdminContent() {
     enabled: !!user && user.role === "admin",
   });
 
-  const createArticleMutation = useMutation({
-    mutationFn: async (data: ArticleFormData) => {
-      const payload = {
-        ...data,
-        categoryId: data.categoryId || null,
-        summary: data.summary || null,
-      };
-      return apiRequest("POST", "/api/admin/articles", payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/articles"] });
-      toast({ title: "Article created successfully" });
+  // All three entities follow the admin REST convention, so the create/update/
+  // delete trio comes from one hook (see useAdminCrudMutations). Only the
+  // endpoint, the toast wording, and the payload nulling differ.
+  const articleMutations = useAdminCrudMutations<ArticleFormData>({
+    endpoint: "/api/admin/articles",
+    successLabel: "Article",
+    errorLabel: "article",
+    toPayload: (data) => ({
+      ...data,
+      categoryId: data.categoryId || null,
+      summary: data.summary || null,
+    }),
+    onSaved: () => {
       setArticleDialogOpen(false);
       setEditingArticle(null);
       articleForm.reset();
     },
-    onError: () => {
-      toast({ title: "Failed to create article", variant: "destructive" });
-    },
   });
 
-  const updateArticleMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: ArticleFormData }) => {
-      const payload = {
-        ...data,
-        categoryId: data.categoryId || null,
-        summary: data.summary || null,
-      };
-      return apiRequest("PATCH", `/api/admin/articles/${id}`, payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/articles"] });
-      toast({ title: "Article updated successfully" });
-      setArticleDialogOpen(false);
-      setEditingArticle(null);
-      articleForm.reset();
-    },
-    onError: () => {
-      toast({ title: "Failed to update article", variant: "destructive" });
-    },
-  });
-
-  const deleteArticleMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/admin/articles/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/articles"] });
-      toast({ title: "Article deleted successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete article", variant: "destructive" });
-    },
-  });
-
-  const createFaqMutation = useMutation({
-    mutationFn: async (data: FaqFormData) => {
-      const payload = {
-        ...data,
-        categoryId: data.categoryId || null,
-      };
-      return apiRequest("POST", "/api/admin/faqs", payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/faqs"] });
-      toast({ title: "FAQ created successfully" });
+  const faqMutations = useAdminCrudMutations<FaqFormData>({
+    endpoint: "/api/admin/faqs",
+    successLabel: "FAQ",
+    errorLabel: "FAQ",
+    toPayload: (data) => ({ ...data, categoryId: data.categoryId || null }),
+    onSaved: () => {
       setFaqDialogOpen(false);
       setEditingFaq(null);
       faqForm.reset();
     },
-    onError: () => {
-      toast({ title: "Failed to create FAQ", variant: "destructive" });
-    },
   });
 
-  const updateFaqMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: FaqFormData }) => {
-      const payload = {
-        ...data,
-        categoryId: data.categoryId || null,
-      };
-      return apiRequest("PATCH", `/api/admin/faqs/${id}`, payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/faqs"] });
-      toast({ title: "FAQ updated successfully" });
-      setFaqDialogOpen(false);
-      setEditingFaq(null);
-      faqForm.reset();
-    },
-    onError: () => {
-      toast({ title: "Failed to update FAQ", variant: "destructive" });
-    },
-  });
-
-  const deleteFaqMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/admin/faqs/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/faqs"] });
-      toast({ title: "FAQ deleted successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete FAQ", variant: "destructive" });
-    },
-  });
-
-  const createCategoryMutation = useMutation({
-    mutationFn: async (data: CategoryFormData) => {
-      const payload = {
-        ...data,
-        description: data.description || null,
-      };
-      return apiRequest("POST", "/api/admin/content-categories", payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/content-categories"] });
-      toast({ title: "Category created successfully" });
+  const categoryMutations = useAdminCrudMutations<CategoryFormData>({
+    endpoint: "/api/admin/content-categories",
+    successLabel: "Category",
+    errorLabel: "category",
+    toPayload: (data) => ({ ...data, description: data.description || null }),
+    onSaved: () => {
       setCategoryDialogOpen(false);
       setEditingCategory(null);
       categoryForm.reset();
-    },
-    onError: () => {
-      toast({ title: "Failed to create category", variant: "destructive" });
-    },
-  });
-
-  const updateCategoryMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: CategoryFormData }) => {
-      const payload = {
-        ...data,
-        description: data.description || null,
-      };
-      return apiRequest("PATCH", `/api/admin/content-categories/${id}`, payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/content-categories"] });
-      toast({ title: "Category updated successfully" });
-      setCategoryDialogOpen(false);
-      setEditingCategory(null);
-      categoryForm.reset();
-    },
-    onError: () => {
-      toast({ title: "Failed to update category", variant: "destructive" });
-    },
-  });
-
-  const deleteCategoryMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest("DELETE", `/api/admin/content-categories/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/content-categories"] });
-      toast({ title: "Category deleted successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to delete category", variant: "destructive" });
     },
   });
 
@@ -402,25 +274,25 @@ export default function AdminContent() {
 
   const handleArticleSubmit = (data: ArticleFormData) => {
     if (editingArticle) {
-      updateArticleMutation.mutate({ id: editingArticle.id, data });
+      articleMutations.update.mutate({ id: editingArticle.id, data });
     } else {
-      createArticleMutation.mutate(data);
+      articleMutations.create.mutate(data);
     }
   };
 
   const handleFaqSubmit = (data: FaqFormData) => {
     if (editingFaq) {
-      updateFaqMutation.mutate({ id: editingFaq.id, data });
+      faqMutations.update.mutate({ id: editingFaq.id, data });
     } else {
-      createFaqMutation.mutate(data);
+      faqMutations.create.mutate(data);
     }
   };
 
   const handleCategorySubmit = (data: CategoryFormData) => {
     if (editingCategory) {
-      updateCategoryMutation.mutate({ id: editingCategory.id, data });
+      categoryMutations.update.mutate({ id: editingCategory.id, data });
     } else {
-      createCategoryMutation.mutate(data);
+      categoryMutations.create.mutate(data);
     }
   };
 
@@ -525,8 +397,8 @@ export default function AdminContent() {
                           <Button
                             variant="ghost"
                             size="icon" aria-label="Delete"
-                            onClick={() => deleteArticleMutation.mutate(article.id)}
-                            disabled={deleteArticleMutation.isPending}
+                            onClick={() => articleMutations.remove.mutate(article.id)}
+                            disabled={articleMutations.remove.isPending}
                             data-testid={`button-delete-article-${article.id}`}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -596,8 +468,8 @@ export default function AdminContent() {
                           <Button
                             variant="ghost"
                             size="icon" aria-label="Delete"
-                            onClick={() => deleteFaqMutation.mutate(faq.id)}
-                            disabled={deleteFaqMutation.isPending}
+                            onClick={() => faqMutations.remove.mutate(faq.id)}
+                            disabled={faqMutations.remove.isPending}
                             data-testid={`button-delete-faq-${faq.id}`}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -663,8 +535,8 @@ export default function AdminContent() {
                           <Button
                             variant="ghost"
                             size="icon" aria-label="Delete"
-                            onClick={() => deleteCategoryMutation.mutate(category.id)}
-                            disabled={deleteCategoryMutation.isPending}
+                            onClick={() => categoryMutations.remove.mutate(category.id)}
+                            disabled={categoryMutations.remove.isPending}
                             data-testid={`button-delete-category-${category.id}`}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -684,339 +556,285 @@ export default function AdminContent() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={articleDialogOpen} onOpenChange={setArticleDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingArticle ? "Edit Article" : "Create Article"}</DialogTitle>
-            <DialogDescription>
-              {editingArticle ? "Update the article details below." : "Fill in the details to create a new article."}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...articleForm}>
-            <form onSubmit={articleForm.handleSubmit(handleArticleSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={articleForm.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-article-title" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={articleForm.control}
-                  name="slug"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Slug</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-article-slug" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={articleForm.control}
-                name="summary"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Summary</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={2} data-testid="input-article-summary" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={articleForm.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Content (Markdown supported)</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={10} data-testid="input-article-content" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={articleForm.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-article-category">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {categories?.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={articleForm.control}
-                  name="isPublished"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2 pt-8">
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-article-published"
-                        />
-                      </FormControl>
-                      <FormLabel className="!mt-0">Published</FormLabel>
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setArticleDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createArticleMutation.isPending || updateArticleMutation.isPending}
-                  data-testid="button-save-article"
-                >
-                  {createArticleMutation.isPending || updateArticleMutation.isPending
-                    ? "Saving..."
-                    : editingArticle
-                    ? "Update"
-                    : "Create"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+      <AdminEntityDialog
+        open={articleDialogOpen}
+        onOpenChange={setArticleDialogOpen}
+        entityLabel="Article"
+        entityLabelLower="article"
+        isEditing={!!editingArticle}
+        form={articleForm}
+        onSubmit={handleArticleSubmit}
+        isSaving={articleMutations.isSaving}
+        saveTestId="button-save-article"
+        contentClassName="max-w-2xl max-h-[90vh] overflow-y-auto"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={articleForm.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-article-title" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={articleForm.control}
+            name="slug"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Slug</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-article-slug" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={articleForm.control}
+          name="summary"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Summary</FormLabel>
+              <FormControl>
+                <Textarea {...field} rows={2} data-testid="input-article-summary" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={articleForm.control}
+          name="content"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Content (Markdown supported)</FormLabel>
+              <FormControl>
+                <Textarea {...field} rows={10} data-testid="input-article-content" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={articleForm.control}
+            name="categoryId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-article-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {categories?.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={articleForm.control}
+            name="isPublished"
+            render={({ field }) => (
+              <FormItem className="flex items-center space-x-2 pt-8">
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="switch-article-published"
+                  />
+                </FormControl>
+                <FormLabel className="!mt-0">Published</FormLabel>
+              </FormItem>
+            )}
+          />
+        </div>
+      </AdminEntityDialog>
 
-      <Dialog open={faqDialogOpen} onOpenChange={setFaqDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingFaq ? "Edit FAQ" : "Create FAQ"}</DialogTitle>
-            <DialogDescription>
-              {editingFaq ? "Update the FAQ details below." : "Fill in the details to create a new FAQ."}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...faqForm}>
-            <form onSubmit={faqForm.handleSubmit(handleFaqSubmit)} className="space-y-4">
-              <FormField
-                control={faqForm.control}
-                name="question"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Question</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-faq-question" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={faqForm.control}
-                name="answer"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Answer</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={4} data-testid="input-faq-answer" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={faqForm.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-faq-category">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {categories?.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+      <AdminEntityDialog
+        open={faqDialogOpen}
+        onOpenChange={setFaqDialogOpen}
+        entityLabel="FAQ"
+        isEditing={!!editingFaq}
+        form={faqForm}
+        onSubmit={handleFaqSubmit}
+        isSaving={faqMutations.isSaving}
+        saveTestId="button-save-faq"
+      >
+        <FormField
+          control={faqForm.control}
+          name="question"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Question</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-faq-question" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={faqForm.control}
+          name="answer"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Answer</FormLabel>
+              <FormControl>
+                <Textarea {...field} rows={4} data-testid="input-faq-answer" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={faqForm.control}
+            name="categoryId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-faq-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {categories?.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={faqForm.control}
+            name="displayOrder"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Display Order</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    {...field}
+                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    data-testid="input-faq-order"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={faqForm.control}
+          name="isPublished"
+          render={({ field }) => (
+            <FormItem className="flex items-center space-x-2">
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  data-testid="switch-faq-published"
                 />
-                <FormField
-                  control={faqForm.control}
-                  name="displayOrder"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Display Order</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          data-testid="input-faq-order"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={faqForm.control}
-                name="isPublished"
-                render={({ field }) => (
-                  <FormItem className="flex items-center space-x-2">
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-faq-published"
-                      />
-                    </FormControl>
-                    <FormLabel className="!mt-0">Published</FormLabel>
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setFaqDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createFaqMutation.isPending || updateFaqMutation.isPending}
-                  data-testid="button-save-faq"
-                >
-                  {createFaqMutation.isPending || updateFaqMutation.isPending
-                    ? "Saving..."
-                    : editingFaq
-                    ? "Update"
-                    : "Create"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+              </FormControl>
+              <FormLabel className="!mt-0">Published</FormLabel>
+            </FormItem>
+          )}
+        />
+      </AdminEntityDialog>
 
-      <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingCategory ? "Edit Category" : "Create Category"}</DialogTitle>
-            <DialogDescription>
-              {editingCategory ? "Update the category details below." : "Fill in the details to create a new category."}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...categoryForm}>
-            <form onSubmit={categoryForm.handleSubmit(handleCategorySubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={categoryForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-category-name" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+      <AdminEntityDialog
+        open={categoryDialogOpen}
+        onOpenChange={setCategoryDialogOpen}
+        entityLabel="Category"
+        entityLabelLower="category"
+        isEditing={!!editingCategory}
+        form={categoryForm}
+        onSubmit={handleCategorySubmit}
+        isSaving={categoryMutations.isSaving}
+        saveTestId="button-save-category"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={categoryForm.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-category-name" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={categoryForm.control}
+            name="slug"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Slug</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-category-slug" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={categoryForm.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea {...field} rows={2} data-testid="input-category-description" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={categoryForm.control}
+          name="displayOrder"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Display Order</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  {...field}
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                  data-testid="input-category-order"
                 />
-                <FormField
-                  control={categoryForm.control}
-                  name="slug"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Slug</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-category-slug" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={categoryForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={2} data-testid="input-category-description" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={categoryForm.control}
-                name="displayOrder"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Display Order</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        data-testid="input-category-order"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
-                  data-testid="button-save-category"
-                >
-                  {createCategoryMutation.isPending || updateCategoryMutation.isPending
-                    ? "Saving..."
-                    : editingCategory
-                    ? "Update"
-                    : "Create"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </AdminEntityDialog>
     </PageShell>
   );
 }

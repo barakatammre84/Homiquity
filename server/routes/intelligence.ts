@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
+import { INTERNAL_STAFF_ROLES } from "@shared/roles";
 import type { User } from "@shared/schema";
 import { db } from "../db";
 import {
@@ -172,7 +173,11 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.get("/api/intelligence/lender-matches", isAuthenticated, async (req, res) => {
+  // Staff-only until the B5 multi-lender-fit deferral reopens: match results
+  // carry wholesale lender identity + uncited rate estimates, both barred from
+  // borrowers (shared/borrowerOfferView.ts doctrine). Same boundary as
+  // GET /api/admin/lender-products. Pinned by tests/routeGateDrift.test.ts.
+  app.get("/api/intelligence/lender-matches", requireRole(...INTERNAL_STAFF_ROLES), async (req, res) => {
     try {
       const user = req.user as User;
       const forceRefresh = req.query.refresh === "true";
@@ -184,7 +189,7 @@ export function registerIntelligenceRoutes(
     }
   });
 
-  app.get("/api/intelligence/lender-matches/top", isAuthenticated, async (req, res) => {
+  app.get("/api/intelligence/lender-matches/top", requireRole(...INTERNAL_STAFF_ROLES), async (req, res) => {
     try {
       const user = req.user as User;
       const limit = parseInt(firstQueryValue(req.query.limit) ?? "") || 5;

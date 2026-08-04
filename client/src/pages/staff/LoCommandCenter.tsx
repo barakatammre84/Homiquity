@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { apiRequest, ApiError } from "@/lib/queryClient";
+import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -316,7 +317,7 @@ function AttentionRail({
 // -----------------------------------------------------------------------------
 function ActiveBorrowerPane({ applicationId, onBack }: { applicationId: string; onBack: () => void }) {
   const { data, isLoading, isError } = useQuery<CockpitData>({
-    queryKey: [`/api/staff/applications/${applicationId}/cockpit`],
+    queryKey: ["/api/staff/applications", applicationId, "cockpit"],
   });
 
   if (isLoading) {
@@ -542,15 +543,7 @@ function ActionsRail({
       const pdf = await apiRequest("GET", `/api/loan-applications/${applicationId}/letter-pdf`).catch(() => {
         throw new Error("The letter was generated but the PDF isn't ready yet.");
       });
-      const blob = await pdf.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `pre-approval-${applicationId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadResponseAsFile(pdf, `pre-approval-${applicationId}.pdf`);
       toast({ title: "Pre-approval letter ready", description: "The PDF has been downloaded." });
     } catch (error) {
       toast({
@@ -628,7 +621,7 @@ function CallPrepDialog({
 }) {
   const [open, setOpen] = useState(false);
   const { data } = useQuery<CockpitData>({
-    queryKey: [`/api/staff/applications/${applicationId}/cockpit`],
+    queryKey: ["/api/staff/applications", applicationId, "cockpit"],
     enabled: open,
   });
 
@@ -831,15 +824,7 @@ export default function LoCommandCenter() {
           );
         },
       );
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mismo-${applicationId}.xml`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadResponseAsFile(res, `mismo-${applicationId}.xml`);
       toast({ title: "MISMO 3.4 exported", description: "The lender-ready XML package has been downloaded." });
     } catch (error) {
       toast({

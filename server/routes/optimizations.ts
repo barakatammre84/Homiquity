@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { isAuthenticated, requireRole } from "../auth";
+import { INTERNAL_STAFF_ROLES } from "@shared/roles";
 import { firstQueryValue } from "./queryParams";
 import {
   detectStaleApplications,
@@ -28,7 +29,9 @@ export function registerOptimizationRoutes(app: Express) {
     }
   });
 
-  app.get("/api/optimizations/match-and-price", isAuthenticated, async (req, res) => {
+  // Staff-only until the B5 multi-lender-fit deferral reopens — see the
+  // lender-matches gate note in intelligence.ts. Pinned by routeGateDrift.
+  app.get("/api/optimizations/match-and-price", requireRole(...INTERNAL_STAFF_ROLES), async (req, res) => {
     try {
       const userId = req.user!.id;
       const lockTermDaysParam = firstQueryValue(req.query.lockTermDays);

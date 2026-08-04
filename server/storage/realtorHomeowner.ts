@@ -1,7 +1,7 @@
 // Storage domain: Deal desk, DPA, agent pipeline access, rescue escalations, strategy sessions, accelerator, coaching, closing guarantees, homeowner profiles, refi alerts, equity snapshots.
 // One link in the DatabaseStorage inheritance chain — see ./index.ts.
 import { db } from "../db";
-import { eq, desc, and, sql, or } from "drizzle-orm";
+import { eq, desc, and, sql, or, isNull, lte, gte } from "drizzle-orm";
 // SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
 // branch — main leaves account numbers plaintext).
 
@@ -82,13 +82,23 @@ export class RealtorHomeownerStorage extends IdentityStorage {
 
   // DPA Programs
   async getDpaPrograms(filters?: { state?: string; firstTimeBuyer?: boolean; minCreditScore?: number; maxIncome?: number }): Promise<DpaProgram[]> {
-    let query = db.select().from(dpaPrograms).where(eq(dpaPrograms.isActive, true));
+    const conditions = [eq(dpaPrograms.isActive, true)];
     if (filters?.state) {
-      query = db.select().from(dpaPrograms).where(
-        and(eq(dpaPrograms.isActive, true), or(eq(dpaPrograms.state, filters.state), sql`${dpaPrograms.state} IS NULL`))
-      );
+      conditions.push(or(eq(dpaPrograms.state, filters.state), isNull(dpaPrograms.state))!);
     }
-    return query.orderBy(dpaPrograms.name);
+    // firstTimeBuyer === true adds no condition: first-time buyers qualify for
+    // both first-time-only and general programs.
+    if (filters?.firstTimeBuyer === false) {
+      conditions.push(eq(dpaPrograms.firstTimeBuyerOnly, false));
+    }
+    // A program with no published limit stays visible under either filter.
+    if (filters?.minCreditScore !== undefined) {
+      conditions.push(or(isNull(dpaPrograms.minCreditScore), lte(dpaPrograms.minCreditScore, filters.minCreditScore))!);
+    }
+    if (filters?.maxIncome !== undefined) {
+      conditions.push(or(isNull(dpaPrograms.maxIncome), gte(dpaPrograms.maxIncome, String(filters.maxIncome)))!);
+    }
+    return db.select().from(dpaPrograms).where(and(...conditions)).orderBy(dpaPrograms.name);
   }
 
   async getDpaProgram(id: string): Promise<DpaProgram | undefined> {

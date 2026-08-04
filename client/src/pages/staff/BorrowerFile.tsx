@@ -2,7 +2,8 @@ import { lazy, Suspense, useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { useParams, useSearch, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, ApiError } from "@/lib/queryClient";
+import { queryClient, apiRequest, ApiError, loanApplicationKeys } from "@/lib/queryClient";
+import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,12 +68,12 @@ export default function BorrowerFile() {
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
 
   const { data: appData, isLoading: appLoading } = useQuery<ApplicationData>({
-    queryKey: ['/api/loan-applications', applicationId],
+    queryKey: loanApplicationKeys.detail(applicationId),
     enabled: !!applicationId && !authLoading,
   });
 
   const { data: pipelineData, isLoading: pipelineLoading } = useQuery<PipelineData>({
-    queryKey: ['/api/loan-applications', applicationId, 'pipeline'],
+    queryKey: loanApplicationKeys.pipeline(applicationId),
     enabled: !!applicationId && !authLoading,
   });
 
@@ -95,15 +96,7 @@ export default function BorrowerFile() {
           throw new Error(friendlyApiError(err, "Failed to generate the MISMO file."));
         },
       );
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mismo-${applicationId}.xml`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadResponseAsFile(res, `mismo-${applicationId}.xml`);
       toast({
         title: "MISMO 3.4 exported",
         description: "The lender-ready XML file has been downloaded.",
@@ -124,7 +117,7 @@ export default function BorrowerFile() {
       return apiRequest("POST", `/api/loan-applications/${applicationId}/verify-financials`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.detail(applicationId) });
       toast({
         title: "Financials Verified",
         description: "This application can now proceed to approval.",

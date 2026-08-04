@@ -158,6 +158,74 @@ export function pickWorkableLoanApplication<T extends { status: string }>(
   return applications.find((a) => !isTerminalLoanAppStatus(a.status));
 }
 
+/**
+ * THE selector for "the approval this borrower holds" — the first
+ * approved-grade file in newest-first list order. Returns undefined when none.
+ *
+ * Never compose `?? apps[0]` onto this: a denied/withdrawn/expired file still
+ * carries annualIncome, so the fallback made `hasPreApproval` go true and showed
+ * qualification math to a borrower who was denied — while hiding the
+ * Get-Pre-Approved CTA they actually needed.
+ */
+export function pickApprovedGradeLoanApplication<T extends { status: string }>(
+  applications: readonly T[],
+): T | undefined {
+  return applications.find((a) => isApprovedGradeLoanAppStatus(a.status));
+}
+
+/** Money columns arrive from Postgres as strings; tolerate string|number|null. */
+type MoneyLike = string | number | null | undefined;
+
+function toMoneyNumber(value: MoneyLike): number {
+  if (value === null || value === undefined || value === "") return 0;
+  const n = typeof value === "number" ? value : parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Subset of loan_applications fields the affordability surfaces read. */
+export interface PreApprovalDerivationFields {
+  status: string;
+  annualIncome?: MoneyLike;
+  preApprovalAmount?: MoneyLike;
+  monthlyDebts?: MoneyLike;
+  creditScore?: number | null;
+}
+
+export interface PreApprovalContext<T> {
+  /** The approved-grade application, or null when none is held. */
+  application: T | null;
+  /** True only when an approved-grade file exists AND carries positive income. */
+  hasPreApproval: boolean;
+  preApprovalAmount: number;
+  monthlyIncome: number;
+  monthlyDebts: number;
+  creditScore: number | undefined;
+}
+
+/**
+ * THE derivation for the property/buyer affordability surfaces: picks the
+ * approved-grade application and unpacks the numeric fields the qualification
+ * math needs. Centralizes the identical `parseFloat(String(...))` block that
+ * PropertyDetail and BuyerProperties each hand-rolled, so the no-fallback rule
+ * above is enforced in one tested place instead of restated in two comments.
+ */
+export function selectPreApprovalContext<T extends PreApprovalDerivationFields>(
+  applications: readonly T[] | null | undefined,
+): PreApprovalContext<T> {
+  const application = applications?.length
+    ? pickApprovedGradeLoanApplication(applications) ?? null
+    : null;
+  const annualIncome = toMoneyNumber(application?.annualIncome);
+  return {
+    application,
+    hasPreApproval: !!application && annualIncome > 0,
+    preApprovalAmount: toMoneyNumber(application?.preApprovalAmount),
+    monthlyIncome: annualIncome / 12,
+    monthlyDebts: toMoneyNumber(application?.monthlyDebts),
+    creditScore: application?.creditScore || undefined,
+  };
+}
+
 export interface LoanAppStatusMeta {
   /** Short badge/label text. */
   label: string;

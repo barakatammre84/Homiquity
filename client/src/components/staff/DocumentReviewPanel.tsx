@@ -15,7 +15,7 @@
  */
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Document, LoanApplication } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,7 +97,7 @@ export function DocumentReviewPanel({
   const [extractionRuns, setExtractionRuns] = useState<Record<string, ExtractionRun>>({});
 
   const invalidateFile = () =>
-    queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId] });
+    queryClient.invalidateQueries({ queryKey: loanApplicationKeys.detail(applicationId) });
 
   const verifyMutation = useMutation({
     mutationFn: async (input: { id: string; status: "verified" | "rejected"; reason?: string }) => {
@@ -111,7 +111,7 @@ export function DocumentReviewPanel({
       invalidateFile();
       // A rejection reverts no-longer-satisfied conditions server-side, so the
       // pipeline view must refresh too.
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "pipeline"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.pipeline(applicationId) });
       setRejectTarget(null);
       setRejectReason("");
       toast(

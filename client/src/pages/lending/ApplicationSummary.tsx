@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { dashboardKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +34,7 @@ export default function ApplicationSummary() {
   // A disabled query (while auth resolves) reports `isPending`, so QueryBoundary
   // covers the auth-loading, fetching, error, and empty branches in one place.
   const query = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: !authLoading,
   });
 

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, dashboardKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -112,7 +112,7 @@ export function TaxReturnInsightCard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tax-insights/me"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       setPendingFile(null);
       setStep("idle");
       toast({
@@ -170,7 +170,7 @@ export function TaxReturnInsightCard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/consents/me"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tax-insights/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       setConfirmingRevoke(false);
       toast({
         title: "Authorization revoked",

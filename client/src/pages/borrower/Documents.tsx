@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { formatDate, titleCaseFromSnake } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,152 +9,37 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { useActiveApplication } from "@/hooks/useActiveApplication";
 import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
 import { canonicalDocumentType } from "@shared/documentTypes";
 import { validateUploadFile } from "@shared/uploads";
 import { PageShell } from "@/components/PageShell";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
-import { DocumentDropzone, UploadProgressCard } from "@/components/DocumentDropzone";
 import { QueryErrorState } from "@/components/ui/query-boundary";
+import { DocumentItemRow, type DocRow } from "@/components/DocumentItemRow";
+import { DocumentRequestReasons } from "@/components/borrower/DocumentRequestReasons";
+import {
+  DOCUMENT_CATEGORIES,
+  CONDITION_CATEGORY_META,
+  docTypeName,
+  getUploadNextStep,
+} from "./documentCategories";
 import {
   FileText,
   Download,
   Upload,
   CheckCircle2,
-  Circle,
   AlertCircle,
-  User,
-  DollarSign,
-  Building2,
-  CreditCard,
-  Home,
+  ClipboardList,
+  Clock,
   ChevronDown,
   ChevronUp,
   FileCheck,
-  Clock,
-  Shield,
-  ClipboardList,
 } from "lucide-react";
 
 interface DashboardData {
   documents: Document[];
-}
-
-// Document categories with their required document types
-const DOCUMENT_CATEGORIES = [
-  {
-    id: "identity",
-    name: "Identity & Compliance",
-    description: "Government-issued ID and identity verification",
-    icon: User,
-    color: "text-chart-1",
-    bgColor: "bg-chart-1/10",
-    documents: [
-      { type: "drivers_license", name: "Driver's License", required: true, description: "Valid state-issued driver's license" },
-      { type: "passport", name: "Passport", required: false, description: "Valid passport (alternative to driver's license)" },
-      { type: "ssn_card", name: "Social Security Card", required: false, description: "Social Security card if available" },
-    ]
-  },
-  {
-    id: "income",
-    name: "Income Verification",
-    description: "Pay stubs, tax returns, and employment documents",
-    icon: DollarSign,
-    color: "text-chart-2",
-    bgColor: "bg-chart-2/10",
-    documents: [
-      { type: "paystub", name: "Recent Pay Stubs", required: true, description: "Last 30 days of pay stubs" },
-      { type: "w2", name: "W-2 Forms", required: true, description: "W-2s from the last 2 years" },
-      { type: "tax_return_1040", name: "Tax Returns (1040)", required: true, description: "Personal tax returns from last 2 years" },
-      { type: "1099_misc", name: "1099 Forms", required: false, description: "1099 forms if you have additional income" },
-      { type: "profit_loss_statement", name: "Profit & Loss Statement", required: false, description: "For self-employed borrowers" },
-      { type: "social_security_award_letter", name: "Social Security Award Letter", required: false, description: "If receiving Social Security income" },
-    ]
-  },
-  {
-    id: "assets",
-    name: "Assets & Savings",
-    description: "Bank statements, retirement accounts, and investments",
-    icon: Building2,
-    color: "text-chart-4",
-    bgColor: "bg-chart-4/10",
-    documents: [
-      { type: "bank_statement_checking", name: "Checking Account Statements", required: true, description: "Last 2 months of statements" },
-      { type: "bank_statement_savings", name: "Savings Account Statements", required: true, description: "Last 2 months of statements" },
-      { type: "retirement_statement_401k", name: "401(k) Statement", required: false, description: "Most recent quarterly statement" },
-      { type: "retirement_statement_ira", name: "IRA Statement", required: false, description: "Most recent quarterly statement" },
-      { type: "brokerage_statement", name: "Brokerage Statement", required: false, description: "Investment account statements" },
-      { type: "gift_letter", name: "Gift Letter", required: false, description: "If receiving gift funds for down payment" },
-    ]
-  },
-  {
-    id: "liabilities",
-    name: "Current Debts",
-    description: "Existing mortgages, loans, and credit obligations",
-    icon: CreditCard,
-    color: "text-chart-3",
-    bgColor: "bg-chart-3/10",
-    documents: [
-      { type: "mortgage_statement", name: "Mortgage Statement", required: false, description: "Current mortgage payment info (if applicable)" },
-      { type: "auto_loan_statement", name: "Auto Loan Statement", required: false, description: "Current auto loan info (if applicable)" },
-      { type: "student_loan_statement", name: "Student Loan Statement", required: false, description: "Student loan payment info (if applicable)" },
-      { type: "credit_card_statement", name: "Credit Card Statements", required: false, description: "Most recent statements" },
-    ]
-  },
-  {
-    id: "property",
-    name: "Property & Transaction",
-    description: "Purchase contract, insurance, and property documents",
-    icon: Home,
-    color: "text-chart-5",
-    bgColor: "bg-chart-5/10",
-    documents: [
-      { type: "purchase_contract", name: "Purchase Contract", required: true, description: "Signed purchase agreement" },
-      { type: "earnest_money_receipt", name: "Earnest Money Receipt", required: true, description: "Proof of earnest money deposit" },
-      { type: "homeowners_insurance_binder", name: "Homeowners Insurance Binder", required: true, description: "Proof of insurance coverage" },
-      { type: "appraisal_report", name: "Appraisal Report", required: false, description: "Provided by lender" },
-      { type: "title_commitment", name: "Title Commitment", required: false, description: "Provided by title company" },
-    ]
-  },
-];
-
-// Workflow-triggered education: after an upload, tell the borrower what the
-// team actually does with that document, keyed by category. Factual process
-// descriptions only — no approval promises or timelines we can't keep.
-const UPLOAD_NEXT_STEPS: Record<string, string> = {
-  identity:
-    "We'll use this to confirm your identity — a standard step for every mortgage. You'll be notified once it's verified.",
-  income:
-    "Our team will use this to verify your income, which is what turns your estimated numbers into a documented pre-approval. You'll be notified when it's reviewed.",
-  assets:
-    "We'll review this to document your funds for the down payment and closing costs. If we have questions about any deposits, we'll reach out — that's routine.",
-  liabilities:
-    "We'll use this to confirm your monthly payments so your debt-to-income numbers are accurate. You'll be notified when it's reviewed.",
-  property:
-    "This moves your file forward toward final review. We'll let you know if the underwriter needs anything else about the property.",
-};
-
-// Friendly names for document types, falling back to prettified snake_case for
-// condition-required types that aren't in the static catalog (e.g. a letter of
-// explanation added by an underwriter).
-const DOC_TYPE_NAMES: Record<string, string> = Object.fromEntries(
-  DOCUMENT_CATEGORIES.flatMap((cat) => cat.documents.map((d) => [d.type, d.name])),
-);
-
-function docTypeName(type: string): string {
-  return DOC_TYPE_NAMES[type] ?? titleCaseFromSnake(type);
-}
-
-function getUploadNextStep(docType: string): string {
-  const category = DOCUMENT_CATEGORIES.find(cat =>
-    cat.documents.some(d => d.type === docType)
-  );
-  return (
-    (category && UPLOAD_NEXT_STEPS[category.id]) ||
-    "We'll review it shortly. You'll be notified when it's processed."
-  );
 }
 
 // Personalized checklist item as served by /document-checklist (built from the
@@ -174,196 +59,8 @@ interface ChecklistItemView {
   fileName?: string;
   uploadedAt?: string;
   rejectionReason?: string | null;
-}
-
-// Category shells for the personalized path — same visual system as the
-// static catalog (CONDITION_CATEGORIES vocabulary from the pipeline engine).
-const CONDITION_CATEGORY_META: Record<
-  string,
-  { name: string; description: string; icon: typeof User; color: string; bgColor: string }
-> = {
-  income: { name: "Income Verification", description: "Pay stubs, tax returns, and employment documents", icon: DollarSign, color: "text-chart-2", bgColor: "bg-chart-2/10" },
-  assets: { name: "Assets & Savings", description: "Bank statements, gift funds, and reserves", icon: Building2, color: "text-chart-4", bgColor: "bg-chart-4/10" },
-  credit: { name: "Credit & Liabilities", description: "Statements and explanations for credit items", icon: CreditCard, color: "text-chart-3", bgColor: "bg-chart-3/10" },
-  property: { name: "Property & Transaction", description: "Contract, appraisal, and property documents", icon: Home, color: "text-chart-5", bgColor: "bg-chart-5/10" },
-  insurance: { name: "Insurance", description: "Homeowners and other required coverage", icon: Shield, color: "text-chart-1", bgColor: "bg-chart-1/10" },
-  title: { name: "Title", description: "Title and closing documentation", icon: FileText, color: "text-chart-4", bgColor: "bg-chart-4/10" },
-  compliance: { name: "Identity & Compliance", description: "Government-issued ID and identity verification", icon: User, color: "text-chart-1", bgColor: "bg-chart-1/10" },
-  other: { name: "Other Requests", description: "Additional items your loan team asked for", icon: ClipboardList, color: "text-chart-2", bgColor: "bg-chart-2/10" },
-};
-
-// One row model feeding one row component, whichever path produced it — the
-// static catalog and the personalized checklist must never render differently.
-interface DocRow {
-  /** Readable key used in data-testids (document type). */
-  key: string;
-  /** Identifies THIS row's in-flight upload (unique per row). */
-  uploadKey: string;
-  /** documentType POSTed on upload. */
-  uploadType: string;
-  name: string;
-  description?: string;
-  required: boolean;
-  status: "needed" | "uploaded" | "verifying" | "verified" | "rejected";
-  fileName?: string;
-  uploadedAt?: string | Date | null;
-  documentId?: string;
-  rejectionReason?: string | null;
-  focused?: boolean;
-}
-
-function DocumentItemRow({
-  row,
-  uploading,
-  uploadingFile,
-  progress,
-  anyUploadBusy,
-  onFile,
-  onBrowse,
-  onCancel,
-}: {
-  row: DocRow;
-  uploading: boolean;
-  uploadingFile: { fileName: string; fileSize: number } | null;
-  progress: number;
-  anyUploadBusy: boolean;
-  onFile: (file: File) => void;
-  onBrowse: () => void;
-  onCancel: () => void;
-}) {
-  const hasUpload = row.status !== "needed";
-  const isRejected = row.status === "rejected";
-  // Pending items and bounced items invite a (re-)upload right in the row;
-  // accepted/in-review items stay calm.
-  const showDropzone = !uploading && (!hasUpload || isRejected);
-
-  return (
-    <div
-      className={`p-4 rounded-lg transition-colors ${
-        isRejected
-          ? "bg-destructive/5"
-          : hasUpload
-          ? "bg-success-subtle/50"
-          : row.required
-          ? "bg-warning-subtle/50"
-          : "bg-muted/30"
-      } ${row.focused ? "ring-2 ring-primary" : ""}`}
-      data-testid={`row-doctype-${row.key}`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1">
-          {isRejected ? (
-            <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
-          ) : hasUpload ? (
-            <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground shrink-0" />
-          ) : row.required ? (
-            <AlertCircle className="h-5 w-5 text-warning-subtle-foreground shrink-0" />
-          ) : (
-            <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-sm">{row.name}</span>
-              {row.required && !hasUpload && (
-                <Badge variant="outline" className="text-xs border-border text-warning-subtle-foreground">
-                  Required
-                </Badge>
-              )}
-              {row.required && hasUpload && !isRejected && (
-                <Badge variant="outline" className="text-xs border-border text-success-subtle-foreground">
-                  Complete
-                </Badge>
-              )}
-            </div>
-            {row.description && (
-              <p className="text-xs text-muted-foreground mt-0.5">{row.description}</p>
-            )}
-            {hasUpload && (
-              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                {row.fileName && (
-                  <span className="flex items-center gap-1">
-                    <FileCheck className="h-3 w-3" />
-                    {row.fileName}
-                  </span>
-                )}
-                {row.uploadedAt && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {formatDate(row.uploadedAt)}
-                  </span>
-                )}
-                <span className="flex items-center gap-1">
-                  <Shield className="h-3 w-3" />
-                  <DocumentStatusBadge status={row.status} data-testid={`badge-doc-status-${row.key}`} />
-                </span>
-              </div>
-            )}
-            {isRejected && row.rejectionReason && (
-              <p
-                className="mt-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive"
-                data-testid={`text-reject-reason-${row.key}`}
-              >
-                {row.rejectionReason} — please upload a new copy.
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 ml-4">
-          {hasUpload && row.documentId && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="gap-1.5"
-              data-testid={`button-download-${row.key}`}
-              onClick={() => window.open(`/api/documents/${row.documentId}/download`, "_blank")}
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">View</span>
-            </Button>
-          )}
-          {hasUpload && !isRejected && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              data-testid={`button-upload-${row.key}`}
-              disabled={anyUploadBusy}
-              onClick={onBrowse}
-            >
-              <Upload className="h-4 w-4" />
-              <span className="hidden sm:inline">Replace</span>
-            </Button>
-          )}
-        </div>
-      </div>
-      {uploading && uploadingFile && (
-        <div className="mt-3">
-          <UploadProgressCard
-            fileName={uploadingFile.fileName}
-            fileSize={uploadingFile.fileSize}
-            progress={progress}
-            onCancel={onCancel}
-            data-testid={`upload-progress-${row.key}`}
-          />
-        </div>
-      )}
-      {showDropzone && (
-        <div className="mt-3">
-          <DocumentDropzone
-            compact
-            disabled={anyUploadBusy}
-            onFileAccepted={onFile}
-            idleLabel={
-              isRejected
-                ? "Upload a new copy — drag & drop, or browse"
-                : `Drag & drop your ${row.name.toLowerCase()}, or browse`
-            }
-            data-testid={`dropzone-${row.key}`}
-          />
-        </div>
-      )}
-    </div>
-  );
+  documentYear?: string;
+  instructions?: string;
 }
 
 export default function Documents() {
@@ -391,7 +88,7 @@ export default function Documents() {
     error: docsErrorObj,
     refetch: refetchDocs,
   } = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: !authLoading,
   });
 
@@ -409,14 +106,14 @@ export default function Documents() {
   // [0] attached uploads to a denied/withdrawn/funded loan whenever the
   // borrower's most recent file was the closed one.
   const { data: myApps } = useQuery<LoanApplication[]>({
-    queryKey: ["/api/loan-applications"],
+    queryKey: loanApplicationKeys.all(),
     enabled: !authLoading,
   });
   const { activeApplication } = useActiveApplication(myApps ?? []);
   const focusAppId = activeApplication?.id;
 
   const { data: focusPipeline, isLoading: focusLoading } = useQuery<{ conditions: LoanCondition[] }>({
-    queryKey: ["/api/loan-applications", focusAppId, "pipeline"],
+    queryKey: loanApplicationKeys.pipeline(focusAppId!),
     enabled: !!conditionId && !!focusAppId,
   });
 
@@ -514,10 +211,10 @@ export default function Documents() {
         });
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       // Refresh pipeline data too — a matching upload moves the focused
       // condition to "submitted" and the banner should say so.
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
       if (focusAppId) {
         queryClient.invalidateQueries({
           queryKey: ["/api/applications", focusAppId, "document-checklist"],
@@ -622,6 +319,8 @@ export default function Documents() {
     uploadType: item.documentType,
     name: item.label,
     description: item.description,
+    year: item.documentYear,
+    instructions: item.instructions,
     required: item.required,
     status: item.status,
     fileName: item.fileName,
@@ -767,6 +466,13 @@ export default function Documents() {
             </div>
             <p className="text-sm text-muted-foreground">{statusInfo.subtitle}</p>
           </div>
+        </div>
+
+        {/* Why-we-need-these: tie-out-driven reasons from the borrower's own
+            SituationProfile (owner-readable endpoint; renders nothing when the
+            file has no generated requests). */}
+        <div className="mb-6">
+          <DocumentRequestReasons />
         </div>
 
         <div className="space-y-4">

@@ -123,7 +123,12 @@ export function productLabelFor(
  * reach a borrower. Identifiers under 3 characters are skipped so a
  * degenerate code cannot mangle ordinary words.
  */
-function scrubLenderIdentity(text: string, identifiers: readonly string[]): string {
+/**
+ * Replace any of the given lender identifiers inside free text with the
+ * neutral word "Lender". Exported for reuse by other borrower-view mappers
+ * (borrowerConditionView scrubs lender-portal-transcribed condition text).
+ */
+export function scrubLenderIdentity(text: string, identifiers: readonly string[]): string {
   let out = text;
   for (const identifier of identifiers) {
     const trimmed = identifier?.trim();

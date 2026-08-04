@@ -164,6 +164,38 @@ export const SCENARIO_CATALOG: ScenarioCatalogEntry[] = [
     engineRef: "server/services/underwritingNuance.ts calculateSubjectPropertyRentalOffset",
   },
   {
+    scenarioId: "S-07",
+    version: "1.0.0",
+    title: "Rental Income Conversion (departing residence)",
+    flagCode: "RENTAL_CONVERSION_OFFSET",
+    status: "implemented",
+    triggers: [
+      'loan_applications.current_property_disposition = "converted_to_rental" with departing_residence ({ estimatedMarketRent, monthlyPitia }) present',
+    ],
+    regulations: [
+      "Fannie Mae Selling Guide B3-3.8-01 (Rental Income, 10/08/2025; formerly B3-3.1-08) — departing residence joins the per-property offset set",
+      "Fannie Mae Selling Guide B3-6-06 (recently converted properties — most recent Schedule E confirming no prior rental activity)",
+      "Platform policy: projected-rent manual review (ledger platform-s07-departing-projected-rent-review)",
+    ],
+    riskImpact:
+      "Projected market rent on a departing residence overstates qualifying income; 75% of projected rent is netted against the retained PITIA per property. A positive offset joins qualifying income only at decision-grade provenance, a net loss always counts against DTI, and because the rent is projected the rental path always flags manual review. The departing residence never enters the DSCR portfolio.",
+    workflow: {
+      loanOfficerActions: [
+        "Review the departing-residence manual-review note (projected rent) before finalizing DTI",
+      ],
+      borrowerActions: [
+        "Upload a rental appraisal (Form 1007) or executed lease for the departing residence, plus the most recent Schedule E confirming no prior rental activity",
+      ],
+      automationEngineActions: [
+        "Synthesize the departing residence into the per-property B3-3.8-01 offset set (75% of projected rent net of retained PITIA)",
+        "Apply the S-05 gates (positive offset only at decision-grade provenance; a loss always counts) and flag manual review because the rent is projected",
+        "Raise RENTAL_CONVERSION_OFFSET naming the offset and required documents",
+      ],
+    },
+    engineRef:
+      "server/services/preUnderwriting.ts + server/services/income/orchestrator.ts departingResidenceInput + server/services/income/paths/rental.ts computeRentalPath",
+  },
+  {
     scenarioId: "F-LOW-RESERVES",
     version: "1.0.0",
     title: "Low post-closing reserves (foundation)",

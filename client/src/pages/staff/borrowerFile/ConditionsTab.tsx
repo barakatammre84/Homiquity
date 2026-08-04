@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,8 +49,8 @@ export function ConditionsTab({
       return apiRequest("PATCH", `/api/conditions/${id}`, { status, clearanceNotes });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'pipeline'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.pipeline(applicationId) });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.detail(applicationId) });
       const actionLabel = conditionAction.action === "cleared" ? "Cleared" : conditionAction.action === "waived" ? "Waived" : "Marked N/A";
       toast({
         title: `Condition ${actionLabel}`,

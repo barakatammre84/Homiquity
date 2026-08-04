@@ -73,6 +73,22 @@ export interface PreUwFlagsPayload {
   evaluatedAt?: string;
 }
 
+/**
+ * The Incubator (RenterHome) is the home surface not only for brand-new users
+ * but for any borrower with no workable file — every application ended in a
+ * terminal, non-funded status (denied/withdrawn/expired). ECOA's adverse-action
+ * notice owns the decision disclosure; the home surface's job is the path
+ * forward (readiness, goals, gap calculator), not a re-apply pitch.
+ * A deep-linked terminal file (?app=<id>) resolves an activeApplication, so
+ * closed-file views stay reachable; a funded loan always keeps the Dashboard.
+ */
+export function showIncubatorHome(
+  applications: ReadonlyArray<{ status: string }>,
+  activeApplication: { status: string } | null | undefined,
+): boolean {
+  return !activeApplication && !applications.some((a) => a.status === "funded");
+}
+
 export function getPreUwFlags(application: LoanApplication | null | undefined): PreUwFlagsPayload | null {
   if (!application) return null;
   const raw = (application as { preUwFlags?: unknown }).preUwFlags;

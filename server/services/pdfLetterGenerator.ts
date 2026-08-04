@@ -1,7 +1,7 @@
 // @ts-ignore - pdfkit types
 import PDFDocument from "pdfkit";
 
-interface LetterData {
+export interface LetterData {
   letterNumber: string;
   borrowerName: string;
   loanAmount: string;
@@ -29,6 +29,60 @@ interface LetterData {
   propertyType?: string;
   propertyState?: string;
   incomeSources?: Array<{ type: string; annualAmount: string; rentalProperties?: Array<{ address: string; monthlyRentalIncome: string; monthlyDebtPayment?: string }> }>;
+}
+
+// The standing conditions block on every pre-approval letter. Shared by issuance
+// and regeneration so the two renders cannot diverge.
+export const STANDARD_PRE_APPROVAL_CONDITIONS = [
+  "Satisfactory property appraisal",
+  "Verification of employment and income",
+  "Clear title search and title insurance",
+  "Property insurance in effect prior to closing",
+  "No material change in financial condition",
+] as const;
+
+/** The pre_approval_letters columns a regeneration render is allowed to read. */
+export interface StoredPreApprovalLetter {
+  letterNumber: string;
+  borrowerName: string;
+  loanAmount: string;
+  productType: string;
+  occupancy: string;
+  loanPurpose: string | null;
+  companyLegalName: string;
+  companyNmlsId: string;
+  companyContactInfo: string | null;
+  expirationDate: Date | string;
+  generatedAt: Date | string | null;
+  createdAt: Date | string | null;
+  watermarkApplied: boolean | null;
+}
+
+// Regeneration input built strictly from the stored letter row. A pre-approval
+// letter is an issued record: when its stored PDF is unavailable it must be
+// re-rendered from what was issued — never recomputed from the application's
+// current figures or today's advertised rate, which would put different terms
+// under the original letter number and issuance date. Fields the row does not
+// carry (income/DTI/credit detail) are omitted: an honest gap, not a live
+// recomputation. Empty disclaimers fall back to the standard five inside
+// generatePreApprovalPDF.
+export function letterDataFromStoredRow(letter: StoredPreApprovalLetter): LetterData {
+  return {
+    letterNumber: letter.letterNumber,
+    borrowerName: letter.borrowerName,
+    loanAmount: letter.loanAmount,
+    productType: letter.productType,
+    occupancy: letter.occupancy,
+    loanPurpose: letter.loanPurpose || undefined,
+    companyLegalName: letter.companyLegalName,
+    companyNmlsId: letter.companyNmlsId,
+    companyContactInfo: letter.companyContactInfo || undefined,
+    expirationDate: new Date(letter.expirationDate),
+    generatedAt: new Date((letter.generatedAt ?? letter.createdAt)!),
+    conditions: [...STANDARD_PRE_APPROVAL_CONDITIONS],
+    disclaimers: [],
+    watermarkApplied: letter.watermarkApplied ?? true,
+  };
 }
 
 const DEEP_NAVY = "#0f1729";

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
 import { 
   CreditCard, 
   FileCheck, 
@@ -89,7 +89,7 @@ export default function PartnerServices() {
   });
 
   const { data: applications } = useQuery<PartnerApplication[]>({
-    queryKey: ["/api/loan-applications"],
+    queryKey: loanApplicationKeys.all(),
   });
 
   const filteredProviders = providers?.filter(p => p.serviceType === selectedServiceType) || [];

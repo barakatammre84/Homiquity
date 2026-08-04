@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { US_STATES as US_STATE_OPTIONS } from "@/lib/us-states";
+import { LICENSED_STATES, unlicensedStateMessage } from "@shared/companyIdentity";
 
 interface DpaProgram {
   id: string;
@@ -68,18 +69,23 @@ function ProgramTypeBadge({ type }: { type: string }) {
 
 
 export default function DownPaymentWizard() {
+  // Defaults to Illinois — the directory's actual coverage — not "all".
   const [filters, setFilters] = useState({
-    state: "all",
+    state: "IL",
     firstTimeBuyer: "all",
     minCreditScore: "",
-    maxIncome: "",
   });
 
   const queryParams = new URLSearchParams();
   if (filters.state !== "all") queryParams.set("state", filters.state);
   if (filters.firstTimeBuyer === "yes") queryParams.set("firstTimeBuyer", "true");
   if (filters.minCreditScore) queryParams.set("minCreditScore", filters.minCreditScore);
-  if (filters.maxIncome) queryParams.set("maxIncome", filters.maxIncome);
+
+  // Shown whenever a concrete state outside the licensed footprint is selected,
+  // regardless of result count — the notice must stay correct even if the
+  // directory ever gains rows for that state.
+  const unlicensedStateSelected =
+    filters.state !== "all" && !(LICENSED_STATES as readonly string[]).includes(filters.state);
 
   const queryString = queryParams.toString();
   const endpoint = `/api/dpa-programs${queryString ? `?${queryString}` : ""}`;
@@ -93,7 +99,7 @@ export default function DownPaymentWizard() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="down-payment-wizard">
       <SEOHead
         title="Down Payment Assistance Finder"
-        description="Explore down payment assistance and grant programs — filter by state, first-time buyer status, income, and credit to see programs that may fit your situation."
+        description="Explore down payment assistance and grant programs — filter by state, first-time buyer status, and credit score to see what each program offers."
         canonical="/down-payment-wizard"
       />
       <div className="mb-6">
@@ -103,7 +109,7 @@ export default function DownPaymentWizard() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground md:text-2xl" data-testid="text-wizard-title">Down Payment Assistance Finder</h1>
-            <p className="text-sm text-muted-foreground">Find grants and programs that can reduce or eliminate your down payment.</p>
+            <p className="text-sm text-muted-foreground">Find grants and programs that can reduce the cash you need at closing.</p>
           </div>
         </div>
       </div>
@@ -113,9 +119,11 @@ export default function DownPaymentWizard() {
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-foreground">Over $100 billion in down payment assistance is available nationwide</p>
+              <p className="text-sm font-medium text-foreground">Down payment assistance comes from state and local housing agencies and nonprofits</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Most first-time buyers qualify for at least one program. Filter below to find programs that match your profile.
+                Grants, forgivable loans, and deferred loans that reduce the cash you need at closing. This directory is
+                educational information — program terms are set by the administering agencies and can change, and funding
+                can pause without notice. Confirm current details with the agency or a HUD-approved housing counselor.
               </p>
             </div>
           </div>
@@ -129,7 +137,7 @@ export default function DownPaymentWizard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground">State</label>
               <Select value={filters.state} onValueChange={(v) => setFilters({ ...filters, state: v })}>
@@ -166,17 +174,9 @@ export default function DownPaymentWizard() {
                 className="mt-1"
                 data-testid="input-credit-score"
               />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Annual Income</label>
-              <Input
-                type="number"
-                value={filters.maxIncome}
-                onChange={(e) => setFilters({ ...filters, maxIncome: e.target.value })}
-                placeholder="e.g., 75000"
-                className="mt-1"
-                data-testid="input-income"
-              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                We hide programs whose published minimum score is above yours.
+              </p>
             </div>
           </div>
         </CardContent>
@@ -186,7 +186,22 @@ export default function DownPaymentWizard() {
         <p className="text-sm text-muted-foreground" data-testid="text-result-count">
           {isLoading ? "Loading..." : `${activePrograms.length} program${activePrograms.length !== 1 ? "s" : ""} found`}
         </p>
+        <p className="text-xs text-muted-foreground" data-testid="text-coverage-note">
+          Our directory currently lists Illinois programs — IHDA statewide, City of Chicago, and Cook County — verified
+          with the administering agencies as of July 2026.
+        </p>
       </div>
+
+      {unlicensedStateSelected && (
+        <Card className="mb-4 border-primary/20" data-testid="card-unlicensed-state-notice">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">{unlicensedStateMessage(filters.state)}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}</div>
@@ -195,8 +210,12 @@ export default function DownPaymentWizard() {
           <CardContent className="py-8 text-center">
             <Search className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
             <p className="font-medium text-foreground">No programs found</p>
-            <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters. Many federal programs are available nationwide.</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => setFilters({ state: "all", firstTimeBuyer: "all", minCreditScore: "", maxIncome: "" })} data-testid="button-clear-filters">
+            <p className="text-sm text-muted-foreground mt-1">
+              Our directory currently lists Illinois programs, verified as of July 2026 — we don't yet have entries for
+              other states. Your state's housing finance agency or a HUD-approved housing counselor can point you to
+              local programs.
+            </p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => setFilters({ state: "all", firstTimeBuyer: "all", minCreditScore: "" })} data-testid="button-clear-filters">
               Clear All Filters
             </Button>
           </CardContent>
@@ -288,11 +307,11 @@ export default function DownPaymentWizard() {
       <Card className="mt-6" data-testid="card-bottom-cta">
         <CardContent className="py-6 text-center">
           <PiggyBank className="mx-auto h-8 w-8 text-primary mb-3" />
-          <h3 className="font-bold text-foreground mb-1">Found a program that fits?</h3>
+          <h3 className="font-bold text-foreground mb-1">Found a program worth a closer look?</h3>
           <p className="text-sm text-muted-foreground mb-4">
             {PRELAUNCH_GATED
-              ? "Save it — you'll be able to factor DPA programs into your pre-approval when we launch."
-              : "Start your pre-approval and we'll factor in DPA programs automatically."}
+              ? "Program terms and funding change — confirm current details with the administering agency or a HUD-approved housing counselor before you plan around a program."
+              : "Mention it to your loan team when you apply — they can walk through how assistance programs work alongside a mortgage."}
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
             {!PRELAUNCH_GATED && (
