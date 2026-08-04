@@ -118,3 +118,34 @@ describe("TaskOperations only offers what an underwriter can actually call", () 
     }
   });
 });
+
+describe("lender-match surfaces are staff-gated", () => {
+  // matchBorrowerToLenders / matchAndPriceBorrower return wholesale lender
+  // identity (lenderName/lenderId) plus uncited rate math — both barred from
+  // borrowers (wholesale-identity redaction doctrine, shared/borrowerOfferView.ts;
+  // multi-lender fit itself is the tracked B5 deferral, kb log 2026-07-12 §2).
+  // Until B5 reopens with a redaction layer + citation-backed pricing (F11),
+  // these are internal staff tooling — the same boundary as
+  // GET /api/admin/lender-products. Source guard so a future edit can't quietly
+  // re-open them to any authenticated borrower.
+  it("intelligence.ts gates both lender-matches routes with requireRole(...INTERNAL_STAFF_ROLES)", () => {
+    const source = read("server/routes/intelligence.ts");
+    for (const route of ['"/api/intelligence/lender-matches"', '"/api/intelligence/lender-matches/top"']) {
+      const at = source.indexOf(route);
+      expect(at, `${route} registration not found`).toBeGreaterThan(-1);
+      const registration = source.slice(at, at + 200);
+      expect(registration, `${route} must be staff-gated`).toContain("requireRole(...INTERNAL_STAFF_ROLES)");
+      expect(registration, `${route} must not sit behind bare isAuthenticated`).not.toContain("isAuthenticated");
+    }
+  });
+
+  it("optimizations.ts gates match-and-price with requireRole(...INTERNAL_STAFF_ROLES)", () => {
+    const source = read("server/routes/optimizations.ts");
+    const route = '"/api/optimizations/match-and-price"';
+    const at = source.indexOf(route);
+    expect(at, `${route} registration not found`).toBeGreaterThan(-1);
+    const registration = source.slice(at, at + 200);
+    expect(registration).toContain("requireRole(...INTERNAL_STAFF_ROLES)");
+    expect(registration).not.toContain("isAuthenticated");
+  });
+});
