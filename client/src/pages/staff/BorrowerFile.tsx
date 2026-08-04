@@ -30,6 +30,7 @@ import {
   Home,
   Users,
   Brain,
+  Receipt,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { ChangeOfCircumstancePanel } from "@/components/staff/ChangeOfCircumstancePanel";
@@ -45,13 +46,14 @@ import { StatusUpdateDialog } from "./borrowerFile/StatusUpdateDialog";
 import { CompensationCard } from "./borrowerFile/CompensationCard";
 import { ConditionsTab } from "./borrowerFile/ConditionsTab";
 import { CreditTab } from "./borrowerFile/CreditTab";
+import { FinancialsTab } from "./borrowerFile/FinancialsTab";
 import { TimelineTab } from "./borrowerFile/TimelineTab";
 
 // Lazy so pdfjs-dist stays in a staff-only async chunk, off every borrower
 // bundle and off this page's own initial render.
 const DocumentViewer = lazy(() => import("@/components/staff/DocumentViewer"));
 
-const TAB_VALUES = ["overview", "documents", "conditions", "timeline", "credit", "tax-intel", "team"];
+const TAB_VALUES = ["overview", "documents", "conditions", "timeline", "credit", "financials", "tax-intel", "team"];
 
 export default function BorrowerFile() {
   const params = useParams();
@@ -376,6 +378,10 @@ export default function BorrowerFile() {
                     <CreditCard className="mr-2 h-4 w-4" />
                     Credit
                   </TabsTrigger>
+                  <TabsTrigger value="financials" data-testid="tab-financials">
+                    <Receipt className="mr-2 h-4 w-4" />
+                    Financials
+                  </TabsTrigger>
                   <TabsTrigger value="tax-intel" data-testid="tab-tax-intel">
                     <Brain className="mr-2 h-4 w-4" />
                     Tax Intel
@@ -536,6 +542,12 @@ export default function BorrowerFile() {
 
                 <TabsContent value="credit" className="space-y-4">
                   <CreditTab applicationId={applicationId} canRevokeLetter={canSetCreditDecisions} />
+                </TabsContent>
+
+                <TabsContent value="financials" className="space-y-4">
+                  {/* F-4 tolerance posture + F-11 per-file cost ledger — the
+                      last two UNCONSUMED_CAPABILITIES entries, consumed. */}
+                  <FinancialsTab applicationId={applicationId} />
                 </TabsContent>
 
                 <TabsContent value="tax-intel" className="space-y-4">

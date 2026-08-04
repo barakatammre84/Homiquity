@@ -198,6 +198,10 @@ export const loanApplicationKeys = {
   prequalStatus: (id: string) => ["/api/loan-applications", id, "prequal-status"] as const,
   letterStatus: (id: string) => ["/api/loan-applications", id, "letter-status"] as const,
   loanEstimate: (id: string) => ["/api/loan-applications", id, "loan-estimate"] as const,
+  /** F-4's read-only tolerance/cure posture (staff). */
+  leTolerance: (id: string) => ["/api/loan-applications", id, "le-tolerance"] as const,
+  /** F-11's per-file cost ledger (staff). */
+  costs: (id: string) => ["/api/loan-applications", id, "costs"] as const,
   hmda: (id: string) => ["/api/loan-applications", id, "hmda"] as const,
   incomeSummary: (id: string) => ["/api/loan-applications", id, "income-summary"] as const,
   submissionReadiness: (id: string) =>

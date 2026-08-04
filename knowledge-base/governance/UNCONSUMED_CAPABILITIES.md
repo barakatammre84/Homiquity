@@ -34,18 +34,8 @@ cycles unconsumed, that is evidence it was built too early — freeze or remove 
 
 ## Open entries
 
-### The financial-reporting endpoints (added 2026-08-04) — **decide by 2026-09-04**
-
-Built by the financial architecture audit. Every one is correct, tested, and **has no client
-surface** — the precise shape that produced F-14.
-
-| Capability | Route / module | Consumer today |
-|---|---|---|
-| TRID fee-tolerance review | `GET /api/loan-applications/:id/le-tolerance` | none |
-| Per-file cost ledger | `GET`/`POST /api/loan-applications/:id/costs` | none |
-
-The two remaining entries are per-file staff surfaces (they belong on the borrower file, not an
-admin dashboard). **Decision owed:** wire them into BorrowerFile, or freeze them.
+*(none — every entry from the register's opening day was consumed the same day. The next PR that
+ships capability ahead of a consumer adds the next row, with a decide-by date.)*
 
 ---
 
@@ -53,6 +43,8 @@ admin dashboard). **Decision owed:** wire them into BorrowerFile, or freeze them
 
 | Capability | Outcome | When | How |
 |---|---|---|---|
+| TRID fee-tolerance review (`GET /api/loan-applications/:id/le-tolerance`) | **Consumed** | 2026-08-04 | `FinancialsTab` on the staff BorrowerFile — verdict badge, cure exposure, per-line increases, with the read-only / not-a-legal-cure caveats rendered. |
+| Per-file cost ledger (`GET`/`POST /api/loan-applications/:id/costs`) | **Consumed** | 2026-08-04 | Same tab — entries with Metered/Staff/Simulated provenance, simulated spend labelled and excluded from totals, staff cost entry (negative = reversal on the append-only ledger). |
 | Broker revenue + unit economics (`GET /api/reports/compensation`) | **Consumed** | 2026-08-04 | `FinancialReports` admin page (`/admin/financial-reports`) — revenue, pull-through, unit economics, clawback exposure and remittance discrepancies, rendered under the audit's honesty rules (upper-bound margins, null ≠ zero). |
 | Contingent-liability register (`GET /api/reports/contingent-liabilities`) | **Consumed** | 2026-08-04 | Same page — `quantifiedFloor` labelled a floor with `unquantifiedCount` beside it; unpriceable exposures render "—", never $0. |
 | LO compensation election (`PATCH /api/loan-applications/:id/compensation`) | **Consumed** | 2026-08-04 | `CompensationCard` on the staff BorrowerFile overview tab. This was the register's flagged asymmetry — load-bearing without a UI (the Loan Estimate refused to generate without an election) — and was wired the same day, first, as the register demanded. |
