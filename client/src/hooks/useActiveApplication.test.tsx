@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import {
   ACTIVE_APP_PARAM,
+  ACTIVE_APP_STORAGE_KEY,
   resolveActiveApplication,
   useActiveApplication,
   type SelectableApplication,
@@ -38,6 +39,15 @@ describe("resolveActiveApplication", () => {
     // `?? applications[0]` attach uploads to a withdrawn loan.
     const apps = [app("closed", "withdrawn"), app("open", "doc_collection")];
     expect(resolveActiveApplication(apps, undefined)?.id).toBe("open");
+  });
+
+  it("refuses a REQUESTED closed file too, not just the fallback (#271/#273)", () => {
+    // The companion to the case above, and the half that was open: a terminal
+    // file passes the membership check (it really is this borrower's), so
+    // naming it in ?app= used to hand it back as the working file — and
+    // Documents.tsx puts that id straight into the upload registration.
+    const apps = [app("closed", "withdrawn"), app("open", "doc_collection")];
+    expect(resolveActiveApplication(apps, "closed")?.id).toBe("open");
   });
 
   it("still selects a draft — borrower surfaces work on unsubmitted files", () => {
@@ -122,5 +132,20 @@ describe("useActiveApplication", () => {
     const { result } = renderHook(() => useActiveApplication(apps));
     expect(result.current.activeApplication?.id).toBe("a-1"); // canonical pick
     expect(window.sessionStorage.getItem("homiquity_active_app")).toBe("a-1"); // corrected
+  });
+
+  it("drops a stored id once its file closes, with no ?app= involved", () => {
+    // The mirror is written whenever a file resolves, so it keeps naming the
+    // borrower's file after underwriting denies it — nothing clears it, and the
+    // bare nav links mean there is no ?app= to override it. Unlike the test
+    // above the id is still IN the list, so membership cannot catch it: without
+    // the workability check the borrower lands on a denied file and uploads
+    // against it.
+    const closing = [app("a-1", "denied"), app("a-2", "processing")];
+    window.sessionStorage.setItem(ACTIVE_APP_STORAGE_KEY, "a-1");
+    at("/documents");
+    const { result } = renderHook(() => useActiveApplication(closing));
+    expect(result.current.activeApplication?.id).toBe("a-2");
+    expect(window.sessionStorage.getItem(ACTIVE_APP_STORAGE_KEY)).toBe("a-2"); // corrected
   });
 });
