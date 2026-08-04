@@ -648,6 +648,18 @@ in cures if it closed on today's numbers?" without writing anything, and every
 redisclosure/blocked event writes a `trid.tolerance_evaluated` audit entry carrying the cure
 amount.
 
+> **⚠️ Post-merge correction (PR #351, same day).** As merged in #342, the borrower delivery
+> route called `markRevisedLeDelivered` **before** `reconcileDisclosure` — open
+> change-of-circumstance records were closed before the reconciler read them, so the
+> `increase_justified` path was unreachable (every justified increase misread as `cure_required`),
+> and on `blocked_no_coc` the route stamped a §1026.19(e)(4)(i) revised-LE delivery record while
+> actually serving the held baseline — a falsified delivery record. An independent post-merge
+> review caught both; #351 reordered the route (reconcile first; `blocked_no_coc` returns the
+> held baseline *before* any stamp) and pinned the ordering with source guards in
+> `tests/leDisclosedFeeProvenance.test.ts`. The rule table above describes the behavior as it now
+> is; between the #342 and #351 merges (same day, no borrower deliveries in the window) it did
+> not hold.
+
 **Bucket classification, and the one judgment call.** Section A + Section B + transfer taxes are
 zero-tolerance; recording fees are the 10% cumulative tier; prepaids and escrows carry no numeric
 tolerance. **LE Section C (shoppable services) is classified zero-tolerance, not ten-percent** —
@@ -852,6 +864,13 @@ the F-11 cost ledger: an appraisal invoice booked against the file becomes the d
 fee. That matters because the appraisal is the largest single zero-tolerance variance and is
 usually known before the LE has to go out — disclosing $1,200 up front **removes** the $550 cure
 rather than measuring it after the fact.
+
+> **⚠️ Post-merge correction (PR #351, same day).** As merged in #342, this bridge did not filter
+> `simulated` cost entries: a $5 *simulated* credit-pull ledger row could replace a real disclosed
+> zero-tolerance fee on the LE — exactly the demo-spend-into-real-figures leak the F-11 `simulated`
+> flag exists to prevent, surfacing on the borrower's disclosure instead of a margin report.
+> #351 added the filter (`resolveActualFeesFor` skips `simulated` entries) and pinned it in
+> `tests/leDisclosedFeeProvenance.test.ts`. Only non-simulated actuals now reach a disclosure.
 
 **Still open:** upgrading each fee to `cited`, starting with transfer taxes. That is a
 human-with-a-statute task, not an engineering one.
