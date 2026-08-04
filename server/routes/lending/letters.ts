@@ -13,6 +13,7 @@ import * as creditService from "../../services/creditService";
 import { sendNotificationEmail } from "../../services/emailService";
 import { COMPANY_CONFIG } from "../../config/company";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
+import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { routeParams } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
@@ -55,6 +56,17 @@ export function registerLetterRoutes(
 
       if (application.status !== "pre_approved") {
         return res.status(400).json({ error: "Only pre-approved applications can generate letters" });
+      }
+
+      // Licensed-state gate (roadmap A5): a letter is an outward creditworthiness
+      // document and may not name a property outside the licensed footprint
+      // (SAFE Act/Reg H; state law controls — see shared/companyIdentity.ts).
+      // Every propertyState write path is gated today; this closes the residual
+      // hole for files created before the 2026-07-17 footprint gate. Absent
+      // state passes: the TRID address-last funnel may not have the property yet.
+      const stateRejection = unlicensedStateRejection(application.propertyState);
+      if (stateRejection) {
+        return res.status(422).json(stateRejection);
       }
 
       // A pre-approval letter represents a creditworthiness determination — it may
@@ -481,6 +493,13 @@ export function registerLetterRoutes(
 
       if (!(PREQUAL_ELIGIBLE_STATUSES as readonly string[]).includes(application.status)) {
         return res.status(400).json({ error: "Application must be submitted before generating a pre-qualification letter" });
+      }
+
+      // Licensed-state gate — same boundary as generate-letter above (prequal is
+      // wider: submitted-status only, no provenance guard, so the gate matters more).
+      const stateRejection = unlicensedStateRejection(application.propertyState);
+      if (stateRejection) {
+        return res.status(422).json(stateRejection);
       }
 
       const { generatePreQualificationPDF } = await import("../../services/pdfLetterGenerator");
