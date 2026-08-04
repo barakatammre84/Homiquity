@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { useActiveApplication } from "@/hooks/useActiveApplication";
 import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
 import { canonicalDocumentType } from "@shared/documentTypes";
@@ -18,6 +18,7 @@ import { PageShell } from "@/components/PageShell";
 import { DocumentStatusBadge } from "@/components/DocumentStatusBadge";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import { DocumentItemRow, type DocRow } from "@/components/DocumentItemRow";
+import { DocumentRequestReasons } from "@/components/borrower/DocumentRequestReasons";
 import {
   DOCUMENT_CATEGORIES,
   CONDITION_CATEGORY_META,
@@ -75,7 +76,7 @@ export default function Documents() {
     error: docsErrorObj,
     refetch: refetchDocs,
   } = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: !authLoading,
   });
 
@@ -93,14 +94,14 @@ export default function Documents() {
   // [0] attached uploads to a denied/withdrawn/funded loan whenever the
   // borrower's most recent file was the closed one.
   const { data: myApps } = useQuery<LoanApplication[]>({
-    queryKey: ["/api/loan-applications"],
+    queryKey: loanApplicationKeys.all(),
     enabled: !authLoading,
   });
   const { activeApplication } = useActiveApplication(myApps ?? []);
   const focusAppId = activeApplication?.id;
 
   const { data: focusPipeline, isLoading: focusLoading } = useQuery<{ conditions: LoanCondition[] }>({
-    queryKey: ["/api/loan-applications", focusAppId, "pipeline"],
+    queryKey: loanApplicationKeys.pipeline(focusAppId!),
     enabled: !!conditionId && !!focusAppId,
   });
 
@@ -198,10 +199,10 @@ export default function Documents() {
         });
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       // Refresh pipeline data too — a matching upload moves the focused
       // condition to "submitted" and the banner should say so.
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
       if (focusAppId) {
         queryClient.invalidateQueries({
           queryKey: ["/api/applications", focusAppId, "document-checklist"],
@@ -373,6 +374,13 @@ export default function Documents() {
             </div>
             <p className="text-sm text-muted-foreground">{statusInfo.subtitle}</p>
           </div>
+        </div>
+
+        {/* Why-we-need-these: tie-out-driven reasons from the borrower's own
+            SituationProfile (owner-readable endpoint; renders nothing when the
+            file has no generated requests). */}
+        <div className="mb-6">
+          <DocumentRequestReasons />
         </div>
 
         <div className="space-y-4">

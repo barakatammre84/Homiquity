@@ -202,3 +202,58 @@ describe("buildDocumentChecklist — stats", () => {
     expect(stats).toEqual({ total: 4, verified: 1, uploaded: 1, needed: 1, rejected: 1 });
   });
 });
+
+describe("buildDocumentChecklist — borrower-facing context (year + instructions, no staff notes)", () => {
+  it("task items carry documentYear so the checklist can say WHICH year's document", () => {
+    const { documents } = buildDocumentChecklist({
+      conditions: [],
+      documents: [],
+      tasks: [
+        task({ id: "t-k1", documentCategory: "k1_statement", title: "K-1 (Form 1065)", documentYear: "2023" }),
+      ],
+    });
+    const item = documents.find((d) => d.id === "t-k1");
+    expect(item?.documentYear).toBe("2023");
+  });
+
+  it("standard items inherit documentYear from their matching task", () => {
+    const { documents } = buildDocumentChecklist({
+      conditions: [],
+      documents: [],
+      tasks: [task({ id: "t-tax", documentCategory: "tax_return", documentYear: "2024" })],
+    });
+    const std = documents.find((d) => d.documentType === "tax_return");
+    expect(std?.documentYear).toBe("2024");
+  });
+
+  it("condition items stay yearless — conditions carry no year field", () => {
+    const { documents } = buildDocumentChecklist({
+      conditions: [condition({ id: "c-1", title: "P&L", requiredDocumentTypes: ["profit_loss_statement"] })],
+      documents: [],
+      tasks: [],
+    });
+    expect(documents[0]?.documentYear).toBeUndefined();
+  });
+
+  it("staff verificationNotes NEVER reach the borrower payload (notes carries documentInstructions)", () => {
+    // verificationNotes is the staff review-axis free text; documentInstructions
+    // is the staff-authored borrower-facing text. Only the latter may surface.
+    const { documents } = buildDocumentChecklist({
+      conditions: [],
+      documents: [],
+      tasks: [
+        task({
+          id: "t-std",
+          documentCategory: "tax_return",
+          verificationNotes: "internal: borrower disputed AGI, escalate to UW",
+          documentInstructions: "Please upload all pages of your 2023 federal return.",
+        }),
+      ],
+    });
+    const serialized = JSON.stringify(documents);
+    expect(serialized).not.toContain("internal: borrower disputed AGI");
+    const std = documents.find((d) => d.documentType === "tax_return");
+    expect(std?.notes).toBe("Please upload all pages of your 2023 federal return.");
+    expect(std?.instructions).toBe("Please upload all pages of your 2023 federal return.");
+  });
+});

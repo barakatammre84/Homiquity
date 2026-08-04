@@ -23,6 +23,8 @@ export interface ChecklistItemView {
   fileName?: string;
   uploadedAt?: string;
   rejectionReason?: string | null;
+  documentYear?: string;
+  instructions?: string;
 }
 
 export function groupDocumentsByType(documents: Document[]): Record<string, Document[]> {
@@ -72,6 +74,8 @@ export function rowFromChecklistItem(item: ChecklistItemView, focusedConditionId
     uploadType: item.documentType,
     name: item.label,
     description: item.description,
+    year: item.documentYear,
+    instructions: item.instructions,
     required: item.required,
     status: item.status,
     fileName: item.fileName,

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, taskKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +74,7 @@ export default function TaskDetail() {
   const [verificationNotes, setVerificationNotes] = useState("");
 
   const { data: task, isLoading } = useQuery<TaskWithDocs>({
-    queryKey: ['/api/tasks', taskId],
+    queryKey: taskKeys.detail(taskId!),
     enabled: !authLoading && !!taskId,
   });
 
@@ -105,8 +105,8 @@ export default function TaskDetail() {
       return linkResponse.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks', taskId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId!) });
+      queryClient.invalidateQueries({ queryKey: taskKeys.all() });
       toast({
         title: "Document Uploaded",
         description: "Your document has been uploaded and is pending review.",
@@ -132,8 +132,8 @@ export default function TaskDetail() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks', taskId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId!) });
+      queryClient.invalidateQueries({ queryKey: taskKeys.all() });
       toast({
         title: "Document Updated",
         description: "The document verification status has been updated.",
@@ -426,7 +426,9 @@ export default function TaskDetail() {
                   </CardContent>
                 </Card>
 
-                {task.verificationNotes && (
+                {/* Server strips verificationNotes for client roles
+                    (borrowerTaskView); the isStaff guard states the intent. */}
+                {isStaff && task.verificationNotes && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Verification Notes</CardTitle>
@@ -449,7 +451,7 @@ export default function TaskDetail() {
                             Document Rejected
                           </p>
                           <p className="text-sm text-destructive mt-1">
-                            Please review the notes and upload a new document.
+                            Please upload a new copy of this document.
                           </p>
                         </div>
                       </div>

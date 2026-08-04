@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, coachConversationKeys } from "@/lib/queryClient";
 import type {
   CapturedEvent,
   CoachPanelState,
@@ -83,14 +83,14 @@ export function useCoachStream(opts: {
     flushText();
     setTurn((t) => ({ ...t, status: "finalizing" }));
     const invalidations = [
-      queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations"] }),
+      queryClient.invalidateQueries({ queryKey: coachConversationKeys.all() }),
       queryClient.invalidateQueries({ queryKey: ["/api/coach/usage"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/coach/intake/latest"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/profile/financial"] }),
     ];
     if (conversationId) {
       invalidations.push(
-        queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations", conversationId] }),
+        queryClient.invalidateQueries({ queryKey: coachConversationKeys.detail(conversationId) }),
       );
     }
     await Promise.allSettled(invalidations);
@@ -226,9 +226,9 @@ export function useCoachStream(opts: {
           retryable: true,
         },
       }));
-      void queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations"] });
+      void queryClient.invalidateQueries({ queryKey: coachConversationKeys.all() });
       if (convIdRef.current) {
-        void queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations", convIdRef.current] });
+        void queryClient.invalidateQueries({ queryKey: coachConversationKeys.detail(convIdRef.current) });
       }
     },
     [finalize, flushText, opts, queryClient, queueText],

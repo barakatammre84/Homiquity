@@ -20,6 +20,7 @@ import {
   streamLocalObject,
 } from "../integrations/object_storage";
 import { type User } from "@shared/schema";
+import { toStaffDocumentView } from "@shared/borrowerDocumentView";
 import { DOCUMENT_STATUS } from "@shared/documentStatus";
 import { logAudit } from "../auditLog";
 import { sendNotificationEmail } from "../services/emailService";
@@ -546,7 +547,9 @@ export function registerDocumentRoutes(
           console.error("[Documents] Review notification failed (non-fatal):", notifyErr);
         }
 
-        res.json(updated);
+        // Staff-only route, but the ciphertext trio still never ships to a
+        // browser — see shared/borrowerDocumentView.ts.
+        res.json(updated ? toStaffDocumentView(updated) : updated);
       } catch (error) {
         console.error("Document verify error:", error);
         res.status(500).json({ error: "Failed to update document status" });

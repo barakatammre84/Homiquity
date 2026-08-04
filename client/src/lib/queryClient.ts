@@ -193,12 +193,70 @@ export const loanApplicationKeys = {
   detail: (id: string) => ["/api/loan-applications", id] as const,
   pipeline: (id: string) => ["/api/loan-applications", id, "pipeline"] as const,
   options: (id: string) => ["/api/loan-applications", id, "options"] as const,
+  offers: (id: string) => ["/api/loan-applications", id, "offers"] as const,
+  properties: (id: string) => ["/api/loan-applications", id, "properties"] as const,
+  prequalStatus: (id: string) => ["/api/loan-applications", id, "prequal-status"] as const,
+  letterStatus: (id: string) => ["/api/loan-applications", id, "letter-status"] as const,
+  loanEstimate: (id: string) => ["/api/loan-applications", id, "loan-estimate"] as const,
+  hmda: (id: string) => ["/api/loan-applications", id, "hmda"] as const,
+  incomeSummary: (id: string) => ["/api/loan-applications", id, "income-summary"] as const,
   submissionReadiness: (id: string) =>
     ["/api/loan-applications", id, "submission-readiness"] as const,
   lenderSubmissions: (id: string) =>
     ["/api/loan-applications", id, "lender-submissions"] as const,
   changeOfCircumstances: (id: string) =>
     ["/api/loan-applications", id, "change-of-circumstances"] as const,
+  /**
+   * Credit sub-tree. Kept fully SEGMENTED on purpose: the codebase currently
+   * mixes `[id, "credit", "summary"]` with `[id, "credit/adverse-actions"]`,
+   * which join to the same URL but are *different* cache keys — an invalidation
+   * written one way never matches a fetch written the other. These are the one
+   * canonical form; the migration rewrites both spellings to them.
+   */
+  credit: {
+    root: (id: string) => ["/api/loan-applications", id, "credit"] as const,
+    summary: (id: string) => ["/api/loan-applications", id, "credit", "summary"] as const,
+    auditLog: (id: string) => ["/api/loan-applications", id, "credit", "audit-log"] as const,
+    draft: (id: string) => ["/api/loan-applications", id, "credit", "draft"] as const,
+    adverseActions: (id: string) =>
+      ["/api/loan-applications", id, "credit", "adverse-actions"] as const,
+  },
+  /** Fixed-path resource: the borrower's latest in-progress draft. */
+  draftLatest: () => ["/api/loan-applications/draft/latest"] as const,
+};
+
+/**
+ * Sibling key factories for the other high-churn resources (batch 1 of the
+ * migration: dashboard, tasks, calculator-results, coach/conversations,
+ * onboarding/status). Same rule as above — build keys here, never hand-type the
+ * `/api/...` literal at the call site, so fetch and invalidation cannot drift.
+ *
+ * NOTE: `/api/auth/user` is intentionally absent — it lives behind useAuth,
+ * which is the pattern these factories generalise. `/api/applications`
+ * (document-checklist / team) is a DIFFERENT endpoint from
+ * `/api/loan-applications` and is deferred to a later batch; it is not modelled
+ * here so nobody conflates the two.
+ */
+export const dashboardKeys = {
+  root: () => ["/api/dashboard"] as const,
+};
+
+export const taskKeys = {
+  all: () => ["/api/tasks"] as const,
+  detail: (id: string) => ["/api/tasks", id] as const,
+};
+
+export const calculatorResultKeys = {
+  all: () => ["/api/calculator-results"] as const,
+};
+
+export const coachConversationKeys = {
+  all: () => ["/api/coach/conversations"] as const,
+  detail: (id: string) => ["/api/coach/conversations", id] as const,
+};
+
+export const onboardingStatusKeys = {
+  root: () => ["/api/onboarding/status"] as const,
 };
 
 export const queryClient = new QueryClient({

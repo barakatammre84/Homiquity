@@ -10,7 +10,7 @@ import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrackActivity, useTrackFormStart } from "@/hooks/useActivityTracker";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, dashboardKeys } from "@/lib/queryClient";
 import type {
   LoanApplication,
   UrlaPersonalInfo,
@@ -171,7 +171,7 @@ export default function URLAForm() {
     error: dashboardErrorObj,
     refetch: refetchDashboard,
   } = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: !authLoading,
   });
 

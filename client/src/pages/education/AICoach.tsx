@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, coachConversationKeys } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Sparkles, WifiOff } from "lucide-react";
@@ -92,14 +92,14 @@ export default function AICoach() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   const { data: conversations = [], isLoading: loadingConvs } = useQuery<CoachConversation[]>({
-    queryKey: ["/api/coach/conversations"],
+    queryKey: coachConversationKeys.all(),
   });
 
   const { data: activeData } = useQuery<{
     conversation: CoachConversation;
     messages: CoachMessage[];
   }>({
-    queryKey: ["/api/coach/conversations", activeConversationId],
+    queryKey: coachConversationKeys.detail(activeConversationId!),
     enabled: !!activeConversationId,
   });
 
@@ -141,8 +141,8 @@ export default function AICoach() {
       return res.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations", activeConversationId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/coach/conversations"] });
+      queryClient.invalidateQueries({ queryKey: coachConversationKeys.detail(activeConversationId!) });
+      queryClient.invalidateQueries({ queryKey: coachConversationKeys.all() });
       if (data?.toggled) {
         toast({
           title: data.toggled.completed ? "Nice work!" : "Unmarked",

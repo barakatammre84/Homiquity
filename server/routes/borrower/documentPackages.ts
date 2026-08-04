@@ -4,6 +4,7 @@ import type { Express } from "express";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertDocumentPackageSchema, insertDocumentPackageItemSchema, isStaffRole, type User } from "@shared/schema";
+import { toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { routeParams } from "../../http/routeParams";
 
 // Verify that an internal staff user is actually assigned to the given application.
@@ -330,7 +331,7 @@ export function registerDocumentPackageRoutes(
       }
 
       const docs = await storage.getDocumentsByApplication(applicationId);
-      res.json(docs);
+      res.json(toDocumentViewsForRole(docs, user.role));
     } catch (error) {
       console.error("Get application documents error:", error);
       res.status(500).json({ error: "Failed to get documents" });

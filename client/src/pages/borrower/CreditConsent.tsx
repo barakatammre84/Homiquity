@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,7 +84,7 @@ export default function CreditConsent() {
   const [draftLoaded, setDraftLoaded] = useState(false);
 
   const { data: application, isLoading: appLoading } = useQuery<LoanApplication>({
-    queryKey: ["/api/loan-applications", applicationId],
+    queryKey: loanApplicationKeys.detail(applicationId),
     enabled: !!applicationId,
   });
 
@@ -94,12 +94,12 @@ export default function CreditConsent() {
   });
 
   const { data: creditSummary, isLoading: summaryLoading } = useQuery<CreditSummary>({
-    queryKey: ["/api/loan-applications", applicationId, "credit", "summary"],
+    queryKey: loanApplicationKeys.credit.summary(applicationId),
     enabled: !!applicationId,
   });
 
   const { data: draftData, isLoading: draftLoading } = useQuery<DraftData>({
-    queryKey: ["/api/loan-applications", applicationId, "credit", "draft"],
+    queryKey: loanApplicationKeys.credit.draft(applicationId),
     enabled: !!applicationId,
   });
 
@@ -128,7 +128,7 @@ export default function CreditConsent() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "credit", "draft"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.draft(applicationId) });
       toast({
         title: "Progress Saved",
         description: "Your consent form progress has been saved. You can return anytime to complete it.",
@@ -161,7 +161,7 @@ export default function CreditConsent() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "credit"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.root(applicationId) });
       toast({
         title: "Consent Recorded",
         description: "Your credit authorization has been recorded successfully.",

@@ -20,6 +20,8 @@ interface BorrowerTask {
   slaStatus: "green" | "amber" | "red";
   timeRemaining: number | null;
   percentageElapsed: number | null;
+  /** Staff transparency rows only — the mapping's borrower-facing line. */
+  borrowerDisplayText?: string;
 }
 
 const FRIENDLY_TASK_NAMES: Record<string, string> = {
@@ -66,6 +68,16 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
   });
 
   const pendingTasks = tasks?.filter(t => t.status === "OPEN" && t.ownerRole === "BORROWER") || [];
+  // Visible staff tasks (task type flagged visibleToBorrower — the server's
+  // borrowerTaskView already reduced them to their borrowerDisplayText).
+  // Shown read-only for transparency; never an action affordance.
+  const inProgressTasks =
+    tasks?.filter(
+      t =>
+        t.ownerRole &&
+        t.ownerRole !== "BORROWER" &&
+        (t.status === "OPEN" || t.status === "IN_PROGRESS"),
+    ) || [];
 
   if (isLoading) {
     return (
@@ -79,7 +91,7 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
     );
   }
 
-  if (pendingTasks.length === 0) {
+  if (pendingTasks.length === 0 && inProgressTasks.length === 0) {
     if (hideWhenEmpty) return null;
     // A blank grid cell reads as broken — show a positive "all caught up" state.
     return (
@@ -168,6 +180,34 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
               <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </Link>
+        )}
+
+        {pendingTasks.length === 0 && (
+          <p className="text-sm text-muted-foreground" data-testid="text-nothing-needed">
+            Nothing needed from you right now.
+          </p>
+        )}
+
+        {inProgressTasks.length > 0 && (
+          <div className="pt-1" data-testid="section-in-progress">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              In progress on our side
+            </p>
+            <div className="space-y-2">
+              {inProgressTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center gap-3 rounded-md bg-muted/30 px-3 py-2"
+                  data-testid={`row-transparency-${task.id}`}
+                >
+                  <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    {task.borrowerDisplayText || task.title}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

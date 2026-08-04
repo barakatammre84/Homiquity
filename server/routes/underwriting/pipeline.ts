@@ -3,8 +3,9 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
-import { isInFlightLoanAppStatus, isLoanAppStatus, LOAN_APP_STATUSES, LOAN_CONDITION_STATUSES } from "@shared/schema";
+import { isInFlightLoanAppStatus, isLoanAppStatus, isStaffRole, LOAN_APP_STATUSES, LOAN_CONDITION_STATUSES } from "@shared/schema";
 import type { User, LoanAppStatus } from "@shared/schema";
+import { toBorrowerConditionViews } from "@shared/borrowerConditionView";
 import { z } from "zod";
 import { parseBodyOr400 } from "../validate";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
@@ -65,7 +66,11 @@ export function registerPipelineRoutes(
         progress,
         summary,
         milestones,
-        conditions,
+        // Non-staff callers get the whitelist view: staff clearance notes,
+        // the clearing user's id, rule/task linkage, and the wholesale-lender
+        // submission link never leave the server (borrower transparency
+        // doctrine — shared/borrowerConditionView.ts). Staff keep full rows.
+        conditions: isStaffRole(req.user!.role) ? conditions : toBorrowerConditionViews(conditions),
       });
     } catch (error) {
       console.error("Get pipeline status error:", error);
@@ -81,8 +86,11 @@ export function registerPipelineRoutes(
         return res.status(404).json({ error: "Application not found" });
       }
 
-      const conditions = await storage.getLoanConditionsByApplication(id);
-      
+      const rows = await storage.getLoanConditionsByApplication(id);
+      // Same whitelist boundary as /pipeline above: map BEFORE grouping so
+      // every shape in the response carries the masked rows for non-staff.
+      const conditions = isStaffRole(req.user!.role) ? rows : toBorrowerConditionViews(rows);
+
       const grouped = {
         priorToApproval: conditions.filter(c => c.priority === "prior_to_approval"),
         priorToDocs: conditions.filter(c => c.priority === "prior_to_docs"),

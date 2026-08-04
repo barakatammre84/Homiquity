@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, dashboardKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -189,7 +189,7 @@ export function UploadDocumentDialog({
     },
     onSuccess: (document) => {
       queryClient.invalidateQueries({ queryKey: ["/api/applications", applicationId, "document-checklist"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       if (confirmToRecipientId) {
         queryClient.invalidateQueries({ queryKey: ["/api/messages", confirmToRecipientId] });

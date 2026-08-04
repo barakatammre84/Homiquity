@@ -118,3 +118,67 @@ describe("TaskOperations only offers what an underwriter can actually call", () 
     }
   });
 });
+
+describe("lender-match surfaces are staff-gated", () => {
+  // matchBorrowerToLenders / matchAndPriceBorrower return wholesale lender
+  // identity (lenderName/lenderId) plus uncited rate math — both barred from
+  // borrowers (wholesale-identity redaction doctrine, shared/borrowerOfferView.ts;
+  // multi-lender fit itself is the tracked B5 deferral, kb log 2026-07-12 §2).
+  // Until B5 reopens with a redaction layer + citation-backed pricing (F11),
+  // these are internal staff tooling — the same boundary as
+  // GET /api/admin/lender-products. Source guard so a future edit can't quietly
+  // re-open them to any authenticated borrower.
+  it("intelligence.ts gates both lender-matches routes with requireRole(...INTERNAL_STAFF_ROLES)", () => {
+    const source = read("server/routes/intelligence.ts");
+    for (const route of ['"/api/intelligence/lender-matches"', '"/api/intelligence/lender-matches/top"']) {
+      const at = source.indexOf(route);
+      expect(at, `${route} registration not found`).toBeGreaterThan(-1);
+      const registration = source.slice(at, at + 200);
+      expect(registration, `${route} must be staff-gated`).toContain("requireRole(...INTERNAL_STAFF_ROLES)");
+      expect(registration, `${route} must not sit behind bare isAuthenticated`).not.toContain("isAuthenticated");
+    }
+  });
+
+  it("optimizations.ts gates match-and-price with requireRole(...INTERNAL_STAFF_ROLES)", () => {
+    const source = read("server/routes/optimizations.ts");
+    const route = '"/api/optimizations/match-and-price"';
+    const at = source.indexOf(route);
+    expect(at, `${route} registration not found`).toBeGreaterThan(-1);
+    const registration = source.slice(at, at + 200);
+    expect(registration).toContain("requireRole(...INTERNAL_STAFF_ROLES)");
+    expect(registration).not.toContain("isAuthenticated");
+  });
+});
+
+describe("engine-calculation routes are staff-gated", () => {
+  // The six legacy engine endpoints return computed qualifying-income, DTI, and
+  // LLPA-pricing figures over unverified self-stated inputs. A borrower-reachable
+  // qualifying figure breaches "no live qualifying figures to borrowers before
+  // human verification" (kb logs: 2026-08-04 rate-com §6.1, sovereign-stack §3.1).
+  // Staff analysis tooling at the same reviewer boundary as
+  // POST /:id/verify-financials (FINANCIAL_VERIFICATION_ROLES — closer and the
+  // external partner roles excluded). Borrower-facing income transparency arrives
+  // via Borrower Clarity PR 7's post-decision whitelisted DTO, never these routes.
+  // Source guard so a future edit can't quietly re-open them.
+  it("calculations.ts gates all six engine endpoints with requireRole(...FINANCIAL_VERIFICATION_ROLES)", () => {
+    const source = read("server/routes/underwriting/calculations.ts");
+    for (const route of [
+      '"/api/loan-applications/:id/calculate-income"',
+      '"/api/loan-applications/:id/calculate-assets"',
+      '"/api/loan-applications/:id/calculate-liabilities"',
+      '"/api/loan-applications/:id/calculate-dti"',
+      '"/api/loan-applications/:id/check-property-eligibility"',
+      '"/api/loan-applications/:id/calculate-pricing"',
+    ]) {
+      const at = source.indexOf(route);
+      expect(at, `${route} registration not found`).toBeGreaterThan(-1);
+      const registration = source.slice(at, at + 200);
+      expect(registration, `${route} must be staff-gated`).toContain(
+        "requireRole(...FINANCIAL_VERIFICATION_ROLES)",
+      );
+      expect(registration, `${route} must not sit behind bare isAuthenticated`).not.toContain(
+        "isAuthenticated",
+      );
+    }
+  });
+});

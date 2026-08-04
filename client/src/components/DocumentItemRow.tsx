@@ -28,6 +28,10 @@ export interface DocRow {
   uploadType: string;
   name: string;
   description?: string;
+  /** Which year's document is being asked for ("2023") — from the requesting task. */
+  year?: string;
+  /** Staff-authored borrower-facing instructions (tasks.documentInstructions). */
+  instructions?: string;
   required: boolean;
   status: "needed" | "uploaded" | "verifying" | "verified" | "rejected";
   fileName?: string;
@@ -89,6 +93,14 @@ export function DocumentItemRow({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="font-medium text-sm">{row.name}</span>
+              {row.year && (
+                <span
+                  className="text-xs text-muted-foreground"
+                  data-testid={`text-doc-year-${row.key}`}
+                >
+                  · {row.year}
+                </span>
+              )}
               {row.required && !hasUpload && (
                 <Badge variant="outline" className="text-xs border-border text-warning-subtle-foreground">
                   Required
@@ -102,6 +114,14 @@ export function DocumentItemRow({
             </div>
             {row.description && (
               <p className="text-xs text-muted-foreground mt-0.5">{row.description}</p>
+            )}
+            {row.instructions && (
+              <p
+                className="text-xs text-foreground/80 mt-1"
+                data-testid={`text-doc-instructions-${row.key}`}
+              >
+                {row.instructions}
+              </p>
             )}
             {hasUpload && (
               <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">

@@ -1,8 +1,14 @@
 // Underwriting routes: Deterministic engine calls: income/assets/liabilities/DTI, property eligibility, pricing.
 // One registrar in the original registration order — see ./index.ts.
+// Staff analysis tooling, not a borrower surface: every endpoint here returns a
+// computed qualifying/DTI/pricing figure over unverified self-stated inputs, so
+// the family is gated to FINANCIAL_VERIFICATION_ROLES (kb log 2026-08-04
+// sovereign-stack adjudication §3.1; "no live qualifying figures to borrowers
+// before human verification"). Pinned by tests/routeGateDrift.test.ts.
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
-import { isAuthenticated } from "../../auth";
+import { requireRole } from "../../auth";
+import { FINANCIAL_VERIFICATION_ROLES } from "@shared/schema";
 import { qualifyIncome, verifyAssets, assessLiabilities, calculateDTI, checkPropertyEligibility } from "../../underwriting";
 import { calculateLLPA, getAreaMedianIncome } from "../../pricing";
 import * as creditService from "../../services/creditService";
@@ -16,7 +22,7 @@ export function registerCalculationRoutes(
   // UNDERWRITING ENGINE API ENDPOINTS
   // ========================================================================
 
-  app.post("/api/loan-applications/:id/calculate-income", isAuthenticated, async (req, res) => {
+  app.post("/api/loan-applications/:id/calculate-income", requireRole(...FINANCIAL_VERIFICATION_ROLES), async (req, res) => {
     try {
       const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
@@ -39,7 +45,7 @@ export function registerCalculationRoutes(
     }
   });
 
-  app.post("/api/loan-applications/:id/calculate-assets", isAuthenticated, async (req, res) => {
+  app.post("/api/loan-applications/:id/calculate-assets", requireRole(...FINANCIAL_VERIFICATION_ROLES), async (req, res) => {
     try {
       const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
@@ -59,7 +65,7 @@ export function registerCalculationRoutes(
     }
   });
 
-  app.post("/api/loan-applications/:id/calculate-liabilities", isAuthenticated, async (req, res) => {
+  app.post("/api/loan-applications/:id/calculate-liabilities", requireRole(...FINANCIAL_VERIFICATION_ROLES), async (req, res) => {
     try {
       const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
@@ -76,7 +82,7 @@ export function registerCalculationRoutes(
     }
   });
 
-  app.post("/api/loan-applications/:id/calculate-dti", isAuthenticated, async (req, res) => {
+  app.post("/api/loan-applications/:id/calculate-dti", requireRole(...FINANCIAL_VERIFICATION_ROLES), async (req, res) => {
     try {
       const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
@@ -113,7 +119,7 @@ export function registerCalculationRoutes(
     }
   });
 
-  app.post("/api/loan-applications/:id/check-property-eligibility", isAuthenticated, async (req, res) => {
+  app.post("/api/loan-applications/:id/check-property-eligibility", requireRole(...FINANCIAL_VERIFICATION_ROLES), async (req, res) => {
     try {
       const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
@@ -178,7 +184,7 @@ export function registerCalculationRoutes(
     }
   });
 
-  app.post("/api/loan-applications/:id/calculate-pricing", isAuthenticated, async (req, res) => {
+  app.post("/api/loan-applications/:id/calculate-pricing", requireRole(...FINANCIAL_VERIFICATION_ROLES), async (req, res) => {
     try {
       const { id } = routeParams(req);
       const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);

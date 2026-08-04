@@ -9,6 +9,11 @@ import {
   TASK_STATUSES,
   type TaskStatus,
 } from "@shared/schema";
+import {
+  toBorrowerTaskView,
+  toBorrowerTaskViews,
+  toBorrowerTaskDocumentView,
+} from "@shared/borrowerTaskView";
 import { parseBodyOr400 } from "./validate";
 import { firstQueryValue } from "./queryParams";
 import { z } from "zod";
@@ -152,7 +157,10 @@ export async function registerTaskEngineRoutes(
         tasks = await storage.getTasksByUser(userId);
       }
 
-      res.json(tasks);
+      // Staff keep the full row (their dashboards run on the review axis);
+      // client roles get the borrower whitelist — staff review free text and
+      // staff user ids never leave the server on a borrower call.
+      res.json(isStaffRole(userRole) ? tasks : toBorrowerTaskViews(tasks, userId));
     } catch (error) {
       console.error("Get tasks error:", error);
       res.status(500).json({ error: "Failed to get tasks" });
@@ -173,7 +181,9 @@ export async function registerTaskEngineRoutes(
       }
 
       const tasks = await storage.getTasksByUser(userId);
-      res.json(tasks);
+      // Non-staff callers reach only their own list (gate above), and get the
+      // borrower whitelist of it.
+      res.json(isStaffRole(userRole) ? tasks : toBorrowerTaskViews(tasks, requestingUserId));
     } catch (error) {
       console.error("Get user tasks error:", error);
       res.status(500).json({ error: "Failed to get user tasks" });
@@ -195,7 +205,7 @@ export async function registerTaskEngineRoutes(
       }
 
       const tasks = await storage.getTasksByApplication(applicationId);
-      res.json(tasks);
+      res.json(isStaffRole(userRole) ? tasks : toBorrowerTaskViews(tasks, userId));
     } catch (error) {
       console.error("Get application tasks error:", error);
       res.status(500).json({ error: "Failed to get application tasks" });
@@ -224,7 +234,15 @@ export async function registerTaskEngineRoutes(
 
       const taskDocs = await storage.getTaskDocuments(task.id);
 
-      res.json({ ...task, documents: taskDocs });
+      if (isStaffRole(userRole)) {
+        return res.json({ ...task, documents: taskDocs });
+      }
+      // Client roles: whitelist the task AND the task-document links —
+      // task_documents.verificationNotes is staff review free text too.
+      res.json({
+        ...toBorrowerTaskView(task, userId),
+        documents: taskDocs.map(toBorrowerTaskDocumentView),
+      });
     } catch (error) {
       console.error("Get task error:", error);
       res.status(500).json({ error: "Failed to get task" });
@@ -344,7 +362,11 @@ export async function registerTaskEngineRoutes(
       }
 
       const updated = await storage.updateTask(routeParam(req, "id"), updateData);
-      res.json(updated);
+      // Response shaping follows the read-side rule: staff roles see the full
+      // row, client-role assignees get the borrower whitelist back.
+      res.json(
+        updated && !isStaffRole(userRole) ? toBorrowerTaskView(updated, userId) : updated,
+      );
     } catch (error) {
       console.error("Update task error:", error);
       res.status(500).json({ error: "Failed to update task" });
@@ -448,7 +470,9 @@ export async function registerTaskEngineRoutes(
         performedBy: userId,
       });
 
-      res.status(201).json(taskDocument);
+      res
+        .status(201)
+        .json(isStaffRole(userRole) ? taskDocument : toBorrowerTaskDocumentView(taskDocument));
     } catch (error) {
       console.error("Create task document error:", error);
       res.status(500).json({ error: "Failed to link document to task" });
@@ -475,7 +499,7 @@ export async function registerTaskEngineRoutes(
       }
 
       const taskDocs = await storage.getTaskDocuments(taskId);
-      res.json(taskDocs);
+      res.json(isStaffRole(userRole) ? taskDocs : taskDocs.map(toBorrowerTaskDocumentView));
     } catch (error) {
       console.error("Get task documents error:", error);
       res.status(500).json({ error: "Failed to get task documents" });
@@ -618,7 +642,11 @@ export async function registerTaskEngineRoutes(
       }
 
       const tasks = await taskEngine.getBorrowerTasks(applicationId);
-      res.json(tasks);
+      // Non-staff callers (borrower owner, partner-with-referral) get the
+      // strict whitelist view: staff review free text, staff user ids, and
+      // escalation internals never leave the server; staff transparency rows
+      // display only the mapping's borrowerDisplayText. Staff keep full rows.
+      res.json(isStaffRole(userRole) ? tasks : toBorrowerTaskViews(tasks));
     } catch (error) {
       console.error("Get borrower tasks error:", error);
       res.status(500).json({ error: "Failed to get borrower tasks" });
@@ -654,12 +682,13 @@ export async function registerTaskEngineRoutes(
   app.get("/api/task-engine/my-tasks", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
+      const userRole = req.user?.role || "";
       const status = parseStatusFilter(firstQueryValue(req.query.status));
       if (status === null) {
         return res.status(400).json({ error: `Invalid status filter — allowed: ${TASK_STATUSES.join(", ")}` });
       }
       const tasks = await taskEngine.getTasksForUser(userId, status);
-      res.json(tasks);
+      res.json(isStaffRole(userRole) ? tasks : toBorrowerTaskViews(tasks, userId));
     } catch (error) {
       console.error("Get my tasks error:", error);
       res.status(500).json({ error: "Failed to get tasks" });
@@ -761,7 +790,7 @@ export async function registerTaskEngineRoutes(
       if (!task) {
         return res.status(404).json({ error: "Task not found" });
       }
-      res.json(task);
+      res.json(isStaffRole(userRole) ? task : toBorrowerTaskView(task, userId));
     } catch (error) {
       console.error("Update task status error:", error);
       res.status(500).json({ error: "Failed to update task status" });

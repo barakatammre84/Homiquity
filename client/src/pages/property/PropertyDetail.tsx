@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { loanApplicationKeys } from "@/lib/queryClient";
 
 import { Footer } from "@/components/Footer";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
@@ -168,7 +169,7 @@ export default function PropertyDetail() {
   }, [property?.id]);
 
   const { data: applications } = useQuery<LoanApplication[]>({
-    queryKey: ["/api/loan-applications"],
+    queryKey: loanApplicationKeys.all(),
   });
 
   const { data: agent } = useQuery<AgentProfile & { user?: { firstName: string; lastName: string; email: string } }>({
