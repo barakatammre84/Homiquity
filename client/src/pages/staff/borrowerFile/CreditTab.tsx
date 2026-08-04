@@ -3,6 +3,7 @@ import { friendlyApiError } from "@/lib/errorMessage";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,15 +102,7 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
       ).catch((err: unknown) => {
         throw new Error(friendlyApiError(err, "Failed to generate the notice PDF."));
       });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `adverse-action-${adverseActionId.substring(0, 8)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadResponseAsFile(res, `adverse-action-${adverseActionId.substring(0, 8)}.pdf`);
       toast({
         title: "Notice Downloaded",
         description: "Print and mail the letter, then confirm delivery below.",

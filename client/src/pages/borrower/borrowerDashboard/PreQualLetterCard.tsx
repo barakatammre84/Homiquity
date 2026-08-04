@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
+import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,13 +32,7 @@ export function PreQualLetterCard({ applicationId }: { applicationId: string }) 
   const handleDownload = async () => {
     try {
       const res = await apiRequest("GET", `/api/loan-applications/${applicationId}/prequal-pdf`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `pre-qualification-letter.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadResponseAsFile(res, "pre-qualification-letter.pdf");
     } catch {
       toast({ title: "Error", description: "Could not download letter.", variant: "destructive" });
     }
