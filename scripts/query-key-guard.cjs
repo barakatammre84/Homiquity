@@ -11,15 +11,15 @@
  * therefore refreshes every segmented child and silently misses every
  * template-string one — the #297 stale-panel class of bug.
  *
- * This guard FLAGS any interpolated template-string queryKey whose path belongs
- * to one of the batch-1 factory families below, outside the factory itself. The
- * fix is always: build the key from the factory in client/src/lib/queryClient.ts.
+ * This guard FAILS (exit 1) on any interpolated template-string queryKey whose
+ * path belongs to one of the factory families below, outside the factory itself.
+ * The fix is always: build the key from the factory in
+ * client/src/lib/queryClient.ts (loanApplicationKeys, taskKeys, …).
  *
- * MODE: warn-only for now (always exits 0) — batch 1 introduces the factories
- * but has not yet migrated the call sites, so a hard failure would red the build
- * on pre-existing keys. A later batch migrates the sites and flips this to
- * blocking (exit 1) by removing the `WARN_ONLY` guard. Pass --strict to preview
- * the blocking behaviour locally.
+ * It is blocking because it is green as written — the #297 fix already segmented
+ * every loan-application key and the other families only ever used plain string
+ * keys, so there is nothing to migrate before turning it on. Runs in the `gate`
+ * job of .github/workflows/ci.yml alongside guard:schema and guard:tokens.
  *
  * Zero-dependency; no network. The vitest `queryKeyConvergence.test.ts` is the
  * companion check that verifies the factory outputs themselves.
@@ -41,8 +41,6 @@ const GUARDED_PREFIXES = [
   "/api/coach/conversations",
   "/api/onboarding/status",
 ];
-
-const WARN_ONLY = !process.argv.includes("--strict");
 
 /** `queryKey: [` whose first element is a backtick template literal. */
 const TEMPLATE_KEY = /queryKey:\s*\[\s*`([^`]*)`/;
@@ -93,13 +91,6 @@ const header =
   `factory-owned family. Build these from the factories in ` +
   `client/src/lib/queryClient.ts (loanApplicationKeys, taskKeys, …) so array-` +
   `prefix invalidation can reach them:`;
-console.log((WARN_ONLY ? "⚠️  " : "❌ ") + header);
+console.log("❌ " + header);
 for (const o of offenders) console.log(`   ${o.file}:${o.line}  ${o.text}`);
-
-if (WARN_ONLY) {
-  console.log(
-    "\n(warn-only: batch 1 has not migrated call sites yet — not failing the build)",
-  );
-  process.exit(0);
-}
 process.exit(1);
