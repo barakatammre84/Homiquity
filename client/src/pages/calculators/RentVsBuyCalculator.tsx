@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { formatCurrency } from "@/lib/formatters";
@@ -198,7 +198,7 @@ export default function RentVsBuyCalculator() {
         title: "Results Saved",
         description: "Your calculator results have been saved to your profile.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/calculator-results"] });
+      queryClient.invalidateQueries({ queryKey: calculatorResultKeys.all() });
     },
     onError: () => {
       toast({

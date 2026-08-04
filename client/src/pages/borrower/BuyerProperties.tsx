@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { loanApplicationKeys } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -150,7 +151,7 @@ export default function BuyerProperties() {
 
   // Get user's pre-approval data
   const { data: applications } = useQuery<LoanApplication[]>({
-    queryKey: ["/api/loan-applications"],
+    queryKey: loanApplicationKeys.all(),
   });
 
   const {

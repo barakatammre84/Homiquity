@@ -12,6 +12,7 @@
 // of stranding it to re-offer stale data on every future visit.
 import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { loanApplicationKeys } from "@/lib/queryClient";
 import type { UseFormReturn } from "react-hook-form";
 import type { IncomeSourceEntry, LoanApplication, PreApprovalFormData } from "@shared/schema";
 import type { FunnelStepId } from "@/funnel/preApprovalMachine";
@@ -89,7 +90,7 @@ export function useDraftRestore({
   const [decided, setDecided] = useState(false);
 
   const { data: serverDraft, isLoading: serverDraftLoading } = useQuery<LoanApplication | null>({
-    queryKey: ["/api/loan-applications/draft/latest"],
+    queryKey: loanApplicationKeys.draftLatest(),
     enabled: isAuthenticated,
   });
 

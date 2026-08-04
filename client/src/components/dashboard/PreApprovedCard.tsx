@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Loader2 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,7 +33,7 @@ export function PreApprovedCard({ applicationId, amount, validUntil }: PreApprov
   const { toast } = useToast();
 
   const statusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string; estimatedAmount?: string }>({
-    queryKey: ["/api/loan-applications", applicationId, "prequal-status"],
+    queryKey: loanApplicationKeys.prequalStatus(applicationId),
   });
 
   const generateMutation = useMutation({
@@ -47,7 +47,7 @@ export function PreApprovedCard({ applicationId, amount, validUntil }: PreApprov
         description: `Your pre-qualification letter #${data.letterNumber} is ready to download.`,
       });
       queryClient.invalidateQueries({
-        queryKey: ["/api/loan-applications", applicationId, "prequal-status"],
+        queryKey: loanApplicationKeys.prequalStatus(applicationId),
       });
     },
     onError: () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,7 +74,7 @@ export default function HmdaDemographics() {
   const [ageNotProvided, setAgeNotProvided] = useState(false);
 
   const demographicsQuery = useQuery<HmdaResponse>({
-    queryKey: ["/api/loan-applications", applicationId, "hmda"],
+    queryKey: loanApplicationKeys.hmda(applicationId),
     enabled: !!applicationId,
   });
 
@@ -166,7 +166,7 @@ export default function HmdaDemographics() {
     },
     onSuccess: () => {
       toast({ title: "Saved", description: "Demographic information has been saved successfully." });
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications", applicationId, "hmda"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.hmda(applicationId) });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to save demographic information.", variant: "destructive" });

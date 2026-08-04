@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, onboardingStatusKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -304,7 +304,7 @@ export default function OnboardingJourney() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const { data: status, isLoading, isError, error, refetch } = useQuery<OnboardingStatus>({
-    queryKey: ["/api/onboarding/status"],
+    queryKey: onboardingStatusKeys.root(),
   });
 
   if (isLoading) {

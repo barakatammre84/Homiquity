@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import {
   calculateAffordabilityEstimate,
   type AffordabilityEstimateInputs,
@@ -186,7 +186,7 @@ export default function AffordabilityCalculator() {
     },
     onSuccess: () => {
       toast({ title: "Results Saved", description: "Your affordability analysis has been saved." });
-      queryClient.invalidateQueries({ queryKey: ["/api/calculator-results"] });
+      queryClient.invalidateQueries({ queryKey: calculatorResultKeys.all() });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to save results.", variant: "destructive" });

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { loanApplicationKeys } from "@/lib/queryClient";
 import { useParams, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ export default function AdverseActionNotice() {
   const applicationId = params.id;
 
   const { data, isLoading, isError } = useQuery<{ adverseActions: AdverseAction[] }>({
-    queryKey: ["/api/loan-applications", applicationId, "credit/adverse-actions"],
+    queryKey: loanApplicationKeys.credit.adverseActions(applicationId!),
     enabled: !!applicationId,
   });
 

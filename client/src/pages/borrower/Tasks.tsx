@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, taskKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { titleCaseFromSnake } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -101,7 +101,7 @@ export default function Tasks() {
   const [isUploading, setIsUploading] = useState(false);
 
   const { data: dashboardData, isLoading: dashboardLoading } = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: !authLoading,
   });
 
@@ -117,7 +117,7 @@ export default function Tasks() {
     error: tasksError,
     refetch: refetchTasks,
   } = useQuery<Task[]>({
-    queryKey: ["/api/tasks"],
+    queryKey: taskKeys.all(),
     enabled: !authLoading && !!user,
   });
 
@@ -127,7 +127,7 @@ export default function Tasks() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.all() });
       toast({ title: "Task updated", description: "Your task has been updated." });
     },
     onError: (error: Error) => {
@@ -172,7 +172,7 @@ export default function Tasks() {
       });
       await linkResponse.json();
 
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.all() });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
 
       toast({

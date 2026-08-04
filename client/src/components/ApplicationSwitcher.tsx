@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, dashboardKeys } from "@/lib/queryClient";
 import type { LoanApplication } from "@shared/schema";
 import { getLoanAppStatusMeta, isTerminalLoanAppStatus } from "@shared/schema";
 import {
@@ -136,7 +136,7 @@ export function ApplicationSwitcher({
         title: "Application Withdrawn",
         description: "Your loan application has been withdrawn successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       setWithdrawDialogOpen(false);
       setAppToWithdraw(null);
       setWithdrawReason("");

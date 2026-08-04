@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { useActiveApplication } from "@/hooks/useActiveApplication";
 import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
 import { canonicalDocumentType } from "@shared/documentTypes";
@@ -85,7 +85,7 @@ export default function Documents() {
     error: docsErrorObj,
     refetch: refetchDocs,
   } = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: !authLoading,
   });
 
@@ -103,14 +103,14 @@ export default function Documents() {
   // [0] attached uploads to a denied/withdrawn/funded loan whenever the
   // borrower's most recent file was the closed one.
   const { data: myApps } = useQuery<LoanApplication[]>({
-    queryKey: ["/api/loan-applications"],
+    queryKey: loanApplicationKeys.all(),
     enabled: !authLoading,
   });
   const { activeApplication } = useActiveApplication(myApps ?? []);
   const focusAppId = activeApplication?.id;
 
   const { data: focusPipeline, isLoading: focusLoading } = useQuery<{ conditions: LoanCondition[] }>({
-    queryKey: ["/api/loan-applications", focusAppId, "pipeline"],
+    queryKey: loanApplicationKeys.pipeline(focusAppId!),
     enabled: !!conditionId && !!focusAppId,
   });
 
@@ -208,10 +208,10 @@ export default function Documents() {
         });
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       // Refresh pipeline data too — a matching upload moves the focused
       // condition to "submitted" and the banner should say so.
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
       if (focusAppId) {
         queryClient.invalidateQueries({
           queryKey: ["/api/applications", focusAppId, "document-checklist"],
