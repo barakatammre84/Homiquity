@@ -397,6 +397,14 @@ export class UrlaStorage extends TasksStorage {
       .orderBy(desc(lenderSubmissions.submittedAt));
   }
 
+  /** Company-wide, for the broker revenue report. Admin-gated at the route. */
+  async getAllLenderSubmissions(): Promise<LenderSubmission[]> {
+    return await db
+      .select()
+      .from(lenderSubmissions)
+      .orderBy(desc(lenderSubmissions.submittedAt));
+  }
+
   async updateLenderSubmission(id: string, data: Partial<InsertLenderSubmission>): Promise<LenderSubmission | undefined> {
     const { createdAt, updatedAt, id: _id, ...cleanData } = data as any;
     const [updated] = await db

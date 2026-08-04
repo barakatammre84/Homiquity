@@ -21,10 +21,11 @@ where the debt has accumulated.
 
 ## Severity-ordered summary
 
-> **Remediation status (2026-08-04, same day).** **F-1, F-2, F-3 and F-4 are FIXED** — see
-> §"Remediation" at the end of this document for what shipped, what is covered by tests, and
-> the items deliberately left open rather than implemented on unverified regulatory text.
-> Every other finding below is unaddressed.
+> **Remediation status (2026-08-04, same day).** **F-1 through F-6 are FIXED** — see the
+> §"Remediation" sections at the end of this document for what shipped, what is covered by
+> tests, and the items deliberately left open rather than implemented on unverified regulatory
+> text. **F-5's gate is a live behavior change in production** — read that section before the
+> next deploy. Every other finding below is unaddressed.
 
 | # | Finding | Area | Severity |
 |---|---|---|---|
@@ -32,8 +33,8 @@ where the debt has accumulated.
 | F-2 | QM points-and-fees cap is structurally unenforced — and the fee schedule breaches it | Risk | **Critical** — ✅ fixed |
 | F-3 | "Phantom lock": rate commitments issued with no lender-side lock | Capital flow | **High** — ✅ fixed |
 | F-4 | Zero-tolerance cure liability is unmodeled and untracked | Risk | **High** — ✅ fixed |
-| F-5 | Counterparty capacity is zero and submission does not check for it | Risk | **High** |
-| F-6 | No revenue, receivable, or comp representation anywhere in the system | Unit economics | **High** |
+| F-5 | Counterparty capacity is zero and submission does not check for it | Risk | **High** — ✅ fixed |
+| F-6 | No revenue, receivable, or comp representation anywhere in the system | Unit economics | **High** — ✅ fixed |
 | F-7 | Loan Estimate Section A omits the largest fee line from its itemization | Risk | Medium |
 | F-8 | EPO/EPC compensation clawback exposure is entirely unrepresented | Balance sheet | Medium |
 | F-9 | Third-party fee constants are unsourced national guesses in a zero-tolerance bucket | Risk | Medium |
@@ -667,3 +668,83 @@ Typecheck clean · **1,473 unit tests green** (up from 1,421 at audit time; +52 
 `mismoValidation`) · schema-migration guard, design-token ratchet, regulatory-freshness gate and
 production build all pass. Migrations `0038`–`0040` are expand-only and idempotent; none
 backfills.
+
+---
+
+## Remediation — F-5 and F-6 (2026-08-04)
+
+### F-5 — submission now requires a counterparty
+
+**⚠️ This changes production behavior. Read before the next deploy.**
+
+`submitToWholesaleLender` never checked `approvalStatus` — the string appeared nowhere in
+`server/`. It now consults `evaluateLenderSubmissionEligibility`
+(`shared/wholesaleLenders.ts`) before anything else:
+
+| Lender state | Environment | Outcome |
+|---|---|---|
+| `approved` | any | Allowed, real (`simulated: false`) |
+| anything else | **production** | **BLOCKED** — `SubmissionBlockedError` with remediation steps |
+| anything else | dev / preview | Allowed, recorded as a simulation, logged loudly |
+
+**Every lender in the catalog is currently `target`, so this blocks all production submissions.**
+That is the finding, enforced rather than described: transmitting a borrower's file to a company
+with no broker agreement is not a thing the system should be able to do quietly. The gated-beta
+walkthrough still works in dev/preview, where the `simulated` column already says what it is.
+
+Authorization lives in the **catalog data, not in code** — flipping a lender to `approved` in
+`shared/wholesaleLenders.ts` when the agreement is signed is what unblocks production. No env
+var, no backdoor.
+
+Two supporting pieces:
+
+- **`approvedLenderCount()` is now a reported metric**, surfaced on `getAdminStats()` and the new
+  compensation report. It is the binding constraint on revenue and belongs on a dashboard rather
+  than implicit in an array.
+- **Anti-steering now flags `singleCreditor`** (`server/services/antiSteeringOptions.ts`). The
+  §1026.36(e)(3)(i) safe harbor needs options from "a significant number of the creditors" — what
+  counts as significant is a counsel determination, so the flag deliberately asserts only the case
+  needing no interpretation: one creditor is not several. With one approved lender, every option
+  set the platform can produce is single-creditor.
+
+### F-6 — revenue now exists
+
+**What shipped.** A two-sided compensation lifecycle on `lender_submissions` (migration `0041`)
+plus a pure ledger module (`shared/compensationLedger.ts`):
+
+- **Expected** is snapshotted at submission from the comp plan elected on the application (F-1's
+  columns) × the loan amount. Snapshotted, not derived on read — a later plan edit must not
+  rewrite what we believed we were owed on a loan already in flight.
+- **Received** is recorded at funding.
+- **Variance** is `received − expected`, classified `as_expected` / `short_paid` / `over_paid` /
+  `pending`, with a $1 rounding tolerance so lender-vs-our rounding noise doesn't bury real
+  discrepancies.
+
+**Funding now requires the money.** `updateSubmissionStatus` refuses the transition to `funded`
+without `fundedLoanAmount` and `compensationReceivedAmount`. Revenue capture is structural rather
+than a matter of discipline — marking a loan funded without recording what the lender paid is
+precisely how the platform ended up unable to state its own revenue.
+
+**The dashboard no longer implies pipeline volume is revenue.** `getAdminStats()` keeps
+`totalLoanVolume` (now explicitly commented as pipeline volume) and adds a `compensation` block:
+funded count and volume, expected vs. received compensation, variance, short-paid count, loans
+funded with no remittance recorded, **pull-through**, and the approved-lender count.
+
+Pull-through is computed over **resolved** submissions only (funded vs. denied/withdrawn), so the
+metric tracks performance rather than drifting with pipeline size, and returns `null` rather than
+a fake `0%` when nothing has resolved.
+
+`GET /api/reports/compensation` (admin-only) returns the same roll-up plus a per-loan discrepancy
+list: every funded submission that was short-paid, over-paid, or funded with no remittance.
+
+**What this does not do.** It captures the revenue side only. The cost side (F-11) is still
+absent — no cost-per-file, no vendor cost ledger, no LO commission — so gross margin per loan
+remains uncomputable. Pull-through, previously unmeasurable, now is.
+
+### Verification
+
+Typecheck clean · **1,489 unit tests green** (+16) · schema guard, design-token ratchet,
+regulatory-freshness gate and production build all pass. Migration `0041` is expand-only,
+idempotent, and does not backfill: submissions predating it have no captured expectation, and
+computing one retroactively from today's comp plan would invent a revenue record. They report as
+`pending` — an honest gap.

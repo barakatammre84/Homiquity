@@ -288,6 +288,13 @@
       "when": 1785256800000,
       "tag": "0040_loan_estimate_disclosures",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1785343200000,
+      "tag": "0041_lender_submission_compensation",
+      "breakpoints": true
     }
   ]
 }

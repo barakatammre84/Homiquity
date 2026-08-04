@@ -3462,14 +3462,14 @@
     "string": "reject:",
     "number": "reject:",
     "true": "reject:",
-    "all-keys-typed": "reject:incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
-    "missing-applicationId": "reject:applicationId,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
-    "missing-lenderId": "reject:incomePackageGeneratedAt,lenderId,mismoPackageGeneratedAt,simulated,submittedAt",
-    "missing-status": "reject:incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
-    "missing-simulated": "reject:incomePackageGeneratedAt,mismoPackageGeneratedAt,submittedAt",
-    "missing-confirmationId": "reject:incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
-    "missing-readinessSnapshot": "reject:incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
-    "wrongtype-applicationId": "reject:applicationId,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt"
+    "all-keys-typed": "reject:compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
+    "missing-applicationId": "reject:applicationId,compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
+    "missing-lenderId": "reject:compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,lenderId,mismoPackageGeneratedAt,simulated,submittedAt",
+    "missing-status": "reject:compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
+    "missing-simulated": "reject:compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,submittedAt",
+    "missing-confirmationId": "reject:compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
+    "missing-readinessSnapshot": "reject:compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
+    "wrongtype-applicationId": "reject:applicationId,compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt"
   },
   "schema.insertTaxInsightSchema": {
     "undefined": "reject:",

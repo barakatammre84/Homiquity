@@ -270,9 +270,31 @@ export function registerSubmissionRoutes(
 
         const toStatus = typeof req.body?.status === "string" ? req.body.status : "";
         const notes = typeof req.body?.notes === "string" ? req.body.notes.slice(0, 2000) : undefined;
+
+        // Funding is where revenue is realized, so the transition to "funded"
+        // carries the figures that make it measurable (F-6). The service
+        // rejects the transition without them.
+        let funding: { fundedLoanAmount: number; compensationReceivedAmount: number } | undefined;
+        if (toStatus === "funded") {
+          const fundingSchema = z.object({
+            fundedLoanAmount: z.number().positive(),
+            compensationReceivedAmount: z.number().min(0),
+          });
+          const parsedFunding = fundingSchema.safeParse(req.body?.funding);
+          if (!parsedFunding.success) {
+            return res.status(400).json({
+              error:
+                "Marking a submission funded requires funding.fundedLoanAmount and " +
+                "funding.compensationReceivedAmount.",
+              details: parsedFunding.error.flatten().fieldErrors,
+            });
+          }
+          funding = parsedFunding.data;
+        }
+
         const { updateSubmissionStatus, SubmissionBlockedError } = await import("../../services/lenderSubmission");
         try {
-          const updated = await updateSubmissionStatus(submissionId, toStatus, notes, req.user!.id);
+          const updated = await updateSubmissionStatus(submissionId, toStatus, notes, req.user!.id, funding);
 
           // Autopilot decision relay: on a terminal lender decision, tell the
           // borrower they're approved / funded (Reg N), or flag the deal team
@@ -304,6 +326,51 @@ export function registerSubmissionRoutes(
       }
     },
   );
+
+  // ---------------------------------------------------------------------
+  // Broker revenue report (F-6). What did the book actually earn, did the
+  // lenders pay what the comp plans say, and how much of the pipeline
+  // converts? Admin-only: this is company-level financial data, not a
+  // per-file view.
+  // ---------------------------------------------------------------------
+  app.get("/api/reports/compensation", requireRole("admin"), async (_req, res) => {
+    try {
+      const submissions = await storage.getAllLenderSubmissions();
+      const { summarizeCompensation, evaluateCompensationVariance } = await import(
+        "@shared/compensationLedger"
+      );
+      const { approvedLenderCount, getWholesaleLender } = await import("@shared/wholesaleLenders");
+
+      const summary = summarizeCompensation(submissions);
+
+      // Discrepancies worth a human: funded loans that were short-paid, or
+      // funded with no remittance recorded at all.
+      const discrepancies = submissions
+        .filter(s => s.status === "funded")
+        .map(s => ({
+          submissionId: s.id,
+          applicationId: s.applicationId,
+          lender: getWholesaleLender(s.lenderId)?.name ?? s.lenderId,
+          fundedAt: s.fundedAt,
+          ...evaluateCompensationVariance({
+            expectedAmount: s.compensationExpectedAmount,
+            receivedAmount: s.compensationReceivedAmount,
+          }),
+        }))
+        .filter(row => row.status === "short_paid" || row.status === "over_paid" || row.status === "pending");
+
+      res.json({
+        ...summary,
+        // The binding constraint on all of the above: with no approved
+        // counterparty there is no revenue capacity at all (F-5).
+        approvedLenderCount: approvedLenderCount(),
+        discrepancies,
+      });
+    } catch (error) {
+      console.error("Compensation report error:", error);
+      res.status(500).json({ error: "Failed to build the compensation report" });
+    }
+  });
 
   // Fannie Mae delivery readiness: URLA gating + Loan Delivery / UCD /
   // EarlyCheck edit mirror + Special Feature Code derivation. Internal staff
