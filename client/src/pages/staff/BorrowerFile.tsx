@@ -525,7 +525,7 @@ export default function BorrowerFile() {
                 </TabsContent>
 
                 <TabsContent value="credit" className="space-y-4">
-                  <CreditTab applicationId={applicationId} />
+                  <CreditTab applicationId={applicationId} canRevokeLetter={canSetCreditDecisions} />
                 </TabsContent>
 
                 <TabsContent value="tax-intel" className="space-y-4">

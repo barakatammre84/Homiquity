@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { type LoanAppStatus } from "./schema/lendingCore";
 
 /**
@@ -20,6 +21,18 @@ export const PREQUAL_ELIGIBLE_STATUSES: readonly LoanAppStatus[] = [
   "pre_approved",
   "underwriting",
 ];
+
+/**
+ * One schema for both sides of letter revocation: the server route
+ * (POST /api/pre-approval-letters/:letterId/revoke) validates the body with
+ * it, and the staff revocation dialog gates its confirm button with it — the
+ * client can never offer a submission the server would 400.
+ */
+export const letterRevocationSchema = z.object({
+  reason: z.string().trim()
+    .min(10, "A revocation reason of at least 10 characters is required")
+    .max(2000),
+});
 
 /**
  * The status a letter should read as RIGHT NOW, expiry included.

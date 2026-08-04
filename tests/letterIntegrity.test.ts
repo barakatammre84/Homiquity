@@ -234,6 +234,18 @@ describe("letter lifecycle route guards", () => {
     ).toBe(2);
   });
 
+  it("revocation validates with the shared schema; letter-status exposes the revocation target", async () => {
+    const source = await lettersSource();
+    expect(
+      source.includes("letterRevocationSchema.safeParse"),
+      "expected the revoke route to validate with the SHARED letterRevocationSchema (shared/letters.ts) — the staff dialog gates its confirm button with the same schema, so the two cannot drift",
+    ).toBe(true);
+    expect(
+      source.includes("letterId: letter.id"),
+      "expected letter-status to expose letterId — the staff revocation card's mutation target",
+    ).toBe(true);
+  });
+
   it("borrower-facing responses never carry the revocation reason", async () => {
     const source = await lettersSource();
     // revocationReason appears exactly once: the revoke route's own write.
