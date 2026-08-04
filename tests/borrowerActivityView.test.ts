@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 import { getTableColumns } from "drizzle-orm";
 import { dealActivities } from "@shared/schema";
 import { WHOLESALE_LENDERS } from "@shared/wholesaleLenders";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   toBorrowerActivityView,
   toBorrowerActivityViews,
+  hasWriterContract,
   BORROWER_ACTIVITY_VIEW_COLUMNS,
   BORROWER_ACTIVITY_EMBARGOED_COLUMNS,
+  WRITER_CONTRACT_KEY,
+  WRITER_CONTRACT_VERSION,
   type MaskableDealActivity,
 } from "@shared/borrowerActivityView";
 import { lintOutboundText } from "@shared/compliance/loCommsLint";
@@ -22,17 +27,20 @@ import { lintOutboundText } from "@shared/compliance/loCommsLint";
  * spreading the row.
  */
 
-// Default fixture rows are post-cutover (see WRITER_CONTRACT_CUTOVER in the
-// view): written under the writer contract, so verbatim descriptions apply.
+/** What storage.createDealActivity stamps onto every row it writes. */
+const CONTRACT_META = { [WRITER_CONTRACT_KEY]: WRITER_CONTRACT_VERSION };
+
+// Default fixture rows carry the writer-contract marker — i.e. they were
+// written by post-fix code, so their descriptions are derived copy.
 const activity = (over: Partial<MaskableDealActivity> = {}): MaskableDealActivity => ({
   id: "act-1",
   applicationId: "app-1",
   activityType: "status_change",
   title: "Application Submitted",
   description: "Your loan application has been received and is being analyzed.",
-  metadata: null,
+  metadata: CONTRACT_META,
   performedBy: "borrower-user-1",
-  createdAt: "2026-08-07T12:00:00.000Z",
+  createdAt: "2026-08-04T12:00:00.000Z",
   ...over,
 });
 
@@ -164,7 +172,7 @@ describe("verbatim types pass through scrubbed", () => {
     expect(view!.title).toBe("Application Submitted");
     expect(view!.description).toBe("Your loan application has been received and is being analyzed.");
     expect(view!.performedBy).toBe("borrower-user-1");
-    expect(view!.createdAt).toBe("2026-08-07T12:00:00.000Z");
+    expect(view!.createdAt).toBe("2026-08-04T12:00:00.000Z");
   });
 
   it("scrubs wholesale-lender identity out of verbatim text", () => {
@@ -206,13 +214,14 @@ describe("verbatim types pass through scrubbed", () => {
 
 describe("pre-contract legacy rows — historical staff free text never travels (§9 finding)", () => {
   const staffNote = "declining comp factor — suspected undisclosed MCA debt, see credit memo";
+  /** A row written before the contract: no marker, whatever else it carries. */
+  const legacy = (over: Partial<MaskableDealActivity>) => activity({ metadata: null, ...over });
 
-  it("masks the description of a pre-cutover status_change row, keeping the derived title", () => {
+  it("masks the description of an unmarked status_change row, keeping the derived title", () => {
     const view = toBorrowerActivityView(
-      activity({
+      legacy({
         title: "Status Updated to SUSPENDED",
         description: staffNote,
-        createdAt: "2026-08-01T09:00:00.000Z",
         performedBy: "staff-user-42",
       }),
       "borrower-user-1",
@@ -222,36 +231,80 @@ describe("pre-contract legacy rows — historical staff free text never travels 
     expect(JSON.stringify(view)).not.toContain("MCA");
   });
 
-  it("masks a pre-cutover document_uploaded description carrying a staff task title", () => {
+  it("masks an unmarked document_uploaded description carrying a staff task title", () => {
     const view = toBorrowerActivityView(
-      activity({
+      legacy({
         activityType: "document_uploaded",
         title: "Document Uploaded for Task",
         description: "Document uploaded for task: internal fraud-queue recheck of bank statements",
-        createdAt: "2026-08-01T09:00:00.000Z",
       }),
     );
     expect(view!.title).toBe("Document Uploaded for Task");
     expect(view!.description).toBeUndefined();
   });
 
-  it("treats a missing createdAt as pre-contract (mask, never leak)", () => {
+  it("masks a legacy row that carries staff metadata but no marker", () => {
     const view = toBorrowerActivityView(
-      activity({ description: staffNote, createdAt: null }),
+      legacy({ description: staffNote, metadata: { notes: staffNote } }),
     );
     expect(view!.description).toBeUndefined();
+    expect(JSON.stringify(view)).not.toContain("MCA");
+  });
+
+  it("rejects near-miss markers — wrong version, wrong shape, array metadata", () => {
+    for (const metadata of [
+      { [WRITER_CONTRACT_KEY]: 0 },
+      { [WRITER_CONTRACT_KEY]: "1" },
+      { [WRITER_CONTRACT_KEY]: true },
+      [WRITER_CONTRACT_KEY],
+      "writerContract",
+      null,
+      undefined,
+    ]) {
+      expect(hasWriterContract(metadata), JSON.stringify(metadata)).toBe(false);
+      expect(toBorrowerActivityView(activity({ description: staffNote, metadata }))!.description)
+        .toBeUndefined();
+    }
+    expect(hasWriterContract(CONTRACT_META)).toBe(true);
+  });
+
+  it("timestamps do NOT gate the description — created_at carries no reliable zone", () => {
+    // created_at is `timestamp without time zone` filled by the column default,
+    // so the same instant reads hours apart depending on the writing session's
+    // timezone. A marked row shows its description regardless of its date; an
+    // unmarked one is masked regardless of how recent it looks.
+    for (const createdAt of ["2020-01-01T00:00:00.000Z", "2099-01-01T00:00:00.000Z", null]) {
+      expect(toBorrowerActivityView(activity({ createdAt }))!.description).toBe(
+        "Your loan application has been received and is being analyzed.",
+      );
+      expect(toBorrowerActivityView(legacy({ createdAt }))!.description).toBeUndefined();
+    }
   });
 
   it("leaves other verbatim types untouched — their writers never embedded free text", () => {
     const view = toBorrowerActivityView(
-      activity({
+      legacy({
         activityType: "rate_locked",
         title: "Rate Locked",
         description: "Rate locked at 6.375% for 30 days",
-        createdAt: "2026-08-01T09:00:00.000Z",
       }),
     );
     expect(view!.description).toBe("Rate locked at 6.375% for 30 days");
+  });
+});
+
+describe("the insert chokepoint stamps the marker", () => {
+  it("storage.createDealActivity is the only writer and applies WRITER_CONTRACT_KEY", () => {
+    const src = readFileSync(
+      fileURLToPath(new URL("../server/storage/applications.ts", import.meta.url)),
+      "utf8",
+    );
+    const body = src.slice(src.indexOf("async createDealActivity"));
+    expect(body).toContain("WRITER_CONTRACT_KEY");
+    expect(body).toContain("WRITER_CONTRACT_VERSION");
+    // Guard the merge: a caller-supplied metadata object must survive alongside
+    // the marker, or writers like the condition handlers silently lose notes.
+    expect(body).toMatch(/\.\.\.caller/);
   });
 });
 

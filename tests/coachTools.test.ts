@@ -5,6 +5,12 @@ vi.mock("../server/services/coachProfileSync", async (importOriginal) => {
   return { ...actual, syncCoachIntakeToApplication: vi.fn() };
 });
 
+// The DPA lookup tool reads the seed-verified directory through the storage
+// singleton; mock it so these tests need no database.
+vi.mock("../server/storage", () => ({
+  storage: { getDpaPrograms: vi.fn() },
+}));
+
 import {
   COACH_TOOLS,
   executeCoachTool,
@@ -12,6 +18,7 @@ import {
   type CoachToolContext,
 } from "../server/services/coachTools";
 import { syncCoachIntakeToApplication } from "../server/services/coachProfileSync";
+import { storage } from "../server/storage";
 
 function makeCtx(): { ctx: CoachToolContext; events: CoachStreamEvent[] } {
   const events: CoachStreamEvent[] = [];
@@ -34,6 +41,9 @@ describe("COACH_TOOLS definition stability (prompt-cache contract)", () => {
       "set_document_checklist",
       "generate_borrower_package",
       "suggest_next_steps",
+      // Appended 2026-08-04 (renter-incubation adjudication Leg C) — new tools
+      // append at the END only.
+      "lookup_dpa_programs",
     ]);
   });
 
@@ -189,5 +199,62 @@ describe("executeCoachTool: panel tools", () => {
     const { ctx } = makeCtx();
     const result = await executeCoachTool(ctx, "delete_everything", {});
     expect(result.isError).toBe(true);
+  });
+});
+
+describe("executeCoachTool: lookup_dpa_programs (renter-incubation adjudication Leg C)", () => {
+  const getDpaPrograms = vi.mocked(storage.getDpaPrograms);
+  const ihda = {
+    name: "IHDAccess Forgivable",
+    programType: "state",
+    assistanceType: "forgivable_loan",
+    state: "IL",
+    description: "4% of the purchase price as a forgivable loan.",
+    maxAssistanceAmount: "6000",
+    maxAssistancePercent: "4",
+    minCreditScore: 640,
+    firstTimeBuyerOnly: false,
+    eligibilityNotes: "County limits apply; as of July 2026.",
+    applicationUrl: "https://www.ihda.org/",
+    isActive: true,
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns the verified rows with the confirm-with-agency instruction", async () => {
+    getDpaPrograms.mockResolvedValueOnce([ihda as never]);
+    const { ctx } = makeCtx();
+    const result = await executeCoachTool(ctx, "lookup_dpa_programs", { state: "il" });
+    expect(result.isError).toBeUndefined();
+    // Zod normalizes the state filter before it reaches storage.
+    expect(getDpaPrograms).toHaveBeenCalledWith({ state: "IL" });
+    expect(result.content).toContain("IHDAccess Forgivable");
+    expect(result.content).toContain("minimum credit score 640");
+    expect(result.content).toContain("HUD-approved housing counselor");
+    expect(result.content).toContain("do not state or imply that they qualify");
+  });
+
+  it("tells the model the directory is IL-only on an empty result — never invent", async () => {
+    getDpaPrograms.mockResolvedValueOnce([]);
+    const { ctx } = makeCtx();
+    const result = await executeCoachTool(ctx, "lookup_dpa_programs", { state: "TX" });
+    expect(result.isError).toBeUndefined();
+    expect(result.content).toContain("Illinois programs only");
+    expect(result.content).toContain("do NOT invent programs");
+  });
+
+  it("rejects malformed filters without touching storage", async () => {
+    const { ctx } = makeCtx();
+    const result = await executeCoachTool(ctx, "lookup_dpa_programs", { state: "Texas" });
+    expect(result.isError).toBe(true);
+    expect(getDpaPrograms).not.toHaveBeenCalled();
+  });
+
+  it("degrades honestly when the directory read fails", async () => {
+    getDpaPrograms.mockRejectedValueOnce(new Error("db down"));
+    const { ctx } = makeCtx();
+    const result = await executeCoachTool(ctx, "lookup_dpa_programs", {});
+    expect(result.isError).toBe(true);
+    expect(result.content).toContain("do not answer from memory");
   });
 });

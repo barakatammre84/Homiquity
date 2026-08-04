@@ -25,12 +25,32 @@ export function formatCurrencyDecimal(amount: number | string | null | undefined
 // Controlled currency <input> pair: the field renders a grouped digit string
 // ("1,250") while state stays a plain number. Keep them inverse of each other —
 // formatInputCurrency omits the "$" because the inputs render their own prefix.
+//
+// NUMBER-STATE contract: an emptied field round-trips to 0, so it re-renders as
+// "0" rather than clearing to the placeholder. That is load-bearing for the
+// always-computing calculators (an absent input is a zero input). Surfaces that
+// validate emptiness instead — the funnel — want maskCurrencyDigits below.
 export function formatInputCurrency(value: number): string {
   return value.toLocaleString("en-US");
 }
 
 export function parseCurrencyInput(value: string): number {
   return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
+}
+
+/**
+ * STRING-STATE currency mask: keeps the digits the borrower actually typed and
+ * groups them ("1250" → "1,250"), with no "$" — the fields render their own
+ * prefix. Empty in, empty out, so a cleared field falls back to its placeholder
+ * and stays empty for the required-field validator.
+ *
+ * This is the counterpart of formatInputCurrency/parseCurrencyInput above, NOT
+ * a duplicate of it: the two differ precisely on the emptied field, and the
+ * pre-approval funnel depends on the empty answer being distinguishable from a
+ * zero one. Consolidating them would resurrect the "0" snap-back mid-funnel.
+ */
+export function maskCurrencyDigits(value: string): string {
+  return value.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 export function formatPercent(value: number | string): string {
