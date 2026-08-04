@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useSearchParams } from "wouter";
-import { pickWorkableLoanApplication } from "@shared/schema";
+import { isTerminalLoanAppStatus, pickWorkableLoanApplication } from "@shared/schema";
 
 /**
  * The query-string key that carries the borrower's chosen loan file, e.g.
@@ -47,14 +47,26 @@ export interface SelectableApplication {
  * Resolve "which file is the borrower working on" from a list plus a requested
  * id. Pure and router-free so the rule is testable on its own.
  *
- * The requested id is only honoured when it appears in `applications` — the
- * list the server already scoped to this user. That membership check is the
- * trust boundary: a hand-edited or pasted `?app=` never reaches an API call,
- * it just falls back to the canonical pick.
+ * The requested id must clear TWO independent checks.
+ *
+ * Membership is the *trust* boundary: the id has to appear in `applications`,
+ * the list the server already scoped to this user, so a hand-edited or pasted
+ * `?app=` never reaches an API call.
+ *
+ * Workability is the *safety* boundary: the file also has to be non-terminal.
+ * Membership alone is not enough — a denied/withdrawn/funded file is still the
+ * borrower's own, so it passes the trust check, and honouring it here is how
+ * uploads landed on closed loans (#271, #273). That bug was fixed in the
+ * fallback below but left open on this branch, and the requested id does not
+ * even need a URL to get here: `useActiveApplication` also feeds it from the
+ * per-tab mirror, which keeps naming a file after underwriting closes it.
  *
  * The fallback is `pickWorkableLoanApplication` (shared/schema/lendingCore.ts)
- * and nothing else — never `?? applications[0]`, which is how uploads once
- * landed on a denied/withdrawn/funded file (#271, #273).
+ * and nothing else — never `?? applications[0]`.
+ *
+ * A terminal file is a valid thing to *link to*; it is never the file a
+ * borrower is working on. Surfaces that want to display one resolve it from
+ * the list themselves rather than through this selector.
  */
 export function resolveActiveApplication<T extends SelectableApplication>(
   applications: readonly T[],
@@ -62,7 +74,7 @@ export function resolveActiveApplication<T extends SelectableApplication>(
 ): T | undefined {
   if (requestedId) {
     const requested = applications.find((a) => a.id === requestedId);
-    if (requested) return requested;
+    if (requested && !isTerminalLoanAppStatus(requested.status)) return requested;
   }
   return pickWorkableLoanApplication(applications);
 }
