@@ -199,6 +199,7 @@ export const loanApplicationKeys = {
   letterStatus: (id: string) => ["/api/loan-applications", id, "letter-status"] as const,
   loanEstimate: (id: string) => ["/api/loan-applications", id, "loan-estimate"] as const,
   hmda: (id: string) => ["/api/loan-applications", id, "hmda"] as const,
+  incomeSummary: (id: string) => ["/api/loan-applications", id, "income-summary"] as const,
   submissionReadiness: (id: string) =>
     ["/api/loan-applications", id, "submission-readiness"] as const,
   lenderSubmissions: (id: string) =>
