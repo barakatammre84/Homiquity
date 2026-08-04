@@ -20,6 +20,7 @@ export default defineConfig({
       "tests/rateProductHeadings.test.ts",
       "tests/vercelDeploymentGuard.test.ts",
       "tests/loCommsLint.test.ts",
+      "tests/borrowerConditionView.test.ts",
       "tests/scenarioSimulator.test.ts",
       "tests/cockpitScoping.test.ts",
       "tests/signalEngine.test.ts",
