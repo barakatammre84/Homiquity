@@ -1,4 +1,4 @@
--- 0041: broker compensation lifecycle on lender submissions (audit finding F-6)
+-- 0042: broker compensation lifecycle on lender submissions (audit finding F-6)
 -- Expand-only, idempotent. The currently-deployed app tolerates the new
 -- columns and vice-versa.
 --

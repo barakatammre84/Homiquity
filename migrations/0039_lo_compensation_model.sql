@@ -1,4 +1,4 @@
--- 0038: loan-originator compensation model per transaction (Reg Z 1026.36(d)(2))
+-- 0039: loan-originator compensation model per transaction (Reg Z 1026.36(d)(2))
 -- Expand-only, idempotent: two nullable columns on loan_applications. The
 -- currently-deployed app tolerates the new columns and vice-versa.
 --
