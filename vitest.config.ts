@@ -50,6 +50,7 @@ export default defineConfig({
       "tests/complianceInvariants.test.ts",
       "tests/scenarioCatalog.test.ts",
       "tests/statusVocabulary.test.ts",
+      "tests/borrowerJourney.test.ts",
       "tests/routeGateDrift.test.ts",
       "tests/intakeSchema.test.ts",
       "tests/illinoisDpaSeed.test.ts",
