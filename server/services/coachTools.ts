@@ -1,6 +1,7 @@
 import type { Request } from "express";
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { storage } from "../storage";
 import {
   syncCoachIntakeToApplication,
   type AppliedField,
@@ -571,6 +572,27 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
       required: ["suggestions"],
     },
   },
+  // NOTE: new tools append at the END — tools render before system in the
+  // prompt-cache prefix, so inserting mid-list reorders every later tool and
+  // invalidates the cache twice over.
+  {
+    name: "lookup_dpa_programs",
+    description:
+      "Look up down-payment-assistance programs from Homiquity's verified educational directory (currently Illinois: IHDA statewide, City of Chicago, Cook County). Call whenever the user asks about down payment assistance, grants, DPA, IHDA, or help covering closing-cost cash — NEVER answer DPA questions from memory. Cite only what this tool returns; program terms change and funding pauses, so always tell the user to confirm current details with the administering agency or a HUD-approved housing counselor, and never state or imply that the user qualifies.",
+    input_schema: {
+      type: "object" as const,
+      additionalProperties: false,
+      properties: {
+        state: { type: "string", description: "Optional two-letter state code (e.g. \"IL\") to filter by." },
+        firstTimeBuyer: {
+          type: "boolean",
+          description:
+            "Pass false for a repeat buyer (excludes first-time-only programs). True or omitted returns all programs — first-time buyers qualify for both first-time-only and general programs.",
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -718,6 +740,46 @@ export async function executeCoachTool(
       ctx.state.suggestions = parsed.data;
       ctx.emit({ type: "panel", suggestions: parsed.data });
       return { content: "Suggestions shown." };
+    }
+
+    case "lookup_dpa_programs": {
+      const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+      const parsed = z
+        .object({
+          state: z.string().trim().toUpperCase().length(2).optional(),
+          firstTimeBuyer: z.boolean().optional(),
+        })
+        .safeParse(raw);
+      if (!parsed.success) {
+        return { content: `Invalid DPA lookup — ${zodIssueSummary(parsed.error)}.`, isError: true };
+      }
+      try {
+        // Read-only over the seed-verified directory (same rows the public
+        // /down-payment-wizard shows) — the coach's only DPA knowledge source.
+        const programs = await storage.getDpaPrograms(parsed.data);
+        if (programs.length === 0) {
+          return {
+            content:
+              "No matching programs. The directory currently lists Illinois programs only (verified as of July 2026) — do NOT invent programs for other states; point the user to their state's housing finance agency or a HUD-approved housing counselor instead.",
+          };
+        }
+        const lines = programs.map((p) => {
+          const cap = p.maxAssistancePercent
+            ? `up to ${p.maxAssistancePercent}% (max $${Number(p.maxAssistanceAmount).toLocaleString()})`
+            : `up to $${Number(p.maxAssistanceAmount).toLocaleString()}`;
+          const credit = p.minCreditScore ? `; published minimum credit score ${p.minCreditScore}` : "";
+          const ftb = p.firstTimeBuyerOnly ? "; first-time buyers only" : "";
+          return `- ${p.name} (${p.programType}, ${p.assistanceType}, ${p.state ?? "nationwide"}): ${cap}${credit}${ftb}. ${p.description} Eligibility notes: ${p.eligibilityNotes ?? "see agency"}. Application: ${p.applicationUrl ?? "via the administering agency"}`;
+        });
+        return {
+          content:
+            `${programs.length} verified program(s):\n${lines.join("\n")}\n` +
+            "Present these as educational information. Terms change and funding can pause — tell the user to confirm current details with the administering agency or a HUD-approved housing counselor, and do not state or imply that they qualify.",
+        };
+      } catch (err) {
+        console.error("[Coach] DPA lookup failed:", err);
+        return { content: "The DPA directory is temporarily unavailable — say so; do not answer from memory.", isError: true };
+      }
     }
 
     default:
