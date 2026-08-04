@@ -38,6 +38,7 @@ export default defineConfig({
       "tests/lookupResolver.test.ts",
       "tests/mismoValidation.test.ts",
       "tests/preApprovalMachine.test.ts",
+      "tests/letterIntegrity.test.ts",
       "tests/preUnderwriting.test.ts",
       "tests/lifecycleEngine.test.ts",
       "tests/underwritingNuance.test.ts",
