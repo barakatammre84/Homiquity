@@ -41,16 +41,11 @@ surface** — the precise shape that produced F-14.
 
 | Capability | Route / module | Consumer today |
 |---|---|---|
-| Broker revenue + unit economics | `GET /api/reports/compensation` | none |
-| Contingent-liability register | `GET /api/reports/contingent-liabilities` | none |
 | TRID fee-tolerance review | `GET /api/loan-applications/:id/le-tolerance` | none |
 | Per-file cost ledger | `GET`/`POST /api/loan-applications/:id/costs` | none |
 
-The four report endpoints are the genuine judgement call. They answer questions the business could
-not previously ask (what does a funded loan earn, what could we owe, which disclosed figures are
-guesses) — but an answer nobody reads is not an answer.
-
-**Decision owed:** a staff dashboard consuming the four reports, or a freeze ratchet on them.
+The two remaining entries are per-file staff surfaces (they belong on the borrower file, not an
+admin dashboard). **Decision owed:** wire them into BorrowerFile, or freeze them.
 
 ---
 
@@ -58,6 +53,8 @@ guesses) — but an answer nobody reads is not an answer.
 
 | Capability | Outcome | When | How |
 |---|---|---|---|
+| Broker revenue + unit economics (`GET /api/reports/compensation`) | **Consumed** | 2026-08-04 | `FinancialReports` admin page (`/admin/financial-reports`) — revenue, pull-through, unit economics, clawback exposure and remittance discrepancies, rendered under the audit's honesty rules (upper-bound margins, null ≠ zero). |
+| Contingent-liability register (`GET /api/reports/contingent-liabilities`) | **Consumed** | 2026-08-04 | Same page — `quantifiedFloor` labelled a floor with `unquantifiedCount` beside it; unpriceable exposures render "—", never $0. |
 | LO compensation election (`PATCH /api/loan-applications/:id/compensation`) | **Consumed** | 2026-08-04 | `CompensationCard` on the staff BorrowerFile overview tab. This was the register's flagged asymmetry — load-bearing without a UI (the Loan Estimate refused to generate without an election) — and was wired the same day, first, as the register demanded. |
 
 ---
