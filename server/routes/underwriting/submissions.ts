@@ -403,6 +403,28 @@ export function registerSubmissionRoutes(
   });
 
   // ---------------------------------------------------------------------
+  // Contingent-liability register (F-13). For an asset-light broker these
+  // exposures ARE the balance sheet: obligations that exist only if something
+  // happens. Admin-only — company-level financial data.
+  //
+  // The response deliberately reports a `quantifiedFloor` plus an
+  // `unquantifiedCount`, never a "total": TILA damages, the surety bond and
+  // minimum net worth are real exposures with no figure here, and a number
+  // that looked complete would be worse than no number.
+  // ---------------------------------------------------------------------
+  app.get("/api/reports/contingent-liabilities", requireRole("admin"), async (_req, res) => {
+    try {
+      const { buildLiveContingentLiabilityRegister } = await import(
+        "../../services/contingentLiabilityRegister"
+      );
+      res.json(await buildLiveContingentLiabilityRegister());
+    } catch (error) {
+      console.error("Contingent liability register error:", error);
+      res.status(500).json({ error: "Failed to build the contingent-liability register" });
+    }
+  });
+
+  // ---------------------------------------------------------------------
   // Per-file cost ledger (F-11). Vendor spend the platform does not book
   // automatically — appraisal invoices, verification services, AMC charges.
   // Append-only: a correction is a negative reversal entry, never an edit.

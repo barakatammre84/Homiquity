@@ -109,6 +109,18 @@ export class NotificationsOpsStorage extends RealtorHomeownerStorage {
       .orderBy(desc(loanCostEntries.incurredAt));
   }
 
+  /**
+   * Every issued disclosure company-wide. Feeds the contingent-liability
+   * register, which needs the LATEST row per application — callers group by
+   * applicationId and take the highest version.
+   */
+  async getAllLoanEstimateDisclosures(): Promise<LoanEstimateDisclosure[]> {
+    return db
+      .select()
+      .from(loanEstimateDisclosures)
+      .orderBy(desc(loanEstimateDisclosures.version));
+  }
+
   /** Company-wide, for the unit-economics report. Admin-gated at the route. */
   async getAllLoanCostEntries(): Promise<LoanCostEntry[]> {
     return db.select().from(loanCostEntries).orderBy(desc(loanCostEntries.incurredAt));

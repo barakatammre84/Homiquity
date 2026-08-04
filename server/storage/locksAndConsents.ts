@@ -67,6 +67,19 @@ export class LocksAndConsentsStorage extends JourneyStorage {
     return updated;
   }
 
+  /**
+   * Every open lock, regardless of expiry. Feeds the contingent-liability
+   * register: an unconfirmed open row is honor exposure, a confirmed one
+   * nearing expiry is extension exposure.
+   */
+  async getOpenRateLocks(): Promise<RateLock[]> {
+    return await db
+      .select()
+      .from(rateLocks)
+      .where(inArray(rateLocks.status, [...OPEN_RATE_LOCK_STATUSES]))
+      .orderBy(asc(rateLocks.expiresAt));
+  }
+
   async getExpiringRateLocks(withinDays: number): Promise<RateLock[]> {
     const now = new Date();
     const futureDate = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);

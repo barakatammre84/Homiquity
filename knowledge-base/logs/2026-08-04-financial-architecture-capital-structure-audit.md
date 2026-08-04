@@ -21,7 +21,7 @@ where the debt has accumulated.
 
 ## Severity-ordered summary
 
-> **Remediation status (2026-08-04, same day).** **F-1 through F-12 are FIXED** — see the
+> **Remediation status (2026-08-04, same day).** **F-1 through F-13 are FIXED** — see the
 > §"Remediation" sections at the end of this document for what shipped, what is covered by
 > tests, and the items deliberately left open rather than implemented on unverified regulatory
 > text. **F-5's gate is a live behavior change in production** — read that section before the
@@ -41,7 +41,7 @@ where the debt has accumulated.
 | F-10 | Lock-extension fee has no payer attribution | Capital flow | Medium — ✅ fixed |
 | F-11 | No cost side: no cost-per-file, vendor cost ledger, or pull-through | Unit economics | Medium — ✅ fixed |
 | F-12 | Reg Z Total Loan Amount stand-in errs permissive, and its comment says the opposite | Risk | Low — ✅ fixed |
-| F-13 | Contingent-liability register does not exist; reserve adequacy is unassessable | Balance sheet | Medium |
+| F-13 | Contingent-liability register does not exist; reserve adequacy is unassessable | Balance sheet | Medium — ✅ fixed |
 | F-14 | Seller/servicer delivery infrastructure built for a business that will never deliver | Capital efficiency | **Escalation** |
 | F-15 | RESPA §8 handled correctly and deliberately | Risk | ✅ Sound |
 | F-16 | Asset-light structure is correct | Balance sheet | ✅ Sound |
@@ -946,3 +946,62 @@ Typecheck clean · **1,529 unit tests green** (+8, plus 3 boundary tests re-base
 design-token ratchet, regulatory-freshness gate and production build all pass. Migration `0043`
 is expand-only, idempotent, and does not backfill — existing locks genuinely have no recorded
 payer, and guessing one would falsify a fee record.
+
+---
+
+## Remediation — F-13 (2026-08-04)
+
+The audit asked for "one page: each exposure, its per-file cap, its window, and the pipeline count
+it multiplies against." That page now exists as
+[CONTINGENT_LIABILITY_REGISTER.md](../governance/CONTINGENT_LIABILITY_REGISTER.md), backed by a
+live endpoint — `GET /api/reports/contingent-liabilities` (admin) — rather than a static table
+that would go stale the day after it was written.
+
+**This finding was only fixable because the others were fixed first.** Every measurable exposure
+became measurable through an earlier repair:
+
+| Exposure | Measurable because |
+|---|---|
+| TRID good-faith cures | F-4 persisted the Loan Estimate baselines — there was nothing to diff against before |
+| EPO clawback | F-8 modeled the window over F-6's funding columns |
+| Honor exposure on unconfirmed quotes | F-3 made lender confirmation a recorded fact, so an unconfirmed row is now *distinguishable* from a real lock |
+| Lock-extension cost | F-3's confirmed expirations + F-10's payer attribution |
+
+**The rule the module enforces.** Some exposures can be measured; others are real, potentially
+unbounded, and cannot be quantified without a statute or counsel — TILA damages, the surety bond,
+minimum net worth. A register that silently omitted the second kind would produce a total that
+*looks complete and is not*, which is worse than no total at all. So:
+
+- the sum is named **`quantifiedFloor`**, never "total";
+- `unquantifiedCount` and `incomplete` travel with it, so a consumer cannot read the number
+  without also reading how much is missing from it;
+- an exposure that cannot be priced carries `amount: null`, **never `0`** — a zero would read as
+  "no exposure", which is a lie. A test asserts this per entry.
+
+**Two judgment calls worth stating.**
+
+*Reg Z / ATR liability is counted, not priced.* The register reports how many funded loans carry a
+known defect and refuses to attach a dollar figure — TILA statutory and actual damages need the
+statute and counsel, and inventing a multiplier would put a fabricated number on the balance
+sheet. The count is the honest deliverable; the multiplier is a counsel input.
+
+*The lock exposure changed shape because F-3 changed the risk.* The original finding sized it as a
+rate-shock gap on locks the platform had invented. With confirmation now mandatory, a confirmed
+lock is the lender's obligation — so the register splits it: **honor exposure** on legacy
+unconfirmed rows (shrinking to zero as they are confirmed or withdrawn) and **extension cost** on
+confirmed locks nearing expiry. That is a more accurate description of the residual risk than the
+audit's own framing.
+
+**What this does not do.** It does not set a reserve. The floor is the part of the reserve number
+we can currently see; the governance page states plainly that the reserve must cover the floor
+*plus* a counsel estimate for the unquantified set *plus* the licensing minimum that has to
+survive both. And the minimum-net-worth line is where the whole page converges — every contingent
+exposure is a claim against exactly the net worth the licence requires be maintained, so reserve
+adequacy is not "can we pay this?" but "can we pay this and still clear the minimum?". That
+question stays unanswerable until someone with the state statute fills that line in.
+
+### Verification
+
+Typecheck clean · **1,544 unit tests green** (+15) · schema guard, design-token ratchet, KB index
+guard, regulatory-freshness gate and production build all pass. No migration — the register reads
+tables migrations `0040`–`0043` already added.

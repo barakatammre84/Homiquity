@@ -539,6 +539,28 @@
       "lastVerified": "2026-08-04",
       "reviewIntervalDays": 90,
       "notes": "Exists so credit-pull spend is METERED rather than invisible - the task engine deliberately re-runs pulls (CRD_EXPIRED), so a stalled file silently accumulates cost. Every entry booked from these figures is flagged simulated:true while CREDIT_VENDOR_API_KEY is unset, so simulated spend cannot leak into a real margin figure. Replace with the vendor's actual price sheet when the F3 contract lands. sourceUrl is a placeholder - there is no authoritative public source for a vendor's pricing."
+    },
+    {
+      "id": "platform-lock-shock-points",
+      "rule": "Adverse rate move used to size honor exposure on an UNCONFIRMED rate quote, in points of price",
+      "value": "2 points",
+      "citation": "PLATFORM ASSUMPTION - a scenario parameter, not a forecast and not a market observation. Roughly a 50bps adverse move.",
+      "sourceUrl": "https://singlefamily.fanniemae.com/job-aid/loan-delivery",
+      "codeRef": "shared/contingentLiabilities.ts ASSUMED_RATE_SHOCK_POINTS",
+      "lastVerified": "2026-08-04",
+      "reviewIntervalDays": 90,
+      "notes": "Exists so the exposure has a magnitude instead of a paragraph. Applies only to open lock rows with NO lender confirmation - rows written before confirmation became mandatory (F-3). A confirmed lock is the lender's obligation, not ours, so this exposure shrinks to zero as legacy rows are confirmed or withdrawn. sourceUrl is a placeholder; there is no authoritative source for a scenario parameter."
+    },
+    {
+      "id": "platform-lock-extension-bps-per-day",
+      "rule": "Rate-lock extension cost used to size extension exposure on locks nearing expiry",
+      "value": "1.5 bps/day over 15 days",
+      "citation": "PLATFORM ASSUMPTION - extension pricing comes from each executed wholesale broker agreement, and none exists.",
+      "sourceUrl": "https://singlefamily.fanniemae.com/job-aid/loan-delivery",
+      "codeRef": "shared/contingentLiabilities.ts ASSUMED_EXTENSION_BPS_PER_DAY",
+      "lastVerified": "2026-08-04",
+      "reviewIntervalDays": 90,
+      "notes": "Replace per lender when agreements land, alongside epoClawbackDays and approvalStatus. Until then the contingent-liability register flags this figure as assumption-backed. sourceUrl is a placeholder; there is no authoritative public source for a contract term."
     }
   ]
 }
