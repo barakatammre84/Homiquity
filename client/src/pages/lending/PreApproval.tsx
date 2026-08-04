@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
+import { maskCurrencyDigits } from "@/lib/formatters";
 import {
   PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
   PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
@@ -438,11 +439,6 @@ function PreApprovalFunnel() {
     }
   };
 
-  const formatCurrency = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    return numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
-
   const renderInput = () => {
     const IconComponent = currentQ.icon;
 
@@ -462,7 +458,7 @@ function PreApprovalFunnel() {
                 data-testid={`input-${currentQ.field}`}
                 value={displayValue}
                 onChange={(e) => {
-                  const formatted = formatCurrency(e.target.value);
+                  const formatted = maskCurrencyDigits(e.target.value);
                   form.setValue(fieldName, formatted as never, { shouldValidate: true, shouldDirty: true });
                 }}
                 className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
@@ -587,7 +583,6 @@ function PreApprovalFunnel() {
             setIncomeDetails={setIncomeDetails}
             setRentalProperties={setRentalProperties}
             setIncomeSources={(entries) => form.setValue("incomeSources", entries as never)}
-            formatCurrency={formatCurrency}
           />
         );
       }
