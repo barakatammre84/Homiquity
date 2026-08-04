@@ -1,7 +1,24 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { RestoreDraftBanner, AuthGateOverlay, FunnelFooter } from "./FunnelChrome";
+import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./FunnelChrome";
+import type { AffordabilityEstimateResults } from "@/lib/affordabilityEstimate";
+
+const SAMPLE_ESTIMATE: AffordabilityEstimateResults = {
+  maxHomePrice: 480000,
+  maxMonthlyPayment: 2800,
+  frontEndDTI: 27,
+  backEndDTI: 35,
+  comfortablePrice: 408000,
+  stretchPrice: 528000,
+  requiredDownPayment: 24000,
+  monthlyPITI: 2750,
+  monthlyPI: 2400,
+  monthlyTax: 250,
+  monthlyInsurance: 100,
+  monthlyPMI: 0,
+  withinGuidelines: true,
+};
 
 describe("FunnelFooter", () => {
   it("pins the regulatory copy: soft inquiry, no commitment, broker disclosure, Equal Housing", () => {
@@ -24,6 +41,54 @@ describe("AuthGateOverlay", () => {
     expect(screen.getByTestId("button-auth-gate-login").closest("a")?.getAttribute("href")).toBe("/login");
     await user.click(screen.getByTestId("button-auth-gate-dismiss"));
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AffordabilityTeaserOverlay", () => {
+  it("shows the estimated range and lets the borrower continue to the auth gate", async () => {
+    const user = userEvent.setup();
+    const onContinue = vi.fn();
+    const onDismiss = vi.fn();
+    render(
+      <AffordabilityTeaserOverlay
+        estimate={SAMPLE_ESTIMATE}
+        targetPrice={450000}
+        onContinue={onContinue}
+        onDismiss={onDismiss}
+      />,
+    );
+    const rangeText = screen.getByTestId("text-teaser-range").textContent ?? "";
+    expect(rangeText).toContain("$408,000");
+    expect(rangeText).toContain("$480,000");
+    expect(screen.getByTestId("text-teaser-target-comparison").textContent).toContain("within this range");
+    await user.click(screen.getByTestId("button-teaser-continue"));
+    expect(onContinue).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByTestId("button-teaser-dismiss"));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("flags a target price above the estimated max as a stretch rather than claiming it's in range", () => {
+    render(
+      <AffordabilityTeaserOverlay
+        estimate={SAMPLE_ESTIMATE}
+        targetPrice={600000}
+        onContinue={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("text-teaser-target-comparison").textContent).toContain("above this estimate");
+  });
+
+  it("omits the target-price comparison when no target price is known", () => {
+    render(
+      <AffordabilityTeaserOverlay
+        estimate={SAMPLE_ESTIMATE}
+        targetPrice={null}
+        onContinue={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId("text-teaser-target-comparison")).toBeNull();
   });
 });
 
