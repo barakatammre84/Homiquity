@@ -16,7 +16,6 @@ import { QueryErrorState } from "@/components/ui/query-boundary";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -41,31 +40,20 @@ import {
   Sparkles,
   Calendar,
   DollarSign,
-  Home,
   Plus,
   Trophy,
   Loader2,
   Bot,
 } from "lucide-react";
 import { Link } from "wouter";
+import {
+  GapGoalOnboardingForm,
+  goalFormSchema,
+  type GoalFormValues,
+} from "./GapGoalOnboardingForm";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { HomeownershipGoal, CreditAction, SavingsTransaction, JourneyMilestone } from "@shared/schema";
-
-const goalFormSchema = z.object({
-  currentCreditScore: z.coerce.number().min(300).max(850),
-  monthlyIncome: z.coerce.number().min(0),
-  monthlyDebts: z.coerce.number().min(0),
-  currentRent: z.coerce.number().min(0),
-  currentSavingsBalance: z.coerce.number().min(0),
-  currentMonthlySavings: z.coerce.number().min(0),
-  targetHomePrice: z.coerce.number().min(0),
-  targetDownPayment: z.coerce.number().min(0),
-  targetCity: z.string().optional(),
-  targetState: z.string().optional(),
-});
-
-type GoalFormValues = z.infer<typeof goalFormSchema>;
 
 const savingsFormSchema = z.object({
   amount: z.coerce.number().min(0.01),
@@ -314,216 +302,13 @@ export default function GapCalculator() {
 
   if (!goalData?.goal || showOnboarding) {
     return (
-      <div className="container max-w-3xl mx-auto py-8 px-4">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <Home className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Gap to Homeownership</h1>
-          <p className="text-muted-foreground">
-            Let's see where you are today and build your personalized path to homeownership
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Financial Snapshot</CardTitle>
-            <CardDescription>
-              Tell us about your current situation so we can create your personalized plan
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmitGoal)} className="space-y-6">
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="currentCreditScore"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Credit Score</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="600" 
-                            {...field}
-                            data-testid="input-credit-score"
-                          />
-                        </FormControl>
-                        <FormDescription>Your estimated credit score (300-850)</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="monthlyIncome"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Monthly Income</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="5000" 
-                            {...field}
-                            data-testid="input-monthly-income"
-                          />
-                        </FormControl>
-                        <FormDescription>Your gross monthly income</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="monthlyDebts"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Monthly Debts</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="500" 
-                            {...field}
-                            data-testid="input-monthly-debts"
-                          />
-                        </FormControl>
-                        <FormDescription>Car payments, credit cards, loans, etc.</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="currentRent"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Rent</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="1500" 
-                            {...field}
-                            data-testid="input-current-rent"
-                          />
-                        </FormControl>
-                        <FormDescription>Your current monthly rent payment</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="currentSavingsBalance"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Savings</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            {...field}
-                            data-testid="input-current-savings"
-                          />
-                        </FormControl>
-                        <FormDescription>Amount saved for a down payment</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="currentMonthlySavings"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Monthly Savings Rate</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="300" 
-                            {...field}
-                            data-testid="input-monthly-savings"
-                          />
-                        </FormControl>
-                        <FormDescription>How much you can save each month</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="targetHomePrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Target Home Price</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="350000" 
-                            {...field}
-                            data-testid="input-target-price"
-                          />
-                        </FormControl>
-                        <FormDescription>The price range you're targeting</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="targetDownPayment"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Target Down Payment</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="17500" 
-                            {...field}
-                            data-testid="input-target-down-payment"
-                          />
-                        </FormControl>
-                        <FormDescription>Recommended: 5-20% of home price</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  {goalData?.goal && (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setShowOnboarding(false)}
-                      data-testid="button-cancel"
-                    >
-                      Cancel
-                    </Button>
-                  )}
-                  <Button 
-                    type="submit" 
-                    disabled={createGoalMutation.isPending || updateGoalMutation.isPending}
-                    data-testid="button-start-journey"
-                  >
-                    {(createGoalMutation.isPending || updateGoalMutation.isPending) && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    {goalData?.goal ? "Update My Info" : "Start My Journey"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
+      <GapGoalOnboardingForm
+        form={form}
+        onSubmit={onSubmitGoal}
+        onCancel={goalData?.goal ? () => setShowOnboarding(false) : undefined}
+        isSubmitting={createGoalMutation.isPending || updateGoalMutation.isPending}
+        isUpdate={!!goalData?.goal}
+      />
     );
   }
 

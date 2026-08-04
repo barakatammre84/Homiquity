@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-boundary";
+import { IncomeSummaryCard } from "@/components/borrower/IncomeSummaryCard";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
@@ -756,6 +757,10 @@ export default function LoanPipeline() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Income transparency: server-gated — the verified breakdown
+                post-decision, the educational analyzing state before it. */}
+            {applicationId && <IncomeSummaryCard applicationId={applicationId} />}
 
             {(progress.blockers?.length || 0) > 0 && (
               <Card className="border-destructive/50" data-testid="card-blockers">

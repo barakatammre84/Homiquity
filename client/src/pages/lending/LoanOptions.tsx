@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
+import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { formatCurrency, formatPercent, getLoanTypeLabel } from "@/lib/formatters";
 import type { LoanApplication, LoanOption } from "@shared/schema";
 import type { BorrowerOfferView } from "@shared/borrowerOfferView";
@@ -504,8 +505,16 @@ export default function LoanOptions() {
               </>
             )}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <GenerateLetterButton applicationId={application.id} status={application.status} />
-              <PreQualLetterButton applicationId={application.id} status={application.status} />
+              <LoanLetterButton
+                applicationId={application.id}
+                status={application.status}
+                kind="preapproval"
+              />
+              <LoanLetterButton
+                applicationId={application.id}
+                status={application.status}
+                kind="prequal"
+              />
             </div>
           </div>
         </div>
@@ -800,47 +809,108 @@ export default function LoanOptions() {
   );
 }
 
-function PreQualLetterButton({ applicationId, status }: { applicationId: string; status: string }) {
+// Pre-qual and pre-approval letters are the same interaction — check whether a
+// letter exists, generate it if not, download it once it does — differing only
+// in endpoints, copy, and which loan statuses they apply to. They were two
+// near-identical 65-line components; this is the shared shape, with the
+// per-letter differences declared in LETTER_KINDS below.
+type LetterKind = {
+  /** Which loan statuses this letter is offered for. */
+  isEligible: (status: string) => boolean;
+  statusQueryKey: (applicationId: string) => readonly unknown[];
+  generatePath: (applicationId: string) => string;
+  pdfPath: (applicationId: string) => string;
+  downloadFileName: string;
+  generatedToastTitle: string;
+  generatedToastDescription: (letterNumber: string) => string;
+  errorToastDescription: string;
+  generateLabel: string;
+  downloadLabel: string;
+  generateVariant?: "outline";
+  generateTestId: string;
+  downloadTestId: string;
+};
+
+const LETTER_KINDS = {
+  prequal: {
+    // Offered while the file is pre-qual eligible, but a pre-approved file gets
+    // the stronger pre-approval letter instead.
+    isEligible: (status) =>
+      (PREQUAL_ELIGIBLE_STATUSES as readonly string[]).includes(status) && status !== "pre_approved",
+    statusQueryKey: (id) => loanApplicationKeys.prequalStatus(id),
+    generatePath: (id) => `/api/loan-applications/${id}/generate-prequal`,
+    pdfPath: (id) => `/api/loan-applications/${id}/prequal-pdf`,
+    downloadFileName: "pre-qualification-letter.pdf",
+    generatedToastTitle: "Letter Generated",
+    generatedToastDescription: (n) => `Pre-qualification letter #${n} is ready.`,
+    errorToastDescription: "Failed to generate pre-qualification letter.",
+    generateLabel: "Get Pre-Qualification Letter",
+    downloadLabel: "Download Pre-Qualification Letter",
+    generateVariant: "outline",
+    generateTestId: "button-generate-prequal",
+    downloadTestId: "button-download-prequal",
+  },
+  preapproval: {
+    isEligible: (status) => status === "pre_approved",
+    statusQueryKey: (id) => loanApplicationKeys.letterStatus(id),
+    generatePath: (id) => `/api/loan-applications/${id}/generate-letter`,
+    pdfPath: (id) => `/api/loan-applications/${id}/letter-pdf`,
+    downloadFileName: "pre-approval-letter.pdf",
+    generatedToastTitle: "Letter Generated",
+    generatedToastDescription: (n) => `Pre-approval letter #${n} is ready.`,
+    errorToastDescription: "Failed to generate letter. Please try again.",
+    generateLabel: "Generate Pre-Approval Letter",
+    downloadLabel: "Download Pre-Approval Letter",
+    generateTestId: "button-generate-letter",
+    downloadTestId: "button-download-letter",
+  },
+} satisfies Record<string, LetterKind>;
+
+function LoanLetterButton({
+  applicationId,
+  status,
+  kind,
+}: {
+  applicationId: string;
+  status: string;
+  kind: keyof typeof LETTER_KINDS;
+}) {
+  const spec: LetterKind = LETTER_KINDS[kind];
   const { toast } = useToast();
 
-  const prequalStatusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string; estimatedAmount?: string }>({
-    queryKey: loanApplicationKeys.prequalStatus(applicationId),
+  const statusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string }>({
+    queryKey: spec.statusQueryKey(applicationId),
   });
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/loan-applications/${applicationId}/generate-prequal`);
+      const res = await apiRequest("POST", spec.generatePath(applicationId));
       return res.json();
     },
     onSuccess: (data: { letterNumber: string }) => {
-      toast({ title: "Letter Generated", description: `Pre-qualification letter #${data.letterNumber} is ready.` });
-      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.prequalStatus(applicationId) });
+      toast({
+        title: spec.generatedToastTitle,
+        description: spec.generatedToastDescription(data.letterNumber),
+      });
+      queryClient.invalidateQueries({ queryKey: spec.statusQueryKey(applicationId) });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to generate pre-qualification letter.", variant: "destructive" });
+      toast({ title: "Error", description: spec.errorToastDescription, variant: "destructive" });
     },
   });
 
   const handleDownload = async () => {
     try {
-      const res = await apiRequest("GET", `/api/loan-applications/${applicationId}/prequal-pdf`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `pre-qualification-letter.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const res = await apiRequest("GET", spec.pdfPath(applicationId));
+      await downloadResponseAsFile(res, spec.downloadFileName);
     } catch {
       toast({ title: "Error", description: "Failed to download letter.", variant: "destructive" });
     }
   };
 
-  if (!(PREQUAL_ELIGIBLE_STATUSES as readonly string[]).includes(status)) return null;
+  if (!spec.isEligible(status)) return null;
 
-  if (status === "pre_approved") return null;
-
-  const hasLetter = prequalStatusQuery.data?.hasLetter;
+  const hasLetter = statusQuery.data?.hasLetter;
 
   return (
     <>
@@ -848,89 +918,22 @@ function PreQualLetterButton({ applicationId, status }: { applicationId: string;
         <Button
           onClick={() => generateMutation.mutate()}
           disabled={generateMutation.isPending}
-          variant="outline"
+          variant={spec.generateVariant}
           className="gap-2"
-          data-testid="button-generate-prequal"
+          data-testid={spec.generateTestId}
         >
           {generateMutation.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <FileText className="h-4 w-4" />
           )}
-          {generateMutation.isPending ? "Generating..." : "Get Pre-Qualification Letter"}
+          {generateMutation.isPending ? "Generating..." : spec.generateLabel}
         </Button>
       )}
       {hasLetter && (
-        <Button onClick={handleDownload} variant="outline" className="gap-2" data-testid="button-download-prequal">
+        <Button onClick={handleDownload} variant="outline" className="gap-2" data-testid={spec.downloadTestId}>
           <Download className="h-4 w-4" />
-          Download Pre-Qualification Letter
-        </Button>
-      )}
-    </>
-  );
-}
-
-function GenerateLetterButton({ applicationId, status }: { applicationId: string; status: string }) {
-  const { toast } = useToast();
-
-  const letterStatusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string }>({
-    queryKey: loanApplicationKeys.letterStatus(applicationId),
-  });
-
-  const generateMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/loan-applications/${applicationId}/generate-letter`);
-      return res.json();
-    },
-    onSuccess: (data: { letterNumber: string }) => {
-      toast({ title: "Letter Generated", description: `Pre-approval letter #${data.letterNumber} is ready.` });
-      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.letterStatus(applicationId) });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to generate letter. Please try again.", variant: "destructive" });
-    },
-  });
-
-  const handleDownload = async () => {
-    try {
-      const res = await apiRequest("GET", `/api/loan-applications/${applicationId}/letter-pdf`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `pre-approval-letter.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast({ title: "Error", description: "Failed to download letter.", variant: "destructive" });
-    }
-  };
-
-  if (status !== "pre_approved") return null;
-
-  const hasLetter = letterStatusQuery.data?.hasLetter;
-
-  return (
-    <>
-      {!hasLetter && (
-        <Button
-          onClick={() => generateMutation.mutate()}
-          disabled={generateMutation.isPending}
-          className="gap-2"
-          data-testid="button-generate-letter"
-        >
-          {generateMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <FileText className="h-4 w-4" />
-          )}
-          {generateMutation.isPending ? "Generating..." : "Generate Pre-Approval Letter"}
-        </Button>
-      )}
-      {hasLetter && (
-        <Button onClick={handleDownload} variant="outline" className="gap-2" data-testid="button-download-letter">
-          <Download className="h-4 w-4" />
-          Download Pre-Approval Letter
+          {spec.downloadLabel}
         </Button>
       )}
     </>

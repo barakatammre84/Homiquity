@@ -3,7 +3,8 @@
 > **Dated snapshot** (Tier 4). Facts verified against the code on 2026-08-04 (HEAD `4ba20cf`);
 > verdicts govern until a reopen gate below fires. Same protocol as
 > [2026-08-04-rate-com-competitive-pitch-adjudication.md](./2026-08-04-rate-com-competitive-pitch-adjudication.md),
-> [2026-08-04-sovereign-underwriting-stack-pitch-adjudication.md](./2026-08-04-sovereign-underwriting-stack-pitch-adjudication.md) (both same-day),
+> [2026-08-04-sovereign-underwriting-stack-pitch-adjudication.md](./2026-08-04-sovereign-underwriting-stack-pitch-adjudication.md),
+> [2026-08-04-cross-sector-fintech-frameworks-pitch-adjudication.md](./2026-08-04-cross-sector-fintech-frameworks-pitch-adjudication.md) (all three same-day),
 > [2026-07-19-modular-architecture-pitch-adjudication.md](./2026-07-19-modular-architecture-pitch-adjudication.md), and
 > [2026-07-17-external-agentic-mortgage-artifacts-evaluation.md](./2026-07-17-external-agentic-mortgage-artifacts-evaluation.md):
 > adopt nothing wholesale, verify every claim in code, extract what survives, record binding
@@ -56,7 +57,8 @@ Every row verified in code this session, not from memory:
 | "Path to Purchase Simulator: exact delta, gamified roadmap, captive pipeline" | **Mostly shipped — as the Incubator — minus the barred parts.** RenterHome *is* the Incubator: server-computed /100 readiness with trust tiers and outstanding inputs (`server/services/borrowerGraph.ts`), down-payment goal delta ("You're $X away… about N months"); `GapCalculator.tsx` + `GET /api/homeownership-goal/gap-analysis` (credit/savings/DTI gaps, months-to-goal; status vocabulary never contains a denial word) + credit-recommendations (score-band educational items, deliberately not tradeline-derived); coach `set_action_plan` (`server/services/coachTools.ts:362` — phased, categorized, checkable); `creditActions`/`savingsTransactions`/`journeyMilestones` tables. The "$420 precision" exists **staff-side**: `computeWhatIfPayoff` (`underwritingNuance.ts:148`) returns the smallest tradeline payoff that clears the DTI ceiling, surfaced in `preUnderwriting.ts:233` prose; the borrower sees a chip color + tooltip only. |
 | "Never issue a flat denial" | **The engine already avoids gratuitous denials; a required denial cannot be suppressed.** `rejectionReasons` are "'a human must look,' not 'declined'" (`server/underwritingEngine.ts`); `NEEDS_MORE_INFO` returns missing items, not a decision. But ECOA/Reg B §1002.9 adverse action is fully built and mandatory (`ensureAdverseActionForDenial` refuses any denial it cannot paper, `server/services/creditAdverseActions.ts:274`; borrower rendering `AdverseActionNotice.tsx`). `denied: []` is terminal (`shared/schema/lendingCore.ts:75`) — and verification found the real gap is what happens *after* the notice (§3.7–§3.8). |
 
-**PM note:** fifth consecutive external pitch in this series, and the first aimed at the
+**PM note:** sixth consecutive external pitch in this series (the same-day
+cross-sector-frameworks memo was fifth), and the first aimed at the
 borrower-acquisition side rather than the income engine — yet the centerpiece is again a
 rebuild of something already shipped (the Incubator lifecycle, live since the
 RenterHome/Engine/Portfolio split). The genuinely new competitive observation — retail lenders

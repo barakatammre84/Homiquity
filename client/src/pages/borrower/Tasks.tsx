@@ -319,9 +319,16 @@ export default function Tasks() {
                                 {task.description && (
                                   <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
                                 )}
-                                {task.verificationNotes && (
-                                  <p className="text-sm text-destructive bg-destructive/10 p-2 rounded">
-                                    {task.verificationNotes}
+                                {/* Never tasks.verificationNotes here — staff
+                                    review free text is embargoed from borrower
+                                    payloads (borrowerTaskView); the staff→
+                                    borrower channel is documentInstructions. */}
+                                <p className="text-sm text-destructive bg-destructive/10 p-2 rounded">
+                                  We couldn't verify this document — please upload a new copy.
+                                </p>
+                                {task.documentInstructions && (
+                                  <p className="text-xs text-muted-foreground mt-2 italic">
+                                    {task.documentInstructions}
                                   </p>
                                 )}
                               </div>
