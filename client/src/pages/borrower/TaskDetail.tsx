@@ -426,7 +426,9 @@ export default function TaskDetail() {
                   </CardContent>
                 </Card>
 
-                {task.verificationNotes && (
+                {/* Server strips verificationNotes for client roles
+                    (borrowerTaskView); the isStaff guard states the intent. */}
+                {isStaff && task.verificationNotes && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Verification Notes</CardTitle>
@@ -449,7 +451,7 @@ export default function TaskDetail() {
                             Document Rejected
                           </p>
                           <p className="text-sm text-destructive mt-1">
-                            Please review the notes and upload a new document.
+                            Please upload a new copy of this document.
                           </p>
                         </div>
                       </div>
