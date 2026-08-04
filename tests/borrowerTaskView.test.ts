@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { getTableColumns } from "drizzle-orm";
+import { tasks } from "@shared/schema";
+import type { Document, TaskDocument } from "@shared/schema";
 import {
   toBorrowerTaskView,
   toBorrowerTaskViews,
+  toBorrowerTaskDocumentView,
+  BORROWER_TASK_VIEW_COLUMNS,
+  BORROWER_TASK_EMBARGOED_COLUMNS,
   type MaskableBorrowerTask,
 } from "@shared/borrowerTaskView";
 import { TASK_TYPE_SLA_MAPPING_SEED } from "../server/seedData/taskEngineSla";
@@ -129,5 +135,115 @@ describe("borrower display copy stays inside the Reg N lexicon", () => {
     const mapping = TASK_TYPE_SLA_MAPPING_SEED.find((m) => m.taskTypeCode === "CMP_CLOSING_DISC");
     expect(mapping?.visibleToBorrower).toBe(true);
     expect(mapping?.borrowerDisplayText).toBe("We're preparing your closing paperwork.");
+  });
+});
+
+describe("column classification is exhaustive against the live table", () => {
+  const columns = Object.keys(getTableColumns(tasks));
+  const allowed = new Set<string>(BORROWER_TASK_VIEW_COLUMNS);
+  const embargoed = new Set<string>(BORROWER_TASK_EMBARGOED_COLUMNS);
+
+  it("classifies every tasks column as allowed or embargoed — a new column fails here until it is classified deliberately", () => {
+    expect(columns.filter((c) => !allowed.has(c) && !embargoed.has(c))).toEqual([]);
+  });
+
+  it("never classifies a column both ways, and never classifies a phantom column", () => {
+    expect(BORROWER_TASK_VIEW_COLUMNS.filter((c) => embargoed.has(c))).toEqual([]);
+    expect([...allowed, ...embargoed].filter((c) => !columns.includes(c))).toEqual([]);
+  });
+});
+
+describe("toBorrowerTaskView — plain /api/tasks-family rows", () => {
+  // A plain storage row: no derived SLA trio, but every staff column set —
+  // what GET /api/tasks | /user/:userId | /application/:id | /:id serve.
+  const plainRow = () =>
+    ({
+      ...borrowerTask(),
+      slaStatus: undefined,
+      timeRemaining: undefined,
+      percentageElapsed: undefined,
+      ...(rawRowHazards as Partial<MaskableBorrowerTask>),
+      aiAnalysisResult: { flag: "INCOME_MISMATCH" },
+      extractedData: { wages: 88450.23, employer: "Acme Corp" },
+      triggerMetadata: { rule: "UW-INCOME-004" },
+      verifiedAt: new Date("2026-08-03T00:00:00Z"),
+      completedAt: null,
+      assignedToUserId: "borrower-user-1",
+    }) as MaskableBorrowerTask;
+
+  it("omits the SLA keys entirely when the source row has no derived trio", () => {
+    const view = toBorrowerTaskView(plainRow(), "borrower-user-1");
+    expect(view).not.toHaveProperty("slaStatus");
+    expect(view).not.toHaveProperty("timeRemaining");
+    expect(view).not.toHaveProperty("percentageElapsed");
+  });
+
+  it("keeps the verdict timestamp but never the machine payloads", () => {
+    const view = toBorrowerTaskView(plainRow(), "borrower-user-1");
+    expect(view.verifiedAt).toEqual(new Date("2026-08-03T00:00:00Z"));
+    const serialized = JSON.stringify(view);
+    expect(serialized).not.toContain("INCOME_MISMATCH");
+    expect(serialized).not.toContain("Acme Corp");
+    expect(serialized).not.toContain("UW-INCOME-004");
+    for (const field of BORROWER_TASK_EMBARGOED_COLUMNS) {
+      expect(view, `embargoed column leaked: ${field}`).not.toHaveProperty(field);
+    }
+  });
+
+  it("keeps assignedToUserId only for the viewer's own assignment (upload gating)", () => {
+    expect(toBorrowerTaskView(plainRow(), "borrower-user-1").assignedToUserId).toBe(
+      "borrower-user-1",
+    );
+    // Someone else's assignee id — including staff — is never emitted.
+    expect(toBorrowerTaskView(plainRow(), "other-user")).not.toHaveProperty("assignedToUserId");
+    // No viewer supplied (the borrower-tasks endpoint): never emitted.
+    expect(toBorrowerTaskView(plainRow())).not.toHaveProperty("assignedToUserId");
+  });
+});
+
+describe("toBorrowerTaskDocumentView", () => {
+  const makeTaskDoc = (): TaskDocument => ({
+    id: "taskdoc-1",
+    taskId: "t-1",
+    documentId: "doc-1",
+    isVerified: false,
+    verificationNotes: "Statement page 2 missing — could hide an undisclosed liability.",
+    createdAt: new Date("2026-08-02T00:00:00Z"),
+  });
+
+  it("drops the per-document staff review text and keeps the link facts", () => {
+    const view = toBorrowerTaskDocumentView(makeTaskDoc()) as unknown as Record<string, unknown>;
+    expect(view).not.toHaveProperty("verificationNotes");
+    expect(JSON.stringify(view)).not.toContain("undisclosed liability");
+    expect(view.id).toBe("taskdoc-1");
+    expect(view.taskId).toBe("t-1");
+    expect(view.documentId).toBe("doc-1");
+    expect(view.isVerified).toBe(false);
+  });
+
+  it("passes the joined borrower document through minus the server-only fields, and omits the key when absent", () => {
+    const doc = {
+      id: "doc-1",
+      fileName: "w2-2023.pdf",
+      rejectionReason: "Please upload all pages.",
+      reviewedByUserId: "staff-user-99",
+      extractionRawEncrypted: "ZW5jcnlwdGVkLWNpcGhlcnRleHQ=",
+      extractionRawIv: "aXYtYnl0ZXM=",
+      extractionRawKeyId: "key-2026-08",
+    } as unknown as Document;
+    const joined = toBorrowerTaskDocumentView({ ...makeTaskDoc(), document: doc });
+    // publicExtraction() doctrine: ciphertext/IV/key never reach a client;
+    // the staff reviewer id is masked like the task view's staff ids.
+    expect(joined.document).toEqual({
+      id: "doc-1",
+      fileName: "w2-2023.pdf",
+      rejectionReason: "Please upload all pages.",
+    });
+    const serialized = JSON.stringify(joined);
+    expect(serialized).not.toContain("ZW5jcnlwdGVkLWNpcGhlcnRleHQ=");
+    expect(serialized).not.toContain("key-2026-08");
+    expect(serialized).not.toContain("staff-user-99");
+
+    expect(toBorrowerTaskDocumentView(makeTaskDoc())).not.toHaveProperty("document");
   });
 });
