@@ -5,7 +5,7 @@ import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
 import { insertBorrowerDeclarationsSchema, CREDIT_DECISION_ROLES, type User } from "@shared/schema";
 import { isStaffRole } from "@shared/roles";
-import { PREQUAL_ELIGIBLE_STATUSES, effectiveLetterStatus } from "@shared/letters";
+import { PREQUAL_ELIGIBLE_STATUSES, effectiveLetterStatus, letterRevocationSchema } from "@shared/letters";
 import { z } from "zod";
 import crypto from "crypto";
 import { logAudit } from "../../auditLog";
@@ -443,6 +443,7 @@ export function registerLetterRoutes(
       // server-side — staff free text does not reach borrower-facing responses.
       res.json({
         hasLetter: true,
+        letterId: letter.id,
         letterNumber: letter.letterNumber,
         status: effectiveLetterStatus(letter),
         expirationDate: letter.expirationDate,
@@ -461,18 +462,14 @@ export function registerLetterRoutes(
   // document withdraws an approval outcome, so only CREDIT_DECISION_ROLES may
   // do it, and non-admins must be on the deal team. The reason is required —
   // an unaccountable revocation is as bad as an unaccountable issuance.
-  const revokeLetterSchema = z.object({
-    reason: z.string().trim()
-      .min(10, "A revocation reason of at least 10 characters is required")
-      .max(2000),
-  });
-
+  // Validation uses the SHARED letterRevocationSchema so the staff dialog's
+  // confirm gate and this 400 can never drift.
   app.post("/api/pre-approval-letters/:letterId/revoke", requireRole(...CREDIT_DECISION_ROLES), async (req, res) => {
     try {
       const user = req.user as User;
       const { letterId } = routeParams(req);
 
-      const parsed = revokeLetterSchema.safeParse(req.body);
+      const parsed = letterRevocationSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
       }
