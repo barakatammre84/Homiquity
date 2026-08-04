@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication } from "@shared/schema";
-import { isApprovedGradeLoanAppStatus } from "@shared/schema";
+import { selectPreApprovalContext } from "@shared/schema";
 import {
   Search,
   MapPin,
@@ -163,31 +163,13 @@ export default function BuyerProperties() {
     queryKey: ["/api/properties"],
   });
 
-  // The approval we shop against. No `|| applications[0]` fallback: a closed
-  // file still carries annualIncome, so falling back to one made `hasPreApproval`
-  // go true and showed affordability math to a borrower who was denied.
-  const preApproval = useMemo(() => {
-    if (!applications?.length) return null;
-    return applications.find((app) => isApprovedGradeLoanAppStatus(app.status)) ?? null;
-  }, [applications]);
-
-  const hasPreApproval = preApproval && 
-    preApproval.annualIncome && 
-    parseFloat(String(preApproval.annualIncome)) > 0;
-
-  const preApprovalAmount = preApproval?.preApprovalAmount 
-    ? parseFloat(String(preApproval.preApprovalAmount))
-    : 0;
-
-  const monthlyIncome = preApproval?.annualIncome 
-    ? parseFloat(String(preApproval.annualIncome)) / 12
-    : 0;
-
-  const monthlyDebts = preApproval?.monthlyDebts 
-    ? parseFloat(String(preApproval.monthlyDebts))
-    : 0;
-    
-  const creditScore = preApproval?.creditScore || undefined;
+  // The approval we shop against — the approved-grade file (never a closed one)
+  // unpacked into the affordability numbers. Shared, tested derivation so this
+  // page and PropertyDetail can't drift on what "has a pre-approval" means.
+  const { hasPreApproval, preApprovalAmount, monthlyIncome, monthlyDebts, creditScore } = useMemo(
+    () => selectPreApprovalContext(applications),
+    [applications],
+  );
 
   // Calculate affordability for each property (only if pre-approved)
   const propertiesWithAffordability = useMemo(() => {
