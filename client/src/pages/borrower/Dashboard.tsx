@@ -7,7 +7,8 @@ import { AutopilotBanner } from "@/components/AutopilotBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, dashboardKeys, coachConversationKeys } from "@/lib/queryClient";
+import { apiRequest, queryClient, dashboardKeys, coachConversationKeys, loanApplicationKeys } from "@/lib/queryClient";
+import { deriveJourneyStepDetails } from "@shared/borrowerJourney";
 import { formatCurrency } from "@/lib/formatters";
 import { hasPendingPreApprovalSubmit } from "@/lib/pendingAttribution";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,39 @@ export default function Dashboard() {
   // reused after the guards; the Autopilot hook re-subscribes when the id changes.
   const { activeApplication, selectApplication } = useActiveApplication(data?.applications ?? []);
   const autopilotStatus = useAutopilotStatus(activeApplication?.id);
+
+  // Journey detail lines: milestone dates + doc/condition counters from the
+  // pipeline payload, plus the closing-prep transparency task. Both queries
+  // share cache entries with their existing consumers (LoanPipeline,
+  // BorrowerRequests) — segmented keys, no new endpoints.
+  const { data: pipelineData } = useQuery<{
+    progress?: { documentsComplete: number; documentsTotal: number; conditionsCleared: number; conditionsTotal: number };
+    milestones?: Record<string, string | null> | null;
+  }>({
+    queryKey: loanApplicationKeys.pipeline(activeApplication?.id ?? ""),
+    enabled: !!activeApplication?.id,
+  });
+  const { data: journeyTasks } = useQuery<
+    Array<{ taskTypeCode?: string; ownerRole?: string; status: string }>
+  >({
+    queryKey: ["/api/task-engine/applications", activeApplication?.id, "borrower-tasks"],
+    enabled: !!activeApplication?.id,
+  });
+  const journeyDetails = deriveJourneyStepDetails({
+    milestones: pipelineData?.milestones ?? null,
+    documents: pipelineData?.progress
+      ? { complete: pipelineData.progress.documentsComplete, total: pipelineData.progress.documentsTotal }
+      : null,
+    conditions: pipelineData?.progress
+      ? { cleared: pipelineData.progress.conditionsCleared, total: pipelineData.progress.conditionsTotal }
+      : null,
+    closingPrepInProgress: (journeyTasks ?? []).some(
+      (t) =>
+        t.taskTypeCode === "CMP_CLOSING_DISC" &&
+        t.ownerRole !== "BORROWER" &&
+        (t.status === "OPEN" || t.status === "IN_PROGRESS"),
+    ),
+  });
 
   if (authLoading || isLoading || isStaff) {
     return (
@@ -383,7 +417,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </div>
-                  <JourneyTracker status={activeApplication.status} variant="vertical" showEstimates />
+                  <JourneyTracker status={activeApplication.status} variant="vertical" showEstimates details={journeyDetails} />
                   <div className="mt-4 pt-3 border-t flex items-center gap-2 text-[11px] text-muted-foreground/70" data-testid="text-automation-status">
                     <Zap className="h-3 w-3 text-primary" />
                     <span>Platform is automatically tracking compliance deadlines, verifying documents, and updating your progress</span>
