@@ -1,5 +1,7 @@
 # Contingent Liability Register
 
+> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+
 **Purpose:** the one page that answers *"what could we owe, and is our reserve adequate?"* — a
 question that had no answer before 2026-08-04, because the exposures had never been enumerated.
 

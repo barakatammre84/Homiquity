@@ -1,5 +1,7 @@
 # Channel Decision: Broker or Correspondent
 
+> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+
 **Status: OPEN — founder-owned. Current declared channel: `broker`.**
 
 **What this decides:** whether Homiquity hands every file to a wholesale lender who funds it

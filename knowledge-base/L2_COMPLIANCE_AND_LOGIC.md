@@ -1,5 +1,7 @@
 # Homiquity — Compliance & Logic (L2)
 
+> **Freshness:** last verified 2026-07-17 · review every 90 days — enforced by `scripts/doc-freshness-guard.cjs`.
+
 > **This is L2 — the regulatory and financial guardrails.** It **overrides L1 scope ideas and
 > every L3 feature spec** when they conflict. It is an **index/overlay**, not a rewrite: each
 > invariant below names the *authoritative document* that owns the detail and the *code* that

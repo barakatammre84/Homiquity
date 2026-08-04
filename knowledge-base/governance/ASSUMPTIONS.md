@@ -1,11 +1,24 @@
 # Assumptions & Facts Register
 
+> **Freshness:** last verified 2026-08-04 · review every 30 days — enforced by `scripts/doc-freshness-guard.cjs`.
+
 **Purpose:** one honest page separating what is **real**, what is **simulated**, and what
 is **assumed/pending** — so nobody joining a sprint builds on a fact that isn't one.
 **Maintenance rule:** every entry carries a verified-on date and a file reference. When an
 assumption becomes fact (contract signed, env var set, PR merged), move it and update the
 date in the same commit. If you find a claim here that the code contradicts, the code wins —
 fix this file.
+
+**2026-08-04 partial pass (financial architecture audit).** Scope was the repo-verifiable
+claims only — §1's simulated-vendor rows and the migration facts below were re-read against the
+code; the **ops rows in §2 (Vercel env vars, SendGrid, Sentry, GCS) were NOT re-verified** because
+they are account state this codebase cannot see. Corrected in this pass: the migration HEAD claim,
+which asserted `0023` while `main` carries **39 migration files through `0038`** (this branch adds
+`0039`–`0044`). Prod's *applied* HEAD is a database fact and is deliberately not asserted here —
+`migrate-prod` auto-applies on merge, so diff `drizzle.__drizzle_migrations` against the journal to
+confirm. New this pass: `shared/businessChannel.ts` declares the channel `broker` and the Fannie
+delivery stack is frozen (`pnpm guard:channel`) pending
+[CHANNEL_DECISION.md](./CHANNEL_DECISION.md).
 
 Last full verification pass: **2026-07-04** (source-of-truth audit). Spot-updated **2026-07-08**
 for migration HEAD and the pre-license gated-launch state, and **2026-07-12** (docs-hygiene pass)
@@ -70,7 +83,8 @@ items; the "no citation → not implemented" contract in kb/UNDERWRITING_SCENARI
 - Encryption **fails closed in production**: startup refuses to boot without
   `CREDIT_ENCRYPTION_KEY`; SSNs go through `ssnVault.ts`. The Feb-2026
   INFRASTRUCTURE_RISKS findings are resolved (doc archived).
-- Migrations `0000`–`0023` are versioned SQL on `main` and applied to prod — prod HEAD
+- Migrations are versioned SQL on `main` — **39 files through `0038` as of 2026-08-04** (the
+  figures below are the 2026-07-11 snapshot, superseded). Prod HEAD
   confirmed **`0023`** on **2026-07-11** (`0013`–`0023`: income engine, scenario_runs, partner
   spine/consents, halal lane — applied via the Neon-pooler raw-`pg` workaround; per-wave rows in
   the [CICD.md](../runbooks/CICD.md) ledger). After any main merge, diff
