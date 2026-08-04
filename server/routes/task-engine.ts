@@ -9,6 +9,7 @@ import {
   TASK_STATUSES,
   type TaskStatus,
 } from "@shared/schema";
+import { toBorrowerTaskViews } from "@shared/borrowerTaskView";
 import { parseBodyOr400 } from "./validate";
 import { firstQueryValue } from "./queryParams";
 import { z } from "zod";
@@ -618,7 +619,11 @@ export async function registerTaskEngineRoutes(
       }
 
       const tasks = await taskEngine.getBorrowerTasks(applicationId);
-      res.json(tasks);
+      // Non-staff callers (borrower owner, partner-with-referral) get the
+      // strict whitelist view: staff review free text, staff user ids, and
+      // escalation internals never leave the server; staff transparency rows
+      // display only the mapping's borrowerDisplayText. Staff keep full rows.
+      res.json(isStaffRole(userRole) ? tasks : toBorrowerTaskViews(tasks));
     } catch (error) {
       console.error("Get borrower tasks error:", error);
       res.status(500).json({ error: "Failed to get borrower tasks" });
