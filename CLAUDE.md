@@ -1,4 +1,4 @@
-# CLAUDE.md — Homiquity (MortgageStream)
+# CLAUDE.md — Homiquity
 
 Guidance for Claude Code when working in this repository. The deep engineering map is
 [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md); the per-subsystem handbook is [knowledge-base/handbook/app-guide/](knowledge-base/handbook/app-guide/);

@@ -40,7 +40,7 @@
  *      CANCELED. READY/ERROR/CANCELED are terminal.
  */
 
-const VERCEL_PROJECT_FALLBACK = "mortgage-stream";
+const VERCEL_PROJECT_FALLBACK = "homiquity";
 const VERCEL_TEAM_FALLBACK = "ammre-4309s-projects";
 
 const TERMINAL_OK = new Set(["READY"]);
