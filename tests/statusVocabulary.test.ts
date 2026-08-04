@@ -16,6 +16,8 @@ import {
   isValidLoanAppTransition,
   pickActiveLoanApplication,
   pickWorkableLoanApplication,
+  pickApprovedGradeLoanApplication,
+  selectPreApprovalContext,
   TASK_STATUSES,
   ACTIVE_TASK_STATUSES,
   TERMINAL_TASK_STATUSES,
@@ -718,5 +720,63 @@ describe("in-flight set and the active-application selector", () => {
     // The one status that separates them.
     expect(pickWorkableLoanApplication([{ status: "draft" }])).toBeDefined();
     expect(pickActiveLoanApplication([{ status: "draft" }])).toBeUndefined();
+  });
+
+  it("pickApprovedGradeLoanApplication skips draft/terminal and never falls back", () => {
+    expect(pickApprovedGradeLoanApplication([{ id: "d", status: "draft" }])).toBeUndefined();
+    expect(pickApprovedGradeLoanApplication([{ id: "x", status: "denied" }])).toBeUndefined();
+    expect(
+      pickApprovedGradeLoanApplication(LOAN_APP_TERMINAL_STATUSES.map((status) => ({ status }))),
+      "funded is terminal but IS approved-grade",
+    ).toBeDefined();
+    const apps = [
+      { id: "denied", status: "denied" },
+      { id: "approved", status: "pre_approved" },
+    ];
+    expect(pickApprovedGradeLoanApplication(apps)?.id).toBe("approved");
+  });
+
+  it("selectPreApprovalContext does not resurrect a denied file as a pre-approval", () => {
+    // The regression this locks: a borrower whose only application is denied.
+    // `find(approvedGrade) || apps[0]` returned the denied file, and because a
+    // denied file still carries annualIncome, hasPreApproval flipped true —
+    // rendering qualification math for a closed file AND suppressing the
+    // Get-Pre-Approved CTA on /properties/:id and /buy.
+    const ctx = selectPreApprovalContext([
+      { status: "denied", annualIncome: "120000", preApprovalAmount: "400000", monthlyDebts: "500", creditScore: 700 },
+    ]);
+    expect(ctx.application).toBeNull();
+    expect(ctx.hasPreApproval).toBe(false);
+    expect(ctx.preApprovalAmount).toBe(0);
+    expect(ctx.monthlyIncome).toBe(0);
+    expect(ctx.creditScore).toBeUndefined();
+  });
+
+  it("selectPreApprovalContext unpacks the approved-grade file's money strings", () => {
+    const ctx = selectPreApprovalContext([
+      { status: "denied", annualIncome: "50000" },
+      { status: "pre_approved", annualIncome: "120000", preApprovalAmount: "480000", monthlyDebts: "600", creditScore: 740 },
+    ]);
+    expect(ctx.hasPreApproval).toBe(true);
+    expect(ctx.preApprovalAmount).toBe(480000);
+    expect(ctx.monthlyIncome).toBe(10000);
+    expect(ctx.monthlyDebts).toBe(600);
+    expect(ctx.creditScore).toBe(740);
+  });
+
+  it("selectPreApprovalContext treats a zero-income approval as no pre-approval", () => {
+    // An approved-grade file with no income can't drive qualification math —
+    // the surfaces must fall back to the CTA, not divide by zero.
+    const ctx = selectPreApprovalContext([{ status: "pre_approved", annualIncome: null }]);
+    expect(ctx.application).not.toBeNull();
+    expect(ctx.hasPreApproval).toBe(false);
+    expect(ctx.monthlyIncome).toBe(0);
+  });
+
+  it("selectPreApprovalContext tolerates empty/missing input", () => {
+    expect(selectPreApprovalContext([]).hasPreApproval).toBe(false);
+    expect(selectPreApprovalContext([]).application).toBeNull();
+    expect(selectPreApprovalContext(undefined).hasPreApproval).toBe(false);
+    expect(selectPreApprovalContext(null).hasPreApproval).toBe(false);
   });
 });
