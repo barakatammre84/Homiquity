@@ -12,6 +12,7 @@ import {
   type User,
 } from "@shared/schema";
 import { computeNextAction } from "../../services/nextAction";
+import { toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { getUserActivitySummary } from "../../services/activitySummary";
 import { buildDocumentChecklist } from "../../services/documentChecklist";
 import { isTerminalLoanAppStatus } from "@shared/schema";
@@ -50,10 +51,14 @@ export function registerDashboardRoutes(
       // single parallel wave — the previous version issued 8 + ~13×N serial
       // queries (N = application count), which is what pushes dashboard loads
       // past a second on hosted Postgres round-trip latencies.
+      // Ciphertext trio never ships; reviewedByUserId is staff-only —
+      // see shared/borrowerDocumentView.ts.
+      const documentViews = toDocumentViewsForRole(documents, (req.user as User).role);
+
       if (applications.length === 0) {
         return res.json({
           applications,
-          documents,
+          documents: documentViews,
           recentOptions: [],
           stats,
           unreadMessages,
@@ -203,7 +208,7 @@ export function registerDashboardRoutes(
 
       res.json({
         applications,
-        documents,
+        documents: documentViews,
         recentOptions: recentOptions.slice(0, 5),
         stats,
         unreadMessages,
