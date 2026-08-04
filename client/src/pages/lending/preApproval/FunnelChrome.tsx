@@ -1,14 +1,18 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { COMPANY_IDENTITY } from "@shared/companyIdentity";
-import { ArrowRight, Clock, Home, LogIn, Shield } from "lucide-react";
+import { ArrowRight, Clock, Home, LogIn, Shield, TrendingUp } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
+import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
+import type { AffordabilityEstimateResults } from "@/lib/affordabilityEstimate";
 
 /**
  * Funnel chrome (extracted from PreApproval.tsx): the draft-restore banner
  * (#249 — adopting a saved draft is ONE explicit decision point, never a
- * silent prefill), the pre-submit auth gate, and the compliance footer whose
- * copy is regulatory surface (soft-inquiry framing, not-a-commitment
- * disclosure, broker disclosure, Equal Housing).
+ * silent prefill), the pre-signup affordability teaser, the pre-submit auth
+ * gate, and the compliance footer whose copy is regulatory surface
+ * (soft-inquiry framing, not-a-commitment disclosure, broker disclosure,
+ * Equal Housing).
  */
 
 export function RestoreDraftBanner({
@@ -42,6 +46,85 @@ export function RestoreDraftBanner({
           </Button>
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Shown once the funnel's final gate passes but before the auth wall — gives
+ * an unauthenticated borrower a payoff (a rough range, from their own
+ * answers) before asking them to create an account, instead of the auth gate
+ * being the first thing they see after 3 minutes of typing. Estimate-only:
+ * same math as the public affordability calculator (`calculateAffordabilityEstimate`),
+ * not the underwriting engine, so it carries the same PresalesDisclaimer.
+ */
+export function AffordabilityTeaserOverlay({
+  estimate,
+  targetPrice,
+  onContinue,
+  onDismiss,
+}: {
+  estimate: AffordabilityEstimateResults;
+  targetPrice: number | null;
+  onContinue: () => void;
+  onDismiss: () => void;
+}) {
+  const withinRange = targetPrice != null && targetPrice <= estimate.maxHomePrice;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+      data-testid="affordability-teaser-overlay"
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-card border rounded-xl shadow-lg p-8 max-w-md w-full text-center"
+      >
+        <div className="mx-auto mb-6 h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
+          <TrendingUp className="h-8 w-8 text-primary" />
+        </div>
+        <h3 className="text-2xl font-bold text-foreground mb-1" data-testid="text-teaser-title">
+          You're likely in range
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4">Based on what you shared</p>
+        <p className="text-3xl font-bold text-primary mb-1" data-testid="text-teaser-range">
+          {formatCurrency(estimate.comfortablePrice)} &ndash; {formatCurrency(estimate.maxHomePrice)}
+        </p>
+        <p className="text-sm text-muted-foreground mb-4">
+          Est. {formatCurrency(estimate.monthlyPITI)}/mo
+        </p>
+        {targetPrice != null && (
+          <p className="text-sm text-muted-foreground mb-6" data-testid="text-teaser-target-comparison">
+            Your target of {formatCurrency(targetPrice)} is{" "}
+            <span className="font-medium text-foreground">
+              {withinRange ? "within this range" : "above this estimate"}
+            </span>
+            .
+          </p>
+        )}
+        <PresalesDisclaimer className="mb-6 text-left" />
+        <div className="space-y-3">
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={onContinue}
+            data-testid="button-teaser-continue"
+          >
+            See my full pre-approval
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDismiss}
+            data-testid="button-teaser-dismiss"
+          >
+            Go back to form
+          </Button>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }

@@ -63,7 +63,7 @@ export const TASK_TYPE_SLA_MAPPING_SEED: InsertTaskTypeSlaMapping[] = [
   { taskTypeCode: "PROC_START", taskTypeName: "Begin loan processing", category: "processing", slaClass: "S2", defaultOwnerRole: "PROCESSOR", visibleToBorrower: false },
   { taskTypeCode: "UW_START", taskTypeName: "Begin underwriting review", category: "underwriting", slaClass: "S2", defaultOwnerRole: "UW", visibleToBorrower: false },
   { taskTypeCode: "ELIG_COND_CLEAR", taskTypeName: "Clear pending conditions", category: "eligibility", slaClass: "S3", defaultOwnerRole: "UW", visibleToBorrower: false },
-  { taskTypeCode: "CMP_CLOSING_DISC", taskTypeName: "Prepare closing package", category: "closing", slaClass: "S2", defaultOwnerRole: "CLOSER", visibleToBorrower: false },
+  { taskTypeCode: "CMP_CLOSING_DISC", taskTypeName: "Prepare closing package", category: "closing", slaClass: "S2", defaultOwnerRole: "CLOSER", visibleToBorrower: true, borrowerDisplayText: "We're preparing your closing paperwork." },
   // Change-of-circumstance monitors (emitCreditEvent / emitIncomeEvent / emitAssetEvent)
   { taskTypeCode: "CRD_SCORE_CHANGE", taskTypeName: "Credit score change review", category: "credit", slaClass: "S2", defaultOwnerRole: "UW", visibleToBorrower: false },
   { taskTypeCode: "CRD_NEW_TRADELINE", taskTypeName: "New tradeline investigation", category: "credit", slaClass: "S2", defaultOwnerRole: "UW", visibleToBorrower: false },

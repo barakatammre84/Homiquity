@@ -93,6 +93,15 @@ jobs:
         # PR. (Job `name:` above deliberately unchanged — verbatim required-check
         # string; see the rename warning.)
         run: pnpm guard:tokens
+      - name: Query-key convergence guard
+        # Fails on a template-string queryKey in a factory-owned family
+        # (loan-applications, dashboard, tasks, calculator-results,
+        # coach/conversations, onboarding/status). Such a key joins to the right
+        # URL but is invisible to array-prefix invalidateQueries — the #297
+        # stale-panel bug class. Green as landed; build keys from the factories in
+        # client/src/lib/queryClient.ts. (Job `name:` above deliberately unchanged
+        # — verbatim required-check string; see the rename warning.)
+        run: pnpm guard:querykeys
       - name: Production build
         # The gate used to prove only that the code TYPECHECKS. `tsc --noEmit` never
         # runs vite or esbuild, so a broken import, a failing vite plugin, or a

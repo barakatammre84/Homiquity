@@ -90,3 +90,27 @@ describe("unlicensedStateMessage", () => {
     expect(message.toLowerCase()).not.toContain("approved");
   });
 });
+
+describe("letter issuance is state-gated (source guard)", () => {
+  // Letter/prequal issuance is the last outward decision surface. Every
+  // propertyState WRITE path is footprint-gated today, but files created
+  // before the 2026-07-17 gate (or seeded directly) can still carry an
+  // unlicensed state — the issuance routes must re-check at the document
+  // boundary. This guard pins the import and one call per issuance route
+  // (generate-letter, generate-prequal); GET/download routes are exempt on
+  // purpose (rendering an already-issued record is a different act).
+  it("letters.ts imports the gate and applies it to both issuance routes", async () => {
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+    const source = readFileSync(
+      join(__dirname, "../server/routes/lending/letters.ts"),
+      "utf8",
+    );
+    expect(source).toContain('from "@shared/companyIdentity"');
+    const callSites = source.match(/unlicensedStateRejection\(application\.propertyState\)/g) ?? [];
+    expect(
+      callSites.length,
+      "expected both issuance routes (generate-letter, generate-prequal) to call unlicensedStateRejection(application.propertyState)",
+    ).toBeGreaterThanOrEqual(2);
+  });
+});

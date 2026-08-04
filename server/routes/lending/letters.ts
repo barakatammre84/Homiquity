@@ -2,10 +2,10 @@
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
-import { isAuthenticated } from "../../auth";
-import { insertBorrowerDeclarationsSchema, type User } from "@shared/schema";
+import { isAuthenticated, requireRole } from "../../auth";
+import { insertBorrowerDeclarationsSchema, CREDIT_DECISION_ROLES, type User } from "@shared/schema";
 import { isStaffRole } from "@shared/roles";
-import { PREQUAL_ELIGIBLE_STATUSES } from "@shared/letters";
+import { PREQUAL_ELIGIBLE_STATUSES, effectiveLetterStatus, letterRevocationSchema } from "@shared/letters";
 import { z } from "zod";
 import crypto from "crypto";
 import { logAudit } from "../../auditLog";
@@ -13,6 +13,7 @@ import * as creditService from "../../services/creditService";
 import { sendNotificationEmail } from "../../services/emailService";
 import { COMPANY_CONFIG } from "../../config/company";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
+import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { routeParams } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
@@ -57,6 +58,17 @@ export function registerLetterRoutes(
         return res.status(400).json({ error: "Only pre-approved applications can generate letters" });
       }
 
+      // Licensed-state gate (roadmap A5): a letter is an outward creditworthiness
+      // document and may not name a property outside the licensed footprint
+      // (SAFE Act/Reg H; state law controls — see shared/companyIdentity.ts).
+      // Every propertyState write path is gated today; this closes the residual
+      // hole for files created before the 2026-07-17 footprint gate. Absent
+      // state passes: the TRID address-last funnel may not have the property yet.
+      const stateRejection = unlicensedStateRejection(application.propertyState);
+      if (stateRejection) {
+        return res.status(422).json(stateRejection);
+      }
+
       // A pre-approval letter represents a creditworthiness determination — it may
       // not be issued from self-reported/estimated figures. Require verified data.
       try {
@@ -70,7 +82,7 @@ export function registerLetterRoutes(
         });
       }
 
-      const { generatePreApprovalPDF } = await import("../../services/pdfLetterGenerator");
+      const { generatePreApprovalPDF, STANDARD_PRE_APPROVAL_CONDITIONS } = await import("../../services/pdfLetterGenerator");
 
       const letterNumber = `BN-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
       const expirationDate = new Date();
@@ -80,13 +92,7 @@ export function registerLetterRoutes(
       const downPayment = parseFloat(application.downPayment || "0");
       const loanAmount = application.preApprovalAmount || String(purchasePrice - downPayment);
 
-      const conditions = [
-        "Satisfactory property appraisal",
-        "Verification of employment and income",
-        "Clear title search and title insurance",
-        "Property insurance in effect prior to closing",
-        "No material change in financial condition",
-      ];
+      const conditions = [...STANDARD_PRE_APPROVAL_CONDITIONS];
 
       const disclaimers = [
         "This pre-approval is not a commitment to lend. Final approval is subject to satisfactory appraisal, title search, and verification of all information provided.",
@@ -189,7 +195,7 @@ export function registerLetterRoutes(
 
       const { db: database } = await import("../../db");
       const { preApprovalLetters, disclaimerVersions, underwritingDecisions } = await import("@shared/schema");
-      const { eq, desc } = await import("drizzle-orm");
+      const { eq, desc, and, ne } = await import("drizzle-orm");
 
       let snapshotId: string | null = null;
       try {
@@ -260,6 +266,37 @@ export function registerLetterRoutes(
         console.error("[Letter] DB insert failed:", dbErr);
       }
 
+      // An outward creditworthiness document with no record is not issued: the
+      // stored row is what the download route re-renders from, what audit and
+      // revocation would act on. Fail loudly rather than hand out a PDF the
+      // system cannot account for.
+      if (!letterId) {
+        return res.status(500).json({ error: "Letter could not be recorded and was not issued. Please try again." });
+      }
+
+      // Supersede-on-reissue: an application has one current pre-approval
+      // letter. Prior issued letters flip to "superseded" (supersededBy = the
+      // superseding letter's id) so a re-decision never leaves stale letters
+      // reading "issued". Failure here is logged, not fatal — the new letter
+      // is already recorded, and the next reissue re-covers the same rows.
+      try {
+        const superseded = await database.update(preApprovalLetters)
+          .set({ status: "superseded", supersededAt: new Date(), supersededBy: letterId })
+          .where(and(
+            eq(preApprovalLetters.applicationId, id),
+            ne(preApprovalLetters.id, letterId),
+            eq(preApprovalLetters.status, "issued"),
+          ))
+          .returning({ id: preApprovalLetters.id });
+        if (superseded.length > 0) {
+          logAudit(req, "pre_approval_letter.superseded", "pre_approval_letter", letterId, {
+            supersededLetterIds: superseded.map((s) => s.id),
+          });
+        }
+      } catch (supersedeErr) {
+        console.error("[Letter] Supersede-on-reissue failed:", supersedeErr);
+      }
+
       await storage.createNotification({
         userId: user.id,
         type: "pre_approval_letter_ready",
@@ -317,7 +354,28 @@ export function registerLetterRoutes(
         .orderBy(desc(preApprovalLetters.createdAt))
         .limit(1);
 
-      if (letter?.pdfStorageKey) {
+      // This route renders an already-issued record; it carries none of the
+      // issuance gates (status, provenance, licensed state). Without a stored
+      // letter there is nothing issued to render — generating here would mint
+      // an ungated letter.
+      if (!letter) {
+        return res.status(404).json({ error: "No pre-approval letter found" });
+      }
+
+      // A revoked letter must not keep circulating silently — surface the
+      // revocation instead of serving the PDF. Expired letters still download:
+      // the document shows its expiration date on its face, and letter-status
+      // reads "expired" so the UI can prompt a reissue.
+      if (letter.status === "revoked") {
+        return res.status(409).json({
+          error: "This pre-approval letter has been revoked and is no longer valid.",
+          code: "letter_revoked",
+          letterNumber: letter.letterNumber,
+          revokedAt: letter.revokedAt,
+        });
+      }
+
+      if (letter.pdfStorageKey) {
         try {
           const { objectStorageClient } = await import("../../integrations/object_storage/objectStorage");
           const privateDir = process.env.PRIVATE_OBJECT_DIR || "";
@@ -340,91 +398,16 @@ export function registerLetterRoutes(
         }
       }
 
-      const { generatePreApprovalPDF } = await import("../../services/pdfLetterGenerator");
-      const purchasePrice = parseFloat(application.purchasePrice || "0");
-      const downPayment = parseFloat(application.downPayment || "0");
-      const loanAmount = application.preApprovalAmount || String(purchasePrice - downPayment);
-      const borrowerName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Borrower";
+      // Regeneration fallback: render strictly from the stored letter row
+      // (same pattern as prequal-pdf below). Never from current application
+      // data or today's rate — that would put different figures under the
+      // original letter number and issuance date.
+      const { generatePreApprovalPDF, letterDataFromStoredRow } = await import("../../services/pdfLetterGenerator");
+      const pdfBuffer = await generatePreApprovalPDF(letterDataFromStoredRow(letter));
 
-      const annualIncome = parseFloat(application.annualIncome || "0");
-      const monthlyDebts = parseFloat(application.monthlyDebts || "0");
-      const loanAmountNum = parseFloat(loanAmount) || 0;
-      const rate = await currentAdvertised30YrRate(storage);
-      const months = 360;
-      const monthlyRate = rate / 12;
-      const monthlyPayment = loanAmountNum > 0
-        ? (loanAmountNum * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1)
-        : 0;
-      let dlRentalDebtTotal = 0;
-      if (Array.isArray(application.incomeSources)) {
-        for (const src of application.incomeSources as any[]) {
-          if (src.type === "rental" && Array.isArray(src.rentalProperties)) {
-            for (const p of src.rentalProperties) {
-              dlRentalDebtTotal += parseFloat(String(p.monthlyDebtPayment || "0").replace(/,/g, "")) || 0;
-            }
-          }
-        }
-      }
-      const totalMonthlyObligations = monthlyDebts + (monthlyPayment || 0) + dlRentalDebtTotal;
-      const monthlyIncome = annualIncome / 12;
-      const dti = monthlyIncome > 0 ? (totalMonthlyObligations / monthlyIncome) * 100 : 0;
-      const dpPercent = purchasePrice > 0 ? ((downPayment / purchasePrice) * 100).toFixed(1) : undefined;
-
-      const creditScore = application.creditScore ? parseInt(String(application.creditScore)) : 0;
-      let creditRange = "";
-      if (creditScore >= 760) creditRange = "760+";
-      else if (creditScore >= 720) creditRange = "720-759";
-      else if (creditScore >= 680) creditRange = "680-719";
-      else if (creditScore >= 640) creditRange = "640-679";
-      else if (creditScore > 0) creditRange = `${creditScore}`;
-
-      const dlIncomeSources = Array.isArray(application.incomeSources) ? (application.incomeSources as any[]).map(s => ({
-        type: s.type || "other",
-        annualAmount: String(s.annualAmount || "0"),
-        rentalProperties: Array.isArray(s.rentalProperties) ? s.rentalProperties.map((p: any) => ({
-          address: p.address || "",
-          monthlyRentalIncome: String(p.monthlyRentalIncome || "0"),
-          monthlyDebtPayment: String(p.monthlyDebtPayment || "0"),
-        })) : undefined,
-      })) : undefined;
-
-      const pdfBuffer = await generatePreApprovalPDF({
-        letterNumber: letter?.letterNumber || `BN-${Date.now().toString(36).toUpperCase()}`,
-        borrowerName,
-        loanAmount,
-        productType: application.isVeteran ? "VA" : "CONV",
-        occupancy: "Primary",
-        loanPurpose: application.loanPurpose || "Purchase",
-        companyLegalName: COMPANY_CONFIG.legalName,
-        companyNmlsId: COMPANY_CONFIG.nmlsId,
-        companyContactInfo: COMPANY_CONFIG.contactInfo,
-        expirationDate: letter?.expirationDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-        generatedAt: letter?.generatedAt || new Date(),
-        conditions: [
-          "Satisfactory property appraisal",
-          "Verification of employment and income",
-          "Clear title search and title insurance",
-          "Property insurance in effect prior to closing",
-          "No material change in financial condition",
-        ],
-        disclaimers: [],
-        watermarkApplied: true,
-        purchasePrice: purchasePrice > 0 ? String(purchasePrice) : undefined,
-        downPayment: downPayment > 0 ? String(downPayment) : undefined,
-        downPaymentPercent: dpPercent,
-        annualIncome: annualIncome > 0 ? String(annualIncome) : undefined,
-        monthlyPaymentEstimate: monthlyPayment > 0 ? String(Math.round(monthlyPayment)) : undefined,
-        estimatedDti: dti > 0 ? dti.toFixed(1) : undefined,
-        creditScoreRange: creditRange || undefined,
-        employmentType: application.employmentType || undefined,
-        propertyType: application.propertyType || undefined,
-        propertyState: application.propertyState || undefined,
-        incomeSources: dlIncomeSources && dlIncomeSources.length > 0 ? dlIncomeSources : undefined,
-      });
-
-      logAudit(req, "pre_approval_letter.downloaded", "pre_approval_letter", letter?.id || id);
+      logAudit(req, "pre_approval_letter.downloaded", "pre_approval_letter", letter.id);
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="pre-approval-${id.substring(0, 8)}.pdf"`);
+      res.setHeader("Content-Disposition", `attachment; filename="${letter.letterNumber}.pdf"`);
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Download letter PDF error:", error);
@@ -455,17 +438,135 @@ export function registerLetterRoutes(
         return res.json({ hasLetter: false });
       }
 
+      // Computed-at-read expiry: never report "issued" past the expiration
+      // date, whatever the sweep's timing. The revocation reason stays
+      // server-side — staff free text does not reach borrower-facing responses.
       res.json({
         hasLetter: true,
+        letterId: letter.id,
         letterNumber: letter.letterNumber,
-        status: letter.status,
+        status: effectiveLetterStatus(letter),
         expirationDate: letter.expirationDate,
         generatedAt: letter.generatedAt,
+        revokedAt: letter.revokedAt,
         pdfAvailable: !!(letter.pdfStorageKey || letter.pdfGeneratedAt),
       });
     } catch (error) {
       console.error("Letter status error:", error);
       res.status(500).json({ error: "Failed to check letter status" });
+    }
+  });
+
+  // Staff revocation — the deal-team boundary and role class of the status
+  // machine (statusDecisions.ts): revoking an outward creditworthiness
+  // document withdraws an approval outcome, so only CREDIT_DECISION_ROLES may
+  // do it, and non-admins must be on the deal team. The reason is required —
+  // an unaccountable revocation is as bad as an unaccountable issuance.
+  // Validation uses the SHARED letterRevocationSchema so the staff dialog's
+  // confirm gate and this 400 can never drift.
+  app.post("/api/pre-approval-letters/:letterId/revoke", requireRole(...CREDIT_DECISION_ROLES), async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { letterId } = routeParams(req);
+
+      const parsed = letterRevocationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
+      }
+
+      const { db: database } = await import("../../db");
+      const { preApprovalLetters, letterGenerationLogs } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+
+      const [letter] = await database.select().from(preApprovalLetters)
+        .where(eq(preApprovalLetters.id, letterId))
+        .limit(1);
+      if (!letter) {
+        return res.status(404).json({ error: "Letter not found" });
+      }
+
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(letter.applicationId);
+        if (!teamMembers.some((m) => m.userId === user.id)) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
+      }
+
+      // Atomic issued-only transition — the guard compares in SQL so two
+      // concurrent revocations (or a racing supersede) cannot both win.
+      // Issued-but-past-expiration rows remain revocable: an explicit
+      // revocation record on a lapsed letter is strictly more information.
+      const [revoked] = await database.update(preApprovalLetters)
+        .set({
+          status: "revoked",
+          revokedAt: new Date(),
+          revokedBy: user.id,
+          revocationReason: parsed.data.reason,
+        })
+        .where(and(
+          eq(preApprovalLetters.id, letterId),
+          eq(preApprovalLetters.status, "issued"),
+        ))
+        .returning();
+
+      if (!revoked) {
+        const [current] = await database.select({ status: preApprovalLetters.status })
+          .from(preApprovalLetters)
+          .where(eq(preApprovalLetters.id, letterId))
+          .limit(1);
+        return res.status(409).json({
+          error: `Only issued letters can be revoked; this letter is ${current?.status ?? "unknown"}.`,
+          code: "not_revocable",
+          status: current?.status,
+        });
+      }
+
+      // Ledger row — non-fatal: the status flip is the guarantee, the ledger
+      // is the narrative.
+      try {
+        await database.insert(letterGenerationLogs).values({
+          applicationId: revoked.applicationId,
+          letterId: revoked.id,
+          eventType: "letter_revoked",
+          eventDetails: { reason: parsed.data.reason },
+          triggeredBy: user.id,
+          triggeredBySystem: false,
+        });
+      } catch (ledgerErr) {
+        console.error("[Letter] Revocation ledger write failed:", ledgerErr);
+      }
+
+      // The borrower may be shopping with this letter — tell them it is no
+      // longer valid. The reason stays in the audit trail and ledger only.
+      const application = await storage.getLoanApplication(revoked.applicationId);
+      if (application) {
+        await storage.createNotification({
+          userId: application.userId,
+          type: "pre_approval_letter_revoked",
+          title: "Pre-Approval Letter Revoked",
+          body: `Your pre-approval letter #${revoked.letterNumber} has been revoked and is no longer valid. Contact your loan team with any questions.`,
+          entityType: "pre_approval_letter",
+          entityId: revoked.id,
+          status: "unread",
+        });
+      }
+
+      logAudit(req, "pre_approval_letter.revoked", "pre_approval_letter", revoked.id, {
+        applicationId: revoked.applicationId,
+        letterNumber: revoked.letterNumber,
+        reason: parsed.data.reason,
+      });
+
+      res.json({
+        ok: true,
+        letterId: revoked.id,
+        letterNumber: revoked.letterNumber,
+        status: "revoked",
+        revokedAt: revoked.revokedAt,
+      });
+    } catch (error) {
+      console.error("Revoke letter error:", error);
+      res.status(500).json({ error: "Failed to revoke pre-approval letter" });
     }
   });
 
@@ -481,6 +582,13 @@ export function registerLetterRoutes(
 
       if (!(PREQUAL_ELIGIBLE_STATUSES as readonly string[]).includes(application.status)) {
         return res.status(400).json({ error: "Application must be submitted before generating a pre-qualification letter" });
+      }
+
+      // Licensed-state gate — same boundary as generate-letter above (prequal is
+      // wider: submitted-status only, no provenance guard, so the gate matters more).
+      const stateRejection = unlicensedStateRejection(application.propertyState);
+      if (stateRejection) {
+        return res.status(422).json(stateRejection);
       }
 
       const { generatePreQualificationPDF } = await import("../../services/pdfLetterGenerator");
@@ -685,10 +793,11 @@ export function registerLetterRoutes(
         return res.json({ hasLetter: false });
       }
 
+      // Computed-at-read expiry, same as letter-status above.
       res.json({
         hasLetter: true,
         letterNumber: letter.letterNumber,
-        status: letter.status,
+        status: effectiveLetterStatus(letter),
         expirationDate: letter.expirationDate,
         estimatedAmount: letter.estimatedAmount,
         generatedAt: letter.generatedAt,

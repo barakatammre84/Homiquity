@@ -7,7 +7,8 @@ import { AutopilotBanner } from "@/components/AutopilotBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, dashboardKeys, coachConversationKeys, loanApplicationKeys } from "@/lib/queryClient";
+import { deriveJourneyStepDetails } from "@shared/borrowerJourney";
 import { formatCurrency } from "@/lib/formatters";
 import { hasPendingPreApprovalSubmit } from "@/lib/pendingAttribution";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ import {
   getExpirationInfo,
   getReadinessPercent,
   getPersonalizedGreeting,
+  showIncubatorHome,
   type DashboardData,
   type NextActionData,
   type BorrowerGraphData,
@@ -96,12 +98,12 @@ export default function Dashboard() {
   }, [authLoading, isStaff, navigate]);
 
   const { data, isLoading } = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: !authLoading && !isStaff,
   });
 
   const { data: coachConversations } = useQuery<{ id: number }[]>({
-    queryKey: ["/api/coach/conversations"],
+    queryKey: coachConversationKeys.all(),
     enabled: !authLoading && !isStaff,
   });
 
@@ -130,6 +132,39 @@ export default function Dashboard() {
   // reused after the guards; the Autopilot hook re-subscribes when the id changes.
   const { activeApplication, selectApplication } = useActiveApplication(data?.applications ?? []);
   const autopilotStatus = useAutopilotStatus(activeApplication?.id);
+
+  // Journey detail lines: milestone dates + doc/condition counters from the
+  // pipeline payload, plus the closing-prep transparency task. Both queries
+  // share cache entries with their existing consumers (LoanPipeline,
+  // BorrowerRequests) — segmented keys, no new endpoints.
+  const { data: pipelineData } = useQuery<{
+    progress?: { documentsComplete: number; documentsTotal: number; conditionsCleared: number; conditionsTotal: number };
+    milestones?: Record<string, string | null> | null;
+  }>({
+    queryKey: loanApplicationKeys.pipeline(activeApplication?.id ?? ""),
+    enabled: !!activeApplication?.id,
+  });
+  const { data: journeyTasks } = useQuery<
+    Array<{ taskTypeCode?: string; ownerRole?: string; status: string }>
+  >({
+    queryKey: ["/api/task-engine/applications", activeApplication?.id, "borrower-tasks"],
+    enabled: !!activeApplication?.id,
+  });
+  const journeyDetails = deriveJourneyStepDetails({
+    milestones: pipelineData?.milestones ?? null,
+    documents: pipelineData?.progress
+      ? { complete: pipelineData.progress.documentsComplete, total: pipelineData.progress.documentsTotal }
+      : null,
+    conditions: pipelineData?.progress
+      ? { cleared: pipelineData.progress.conditionsCleared, total: pipelineData.progress.conditionsTotal }
+      : null,
+    closingPrepInProgress: (journeyTasks ?? []).some(
+      (t) =>
+        t.taskTypeCode === "CMP_CLOSING_DISC" &&
+        t.ownerRole !== "BORROWER" &&
+        (t.status === "OPEN" || t.status === "IN_PROGRESS"),
+    ),
+  });
 
   if (authLoading || isLoading || isStaff) {
     return (
@@ -195,10 +230,11 @@ export default function Dashboard() {
     browsedProperties,
   );
 
-  const hasApplication = !!activeApplication;
-  const isFirstVisit = !hasApplication && applications.length === 0;
-
-  if (isFirstVisit) {
+  // Incubator gate: no workable file and no funded loan → RenterHome (see
+  // showIncubatorHome). Covers first visits AND borrowers whose applications
+  // all ended terminally (denied/withdrawn/expired) — the latter previously
+  // fell through to a generic "start your pre-approval" Dashboard.
+  if (showIncubatorHome(applications, activeApplication)) {
     return (
       <RenterHome
         userName={user?.firstName || undefined}
@@ -361,8 +397,10 @@ export default function Dashboard() {
               />
             )}
 
-            {/* Loan Progress — vertical COMPLETE / CURRENT / UPCOMING timeline */}
-            {activeApplication && activeApplication.status !== "draft" && (
+            {/* Loan Progress — vertical COMPLETE / CURRENT / UPCOMING timeline.
+                Not rendered for a deep-linked denied file: JourneyTracker
+                returns null on "denied", which would leave an empty shell. */}
+            {activeApplication && activeApplication.status !== "draft" && activeApplication.status !== "denied" && (
               <Card className="shadow-card" data-testid="card-journey">
                 <CardContent className="p-5 sm:p-6">
                   <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
@@ -383,7 +421,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </div>
-                  <JourneyTracker status={activeApplication.status} variant="vertical" showEstimates />
+                  <JourneyTracker status={activeApplication.status} variant="vertical" showEstimates details={journeyDetails} />
                   <div className="mt-4 pt-3 border-t flex items-center gap-2 text-[11px] text-muted-foreground/70" data-testid="text-automation-status">
                     <Zap className="h-3 w-3 text-primary" />
                     <span>Platform is automatically tracking compliance deadlines, verifying documents, and updating your progress</span>

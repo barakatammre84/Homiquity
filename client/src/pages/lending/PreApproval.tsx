@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
+import { maskCurrencyDigits } from "@/lib/formatters";
 import {
   PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
   PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
@@ -41,7 +42,9 @@ import { useDraftRestore } from "./preApproval/useDraftRestore";
 import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
 import { StateStep } from "./preApproval/StateStep";
 import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
-import { RestoreDraftBanner, AuthGateOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
+import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
+import { calculateAffordabilityEstimate, type AffordabilityEstimateResults } from "@/lib/affordabilityEstimate";
+import { buildTeaserInputs, parseTargetPrice } from "./preApproval/affordabilityTeaser";
 
 export default function PreApproval() {
   return (
@@ -147,6 +150,7 @@ function PreApprovalFunnel() {
   // Draft/step/pending-submit keys now live in @/lib/pendingAttribution so the
   // post-auth router (getPostAuthRoute) can detect a deferred submit too.
   const [showAuthGate, setShowAuthGate] = useState(false);
+  const [teaser, setTeaser] = useState<{ estimate: AffordabilityEstimateResults; targetPrice: number | null } | null>(null);
 
   const hasMeaningfulData = useCallback((values: PreApprovalFormData) => {
     return Object.entries(values).some(([k, v]) => {
@@ -337,8 +341,8 @@ function PreApprovalFunnel() {
     },
     onSuccess: async (result) => {
       clearAutosave();
-      queryClient.invalidateQueries({ queryKey: ["/api/loan-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
 
       if (inviteId.current) {
         sessionStorage.removeItem("inviteId");
@@ -385,7 +389,16 @@ function PreApprovalFunnel() {
           localStorage.setItem(AUTOSAVE_STEP_KEY, stepId);
           localStorage.setItem(PENDING_SUBMIT_KEY, "true");
         } catch {}
-        setShowAuthGate(true);
+        const values = form.getValues();
+        const teaserInputs = buildTeaserInputs(values);
+        if (teaserInputs) {
+          setTeaser({
+            estimate: calculateAffordabilityEstimate(teaserInputs),
+            targetPrice: parseTargetPrice(values.purchasePrice),
+          });
+        } else {
+          setShowAuthGate(true);
+        }
         return;
       }
       submitMutation.mutate(form.getValues());
@@ -426,11 +439,6 @@ function PreApprovalFunnel() {
     }
   };
 
-  const formatCurrency = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    return numbers.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
-
   const renderInput = () => {
     const IconComponent = currentQ.icon;
 
@@ -450,7 +458,7 @@ function PreApprovalFunnel() {
                 data-testid={`input-${currentQ.field}`}
                 value={displayValue}
                 onChange={(e) => {
-                  const formatted = formatCurrency(e.target.value);
+                  const formatted = maskCurrencyDigits(e.target.value);
                   form.setValue(fieldName, formatted as never, { shouldValidate: true, shouldDirty: true });
                 }}
                 className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
@@ -575,7 +583,6 @@ function PreApprovalFunnel() {
             setIncomeDetails={setIncomeDetails}
             setRentalProperties={setRentalProperties}
             setIncomeSources={(entries) => form.setValue("incomeSources", entries as never)}
-            formatCurrency={formatCurrency}
           />
         );
       }
@@ -845,6 +852,18 @@ function PreApprovalFunnel() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {teaser && (
+        <AffordabilityTeaserOverlay
+          estimate={teaser.estimate}
+          targetPrice={teaser.targetPrice}
+          onContinue={() => {
+            setTeaser(null);
+            setShowAuthGate(true);
+          }}
+          onDismiss={() => setTeaser(null)}
+        />
+      )}
 
       {showAuthGate && <AuthGateOverlay onDismiss={() => setShowAuthGate(false)} />}
 

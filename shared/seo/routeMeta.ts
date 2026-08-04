@@ -57,7 +57,7 @@ export const STATIC_ROUTE_META: Record<string, RouteMetaEntry> = {
   "/down-payment-wizard": {
     title: "Down Payment Assistance Finder",
     description:
-      "Explore down payment assistance and grant programs — filter by state, first-time buyer status, income, and credit to see programs that may fit your situation.",
+      "Explore down payment assistance and grant programs — filter by state, first-time buyer status, and credit score to see what each program offers.",
   },
   "/calculators": {
     title: "Mortgage Calculators — Affordability, Payments, Refinance & More",

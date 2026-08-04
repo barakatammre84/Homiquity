@@ -3,6 +3,7 @@ import { logout } from "@/lib/logout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { dashboardKeys } from "@/lib/queryClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -141,7 +142,7 @@ export function Navigation() {
   const [location] = useLocation();
 
   const { data: dashboardData } = useQuery<{ applications: Array<{ id: number; status: string }> }>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: isAuthenticated && !location.startsWith("/apply") && !location.startsWith("/dashboard"),
   });
 

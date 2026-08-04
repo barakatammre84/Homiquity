@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, dashboardKeys } from "@/lib/queryClient";
 import { usePlaidLink, type PlaidLinkOnSuccess } from "react-plaid-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -202,7 +202,7 @@ export default function VerificationPage() {
   const { toast } = useToast();
 
   const { data: dashboardData, isLoading: dashboardLoading } = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard"],
+    queryKey: dashboardKeys.root(),
     enabled: !authLoading,
   });
 
@@ -230,7 +230,7 @@ export default function VerificationPage() {
 
   const handleVerificationSuccess = () => {
     refetch();
-    queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+    queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
   };
 
   if (authLoading || dashboardLoading) {

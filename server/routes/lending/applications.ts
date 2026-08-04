@@ -3,8 +3,10 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
-import { insertBorrowerDeclarationsSchema, loanApplicationIntakeSchema, type User } from "@shared/schema";
+import { insertBorrowerDeclarationsSchema, isStaffRole, loanApplicationIntakeSchema, type User } from "@shared/schema";
+import { toBorrowerActivityViews } from "@shared/borrowerActivityView";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
+import { toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { finalizeIntake } from "../../services/loanAnalysis";
 import { z } from "zod";
 import { logAudit } from "../../auditLog";
@@ -261,14 +263,16 @@ export function registerApplicationRoutes(
       res.json({
         application,
         options,
-        // The encrypted raw extraction response never leaves the server — same
-        // doctrine as publicExtraction() in routes/documents.ts. Ciphertext is
-        // useless without the server-side key, but there is no reason to ship
-        // it to the browser at all.
-        documents: documents.map(
-          ({ extractionRawEncrypted, extractionRawIv, extractionRawKeyId, ...doc }) => doc,
-        ),
-        activities,
+        // Ciphertext trio never ships; reviewedByUserId is staff-only —
+        // see shared/borrowerDocumentView.ts.
+        documents: toDocumentViewsForRole(documents, req.user!.role),
+        // Non-staff callers get the whitelist view: staff clearance notes,
+        // wholesale-lender names, internal ops entries, and activity metadata
+        // never leave the server (borrower transparency doctrine —
+        // shared/borrowerActivityView.ts). Staff keep full rows.
+        activities: isStaffRole(req.user!.role)
+          ? activities
+          : toBorrowerActivityViews(activities, req.user!.id),
       });
     } catch (error) {
       console.error("Get application error:", error);

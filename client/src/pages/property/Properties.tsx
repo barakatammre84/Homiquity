@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Footer } from "@/components/Footer";
@@ -12,6 +12,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/formatters";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
+import { useDebounce } from "@/hooks/useDebounce";
+import {
+  loadSavedPropertyFilters,
+  savePropertyFilters,
+  clearSavedPropertyFilters,
+  buildLiveSearchUrl,
+  buildPropertyQueryUrl,
+  filterProperties,
+  type PropertySearchMode,
+} from "@/lib/propertySearch";
 import type { Property } from "@shared/schema";
 import {
   Search,
@@ -49,7 +59,7 @@ interface AutoCompleteSuggestion {
   slug: string | null;
 }
 
-type SearchMode = "buy" | "sold";
+type SearchMode = PropertySearchMode;
 
 interface LiveProperty {
   property_id: string;
@@ -83,45 +93,12 @@ interface LiveSearchResponse {
   source: string;
 }
 
-function useDebounce(value: string, delay: number) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
-
-const SEARCH_FILTERS_KEY = "homiquity_property_filters";
-
-interface SavedFilters {
-  locationId: string | null;
-  locationLabel: string;
-  searchMode: SearchMode;
-  propertyType: string;
-  priceRange: [number, number];
-  savedAt: number;
-}
-
-function loadSavedFilters(): SavedFilters | null {
-  try {
-    const raw = localStorage.getItem(SEARCH_FILTERS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as SavedFilters;
-    if (Date.now() - parsed.savedAt > 7 * 24 * 60 * 60 * 1000) {
-      localStorage.removeItem(SEARCH_FILTERS_KEY);
-      return null;
-    }
-    return parsed;
-  } catch { return null; }
-}
-
 export default function Properties() {
   const { isAuthenticated } = useAuth();
   usePageView("/properties");
   const trackActivity = useTrackActivity();
 
-  const saved = useRef(loadSavedFilters());
+  const saved = useRef(loadSavedPropertyFilters());
   const [searchQuery, setSearchQuery] = useState(saved.current?.locationLabel || "");
   const [inputValue, setInputValue] = useState(saved.current?.locationLabel || "");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -141,17 +118,13 @@ export default function Properties() {
 
   useEffect(() => {
     if (selectedLocation) {
-      try {
-        const filters: SavedFilters = {
-          locationId: selectedLocation,
-          locationLabel: selectedLocationLabel,
-          searchMode,
-          propertyType,
-          priceRange: priceRange as [number, number],
-          savedAt: Date.now(),
-        };
-        localStorage.setItem(SEARCH_FILTERS_KEY, JSON.stringify(filters));
-      } catch {}
+      savePropertyFilters({
+        locationId: selectedLocation,
+        locationLabel: selectedLocationLabel,
+        searchMode,
+        propertyType,
+        priceRange: priceRange as [number, number],
+      });
     }
   }, [selectedLocation, selectedLocationLabel, searchMode, propertyType, priceRange]);
 
@@ -166,18 +139,12 @@ export default function Properties() {
     enabled: !!autoCompleteUrl,
   });
 
-  const buildLiveSearchUrl = () => {
-    if (!selectedLocation) return null;
-    const params = new URLSearchParams();
-    params.set("location", selectedLocation);
-    if (propertyType && propertyType !== "all") params.set("type", propertyType);
-    if (priceRange[0] > 0) params.set("minPrice", priceRange[0].toString());
-    if (priceRange[1] < 2000000) params.set("maxPrice", priceRange[1].toString());
-    const endpoint = searchMode === "sold" ? "/api/properties/search-sold" : "/api/properties/search-live";
-    return `${endpoint}?${params.toString()}`;
-  };
-
-  const liveSearchUrl = buildLiveSearchUrl();
+  const liveSearchUrl = buildLiveSearchUrl({
+    selectedLocation,
+    propertyType,
+    priceRange: priceRange as [number, number],
+    searchMode,
+  });
 
   const { data: liveResults, isLoading: liveLoading } = useQuery<LiveSearchResponse>({
     queryKey: [liveSearchUrl],
@@ -238,36 +205,24 @@ export default function Properties() {
     setSelectedLocation(null);
     setSelectedLocationLabel("");
     setShowSavedBanner(false);
-    try { localStorage.removeItem(SEARCH_FILTERS_KEY); } catch {}
+    clearSavedPropertyFilters();
   }, []);
 
-  const buildQueryString = () => {
-    const params = new URLSearchParams();
-    if (searchQuery) params.set("search", searchQuery);
-    if (propertyType && propertyType !== "all") params.set("type", propertyType);
-    if (priceRange[0] > 0) params.set("minPrice", priceRange[0].toString());
-    if (priceRange[1] < 2000000) params.set("maxPrice", priceRange[1].toString());
-    const qs = params.toString();
-    return qs ? `/api/properties?${qs}` : "/api/properties";
-  };
+  const propertyQueryUrl = buildPropertyQueryUrl({
+    searchQuery,
+    propertyType,
+    priceRange: priceRange as [number, number],
+  });
 
   const { data: properties, isLoading } = useQuery<Property[]>({
-    queryKey: [buildQueryString()],
+    queryKey: [propertyQueryUrl],
     enabled: !selectedLocation,
   });
 
-  const filteredProperties = properties?.filter((property) => {
-    const matchesType = propertyType === "all" || property.propertyType === propertyType;
-    const matchesPrice = 
-      parseFloat(property.price) >= priceRange[0] && 
-      parseFloat(property.price) <= priceRange[1];
-    const matchesSearch = 
-      !searchQuery || 
-      property.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.state?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesType && matchesPrice && matchesSearch;
-  }) || [];
+  const filteredProperties = useMemo(
+    () => (properties ? filterProperties(properties, { propertyType, priceRange: priceRange as [number, number], searchQuery }) : []),
+    [properties, propertyType, priceRange, searchQuery],
+  );
 
   const isLiveMode = !!selectedLocation;
   const liveProperties = liveResults?.properties || [];
@@ -443,7 +398,6 @@ export default function Properties() {
               onClick={() => {
                 setShowSavedBanner(false);
                 handleClearSearch();
-                try { localStorage.removeItem(SEARCH_FILTERS_KEY); } catch {}
               }}
               data-testid="button-clear-saved-search"
             >

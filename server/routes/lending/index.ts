@@ -10,6 +10,7 @@ import { registerDeliveryRoutes } from "./delivery";
 import { registerDocumentRoutes } from "./documents";
 import { registerStatusDecisionRoutes } from "./statusDecisions";
 import { registerLetterRoutes } from "./letters";
+import { registerIncomeSummaryRoutes } from "./incomeSummary";
 
 export function registerLendingRoutes(
   app: Express,
@@ -22,4 +23,5 @@ export function registerLendingRoutes(
   registerDocumentRoutes(app, storage);
   registerStatusDecisionRoutes(app, storage);
   registerLetterRoutes(app, storage);
+  registerIncomeSummaryRoutes(app, storage);
 }

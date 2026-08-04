@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { loanApplicationKeys } from "@/lib/queryClient";
 
 import { Footer } from "@/components/Footer";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
@@ -12,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication, AgentProfile } from "@shared/schema";
-import { isApprovedGradeLoanAppStatus } from "@shared/schema";
+import { selectPreApprovalContext } from "@shared/schema";
 import {
   MapPin,
   Bed,
@@ -168,7 +169,7 @@ export default function PropertyDetail() {
   }, [property?.id]);
 
   const { data: applications } = useQuery<LoanApplication[]>({
-    queryKey: ["/api/loan-applications"],
+    queryKey: loanApplicationKeys.all(),
   });
 
   const { data: agent } = useQuery<AgentProfile & { user?: { firstName: string; lastName: string; email: string } }>({
@@ -176,28 +177,13 @@ export default function PropertyDetail() {
     enabled: !!property?.agentId,
   });
 
-  // Get pre-approval data. No `|| applications[0]` fallback: a closed file still
-  // carries annualIncome, so falling back to one made `hasPreApproval` go true
-  // and showed qualification math to a borrower who was denied.
-  const preApproval = useMemo(() => {
-    if (!applications?.length) return null;
-    return applications.find(app => isApprovedGradeLoanAppStatus(app.status)) ?? null;
-  }, [applications]);
-
-  const hasPreApproval = preApproval && 
-    preApproval.annualIncome && 
-    parseFloat(String(preApproval.annualIncome)) > 0;
-
-  const preApprovalAmount = preApproval?.preApprovalAmount 
-    ? parseFloat(String(preApproval.preApprovalAmount))
-    : 0;
-  const monthlyIncome = preApproval?.annualIncome 
-    ? parseFloat(String(preApproval.annualIncome)) / 12
-    : 0;
-  const monthlyDebts = preApproval?.monthlyDebts 
-    ? parseFloat(String(preApproval.monthlyDebts))
-    : 0;
-  const creditScore = preApproval?.creditScore || undefined;
+  // Pre-approval context — the approved-grade file (never a closed one) unpacked
+  // into the numbers the qualification math needs. Shared, tested derivation so
+  // this page and BuyerProperties can't drift on what "has a pre-approval" means.
+  const { hasPreApproval, preApprovalAmount, monthlyIncome, monthlyDebts, creditScore } = useMemo(
+    () => selectPreApprovalContext(applications),
+    [applications],
+  );
 
   // Calculate qualification
   const qualification = useMemo(() => {

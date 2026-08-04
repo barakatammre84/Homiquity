@@ -2,7 +2,8 @@ import { useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,24 +35,32 @@ import {
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/formatters";
 import { type CreditSummary, type CreditAuditEntry } from "./model";
+import { PreApprovalLetterCard } from "./PreApprovalLetterCard";
 
 /**
  * Credit tab (extracted from BorrowerFile.tsx): FCRA consent status, tri-merge
- * pull, adverse-action notices with the ECOA/Reg B §1002.9 postal-fallback
- * delivery flow (download PDF → mail → confirm; no undo endpoint), and the
- * immutable credit audit log. Owns its own queries and mutations — the parent
- * only supplies the application id.
+ * pull, the file's pre-approval letter (with the CREDIT_DECISION_ROLES-gated
+ * revocation action), adverse-action notices with the ECOA/Reg B §1002.9
+ * postal-fallback delivery flow (download PDF → mail → confirm; no undo
+ * endpoint), and the immutable credit audit log. Owns its own queries and
+ * mutations — the parent supplies the application id and the role gate.
  */
-export function CreditTab({ applicationId }: { applicationId: string }) {
+export function CreditTab({
+  applicationId,
+  canRevokeLetter,
+}: {
+  applicationId: string;
+  canRevokeLetter: boolean;
+}) {
   const { toast } = useToast();
 
   const { data: creditData, isLoading: creditLoading } = useQuery<CreditSummary>({
-    queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'],
+    queryKey: loanApplicationKeys.credit.summary(applicationId),
     enabled: !!applicationId,
   });
 
   const { data: auditLog } = useQuery<{ auditLog: CreditAuditEntry[] }>({
-    queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'],
+    queryKey: loanApplicationKeys.credit.auditLog(applicationId),
     enabled: !!applicationId,
   });
 
@@ -64,9 +73,9 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.summary(applicationId) });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.auditLog(applicationId) });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.detail(applicationId) });
       toast({
         title: "Credit Pull Complete",
         description: "Credit report has been successfully retrieved.",
@@ -101,15 +110,7 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
       ).catch((err: unknown) => {
         throw new Error(friendlyApiError(err, "Failed to generate the notice PDF."));
       });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `adverse-action-${adverseActionId.substring(0, 8)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadResponseAsFile(res, `adverse-action-${adverseActionId.substring(0, 8)}.pdf`);
       toast({
         title: "Notice Downloaded",
         description: "Print and mail the letter, then confirm delivery below.",
@@ -133,8 +134,8 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
       });
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'summary'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId, 'credit', 'audit-log'] });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.summary(applicationId) });
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.credit.auditLog(applicationId) });
       setNoticeDelivery({ open: false, method: "mail", confirmation: "" });
       toast({
         title: "Delivery Confirmed",
@@ -309,6 +310,8 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
           </CardContent>
         </Card>
       </div>
+
+      <PreApprovalLetterCard applicationId={applicationId} canRevoke={canRevokeLetter} />
 
       {creditData?.adverseActionCount && creditData.adverseActionCount > 0 && (
         <Card className="border-border">

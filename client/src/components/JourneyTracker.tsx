@@ -81,9 +81,15 @@ interface JourneyTrackerProps {
    * and a colored connector (the borrower-dashboard "Loan Progress" card).
    */
   variant?: "responsive" | "vertical";
+  /**
+   * Per-step detail lines (milestone dates, doc/condition counters) derived
+   * via shared/borrowerJourney.ts deriveJourneyStepDetails. Vertical variant
+   * only; steps without lines render exactly as before.
+   */
+  details?: Partial<Record<string, string[]>>;
 }
 
-export function JourneyTracker({ status, className = "", showEstimates = false, variant = "responsive" }: JourneyTrackerProps) {
+export function JourneyTracker({ status, className = "", showEstimates = false, variant = "responsive", details }: JourneyTrackerProps) {
   if (status === "draft" || status === "denied") return null;
 
   const currentIndex = getStepIndex(status);
@@ -172,6 +178,18 @@ export function JourneyTracker({ status, className = "", showEstimates = false, 
                   <p className="mt-0.5 text-xs text-muted-foreground leading-snug">
                     {STEP_DESCRIPTIONS[step.id]}
                   </p>
+                )}
+                {(details?.[step.id]?.length ?? 0) > 0 && (
+                  <div
+                    className="mt-1 space-y-0.5"
+                    data-testid={`journey-detail-${step.id}`}
+                  >
+                    {details![step.id]!.map((line) => (
+                      <p key={line} className="text-[11px] text-muted-foreground leading-snug">
+                        {line}
+                      </p>
+                    ))}
+                  </div>
                 )}
                 {showEstimates && isCurrent && step.estimate && (
                   <p className="mt-1 text-[11px] text-muted-foreground" data-testid={`journey-estimate-${step.id}`}>

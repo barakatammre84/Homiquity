@@ -587,13 +587,24 @@ export class TaskEngineService {
   // taskTypeSlaMapping sat empty: seeding the table would have silently
   // switched this query to codes-only and re-hidden every pipeline document
   // task (taskTypeCode NULL, ownerRole BORROWER) — undoing the #232 fix.
-  async getBorrowerTasks(applicationId: string): Promise<TaskWithSlaStatus[]> {
+  async getBorrowerTasks(
+    applicationId: string,
+  ): Promise<(TaskWithSlaStatus & { borrowerDisplayText?: string | null })[]> {
     const visibleMappings = await db
-      .select({ taskTypeCode: taskTypeSlaMapping.taskTypeCode })
+      .select({
+        taskTypeCode: taskTypeSlaMapping.taskTypeCode,
+        borrowerDisplayText: taskTypeSlaMapping.borrowerDisplayText,
+      })
       .from(taskTypeSlaMapping)
       .where(eq(taskTypeSlaMapping.visibleToBorrower, true));
 
     const visibleCodes = visibleMappings.map(m => m.taskTypeCode);
+    // The mapping's borrower-facing line for visible staff tasks — the
+    // transparency surface (borrowerTaskView) displays THIS, never the
+    // staff-authored title/description.
+    const displayTextByCode = new Map(
+      visibleMappings.map(m => [m.taskTypeCode, m.borrowerDisplayText]),
+    );
 
     const borrowerTasks = await db
       .select()
@@ -612,6 +623,9 @@ export class TaskEngineService {
     return borrowerTasks.map(task => ({
       ...task,
       ...this.computeSlaStatus(task),
+      ...(task.taskTypeCode && displayTextByCode.has(task.taskTypeCode)
+        ? { borrowerDisplayText: displayTextByCode.get(task.taskTypeCode) }
+        : {}),
     }));
   }
 

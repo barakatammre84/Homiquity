@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
@@ -152,7 +152,7 @@ export default function MortgagePayoffCalculator() {
     },
     onSuccess: () => {
       toast({ title: "Results Saved", description: "Your payoff plan has been saved to your profile." });
-      queryClient.invalidateQueries({ queryKey: ["/api/calculator-results"] });
+      queryClient.invalidateQueries({ queryKey: calculatorResultKeys.all() });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to save results. Please try again.", variant: "destructive" });

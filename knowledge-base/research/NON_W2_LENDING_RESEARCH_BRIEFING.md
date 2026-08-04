@@ -17,6 +17,17 @@
 > code-corrected per the returning-research protocol; the adopted, governing plan for the
 > non-W2 program is now **[NON_W2_TECH_OPTIMIZATION_PLAN.md](NON_W2_TECH_OPTIMIZATION_PLAN.md)**
 > (it supersedes conflicting prior framing; this document's §1 box still binds it).
+>
+> **2026-08-04 supersession note — four claims below are now stale** (verified against code,
+> HEAD `eb26923`; details in the
+> [sovereign-stack adjudication §3.3](../logs/2026-08-04-sovereign-underwriting-stack-pitch-adjudication.md)):
+> §3's `EXTRACTION_SIMULATE` "covers all four single-doc extractors" is wrong — the flag is
+> **tax-only** (`extractionDocuments.ts:116`, `extractionTaxIntel.ts:460/:520`; pay-stub /
+> bank-statement / lease return low-confidence without a key); rental's "hard-coded
+> `appliedToDti: false`" (§2 path table, §10 master table, §11 gap #1) is **dynamic +
+> provenance-gated since #241**; S-05/S-06 "advisory only" (§4) **apply to DTI since #241**;
+> S-07 "deferred" (§4, §11 gap #7) **shipped in #246** (mig 0037) with its catalog entry +
+> sync tests in #315.
 
 ---
 

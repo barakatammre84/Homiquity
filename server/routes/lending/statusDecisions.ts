@@ -259,8 +259,12 @@ export function registerStatusDecisionRoutes(
         applicationId: id,
         activityType: "status_change",
         title: `Status Updated to ${status.replace(/_/g, " ").toUpperCase()}`,
-        description: notes || `Application status changed from ${previousStatus} to ${status}`,
+        // Derived copy only — the description is shared display for every
+        // role. Staff decision notes ride metadata, which the borrower
+        // activity view embargoes (shared/borrowerActivityView.ts).
+        description: `Application status changed from ${previousStatus} to ${status}`,
         performedBy: user.id,
+        ...(notes ? { metadata: { notes } } : {}),
       });
 
       const borrower = await storage.getUser(application.userId);

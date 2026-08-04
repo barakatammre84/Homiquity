@@ -1,7 +1,14 @@
 import { readdirSync, readFileSync, statSync } from "fs";
 import { join, relative } from "path";
 import { describe, it, expect } from "vitest";
-import { loanApplicationKeys } from "../client/src/lib/queryClient";
+import {
+  loanApplicationKeys,
+  dashboardKeys,
+  taskKeys,
+  calculatorResultKeys,
+  coachConversationKeys,
+  onboardingStatusKeys,
+} from "../client/src/lib/queryClient";
 
 // -----------------------------------------------------------------------------
 // Nested resource query keys must be written as SEGMENTS, not as one template
@@ -27,21 +34,6 @@ import { loanApplicationKeys } from "../client/src/lib/queryClient";
 
 const REPO_ROOT = join(__dirname, "..");
 const CLIENT_SRC = join(REPO_ROOT, "client", "src");
-
-/**
- * Template-string query keys that are correct as they are.
- * Key = "path:line-content-substring", value = why it must stay one string.
- */
-const ALLOWED_TEMPLATE_KEYS: Record<string, string> = {
-  // A query string cannot be expressed as path segments — join("/") would turn
-  // "?input=x" into a path. These are leaf keys with no prefix invalidation.
-  "client/src/components/ScenarioSimulatorDialog.tsx":
-    "query-string URLs (/api/properties/auto-complete?input=, /detail-live?propertyId=) — not path segments, and nothing invalidates them by prefix",
-  // Self-consistent: both sites use the identical template, so they share one
-  // cache entry, and no code invalidates the /api/staff/applications prefix.
-  "client/src/pages/staff/LoCommandCenter.tsx":
-    "/api/staff/applications/:id/cockpit — both call sites use the identical template (one cache entry) and no prefix invalidation targets this family",
-};
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
@@ -70,6 +62,10 @@ function templateKeySites(): Array<{ file: string; line: number; text: string }>
       // Only interpolated keys can fragment a resource family; a constant
       // template string is just a plain key.
       if (!url.includes("${")) return;
+      // A query-string key ("?input=x") cannot be expressed as path segments and
+      // is never invalidated by prefix — allowed as a leaf. Mirrors the semantic
+      // rule in scripts/query-key-guard.cjs (keep the two in step).
+      if (url.includes("?")) return;
       hits.push({
         file: relative(REPO_ROOT, file),
         line: i + 1,
@@ -81,26 +77,19 @@ function templateKeySites(): Array<{ file: string; line: number; text: string }>
 }
 
 describe("query-key convergence", () => {
-  it("writes nested resource keys as segments, not template strings", () => {
-    const offenders = templateKeySites().filter(
-      (h) => !(h.file in ALLOWED_TEMPLATE_KEYS),
-    );
+  it("writes path-style keys as segments, not interpolated template strings (surface-wide)", () => {
+    // Surface-wide, not limited to the migrated families: any `${...}` in a
+    // path-style /api key is the drift hazard. Query-string keys are excluded in
+    // templateKeySites() above. Same rule the gate runs via guard:querykeys.
+    const offenders = templateKeySites();
 
     expect(
       offenders.map((o) => `${o.file}:${o.line}  ${o.text}`),
       "A template-string queryKey is invisible to array-prefix invalidateQueries, " +
-        "so mutations elsewhere will not refresh it. Use a key factory such as " +
-        "loanApplicationKeys in client/src/lib/queryClient.ts, or add the file to " +
-        "ALLOWED_TEMPLATE_KEYS in this test with the reason it must stay one string.",
+        "so mutations elsewhere will not refresh it. Write it as segments " +
+        '(["/api/x", id, "y"]) — from a factory in client/src/lib/queryClient.ts ' +
+        "where the resource has one.",
     ).toEqual([]);
-  });
-
-  it("keeps the allowlist honest — every entry still has a template key", () => {
-    const filesWithTemplateKeys = new Set(templateKeySites().map((h) => h.file));
-    const stale = Object.keys(ALLOWED_TEMPLATE_KEYS).filter(
-      (f) => !filesWithTemplateKeys.has(f),
-    );
-    expect(stale, "these allowlist entries no longer contain a template query key").toEqual([]);
   });
 
   it("no loan-application key is written as a template string", () => {
@@ -122,6 +111,12 @@ describe("loanApplicationKeys", () => {
     [loanApplicationKeys.detail(ID), "/api/loan-applications/app-123"],
     [loanApplicationKeys.pipeline(ID), "/api/loan-applications/app-123/pipeline"],
     [loanApplicationKeys.options(ID), "/api/loan-applications/app-123/options"],
+    [loanApplicationKeys.offers(ID), "/api/loan-applications/app-123/offers"],
+    [loanApplicationKeys.properties(ID), "/api/loan-applications/app-123/properties"],
+    [loanApplicationKeys.prequalStatus(ID), "/api/loan-applications/app-123/prequal-status"],
+    [loanApplicationKeys.letterStatus(ID), "/api/loan-applications/app-123/letter-status"],
+    [loanApplicationKeys.loanEstimate(ID), "/api/loan-applications/app-123/loan-estimate"],
+    [loanApplicationKeys.hmda(ID), "/api/loan-applications/app-123/hmda"],
     [
       loanApplicationKeys.submissionReadiness(ID),
       "/api/loan-applications/app-123/submission-readiness",
@@ -134,6 +129,15 @@ describe("loanApplicationKeys", () => {
       loanApplicationKeys.changeOfCircumstances(ID),
       "/api/loan-applications/app-123/change-of-circumstances",
     ],
+    [loanApplicationKeys.credit.root(ID), "/api/loan-applications/app-123/credit"],
+    [loanApplicationKeys.credit.summary(ID), "/api/loan-applications/app-123/credit/summary"],
+    [loanApplicationKeys.credit.auditLog(ID), "/api/loan-applications/app-123/credit/audit-log"],
+    [loanApplicationKeys.credit.draft(ID), "/api/loan-applications/app-123/credit/draft"],
+    [
+      loanApplicationKeys.credit.adverseActions(ID),
+      "/api/loan-applications/app-123/credit/adverse-actions",
+    ],
+    [loanApplicationKeys.draftLatest(), "/api/loan-applications/draft/latest"],
   ])("joins to the same URL the template string produced: %s", (key, url) => {
     expect(key.join("/")).toBe(url);
   });
@@ -143,9 +147,21 @@ describe("loanApplicationKeys", () => {
     const children = [
       loanApplicationKeys.pipeline(ID),
       loanApplicationKeys.options(ID),
+      loanApplicationKeys.offers(ID),
+      loanApplicationKeys.properties(ID),
+      loanApplicationKeys.prequalStatus(ID),
+      loanApplicationKeys.letterStatus(ID),
+      loanApplicationKeys.loanEstimate(ID),
+      loanApplicationKeys.hmda(ID),
       loanApplicationKeys.submissionReadiness(ID),
       loanApplicationKeys.lenderSubmissions(ID),
       loanApplicationKeys.changeOfCircumstances(ID),
+      // The whole credit sub-tree must also be reachable from the detail prefix.
+      loanApplicationKeys.credit.root(ID),
+      loanApplicationKeys.credit.summary(ID),
+      loanApplicationKeys.credit.auditLog(ID),
+      loanApplicationKeys.credit.draft(ID),
+      loanApplicationKeys.credit.adverseActions(ID),
     ];
     for (const child of children) {
       // This slice comparison is exactly what TanStack Query's partial matching
@@ -154,9 +170,63 @@ describe("loanApplicationKeys", () => {
     }
   });
 
+  it("nests the credit leaves under the credit prefix too", () => {
+    // Panels that touch only credit invalidate `credit.root`; that must reach
+    // every credit leaf without also invalidating unrelated application queries.
+    const creditPrefix = loanApplicationKeys.credit.root(ID);
+    const leaves = [
+      loanApplicationKeys.credit.summary(ID),
+      loanApplicationKeys.credit.auditLog(ID),
+      loanApplicationKeys.credit.draft(ID),
+      loanApplicationKeys.credit.adverseActions(ID),
+    ];
+    for (const leaf of leaves) {
+      expect(leaf.slice(0, creditPrefix.length)).toEqual([...creditPrefix]);
+    }
+    // ...but a non-credit sibling is NOT under the credit prefix.
+    expect(
+      loanApplicationKeys.pipeline(ID).slice(0, creditPrefix.length),
+    ).not.toEqual([...creditPrefix]);
+  });
+
+  it("draftLatest is a fixed path, not nested under a detail id", () => {
+    // It is its own resource; invalidating a specific file must not touch it.
+    const someFile = loanApplicationKeys.detail(ID);
+    const draft = loanApplicationKeys.draftLatest();
+    expect(draft.slice(0, someFile.length)).not.toEqual([...someFile]);
+  });
+
   it("scopes to one application — a sibling file is not invalidated", () => {
     const prefix = loanApplicationKeys.detail("app-A");
     const other = loanApplicationKeys.pipeline("app-B");
     expect(other.slice(0, prefix.length)).not.toEqual([...prefix]);
+  });
+});
+
+describe("sibling resource key factories (batch 1)", () => {
+  const ID = "id-1";
+
+  // Each factory must join to the exact URL the hand-typed literal produced, so
+  // swapping a call site to the factory is a pure refactor with no URL change.
+  it.each([
+    [dashboardKeys.root(), "/api/dashboard"],
+    [taskKeys.all(), "/api/tasks"],
+    [taskKeys.detail(ID), "/api/tasks/id-1"],
+    [calculatorResultKeys.all(), "/api/calculator-results"],
+    [coachConversationKeys.all(), "/api/coach/conversations"],
+    [coachConversationKeys.detail(ID), "/api/coach/conversations/id-1"],
+    [onboardingStatusKeys.root(), "/api/onboarding/status"],
+  ])("joins to the endpoint URL: %s", (key, url) => {
+    expect(key.join("/")).toBe(url);
+  });
+
+  it("nests a task detail under the task-list prefix (invalidation reaches it)", () => {
+    const prefix = taskKeys.all();
+    expect(taskKeys.detail(ID).slice(0, prefix.length)).toEqual([...prefix]);
+  });
+
+  it("nests a coach conversation under the conversations prefix", () => {
+    const prefix = coachConversationKeys.all();
+    expect(coachConversationKeys.detail(ID).slice(0, prefix.length)).toEqual([...prefix]);
   });
 });
