@@ -3,8 +3,14 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
-import { insertBorrowerDeclarationsSchema, type User } from "@shared/schema";
+import {
+  insertBorrowerDeclarationsSchema,
+  isTerminalLoanAppStatus,
+  pickWorkableLoanApplication,
+  type User,
+} from "@shared/schema";
 import { isStaffRole } from "@shared/roles";
+import { toDocumentViewForRole, toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { z } from "zod";
 import { allowedUploadTypes } from "../utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
@@ -166,14 +172,36 @@ export function registerDocumentRoutes(
         if (!application) {
           return res.status(403).json({ error: "You do not have access to this application" });
         }
+        // Access is not the same question as workability: a denied/withdrawn/
+        // funded file still BELONGS to the borrower, so the ownership check
+        // above passes and the upload lands on a closed loan (#271, #273).
+        // The client resolver refuses to select a terminal file; this is the
+        // server-side half of that rule — a stale `?app=`, a replayed request
+        // or a direct API call can't route documents onto a closed file.
+        //
+        // Staff are exempt on purpose: attaching a document to a closed file
+        // (post-denial correspondence, a funded file's trailing doc) is a
+        // legitimate record-keeping act, and staff choose the file explicitly.
+        if (!isStaffRole(user.role) && isTerminalLoanAppStatus(application.status)) {
+          return res.status(409).json({
+            error:
+              "This loan file is closed and no longer accepts documents. Switch to your active application, or contact your loan team.",
+            applicationStatus: application.status,
+          });
+        }
       }
 
       // Never let an unsolicited borrower upload float free of the loan file:
-      // default to the borrower's most recent application.
+      // default to the file the borrower is actually working on. NOT
+      // `apps[0]` — that list is newest-first with no status filter, so the
+      // newest entry is routinely a denied/withdrawn/funded one while an older
+      // file is still in flight (the ban in pickWorkableLoanApplication's
+      // docblock). When nothing is workable the document stays unattached,
+      // which is recoverable; stamping it onto a closed file is not.
       let applicationId = requestedApplicationId || null;
       if (!applicationId && !isStaffRole(user.role)) {
         const apps = await storage.getLoanApplicationsByUser(userId);
-        applicationId = apps[0]?.id ?? null;
+        applicationId = pickWorkableLoanApplication(apps)?.id ?? null;
       }
 
       // Soft duplicate detection (same name + size for this borrower). Never
@@ -301,7 +329,7 @@ export function registerDocumentRoutes(
       }
 
       res.status(201).json({
-        ...document,
+        ...toDocumentViewForRole(document, user.role),
         similarDocument: similar
           ? { id: similar.id, fileName: similar.fileName, uploadedAt: similar.createdAt }
           : null,
@@ -324,7 +352,7 @@ export function registerDocumentRoutes(
     try {
       const userId = req.user!.id;
       const documents = await storage.getDocumentsByUser(userId);
-      res.json(documents);
+      res.json(toDocumentViewsForRole(documents, (req.user as User).role));
     } catch (error) {
       console.error("Get documents error:", error);
       res.status(500).json({ error: "Failed to get documents" });

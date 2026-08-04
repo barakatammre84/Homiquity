@@ -5,7 +5,7 @@ import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { logAudit } from "../../auditLog";
 import { lintOutboundText, REG_Z_ADVERTISING_DISCLOSURE_BLOCK } from "@shared/compliance/loCommsLint";
-import { isStaffRole, type User } from "@shared/schema";
+import { isStaffRole, pickWorkableLoanApplication, type User } from "@shared/schema";
 import { z } from "zod";
 import { sendNotificationEmail } from "../../services/emailService";
 import { routeParams } from "../../http/routeParams";
@@ -194,8 +194,15 @@ export function registerMessagingRoutes(
         }
         applicationId = application.id;
       } else {
+        // The file the borrower is actually working on, not `apps[0]`: the list
+        // is newest-first with no status filter, so the newest entry is often a
+        // denied/withdrawn/funded one while an older file is still in flight —
+        // and the thread would be stamped onto the closed loan (the #271/#273
+        // bug class, banned in pickWorkableLoanApplication's docblock). With no
+        // workable file the message is stored unattached (as it already is
+        // pre-application) rather than misfiled on a closed record.
         const apps = await storage.getLoanApplicationsByUser(borrowerParty.id);
-        applicationId = apps[0]?.id ?? null; // newest first; null pre-application
+        applicationId = pickWorkableLoanApplication(apps)?.id ?? null;
       }
 
       // LO-5 comms compliance lint on STAFF → borrower outbound free text.

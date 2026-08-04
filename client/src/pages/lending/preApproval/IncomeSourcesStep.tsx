@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import type { RentalPropertyEntry, IncomeSourceEntry, PreApprovalFormData } from "@shared/schema";
+import { maskCurrencyDigits } from "@/lib/formatters";
 
 /**
  * Complex-income step (extracted from PreApproval.tsx). CONTROLLED on purpose:
@@ -33,7 +34,6 @@ export function IncomeSourcesStep({
   setIncomeDetails,
   setRentalProperties,
   setIncomeSources,
-  formatCurrency,
 }: {
   employmentType: PreApprovalFormData["employmentType"] | undefined;
   selectedIncomeTypes: string[];
@@ -43,7 +43,6 @@ export function IncomeSourcesStep({
   setIncomeDetails: (details: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }>) => void;
   setRentalProperties: (props: RentalPropertyEntry[]) => void;
   setIncomeSources: (entries: IncomeSourceEntry[]) => void;
-  formatCurrency: (value: string) => string;
 }) {
   const employmentTypeMap: Record<string, string> = { employed: "w2", self_employed: "self_employed", retired: "pension" };
   // Self-employed borrowers keep their primary type in the list — the
@@ -72,7 +71,7 @@ export function IncomeSourcesStep({
       if (t === "rental" && rentals.length > 0) {
         entry.rentalProperties = rentals;
         const totalMonthly = rentals.reduce((sum, p) => sum + (parseFloat(p.monthlyRentalIncome.replace(/,/g, "")) || 0), 0);
-        entry.annualAmount = totalMonthly > 0 ? formatCurrency(String(Math.round(totalMonthly * 12))) : "";
+        entry.annualAmount = totalMonthly > 0 ? maskCurrencyDigits(String(Math.round(totalMonthly * 12))) : "";
       }
       return entry;
     });
@@ -181,7 +180,7 @@ export function IncomeSourcesStep({
                     <span className="font-semibold text-foreground">Rental Properties</span>
                     {rentalAnnualTotal > 0 && (
                       <span className="text-sm text-muted-foreground ml-auto">
-                        ${formatCurrency(String(Math.round(rentalAnnualTotal)))}/yr total
+                        ${maskCurrencyDigits(String(Math.round(rentalAnnualTotal)))}/yr total
                       </span>
                     )}
                   </div>
@@ -218,7 +217,7 @@ export function IncomeSourcesStep({
                             <Input
                               data-testid={`input-rental-income-${idx}`}
                               value={prop.monthlyRentalIncome}
-                              onChange={(e) => updateRentalProperty(idx, "monthlyRentalIncome", formatCurrency(e.target.value))}
+                              onChange={(e) => updateRentalProperty(idx, "monthlyRentalIncome", maskCurrencyDigits(e.target.value))}
                               className="pl-9"
                               placeholder="2,000"
                               inputMode="decimal"
@@ -232,7 +231,7 @@ export function IncomeSourcesStep({
                             <Input
                               data-testid={`input-rental-debt-${idx}`}
                               value={prop.monthlyDebtPayment || ""}
-                              onChange={(e) => updateRentalProperty(idx, "monthlyDebtPayment", formatCurrency(e.target.value))}
+                              onChange={(e) => updateRentalProperty(idx, "monthlyDebtPayment", maskCurrencyDigits(e.target.value))}
                               className="pl-9"
                               placeholder="1,200"
                               inputMode="decimal"
@@ -270,7 +269,7 @@ export function IncomeSourcesStep({
                     <Input
                       data-testid={`input-income-amount-${typeValue}`}
                       value={details.annualAmount}
-                      onChange={(e) => updateDetail(typeValue, "annualAmount", formatCurrency(e.target.value))}
+                      onChange={(e) => updateDetail(typeValue, "annualAmount", maskCurrencyDigits(e.target.value))}
                       className="pl-9"
                       placeholder="75,000"
                     />

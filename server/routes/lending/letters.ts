@@ -2,10 +2,10 @@
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
-import { isAuthenticated } from "../../auth";
-import { insertBorrowerDeclarationsSchema, type User } from "@shared/schema";
+import { isAuthenticated, requireRole } from "../../auth";
+import { insertBorrowerDeclarationsSchema, CREDIT_DECISION_ROLES, type User } from "@shared/schema";
 import { isStaffRole } from "@shared/roles";
-import { PREQUAL_ELIGIBLE_STATUSES } from "@shared/letters";
+import { PREQUAL_ELIGIBLE_STATUSES, effectiveLetterStatus, letterRevocationSchema } from "@shared/letters";
 import { z } from "zod";
 import crypto from "crypto";
 import { logAudit } from "../../auditLog";
@@ -362,6 +362,19 @@ export function registerLetterRoutes(
         return res.status(404).json({ error: "No pre-approval letter found" });
       }
 
+      // A revoked letter must not keep circulating silently — surface the
+      // revocation instead of serving the PDF. Expired letters still download:
+      // the document shows its expiration date on its face, and letter-status
+      // reads "expired" so the UI can prompt a reissue.
+      if (letter.status === "revoked") {
+        return res.status(409).json({
+          error: "This pre-approval letter has been revoked and is no longer valid.",
+          code: "letter_revoked",
+          letterNumber: letter.letterNumber,
+          revokedAt: letter.revokedAt,
+        });
+      }
+
       if (letter.pdfStorageKey) {
         try {
           const { objectStorageClient } = await import("../../integrations/object_storage/objectStorage");
@@ -425,17 +438,135 @@ export function registerLetterRoutes(
         return res.json({ hasLetter: false });
       }
 
+      // Computed-at-read expiry: never report "issued" past the expiration
+      // date, whatever the sweep's timing. The revocation reason stays
+      // server-side — staff free text does not reach borrower-facing responses.
       res.json({
         hasLetter: true,
+        letterId: letter.id,
         letterNumber: letter.letterNumber,
-        status: letter.status,
+        status: effectiveLetterStatus(letter),
         expirationDate: letter.expirationDate,
         generatedAt: letter.generatedAt,
+        revokedAt: letter.revokedAt,
         pdfAvailable: !!(letter.pdfStorageKey || letter.pdfGeneratedAt),
       });
     } catch (error) {
       console.error("Letter status error:", error);
       res.status(500).json({ error: "Failed to check letter status" });
+    }
+  });
+
+  // Staff revocation — the deal-team boundary and role class of the status
+  // machine (statusDecisions.ts): revoking an outward creditworthiness
+  // document withdraws an approval outcome, so only CREDIT_DECISION_ROLES may
+  // do it, and non-admins must be on the deal team. The reason is required —
+  // an unaccountable revocation is as bad as an unaccountable issuance.
+  // Validation uses the SHARED letterRevocationSchema so the staff dialog's
+  // confirm gate and this 400 can never drift.
+  app.post("/api/pre-approval-letters/:letterId/revoke", requireRole(...CREDIT_DECISION_ROLES), async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { letterId } = routeParams(req);
+
+      const parsed = letterRevocationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors });
+      }
+
+      const { db: database } = await import("../../db");
+      const { preApprovalLetters, letterGenerationLogs } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+
+      const [letter] = await database.select().from(preApprovalLetters)
+        .where(eq(preApprovalLetters.id, letterId))
+        .limit(1);
+      if (!letter) {
+        return res.status(404).json({ error: "Letter not found" });
+      }
+
+      if (user.role !== "admin") {
+        const teamMembers = await storage.getDealTeamMembers(letter.applicationId);
+        if (!teamMembers.some((m) => m.userId === user.id)) {
+          return res.status(403).json({ error: "You are not assigned to this application" });
+        }
+      }
+
+      // Atomic issued-only transition — the guard compares in SQL so two
+      // concurrent revocations (or a racing supersede) cannot both win.
+      // Issued-but-past-expiration rows remain revocable: an explicit
+      // revocation record on a lapsed letter is strictly more information.
+      const [revoked] = await database.update(preApprovalLetters)
+        .set({
+          status: "revoked",
+          revokedAt: new Date(),
+          revokedBy: user.id,
+          revocationReason: parsed.data.reason,
+        })
+        .where(and(
+          eq(preApprovalLetters.id, letterId),
+          eq(preApprovalLetters.status, "issued"),
+        ))
+        .returning();
+
+      if (!revoked) {
+        const [current] = await database.select({ status: preApprovalLetters.status })
+          .from(preApprovalLetters)
+          .where(eq(preApprovalLetters.id, letterId))
+          .limit(1);
+        return res.status(409).json({
+          error: `Only issued letters can be revoked; this letter is ${current?.status ?? "unknown"}.`,
+          code: "not_revocable",
+          status: current?.status,
+        });
+      }
+
+      // Ledger row — non-fatal: the status flip is the guarantee, the ledger
+      // is the narrative.
+      try {
+        await database.insert(letterGenerationLogs).values({
+          applicationId: revoked.applicationId,
+          letterId: revoked.id,
+          eventType: "letter_revoked",
+          eventDetails: { reason: parsed.data.reason },
+          triggeredBy: user.id,
+          triggeredBySystem: false,
+        });
+      } catch (ledgerErr) {
+        console.error("[Letter] Revocation ledger write failed:", ledgerErr);
+      }
+
+      // The borrower may be shopping with this letter — tell them it is no
+      // longer valid. The reason stays in the audit trail and ledger only.
+      const application = await storage.getLoanApplication(revoked.applicationId);
+      if (application) {
+        await storage.createNotification({
+          userId: application.userId,
+          type: "pre_approval_letter_revoked",
+          title: "Pre-Approval Letter Revoked",
+          body: `Your pre-approval letter #${revoked.letterNumber} has been revoked and is no longer valid. Contact your loan team with any questions.`,
+          entityType: "pre_approval_letter",
+          entityId: revoked.id,
+          status: "unread",
+        });
+      }
+
+      logAudit(req, "pre_approval_letter.revoked", "pre_approval_letter", revoked.id, {
+        applicationId: revoked.applicationId,
+        letterNumber: revoked.letterNumber,
+        reason: parsed.data.reason,
+      });
+
+      res.json({
+        ok: true,
+        letterId: revoked.id,
+        letterNumber: revoked.letterNumber,
+        status: "revoked",
+        revokedAt: revoked.revokedAt,
+      });
+    } catch (error) {
+      console.error("Revoke letter error:", error);
+      res.status(500).json({ error: "Failed to revoke pre-approval letter" });
     }
   });
 
@@ -662,10 +793,11 @@ export function registerLetterRoutes(
         return res.json({ hasLetter: false });
       }
 
+      // Computed-at-read expiry, same as letter-status above.
       res.json({
         hasLetter: true,
         letterNumber: letter.letterNumber,
-        status: letter.status,
+        status: effectiveLetterStatus(letter),
         expirationDate: letter.expirationDate,
         estimatedAmount: letter.estimatedAmount,
         generatedAt: letter.generatedAt,

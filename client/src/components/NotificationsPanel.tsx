@@ -95,7 +95,7 @@ function activityToNotification(activity: DealActivity, index: number): Notifica
   };
 }
 
-interface RealNotification {
+export interface RealNotification {
   id: number;
   type: string;
   title: string;
@@ -107,7 +107,9 @@ interface RealNotification {
   readAt: string | null;
 }
 
-function realNotificationToItem(n: RealNotification): NotificationItem {
+// Exported for unit tests: pure mapper from a server notification row to a
+// panel item (icon/color/href derivation).
+export function realNotificationToItem(n: RealNotification): NotificationItem {
   let icon = Bell;
   let iconColor = "text-muted-foreground";
   let href = "/dashboard";
@@ -137,6 +139,10 @@ function realNotificationToItem(n: RealNotification): NotificationItem {
     if (n.entityType === "deal") href = `/deals/${n.entityId}`;
     else if (n.entityType === "document") href = "/documents";
     else if (n.entityType === "task") href = "/tasks";
+    // ECOA adverse-action notices must be reachable from the notification that
+    // announces them — without this mapping the click dead-ends on /dashboard.
+    else if (n.type === "adverse_action" && n.entityType === "loan_application")
+      href = `/adverse-action/${n.entityId}`;
   }
 
   return {

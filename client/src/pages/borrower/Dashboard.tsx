@@ -63,6 +63,7 @@ import {
   getExpirationInfo,
   getReadinessPercent,
   getPersonalizedGreeting,
+  showIncubatorHome,
   type DashboardData,
   type NextActionData,
   type BorrowerGraphData,
@@ -229,10 +230,11 @@ export default function Dashboard() {
     browsedProperties,
   );
 
-  const hasApplication = !!activeApplication;
-  const isFirstVisit = !hasApplication && applications.length === 0;
-
-  if (isFirstVisit) {
+  // Incubator gate: no workable file and no funded loan → RenterHome (see
+  // showIncubatorHome). Covers first visits AND borrowers whose applications
+  // all ended terminally (denied/withdrawn/expired) — the latter previously
+  // fell through to a generic "start your pre-approval" Dashboard.
+  if (showIncubatorHome(applications, activeApplication)) {
     return (
       <RenterHome
         userName={user?.firstName || undefined}
@@ -395,8 +397,10 @@ export default function Dashboard() {
               />
             )}
 
-            {/* Loan Progress — vertical COMPLETE / CURRENT / UPCOMING timeline */}
-            {activeApplication && activeApplication.status !== "draft" && (
+            {/* Loan Progress — vertical COMPLETE / CURRENT / UPCOMING timeline.
+                Not rendered for a deep-linked denied file: JourneyTracker
+                returns null on "denied", which would leave an empty shell. */}
+            {activeApplication && activeApplication.status !== "draft" && activeApplication.status !== "denied" && (
               <Card className="shadow-card" data-testid="card-journey">
                 <CardContent className="p-5 sm:p-6">
                   <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">

@@ -21,6 +21,7 @@ import {
   type DealActivity,
   type InsertDealActivity,
 } from "@shared/schema";
+import { WRITER_CONTRACT_KEY, WRITER_CONTRACT_VERSION } from "@shared/borrowerActivityView";
 import { UsersStorage } from "./users";
 export class ApplicationsStorage extends UsersStorage {
   // Loan Applications
@@ -218,7 +219,21 @@ export class ApplicationsStorage extends UsersStorage {
 
   // Deal Activities
   async createDealActivity(data: InsertDealActivity): Promise<DealActivity> {
-    const [activity] = await db.insert(dealActivities).values(data).returning();
+    // Single insert path for deal_activities, so this is where the writer
+    // contract is recorded: the marker tells the borrower view that this row's
+    // description is derived copy rather than pre-contract staff free text.
+    // It rides metadata (embargoed from every client-role payload) because
+    // created_at cannot carry the distinction — it is a zone-less timestamp
+    // filled by the column default, so its meaning depends on the writing
+    // session's timezone. See shared/borrowerActivityView.ts.
+    const caller =
+      data.metadata && typeof data.metadata === "object" && !Array.isArray(data.metadata)
+        ? (data.metadata as Record<string, unknown>)
+        : {};
+    const [activity] = await db
+      .insert(dealActivities)
+      .values({ ...data, metadata: { ...caller, [WRITER_CONTRACT_KEY]: WRITER_CONTRACT_VERSION } })
+      .returning();
     return activity;
   }
 

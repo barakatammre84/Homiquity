@@ -35,15 +35,23 @@ import {
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/formatters";
 import { type CreditSummary, type CreditAuditEntry } from "./model";
+import { PreApprovalLetterCard } from "./PreApprovalLetterCard";
 
 /**
  * Credit tab (extracted from BorrowerFile.tsx): FCRA consent status, tri-merge
- * pull, adverse-action notices with the ECOA/Reg B §1002.9 postal-fallback
- * delivery flow (download PDF → mail → confirm; no undo endpoint), and the
- * immutable credit audit log. Owns its own queries and mutations — the parent
- * only supplies the application id.
+ * pull, the file's pre-approval letter (with the CREDIT_DECISION_ROLES-gated
+ * revocation action), adverse-action notices with the ECOA/Reg B §1002.9
+ * postal-fallback delivery flow (download PDF → mail → confirm; no undo
+ * endpoint), and the immutable credit audit log. Owns its own queries and
+ * mutations — the parent supplies the application id and the role gate.
  */
-export function CreditTab({ applicationId }: { applicationId: string }) {
+export function CreditTab({
+  applicationId,
+  canRevokeLetter,
+}: {
+  applicationId: string;
+  canRevokeLetter: boolean;
+}) {
   const { toast } = useToast();
 
   const { data: creditData, isLoading: creditLoading } = useQuery<CreditSummary>({
@@ -302,6 +310,8 @@ export function CreditTab({ applicationId }: { applicationId: string }) {
           </CardContent>
         </Card>
       </div>
+
+      <PreApprovalLetterCard applicationId={applicationId} canRevoke={canRevokeLetter} />
 
       {creditData?.adverseActionCount && creditData.adverseActionCount > 0 && (
         <Card className="border-border">
