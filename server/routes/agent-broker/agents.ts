@@ -42,9 +42,10 @@ export function registerAgentDirectoryRoutes(
         location: firstQueryValue(req.query.location),
         specialty: firstQueryValue(req.query.specialty),
       });
-      const enriched = await Promise.all(
-        agents.map(async (agent) => {
-          const user = await storage.getUser(agent.userId);
+      const agentUsers = await storage.getUsersByIds([...new Set(agents.map((a) => a.userId))]);
+      const usersById = new Map(agentUsers.map((u) => [u.id, u]));
+      const enriched = agents.map((agent) => {
+          const user = usersById.get(agent.userId);
           return {
             id: agent.id,
             firstName: user?.firstName || "Agent",
@@ -61,8 +62,7 @@ export function registerAgentDirectoryRoutes(
             yearsInBusiness: agent.yearsInBusiness,
             isVerified: agent.isVerified,
           };
-        })
-      );
+        });
       res.json(enriched);
     } catch (error) {
       console.error("Search agents error:", error);
