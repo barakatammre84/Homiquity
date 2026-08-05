@@ -11,7 +11,7 @@
 ## 0. Preconditions (do these first)
 
 - [ ] **Confirm the deploy is live and current.** Vercel shows the latest `main` merge as **READY**, target `production` (`list_deployments` / dashboard). Prod commit SHA == `git rev-parse origin/main`.
-- [ ] **Confirm prod DB migration HEAD.** Run the CI workflow with `dry_run: true` (Actions → CI → Run workflow) and confirm "up to date — no pending migrations" ([DB_MIGRATIONS.md](./DB_MIGRATIONS.md) §Pre-flight — prod isn't queryable from a laptop). As of 2026-07-19 the journal holds **38 entries (0000–0037)**. Never `db:push` against prod ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5).
+- [ ] **Confirm prod DB migration HEAD.** Run the CI workflow with `dry_run: true` (Actions → CI → Run workflow) and confirm "up to date — no pending migrations" ([DB_MIGRATIONS.md](./DB_MIGRATIONS.md) §Pre-flight — prod isn't queryable from a laptop). As of 2026-08-05 the journal holds **47 entries (0000–0046)** — read the current count from `migrations/meta/_journal.json`, don't trust this sentence. Never `db:push` against prod ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5).
 - [ ] **A rollback target is identified.** The previous known-good production deploy is a Vercel rollback candidate ([ROLLBACK.md](./ROLLBACK.md) §1).
 
 ---
@@ -24,7 +24,7 @@ The server **fails closed** on missing security secrets (`assertEncryptionConfig
 - [ ] ⛔ **`NODE_ENV=production`** in the prod env (gates all the dev-only fallbacks — test login, local upload store, etc.).
 - [ ] ⛔ **`CREDIT_VENDOR_MODE` is UNSET** in prod. Set to `simulation` it would fabricate credit scores — production must refuse. (`.env.example` → "Credit vendor mode".)
 - [ ] ☑ **`CRON_SECRET`** set (same value Vercel Cron uses) — else the daily lifecycle job only runs manually.
-- [ ] ☑ **`APP_BASE_URL`** points at the canonical customer domain (`https://homiquity.com` once attached; defaults to the Vercel URL). This is the one place the domain cutover happens — customer-facing SMS/email links use it.
+- [ ] ☑ **`APP_BASE_URL`** points at the canonical customer domain — `https://www.homiquity.com`, live since the 2026-07-13 cutover (the server default in `server/config/company.ts` matches; the env var wins if set). Customer-facing SMS/email links use it.
 - [ ] ☑ **`PLAID_WEBHOOK_SECRET`** set **if** the Plaid assets webhook is in use (endpoint returns 503 fail-closed until set). If Plaid is not live, N/A.
 - [ ] ☑ **`SENTRY_DSN`** set (error reporting) and **`SENDGRID_API_KEY`** / SMTP set **if** email notifications are expected at launch; otherwise record them as deliberately off.
 - [ ] ☑ **`CSP_ENFORCE`** — decide: `true` to block (after a clean Report-Only soak) or leave Report-Only for launch. Record the choice.
@@ -102,7 +102,7 @@ Uploads use GCS presigned URLs in prod; the local filesystem fallback is **dev-o
 These are the items most likely to be a *silent* launch risk. Each is a deliberate decision, not an assumption.
 
 - [ ] ⛔ **SMS is OFF at launch (TCPA).** Confirm no outbound SMS path is active. If SMS is turned on, the Plaid/webhook signature gates and consent (`sms_opt_outs`, migration `0003`) become hard prerequisites — do not launch SMS without them.
-- [ ] ⛔ **ECOA adverse-action decision recorded.** Adverse-action *generation* currently has **no automatic trigger** (finding F-004; only the cron watchdog + borrower reader are wired). **Confirm with compliance whether the MVP decision flow can deny.** The stage gates route borderline files to `under_review` (not denial) — if that holds, record it as the reason this is safe to defer. **If the MVP can issue a credit-based denial, wiring adverse-action generation is a launch BLOCKER** — ECOA requires the notice.
+- [ ] ⛔ **ECOA adverse-action path works end-to-end.** *(2026-08-05 correction: this line's original F-004 deferral went stale — the denial seam is wired: a denial is **blocked** unless a compliant §1002.9 / FCRA §615 notice generates (deny seam + underwriting advance-stage path), the staff BorrowerFile card delivers/mails the PDF, and the 30-day watchdog de-dups. Verified live in the #135–#139 walkthrough; close recorded in [BETA_GO_LIVE_READINESS.md](./BETA_GO_LIVE_READINESS.md) §1 and the feature-review FINDINGS register.)* Walk one test denial in prod: the notice generates, the borrower can read it, and delivery is recorded.
 - [ ] ⛔ **Required disclosures present.** Compliance disclosure templates (e.g. anti-steering) are seeded — `ensureComplianceTemplates` ran at boot; the borrower-facing disclosures render.
 - [ ] ☑ **AUS DU/LPA leg** (`/api/aus/*`, finding F-003) has no UI trigger and is a simulation. **Confirm the Target-5 wholesale lenders don't require a DU casefile *at submission*** (they typically run DU on their side). If they do, it moves into MVP scope; if not, record the deferral.
 - [ ] ☑ Vendor simulations are labeled/behaving as simulations (credit, AVM, GSE) — no fabricated data presented as real (see §1 `CREDIT_VENDOR_MODE`).
@@ -130,10 +130,10 @@ These are the items most likely to be a *silent* launch risk. Each is a delibera
 | Date / time (prod) | |
 | Production commit SHA | |
 | Deploy id | |
-| Migration HEAD verified | `0011` (12/12) — or: |
+| Migration HEAD verified | `____` (count from `migrations/meta/_journal.json` at run time) |
 | Gate posture | pre-license: gated / open · beta: on / off |
 | BLOCKERS all green? | ☐ yes |
-| Known deferrals accepted (F-003 AUS · F-004 adverse-action · uploads-503 · SMS off) | |
+| Known deferrals accepted (F-003 AUS · uploads-503 if GCS deferred · SMS off) | |
 | Approved by | |
 | Ledger row added | [CICD.md](./CICD.md#production-change-ledger-append-only) ☐ |
 

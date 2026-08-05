@@ -163,6 +163,48 @@ export function resolveStaticMeta(pathname: string): ResolvedMeta | null {
   return { ...entry, canonicalPath: path };
 }
 
+// ---------------------------------------------------------------------------
+// Prelaunch-gated prerender resolution.
+//
+// While the prelaunch gate is up, the client redirects every soliciting route
+// (/rates*, the persona LPs, /apply, …) to "/", where humans see the Waitlist.
+// The bot prerender must match: serving rate/approval metadata for pages no
+// human can reach is inconsistent dynamic rendering AND puts advertising copy
+// on a surface the launch charter says is closed. The ungated public routes
+// (SITEMAP_STATIC_PATHS: education, calculators, legal) keep real metadata.
+// ---------------------------------------------------------------------------
+
+/** Waitlist-safe head copy — must carry no rate, payment, or approval language. */
+export const PRELAUNCH_TITLE = "Homiquity — Launching Soon";
+export const PRELAUNCH_DESCRIPTION =
+  "A simpler, calmer mortgage experience is on the way. Join the waitlist to be first to know when Homiquity opens.";
+
+/**
+ * Prerender meta decision for a path WHILE THE PRELAUNCH GATE IS UP, or null
+ * when the path is ungated-public and normal resolution should proceed. "/"
+ * serves the waitlist copy and stays indexable (it IS the current homepage);
+ * every other gated path serves the same launch-safe copy plus noindex.
+ * Published articles (/learn/:slug) stay public; the /learn/first-time-buyer
+ * hub is client-gated and is deliberately NOT exempted.
+ */
+export function gatedPrerenderMeta(
+  pathname: string,
+): { meta: ResolvedMeta; noindex: boolean } | null {
+  const path = normalizePath(pathname);
+  if (path === "/") {
+    return {
+      meta: { title: PRELAUNCH_TITLE, description: PRELAUNCH_DESCRIPTION, canonicalPath: "/" },
+      noindex: false,
+    };
+  }
+  if (SITEMAP_STATIC_PATHS.includes(path)) return null;
+  if (/^\/learn\/[^/]+$/.test(path) && path !== "/learn/first-time-buyer") return null;
+  return {
+    meta: { title: PRELAUNCH_TITLE, description: PRELAUNCH_DESCRIPTION, canonicalPath: path },
+    noindex: true,
+  };
+}
+
 /** Escape a string for safe insertion into an HTML attribute or text node. */
 export function escapeHtml(value: string): string {
   return value

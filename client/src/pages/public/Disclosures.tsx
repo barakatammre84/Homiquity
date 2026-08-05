@@ -65,7 +65,7 @@ export default function Disclosures() {
               </div>
               <div>
                 <p className="text-sm font-medium">Contact</p>
-                <p className="text-sm text-muted-foreground">1-800-HOMIQTY | hello@homiquity.com</p>
+                <p className="text-sm text-muted-foreground">{COMPANY_IDENTITY.contactPhone} | {COMPANY_IDENTITY.contactEmail}</p>
               </div>
             </div>
           </CardContent>
@@ -298,14 +298,14 @@ export default function Disclosures() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground leading-relaxed">
             <p>
-              If you have a complaint about your loan or our services, please contact our compliance team at
-              compliance@homiquity.com so we can work to resolve it.
+              If you have a complaint about your loan or our services, please contact us at{" "}
+              {COMPANY_IDENTITY.contactEmail} so we can work to resolve it.
             </p>
             <p>
               You may also file a complaint with the Consumer Financial Protection Bureau (CFPB) at consumerfinance.gov,
-              with the New York State Department of Financial Services, or with the mortgage regulator in your state of
-              residence. State-specific complaint and disclosure notices are provided during the application process
-              where required by law.
+              with the Illinois Department of Financial and Professional Regulation (IDFPR) — our licensing
+              regulator — or with the mortgage regulator in your state of residence. State-specific complaint and
+              disclosure notices are provided during the application process where required by law.
             </p>
           </CardContent>
         </Card>
@@ -323,9 +323,9 @@ export default function Disclosures() {
               and strives to conform to the Web Content Accessibility Guidelines (WCAG) 2.1 Level AA.
             </p>
             <p>
-              If you experience any difficulty accessing part of our website, please contact us at
-              accessibility@homiquity.com or 1-800-HOMIQTY so we can assist you and continue to improve the experience
-              for everyone.
+              If you experience any difficulty accessing part of our website, please contact us at{" "}
+              {COMPANY_IDENTITY.contactEmail} or {COMPANY_IDENTITY.contactPhone} so we can assist you and continue to
+              improve the experience for everyone.
             </p>
           </CardContent>
         </Card>
@@ -335,8 +335,8 @@ export default function Disclosures() {
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
             Contact our compliance team for any questions about our licensing or disclosures.
           </p>
-          <a href="mailto:compliance@homiquity.com" className="text-sm text-primary font-medium" data-testid="link-disclosures-email">
-            compliance@homiquity.com
+          <a href={`mailto:${COMPANY_IDENTITY.contactEmail}`} className="text-sm text-primary font-medium" data-testid="link-disclosures-email">
+            {COMPANY_IDENTITY.contactEmail}
           </a>
         </section>
       </div>
