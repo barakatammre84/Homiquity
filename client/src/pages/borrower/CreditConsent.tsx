@@ -14,6 +14,7 @@ import { ActiveConsentCard } from "./creditConsent/ActiveConsentCard";
 import { DisclosureCard, DraftResumeAlert } from "./creditConsent/DisclosureCard";
 import { AuthorizationForm } from "./creditConsent/AuthorizationForm";
 import { FcraRightsCard } from "./creditConsent/FcraRightsCard";
+import { runBusy } from "./creditConsent/runBusy";
 
 export default function CreditConsent() {
   const { id: applicationId } = useParams<{ id: string }>();
@@ -101,11 +102,7 @@ export default function CreditConsent() {
     },
   });
 
-  const handleSaveDraft = async () => {
-    setSaving(true);
-    await saveDraftMutation.mutateAsync();
-    setSaving(false);
-  };
+  const handleSaveDraft = () => runBusy(setSaving, () => saveDraftMutation.mutateAsync());
 
   const submitConsentMutation = useMutation({
     mutationFn: async (consentGiven: boolean) => {
@@ -134,7 +131,7 @@ export default function CreditConsent() {
     },
   });
 
-  const handleSubmitConsent = async () => {
+  const handleSubmitConsent = () => {
     if (!fullName.trim()) {
       toast({
         title: "Required Field",
@@ -153,9 +150,7 @@ export default function CreditConsent() {
       return;
     }
 
-    setSubmitting(true);
-    await submitConsentMutation.mutateAsync(true);
-    setSubmitting(false);
+    void runBusy(setSubmitting, () => submitConsentMutation.mutateAsync(true));
   };
 
   const isLoading = appLoading || disclosureLoading || summaryLoading || draftLoading;
