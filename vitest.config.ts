@@ -112,6 +112,7 @@ export default defineConfig({
       "tests/smsCompliance.test.ts",
       "tests/errorMonitoring.test.ts",
       "tests/auditReanchor.test.ts",
+      "tests/auditChainTruncation.test.ts",
       "tests/qmThresholds.test.ts",
       "tests/specialFeatureCodes.test.ts",
       "tests/loanDeliveryEdits.test.ts",

@@ -268,6 +268,42 @@ export function computeHash(data: string): string {
   return crypto.createHash("sha256").update(data).digest("hex");
 }
 
+/**
+ * Audit entry hash algorithm versions (F-046).
+ *
+ * v1 hashes the entry's content and its backpointer, but NOT its
+ * `sequenceNumber` — so the sequence could be rewritten without invalidating
+ * anything, and an attacker who deleted rows could renumber the survivors to
+ * defeat F-038's contiguity check.
+ *
+ * v2 folds `sequenceNumber` into the hash, which is what closes the finding.
+ *
+ * A **downgrade attack** — flipping a v2 row's `hashVersion` to 1 to get it
+ * verified under the algorithm that ignores the sequence — fails because the v1
+ * payload lacks `sequenceNumber` entirely and therefore digests to something
+ * other than what is stored. That protection comes from the field's presence,
+ * not from the marker.
+ *
+ * The version marker is nonetheless part of the payload, for a narrower reason:
+ * it makes the digest self-describing, so two algorithm versions can never agree
+ * on a digest for the same logical content. Today's v1→v2 difference happens to
+ * be a field addition, which would be distinguishable anyway; a future version
+ * that changes only how existing fields are *interpreted* would not be. Paying
+ * one field now avoids a silent cross-version collision later.
+ *
+ * v1 is kept and still honoured because every entry ever written used it.
+ * Re-hashing history to retire it would rewrite the audit log to make it
+ * verify — the exact move an audit log exists to make impossible.
+ */
+export const AUDIT_HASH_V1 = 1;
+export const AUDIT_HASH_V2_SEQUENCED = 2;
+export const AUDIT_HASH_VERSION_CURRENT = AUDIT_HASH_V2_SEQUENCED;
+
+/** A stored entry with no `hashVersion` predates versioning and is v1. */
+export function resolveHashVersion(stored: number | null | undefined): number {
+  return stored ?? AUDIT_HASH_V1;
+}
+
 export interface AuditEntryHashInput {
   applicationId: string | null;
   userId: string | null;
@@ -275,6 +311,10 @@ export interface AuditEntryHashInput {
   actionDetails: Record<string, any> | null;
   timestamp: Date;
   previousEntryHash: string | null;
+  /** Required by v2. Ignored by v1, which is why v1 was forgeable. */
+  sequenceNumber?: number | null;
+  /** Defaults to v1 so every existing caller keeps its current behaviour. */
+  hashVersion?: number;
 }
 
 // Deterministic canonicalization for audit hashing: object keys sorted
@@ -294,20 +334,96 @@ function sortKeysDeep(value: any): any {
 }
 
 export function computeAuditEntryHash(entry: AuditEntryHashInput): string {
-  const canonical = JSON.stringify(
-    sortKeysDeep({
-      applicationId: entry.applicationId,
-      userId: entry.userId,
-      action: entry.action,
-      actionDetails: entry.actionDetails,
-      timestamp: entry.timestamp.toISOString(),
-      previousHash: entry.previousEntryHash || "GENESIS",
-    })
-  );
+  const version = entry.hashVersion ?? AUDIT_HASH_V1;
 
-  return computeHash(canonical);
+  // v1 payload, byte-for-byte as originally written. Do not touch: every
+  // pre-versioning entry in the database re-verifies through this exact shape.
+  const payload: Record<string, unknown> = {
+    applicationId: entry.applicationId,
+    userId: entry.userId,
+    action: entry.action,
+    actionDetails: entry.actionDetails,
+    timestamp: entry.timestamp.toISOString(),
+    previousHash: entry.previousEntryHash || "GENESIS",
+  };
+
+  if (version >= AUDIT_HASH_V2_SEQUENCED) {
+    // `sequenceNumber` is the field being protected — this line IS the fix, and
+    // it is also what makes a claimed downgrade to v1 fail, since the v1 payload
+    // does not contain it. `hashVersion` is the cheaper insurance described
+    // above: it keeps the digest self-describing across future versions.
+    payload.hashVersion = version;
+    payload.sequenceNumber = entry.sequenceNumber ?? null;
+  }
+
+  return computeHash(JSON.stringify(sortKeysDeep(payload)));
 }
 
+/**
+ * How much of the chain the verification was actually able to attest (F-038).
+ *
+ * `verifyHashChain` used to return a bare `{valid: true}`, which read as "this
+ * log is intact" when it only ever meant "the entries I was handed link to each
+ * other". Those are very different claims, and the gap between them was the
+ * whole finding. The coverage flags make the difference legible to the caller
+ * instead of leaving it to be inferred.
+ */
+export interface HashChainCoverage {
+  /** The chain starts at a genuine genesis entry (`previousEntryHash === null`). */
+  headAnchored: boolean;
+  /**
+   * Sequence numbers were present on every entry and ran 1..N with no gaps.
+   * "unavailable" means at least one entry predates sequence numbering (they are
+   * nullable, and legacy rows written before the re-anchor may not carry one) —
+   * NOT that the check passed.
+   */
+  sequenceCoverage: "verified" | "unavailable";
+  /**
+   * Whether the sequence numbers are themselves protected by the hash (F-046).
+   *
+   *  - `hashed`   — every entry is v2+, so renumbering breaks its own digest.
+   *  - `mixed`    — some entries predate v2; those remain renumberable.
+   *  - `unhashed` — every entry is v1. Contiguity is a real check against loss
+   *                 and mistakes, but not against a determined attacker.
+   *
+   * Reported rather than assumed, because "the sequence is contiguous" and
+   * "the sequence cannot have been forged" are different claims.
+   */
+  sequenceIntegrity: "hashed" | "mixed" | "unhashed";
+}
+
+export interface HashChainResult {
+  valid: boolean;
+  brokenAt?: number;
+  reason?: string;
+  coverage: HashChainCoverage;
+}
+
+/**
+ * Verify a tamper-evident audit chain (F-038).
+ *
+ * What this detects, and — just as importantly — what it does not:
+ *
+ *   ✔ mutation of any entry's content (own-hash check)
+ *   ✔ mutation of a link (linkage check)
+ *   ✔ deletion of the chain HEAD, and any contiguous mid-chain window, because
+ *     entry 0 must now carry `previousEntryHash === null`. Previously the
+ *     linkage check was guarded by `if (i > 0 …)`, so entry 0's backpointer was
+ *     never examined at all: lopping off the first K entries left entry K+1
+ *     pointing at a row that no longer existed and the chain still verified.
+ *     A SINGLE surviving mid-chain entry verified clean for the same reason.
+ *   ✔ mid-chain deletion that renumbers nothing (sequence contiguity)
+ *
+ *   ✘ TAIL truncation. Nothing inside a chain can detect the removal of its own
+ *     end — the remainder is perfectly self-consistent. That needs an external
+ *     record of where the chain last ended, which is why the caller pairs this
+ *     with the persisted per-scope tip; see `verifyAuditLogIntegrity`.
+ *   ~ deletion by an attacker who also renumbers the survivors. Closed for v2
+ *     entries, whose `sequenceNumber` is inside the hash (F-046); still open for
+ *     v1 entries written before versioning, which cannot be retrofitted without
+ *     re-hashing history — i.e. without rewriting the audit log to make it
+ *     verify. `coverage.sequenceIntegrity` says which case a given chain is in.
+ */
 export function verifyHashChain(
   entries: Array<{
     entryHash: string;
@@ -317,15 +433,50 @@ export function verifyHashChain(
     action: string;
     actionDetails: Record<string, any> | null;
     timestamp: Date;
+    /** Optional: when present on EVERY entry, contiguity is enforced. */
+    sequenceNumber?: number | null;
+    /** Null/absent means the entry predates versioning and is v1 (F-046). */
+    hashVersion?: number | null;
   }>
-): { valid: boolean; brokenAt?: number; reason?: string } {
+): HashChainResult {
+  const sequenced = entries.every((e) => typeof e.sequenceNumber === "number");
+  const versions = entries.map((e) => resolveHashVersion(e.hashVersion));
+  const allSequenceHashed = versions.every((v) => v >= AUDIT_HASH_V2_SEQUENCED);
+  const noneSequenceHashed = versions.every((v) => v < AUDIT_HASH_V2_SEQUENCED);
+  const coverage: HashChainCoverage = {
+    // An empty chain has no head to anchor; treated as anchored so a scope with
+    // no entries is not reported as a defect.
+    headAnchored: true,
+    sequenceCoverage: sequenced ? "verified" : "unavailable",
+    // An empty chain reports `hashed`: there is nothing unprotected in it, and
+    // calling it `unhashed` would flag every untouched scope as a weakness.
+    sequenceIntegrity: allSequenceHashed ? "hashed" : noneSequenceHashed ? "unhashed" : "mixed",
+  };
+
   if (entries.length === 0) {
-    return { valid: true };
+    return { valid: true, coverage };
   }
-  
+
+  // The chain must begin at genesis. This is the F-038 fix: without it, ANY
+  // contiguous window of a valid chain verifies as a valid chain.
+  if (entries[0].previousEntryHash !== null) {
+    return {
+      valid: false,
+      brokenAt: 0,
+      reason:
+        `Chain head missing: entry 0 references predecessor ` +
+        `${entries[0].previousEntryHash} which is not present. The start of ` +
+        `this chain has been removed, or this is a partial window.`,
+      coverage: { ...coverage, headAnchored: false },
+    };
+  }
+
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
-    
+
+    // Verify under the entry's OWN declared version. A v2 row downgraded to v1
+    // fails here, because the v1 payload omits the two fields v2 folded in and
+    // therefore hashes to something else (F-046).
     const expectedHash = computeAuditEntryHash({
       applicationId: entry.applicationId,
       userId: entry.userId,
@@ -333,26 +484,47 @@ export function verifyHashChain(
       actionDetails: entry.actionDetails,
       timestamp: entry.timestamp,
       previousEntryHash: entry.previousEntryHash,
+      sequenceNumber: entry.sequenceNumber,
+      hashVersion: versions[i],
     });
-    
+
     if (entry.entryHash !== expectedHash) {
       return {
         valid: false,
         brokenAt: i,
         reason: `Entry ${i} hash mismatch: expected ${expectedHash}, got ${entry.entryHash}`,
+        coverage,
       };
     }
-    
+
     if (i > 0 && entry.previousEntryHash !== entries[i - 1].entryHash) {
       return {
         valid: false,
         brokenAt: i,
         reason: `Chain broken at entry ${i}: previous hash doesn't match`,
+        coverage,
       };
     }
+
+    // Sequence numbers run 1..N. A gap is a deletion that left the hash links
+    // intact — possible because the deleted rows' successors were re-pointed,
+    // or simply because rows were lost rather than tampered with.
+    if (sequenced) {
+      const expectedSeq = i + 1;
+      if (entry.sequenceNumber !== expectedSeq) {
+        return {
+          valid: false,
+          brokenAt: i,
+          reason:
+            `Sequence gap at entry ${i}: expected sequenceNumber ${expectedSeq}, ` +
+            `got ${entry.sequenceNumber}. Entries are missing from this chain.`,
+          coverage,
+        };
+      }
+    }
   }
-  
-  return { valid: true };
+
+  return { valid: true, coverage };
 }
 
 export function maskSSN(ssn: string): string {

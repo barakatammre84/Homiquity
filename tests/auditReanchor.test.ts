@@ -212,7 +212,7 @@ vi.mock("../server/db", async () => {
 });
 
 import { getTableName } from "drizzle-orm";
-import { creditAuditLog } from "@shared/schema";
+import { creditAuditLog, creditAuditChainTips } from "@shared/schema";
 import {
   REANCHOR_ACTION,
   reanchorAuditChains,
@@ -221,7 +221,9 @@ import { verifyAuditLogIntegrity } from "../server/services/creditService";
 import { verifyHashChain } from "../server/services/encryptionService";
 
 const AUDIT = getTableName(creditAuditLog);
+const TIPS = getTableName(creditAuditChainTips);
 const auditRows = () => h.tableRows(AUDIT);
+const tipRows = () => h.tableRows(TIPS);
 const nullScopeRows = () =>
   auditRows()
     .filter((r) => r.applicationId == null)
@@ -460,5 +462,49 @@ describe("reanchorAuditChains", () => {
       eventWritten: false,
     });
     expect(JSON.parse(JSON.stringify(auditRows()))).toEqual(after);
+  });
+  // -------------------------------------------------------------------------
+  // F-038 — the re-anchor must carry the chain tip with it.
+  //
+  // This script rewrites every entryHash. A tip recorded before it runs names a
+  // hash that afterwards exists nowhere, so the tail check would report a
+  // truncation that never happened. A false alarm on an audit log is its own
+  // kind of damage: it spends the credibility of the one signal meant to matter.
+  // -------------------------------------------------------------------------
+
+  it("re-points an existing chain tip at the rewritten final entry", async () => {
+    seedLegacyChain("app-1", ["consent_given", "pull_requested", "pull_completed"]);
+    const staleTipHash = auditRows()[2].entryHash;
+    tipRows().push({
+      scopeKey: "app-1",
+      tipEntryHash: staleTipHash,
+      tipSequenceNumber: 3,
+      trackingStartedAtSequence: 1,
+      updatedAt: new Date(),
+    });
+
+    await reanchorAuditChains({ execute: true, log: () => {} });
+
+    const finalEntry = auditRows().filter((r) => r.applicationId === "app-1").pop();
+    const tip = tipRows().find((t) => t.scopeKey === "app-1");
+    expect(finalEntry.entryHash).not.toBe(staleTipHash); // the rewrite did happen
+    expect(tip.tipEntryHash).toBe(finalEntry.entryHash);
+    // The end-to-end consequence: the scope still verifies clean afterwards.
+    expect(await verifyAuditLogIntegrity("app-1")).toMatchObject({ valid: true });
+  });
+
+  it("does NOT invent a tip for a scope that never had one", async () => {
+    // A tip synthesized here would assert "this is where the chain ends" from
+    // whatever this script happened to read — laundering an already-truncated
+    // end into the authoritative record. Same refusal as the migration's.
+    seedLegacyChain("app-2", ["consent_given", "consent_revoked"]);
+
+    await reanchorAuditChains({ execute: true, log: () => {} });
+
+    expect(tipRows().find((t) => t.scopeKey === "app-2")).toBeUndefined();
+    const result = await verifyAuditLogIntegrity("app-2");
+    expect(result.valid).toBe(true);
+    // Honest about the gap rather than implying full coverage.
+    expect(result.coverage.tailAnchored).toBe(false);
   });
 });
