@@ -113,8 +113,8 @@ export function registerJobRoutes(app: Express) {
   // Escalates every active task past its slaDueAt that isn't fully escalated
   // (taskEngine.runEscalationCheck — level bump + task audit log + configured
   // escalation actions). taskEngine is the SINGLE owner of scheduled SLA
-  // enforcement: optimizationEngine's checkSlaBreaches duplicate (roadmap
-  // OPT-7) must never be wired here as a second channel. Daily cadence matches
+  // enforcement: optimizationEngine's checkSlaBreaches duplicate was deleted
+  // outright (roadmap OPT-7) — never wire a second channel here. Daily cadence matches
   // the plan's cron granularity — an S0's 15-minute escalation window is
   // aspirational until the cron tier supports sub-daily schedules; the manual
   // admin trigger (POST /api/task-engine/run-escalation) covers on-demand runs.

@@ -23,7 +23,6 @@ import { registerCommsRoutes } from "./routes/comms";
 import { registerScenarioRoutes } from "./routes/scenarios";
 import { registerCockpitRoutes } from "./routes/cockpit";
 import { registerIntelligenceRoutes } from "./routes/intelligence";
-import { registerOptimizationRoutes } from "./routes/optimizations";
 import { registerDataIntelligenceRoutes } from "./routes/data-intelligence";
 import { registerListingsRoutes } from "./routes/listings";
 import { registerGeocodeRoutes } from "./routes/geocode";
@@ -97,7 +96,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerScenarioRoutes(app, storage);
   registerCockpitRoutes(app, storage);
   registerIntelligenceRoutes(app, storage);
-  registerOptimizationRoutes(app);
   registerDataIntelligenceRoutes(app);
   registerListingsRoutes(app);
   registerGeocodeRoutes(app);

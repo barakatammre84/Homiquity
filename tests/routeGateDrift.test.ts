@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import { FINANCIAL_VERIFICATION_ROLES } from "@shared/schema";
 import { INTERNAL_STAFF_ROLES, STAFF_ROLES } from "@shared/roles";
@@ -139,14 +139,13 @@ describe("lender-match surfaces are staff-gated", () => {
     }
   });
 
-  it("optimizations.ts gates match-and-price with requireRole(...INTERNAL_STAFF_ROLES)", () => {
-    const source = read("server/routes/optimizations.ts");
-    const route = '"/api/optimizations/match-and-price"';
-    const at = source.indexOf(route);
-    expect(at, `${route} registration not found`).toBeGreaterThan(-1);
-    const registration = source.slice(at, at + 200);
-    expect(registration).toContain("requireRole(...INTERNAL_STAFF_ROLES)");
-    expect(registration).not.toContain("isAuthenticated");
+  it("the dead optimizations route stays deleted (OPT-cleanup) — resurrect only with gates", () => {
+    // The zero-caller /api/optimizations/* surface (incl. match-and-price,
+    // which this suite used to gate-check) was deleted 2026-08-05 with
+    // OPT-7/OPT-8. If someone recreates it, this guard forces the
+    // staff-gating conversation the old pin enforced.
+    expect(existsSync(resolve(repoRoot, "server/routes/optimizations.ts"))).toBe(false);
+    expect(read("server/routes.ts")).not.toContain("registerOptimizationRoutes");
   });
 });
 
