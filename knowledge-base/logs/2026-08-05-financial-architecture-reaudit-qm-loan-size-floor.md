@@ -534,6 +534,32 @@ the card consumes the ceiling and that both surfaces build from one helper.
 
 ---
 
+## Security review — TEAM_PRACTICES §9 (2026-08-05)
+
+The admin pricing-policy surface adds `requireRole("admin")` gates, which is a §9
+**role/permission gate** trigger. Structured pass run before merge; outcome recorded in the PR
+body per §9. **No HIGH or MEDIUM findings.**
+
+Covered: authorization (5/5 new admin endpoints gated, pinned by a count-parity test; the new
+staff QM read endpoint reuses the sibling PATCH's `isInternalStaffRole` +
+`verifyInternalStaffApplicationAccess` assignment scoping), SQL injection (Drizzle-parameterized
+throughout; the one raw fragment interpolates a column reference, not a string), mass assignment
+(Zod strips unknown keys, and `version`/`createdBy`/`effectiveFrom` are server-derived — the
+session supplies `createdBy`, never the body), XSS (React, no `dangerouslySetInnerHTML`), CSRF
+(covered — the only carve-out is `/api/webhooks/`), and data exposure (the new table holds no
+PII, and is not on `RESPONSE_BODY_LOG_ALLOWLIST`).
+
+Confirmed by inspection that neither of the two triggers the guard **cannot** see is present: no
+`shared/schema/` column holding PII, and no new PII sub-processor.
+
+> **Correction to the merge commit `2cacf33`.** Its message states "no TEAM_PRACTICES §9 trigger
+> among the 28 changed files". That was wrong. The local guard invocation behind that claim passed
+> only file *names*; CI passes the diff *content*, which is what detects an added `requireRole`.
+> CI was right and the commit message is not — the trigger fired, and the review above is the
+> response. Recorded here because a pushed commit message cannot be corrected in place.
+
+---
+
 ## Provenance
 
 Re-audit run 2026-08-05 against HEAD `7621686`. Figures produced by executing the repository's
