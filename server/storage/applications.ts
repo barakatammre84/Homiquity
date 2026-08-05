@@ -1,7 +1,7 @@
 // Storage domain: Loan applications, loan options, documents, deal activities.
 // One link in the DatabaseStorage inheritance chain — see ./index.ts.
 import { db } from "../db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 // SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
 // branch — main leaves account numbers plaintext).
 
@@ -92,6 +92,17 @@ export class ApplicationsStorage extends UsersStorage {
       .select()
       .from(loanApplications)
       .where(eq(loanApplications.userId, userId))
+      .orderBy(desc(loanApplications.createdAt));
+  }
+
+  // Batched variant for list views (the /api/dashboard inArray house pattern) —
+  // same newest-first ordering per user as getLoanApplicationsByUser.
+  async getLoanApplicationsByUserIds(userIds: string[]): Promise<LoanApplication[]> {
+    if (userIds.length === 0) return [];
+    return await db
+      .select()
+      .from(loanApplications)
+      .where(inArray(loanApplications.userId, userIds))
       .orderBy(desc(loanApplications.createdAt));
   }
 

@@ -79,9 +79,19 @@ export function registerReferralCoBrandRoutes(
       }
       const referrals = await storage.getReferralsByUser(user.id);
 
-      // Get applications for each referred user
-      const referralsWithApps = await Promise.all(referrals.map(async (referredUser) => {
-        const apps = await storage.getLoanApplicationsByUser(referredUser.id);
+      // One batched query for every referred user's applications (the
+      // /api/dashboard inArray house pattern), newest first — so per-user
+      // apps[0] is still the latest application.
+      const allApps = await storage.getLoanApplicationsByUserIds(referrals.map((r) => r.id));
+      const appsByUser = new Map<string, typeof allApps>();
+      for (const app of allApps) {
+        const list = appsByUser.get(app.userId);
+        if (list) list.push(app);
+        else appsByUser.set(app.userId, [app]);
+      }
+
+      const referralsWithApps = referrals.map((referredUser) => {
+        const apps = appsByUser.get(referredUser.id) ?? [];
         // Never egress auth-sensitive columns from a full users row, even to an
         // LO: passwordHash and lockout state have no business in an API response.
         const { passwordHash, failedLoginAttempts, lockoutUntil, ...safeUser } = referredUser;
@@ -90,7 +100,7 @@ export function registerReferralCoBrandRoutes(
           applicationCount: apps.length,
           latestApplication: apps[0] || null,
         };
-      }));
+      });
 
       res.json(referralsWithApps);
     } catch (error) {
