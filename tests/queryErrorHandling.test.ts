@@ -39,8 +39,17 @@ const PAGES = join(REPO_ROOT, "client", "src", "pages");
  * any empty state the page shows a user. PreApproval did not gain a
  * QueryBoundary and does not need one; it simply no longer trips the detector.
  * The ten genuinely-unguarded surfaces below are unchanged.
+ *
+ * 11 → 10: RentToOwnReadiness.tsx left the set, and unlike the 12 → 11 drop this
+ * one is a REAL conversion — the page now imports QueryErrorState, reads
+ * `isError` off its tiers query, and renders an error branch. Verified rather
+ * than assumed, because a page split is exactly the change that CAN fake a gain
+ * here: the detector needs `useQuery`, the empty default and the "No … yet"
+ * claim in ONE file, so moving an empty state into a child component would drop
+ * a page out of the set while leaving it just as unguarded. Re-check that
+ * distinction on every future split.
  */
-const BASELINE_UNGUARDED = 11;
+const BASELINE_UNGUARDED = 10;
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
