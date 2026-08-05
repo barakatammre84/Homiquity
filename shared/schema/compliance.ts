@@ -283,6 +283,12 @@ export const creditAuditLog = pgTable("credit_audit_log", {
   entryHash: varchar("entry_hash", { length: 64 }).notNull(), // SHA-256 of this entry's content
   previousEntryHash: varchar("previous_entry_hash", { length: 64 }), // Hash of previous entry (chain)
   sequenceNumber: integer("sequence_number"), // Per-application sequence for ordering
+  // Hash algorithm used for entryHash (F-046). NULL = v1, i.e. written before
+  // versioning existed; v1 does NOT hash sequenceNumber, so those rows remain
+  // renumberable. v2 folds sequenceNumber AND this marker into the digest, which
+  // is what makes a downgrade to v1 fail verification. Never backfilled: NULL is
+  // the honest statement that an entry predates the scheme.
+  hashVersion: integer("hash_version"),
   
   // Timestamp (immutable)
   timestamp: timestamp("timestamp").defaultNow().notNull(),

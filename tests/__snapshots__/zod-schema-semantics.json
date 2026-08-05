@@ -2061,14 +2061,14 @@
     "string": "reject:",
     "number": "reject:",
     "true": "reject:",
-    "all-keys-typed": "reject:timestamp",
-    "missing-applicationId": "reject:timestamp",
-    "missing-userId": "reject:timestamp",
-    "missing-consentId": "reject:timestamp",
-    "missing-creditPullId": "reject:timestamp",
-    "missing-adverseActionId": "reject:timestamp",
-    "missing-action": "reject:action,timestamp",
-    "wrongtype-applicationId": "reject:applicationId,timestamp"
+    "all-keys-typed": "reject:hashVersion,timestamp",
+    "missing-applicationId": "reject:hashVersion,timestamp",
+    "missing-userId": "reject:hashVersion,timestamp",
+    "missing-consentId": "reject:hashVersion,timestamp",
+    "missing-creditPullId": "reject:hashVersion,timestamp",
+    "missing-adverseActionId": "reject:hashVersion,timestamp",
+    "missing-action": "reject:action,hashVersion,timestamp",
+    "wrongtype-applicationId": "reject:applicationId,hashVersion,timestamp"
   },
   "schema.insertHomeownershipGoalSchema": {
     "undefined": "reject:",

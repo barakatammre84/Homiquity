@@ -7,7 +7,10 @@ import {
   type InsertCreditAuditLog,
 } from "@shared/schema";
 import { eq, desc, isNull } from "drizzle-orm";
-import { computeAuditEntryHash } from "./encryptionService";
+import {
+  computeAuditEntryHash,
+  AUDIT_HASH_VERSION_CURRENT,
+} from "./encryptionService";
 
 /**
  * Scope key for the chain-tip table (F-038). Entries with no application share
@@ -76,6 +79,9 @@ async function appendCreditAuditEntry(data: CreditAuditEntryInput): Promise<void
     sequenceNumber = (lastEntry.sequenceNumber || 0) + 1;
   }
   
+  // v2: sequenceNumber and the version marker are inside the digest, so the
+  // sequence cannot be rewritten to hide a deletion, and the row cannot be
+  // downgraded to the algorithm that ignored it (F-046).
   const entryHash = computeAuditEntryHash({
     applicationId: data.applicationId || null,
     userId: data.userId || null,
@@ -83,6 +89,8 @@ async function appendCreditAuditEntry(data: CreditAuditEntryInput): Promise<void
     actionDetails: data.actionDetails || null,
     timestamp,
     previousEntryHash,
+    sequenceNumber,
+    hashVersion: AUDIT_HASH_VERSION_CURRENT,
   });
   
   const log: InsertCreditAuditLog = {
@@ -100,6 +108,7 @@ async function appendCreditAuditEntry(data: CreditAuditEntryInput): Promise<void
     entryHash,
     previousEntryHash,
     sequenceNumber,
+    hashVersion: AUDIT_HASH_VERSION_CURRENT,
     timestamp,
   };
 

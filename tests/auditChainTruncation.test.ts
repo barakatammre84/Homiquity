@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { computeAuditEntryHash, verifyHashChain } from "../server/services/encryptionService";
+import {
+  computeAuditEntryHash,
+  verifyHashChain,
+  AUDIT_HASH_V1,
+  AUDIT_HASH_V2_SEQUENCED,
+  AUDIT_HASH_VERSION_CURRENT,
+  resolveHashVersion,
+} from "../server/services/encryptionService";
 
 /**
  * F-038 — the tamper-evident audit chain detected only mid-chain deletion.
@@ -34,14 +41,16 @@ type Entry = {
   actionDetails: Record<string, any> | null;
   timestamp: Date;
   sequenceNumber?: number | null;
+  hashVersion?: number | null;
 };
 
 /** Build a well-formed chain of N entries, hashed exactly as the writer does. */
-function buildChain(n: number): Entry[] {
+function buildChain(n: number, hashVersion: number = AUDIT_HASH_V1): Entry[] {
   const entries: Entry[] = [];
   let previousEntryHash: string | null = null;
   for (let i = 0; i < n; i++) {
     const timestamp = new Date(Date.UTC(2026, 0, 1, 0, 0, i));
+    const sequenceNumber = i + 1;
     const base = {
       applicationId: "app-1",
       userId: "borrower-1",
@@ -49,8 +58,13 @@ function buildChain(n: number): Entry[] {
       actionDetails: { step: i },
       timestamp,
     };
-    const entryHash = computeAuditEntryHash({ ...base, previousEntryHash });
-    entries.push({ ...base, entryHash, previousEntryHash, sequenceNumber: i + 1 });
+    const entryHash = computeAuditEntryHash({
+      ...base,
+      previousEntryHash,
+      sequenceNumber,
+      hashVersion,
+    });
+    entries.push({ ...base, entryHash, previousEntryHash, sequenceNumber, hashVersion });
     previousEntryHash = entryHash;
   }
   return entries;
@@ -174,5 +188,136 @@ describe("F-038: coverage is reported, not implied", () => {
     // sequence check. The two mechanisms are independent on purpose.
     const truncated = chain.slice(1);
     expect(verifyHashChain(truncated).valid).toBe(false);
+  });
+});
+
+/**
+ * F-046 — the sequence numbers F-038 started checking were themselves forgeable.
+ *
+ * v1 hashed an entry's content and backpointer but not its `sequenceNumber`, so
+ * an attacker who deleted rows could renumber the survivors and walk straight
+ * through the contiguity check. v2 folds `sequenceNumber` AND the version marker
+ * into the digest.
+ *
+ * A claimed downgrade to v1 fails because the v1 payload has no
+ * `sequenceNumber` at all and so digests to something other than what is
+ * stored — that comes from the field's presence, not from the marker. (An
+ * earlier draft of this file asserted the marker was what stopped the
+ * downgrade; a mutation that deleted the marker left every test green and
+ * disproved it. The marker earns its place for a narrower reason, pinned
+ * separately below.)
+ *
+ * v1 is not retired. Every entry ever written used it, and re-hashing history to
+ * make it verify under v2 is exactly the act an audit log exists to prevent.
+ */
+describe("F-046: v2 puts the sequence number inside the hash", () => {
+  it("a v2 chain verifies and reports its sequence as hash-protected", () => {
+    const result = verifyHashChain(buildChain(5, AUDIT_HASH_V2_SEQUENCED));
+    expect(result.valid).toBe(true);
+    expect(result.coverage.sequenceIntegrity).toBe("hashed");
+  });
+
+  it("renumbering a v2 entry breaks its own hash — the actual fix", () => {
+    const chain = buildChain(5, AUDIT_HASH_V2_SEQUENCED);
+    // Contiguity alone would not catch a swap that keeps the set 1..N intact;
+    // under v2 it does not need to, because the digest itself no longer matches.
+    const forged = chain.map((e, i) => (i === 2 ? { ...e, sequenceNumber: 99 } : e));
+    const result = verifyHashChain(forged);
+    expect(result.valid).toBe(false);
+    expect(result.brokenAt).toBe(2);
+    expect(result.reason).toMatch(/hash mismatch/i);
+  });
+
+  it("DOWNGRADING a v2 entry to v1 fails, so the sequence check cannot be opted out of", () => {
+    const chain = buildChain(5, AUDIT_HASH_V2_SEQUENCED);
+    const downgraded = chain.map((e, i) => (i === 3 ? { ...e, hashVersion: AUDIT_HASH_V1 } : e));
+    const result = verifyHashChain(downgraded);
+    expect(result.valid).toBe(false);
+    expect(result.brokenAt).toBe(3);
+  });
+
+  it("the writer's current version is v2", () => {
+    expect(AUDIT_HASH_VERSION_CURRENT).toBe(AUDIT_HASH_V2_SEQUENCED);
+  });
+
+  it("the version marker makes the digest self-describing across versions", () => {
+    // What the marker is actually for, stated as a test because the obvious
+    // justification for it is wrong. Two versions with identical payload FIELDS
+    // must still digest differently, so a future version that changes only how
+    // existing fields are interpreted cannot collide with this one.
+    const base = {
+      applicationId: "app-1",
+      userId: "borrower-1",
+      action: "consent_given",
+      actionDetails: { method: "web" },
+      timestamp: new Date(Date.UTC(2026, 0, 1)),
+      previousEntryHash: null,
+      sequenceNumber: 1,
+    };
+    const asV2 = computeAuditEntryHash({ ...base, hashVersion: AUDIT_HASH_V2_SEQUENCED });
+    const asHypotheticalV3 = computeAuditEntryHash({ ...base, hashVersion: 3 });
+    expect(asV2).not.toBe(asHypotheticalV3);
+  });
+});
+
+describe("F-046: v1 history still verifies, and its weakness is reported not hidden", () => {
+  it("an untouched v1 chain still verifies", () => {
+    // The non-negotiable backward-compatibility property. If this ever fails,
+    // every historical entry reads as tampered — worse than the bug.
+    const result = verifyHashChain(buildChain(5, AUDIT_HASH_V1));
+    expect(result.valid).toBe(true);
+  });
+
+  it("a stored NULL hash version resolves to v1", () => {
+    expect(resolveHashVersion(null)).toBe(AUDIT_HASH_V1);
+    expect(resolveHashVersion(undefined)).toBe(AUDIT_HASH_V1);
+    const chain = buildChain(3, AUDIT_HASH_V1).map((e) => ({ ...e, hashVersion: null }));
+    expect(verifyHashChain(chain).valid).toBe(true);
+  });
+
+  it("renumbering a v1 entry does NOT break its hash — the residual, asserted honestly", () => {
+    // This is the limitation, pinned as a test rather than left in a comment. A
+    // v1 entry's sequence can still be rewritten. Contiguity catches the common
+    // shapes; a careful attacker renumbering to stay contiguous is not caught,
+    // and that is why v1 chains report `unhashed` instead of clean.
+    const chain = buildChain(3, AUDIT_HASH_V1);
+    const renumbered = chain.map((e, i) => (i === 1 ? { ...e, sequenceNumber: 2 } : e));
+    expect(verifyHashChain(renumbered).valid).toBe(true);
+    expect(verifyHashChain(renumbered).coverage.sequenceIntegrity).toBe("unhashed");
+  });
+
+  it("a chain part v1 and part v2 reports 'mixed'", () => {
+    // The real shape of any chain that existed before this shipped and has been
+    // appended to since. Neither 'hashed' nor 'unhashed' would be true of it.
+    const legacy = buildChain(2, AUDIT_HASH_V1);
+    let previousEntryHash = legacy[legacy.length - 1].entryHash;
+    const modern: Entry[] = [];
+    for (let i = 0; i < 2; i++) {
+      const sequenceNumber = legacy.length + i + 1;
+      const base = {
+        applicationId: "app-1",
+        userId: "borrower-1",
+        action: `action_${sequenceNumber - 1}`,
+        actionDetails: { step: sequenceNumber - 1 },
+        timestamp: new Date(Date.UTC(2026, 0, 1, 0, 0, sequenceNumber - 1)),
+      };
+      const entryHash = computeAuditEntryHash({
+        ...base,
+        previousEntryHash,
+        sequenceNumber,
+        hashVersion: AUDIT_HASH_V2_SEQUENCED,
+      });
+      modern.push({
+        ...base,
+        entryHash,
+        previousEntryHash,
+        sequenceNumber,
+        hashVersion: AUDIT_HASH_V2_SEQUENCED,
+      });
+      previousEntryHash = entryHash;
+    }
+    const result = verifyHashChain([...legacy, ...modern]);
+    expect(result.valid).toBe(true);
+    expect(result.coverage.sequenceIntegrity).toBe("mixed");
   });
 });

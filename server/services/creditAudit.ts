@@ -109,6 +109,7 @@ async function verifyScopeIntegrity(
       actionDetails: e.actionDetails as Record<string, any> | null,
       timestamp: e.timestamp,
       sequenceNumber: e.sequenceNumber,
+      hashVersion: e.hashVersion,
     }))
   );
 

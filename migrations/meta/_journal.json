@@ -344,6 +344,13 @@
       "when": 1785948000000,
       "tag": "0048_credit_audit_chain_tips",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1785951600000,
+      "tag": "0049_credit_audit_hash_version",
+      "breakpoints": true
     }
   ]
 }

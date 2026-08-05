@@ -44,6 +44,8 @@ import {
 import {
   computeAuditEntryHash,
   verifyHashChain,
+  resolveHashVersion,
+  AUDIT_HASH_VERSION_CURRENT,
 } from "../server/services/encryptionService";
 import { auditChainScopeKey } from "../server/services/creditAuditChain";
 
@@ -137,6 +139,7 @@ function verifyScopes(scopes: Map<string, CreditAuditLog[]>): void {
         // The rewrite normalizes sequence numbers to 1..N, so the contiguity
         // check applies here and is worth asserting before committing.
         sequenceNumber: e.sequenceNumber,
+        hashVersion: e.hashVersion,
       }))
     );
     if (!result.valid) {
@@ -182,6 +185,12 @@ export async function reanchorAuditChains(options: {
       for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
         const sequenceNumber = i + 1;
+        // Recompute under the entry's OWN hash version (F-046). Hardcoding v1
+        // here would silently downgrade every v2 entry this script touches,
+        // stripping the protection that makes their sequence unforgeable —
+        // and it would do it inside the one script allowed to rewrite hashes,
+        // where nothing downstream would notice.
+        const entryHashVersion = resolveHashVersion(entry.hashVersion);
         const entryHash = computeAuditEntryHash({
           applicationId: entry.applicationId,
           userId: entry.userId,
@@ -189,6 +198,8 @@ export async function reanchorAuditChains(options: {
           actionDetails: entry.actionDetails as Record<string, any> | null,
           timestamp: entry.timestamp,
           previousEntryHash,
+          sequenceNumber,
+          hashVersion: entryHashVersion,
         });
 
         if (
@@ -249,6 +260,9 @@ export async function reanchorAuditChains(options: {
         totalScopes: report.totalScopes,
       };
       const previousEntryHash = head?.entryHash ?? null;
+      const eventSequenceNumber = (head?.sequenceNumber ?? 0) + 1;
+      // A brand-new entry, so it is written at the CURRENT hash version — v1
+      // only survives for rows that genuinely predate versioning (F-046).
       const entryHash = computeAuditEntryHash({
         applicationId: null,
         userId: null,
@@ -256,6 +270,8 @@ export async function reanchorAuditChains(options: {
         actionDetails,
         timestamp,
         previousEntryHash,
+        sequenceNumber: eventSequenceNumber,
+        hashVersion: AUDIT_HASH_VERSION_CURRENT,
       });
       await tx.insert(creditAuditLog).values({
         applicationId: null,
@@ -265,14 +281,15 @@ export async function reanchorAuditChains(options: {
         performedByRole: "migration-script",
         entryHash,
         previousEntryHash,
-        sequenceNumber: (head?.sequenceNumber ?? 0) + 1,
+        sequenceNumber: eventSequenceNumber,
+        hashVersion: AUDIT_HASH_VERSION_CURRENT,
         timestamp,
       });
       // The re-anchor event is itself a new chain end, so the null scope's tip
       // has to advance past the one just written a few lines above.
       await repointExistingTip(tx, auditChainScopeKey(null), {
         entryHash,
-        sequenceNumber: (head?.sequenceNumber ?? 0) + 1,
+        sequenceNumber: eventSequenceNumber,
       });
       report.eventWritten = true;
       log(`appended ${REANCHOR_ACTION} event to the null-application scope`);
