@@ -153,3 +153,35 @@ describe("task-type SLA mapping seed", () => {
     }
   });
 });
+
+/**
+ * Roadmap CS1, scheduler leg: seeded SLA configs are inert unless something
+ * actually runs the escalation check. These pins hold the cron wiring together
+ * and enforce the OPT-7 single-owner rule — taskEngine.runEscalationCheck is
+ * the ONE scheduled SLA channel; optimizationEngine's checkSlaBreaches
+ * duplicate must never be wired into the jobs surface as a second one.
+ */
+describe("SLA escalation is scheduled", () => {
+  const jobsSrc = readFileSync(join(ROOT, "server/routes/jobs.ts"), "utf8");
+  const vercelJson = JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8"));
+
+  it("the jobs surface exposes the dual-trigger task-escalation sweep", () => {
+    expect(jobsSrc).toContain('"/api/jobs/task-escalation"');
+    expect(jobsSrc).toContain("taskEngine.runEscalationCheck()");
+  });
+
+  it("vercel.json schedules it", () => {
+    const cron = (vercelJson.crons as Array<{ path: string; schedule: string }>).find(
+      (c) => c.path === "/api/jobs/task-escalation",
+    );
+    expect(cron, "task-escalation cron entry missing from vercel.json").toBeDefined();
+    expect(cron!.schedule).toMatch(/^\S+ \S+ \* \* \*$/); // at least daily
+  });
+
+  it("the jobs surface never wires optimizationEngine's duplicate SLA channel (OPT-7)", () => {
+    // Match calls/imports, not the comment that documents this very rule.
+    expect(jobsSrc).not.toContain("checkSlaBreaches(");
+    expect(jobsSrc).not.toContain("sendSlaAlerts(");
+    expect(jobsSrc).not.toMatch(/import\s*\{[^}]*checkSlaBreaches[^}]*\}/);
+  });
+});

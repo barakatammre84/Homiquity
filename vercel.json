@@ -31,6 +31,7 @@
     { "path": "/api/jobs/rate-lock-alerts", "schedule": "0 12 * * *" },
     { "path": "/api/jobs/letter-expiry", "schedule": "30 12 * * *" },
     { "path": "/api/jobs/adverse-action-delivery", "schedule": "0 14 * * *" },
+    { "path": "/api/jobs/task-escalation", "schedule": "45 13 * * *" },
     { "path": "/api/jobs/aggregate-data", "schedule": "17 11 * * 1" }
   ]
 }
