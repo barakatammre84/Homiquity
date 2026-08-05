@@ -19,7 +19,7 @@ Status ledger (updated by the orchestrator after each run):
 |---|---|---|---|
 | 1 | Public funnel, acquisition & education | 2026-08-05 | public-funnel-01/02 (P2) fixed `cef2890` + 1 refuted (ApprovalStrength SEO half) — see FINDINGS.md |
 | 2 | Application & intake | 2026-08-05 | **intake-01 (P0, TRID) fixed `c27b01e`** + intake-03 same commit + intake-02 fixed `eafdb47` + intake-04 fixed `69104f9`. All Domain 2 findings closed except ux-11 (HMDA/Reg C, blocked on U-8 — regulatory source access). See FINDINGS.md |
-| 3 | AI Coach, documents & extraction | — | not yet run |
+| 3 | AI Coach, documents & extraction | 2026-08-05 | **F-027 P1** (borrower text parsed as trusted extraction → forged tier-1 provenance + prompt injection; §9 security review required) + F-028/029/030 P2 + F-031 P3, all open. Doc-drift F-032/F-033 **fixed** (`e5ab91a`, `0934e9c`); a 2nd F-013 instance fixed (`aca9377`). 2 refuted, 1 confirmed-but-deliberate. Escalations **U-9** (is prod traffic reaching Anthropic — decides AG-3 status) and **U-10** (LL-2026-04 cite provenance). **CLEAN, verified:** the "AI never decides" gate is real — `coachProfileSync` is provenance/draft/status-fenced, and no automated decision path reads `notes` or the borrower graph. See FINDINGS.md |
 | 4 | Verification & credit | — | not yet run |
 | 5 | Underwriting & decisioning | — | not yet run |
 | 6 | Pricing, rates & disclosures | — | not yet run |
@@ -30,7 +30,7 @@ Status ledger (updated by the orchestrator after each run):
 | 11 | Staff, partner & pipeline ops | — | not yet run |
 | 12 | Property, listings & homeowner | — | not yet run |
 | 13 | Security, PII & platform cross-cutting | — | not yet run |
-| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domains 1–2 surfaces) | Domain 1: ux-06 (P2) fixed `ba7706a` + 1 unverified P3 candidate (LearningCenter no-CTA) + 1 refuted (FAQ dead-end). Domain 2: ux-07/08/09 (P2) fixed + ux-10/12 (P3) fixed — all four commits `b577553`/`73cf877`/`d2ed7dc`/`eb164ef`. Only ux-11 (P2, HMDA/Reg C) still open, blocked on U-8. The corroborated-but-unregistered `AuthGateOverlay` raw-`<a>` candidate (same file as ux-12) remains unverified — see FINDINGS.md; remaining domains 3–13 surfaces not yet run |
+| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domains 1–2 surfaces) | Domain 1: ux-06 (P2) fixed `ba7706a` + 1 unverified P3 candidate (LearningCenter no-CTA) + 1 refuted (FAQ dead-end). Domain 2: ux-07/08/09 (P2) fixed + ux-10/12 (P3) fixed — all four commits `b577553`/`73cf877`/`d2ed7dc`/`eb164ef`. Only ux-11 (P2, HMDA/Reg C) still open, blocked on U-8. Domain 3: ux-13/14/15/16 (P2) + ux-17/18 (P3) confirmed, none fixed (ux-18's pixel magnitude unmeasured — no screenshot tooling). **ux-01 status update:** its `Documents.tsx:163` evidence is resolved, but `AICoach.tsx:94-112` has four queries with no `isError` — residual, not a new finding. The `AuthGateOverlay` raw-`<a>` candidate remains unverified — see FINDINGS.md; remaining domains 4–13 surfaces not yet run |
 
 ---
 
@@ -70,19 +70,31 @@ Status ledger (updated by the orchestrator after each run):
 
 ## 3. AI Coach, documents & extraction
 
-- **Server**: `server/services/coachingService.ts` + `coachIntake.ts` + `server/routes/coach.ts`,
-  `server/extractionService.ts` (Gemini OCR/extraction), `server/services/documentConfidence.ts`,
-  `server/routes/documents.ts`, `server/integrations/object_storage/*`.
-- **Client**: `pages/education/AICoach.tsx`, `Documents.tsx` + `UploadDocumentDialog`.
+- **Server**: `server/routes/coach.ts` + `server/services/coachIntake.ts`; the coach engine is
+  `server/services/coaching{Client,Context,Lint,Prompt,Turn}.ts` (`coachingService.ts` is a
+  re-export shim only). Extraction is `server/extraction{Core,Validation,Documents,TaxIntel}.ts`
+  (`extractionService.ts` is likewise a shim — split 2026-07-17). Plus
+  `server/services/documentConfidence.ts`, `server/routes/documents.ts`,
+  `server/integrations/object_storage/*`.
+- **AI vendor is Anthropic, not Gemini** (migrated 2026-07-17, migrations `0030`/`0031`):
+  `extractionCore.ts` pins `claude-sonnet-5` (single-doc) / `claude-opus-4-8` (tax package) behind
+  `AI_INTEGRATIONS_ANTHROPIC_API_KEY`. There is no Gemini code path and no `GEMINI_API_KEY` — the
+  only `gemini` strings left are legacy DB enum values. *(Governance docs still say Gemini — see
+  the open doc-drift finding in `FINDINGS.md`; don't take them as current.)*
+- **Client**: `pages/education/AICoach.tsx` + `components/coach/*`, `Documents.tsx` +
+  `UploadDocumentDialog`.
 - **Intended use**: conversational homebuyer coaching + document extraction feeding
   qualification; uploads via presigned GCS URLs only; **AI never decides** (P1 of
   `AI_GOVERNANCE_POLICY`) — extracted values must pass a human/confidence gate before they
-  influence a regulated outcome; sensitive extracted values encrypted; unconfigured Gemini is a
-  safe no-op.
+  influence a regulated outcome; sensitive extracted values encrypted; an unconfigured Anthropic
+  key is a safe no-op (`confidence: "low"` + warnings, never a guessed value).
 - **Source docs**: `knowledge-base/governance/AI_GOVERNANCE_POLICY.md`, `knowledge-base/governance/MODEL_RISK_GOVERNANCE.md`, tax-insight
   pipeline docs (§7216), `knowledge-base/handbook/app-guide/08-services.md`.
-- **Owned tests**: `tests/uploadsPresignedOnly*`, `tests/taxInsight*`. **Coverage gap:**
-  `coachingService`/`coachIntake`/`extractionService`/`documentConfidence` have **zero tests**.
+- **Owned tests**: `tests/uploadsPresignedOnly*`, `tests/taxInsight*`, plus `tests/extractionService`,
+  `documentConfidence`, `coachProfileSync`, `coachTools`, `coachSse`, `coachLintFilter` — all in
+  `vitest.config.ts` and executing (**72 tests**; the old "zero tests" line here was wrong and
+  primed reviewers to re-file a phantom coverage gap). **Real gap:** `coachIntake.ts` is the one
+  module with no direct test. Note `tests/taxInsightRoutes.test.ts` is integration-config only.
 - **Compliance**: AI-in-decision-path invariant, IRC §7216 (tax info), RESPA §8 (no steering),
   prompt-injection via uploaded documents.
 
