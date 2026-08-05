@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RateLockDialog } from "@/components/RateLockDialog";
 import { ScenarioSimulatorDialog } from "@/components/ScenarioSimulatorDialog";
 import { SubmissionReadinessDialog } from "@/components/SubmissionReadinessDialog";
+import { DocRequestDraftDialog } from "./loCommandCenter/DocRequestDraftDialog";
 import { isInternalStaffRole } from "@shared/roles";
 import { getLoanAppStatusMeta } from "@shared/schema";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -373,12 +374,15 @@ function ActiveBorrowerPane({ applicationId, onBack }: { applicationId: string; 
             {app.closingDate && <span>Close {formatDate(app.closingDate)}</span>}
           </div>
         </div>
-        <Button asChild variant="outline" size="sm" data-testid="cockpit-open-full-file">
-          <Link href={`/borrower-file/${app.id}`}>
-            <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" />
-            Full file
-          </Link>
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <DocRequestDraftDialog applicationId={app.id} />
+          <Button asChild variant="outline" size="sm" data-testid="cockpit-open-full-file">
+            <Link href={`/borrower-file/${app.id}`}>
+              <ExternalLink className="mr-1 h-4 w-4" aria-hidden="true" />
+              Full file
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Income */}
