@@ -1,4 +1,5 @@
 import type { Express, RequestHandler } from "express";
+import { isAdmin as isAdminRole } from "@shared/roles";
 import { storage } from "./storage";
 import { setupSessionAuth, registerAuthRoutes } from "./integrations/auth";
 import { authStorage } from "./integrations/auth/storage";
@@ -419,7 +420,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
 export const isAdmin: RequestHandler = async (req, res, next) => {
   await (isAuthenticated as any)(req, res, () => {
-    if (req.user?.role === "admin") {
+    if (isAdminRole(req.user)) {
       return next();
     }
     return res.status(403).json({ error: "Forbidden" });

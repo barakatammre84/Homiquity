@@ -10,7 +10,7 @@ import {
   reviewItems,
   type User,
 } from "@shared/schema";
-import { isInternalStaffRole } from "@shared/roles";
+import { isAdmin, isInternalStaffRole } from "@shared/roles";
 import { and, eq, gte } from "drizzle-orm";
 import { hasUserConsent } from "../consentGate";
 import {
@@ -62,7 +62,7 @@ async function staffCanAccessBorrower(
   applicationId: string | undefined,
   storage: IStorage,
 ): Promise<{ allowed: boolean; reason?: string }> {
-  if (caller.role === "admin") return { allowed: true };
+  if (isAdmin(caller)) return { allowed: true };
   if (!isInternalStaffRole(caller.role)) return { allowed: false, reason: "Unauthorized" };
   if (!applicationId) {
     return {

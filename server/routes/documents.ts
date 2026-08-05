@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import {
@@ -147,7 +148,7 @@ export function registerDocumentRoutes(
         const isOwner = matchedDoc.userId === user.id;
         if (!isOwner) {
           // Admins retain global access.
-          if (user.role !== "admin") {
+          if (!isAdmin(user)) {
             // All other roles (including non-admin internal staff) must be active
             // deal-team members on the application the document belongs to.
             if (!matchedDoc.applicationId) {
@@ -163,7 +164,7 @@ export function registerDocumentRoutes(
         }
       } else {
         // No document record found for this path — only admins may access.
-        if (user.role !== "admin") {
+        if (!isAdmin(user)) {
           return res.status(403).json({ error: "Unauthorized" });
         }
       }
@@ -203,7 +204,7 @@ export function registerDocumentRoutes(
       // (including non-admin internal staff) must be active deal-team members on the
       // application the document belongs to.
       const isOwner = document.userId === user.id;
-      if (!isOwner && user.role !== "admin") {
+      if (!isOwner && !isAdmin(user)) {
         if (document.applicationId) {
           const assignedApp = await storage.getLoanApplicationWithAccess(
             document.applicationId, user.id, user.role
@@ -232,7 +233,7 @@ export function registerDocumentRoutes(
         // somehow pointed at another user's object still cannot be streamed.
         if (objectStorageService.isConfigured()) {
           const allowed = await objectStorageService.canAccessObjectEntity({ userId: user.id, objectFile });
-          const isPrivileged = user.role === "admin";
+          const isPrivileged = isAdmin(user);
           if (!allowed && !isPrivileged) {
             return res.status(403).json({ error: "Unauthorized" });
           }
@@ -277,7 +278,7 @@ export function registerDocumentRoutes(
       // the review workbench can refresh values without an admin. Extraction
       // only stages (MR-2): it can never verify, so widening the trigger does
       // not widen who can bind an outcome.
-      let authorized = document.userId === user.id || user.role === "admin";
+      let authorized = document.userId === user.id || isAdmin(user);
       if (
         !authorized &&
         ["lo", "loa", "processor", "underwriter"].includes(user.role) &&
@@ -460,7 +461,7 @@ export function registerDocumentRoutes(
         }
 
         // Non-admin staff must be active deal-team members on the application.
-        if (user.role !== "admin") {
+        if (!isAdmin(user)) {
           if (!document.applicationId) {
             return res.status(403).json({ error: "Unauthorized" });
           }

@@ -41,6 +41,7 @@ export default defineConfig({
       "tests/activeBuyerPromotion.test.ts",
       "tests/docRequestDraft.test.ts",
       "tests/funnelDraftPersistence.test.ts",
+      "tests/adminPredicate.test.ts",
       "tests/extensionFeeAndRegZBasis.test.ts",
       "tests/contingentLiabilities.test.ts",
       "tests/businessChannel.test.ts",

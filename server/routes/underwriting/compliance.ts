@@ -1,6 +1,7 @@
 // Underwriting routes: Compliance dashboard.
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { isInFlightLoanAppStatus, isInternalStaffRole } from "@shared/schema";
@@ -21,7 +22,7 @@ export function registerComplianceDashboardRoutes(
 
       let applications: Awaited<ReturnType<typeof storage.getAllLoanApplications>>;
 
-      if (user.role === "admin") {
+      if (isAdmin(user)) {
         applications = await storage.getAllLoanApplications();
       } else {
         const teamMemberships = await storage.getTeamMembersByUser(user.id);

@@ -4,7 +4,7 @@ import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
 import { insertBorrowerDeclarationsSchema, CREDIT_DECISION_ROLES, type User } from "@shared/schema";
-import { isStaffRole } from "@shared/roles";
+import { isAdmin, isStaffRole } from "@shared/roles";
 import { PREQUAL_ELIGIBLE_STATUSES, effectiveLetterStatus, letterRevocationSchema } from "@shared/letters";
 import { z } from "zod";
 import crypto from "crypto";
@@ -485,7 +485,7 @@ export function registerLetterRoutes(
         return res.status(404).json({ error: "Letter not found" });
       }
 
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const teamMembers = await storage.getDealTeamMembers(letter.applicationId);
         if (!teamMembers.some((m) => m.userId === user.id)) {
           return res.status(403).json({ error: "You are not assigned to this application" });

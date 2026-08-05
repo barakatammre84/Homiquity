@@ -1,6 +1,7 @@
 // Borrower routes: Closing guarantees + homeowner value (refi alerts, equity).
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { isStaffRole } from "@shared/schema";
@@ -23,7 +24,7 @@ export function registerGuaranteeHomeownerRoutes(
   // cannot be meaningfully scoped without enumerating the caller's assigned files.
   app.get("/api/closing-guarantees", isAuthenticated, async (req, res) => {
     try {
-      if (req.user!.role !== "admin") {
+      if (!isAdmin(req.user)) {
         return res.status(403).json({ error: "Admin access required" });
       }
       const guarantees = await storage.getAllClosingGuarantees();

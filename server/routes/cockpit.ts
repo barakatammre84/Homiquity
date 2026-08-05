@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../storage";
 import { requireRole } from "../auth";
 import { buildStaffSignals } from "../services/signalEngine";
@@ -66,7 +67,7 @@ export function filterAccessibleActiveApplicationIds(
 
 /** Accessible active application ids for a staffer (admins: all active). */
 async function accessibleActiveApplicationIds(storage: IStorage, user: User): Promise<string[] | "all"> {
-  if (user.role === "admin") return "all";
+  if (isAdmin(user)) return "all";
   const memberships = await storage.getTeamMembersByUser(user.id);
   return filterAccessibleActiveApplicationIds(memberships);
 }

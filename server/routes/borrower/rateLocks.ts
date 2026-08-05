@@ -1,6 +1,7 @@
 // Borrower routes: Rate locks: create/list/expiring/extend/cancel.
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { EXTENSION_FEE_PAYERS, isInternalStaffRole, OPEN_RATE_LOCK_STATUSES, type User } from "@shared/schema";
@@ -198,7 +199,7 @@ export function registerRateLockRoutes(
       // Assignment-scoped, mirroring GET /api/pipeline/queue: an admin sees
       // every expiring lock; every other internal-staff role sees only locks
       // on files they are an active deal-team member of.
-      if (user.role === "admin") {
+      if (isAdmin(user)) {
         return res.json(locks);
       }
       const memberships = await storage.getTeamMembersByUser(user.id);

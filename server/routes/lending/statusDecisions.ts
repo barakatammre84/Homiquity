@@ -1,6 +1,7 @@
 // Lending routes: Application PATCH (TRID trigger on update), staff status machine with the ECOA denial chokepoint, verification routes, latest draft.
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
 import { insertBorrowerDeclarationsSchema, loanApplicationIntakeUpdateSchema, STAFF_SETTABLE_STATUSES, CREDIT_DECISION_ROLES, FINANCIAL_VERIFICATION_ROLES, isProtectedCreditDecisionStatus, isApprovalOutcomeStatus, type User } from "@shared/schema";
@@ -155,7 +156,7 @@ export function registerStatusDecisionRoutes(
       }
 
       // Admins may update any application; all other roles must be on the deal team.
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const teamMembers = await storage.getDealTeamMembers(id);
         const isOnTeam = teamMembers.some(m => m.userId === user.id);
         if (!isOnTeam) {
@@ -238,7 +239,7 @@ export function registerStatusDecisionRoutes(
       try {
         await updatePipelineStage(id, status, {
           denialReasons,
-          force: force === true && user.role === "admin",
+          force: force === true && isAdmin(user),
         });
       } catch (stageErr) {
         if (stageErr instanceof PipelineTransitionError) {
@@ -340,7 +341,7 @@ export function registerStatusDecisionRoutes(
         }
 
         // Non-admin staff must be on the deal team.
-        if (user.role !== "admin") {
+        if (!isAdmin(user)) {
           const teamMembers = await storage.getDealTeamMembers(id);
           if (!teamMembers.some((m) => m.userId === user.id)) {
             return res.status(403).json({ error: "You are not assigned to this application" });
@@ -392,7 +393,7 @@ export function registerStatusDecisionRoutes(
         if (!application) {
           return res.status(404).json({ error: "Application not found" });
         }
-        if (user.role !== "admin") {
+        if (!isAdmin(user)) {
           const teamMembers = await storage.getDealTeamMembers(id);
           if (!teamMembers.some((m) => m.userId === user.id)) {
             return res.status(403).json({ error: "You are not assigned to this application" });

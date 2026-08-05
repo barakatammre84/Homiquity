@@ -1,6 +1,7 @@
 // Underwriting routes: Staff application/user lists + underwriting snapshots.
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
 import type { User } from "@shared/schema";
@@ -15,7 +16,7 @@ export function registerStaffRoutes(
     try {
       const user = req.user as User;
       let applications: Awaited<ReturnType<typeof storage.getAllLoanApplications>>;
-      if (user.role === "admin") {
+      if (isAdmin(user)) {
         applications = await storage.getAllLoanApplications();
       } else {
         const memberships = await storage.getTeamMembersByUser(user.id);
@@ -42,7 +43,7 @@ export function registerStaffRoutes(
     try {
       const user = req.user as User;
       let directory: User[];
-      if (user.role === "admin") {
+      if (isAdmin(user)) {
         directory = await storage.getAllUsers();
       } else {
         const memberships = await storage.getTeamMembersByUser(user.id);
