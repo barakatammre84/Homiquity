@@ -6,6 +6,7 @@ import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
+import { SEOHead } from "@/components/SEOHead";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ConversionCTA } from "@/components/ConversionCTA";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import {
   Home,
   DollarSign,
@@ -184,7 +186,7 @@ export default function MortgageCalculator() {
       const { amortizationSchedule, ...resultsWithoutSchedule } = results;
       saveResultsMutation.mutate({ inputs, results: resultsWithoutSchedule });
     }
-    navigate("/apply");
+    navigate(PRELAUNCH_GATED ? "/" : "/apply");
   };
 
   const updateInput = (field: keyof MortgageInputs, value: number) => {
@@ -201,6 +203,10 @@ export default function MortgageCalculator() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title="Mortgage Calculator — Monthly Payment & Cost Breakdown"
+        description="Free mortgage calculator. See your estimated monthly payment — principal, interest, taxes, insurance, PMI, and HOA — with an interactive amortization schedule. No sign-up required."
+      />
       <PageShell width="wide">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
@@ -461,7 +467,7 @@ export default function MortgageCalculator() {
               onClick={handleStartPreApproval}
               data-testid="button-start-preapproval"
             >
-              Get Pre-Approved Now
+              {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved Now"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 

@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Bot, Sparkles, Shield, Calculator } from "lucide-react";
 import { useTrackCta } from "@/hooks/useActivityTracker";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 
 interface ConversionCTAProps {
   context: "calculator" | "rates" | "article" | "property" | "coach";
@@ -64,18 +65,24 @@ export function ConversionCTA({ context, purchasePrice, state, propertyType }: C
             <Sparkles className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold" data-testid="text-cta-heading">{msg.heading}</h3>
-            <p className="text-sm text-muted-foreground mt-1">{msg.subtext}</p>
+            <h3 className="text-lg font-semibold" data-testid="text-cta-heading">
+              {PRELAUNCH_GATED ? "Want to be first in line?" : msg.heading}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {PRELAUNCH_GATED
+                ? "We're not taking applications yet — join the waitlist and we'll reach out the moment we open."
+                : msg.subtext}
+            </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-            <Link href={applyUrl}>
+            <Link href={PRELAUNCH_GATED ? "/" : applyUrl}>
               <Button
                 size="lg"
                 className="gap-2 w-full sm:w-auto"
                 onClick={() => trackCta("conversion-cta-apply", `/${context}`)}
                 data-testid="button-cta-apply"
               >
-                Get Pre-Approved
+                {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -97,16 +104,18 @@ export function ConversionCTA({ context, purchasePrice, state, propertyType }: C
           {msg.coachPrompt && (
             <p className="text-xs text-muted-foreground" data-testid="text-cta-coach-prompt">{msg.coachPrompt}</p>
           )}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Shield className="h-3 w-3" />
-              No hard credit check
-            </span>
-            <span className="flex items-center gap-1">
-              <Calculator className="h-3 w-3" />
-              3-minute process
-            </span>
-          </div>
+          {!PRELAUNCH_GATED && (
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Shield className="h-3 w-3" />
+                No hard credit check
+              </span>
+              <span className="flex items-center gap-1">
+                <Calculator className="h-3 w-3" />
+                3-minute process
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

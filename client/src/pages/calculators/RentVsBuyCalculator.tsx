@@ -6,6 +6,8 @@ import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
+import { SEOHead } from "@/components/SEOHead";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -213,7 +215,7 @@ export default function RentVsBuyCalculator() {
     if (user) {
       saveResultsMutation.mutate({ inputs, results });
     }
-    navigate("/apply");
+    navigate(PRELAUNCH_GATED ? "/" : "/apply");
   };
 
   const updateInput = (field: keyof CalculatorInputs, value: number) => {
@@ -222,6 +224,10 @@ export default function RentVsBuyCalculator() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title="Rent vs. Buy Calculator — Compare the True Cost of Renting and Owning"
+        description="Free rent vs. buy calculator. Compare monthly costs, equity built, and long-term net worth between renting and owning to see which makes sense for you."
+      />
       <PageShell width="wide">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
@@ -537,7 +543,12 @@ export default function RentVsBuyCalculator() {
               onClick={handleStartPreApproval}
               data-testid="button-start-preapproval"
             >
-              {results.recommendation === "buy" ? (
+              {PRELAUNCH_GATED ? (
+                <>
+                  Join the Waitlist
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              ) : results.recommendation === "buy" ? (
                 <>
                   Get Pre-Approved Now
                   <ArrowRight className="ml-2 h-4 w-4" />
