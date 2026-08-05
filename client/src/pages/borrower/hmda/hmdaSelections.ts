@@ -1,14 +1,20 @@
 /**
  * The selection rules for the HMDA demographic categories.
  *
- * Extracted verbatim from the inline onCheckedChange handlers in
- * HmdaDemographics.tsx. Two invariants run through all of it:
+ * Every setter routes its result through normalizeEthnicity / normalizeRace,
+ * which enforce the invariants the saved record must satisfy. Doing it in one
+ * pass rather than inside each handler is deliberate: the sub-checkboxes and
+ * free-text inputs only RENDER while their parent is checked, so any state
+ * they leave behind is invisible to the applicant and uncorrectable by them —
+ * it just gets POSTed. The invariants:
  *
- *  - Choosing any category clears "I do not wish to provide" for that
- *    category, and checking "do not wish to provide" clears the selections.
- *    A record asserting both is contradictory.
- *  - Sex is single-select; ethnicity and race are multi-select, which Reg C
- *    requires (an applicant may report more than one race).
+ *  1. Choosing a category clears "I do not wish to provide" for that category,
+ *     and declining clears every selection AND every free-text answer.
+ *  2. A subcategory cannot outlive its parent (no "Chinese" without "Asian").
+ *  3. Free text cannot outlive the checkbox that reveals it.
+ *
+ * Ethnicity and race are multi-select, which Reg C requires (an applicant may
+ * report more than one race). Sex is single-select.
  */
 import {
   ASIAN_SUBCATEGORIES,
@@ -25,17 +31,34 @@ import {
   type SexState,
 } from "./types";
 
-const clearAll = <T extends string>(keys: readonly T[]) =>
+const clearBools = <T extends string>(keys: readonly T[]) =>
   Object.fromEntries(keys.map((k) => [k, false]));
 
 // ----------------------------------------------------------------- ethnicity
+
+/** Drops anything that can no longer be true given the current selections. */
+export function normalizeEthnicity(s: EthnicityState): EthnicityState {
+  if (s.notProvided) {
+    return {
+      ...s,
+      ...clearBools(ETHNICITY_TOP_LEVEL),
+      ...clearBools(ETHNICITY_SUBCATEGORIES),
+      otherText: "",
+      notProvided: true,
+    } as EthnicityState;
+  }
+  const next = s.hispanicLatino
+    ? s
+    : ({ ...s, ...clearBools(ETHNICITY_SUBCATEGORIES) } as EthnicityState);
+  return next.otherHispanicLatino ? next : { ...next, otherText: "" };
+}
 
 export function setEthnicityTopLevel(
   prev: EthnicityState,
   key: EthnicityTopLevel,
   checked: boolean,
 ): EthnicityState {
-  return { ...prev, [key]: checked, notProvided: false };
+  return normalizeEthnicity({ ...prev, [key]: checked, notProvided: false });
 }
 
 export function setEthnicitySubcategory(
@@ -43,7 +66,7 @@ export function setEthnicitySubcategory(
   key: EthnicitySubcategory,
   checked: boolean,
 ): EthnicityState {
-  return { ...prev, [key]: checked };
+  return normalizeEthnicity({ ...prev, [key]: checked });
 }
 
 export function setEthnicityOtherText(prev: EthnicityState, otherText: string): EthnicityState {
@@ -51,23 +74,45 @@ export function setEthnicityOtherText(prev: EthnicityState, otherText: string): 
 }
 
 export function declineEthnicity(prev: EthnicityState, checked: boolean): EthnicityState {
-  if (!checked) return { ...prev, notProvided: false };
-  return {
-    ...prev,
-    ...clearAll(ETHNICITY_TOP_LEVEL),
-    ...clearAll(ETHNICITY_SUBCATEGORIES),
-    notProvided: true,
-  };
+  return normalizeEthnicity({ ...prev, notProvided: checked });
 }
 
 // ---------------------------------------------------------------------- race
+
+const RACE_TEXT_OWNERS = [
+  { text: "americanIndianTribe", owner: "americanIndian" },
+  { text: "otherAsianText", owner: "otherAsian" },
+  { text: "otherPacificIslanderText", owner: "otherPacificIslander" },
+] as const;
+
+export function normalizeRace(s: RaceState): RaceState {
+  if (s.notProvided) {
+    return {
+      ...s,
+      ...clearBools(RACE_TOP_LEVEL),
+      ...clearBools(ASIAN_SUBCATEGORIES),
+      ...clearBools(PACIFIC_SUBCATEGORIES),
+      americanIndianTribe: "",
+      otherAsianText: "",
+      otherPacificIslanderText: "",
+      notProvided: true,
+    } as RaceState;
+  }
+  let next = s;
+  if (!next.asian) next = { ...next, ...clearBools(ASIAN_SUBCATEGORIES) } as RaceState;
+  if (!next.nativeHawaiian) next = { ...next, ...clearBools(PACIFIC_SUBCATEGORIES) } as RaceState;
+  for (const { text, owner } of RACE_TEXT_OWNERS) {
+    if (!next[owner]) next = { ...next, [text]: "" };
+  }
+  return next;
+}
 
 export function setRaceTopLevel(
   prev: RaceState,
   key: RaceTopLevel,
   checked: boolean,
 ): RaceState {
-  return { ...prev, [key]: checked, notProvided: false };
+  return normalizeRace({ ...prev, [key]: checked, notProvided: false });
 }
 
 export function setRaceSubcategory(
@@ -75,7 +120,7 @@ export function setRaceSubcategory(
   key: RaceSubcategory,
   checked: boolean,
 ): RaceState {
-  return { ...prev, [key]: checked };
+  return normalizeRace({ ...prev, [key]: checked });
 }
 
 export function setRaceText(
@@ -87,14 +132,7 @@ export function setRaceText(
 }
 
 export function declineRace(prev: RaceState, checked: boolean): RaceState {
-  if (!checked) return { ...prev, notProvided: false };
-  return {
-    ...prev,
-    ...clearAll(RACE_TOP_LEVEL),
-    ...clearAll(ASIAN_SUBCATEGORIES),
-    ...clearAll(PACIFIC_SUBCATEGORIES),
-    notProvided: true,
-  };
+  return normalizeRace({ ...prev, notProvided: checked });
 }
 
 // ----------------------------------------------------------------------- sex
