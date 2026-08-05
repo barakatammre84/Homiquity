@@ -84,6 +84,26 @@ export function registerApplicationRoutes(
       const application = await storage.createLoanApplication(applicationData);
       logAudit(req, "loan_application.created", "loan_application", application.id);
 
+      // Roadmap A3: applying is the moment an aspiring_owner becomes an
+      // active_buyer — the promotion writer this split never had. Both are
+      // CLIENT_ROLES with identical server-side authorization (verified: no
+      // route gates on either), so this changes navigation cohort + admin
+      // stats, never privileges. Guarded to exactly aspiring_owner: a staff
+      // or partner role can never be rewritten by creating an application.
+      // Best-effort — a promotion failure must not fail intake.
+      if (user.role === "aspiring_owner") {
+        try {
+          await storage.updateUserRole(userId, "active_buyer");
+          logAudit(req, "user.role_change", "user", userId, {
+            previousRole: "aspiring_owner",
+            newRole: "active_buyer",
+            reason: "auto_promotion_on_application",
+          });
+        } catch (promoteErr) {
+          console.warn("[Intake] active_buyer promotion failed (non-fatal):", promoteErr);
+        }
+      }
+
       // Seed the outcomes/analytics row at funnel entry (the "submitted" stamp
       // the conversion-funnel dashboard counts). createLoanApplication writes
       // status "submitted" directly, bypassing updatePipelineStage, so the
