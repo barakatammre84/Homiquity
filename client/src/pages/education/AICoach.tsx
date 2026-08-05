@@ -9,6 +9,7 @@ import { companyNmlsDisplay } from "@shared/companyIdentity";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { usePageView, useTrackActivity, useTrackCoachSession } from "@/hooks/useActivityTracker";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useCoachStream } from "@/components/coach/useCoachStream";
 import { MessageList } from "@/components/coach/MessageList";
 import { Composer } from "@/components/coach/Composer";
@@ -25,60 +26,12 @@ import type {
   CoachUsage,
   DocumentRequirement,
 } from "@/components/coach/types";
+import { getSourceContext } from "./aiCoach/sourceContext";
 
 // The AI Homebuyer Coach — streaming chat (SSE via useCoachStream) with a live
 // "Pre-App Profile" capture panel. Everything the model captures through the
 // record_intake tool is auto-saved to the borrower's draft application
 // server-side and surfaced here as a visible trail.
-
-function getSourceContext(): { banner: string; autoMessage: string } | null {
-  const params = new URLSearchParams(window.location.search);
-  const source = params.get("source");
-  const context = params.get("context");
-  const type = params.get("type");
-
-  if (source === "va" || type === "va" || context === "va") {
-    return {
-      banner: "VA Loan Guidance",
-      autoMessage: "I'm a veteran and I'd like to explore VA loan options. Can you help me understand my eligibility and benefits?",
-    };
-  }
-  if (source === "first-time" || context === "first-time") {
-    return {
-      banner: "First-Time Buyer",
-      autoMessage: "I'm a first-time homebuyer and I want to understand what I need to get started. Can you assess my readiness?",
-    };
-  }
-  if (source === "refinance" || type === "refinance") {
-    return {
-      banner: "Refinance Guidance",
-      autoMessage: "I'm interested in refinancing my current mortgage. Can you help me understand my options?",
-    };
-  }
-  if (source === "investor" || context === "investor") {
-    return {
-      banner: "Investment Property",
-      autoMessage: "I'm looking at investment properties. Can you help me understand mortgage requirements for rental properties?",
-    };
-  }
-  const propertyPrice = params.get("propertyPrice");
-  const propertyAddress = params.get("propertyAddress");
-  if (propertyPrice && propertyAddress) {
-    const formattedPrice = parseFloat(propertyPrice).toLocaleString();
-    return {
-      banner: "Property Analysis",
-      autoMessage: `I'm looking at a property at ${decodeURIComponent(propertyAddress)} listed at $${formattedPrice}. Can you help me understand if this home fits my budget and what my monthly payments would look like?`,
-    };
-  }
-  if (propertyPrice) {
-    const formattedPrice = parseFloat(propertyPrice).toLocaleString();
-    return {
-      banner: "Property Analysis",
-      autoMessage: `I'm considering a home priced at $${formattedPrice}. Can you help me understand if I can afford it and what loan options might work?`,
-    };
-  }
-  return null;
-}
 
 export default function AICoach() {
   usePageView("/ai-coach");
@@ -91,11 +44,22 @@ export default function AICoach() {
   const [mobileConvOpen, setMobileConvOpen] = useState(false);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
-  const { data: conversations = [], isLoading: loadingConvs } = useQuery<CoachConversation[]>({
+  const {
+    data: conversations = [],
+    isLoading: loadingConvs,
+    isError: convsError,
+    error: convsErrorObj,
+    refetch: refetchConvs,
+  } = useQuery<CoachConversation[]>({
     queryKey: coachConversationKeys.all(),
   });
 
-  const { data: activeData } = useQuery<{
+  const {
+    data: activeData,
+    isError: activeError,
+    error: activeErrorObj,
+    refetch: refetchActive,
+  } = useQuery<{
     conversation: CoachConversation;
     messages: CoachMessage[];
   }>({
@@ -127,12 +91,23 @@ export default function AICoach() {
 
   const sourceContext = getSourceContext();
   useEffect(() => {
-    if (sourceContext && !sourceHandled && !activeConversationId && conversations.length === 0 && !loadingConvs) {
+    // `conversations.length === 0` must mean "this borrower has no history",
+    // not "the list failed to load" — on an error the default [] looks
+    // identical, and auto-sending would open a second conversation for
+    // someone who already had one.
+    if (
+      sourceContext &&
+      !sourceHandled &&
+      !activeConversationId &&
+      conversations.length === 0 &&
+      !loadingConvs &&
+      !convsError
+    ) {
       setSourceHandled(true);
       handleSend(sourceContext.autoMessage);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceContext, sourceHandled, activeConversationId, conversations.length, loadingConvs]);
+  }, [sourceContext, sourceHandled, activeConversationId, conversations.length, loadingConvs, convsError]);
 
   const toggleActionItem = useMutation({
     mutationFn: async (itemId: string) => {
@@ -205,6 +180,16 @@ export default function AICoach() {
         <div className="flex justify-center py-8">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
+      ) : convsError ? (
+        // A failed load left `conversations` at [] and the sidebar rendered as
+        // if the borrower had never chatted — their history silently gone
+        // (ux-01). The auto-send effect above is suppressed on the same flag.
+        <QueryErrorState
+          error={convsErrorObj}
+          onRetry={() => void refetchConvs()}
+          title="We couldn't load your conversations"
+          data-testid="coach-conversations-error"
+        />
       ) : (
         <ConversationSidebar
           conversations={conversations}
@@ -295,6 +280,18 @@ export default function AICoach() {
 
         {!hasActiveChat ? (
           <WelcomeState onStart={(msg) => handleSend(msg)} insights={insights} />
+        ) : activeError && turn.status === "idle" ? (
+          // Opening a saved conversation whose fetch failed used to render an
+          // empty thread — indistinguishable from a conversation with no
+          // messages. Only shown while idle so it can't replace a live stream.
+          <div className="p-4">
+            <QueryErrorState
+              error={activeErrorObj}
+              onRetry={() => void refetchActive()}
+              title="We couldn't load this conversation"
+              data-testid="coach-conversation-error"
+            />
+          </div>
         ) : (
           <>
             {insights.length > 0 && messages.length === 0 && turn.status === "idle" && (
