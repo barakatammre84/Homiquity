@@ -39,6 +39,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { QUESTIONS_BY_ID } from "./preApproval/questions";
 import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
+import { useServerDraftAutosave } from "./preApproval/useServerDraftAutosave";
 import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
 import { StateStep } from "./preApproval/StateStep";
 import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
@@ -268,6 +269,10 @@ function PreApprovalFunnel() {
     }
   }, []);
 
+  // A1: the server-draft container id — adopted from useDraftRestore when a
+  // prior draft exists, or minted by the server autosave's find-or-create.
+  const [adoptedDraftId, setAdoptedDraftId] = useState<string | null>(null);
+
   const {
     applicationId,
     showRestoreBanner,
@@ -331,13 +336,13 @@ function PreApprovalFunnel() {
         payload.inviteId = inviteId.current;
       }
 
-      if (applicationId) {
-        const response = await apiRequest("PATCH", `/api/loan-applications/${applicationId}`, payload);
-        return response.json();
-      } else {
-        const response = await apiRequest("POST", "/api/loan-applications", payload);
-        return response.json();
-      }
+      // Always POST — the intake route consumes the user's existing draft
+      // container server-side (updating it and flipping draft → submitted
+      // through the pipeline engine with the full intake side effects). The
+      // old client-side PATCH branch skipped the status flip, analysis, and
+      // notifications entirely, leaving the "submitted" application in draft.
+      const response = await apiRequest("POST", "/api/loan-applications", payload);
+      return response.json();
     },
     onSuccess: async (result) => {
       clearAutosave();
@@ -363,6 +368,18 @@ function PreApprovalFunnel() {
         variant: "destructive",
       });
     },
+  });
+
+  // A1: authenticated progress also persists to the ONE server draft row, so
+  // a device switch doesn't lose the application. Disabled once a submit is
+  // in flight — the intake route consumes the draft at that point.
+  useServerDraftAutosave({
+    isAuthenticated,
+    values: watchedValues,
+    enabled: stepId !== "intro" && !submitMutation.isPending && !submitMutation.isSuccess,
+    hasMeaningfulData,
+    applicationId: applicationId ?? adoptedDraftId,
+    onDraftAdopted: setAdoptedDraftId,
   });
 
   const handleNext = async () => {
