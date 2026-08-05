@@ -17,11 +17,13 @@ let authState: {
   user: Partial<User> | undefined;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isError?: boolean;
 };
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
-    ...authState,
     isError: false,
+    refetch: () => {},
+    ...authState,
     // Mirrors the real useAuth impl (fail-closed on user first) so the guard's
     // role decision is genuinely exercised, not stubbed away.
     hasRole: (roles?: readonly string[]) =>
@@ -64,6 +66,25 @@ describe("useAuthGuard", () => {
     expect(result.current).toBe("unauthenticated");
     expect(hrefSetter).toHaveBeenCalledWith("/login");
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  // The regression this guards: /api/auth/user failing for a NON-401 reason
+  // (502, cold start, dropped connection) used to leave `user` undefined, fall
+  // through to "unauthenticated", and hard-reload the user to /login — signing
+  // them out on a server hiccup and discarding every unsaved form on the page.
+  it("reports 'degraded' on a non-401 probe failure and navigates NOWHERE", () => {
+    authState = { user: undefined, isAuthenticated: false, isLoading: false, isError: true };
+    const { result } = renderHook(() => useAuthGuard(["admin"]));
+    expect(result.current).toBe("degraded");
+    expect(hrefSetter).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("still reports 'unauthenticated' when the probe SUCCEEDED and there is no user", () => {
+    authState = { user: undefined, isAuthenticated: false, isLoading: false, isError: false };
+    const { result } = renderHook(() => useAuthGuard(["admin"]));
+    expect(result.current).toBe("unauthenticated");
+    expect(hrefSetter).toHaveBeenCalledWith("/login");
   });
 
   it("authorizes a user whose role is in the required set", () => {

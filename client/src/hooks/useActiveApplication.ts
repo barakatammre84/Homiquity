@@ -102,6 +102,16 @@ export interface UseActiveApplicationResult<T extends SelectableApplication> {
  * (most from `/api/dashboard`, Documents from `/api/loan-applications`), and
  * binding selection to one endpoint would make the hook unusable on the other.
  *
+ * That flexibility carries an invariant: those two endpoints MUST return the
+ * same set in the same order. They do — both serve
+ * `storage.getLoanApplicationsByUser` unfiltered — but the coupling is by
+ * convention, not by type, and the failure if it breaks is silent and global:
+ * this hook writes whatever it resolved into the shared per-tab mirror below,
+ * so a page fed a divergent list repoints every OTHER borrower surface at a
+ * different loan file. `tests/activeApplicationListParity.test.ts` pins both
+ * halves — the shared server source, and that no third list reaches this hook.
+ * Feed it from `dashboardKeys.root()` or `loanApplicationKeys.all()`, nothing else.
+ *
  * The hook never writes the *URL* on its own — only `selectApplication` does.
  * Auto-correcting an unmatched `?app=` would erase a valid deep link during the
  * render before the list loads, when *every* id looks unmatched.

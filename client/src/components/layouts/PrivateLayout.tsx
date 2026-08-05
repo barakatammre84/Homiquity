@@ -1,7 +1,8 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePendingAttribution } from "@/hooks/usePendingAttribution";
-import { Loader2 } from "lucide-react";
+import { Loader2, WifiOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
@@ -23,7 +24,7 @@ interface PrivateLayoutProps {
 }
 
 export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
-  const { user } = useAuth();
+  const { user, refetch: refetchAuth } = useAuth();
   // Single authorization decision + redirect. All gating lives in the guard;
   // this component only renders off the resulting status.
   const status = useAuthGuard(requiredRoles);
@@ -41,6 +42,28 @@ export function PrivateLayout({ children, requiredRoles }: PrivateLayoutProps) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // The session probe failed for a reason that is NOT a 401, so we do not know
+  // whether the session is alive. Stay put and offer a retry: navigating to
+  // /login here would be a hard reload that discards whatever the user has
+  // typed into the page, on no better evidence than a server hiccup.
+  if (status === "degraded") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-sm text-center" data-testid="auth-degraded">
+          <WifiOff className="mx-auto mb-4 h-8 w-8 text-muted-foreground" aria-hidden="true" />
+          <h1 className="mb-2 text-lg font-semibold">Can&apos;t reach the server</h1>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Your session is still open — we just couldn&apos;t confirm it. Check your connection
+            and try again.
+          </p>
+          <Button onClick={refetchAuth} data-testid="button-retry-auth">
+            Try again
+          </Button>
+        </div>
       </div>
     );
   }
