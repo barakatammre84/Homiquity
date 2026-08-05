@@ -161,32 +161,32 @@ describe("MISMO export vs. the official schema (known-violations baseline)", () 
   // LIABILITIES, LOANS, PARTIES), ADDRESS child order, EMPLOYMENT child
   // order, FinancedUnitCount. Every corrected name/path was verified against
   // MISMO_3_0.xsd (content models extracted, xmllint re-run), never guessed.
-  // What remains is EXACTLY the U-1 escalation pair: the AUS data-point
-  // names pend ULDD data-dictionary confirmation and MUST NOT be fixed from
-  // memory (MISMO's own name would be
-  // AutomatedUnderwritingRecommendationDescription — unconfirmed).
-  const KNOWN_UNDERWRITING_VIOLATIONS = [
-    "AUTOMATED_UNDERWRITINGS",
-    "UnderwritingDecisionType",
-  ];
-  const KNOWN_LOAN_DELIVERY_VIOLATIONS = [
-    "AUTOMATED_UNDERWRITINGS",
-    "UnderwritingDecisionType",
-  ];
+  // U-1 RESOLVED (2026-08-05, same verify-then-fix method): the AUS names were
+  // confirmed against MISMO_3_0.xsd — the AUTOMATED_UNDERWRITINGS container is
+  // legal but must PRECEDE UNDERWRITING_DETAIL, and all four emitted decision
+  // names (UnderwritingDecisionType, UnderwritingMethodType,
+  // AutomatedUnderwritingResultType — the last two previously masked by
+  // libxml2's first-failure-per-container behavior) do not exist in the
+  // schema. The schema-true expression is
+  // AUTOMATED_UNDERWRITING/{AutomatedUnderwritingRecommendationDescription,
+  // AutomatedUnderwritingSystemType (+OtherDescription)} with
+  // UNDERWRITING_DETAIL/LoanManualUnderwritingIndicator. The baseline is now
+  // EMPTY and must stay empty: any new offending element is a regression —
+  // fix the export, never grow a baseline back.
 
-  it("underwriting-purpose export matches the known-violations baseline", () => {
+  it("underwriting-purpose export validates clean against the official schema", () => {
     if (!xmllintInstalled) return;
     const xml = generateMISMO34XML(baseDto());
     const result = validateAgainstXsd(xml, MISMO_BASE_XSD);
-    expect(result.valid).toBe(false);
-    expect(extractOffendingElements(result.errors)).toEqual(KNOWN_UNDERWRITING_VIOLATIONS);
+    expect(extractOffendingElements(result.errors)).toEqual([]);
+    expect(result.valid).toBe(true);
   });
 
-  it("loanDelivery-purpose export matches the known-violations baseline", () => {
+  it("loanDelivery-purpose export validates clean against the official schema", () => {
     if (!xmllintInstalled) return;
     const xml = generateMISMO34XML(baseDto(), { purpose: "loanDelivery", noteDate: "2026-03-15" });
     const result = validateAgainstXsd(xml, MISMO_BASE_XSD);
-    expect(result.valid).toBe(false);
-    expect(extractOffendingElements(result.errors)).toEqual(KNOWN_LOAN_DELIVERY_VIOLATIONS);
+    expect(extractOffendingElements(result.errors)).toEqual([]);
+    expect(result.valid).toBe(true);
   });
 });

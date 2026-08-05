@@ -141,8 +141,11 @@ Deliberate simulated adapters — correct for an invite beta, material before re
   slice 3).
 - **Credit and AUS are simulated** (and prod credit pulls **refuse** rather than
   simulate — hardened again in #386/F-037). Real findings need F3/F6 contracts.
-- **MISMO XSD baseline = 2 remaining violations** (U-1: AUS data-point names await ULDD
-  data-dictionary confirmation — never guessed, per the compliance rule).
+- **MISMO XSD baseline = 0** (U-1 resolved 2026-08-05 — AUS element names verified against
+  the official ULDD Phase 5 schema and both export purposes validate clean; the export
+  honestly labels the simulated AUS leg `Other`, never `DesktopUnderwriter`). Narrowed
+  residual: ULDD **Appendix D** delivery conditionality/values — founder drops Appendix D
+  into `docs/fannie-mae/` (the job aid is bot-blocked) and the values get pinned too.
 
 ## 5. For counsel
 
