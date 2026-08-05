@@ -43,6 +43,10 @@ export default defineConfig({
       "tests/cycleTimeReport.test.ts",
       "tests/ruleEngine.test.ts",
       "tests/decisionEngineGaps.test.ts",
+      // WF1-002: the engine's compensation-independent pricing projection.
+      "tests/paymentProjection.test.ts",
+      // WF2-F4: the URLA section-4a loanDetails write path.
+      "tests/urlaLoanDetailsSave.test.ts",
       "tests/pipelineEngineStageTransitions.test.ts",
       "tests/activeBuyerPromotion.test.ts",
       "tests/docRequestDraft.test.ts",

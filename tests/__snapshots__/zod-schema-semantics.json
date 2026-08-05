@@ -16,6 +16,22 @@
     "missing-monthlyPitia": "reject:estimatedMarketRent,monthlyPitia",
     "wrongtype-address": "reject:address,estimatedMarketRent,monthlyPitia"
   },
+  "schema.urlaLoanDetailsSchema": {
+    "undefined": "reject:",
+    "null": "reject:",
+    "empty-object": "reject:amortizationType,preferredLoanType",
+    "empty-array": "reject:",
+    "empty-string": "reject:",
+    "zero": "reject:",
+    "false": "reject:",
+    "string": "reject:",
+    "number": "reject:",
+    "true": "reject:",
+    "all-keys-typed": "reject:amortizationType,preferredLoanType",
+    "missing-preferredLoanType": "reject:amortizationType,preferredLoanType",
+    "missing-amortizationType": "reject:amortizationType,preferredLoanType",
+    "wrongtype-preferredLoanType": "reject:amortizationType,preferredLoanType"
+  },
   "schema.insertLoanApplicationSchema": {
     "undefined": "reject:",
     "null": "reject:",
