@@ -230,6 +230,17 @@ PR body (part of the §5.8 contract).
 - **Outbound messaging:** `server/services/emailService.ts`,
   `server/services/smsCompliance.ts`, webhook receivers under `/api/webhooks/*`.
 - **Logging near PII:** any widening of `RESPONSE_BODY_LOG_ALLOWLIST` in `server/app.ts`.
+**Partly enforced by the gate.** `pnpm guard:security`
+([`scripts/security-review-guard.cjs`](../../scripts/security-review-guard.cjs)) fails the PR
+when it touches a trigger below and the PR body carries no heading containing
+`Security review`. Two things it deliberately is not: it proves the review was *written
+down*, never that it was *correct* — with a single collaborator no automation can do the
+latter, which is also why CODEOWNERS cannot be used here (GitHub forbids self-approval, so
+requiring code-owner review would deadlock every §9 PR). And it cannot see the last two
+triggers below — a `shared/schema/` PII column and a new PII sub-processor need someone to
+know which columns are PII and which vendors are processors. **A green gate is not evidence
+that §9 is satisfied on those two.** The rule binds whether or not the script fires.
+
 - **New PII sub-processor:** any PR that introduces or activates an external service
   receiving borrower PII (storage, OCR/extraction, income/asset verification, transcript
   retrieval, messaging providers). The review covers the egress path end-to-end, and a

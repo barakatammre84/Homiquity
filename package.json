@@ -35,6 +35,7 @@
     "guard:docs": "node scripts/doc-freshness-guard.cjs",
     "guard:querykeys": "node scripts/query-key-guard.cjs",
     "guard:migrations": "node scripts/migration-ledger-guard.cjs",
+    "guard:security": "node scripts/security-review-guard.cjs",
     "coach:ab": "tsx scripts/coachModelAb.ts",
     "db:start": "docker start homiquity-db 2>/dev/null || docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16",
     "db:seed": "tsx server/scripts/runSeed.ts"
