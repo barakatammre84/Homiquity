@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { LifestyleImage } from "@/components/LifestyleImage";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import {
@@ -118,11 +119,23 @@ export default function LearningCenter() {
 
   usePageView("/learn");
 
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery<ContentCategory[]>({
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    isError: categoriesError,
+    error: categoriesErrorObj,
+    refetch: refetchCategories,
+  } = useQuery<ContentCategory[]>({
     queryKey: ["/api/content-categories"],
   });
 
-  const { data: articles = [], isLoading: articlesLoading } = useQuery<Article[]>({
+  const {
+    data: articles = [],
+    isLoading: articlesLoading,
+    isError: articlesError,
+    error: articlesErrorObj,
+    refetch: refetchArticles,
+  } = useQuery<Article[]>({
     queryKey: ["/api/articles", { search: searchQuery, category: selectedCategory }],
     queryFn: getPublicQueryFn<Article[]>(),
   });
@@ -203,6 +216,15 @@ export default function LearningCenter() {
                         <Skeleton key={i} className="h-20" />
                       ))}
                     </div>
+                  ) : categoriesError ? (
+                    // "Check back soon!" tells a visitor the library is empty
+                    // by design; on a failed load that is wrong (ux-01).
+                    <QueryErrorState
+                      error={categoriesErrorObj}
+                      onRetry={() => void refetchCategories()}
+                      title="We couldn't load the topics"
+                      data-testid="learn-categories-error"
+                    />
                   ) : categories.length === 0 ? (
                     <Card className="p-8 text-center">
                       <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/50" />
@@ -260,6 +282,13 @@ export default function LearningCenter() {
                       <Skeleton key={i} className="h-48" />
                     ))}
                   </div>
+                ) : articlesError ? (
+                  <QueryErrorState
+                    error={articlesErrorObj}
+                    onRetry={() => void refetchArticles()}
+                    title="We couldn't load the articles"
+                    data-testid="learn-articles-error"
+                  />
                 ) : articles.length === 0 ? (
                   <Card className="p-12 text-center">
                     <FileText className="mx-auto h-16 w-16 text-muted-foreground/50" />

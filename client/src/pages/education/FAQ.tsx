@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import {
   Accordion,
   AccordionContent,
@@ -36,7 +37,7 @@ export default function FAQ() {
     queryKey: ["/api/content-categories"],
   });
 
-  const { data: faqs = [], isLoading } = useQuery<Faq[]>({
+  const { data: faqs = [], isLoading, isError, error, refetch } = useQuery<Faq[]>({
     queryKey: ["/api/faqs", { search: searchQuery, category: selectedCategory }],
     queryFn: getPublicQueryFn<Faq[]>(),
   });
@@ -206,6 +207,15 @@ export default function FAQ() {
                     <Skeleton key={i} className="h-16" />
                   ))}
                 </div>
+              ) : isError ? (
+                // "Check back soon for answers to common questions!" presents
+                // an outage as an empty knowledge base (ux-01).
+                <QueryErrorState
+                  error={error}
+                  onRetry={() => void refetch()}
+                  title="We couldn't load the questions"
+                  data-testid="faq-error"
+                />
               ) : faqs.length === 0 ? (
                 <Card className="p-12 text-center">
                   <HelpCircle className="mx-auto h-16 w-16 text-muted-foreground/50" />

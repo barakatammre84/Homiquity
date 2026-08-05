@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { History, User, Loader2 } from "lucide-react";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { type AuditEntry, type PolicyApprovalRecord } from "./model";
 
 export function AuditTrail({ selectedPolicyId }: { selectedPolicyId: string | null }) {
-  const { data: approvals = [], isLoading } = useQuery<PolicyApprovalRecord[]>({
+  const { data: approvals = [], isLoading, isError, error, refetch } = useQuery<PolicyApprovalRecord[]>({
     queryKey: ['/api/policy-approvals', selectedPolicyId],
     enabled: !!selectedPolicyId,
   });
@@ -44,6 +45,16 @@ export function AuditTrail({ selectedPolicyId }: { selectedPolicyId: string | nu
             <div className="text-center text-muted-foreground py-8">
               Select a policy from the dashboard to view its audit trail
             </div>
+          ) : isError ? (
+            // "No approval history found" on a failed load is a false
+            // statement about an audit record — the card's own description
+            // promises a "complete history of all policy changes" (ux-01).
+            <QueryErrorState
+              error={error}
+              onRetry={() => void refetch()}
+              title="We couldn't load the audit trail"
+              data-testid="audit-trail-error"
+            />
           ) : entries.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               No approval history found for this policy
