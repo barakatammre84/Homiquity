@@ -18,7 +18,7 @@ Status ledger (updated by the orchestrator after each run):
 | # | Domain | Last reviewed | Result |
 |---|---|---|---|
 | 1 | Public funnel, acquisition & education | 2026-08-05 | public-funnel-01/02 (P2) fixed `cef2890` + 1 refuted (ApprovalStrength SEO half) — see FINDINGS.md |
-| 2 | Application & intake | 2026-08-05 | **intake-01 (P0, TRID) fixed `c27b01e`** + intake-03 (P2, test coverage) fixed same commit. intake-02 (P2, other-income silent drop) + intake-04 (P3, dead endpoint) still open. See FINDINGS.md |
+| 2 | Application & intake | 2026-08-05 | **intake-01 (P0, TRID) fixed `c27b01e`** + intake-03 (P2, test coverage) same commit + intake-02 (P2, other-income silent drop) fixed `eafdb47`. Only intake-04 (P3, dead `/personal-info` endpoint — document-vs-delete decision) still open. See FINDINGS.md |
 | 3 | AI Coach, documents & extraction | — | not yet run |
 | 4 | Verification & credit | — | not yet run |
 | 5 | Underwriting & decisioning | — | not yet run |
