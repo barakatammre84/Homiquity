@@ -7,6 +7,7 @@ import { registerDocumentRoutes } from "./routes/documents";
 import { registerPropertyRoutes } from "./routes/property";
 import { registerAgentBrokerRoutes } from "./routes/agent-broker";
 import { registerAdminRoutes } from "./routes/admin";
+import { registerPricingPolicyRoutes } from "./routes/admin/pricingPolicy";
 import { registerTaskEngineRoutes } from "./routes/task-engine";
 import { registerUnderwritingRoutes } from "./routes/underwriting";
 import { registerComplianceRoutes } from "./routes/compliance";
@@ -80,6 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerPropertyRoutes(app, storage);
   registerAgentBrokerRoutes(app, storage);
   registerAdminRoutes(app, storage);
+  registerPricingPolicyRoutes(app);
   await registerTaskEngineRoutes(app, storage);
   registerUnderwritingRoutes(app, storage);
   registerComplianceRoutes(app, storage);

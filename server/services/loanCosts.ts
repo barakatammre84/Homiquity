@@ -49,6 +49,39 @@ export const PLATFORM_UNDERWRITING_FEE = 1500;
 export const PLATFORM_TAX_SERVICE_FEE = 100;
 
 /**
+ * The platform's own pricing policy for one file.
+ *
+ * Every function below takes this as a PARAMETER rather than reading a global,
+ * which is what lets the schedule become admin-editable without any of this
+ * module losing its purity: the caller resolves the active schedule (see
+ * services/platformFeeSchedule.ts) and passes it in, and the same inputs still
+ * produce the same outputs forever. That matters because a Loan Estimate must
+ * stay reproducible from the schedule it was priced under.
+ */
+export interface PlatformFeeSchedule {
+  applicationFee: number;
+  underwritingFee: number;
+  taxServiceFee: number;
+  /** Borrower-paid origination as a FRACTION of the loan amount (0.01 = 1%). */
+  originationFeeRate: number;
+}
+
+/**
+ * The compiled-in baseline, used whenever no schedule has been published.
+ *
+ * This is deliberately the single source of the default: migration 0046 seeds
+ * NO row, so an empty `platform_fee_schedules` table means "use this". Seeding
+ * the constants into the table as well would fork the baseline in two places
+ * and let them drift.
+ */
+export const DEFAULT_PLATFORM_FEE_SCHEDULE: PlatformFeeSchedule = {
+  applicationFee: PLATFORM_APPLICATION_FEE,
+  underwritingFee: PLATFORM_UNDERWRITING_FEE,
+  taxServiceFee: PLATFORM_TAX_SERVICE_FEE,
+  originationFeeRate: ORIGINATION_FEE_RATE,
+};
+
+/**
  * Prepaid finance charges the platform can determine WITHOUT a closing date —
  * its own origination-side charges (§1026.4). Deliberately excludes prepaid
  * interest and prepaid MI, which need a closing date and a rate.
@@ -96,17 +129,26 @@ export interface PlatformFinanceCharge {
   reducible: boolean;
 }
 
-export const PLATFORM_FINANCE_CHARGES: readonly PlatformFinanceCharge[] = [
-  { id: "application", name: "Application fee", amount: PLATFORM_APPLICATION_FEE, reducible: true },
-  { id: "underwriting", name: "Underwriting fee", amount: PLATFORM_UNDERWRITING_FEE, reducible: true },
-  { id: "tax_service", name: "Tax service fee", amount: PLATFORM_TAX_SERVICE_FEE, reducible: false },
-];
+export function platformFinanceCharges(
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
+): PlatformFinanceCharge[] {
+  return [
+    { id: "application", name: "Application fee", amount: schedule.applicationFee, reducible: true },
+    { id: "underwriting", name: "Underwriting fee", amount: schedule.underwritingFee, reducible: true },
+    { id: "tax_service", name: "Tax service fee", amount: schedule.taxServiceFee, reducible: false },
+  ];
+}
 
-/** Sum of the platform's own prepaid finance charges. */
-export const PLATFORM_FINANCE_CHARGE_TOTAL = PLATFORM_FINANCE_CHARGES.reduce(
-  (sum, charge) => sum + charge.amount,
-  0,
-);
+/** Sum of the platform's own prepaid finance charges under a schedule. */
+export function platformFinanceChargeTotal(
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
+): number {
+  return platformFinanceCharges(schedule).reduce((sum, charge) => sum + charge.amount, 0);
+}
+
+/** The baseline schedule's charges/total — the compiled-in default. */
+export const PLATFORM_FINANCE_CHARGES: readonly PlatformFinanceCharge[] = platformFinanceCharges();
+export const PLATFORM_FINANCE_CHARGE_TOTAL = platformFinanceChargeTotal();
 
 export function knownPrepaidFinanceCharges(
   originationFee: number,
@@ -149,10 +191,11 @@ export function regulationZTotalLoanAmountStandIn(
   loanAmount: number,
   compensation: OriginatorCompensation | null,
   platformTotal: number = PLATFORM_FINANCE_CHARGE_TOTAL,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): number {
   const originationFee =
     compensation && borrowerPaidOriginationAllowed(compensation.model)
-      ? loanAmount * ORIGINATION_FEE_RATE
+      ? loanAmount * schedule.originationFeeRate
       : 0;
   return Math.max(0, loanAmount - knownPrepaidFinanceCharges(originationFee, 0, platformTotal));
 }
@@ -170,23 +213,24 @@ export function evaluatePlatformQmFloor(
   noteDate: Date | string,
   loanAmount: number,
   compensation: OriginatorCompensation,
-  platformFinanceCharges: readonly { name: string; amount: number }[] = PLATFORM_FINANCE_CHARGES,
+  charges: readonly { name: string; amount: number }[] = PLATFORM_FINANCE_CHARGES,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): QmFloorEvaluation {
   const originationFee = borrowerPaidOriginationAllowed(compensation.model)
-    ? loanAmount * ORIGINATION_FEE_RATE
+    ? loanAmount * schedule.originationFeeRate
     : 0;
-  const platformTotal = platformFinanceCharges.reduce((sum, c) => sum + c.amount, 0);
+  const platformTotal = charges.reduce((sum, c) => sum + c.amount, 0);
   return evaluatePointsAndFeesFloor(
     noteDate,
     loanAmount,
     // Same total on both sides — a reduced fee schedule shrinks the numerator
     // AND raises the cap, and F-19's invariant has to survive the reduction.
-    regulationZTotalLoanAmountStandIn(loanAmount, compensation, platformTotal),
+    regulationZTotalLoanAmountStandIn(loanAmount, compensation, platformTotal, schedule),
     {
       loanAmount,
       originationFee,
       points: 0,
-      platformFinanceCharges,
+      platformFinanceCharges: charges,
       compensation,
     },
   );
@@ -213,9 +257,15 @@ export function evaluatePlatformQmFloor(
 // ---------------------------------------------------------------------------
 
 /** The part of the platform schedule that cannot be reduced (vendor charges). */
-export const PLATFORM_NON_REDUCIBLE_TOTAL = PLATFORM_FINANCE_CHARGES
-  .filter(c => !c.reducible)
-  .reduce((sum, c) => sum + c.amount, 0);
+export function platformNonReducibleTotal(
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
+): number {
+  return platformFinanceCharges(schedule)
+    .filter(c => !c.reducible)
+    .reduce((sum, c) => sum + c.amount, 0);
+}
+
+export const PLATFORM_NON_REDUCIBLE_TOTAL = platformNonReducibleTotal();
 
 /**
  * The largest platform finance-charge total that does not put this file over
@@ -231,15 +281,21 @@ export function maxPlatformFinanceChargeTotal(
   noteDate: Date | string,
   loanAmount: number,
   compensation: OriginatorCompensation,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): number | null {
   const fits = (total: number) =>
-    evaluatePlatformQmFloor(noteDate, loanAmount, compensation, [
-      { name: "Platform charges", amount: total },
-    ]).verdict !== "over_cap";
+    evaluatePlatformQmFloor(
+      noteDate,
+      loanAmount,
+      compensation,
+      [{ name: "Platform charges", amount: total }],
+      schedule,
+    ).verdict !== "over_cap";
 
   if (!fits(0)) return null;
-  const standard = Math.floor(PLATFORM_FINANCE_CHARGE_TOTAL);
-  if (fits(standard)) return PLATFORM_FINANCE_CHARGE_TOTAL;
+  const scheduleTotal = platformFinanceChargeTotal(schedule);
+  const standard = Math.floor(scheduleTotal);
+  if (fits(standard)) return scheduleTotal;
 
   let low = 0;
   let high = standard;
@@ -277,10 +333,11 @@ export function resolvePlatformFinanceCharges(
   noteDate: Date | string,
   loanAmount: number,
   compensation: OriginatorCompensation,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): ResolvedPlatformCharges {
-  const standardTotal = PLATFORM_FINANCE_CHARGE_TOTAL;
-  const standard = () => PLATFORM_FINANCE_CHARGES.map(c => ({ ...c }));
-  const budget = maxPlatformFinanceChargeTotal(noteDate, loanAmount, compensation);
+  const standardTotal = platformFinanceChargeTotal(schedule);
+  const standard = () => platformFinanceCharges(schedule);
+  const budget = maxPlatformFinanceChargeTotal(noteDate, loanAmount, compensation, schedule);
 
   // No table for the note year, or compensation alone is over the cap: charge
   // the standard schedule and let the gate speak. Trimming a fee cannot fix a
@@ -292,16 +349,16 @@ export function resolvePlatformFinanceCharges(
     return { charges: standard(), total: standardTotal, standardTotal, reduced: false, originable: true };
   }
 
-  const reducibleBudget = budget - PLATFORM_NON_REDUCIBLE_TOTAL;
+  const reducibleBudget = budget - platformNonReducibleTotal(schedule);
   if (reducibleBudget < 0) {
     // The vendor pass-throughs alone break the cap. Nothing of ours is left to
     // give, so this is not a fee problem either.
     return { charges: standard(), total: standardTotal, standardTotal, reduced: false, originable: false };
   }
 
-  const reducibleStandard = standardTotal - PLATFORM_NON_REDUCIBLE_TOTAL;
+  const reducibleStandard = standardTotal - platformNonReducibleTotal(schedule);
   const scale = reducibleStandard > 0 ? reducibleBudget / reducibleStandard : 0;
-  const charges = PLATFORM_FINANCE_CHARGES.map(charge =>
+  const charges = platformFinanceCharges(schedule).map(charge =>
     charge.reducible
       ? { ...charge, amount: Math.floor(charge.amount * scale) }
       : { ...charge },
@@ -343,9 +400,10 @@ export function evaluateFileQmFloor(
   noteDate: Date | string,
   loanAmount: number,
   compensation: OriginatorCompensation,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): QmFloorEvaluation {
-  const resolved = resolvePlatformFinanceCharges(noteDate, loanAmount, compensation);
-  return evaluatePlatformQmFloor(noteDate, loanAmount, compensation, resolved.charges);
+  const resolved = resolvePlatformFinanceCharges(noteDate, loanAmount, compensation, schedule);
+  return evaluatePlatformQmFloor(noteDate, loanAmount, compensation, resolved.charges, schedule);
 }
 
 /** Upper bound on an electable compensation rate; mirrors the election schema. */
@@ -372,12 +430,15 @@ export function maxElectableCompensationBps(
   noteDate: Date | string,
   loanAmount: number,
   model: CompensationModel,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): number | null {
   for (let bps = MAX_ELECTABLE_COMPENSATION_BPS; bps >= 0; bps--) {
     // Scored against what this file would ACTUALLY be charged — the schedule
     // trims to fit (F-17), so the ceiling must reflect that rather than
     // pretending the full standard fee always applies.
-    if (resolvePlatformFinanceCharges(noteDate, loanAmount, { model, bps }).originable) return bps;
+    if (resolvePlatformFinanceCharges(noteDate, loanAmount, { model, bps }, schedule).originable) {
+      return bps;
+    }
   }
   return null;
 }
@@ -421,6 +482,13 @@ export interface ClosingCostInputs {
    * passes its estimated closing date.
    */
   noteDate?: string | Date | null;
+  /**
+   * The platform's own pricing policy for this file. Defaults to the compiled
+   * baseline; callers that price a real file resolve the ACTIVE published
+   * schedule (services/platformFeeSchedule.ts) and pass it, so re-pricing
+   * never needs a deploy.
+   */
+  feeSchedule?: PlatformFeeSchedule;
 }
 
 export interface ClosingCostStructure {
@@ -526,8 +594,9 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
 
   // §1026.36(d)(2): charge the borrower an origination fee ONLY when the
   // originator takes compensation from nobody else on this transaction.
+  const schedule = input.feeSchedule ?? DEFAULT_PLATFORM_FEE_SCHEDULE;
   const originationFee = borrowerPaidOriginationAllowed(compensation.model)
-    ? loanAmount * ORIGINATION_FEE_RATE
+    ? loanAmount * schedule.originationFeeRate
     : 0;
   const lenderPaidCompensation =
     compensation.model === "lender_paid" ? compensationAmount(loanAmount, compensation) : 0;
@@ -540,6 +609,7 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
     estimatedNoteDate(input.noteDate),
     loanAmount,
     compensation,
+    schedule,
   );
   const platformCharge = (id: PlatformFinanceCharge["id"]) =>
     resolvedPlatform.charges.find(c => c.id === id)?.amount ?? 0;

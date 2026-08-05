@@ -27,6 +27,7 @@ export default defineConfig({
       "tests/borrowerConditionView.test.ts",
       "tests/loCompensation.test.ts",
       "tests/compensationElectionQmGate.test.ts",
+      "tests/platformFeeSchedule.test.ts",
       "tests/feeTolerance.test.ts",
       "tests/rateLockConfirmation.test.ts",
       "tests/leDisclosureBaseline.test.ts",

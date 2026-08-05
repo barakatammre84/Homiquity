@@ -22,6 +22,7 @@ import {
 import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { computeClosingCosts, calculatePMI } from "./loanCosts";
+import { activeFeeSchedule } from "./platformFeeSchedule";
 import { resolveCompensation, type CompensationModel } from "@shared/compliance/loCompensation";
 import { classifyAsset, sumOpenMonthlyLiabilities } from "./decisionEngine";
 import {
@@ -396,6 +397,9 @@ export async function composeScenario(
       : calculatePMI(loanAmount, scenario.purchasePrice, scenario.fico);
 
     const costs = computeClosingCosts({
+      // Same published schedule the Loan Estimate prices from, so a scenario's
+      // cash-to-close still matches the LE for equal inputs.
+      feeSchedule: await activeFeeSchedule(),
       purchasePrice: scenario.purchasePrice,
       downPayment: scenario.downPayment,
       loanAmount,

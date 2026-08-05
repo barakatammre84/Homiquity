@@ -20,7 +20,9 @@ import {
   evaluateFileQmFloor,
   maxElectableCompensationBps,
   MAX_ELECTABLE_COMPENSATION_BPS,
+  type PlatformFeeSchedule,
 } from "../../services/loanCosts";
+import { activeFeeSchedule } from "../../services/platformFeeSchedule";
 import { hasBorrowerConsent } from "../../consentGate";
 import * as creditService from "../../services/creditService";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
@@ -76,6 +78,7 @@ function buildQmPicture(
   loanAmount: number | null,
   closingDate: string | Date | null | undefined,
   election: OriginatorCompensation | null,
+  schedule: PlatformFeeSchedule,
 ): QmPicture {
   if (loanAmount === null || !(loanAmount > 0)) {
     return {
@@ -89,12 +92,12 @@ function buildQmPicture(
 
   const noteDate = estimatedNoteDate(closingDate);
   const scored = election
-    ? evaluateFileQmFloor(noteDate, loanAmount, election)
+    ? evaluateFileQmFloor(noteDate, loanAmount, election, schedule)
     : null;
 
   // A missing threshold table for the note year means the cap is unknown, not
   // that it is satisfied. Probe with a rate that cannot itself breach anything.
-  const probe = evaluateFileQmFloor(noteDate, loanAmount, { model: "lender_paid", bps: 0 });
+  const probe = evaluateFileQmFloor(noteDate, loanAmount, { model: "lender_paid", bps: 0 }, schedule);
   if (probe.verdict === "not_evaluated") {
     return {
       evaluated: false,
@@ -109,8 +112,8 @@ function buildQmPicture(
     evaluated: true,
     loanAmount,
     maxElectableBps: {
-      lender_paid: maxElectableCompensationBps(noteDate, loanAmount, "lender_paid"),
-      borrower_paid: maxElectableCompensationBps(noteDate, loanAmount, "borrower_paid"),
+      lender_paid: maxElectableCompensationBps(noteDate, loanAmount, "lender_paid", schedule),
+      borrower_paid: maxElectableCompensationBps(noteDate, loanAmount, "borrower_paid", schedule),
     },
     election:
       election && scored
@@ -230,7 +233,12 @@ export function registerPricingRoutes(
       // for the note year) must not block: a file can legitimately be priced
       // before a purchase price exists.
       // ---------------------------------------------------------------------
-      const qm = buildQmPicture(loanAmountOf(application), application.closingDate, { model, bps });
+      const qm = buildQmPicture(
+        loanAmountOf(application),
+        application.closingDate,
+        { model, bps },
+        await activeFeeSchedule(),
+      );
 
       if (qm.election?.verdict === "over_cap") {
         const ceiling = qm.maxElectableBps?.[model] ?? null;
@@ -318,6 +326,7 @@ export function registerPricingRoutes(
           loanAmountOf(application),
           application.closingDate,
           resolveCompensation(application.loCompensationModel, application.loCompensationBps),
+          await activeFeeSchedule(),
         ),
       );
     } catch (error) {

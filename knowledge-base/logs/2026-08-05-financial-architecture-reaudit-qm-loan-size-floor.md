@@ -363,6 +363,34 @@ an engineering one**, and so is the fair-lending posture of a formulaic reductio
 amount. Both are recorded in ledger entry `platform-fee-schedule-qm-fit` on a **30-day** review
 interval.
 
+### Follow-on — the levers became operable, not just visible (2026-08-05)
+
+Resolving F-17 in code left both of its inputs still requiring a deploy to move: the fee schedule
+was compile-time constants, and the wholesale comp bands were seed data with no surface. Since
+those are exactly the numbers a lender negotiation changes, they are now admin-editable.
+
+- **`platform_fee_schedules`** (migration `0046`) — **append-only and versioned**. Publishing
+  supersedes the active row and inserts a new one inside one transaction; nothing is ever updated
+  in place, because a fee schedule is a fact about how a file was priced and an issued Loan
+  Estimate has to stay reproducible. A partial unique index makes a concurrent double-publish fail
+  loudly rather than leaving two rows claiming to be current.
+- **No seed row, deliberately.** An empty table means "use the compiled-in baseline"
+  (`DEFAULT_PLATFORM_FEE_SCHEDULE`). Seeding the constants into the table as well would fork the
+  baseline in two places and let them drift.
+- **Purity is preserved.** `services/loanCosts.ts` still reads no global — every function takes
+  the schedule as a *parameter*. `services/platformFeeSchedule.ts` is the one impure edge that
+  reads the published row and hands it in, with a short cache invalidated on publish and a
+  fall back to the baseline if the read fails, so pricing never hard-fails on a config table.
+- **The admin panel previews before it publishes** (`/admin/pricing-policy`). Raising fees does
+  not merely raise revenue — it eats the room compensation needs — so the page shows, per loan
+  size, what would actually be charged, whether our own fees get trimmed, and the resulting comp
+  ceiling. A fee change also cannot be anonymous: a reason is required and the publish is audited.
+- **Wholesale comp bands** were already DB-backed and simply had no surface; they now have one,
+  with the same audit trail.
+
+F-19's invariant is pinned for *any* schedule, not just the default: `tests/platformFeeSchedule.test.ts`
+asserts the numerator and denominator draw on the same total whatever an admin publishes.
+
 **F-17's business levers are therefore spent down to one.** Fees are no longer the constraint at
 any loan size. What remains is the comp-plan ceiling — and that is a negotiation, not a code
 change.

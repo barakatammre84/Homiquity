@@ -368,3 +368,52 @@ export type AnalyticsSnapshot = typeof analyticsSnapshots.$inferSelect;
 // PRE-APPROVAL LETTER GENERATOR (Lender-Grade, Broker-Safe)
 // ============================================================================
 
+
+// ============================================================================
+// Platform fee schedule (audit F-17 / F-19) — admin-editable, append-only
+// ============================================================================
+// The platform's OWN charges were compile-time constants, so re-pricing meant
+// a code change and a deploy. They are also compliance-relevant: they are
+// disclosed on the Loan Estimate and they consume the QM points-and-fees cap
+// alongside originator compensation.
+//
+// So this table is APPEND-ONLY and versioned rather than a mutable settings
+// row. A fee schedule is a fact about how a file was priced at a point in
+// time; overwriting it would make an issued disclosure unreproducible. Publish
+// a new version, supersede the old one, keep both.
+//
+// An EMPTY table is valid and means "use the code defaults"
+// (DEFAULT_PLATFORM_FEE_SCHEDULE in server/services/loanCosts.ts). Nothing is
+// seeded, so the constants stay the documented baseline until an admin
+// deliberately publishes over them.
+export const platformFeeSchedules = pgTable("platform_fee_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  /** Monotonic, 1-based. Unique — two publishes cannot claim one version. */
+  version: integer("version").notNull().unique(),
+  applicationFee: decimal("application_fee", { precision: 10, scale: 2 }).notNull(),
+  underwritingFee: decimal("underwriting_fee", { precision: 10, scale: 2 }).notNull(),
+  /** Vendor pass-through: disclosed here, but never trimmed by the QM fit. */
+  taxServiceFee: decimal("tax_service_fee", { precision: 10, scale: 2 }).notNull(),
+  /** Borrower-paid origination as a FRACTION of the loan amount (0.01 = 1%). */
+  originationFeeRate: decimal("origination_fee_rate", { precision: 6, scale: 5 }).notNull(),
+  effectiveFrom: timestamp("effective_from").notNull().defaultNow(),
+  /** NULL = the currently active schedule. Exactly one row may be NULL. */
+  supersededAt: timestamp("superseded_at"),
+  /** Why this change — a fee change should never be anonymous. */
+  note: text("note"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_platform_fee_schedules_active").on(table.supersededAt),
+]);
+
+export const insertPlatformFeeScheduleSchema = createInsertSchema(platformFeeSchedules).omit({
+  id: true,
+  version: true,
+  effectiveFrom: true,
+  supersededAt: true,
+  createdAt: true,
+});
+
+export type PlatformFeeScheduleRow = typeof platformFeeSchedules.$inferSelect;
+export type InsertPlatformFeeSchedule = z.infer<typeof insertPlatformFeeScheduleSchema>;
