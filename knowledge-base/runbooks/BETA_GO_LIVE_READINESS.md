@@ -60,6 +60,21 @@ Each line is dated and verifiable; nothing below is aspirational.
 | Auth | `/api/auth/providers`: Google live |
 | Repo | private; branch protection + `enforce_admins` with the required `gate` check |
 
+**Pre-flight 2026-08-05 (afternoon):** workflows 1, 2 and 5 were re-driven end-to-end by
+verifier agents against current `main` — the first full pass since 07-12, ~250 PRs later.
+Machinery held everywhere (TRID set-exactly-once, letter refusal seams, dual AUS, package
+hash integrity, full submission status machine, adverse-action chokepoint + watchdog), and
+the run caught four launch-relevant defects, fixed same-day in
+[#392](https://github.com/barakatammre84/Homiquity/pull/392)/[#394](https://github.com/barakatammre84/Homiquity/pull/394)/[#395](https://github.com/barakatammre84/Homiquity/pull/395):
+MISMO U-1 (export now validates clean), missing CDN security headers, the TRID
+address-last trigger blind spot, and the $0 pre-approval letter. **Still open from the
+pre-flight:** the intake instant-decision dead-stop root fix (every fresh intake since
+08-04 needs the staff compensation election before it can decide — honest gap copy shipped,
+pricing decoupling pending), the WF2-F4 loan-type/amortization write path (organic files
+cannot reach wholesale submission), and the adjudicated FCRA §615(a) adverse-action
+chokepoint (fix in flight; simulated-pull denials will refuse). Full traces + ledger:
+[feature-review/WORKFLOWS.md](../feature-review/WORKFLOWS.md).
+
 **Workflow verification record (2026-07-12 walkthrough — last full pass; flip day re-runs
 all of it via [PROD_ACCEPTANCE_TEST.md](PROD_ACCEPTANCE_TEST.md)):** applicant funnel
 end-to-end · borrower post-submission dashboard · beta-LO cockpit claim/work ·

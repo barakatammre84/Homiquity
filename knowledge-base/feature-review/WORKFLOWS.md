@@ -27,11 +27,11 @@ Status ledger:
 
 | # | Workflow | Wiring (audit) | Last run | Verdict |
 |---|---|---|---|---|
-| 1 | Pre-approval / instant decision | FULLY (via cascade, N-002) | 2026-07-12 founder walkthrough (#139) — funnel + dashboard legs only | ✅ partial (LE/APR + letter steps not yet driven by a verifier) |
-| 2 | Intake → AUS → lender package → wholesale submission | FULLY — AUS UI trigger + re-wired Submit-to-lender shipped in #135 (was PARTIAL, F-003) | 2026-07-12 founder walkthrough (#139) | ✅ pass (incl. claim/handoff + DU/LPA + hashed MISMO package) |
+| 1 | Pre-approval / instant decision | FULLY (via cascade, N-002) | **2026-08-05 verifier — all 8 steps incl. LE/APR + letter (first time)** | ❌ FAIL → same-day fixes: WF1-003 $0 letter + WF1-004 TRID address-last shipped (#395); WF1-002 intake decision dead-stop (post-1967dff compensation election) surfaced honestly in #395, root fix (pricing decoupling) open. Gates (TRID set-once, letter refusal seams, consent-gated LE, Appendix J APR) all held |
+| 2 | Intake → AUS → lender package → wholesale submission | FULLY — AUS UI trigger + re-wired Submit-to-lender shipped in #135 (was PARTIAL, F-003) | **2026-08-05 verifier — full run incl. status machine to funded** | ✅ pass-with-findings — machinery sound (dual AUS, package hash == download, full transition table, audit chain); **WF2-F4 OPEN: `preferredLoanType`/`amortizationType` have no product write path** (only the demo seed sets them — organic files can never submit); WF2-F5 status-machine has no UI; TRID blind spot fixed #395 |
 | 3 | GSE loan-delivery readiness | FULLY — F-018/F-019 fixed; remaining XSD baseline tracked as L6-fix/U-1 | — | not yet run |
 | 4 | Document upload → extraction → qualification | FULLY | 2026-07-12 founder walkthrough (#139) | ✅ pass (presigned-only, magic-byte check, cross-borrower 403) |
-| 5 | Credit consent → pull → denial → adverse action | FULLY — generation is a blocking deny-seam chokepoint (was PARTIAL, F-004) | 2026-07-12 founder walkthrough (#139) | ✅ pass (never auto-denies; denial blocked without a compliant notice) |
+| 5 | Credit consent → pull → denial → adverse action | FULLY — generation is a blocking deny-seam chokepoint (was PARTIAL, F-004) | **2026-08-05 verifier — all legs: consent evidence, audit chain (5 events verified), both deny seams, borrower read, PDF, mail delivery, 30-day watchdog + de-dup** | ✅ pass-with-findings — every gate held; **WF5-F2 adjudicated CONFIRMED-DEFECT (FCRA §615(a)): auto-generated notices never carry consumer-report attribution even with a completed pull on file** — three-branch chokepoint fix in flight (simulated pull ⇒ denial refuses) |
 | 6 | Verification-driven provenance promotion | FULLY (via cascade) | — | not yet run |
 | 7 | Lifecycle / evergreen re-engagement | PARTIAL — lifecycle sweep is cron-only | — | not yet run |
 | + | Analytics feedback loop (outcomes → predictive) | WIRED — `loanOutcomes` writers wired in #136 (was BROKEN, F-002) | — | not yet run |
@@ -95,7 +95,7 @@ Status ledger:
 
 ## 5. Credit consent → pull → denial → adverse action
 
-1. **[gate]** Credit pull refused with no FCRA consent (403 with the consent-required shape).
+1. **[gate]** Credit pull refused with no FCRA consent — live contract is **HTTP 400** `{"error":"Valid consent required before credit pull"}` with no machine code field (server/routes/compliance.ts; the `CONSENT_REQUIRED` 403 convention used elsewhere does not apply here — WF5-F1, convergence optional).
 2. Record consent (versioned template `FCRA-2025-v2`, IP/UA evidence) → pull allowed.
 3. Soft pull (simulated adapter / MCP `run_soft_credit_pull`) → hash-chained `creditAuditLog`
    entry; chain verifies.
