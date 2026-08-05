@@ -24,6 +24,7 @@ export default defineConfig({
       "tests/vercelDeploymentGuard.test.ts",
       "tests/migrationLedgerGuard.test.ts",
       "tests/securityReviewGuard.test.ts",
+      "tests/dependabotReactGrouping.test.ts",
       "tests/loCommsLint.test.ts",
       "tests/borrowerConditionView.test.ts",
       "tests/loCompensation.test.ts",

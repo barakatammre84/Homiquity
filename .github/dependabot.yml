@@ -10,8 +10,28 @@ updates:
       day: "monday"
     open-pull-requests-limit: 5
     groups:
+      # ORDER IS LOAD-BEARING. Dependabot puts a dependency in the FIRST group whose
+      # patterns AND update-types both match. `minor-and-patch` has no `patterns`, so
+      # it matches everything — but only for minor/patch. A MAJOR therefore falls
+      # through to the groups below. Do not move `react` above this one, or React
+      # minor/patch updates stop riding in the combined PR.
       minor-and-patch:
         update-types: ["minor", "patch"]
+      # React and its @types move as ONE unit, on any update type.
+      #
+      # #301 is why. Dependabot opened "bump react, react-dom and @types/react" for the
+      # 18 -> 19 major and left `@types/react-dom` at ^18.3.7, because nothing declares
+      # that the two @types packages must move together. @types/react-dom@18 peers on
+      # @types/react@^18, so the tree was internally inconsistent the moment it landed:
+      # pnpm resolved it, `tsc` passed (skipLibCheck hides the mismatch), and the gate
+      # went green on a lockfile that could not be right. It took a hand-authored bump
+      # of @types/react-dom to 19 to repair.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
     ignore:
       # typescript 7 is the native Go port. Vercel's Node builder loads the
       # project's own compiler through the legacy CommonJS API (ts.sys.readFile),
