@@ -2,94 +2,33 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { SEOHead } from "@/components/SEOHead";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Search,
-  DollarSign,
-  MapPin,
-  Star,
-  Filter,
-  PiggyBank,
-  Building2,
-  Users,
-  Info,
-  ArrowRight,
-  Bot,
-} from "lucide-react";
+import { ArrowRight, Bot, Filter, Info, PiggyBank, Search } from "lucide-react";
 import { Link } from "wouter";
 import { US_STATES as US_STATE_OPTIONS } from "@/lib/us-states";
-import { LICENSED_STATES, unlicensedStateMessage } from "@shared/companyIdentity";
-
-interface DpaProgram {
-  id: string;
-  name: string;
-  programType: string;
-  state: string | null;
-  description: string;
-  assistanceType: string;
-  maxAssistanceAmount: string | null;
-  maxAssistancePercent: string | null;
-  minCreditScore: number | null;
-  maxIncome: string | null;
-  maxHomePrice: string | null;
-  firstTimeBuyerOnly: boolean;
-  eligibilityNotes: string | null;
-  applicationUrl: string | null;
-  isActive: boolean;
-}
+import { unlicensedStateMessage } from "@shared/companyIdentity";
+import { clearedFilters, defaultFilters, type DpaProgram } from "./downPaymentWizard/types";
+import { buildDpaEndpoint, isUnlicensedStateSelected } from "./downPaymentWizard/query";
+import { ProgramCard } from "./downPaymentWizard/ProgramCard";
 
 const US_STATES = [
   { value: "all", label: "All States" },
   ...US_STATE_OPTIONS,
 ];
 
-function ProgramTypeBadge({ type }: { type: string }) {
-  const styles: Record<string, string> = {
-    grant: "bg-success/10 text-success-subtle-foreground",
-    forgivable_loan: "bg-info/10 text-info",
-    deferred_loan: "bg-primary/10 text-primary",
-    second_mortgage: "bg-warning/10 text-warning-subtle-foreground",
-    matched_savings: "bg-primary/10 text-primary",
-  };
-  const labels: Record<string, string> = {
-    grant: "Grant",
-    forgivable_loan: "Forgivable Loan",
-    deferred_loan: "Deferred Loan",
-    second_mortgage: "2nd Mortgage",
-    matched_savings: "Matched Savings",
-  };
-  return <Badge variant="secondary" className={styles[type] || ""}>{labels[type] || type}</Badge>;
-}
-
-
 
 export default function DownPaymentWizard() {
-  // Defaults to Illinois — the directory's actual coverage — not "all".
-  const [filters, setFilters] = useState({
-    state: "IL",
-    firstTimeBuyer: "all",
-    minCreditScore: "",
-  });
+  const [filters, setFilters] = useState(defaultFilters);
 
-  const queryParams = new URLSearchParams();
-  if (filters.state !== "all") queryParams.set("state", filters.state);
-  if (filters.firstTimeBuyer === "yes") queryParams.set("firstTimeBuyer", "true");
-  if (filters.minCreditScore) queryParams.set("minCreditScore", filters.minCreditScore);
+  const unlicensedStateSelected = isUnlicensedStateSelected(filters);
+  const endpoint = buildDpaEndpoint(filters);
 
-  // Shown whenever a concrete state outside the licensed footprint is selected,
-  // regardless of result count — the notice must stay correct even if the
-  // directory ever gains rows for that state.
-  const unlicensedStateSelected =
-    filters.state !== "all" && !(LICENSED_STATES as readonly string[]).includes(filters.state);
-
-  const queryString = queryParams.toString();
-  const endpoint = `/api/dpa-programs${queryString ? `?${queryString}` : ""}`;
-  const { data: programs = [], isLoading } = useQuery<DpaProgram[]>({
+  const { data: programs = [], isLoading, isError, error, refetch } = useQuery<DpaProgram[]>({
     queryKey: [endpoint],
   });
 
@@ -184,7 +123,11 @@ export default function DownPaymentWizard() {
 
       <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
         <p className="text-sm text-muted-foreground" data-testid="text-result-count">
-          {isLoading ? "Loading..." : `${activePrograms.length} program${activePrograms.length !== 1 ? "s" : ""} found`}
+          {isLoading
+            ? "Loading..."
+            : isError
+              ? "Couldn't load programs"
+              : `${activePrograms.length} program${activePrograms.length !== 1 ? "s" : ""} found`}
         </p>
         <p className="text-xs text-muted-foreground" data-testid="text-coverage-note">
           Our directory currently lists Illinois programs — IHDA statewide, City of Chicago, and Cook County — verified
@@ -205,6 +148,16 @@ export default function DownPaymentWizard() {
 
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}</div>
+      ) : isError ? (
+        // The empty state below makes a confident claim about directory
+        // coverage ("we don't yet have entries for other states"). On a failed
+        // load that sentence is simply false, so show the failure (ux-01).
+        <QueryErrorState
+          error={error}
+          onRetry={() => void refetch()}
+          title="We couldn't load assistance programs"
+          data-testid="dpa-programs-error"
+        />
       ) : activePrograms.length === 0 ? (
         <Card data-testid="card-no-results">
           <CardContent className="py-8 text-center">
@@ -215,7 +168,7 @@ export default function DownPaymentWizard() {
               other states. Your state's housing finance agency or a HUD-approved housing counselor can point you to
               local programs.
             </p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => setFilters({ state: "all", firstTimeBuyer: "all", minCreditScore: "" })} data-testid="button-clear-filters">
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => setFilters(clearedFilters())} data-testid="button-clear-filters">
               Clear All Filters
             </Button>
           </CardContent>
@@ -223,57 +176,7 @@ export default function DownPaymentWizard() {
       ) : (
         <div className="space-y-3" data-testid="programs-list">
           {activePrograms.map((program) => (
-            <Card key={program.id} className="hover-elevate" data-testid={`card-program-${program.id}`}>
-              <CardContent className="py-4">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <h3 className="text-sm font-semibold text-foreground">{program.name}</h3>
-                      <ProgramTypeBadge type={program.assistanceType} />
-                      <Badge variant="outline" className="text-[10px]">{program.programType}</Badge>
-                      {program.firstTimeBuyerOnly && (
-                        <Badge variant="outline" className="text-[10px] border-border/30 text-success-subtle-foreground">
-                          <Users className="h-3 w-3 mr-0.5" /> First-Time Only
-                        </Badge>
-                      )}
-                    </div>
-                    {program.description && (
-                      <p className="text-xs text-muted-foreground mb-2">{program.description}</p>
-                    )}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                      {(program.maxAssistancePercent || program.maxAssistanceAmount) && (
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          Up to {program.maxAssistancePercent ? `${program.maxAssistancePercent}%` : `$${Number(program.maxAssistanceAmount).toLocaleString()}`}
-                        </span>
-                      )}
-                      {program.state ? (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> {program.state}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> Nationwide
-                        </span>
-                      )}
-                      {program.minCreditScore && (
-                        <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3" /> Min {program.minCreditScore} credit
-                        </span>
-                      )}
-                      {program.maxIncome && (
-                        <span className="flex items-center gap-1">
-                          <Building2 className="h-3 w-3" /> Income limit: ${Number(program.maxIncome).toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                    {program.eligibilityNotes && (
-                      <p className="text-[10px] text-muted-foreground mt-2 italic">{program.eligibilityNotes}</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <ProgramCard key={program.id} program={program} />
           ))}
         </div>
       )}
