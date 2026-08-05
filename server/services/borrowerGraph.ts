@@ -369,7 +369,9 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     if (doc.notes) {
       try {
         const lineage = JSON.parse(doc.notes as string);
-        if (lineage.confidence && lineage.confidence !== "low") {
+        // Enum-validated for the same reason as the coach read site: JSON.parse
+        // yields `any`, and a pre-0046 row may still hold borrower text here.
+        if (lineage.confidence === "high" || lineage.confidence === "medium") {
           docStatus.hasExtractedData = true;
         }
       } catch (err) {
@@ -380,10 +382,11 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     extractedDocs.push(docStatus);
   }
 
-  // Derived tax insights (tax_insights table) — unlike the notes JSON above,
-  // this is where the extraction route actually persists income values, so it
-  // is the path that lights up the passport for a self-uploaded tax return.
-  // Skip if the notes path already produced a tax-return source (no double count).
+  // Derived tax insights (tax_insights table) — this is where the extraction
+  // route actually persists income VALUES, and since F-027 removed the
+  // notes-parsing branches above it is the ONLY tier-1 document income path.
+  // The guard below is now vacuously true (nothing else produces a tax-return
+  // source); kept as a cheap double-count guard should another producer land.
   if (!incomeSources.some((s) => s.type === "tax_return_agi" || s.type === "tax_return_gross")) {
     try {
       const insights = await storage.getTaxInsightsByUser(userId);

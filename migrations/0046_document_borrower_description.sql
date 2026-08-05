@@ -36,13 +36,28 @@
 --   * Nullable by construction, so no existing row can violate it.
 --   * IF NOT EXISTS makes a re-run a no-op.
 --
--- NOT backfilled, deliberately. Historical rows keep whatever is in `notes`.
--- Copying it across would be guesswork: for the three auto-extracted types an
--- extractor has already overwritten the borrower's text with real lineage, and
--- there is no way to tell a legacy description from a legacy forged blob after
--- the fact. A null here is an honest "we don't know"; a guessed value would
--- falsify a provenance record. Auditing historical `notes` for planted
--- value-bearing JSON is tracked separately as a data check, not a migration.
+-- NOT backfilled in THIS migration, deliberately — but a cleanup is owed, and
+-- it is decidable. An earlier draft of this header claimed legacy borrower text
+-- and legacy forged blobs are indistinguishable after the fact; the security
+-- review of this change corrected that, and the correction matters:
+--
+--   Every extraction writer also creates a confidence record via
+--   recordCoarseExtraction (server/services/documentConfidence.ts), and every
+--   one of them emits an `extractedAt` key. So a `notes` value with no matching
+--   extraction-confidence record and/or no `extractedAt` is decidably NOT
+--   server-written.
+--
+-- The safe cleanup is therefore to MOVE such values to borrower_description (or
+-- null them) — never to invent a value. That removes a possibly-falsified
+-- provenance value rather than fabricating one, which is the conservative
+-- direction and does not violate the never-backfill-a-guess rule in
+-- DB_MIGRATIONS.md.
+--
+-- It is not done here because sizing it needs a read-only prod probe first
+-- (NEON_API_KEY is write-only in GitHub, so that runs through CI, not a
+-- laptop). Tracked as a data check with its own finding id. Note 6 of the 9
+-- borrower-selectable document types never trigger an extractor, so rows of
+-- those types still hold raw borrower text in `notes` today.
 
 ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "borrower_description" text;--> statement-breakpoint
 COMMENT ON COLUMN "documents"."borrower_description" IS 'Borrower-authored free text from the upload dialog. UNTRUSTED INPUT: never parse as extraction output. documents.notes is server-written extraction lineage only (F-027).';

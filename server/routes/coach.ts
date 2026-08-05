@@ -13,6 +13,13 @@ import {
 import { pickActiveLoanApplication } from "@shared/schema";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
+
+/**
+ * The only values `documents.notes.confidence` may take. Anything a legacy row
+ * carries that is not on this list is discarded rather than passed through to
+ * the coach prompt — see the read site below (F-027 follow-up).
+ */
+const EXTRACTION_CONFIDENCE_LEVELS: readonly string[] = ["high", "medium", "low"];
 import { routeParam } from "../http/routeParams";
 
 const messageSchema = z.object({
@@ -85,7 +92,16 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
         if (d.notes) {
           try {
             const lineage = JSON.parse(d.notes as string);
-            if (lineage.confidence) extractionConfidence = lineage.confidence;
+            // Validate against the enum, do NOT trust the parsed value. JSON.parse
+            // returns `any`, so the declared "high" | "medium" | "low" type above is
+            // not enforced at runtime — and coachingContext interpolates this string
+            // VERBATIM into a prompt that carries live tool access. Checking only
+            // that the *key* exists (as the first cut of this fix did) leaves the
+            // *value* attacker-controlled on any pre-0046 row, where borrower text
+            // could still be sitting in `notes`. Anything off-enum is dropped.
+            if (EXTRACTION_CONFIDENCE_LEVELS.includes(lineage.confidence)) {
+              extractionConfidence = lineage.confidence;
+            }
           } catch {
             // notes is not valid JSON, skip
           }

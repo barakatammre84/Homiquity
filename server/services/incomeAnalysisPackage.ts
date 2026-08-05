@@ -50,20 +50,30 @@ const NON_QM_PATH_IDS = new Set(["dscr", "bank_statement"]);
 function documentEntry(doc: Document): IncomePackageDocumentEntry {
   // Extraction lineage lives on the document's notes JSON (P2a persists
   // modelId/promptVersion/responseHash there) plus the dedicated hash column.
+  //
+  // `extractionResponseHash` is a real column only the server writes, so it is
+  // the trust anchor: lineage is read out of `notes` ONLY when that column is
+  // populated, which proves an extractor actually ran on this document. Before
+  // F-027 closed the write side, a borrower could put arbitrary JSON in `notes`
+  // (it was the same column their upload description landed in), and this
+  // function would promote it into `wasMachineRead: true` plus a `contentHash`
+  // on an entry hard-labelled "machine-read; human-confirmed" — inside a
+  // manifest sent to a wholesale lender. Pre-0046 rows can still carry such a
+  // blob, so anchoring on the column keeps a forged one out of a third-party
+  // package rather than relying on the write-side fix alone.
   let modelId: string | null = null;
   let promptVersion: string | null = null;
-  let responseHash: string | null = doc.extractionResponseHash ?? null;
-  if (doc.notes) {
+  const responseHash: string | null = doc.extractionResponseHash ?? null;
+  if (doc.notes && responseHash) {
     try {
-      const n = JSON.parse(doc.notes) as { modelId?: string; promptVersion?: string; responseHash?: string };
+      const n = JSON.parse(doc.notes) as { modelId?: string; promptVersion?: string };
       modelId = n.modelId ?? null;
       promptVersion = n.promptVersion ?? null;
-      responseHash = responseHash ?? n.responseHash ?? null;
     } catch {
       // notes isn't always JSON — lineage stays null, never throws.
     }
   }
-  const wasMachineRead = !!(modelId || promptVersion || responseHash);
+  const wasMachineRead = !!responseHash;
   return {
     documentId: doc.id,
     fileName: doc.fileName,
