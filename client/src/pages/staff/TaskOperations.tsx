@@ -34,6 +34,7 @@ import { formatTimeRemaining } from "@/lib/formatters";
 import { ROLE_LABELS } from "./taskOperations/model";
 import { MetricsCard } from "./taskOperations/MetricsCard";
 import { SlaHeatmap } from "./taskOperations/SlaHeatmap";
+import { slaBadgeClass } from "./taskOperations/slaClassBadge";
 import { TaskTable } from "./taskOperations/TaskTable";
 import { useTaskOperations } from "./taskOperations/useTaskOperations";
 
@@ -170,7 +171,7 @@ export default function TaskOperations() {
                     <div className="flex items-center gap-2">
                       <Badge
                         variant="outline"
-                        className={`bg-${sla.colorCode}-500/10 text-${sla.colorCode}-600 border-${sla.colorCode}-500/20`}
+                        className={slaBadgeClass(sla.colorCode)}
                       >
                         {sla.slaClass}
                       </Badge>
