@@ -18,7 +18,7 @@ Status ledger (updated by the orchestrator after each run):
 | # | Domain | Last reviewed | Result |
 |---|---|---|---|
 | 1 | Public funnel, acquisition & education | 2026-08-05 | public-funnel-01/02 (P2) fixed `cef2890` + 1 refuted (ApprovalStrength SEO half) — see FINDINGS.md |
-| 2 | Application & intake | — | not yet run |
+| 2 | Application & intake | 2026-08-05 | **intake-01 P0 (TRID clock dead on standard journey)** + intake-02/03 P2 + intake-04 P3 — all confirmed, none fixed yet. compliance-auditor CONFIRMED-VIOLATION on TRID with a fix-placement pitfall noted. See FINDINGS.md |
 | 3 | AI Coach, documents & extraction | — | not yet run |
 | 4 | Verification & credit | — | not yet run |
 | 5 | Underwriting & decisioning | — | not yet run |
@@ -30,7 +30,7 @@ Status ledger (updated by the orchestrator after each run):
 | 11 | Staff, partner & pipeline ops | — | not yet run |
 | 12 | Property, listings & homeowner | — | not yet run |
 | 13 | Security, PII & platform cross-cutting | — | not yet run |
-| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domain 1 surfaces only) | ux-06 (P2) fixed `ba7706a`; all Domain 1 P2s now closed + 2 unverified P3 candidates (LearningCenter no-CTA, FunnelChrome raw `<a>` tags) + 1 refuted (FAQ dead-end) — see FINDINGS.md; remaining domains 2–13 surfaces not yet run |
+| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domains 1–2 surfaces) | Domain 1: ux-06 (P2) fixed `ba7706a` + 2 unverified P3 candidates + 1 refuted (FAQ dead-end). Domain 2: ux-07/08/09/11 (P2) + ux-10/12 (P3) confirmed, none fixed; ux-11 blocked on U-8 (HMDA reg-text access) — see FINDINGS.md; remaining domains 3–13 surfaces not yet run |
 
 ---
 
