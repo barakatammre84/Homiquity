@@ -117,6 +117,16 @@ jobs:
         # PR. (Job `name:` above deliberately unchanged — verbatim required-check
         # string; see the rename warning.)
         run: pnpm guard:tokens
+      - name: Knowledge-base index guard
+        # "An unindexed doc is an unread doc" (TEAM_PRACTICES). Fails on a
+        # knowledge-base/*.md missing from the index, or an index link pointing at a
+        # path that does not exist. Deterministic — it reads only repo contents, which
+        # is why it belongs in the required gate while its sibling doc-freshness guard
+        # does NOT: that one goes overdue on a calendar date and would block every
+        # merge in the repo for a reason no PR caused. See doc-freshness.yml.
+        # (Job `name:` above deliberately unchanged — verbatim required-check string;
+        # see the rename warning.)
+        run: pnpm guard:kb
       - name: Security-review guard (TEAM_PRACTICES §9)
         # Fails when the PR touches a §9 trigger (PII vault/encryption, auth/sessions,
         # role gates, uploads, outbound messaging, PII-adjacent logging) and the PR body
