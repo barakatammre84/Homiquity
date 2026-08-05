@@ -30,11 +30,18 @@ PR touches shared/schema/**
         │
         ▼
   migrate-prod job (.github/workflows/ci.yml, on: push to main)
+    pnpm guard:migrations          →  ledger pre-flight; aborts with prod untouched
     node scripts/migrate-prod.cjs  →  applies pending migrations to PROD (Neon DIRECT url)
 ```
 
 - **Author-time gate:** [`scripts/schema-migration-guard.cjs`](../../scripts/schema-migration-guard.cjs)
   fails if a column declared in `shared/schema/*.ts` appears in no `migrations/*.sql`.
+- **Ledger integrity:** [`scripts/migration-ledger-guard.cjs`](../../scripts/migration-ledger-guard.cjs)
+  fails on a duplicate `idx` or `tag`, a gap in the `0..N-1` run, a journal entry with no `.sql`,
+  an un-journalled `.sql`, or a filename whose number disagrees with its `idx`. It runs in **both**
+  jobs deliberately: in `gate` for author feedback, and again as the first step of `migrate-prod`
+  — because `gate` is `if: pull_request`, so nothing else ever validates the ledger on the push
+  that actually triggers an apply.
 - **Deploy-time apply:** [`scripts/migrate-prod.cjs`](../../scripts/migrate-prod.cjs) applies pending
   migrations over a plain `pg` client (NOT the Neon serverless pool — that has the pooler gotcha).
   Idempotent: a no-op when nothing is pending, safe to re-run on every merge.
