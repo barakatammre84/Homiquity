@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { usePlaidLink, type PlaidLinkOnSuccess } from "react-plaid-link";
@@ -105,11 +105,19 @@ export function PlaidLinkButton({
     }
   };
 
-  // Auto-open when link token is ready
-  if (linkToken && ready && !isLoading) {
-    setIsLoading(true);
-    open();
-  }
+  // Auto-open when the link token is ready.
+  //
+  // This used to run in the render body, calling setIsLoading() and open()
+  // during render. open() is a side effect: React is free to discard a render
+  // and re-run it, and StrictMode renders twice in development, so the Plaid
+  // modal could be launched for a render that never commits — or launched
+  // twice. Same condition, now after commit, where effects belong.
+  useEffect(() => {
+    if (linkToken && ready && !isLoading) {
+      setIsLoading(true);
+      open();
+    }
+  }, [linkToken, ready, isLoading, open]);
 
   return (
     <Button
