@@ -87,12 +87,22 @@ notice). All six verified live then, shipped as PRs #135–#139.
 
 `[GATE]` = regulatory · `[DECISION]` = your call · `[ENV/OPS]` = configuration · `[FACT]` = information only you have.
 
-- [ ] **0. `[OPS]` 🔴 Unfreeze deployments — do this first, launch or not.** Upgrade the
-  Vercel account to **Pro**, then **Redeploy** latest `main` from the dashboard once
-  (quota-refused merges never deploy themselves). Pro is independently required: the
-  Hobby plan's fair-use terms bar commercial use, and today proved its build quota can't
-  carry this repo's merge cadence. The launch flip (item 7) is impossible while frozen —
-  it requires a fresh build.
+- [ ] **0. `[OPS]` 🔴 Create the Railway service — the platform decision changed
+  (2026-08-05 evening).** After the deploy freeze, the decision is to **migrate off
+  Vercel to Railway before the flip** (approved plan; engineering phases are landing
+  as PRs). Do NOT buy Vercel Pro. Your part: create a Railway account (Hobby, ~$5/mo),
+  create a project **from the GitHub repo** (build `pnpm install --frozen-lockfile &&
+  pnpm build`, start `pnpm start`, health check path `/api/health`, single replica),
+  paste the production env vars (same list as item 1 below, plus
+  `DATABASE_URL` = the Neon **pooled** string, `SESSION_SECRET`,
+  `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`, `NODE_ENV=production`,
+  `ANTHROPIC_API_KEY`, `CRON_SECRET`, `APP_BASE_URL=https://www.homiquity.com`,
+  `VITE_PRELAUNCH_GATED` per gate posture), add the `CRON_SECRET` **GitHub repo
+  secret** (same value — the new scheduler workflow needs it), and add both custom
+  domains in Railway (DNS switches later, after the verification battery passes).
+  Vercel stays live untouched as the fallback during the transition — its 24h freeze
+  self-expires and deploys resume meanwhile; decommissioning is the last step of the
+  migration plan, not now.
 - [ ] **1. `[ENV]` LS-2 ops env in Vercel (production scope).** GCS
   (`GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` — else
   uploads correctly 503) · `SENDGRID_API_KEY` + `FROM_EMAIL` + SPF/DKIM DNS ·
