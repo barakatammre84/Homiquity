@@ -232,7 +232,17 @@ export const adverseActions = pgTable("adverse_actions", {
   
   // FCRA Compliance
   noticeDate: timestamp("notice_date").notNull(), // Date notice was generated
-  fcraCompliant: boolean("fcra_compliant").default(true),
+  // Whether the adverse action was based in whole or in part on a consumer
+  // report (15 U.S.C. §1681m(a)) — the trigger for ALL §615(a) notice content.
+  // Nullable with NO default: rows written before this column existed cannot
+  // have their basis reconstructed, and a backfilled guess on a compliance
+  // record would be a falsified record. NULL = unknown/pre-fix; new rows always
+  // carry an explicit value (server/services/creditAdverseActions.ts).
+  basedOnConsumerReport: boolean("based_on_consumer_report"),
+  // COMPUTED per notice by computeFcraCompliant() — asserts "this notice
+  // contains every §615(a) disclosure applicable to the facts of this action".
+  // Never stamped true unconditionally and never given a DB default (WF5-F2).
+  fcraCompliant: boolean("fcra_compliant"),
   
   // Staff Actions
   generatedBy: varchar("generated_by").references(() => users.id),
