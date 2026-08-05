@@ -32,7 +32,7 @@ const PAGES = join(REPO_ROOT, "client", "src", "pages");
  * Pages that both (a) render an empty/zero state derived from query data and
  * (b) have no error branch. Lower this as pages are converted — never raise it.
  */
-const BASELINE_UNGUARDED = 11;
+const BASELINE_UNGUARDED = 10;
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
