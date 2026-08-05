@@ -1,104 +1,153 @@
 # Beta Go-Live Readiness
 
-**Snapshot: 2026-07-12** — founder walkthrough of the gated live beta (invite-link).
-Point-in-time state; update as PRs merge and decisions land. The binding launch-gate
-checklist is [PROD_ACCEPTANCE_TEST.md](PROD_ACCEPTANCE_TEST.md) — this doc is the
-readiness summary that feeds it.
+**Snapshot: 2026-08-05** — full launch-runway refresh (supersedes the 2026-07-12 founder
+walkthrough snapshot; its verification record is preserved in §2). Point-in-time state;
+update as PRs merge and decisions land. The binding launch-gate checklist is
+[PROD_ACCEPTANCE_TEST.md](PROD_ACCEPTANCE_TEST.md) — this doc is the readiness summary
+that feeds it, and §3 is the single current founder checklist (it replaces the
+contradictory copies that had accumulated across the roadmap and older snapshots).
 
-**Bottom line:** the core beta journeys are verified and working end-to-end. Nothing in
-the code blocks the demo path today. Go-live is gated on operational config (env, storage,
-migrations) plus **one** regulatory decision — flipping the pre-license gate so real humans
-can submit an application, which needs the issued NMLS id and counsel sign-off.
-
-Verified live against the worktree dev server (`:5002`). All findings are now **merged to
-`main` and deployed to prod (2026-07-12)** — PRs #135–#138 (this snapshot itself shipped as
-#139). Current prod = `dpl_ApJzgcLUuf2mJZUTG2hoHBeBVC19` **READY**, `GET /api/health` → 200;
-see the [CICD ledger](CICD.md) row for the per-PR deploy evidence.
+**Bottom line:** the company is **licensed** (NMLS #427468, Illinois), the site is **live
+on homiquity.com**, and the platform is mechanically ready — but the site still renders
+the **gated Waitlist** because the founder env flip has never happened. Between today and
+an open funnel: one **immediate ops blocker** (Vercel deploy freeze — §3 item 0), one
+**regulatory gate** (counsel sign-off — [LAUNCH_COUNSEL_PACKET.md](../compliance/LAUNCH_COUNSEL_PACKET.md)),
+one **env block** (LS-2), and two **facts only the founder holds** (business mailing
+address, IL license number). Real *loans* (vs. a real open site) additionally need the
+vendor contracts in §3 item 6 — start that paperwork now; lead time runs in parallel.
 
 ---
 
-## 1. Workflows verified live
+## 1. What changed since the 2026-07-12 snapshot
 
-Each was driven step-by-step against the running app, including the negative "must-refuse"
-gates. Two required a code fix (shipped in §2).
+Each line is dated and verifiable; nothing below is aspirational.
 
-| Workflow | Status | Notes |
-|---|---|---|
-| Applicant funnel — apply end to end | ✅ verified | 13 steps render + accept input; autosave; Reg-Z-safe disclosures throughout (soft-pull, broker role, "not a commitment to lend", FCRA authorization, Equal Housing / NMLS Consumer Access). Deferred-submit is localStorage-only — `A1` follow-up. |
-| Borrower post-submission dashboard | ✅ verified | Status, 7-step journey tracker, next-step CTA, 30-day pre-approval validity. Homeowner Hub correctly gated to files with a funded loan. |
-| Beta-LO cockpit — receive & work a file | ✅ verified + fixed | Intake inbox → **Claim** puts a self-serve file on the LO's desk with atomic access + queue visibility (fixed the handoff gap). |
-| Wholesale-lender push — terminal step | ✅ verified + fixed | Submit to lender → run DU/LPA → `lender_submissions` row with a hashed, staff-only MISMO 3.4 package + confirmation id. Re-wired the "Submit to lender" action the LO-1 cockpit rewrite had dropped. |
-| Document upload → extraction | ✅ verified | Presigned-only; magic-byte content check rejects spoofed files; cross-borrower download 403; extraction never auto-verifies and encrypts the raw model response; fails loud (503) in prod if storage is unconfigured. |
-| Credit consent → denial → adverse action | ✅ verified | Pull refused without FCRA consent; intake **never auto-denies** (ECOA locus); a denial is **blocked unless a compliant adverse-action notice generates** (§1002.9 + FCRA §615); borrower reads the notice; staff mails the PDF; 30-day watchdog de-dups. Closes `F-004`. |
+- **Licensed** — PR #154 (2026-07-13) set company **NMLS #427468** in
+  `shared/companyIdentity.ts`; `companyNmlsDisplay()` renders it site-wide. The
+  "pre-license" framing of the old checklist is obsolete: solicitation is no longer
+  barred by licensure, only by the un-flipped gate and the open counsel items.
+- **Domain cutover done** (2026-07-13) — prod serves `https://www.homiquity.com`
+  (`homiquity.com` 308s to www). The old checklist listed this as pending.
+- **Broker channel declared** (F-14, `shared/businessChannel.ts`:
+  `BUSINESS_CHANNEL = "broker"`) — **`mersOrgId` is closed as N/A**: MERS registration
+  and GSE delivery are the wholesale lender's obligations; `server/config/company.ts`
+  resolves `NOT_APPLICABLE_BROKER_CHANNEL`, and the seller/servicer delivery stack is
+  frozen behind a guard. Do not resurrect this item.
+- **Adverse action is wired, not deferred** — a denial is blocked unless a compliant
+  §1002.9 / FCRA §615 notice generates; staff card delivers/mails the PDF; 30-day
+  watchdog de-dups (F-004 closed; see §2 table).
+- **MISMO XSD baseline shrank 9 → 2** (2026-08-05, roadmap L6-fix) — the remaining pair
+  is the U-1 escalation (AUS data-point names pending ULDD data-dictionary confirmation).
+- **Launch hygiene** — PR #388 (2026-08-05): the public site's contact channels were a
+  fake vanity number and five unprovisioned mailboxes (including the **TCPA STOP** and
+  **privacy-rights** channels in Terms/Privacy) — now rendered from `COMPANY_IDENTITY`;
+  the Disclosures complaints card pointed at the **New York DFS** — now IDFPR; the SEO
+  prerender advertised `/rates*` metadata to bots while humans were redirected — it now
+  honors the prelaunch gate (waitlist-safe copy + noindex).
+- **🔴 Vercel deploy freeze** (2026-08-05 ~17:20 UTC) — the day's merge train exhausted
+  the **Hobby-tier** build quota. Merges #385 and #388 produced **no production
+  deployment at all** (not an error state — the deployment is simply never created);
+  prod serves #386. Quota-refused pushes never self-deploy later. See §3 item 0.
 
-## 2. Ships merged & deployed — 2026-07-12 (each = prod deploy)
+## 2. Verified state — probed 2026-08-05
 
-Merged in order **#135 → #136 → #138 → #137 → #139** (all squash commits); prod is healthy
-(`/api/health` 200). #137/#138's individual deploys auto-CANCELED — superseded within seconds
-by the next merge in the rapid-succession train — so their content reached prod via the #139
-deploy, which is now current prod. No migration (HEAD stays `0023`).
+| Check | Result |
+|---|---|
+| Prod deploy | `READY`, target production, serving `f7e0f5e` (#386) — **two merges behind `main`** (#385, #388) due to the deploy freeze |
+| Gate posture | `/` renders the **Waitlist** ("Launching Soon") — `VITE_PRELAUNCH_GATED` unset ⇒ prod default GATED. Server gate is **open by design** post-licensure (`prelaunchGate.ts` fail-safe keys to `isCompanyNmlsPending()`); set `PRELAUNCH_GATED=true` explicitly if API-side closure is wanted pre-flip |
+| `GET /api/health` | 200 — but **5.5–7.4 s cold starts measured** (Neon scale-to-zero + function cold boot); see §3 item 4 |
+| Prod DB migrations | CI `migrate-prod` dry-run: **"up to date — no pending migrations"** (journal 47 entries, 0000–0046). Note #385's migration applied while its deploy was frozen — safe because expand-only (append-only table the serving code ignores) |
+| Auth | `/api/auth/providers`: Google live |
+| Repo | private; branch protection + `enforce_admins` with the required `gate` check |
 
-| PR | Summary | Prod deploy |
-|---|---|---|
-| [#135](https://github.com/barakatammre84/MortgageStream/pull/135) | Money path — intake pool/claim + handoff, Run-DU/LPA button, XSD conformance recording, demo seed, re-wired Submit-to-lender action. §9-reviewed (net-positive — closes an IDOR). | `dpl_5CEDU…` READY |
-| [#136](https://github.com/barakatammre84/MortgageStream/pull/136) | Project `passwordHash` out of `/admin/users` (F-007); wire the `loanOutcomes` writers so dashboards stop rendering off an empty table (F-002). | `dpl_HEjwh…` READY |
-| [#138](https://github.com/barakatammre84/MortgageStream/pull/138) | Hard-block LO "approval guaranteed" messages (Reg N §1014.3(q)), clause-scoped negation guard, cite fix, + scrub of the one existing prohibited message. Compliance-auditor validated. | via #139 (own deploy superseded) |
-| [#137](https://github.com/barakatammre84/MortgageStream/pull/137) | Borrower predictive insights — UDAAP-safe: drop the closing-odds % and single "days to funding" from the borrower surface (qualitative outlook + typical range + disclaimer). Compliance-auditor validated. | via #139 (own deploy superseded) |
-| [#139](https://github.com/barakatammre84/MortgageStream/pull/139) | This readiness snapshot. | `dpl_ApJzg…` READY = current prod |
+**Workflow verification record (2026-07-12 walkthrough — last full pass; flip day re-runs
+all of it via [PROD_ACCEPTANCE_TEST.md](PROD_ACCEPTANCE_TEST.md)):** applicant funnel
+end-to-end · borrower post-submission dashboard · beta-LO cockpit claim/work ·
+wholesale-lender push to `lender_submissions` with hashed MISMO 3.4 package · document
+upload → extraction (presigned-only, magic-byte checks, cross-borrower 403) · credit
+consent → denial → adverse action (never auto-denies; denial blocked without a compliant
+notice). All six verified live then, shipped as PRs #135–#139.
 
-## 3. Go-live checklist (founder actions)
+## 3. Go-live checklist (founder actions) — THE current list
 
-These are founder actions — prod env, credentials, counsel. `[GATE]` = regulatory;
-`[DECISION]` = your call; `[ENV/OPS]` = configuration.
+`[GATE]` = regulatory · `[DECISION]` = your call · `[ENV/OPS]` = configuration · `[FACT]` = information only you have.
 
-- [ ] `[GATE]` **Pre-license gate flip** — the only thing between an invited human and
-  submitting an application. Set the issued `nmlsId` + `mersOrgId` in
-  `shared/companyIdentity.ts`, then `PRELAUNCH_GATED=false` + `VITE_PRELAUNCH_GATED=false`,
-  with counsel sign-off on the BUILD-1 deviation. Until this, LO surfaces + the lender demo
-  work; only applicant-submit is gated. (Do **not** invent an NMLS number.)
-- [ ] `[DECISION]` **Credit-vendor mode** — recommend leaving `CREDIT_VENDOR_MODE` **unset**:
-  real credit pulls refuse (no bureau contract yet) rather than deciding on fabricated
-  scores. `=simulation` fabricates bureau data — not appropriate for real applicants.
-- [ ] `[DECISION]` **Document-extraction mode** — set an Anthropic key (`ANTHROPIC_API_KEY`) **or**
-  `EXTRACTION_SIMULATE=true`. Without either, uploads still succeed and reach the LO, but
-  AI extraction returns empty. `EXTRACTION_SIMULATE=true` is the clean demo choice.
-- [ ] `[ENV]` **Invite gate** — set `BETA_ACCESS_CODE`; confirm the `/?beta=<code>` → cookie
-  → lock-screen flow on the deployed env.
-- [ ] `[ENV]` **Object storage** — `GCS_SERVICE_ACCOUNT_KEY` + `PRIVATE_OBJECT_DIR` +
-  `PUBLIC_OBJECT_SEARCH_PATHS`, else uploads correctly 503.
-- [ ] `[ENV]` **Boot-required + ops secrets** — `DATABASE_URL`, `CREDIT_ENCRYPTION_KEY`,
-  `PII_HASH_SALT`, `SESSION_SECRET`, `NODE_ENV=production`; plus `SENDGRID_API_KEY`
-  (+SPF/DKIM), `SENTRY_DSN`, `CRON_SECRET` for the daily jobs.
-- [ ] `[OPS]` **Prod DB migrations reconciled** — run the CI `migrate-prod` workflow with
-  `dry_run: true` (Actions → CI → Run workflow) and confirm "up to date — no pending
-  migrations"; journal drift reconciles via `markMigrationsApplied.ts`, never a hand-apply
-  ([DB_MIGRATIONS.md](./DB_MIGRATIONS.md) — the old raw-pg recipe is retired). These four
-  PRs add no migration.
-- [ ] `[OPS]` **Provision beta LO accounts** — admin-assign the staff role (never
-  self-registered), then the LO can claim from the intake inbox.
-- [ ] `[OPS]` **Adverse-action delivery discipline** — if the beta denies anyone, staff
-  must deliver the notice within 30 days (ECOA §1002.9); the watchdog raises reminders.
+- [ ] **0. `[OPS]` 🔴 Unfreeze deployments — do this first, launch or not.** Upgrade the
+  Vercel account to **Pro**, then **Redeploy** latest `main` from the dashboard once
+  (quota-refused merges never deploy themselves). Pro is independently required: the
+  Hobby plan's fair-use terms bar commercial use, and today proved its build quota can't
+  carry this repo's merge cadence. The launch flip (item 7) is impossible while frozen —
+  it requires a fresh build.
+- [ ] **1. `[ENV]` LS-2 ops env in Vercel (production scope).** GCS
+  (`GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` — else
+  uploads correctly 503) · `SENDGRID_API_KEY` + `FROM_EMAIL` + SPF/DKIM DNS ·
+  `SENTRY_DSN` + an uptime monitor on `/api/health` · `CRON_SECRET` (the four
+  `vercel.json` crons no-op without it — including **adverse-action delivery watch**) ·
+  `APP_BASE_URL=https://www.homiquity.com`. Verify the **Environments column per-var**
+  (the 2026-07-16 outage lesson) — and note the boot secrets (`DATABASE_URL`,
+  `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`, `SESSION_SECRET`) can only be confirmed in
+  the dashboard; the API surface doesn't list env vars.
+- [ ] **2. `[FACT]` Hand two values to engineering.** (a) The **business mailing
+  address** — ECOA adverse-action notices require the creditor's name *and address*, and
+  the Disclosures page currently says "available on request"; counsel flags this as
+  resolve-before-un-gating. (b) The **Illinois license number** (IDFPR) for
+  `LICENSED_STATE_DETAILS` — the State Licensing card shows the license name with no
+  number. Also decide: keep `support@homiquity.com` as the single public mailbox
+  (current state after #388), or create dedicated `privacy@` / `compliance@` aliases —
+  if created, engineering splits them back out (one-line changes).
+- [ ] **3. `[GATE]` Counsel sign-off** on the four flip-blocking asks in
+  [LAUNCH_COUNSEL_PACKET.md](../compliance/LAUNCH_COUNSEL_PACKET.md) (priced public
+  calculators + apply CTAs; adverse-action wording + creditor address; denial-reason
+  specificity; Reg N cite confirmations). The packet is sendable as-is and deliberately
+  excludes every parked-feature counsel item.
+- [ ] **4. `[OPS]` Security & account batch** (~1 hour, one sitting): the 2FA checklist
+  in [PLAID_SECURITY_QUESTIONNAIRE_ANSWERS.md](../governance/security/PLAID_SECURITY_QUESTIONNAIRE_ANSWERS.md) §1
+  (all nine consoles are still ⬜) · delete the `GEMINI_API_KEY` Vercel var **and**
+  revoke the key at Google AI Studio (deleting ≠ revoking) · the two Neon Console
+  clicks in [NEON_PREVIEW_DB.md](NEON_PREVIEW_DB.md) §3 (until then, previews still
+  clone prod PII) · **pin prod Neon compute / disable scale-to-zero** (5.5–7.4 s cold
+  starts measured on the live domain today — a lender demo or first borrower of the
+  morning eats that) · optionally drop the legacy `mortgage-stream.vercel.app` domain
+  alias (cosmetic).
+- [ ] **5. `[DECISION]` Launch-shape decisions.** Beta posture — recommended: set
+  `BETA_ACCESS_CODE` and open invite-only first (the
+  [ARMED_LAUNCH_CHARTER](../governance/ARMED_LAUNCH_CHARTER_2026-07-07.md) §9 sequence;
+  deleting the code later = public launch, no rebuild needed) · `CSP_ENFORCE` — enforce
+  or keep Report-Only, record the choice · document extraction — `ANTHROPIC_API_KEY` is
+  live in prod, so extraction is real; nothing to do unless you prefer
+  `EXTRACTION_SIMULATE=true` · `CREDIT_VENDOR_MODE` stays **unset** (prod refuses to
+  fabricate credit — correct until F3) · provision beta LO accounts (admin-assigned,
+  never self-registered).
+- [ ] **6. `[BIZ]` Start vendor paperwork now — lead time runs parallel to everything
+  above.** F3 credit-bureau reseller (until signed, no real pre-approvals — pulls
+  refuse by design) · F6 DU/LPA access · F4 Plaid production keys (mid-clearance) ·
+  **Target-5 wholesale broker agreements** — the hard dependency for real lender
+  submission (LS-10 slice 3); re-verify all five are still wholesale-broker-friendly
+  and NMLS-active per the 2026-07-04 shortlist before signing.
+- [ ] **7. `[GATE]` The flip, in order** (only after 0–3 are green): set
+  `BETA_ACCESS_CODE` → set `PRELAUNCH_GATED=false` **and** `VITE_PRELAUNCH_GATED=false`
+  → **redeploy** (the VITE flag is compiled into the build; a runtime-only change does
+  nothing) → run [PROD_ACCEPTANCE_TEST.md](PROD_ACCEPTANCE_TEST.md) top to bottom, every
+  ⛔ green → sign-off table + [CICD ledger](CICD.md) row → invite beta users → when
+  ready for public: delete `BETA_ACCESS_CODE` (middleware becomes a no-op — site public,
+  no rebuild).
 
-## 4. Honest limitations
+## 4. Honest limitations (unchanged by launch)
 
-Deliberate simulated adapters — correct for a demo and for MVP (vendors stay simulated until
-contracts exist), but material before real loans ride on this.
+Deliberate simulated adapters — correct for an invite beta, material before real loans.
 
-- **Wholesale-lender push is simulated** — generates a real, hashed, compliant MISMO package
-  and a simulated confirmation, but transmits nothing. No broker agreements are signed (all 5
-  lenders are "target"). A real loan doesn't reach a portal until agreements + the portal
-  adapter exist.
-- **AUS (DU/LPA) and credit pulls are simulated** — deterministic simulations behind clean
-  adapter seams. Real findings need the live vendor contracts.
-- **MISMO generator XSD-conformance gap** — the package records ~11 non-conformant elements
-  (`L6 / F-025`). Non-blocking for a demo; before **real** lender delivery these need
-  MISMO-data-dictionary-confirmed fixes (element names must not be guessed — compliance rule).
+- **Wholesale-lender push is simulated** — real, hashed, compliant MISMO package; nothing
+  transmits. Unblocked only by signed broker agreements + the portal adapter (LS-10
+  slice 3).
+- **Credit and AUS are simulated** (and prod credit pulls **refuse** rather than
+  simulate — hardened again in #386/F-037). Real findings need F3/F6 contracts.
+- **MISMO XSD baseline = 2 remaining violations** (U-1: AUS data-point names await ULDD
+  data-dictionary confirmation — never guessed, per the compliance rule).
 
 ## 5. For counsel
 
-- **Pre-license flip & the BUILD-1 deviation** — taking real applications pre-license, and
-  the public priced calculators / apply CTAs on the pre-license surface, need counsel
-  ratification before the gate flips.
-- **Comms-lint citation confirmation** — confirm the collateral Reg N cites verbatim
-  (`no-fees §1014.3(f)→(c)`; `government (m),(n)→(n)`); the auditor endorsed keeping
-  government-affiliation as a warning (VA/FHA have truthful forms). Not changed in this pass.
+All flip-blocking legal asks live in
+[LAUNCH_COUNSEL_PACKET.md](../compliance/LAUNCH_COUNSEL_PACKET.md) — question, current
+implementation, and source references for each. Parked-feature counsel items (halal
+lane, PartnerHub consent/RESPA, IVES/§7216, verified-funds letters) are deliberately
+excluded there and tracked in their own program docs.
