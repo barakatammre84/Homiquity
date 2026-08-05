@@ -33,6 +33,13 @@ interface KycStatus {
   sanctionsStatus?: string;
   pepStatus?: string;
   adverseMediaStatus?: string;
+  /**
+   * The server's own explanation of a pending_review outcome ("Screening checks
+   * submitted. Awaiting compliance staff review before clearance."). It has always
+   * been returned by /api/onboarding/status and was simply missing from this
+   * interface, so nothing ever rendered it (ux-19).
+   */
+  screeningNotes?: string;
 }
 
 interface OnboardingStatus {
@@ -59,6 +66,11 @@ function getCheckStatusIcon(status: string) {
       return <CheckCircle2 className="h-4 w-4 text-success-subtle-foreground" />;
     case "in_progress":
     case "pending":
+    // The state EVERY completed screening lands in — simulateKycScreening always
+    // finishes by writing pending_review to all four checks and to overallStatus.
+    // It used to fall through to the default grey CircleDot, i.e. the same glyph
+    // as "not started", so a finished screening looked untouched (ux-19).
+    case "pending_review":
       return <Clock className="h-4 w-4 text-warning-subtle-foreground" />;
     case "flagged":
       return <AlertTriangle className="h-4 w-4 text-warning-subtle-foreground" />;
@@ -76,6 +88,9 @@ function getStatusBadge(status: string) {
     passed: { variant: "default", label: "Passed" },
     verified: { variant: "default", label: "Verified" },
     cleared: { variant: "default", label: "Cleared" },
+    // Without this the fallback below rendered the raw column value — a borrower
+    // saw the literal string "pending_review" in four badges (ux-19).
+    pending_review: { variant: "outline", label: "With our compliance team" },
     failed: { variant: "destructive", label: "Failed" },
     flagged: { variant: "destructive", label: "Flagged" },
     expired: { variant: "secondary", label: "Expired" },
@@ -298,6 +313,30 @@ function KYCAMLStatus({ kyc, applicationId }: { kyc: KycStatus | null; applicati
         <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span>Screening in progress...</span>
+        </div>
+      ) : kyc.overallStatus === "pending_review" ? (
+        // The outcome of EVERY completed screening. This branch did not exist, so
+        // the borrower was left with four grey "not started"-looking checks, a
+        // 5-second poll running forever, and no copy at all — after a toast
+        // promising the whole thing takes about ten seconds (ux-19).
+        <div
+          className="mt-4 rounded-md bg-warning-subtle p-3 text-sm text-warning-subtle-foreground"
+          data-testid="text-kyc-pending-review"
+        >
+          <p className="font-medium">Your checks are submitted.</p>
+          <p className="mt-1">
+            {/* screeningNotes was already on the wire and simply never rendered. */}
+            {/*
+              No completion promise here on purpose. Nothing in the codebase can
+              currently move a screening from pending_review to cleared — the only
+              writer of overallStatus is the simulator, and the staff workflow the
+              server's own comment defers to does not exist yet (F-044). Telling a
+              borrower "we'll let you know as soon as it's done" would be a promise
+              the system has no mechanism to keep.
+            */}
+            {kyc.screeningNotes ??
+              "Our compliance team reviews these before clearance. Nothing else is needed from you right now."}
+          </p>
         </div>
       ) : null}
     </div>

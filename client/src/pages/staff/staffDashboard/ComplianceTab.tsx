@@ -31,6 +31,7 @@ import {
   type RetentionReport,
   coApplicantNames,
 } from "./model";
+import { KycReviewQueue } from "./KycReviewQueue";
 
 /**
  * Compliance tab (extracted from StaffDashboard.tsx): GSE/ULDD/QM readiness
@@ -116,6 +117,10 @@ export function ComplianceTab({ complianceData }: { complianceData: ComplianceDa
           </CardContent>
         </Card>
       </div>
+
+      {/* Sits above the per-loan overview because it is the only blocking queue on
+          this tab: a borrower parked at pending_review cannot progress at all. */}
+      <KycReviewQueue />
 
       <Card>
         <CardHeader>

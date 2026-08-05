@@ -494,10 +494,25 @@ export async function runPreUnderwriting(
       )
       .orderBy(desc(verificationReports.completedAt))
       .limit(1),
+    // Fabricated tradelines must not drive borrower-facing output in production
+    // (F-037). This selected the latest completed pull with no `isSimulated`
+    // predicate, so simulated liabilities flowed into derivePreUnderwritingFlags —
+    // which persists flags, materializes conditions and notifies the borrower.
+    // `isSimulated` exists precisely so a real pull is distinguishable from an
+    // invented one; outside production we still consume simulated pulls, because
+    // that is the whole point of the simulation in dev and preview.
     db
       .select({ liabilities: creditPulls.liabilities })
       .from(creditPulls)
-      .where(and(eq(creditPulls.applicationId, applicationId), eq(creditPulls.status, "completed")))
+      .where(
+        and(
+          eq(creditPulls.applicationId, applicationId),
+          eq(creditPulls.status, "completed"),
+          ...(process.env.NODE_ENV === "production"
+            ? [eq(creditPulls.isSimulated, false)]
+            : []),
+        ),
+      )
       .orderBy(desc(creditPulls.completedAt))
       .limit(1),
     storage.getUrlaPropertyInfo(applicationId),

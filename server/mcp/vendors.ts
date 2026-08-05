@@ -75,6 +75,25 @@ export async function softPullCredit(
     );
   }
 
+  // Refuse to fabricate bureau data in production (F-037). This is the SECOND
+  // credit-simulation entrance; creditPulls.simulateCreditPullCompletion has had
+  // this guard all along and this one did not, so the guard set was asymmetric:
+  // with no vendor key set — which is the actual state, since no contract exists —
+  // the branch above cannot fire, and this adapter happily returned invented
+  // scores and tradelines under any NODE_ENV. Those persist through
+  // recordExternalSoftPull as a completed pull and reach preUnderwriting.
+  //
+  // Deliberately the same escape hatch and the same message shape as the sibling
+  // guard, so there is one thing to remember rather than two.
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.CREDIT_VENDOR_MODE !== "simulation"
+  ) {
+    throw new Error(
+      "Simulated credit pulls are disabled in production. Set CREDIT_VENDOR_MODE=simulation to explicitly allow fabricated bureau data in non-live environments.",
+    );
+  }
+
   const seed = `${firstName}|${lastName}|${address}`.toLowerCase();
   const base = 620 + Math.round(seeded(seed) * 190); // 620-810
   const jitter = (n: number) => Math.round((seeded(seed + n) - 0.5) * 24);
