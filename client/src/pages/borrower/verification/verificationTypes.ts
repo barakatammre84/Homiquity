@@ -68,8 +68,20 @@ export interface VerificationProgress {
   allRequiredComplete: boolean;
 }
 
+/**
+ * Progress against the REQUIRED verifications only.
+ *
+ * The count is filtered by type, not just by status. Counting every verified
+ * record let the two optional verifications (income, assets) satisfy a total
+ * of two required ones: a borrower who connected their bank for assets and
+ * payroll for income — and had done neither employment nor identity — was told
+ * "2 of 2 required verifications complete" under an "All Required Complete"
+ * badge, while both required checks were still outstanding.
+ */
 export function verificationProgress(verifications: Verification[] | undefined): VerificationProgress {
-  const completedCount = (verifications || []).filter(v => v.status === "verified").length;
+  const completedCount = (verifications || []).filter(
+    v => v.status === "verified" && REQUIRED_VERIFICATION_TYPES.has(v.verificationType),
+  ).length;
   const totalRequired = REQUIRED_VERIFICATION_TYPES.size;
   return { completedCount, totalRequired, allRequiredComplete: completedCount >= totalRequired };
 }
