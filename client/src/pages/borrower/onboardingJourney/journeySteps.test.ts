@@ -165,16 +165,38 @@ describe("summariseJourney", () => {
     expect(summariseJourney(steps).nextStep!.id).toBe("documents");
   });
 
-  it("PINNED: a self-employed borrower can never reach 100%", () => {
-    // tax_docs and bank_statements hardcode complete: false because
-    // /api/onboarding/status reports no per-document-category progress. This
-    // is the known gap documented at the top of journeySteps.ts — the test
-    // exists so it stays visible, not because the behaviour is desirable. If
-    // the endpoint ever starts reporting document categories, this test
-    // should fail and be deleted along with the hardcoded flags.
+  it("a self-employed borrower reaches 100% once their documents are accepted", () => {
+    // Previously impossible: tax_docs and bank_statements hardcoded
+    // complete:false, so this journey capped below 100% forever and "Up Next"
+    // parked permanently on Tax Documentation.
     const s = summariseJourney(
       getJourneySteps(
-        { ...fullyDone(), borrowerType: "self_employed" },
+        {
+          ...fullyDone(),
+          borrowerType: "self_employed",
+          documentProgress: {
+            tax_return: { requested: 2, completed: 2 },
+            bank_statement: { requested: 1, completed: 1 },
+          },
+        },
+        consents({ eDisclosureGiven: true, creditConsentGiven: true }),
+      ),
+    );
+    expect(s.progressPercent).toBe(100);
+    expect(s.nextStep).toBeUndefined();
+  });
+
+  it("holds a self-employed borrower short of 100% while a document is outstanding", () => {
+    const s = summariseJourney(
+      getJourneySteps(
+        {
+          ...fullyDone(),
+          borrowerType: "self_employed",
+          documentProgress: {
+            tax_return: { requested: 2, completed: 1 },
+            bank_statement: { requested: 1, completed: 1 },
+          },
+        },
         consents({ eDisclosureGiven: true, creditConsentGiven: true }),
       ),
     );
@@ -182,19 +204,46 @@ describe("summariseJourney", () => {
     expect(s.nextStep!.id).toBe("tax_docs");
   });
 
-  it("PINNED: non-QM and first-time-buyer paths cap below 100% too", () => {
-    const cap = (borrowerType: string) =>
+  it("a non-QM borrower reaches 100% on documents plus an assets verification", () => {
+    const nonQm = (over: Partial<OnboardingStatus>) =>
       summariseJourney(
         getJourneySteps(
-          { ...fullyDone(), borrowerType },
+          {
+            ...fullyDone(),
+            borrowerType: "non_qm",
+            documentProgress: { bank_statement: { requested: 1, completed: 1 } },
+            ...over,
+          },
           consents({ eDisclosureGiven: true, creditConsentGiven: true }),
         ),
-      ).progressPercent;
-    expect(cap("non_qm")).toBeLessThan(100);
-    // The first-time-buyer shortfall is the two optional education steps, so
-    // it is far less serious — but it still shows as an unfinished journey.
-    expect(cap("first_time_buyer")).toBeLessThan(100);
-    expect(cap("standard")).toBe(100);
+      );
+
+    // Assets not verified yet -> asset_review still outstanding.
+    expect(nonQm({}).progressPercent).toBeLessThan(100);
+    expect(nonQm({}).nextStep!.id).toBe("asset_review");
+
+    expect(nonQm({
+      verifications: [
+        { verificationType: "identity", status: "verified" },
+        { verificationType: "assets", status: "verified" },
+      ],
+    }).progressPercent).toBe(100);
+  });
+
+  it("a first-time buyer reaches 100% without the two optional steps", () => {
+    // education has no completion data anywhere in the schema and
+    // affordability depends on the borrower choosing to run a calculator.
+    // Neither belongs in the denominator, and education used to make the
+    // shortfall permanent.
+    const s = summariseJourney(
+      getJourneySteps(
+        { ...fullyDone(), borrowerType: "first_time_buyer" },
+        consents({ eDisclosureGiven: true, creditConsentGiven: true }),
+      ),
+    );
+    expect(s.progressPercent).toBe(100);
+    // ...but the optional steps are still offered as something to do next.
+    expect(s.nextStep!.id).toBe("education");
   });
 
   it("rounds the percentage to a whole number", () => {

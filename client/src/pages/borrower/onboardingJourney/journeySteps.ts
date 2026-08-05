@@ -1,25 +1,22 @@
 /**
  * Journey-step derivation for the borrower onboarding page.
  *
- * Extracted verbatim from OnboardingJourney.tsx. Pure — takes the
- * /api/onboarding/status payload plus the two consent checks and returns the
- * ordered step list the page renders. No clock, no I/O.
+ * Pure — takes the /api/onboarding/status payload plus the two consent checks
+ * and returns the ordered step list the page renders. No clock, no I/O.
  *
- * KNOWN GAP (partial ux-07 fix). Six of these steps hardcode `complete: false`
- * because /api/onboarding/status carries nothing that could answer them:
- * education, affordability, tax_docs, bank_statements, alt_docs, asset_review.
- * The handler in server/routes/borrower/onboarding.ts returns profile, kba,
- * kyc, verifications, borrowerType and the latest application — verifications
- * are typed records (the page reads verificationType === "identity"), not
- * per-document-category completion, so there is no client-side fix.
+ * Every step that can be answered now is. The document steps (tax_docs,
+ * bank_statements, alt_docs) read the per-category task counts the status
+ * endpoint reports; asset_review reads the assets verification record;
+ * affordability reads whether the borrower has saved an affordability
+ * calculation. All five used to hardcode `complete: false`, which is why a
+ * self-employed or non-QM borrower could never reach 100% and "Up Next" parked
+ * permanently on Tax Documentation / Alternative Documentation — the same
+ * ux-07 failure the e_consent/credit_consent wiring fixed for those two steps.
  *
- * The consequence is real and is pinned by tests below: a self-employed or
- * non-QM borrower can never reach 100%, and once the shared steps are done
- * "Up Next" parks permanently on Tax Documentation / Alternative
- * Documentation. That is the same failure the e_consent/credit_consent wiring
- * fixed for those two steps; closing it for the rest needs the status endpoint
- * to report document-category progress. Left honest and pinned rather than
- * papered over with a guessed `complete: true`.
+ * ONE STEP STILL HAS NO BACKING DATA: `education` ("Homebuyer Education").
+ * Nothing in the schema records course completion, and inventing a value would
+ * be worse than leaving it open. It is optional, and summariseJourney counts
+ * required steps only, so it no longer caps anyone's progress.
  */
 
 import {
@@ -36,6 +33,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { areCategoriesSatisfied, type DocumentProgress } from "@shared/onboardingDocumentProgress";
 
 export interface OnboardingStatus {
   profile: Record<string, unknown> | null;
@@ -45,7 +43,26 @@ export interface OnboardingStatus {
   borrowerType: string;
   applicationId: string | null;
   applicationStatus: string | null;
+  /** Per-document-category request/completion counts; absent on older payloads. */
+  documentProgress?: DocumentProgress;
+  /** Calculator types this borrower has saved a result from. */
+  calculatorTypesUsed?: string[];
 }
+
+/**
+ * Document categories each journey step is asking for.
+ *
+ * These are `tasks.document_category` values (tax_return, pay_stub,
+ * bank_statement, w2, id, other). alt_docs asks for "bank statements, asset
+ * docs, or alternative income proof" but the taxonomy has no distinct
+ * asset-document category, so it keys off bank_statement — the one it names
+ * first and the one processors actually raise for non-QM files.
+ */
+export const STEP_DOCUMENT_CATEGORIES = {
+  tax_docs: ["tax_return"],
+  bank_statements: ["bank_statement"],
+  alt_docs: ["bank_statement"],
+} as const;
 
 export interface JourneyStep {
   id: string;
@@ -102,6 +119,10 @@ export function getJourneySteps(
   const kycCleared = status.kyc?.overallStatus === "cleared";
   const hasApp = !!status.applicationId;
   const docsVerified = status.verifications?.some(v => v.verificationType === "identity" && v.status === "verified");
+  const assetsVerified = status.verifications?.some(v => v.verificationType === "assets" && v.status === "verified") ?? false;
+  const usedAffordability = status.calculatorTypesUsed?.includes("affordability") ?? false;
+  const docs = (step: keyof typeof STEP_DOCUMENT_CATEGORIES) =>
+    areCategoriesSatisfied(status.documentProgress, STEP_DOCUMENT_CATEGORIES[step]);
 
   const baseSteps: JourneyStep[] = [
     {
@@ -174,7 +195,7 @@ export function getJourneySteps(
         description: "See what price range fits your budget",
         icon: Calculator,
         href: "/calculators/affordability",
-        complete: false,
+        complete: usedAffordability,
         active: true,
         required: false,
       }
@@ -189,7 +210,7 @@ export function getJourneySteps(
         description: "2 years of personal and business tax returns, plus P&L",
         icon: DollarSign,
         href: "/documents",
-        complete: false,
+        complete: docs("tax_docs"),
         active: hasApp && identityVerified,
         required: true,
       },
@@ -199,7 +220,7 @@ export function getJourneySteps(
         description: "12-24 months of personal and business statements",
         icon: Briefcase,
         href: "/documents",
-        complete: false,
+        complete: docs("bank_statements"),
         active: hasApp && identityVerified,
         required: true,
       }
@@ -214,7 +235,7 @@ export function getJourneySteps(
         description: "Bank statements, asset docs, or alternative income proof",
         icon: FileText,
         href: "/documents",
-        complete: false,
+        complete: docs("alt_docs"),
         active: hasApp && identityVerified,
         required: true,
       },
@@ -224,7 +245,7 @@ export function getJourneySteps(
         description: "We review your assets against non-QM qualification guidelines",
         icon: DollarSign,
         href: "/verification",
-        complete: false,
+        complete: assetsVerified,
         active: hasApp && identityVerified,
         required: true,
       }
@@ -258,17 +279,33 @@ export function getJourneySteps(
 }
 
 export interface JourneySummary {
+  /** Completed REQUIRED steps — the numerator behind progressPercent. */
   completedCount: number;
+  /** Required steps in this borrower's journey. */
+  requiredCount: number;
   progressPercent: number;
   nextStep: JourneyStep | undefined;
 }
 
-/** Progress figures and the "Up Next" card's target, derived from the steps. */
+/**
+ * Progress figures and the "Up Next" card's target.
+ *
+ * Progress is measured over REQUIRED steps only. The optional ones are already
+ * badged "Optional" in the timeline, so counting them in the denominator meant
+ * a borrower who had finished everything the file actually needs still saw an
+ * unfinished journey — and for `education`, which has no completion data at
+ * all, that shortfall was permanent.
+ *
+ * "Up Next" still considers every step, optional included: an optional step is
+ * a reasonable thing to suggest next, it just must not gate the percentage.
+ */
 export function summariseJourney(steps: JourneyStep[]): JourneySummary {
-  const completedCount = steps.filter(s => s.complete).length;
+  const required = steps.filter(s => s.required);
+  const completedCount = required.filter(s => s.complete).length;
   return {
     completedCount,
-    progressPercent: Math.round((completedCount / steps.length) * 100),
+    requiredCount: required.length,
+    progressPercent: required.length === 0 ? 0 : Math.round((completedCount / required.length) * 100),
     nextStep: steps.find(s => !s.complete && s.active),
   };
 }

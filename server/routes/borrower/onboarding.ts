@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { firstQueryValue } from "../queryParams";
 import { routeParam } from "../../http/routeParams";
+import { summariseDocumentTasks } from "@shared/onboardingDocumentProgress";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -95,12 +96,13 @@ export function registerOnboardingRoutes(
     try {
       const userId = req.user!.id;
 
-      const [profile, kbaSessions, kycScreenings, verificationRecords, applications] = await Promise.all([
+      const [profile, kbaSessions, kycScreenings, verificationRecords, applications, calculatorResults] = await Promise.all([
         storage.getOnboardingProfileByUser(userId),
         storage.getKbaSessionsByUser(userId),
         storage.getKycScreeningsByUser(userId),
         storage.getVerificationsByUser(userId),
         storage.getLoanApplicationsByUser(userId),
+        storage.getCalculatorResultsByUser(userId),
       ]);
 
       const latestKba = kbaSessions[0];
@@ -108,6 +110,14 @@ export function registerOnboardingRoutes(
       const latestApp = applications[0];
 
       const borrowerType = detectBorrowerType(latestApp);
+
+      // Per-category document progress for the journey page's document steps
+      // (tax returns, bank statements, alternative documentation). Without it
+      // those steps hardcoded complete:false and a self-employed or non-QM
+      // borrower could never show a finished journey. Only fetched when there
+      // is an application to fetch tasks for.
+      const tasks = latestApp ? await storage.getTasksByApplication(latestApp.id) : [];
+      const documentProgress = summariseDocumentTasks(tasks);
 
       res.json({
         profile: profile || null,
@@ -117,6 +127,11 @@ export function registerOnboardingRoutes(
         borrowerType,
         applicationId: latestApp?.id || null,
         applicationStatus: latestApp?.status || null,
+        documentProgress,
+        // Which calculators this borrower has saved a result from — the
+        // journey's optional "Check Affordability" step reads this rather than
+        // being permanently incomplete.
+        calculatorTypesUsed: Array.from(new Set(calculatorResults.map(r => r.calculatorType))),
       });
     } catch (error) {
       console.error("Get onboarding status error:", error);
