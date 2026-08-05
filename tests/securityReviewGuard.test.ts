@@ -1,4 +1,7 @@
 import { describe, it, expect } from "vitest";
+import { writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {
   detectTriggers,
@@ -194,5 +197,63 @@ describe("CLI: empty vs unset CHANGED_FILES", () => {
     const got = run({ CHANGED_FILES: "README.md\npackage.json" });
     expect(got.code).toBe(0);
     expect(got.out).toMatch(/no §9 trigger among 2 changed file\(s\)/);
+  });
+
+  // A `git diff -U0` bigger than Linux's MAX_ARG_STRLEN (131,072 bytes — the
+  // per-STRING environment cap) makes execve fail with E2BIG, so the step dies as
+  // "pnpm: Argument list too long" and the guard never runs. That surfaced on a
+  // real PR at 137,761 bytes: a misleading infra failure reported AFTER every
+  // substantive check in the gate had already passed. ci.yml now hands both inputs
+  // over as files; these pin that path so the fix cannot silently regress.
+  describe("oversized diffs arrive via *_FILE instead of the environment", () => {
+    const tmp = (name: string, body: string) => {
+      const p = join(tmpdir(), `secguard-${process.pid}-${name}`);
+      writeFileSync(p, body);
+      return p;
+    };
+
+    it("reads CHANGED_FILES_FILE, including past the env per-string limit", () => {
+      // 200k of padding — comfortably over MAX_ARG_STRLEN, so this content could
+      // not have been passed inline at all.
+      const padding = Array.from({ length: 4000 }, (_, i) => `docs/pad-${i}.md`).join("\n");
+      const got = run({
+        CHANGED_FILES_FILE: tmp("files.txt", `README.md\n${padding}`),
+      });
+      expect(got.code).toBe(0);
+      expect(got.out).toMatch(/no §9 trigger among 4001 changed file\(s\)/);
+    });
+
+    it("reads CHANGED_LINES_FILE and still detects a content trigger inside a huge diff", () => {
+      const bulk = Array.from({ length: 6000 }, (_, i) => `+ // filler line ${i}`).join("\n");
+      // A real `git diff -U0` payload: the `+++ b/<file>` header is what attributes
+      // the following lines to a file, so the fixture must carry one.
+      const diff = [
+        "diff --git a/server/routes/thing.ts b/server/routes/thing.ts",
+        "--- a/server/routes/thing.ts",
+        "+++ b/server/routes/thing.ts",
+        bulk,
+        '+  requireRole("admin")',
+        bulk,
+      ].join("\n");
+      const got = run({
+        CHANGED_FILES_FILE: tmp("files2.txt", "server/routes/thing.ts"),
+        CHANGED_LINES_FILE: tmp("lines2.diff", diff),
+        PR_BODY: "",
+      });
+      // The role-gate trigger must still fire from deep inside the payload, and with
+      // no `## Security review` section the gate must go red.
+      expect(got.code).toBe(1);
+      expect(got.out).toMatch(/§9 trigger/);
+    });
+
+    it("prefers the file over an inline var when both are present", () => {
+      const got = run({
+        CHANGED_FILES: "server/auth.ts",
+        CHANGED_FILES_FILE: tmp("files3.txt", "README.md"),
+      });
+      // server/auth.ts would trigger; README.md does not. The file must win.
+      expect(got.code).toBe(0);
+      expect(got.out).toMatch(/no §9 trigger among 1 changed file\(s\)/);
+    });
   });
 });
