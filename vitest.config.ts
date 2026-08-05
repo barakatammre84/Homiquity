@@ -63,6 +63,7 @@ export default defineConfig({
       "tests/trid.test.ts",
       "tests/documentNotesTrustBoundary.test.ts",
       "tests/creditConsentScope.test.ts",
+      "tests/creditSimulationGuards.test.ts",
       // Revised-LE deadline math (Reg Z §1026.19(e)(4)(i)) — sibling of trid.test.ts.
       // Was in NEITHER config since it landed, so its 10 assertions had never run
       // (same class as F-013's maintenanceMode.test.ts). Pure unit test: no HTTP, no DB.
