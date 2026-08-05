@@ -17,7 +17,7 @@ import {
 } from "@shared/compliance/loCompensation";
 import {
   estimatedNoteDate,
-  evaluatePlatformQmFloor,
+  evaluateFileQmFloor,
   maxElectableCompensationBps,
   MAX_ELECTABLE_COMPENSATION_BPS,
 } from "../../services/loanCosts";
@@ -89,12 +89,12 @@ function buildQmPicture(
 
   const noteDate = estimatedNoteDate(closingDate);
   const scored = election
-    ? evaluatePlatformQmFloor(noteDate, loanAmount, election)
+    ? evaluateFileQmFloor(noteDate, loanAmount, election)
     : null;
 
   // A missing threshold table for the note year means the cap is unknown, not
   // that it is satisfied. Probe with a rate that cannot itself breach anything.
-  const probe = evaluatePlatformQmFloor(noteDate, loanAmount, { model: "lender_paid", bps: 0 });
+  const probe = evaluateFileQmFloor(noteDate, loanAmount, { model: "lender_paid", bps: 0 });
   if (probe.verdict === "not_evaluated") {
     return {
       evaluated: false,

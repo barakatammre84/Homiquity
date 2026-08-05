@@ -415,13 +415,15 @@ describe("ATR/QM points-and-fees 3% cap", () => {
   });
 
   it("blocks on the computed floor when comp pushes the file over the cap", async () => {
-    // 400k loan, 3% cap = 12,000. Lender-paid 275 bps = 11,000, plus the
-    // platform's $500 application and $1,500 underwriting fees = 13,000.
+    // 400k loan, 3% cap = 12,000. Compensation ALONE has to breach it: since
+    // the F-17 fee fit trims the platform's own charges to fit, a rate that
+    // merely crowds them out no longer blocks — it just costs us fee revenue.
+    // 320 bps = 12,800, above the entire cap, so no fee decision rescues it.
     setFixtures({
       application: {
         totalPointsAndFees: null,
         loCompensationModel: "lender_paid",
-        loCompensationBps: 275,
+        loCompensationBps: 320,
       },
     });
     const result = await validateMISMOCompleteness("app-1");

@@ -4,7 +4,7 @@ import { evaluateCoveredPointsAndFees } from "@shared/fannieMae/qmThresholds";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import {
   estimatedNoteDate,
-  evaluatePlatformQmFloor,
+  evaluateFileQmFloor,
   regulationZTotalLoanAmountStandIn,
 } from "./loanCosts";
 import type {
@@ -517,7 +517,7 @@ function evaluatePointsAndFees(application: LoanApplication): {
     };
   }
 
-  const floorEvaluation = evaluatePlatformQmFloor(noteDate, loanAmount, compensation);
+  const floorEvaluation = evaluateFileQmFloor(noteDate, loanAmount, compensation);
 
   if (floorEvaluation.verdict === "over_cap") {
     return {

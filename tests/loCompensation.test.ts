@@ -61,31 +61,48 @@ describe("F-1 — dual compensation (12 CFR 1026.36(d)(2))", () => {
     }
   });
 
-  it("keeps lender-paid compensation out of every borrower-facing total", () => {
+  it("never adds lender-paid compensation to a borrower-facing total", () => {
     // The LE has no "paid by others" column (that column exists only on the
-    // CD), so how much the lender pays the originator must not move a single
-    // number the borrower sees. Vary the bps and assert nothing shifts.
-    const cheap = computeClosingCosts({
-      ...baseCosts,
-      compensation: { model: "lender_paid", bps: 100 },
-    });
-    const rich = computeClosingCosts({
+    // CD), so the compensation the lender pays must never appear as a borrower
+    // charge. Assert the amount itself is absent from every total.
+    const costs = computeClosingCosts({
       ...baseCosts,
       compensation: { model: "lender_paid", bps: 275 },
     });
+    expect(costs.lenderPaidCompensation).toBe(11_000);
+    expect(costs.originationFee).toBe(0);
+    // If comp had leaked in, each of these would be $11,000 larger.
+    expect(costs.loanCostsTotal).toBeLessThan(11_000);
+    expect(costs.cashToClose).toBeCloseTo(costs.totalClosingCosts + 100_000, 6);
+  });
 
-    expect(rich.lenderPaidCompensation).toBeGreaterThan(cheap.lenderPaidCompensation);
-    for (const key of [
-      "loanCostsTotal",
-      "otherCostsTotal",
-      "totalClosingCosts",
-      "cashToClose",
-      "prepaidFinanceCharges",
-      "originationFee",
-    ] as const) {
-      expect(`${key}=${rich[key]}`).toBe(`${key}=${cheap[key]}`);
+  it("never lets more lender-paid compensation INCREASE a borrower charge", () => {
+    // Originally this asserted borrower totals were *invariant* to the bps.
+    // The F-17 fee fit narrows that: the platform's own fees trim to fit the QM
+    // cap, and comp consumes the same cap, so a richer comp plan can now lower
+    // what the borrower pays — economically a lender credit, and always in the
+    // borrower's favour. The invariant that actually matters is DIRECTIONAL,
+    // and it is the one asserted here: more comp never costs the borrower more.
+    let previous: ReturnType<typeof computeClosingCosts> | null = null;
+    for (const bps of [100, 150, 200, 225, 250, 275]) {
+      const costs = computeClosingCosts({
+        ...baseCosts,
+        compensation: { model: "lender_paid", bps },
+      });
+      if (previous) {
+        for (const key of [
+          "loanCostsTotal",
+          "totalClosingCosts",
+          "cashToClose",
+          "prepaidFinanceCharges",
+          "originationFee",
+        ] as const) {
+          expect(`${bps}:${key}`, `${key} rose when compensation rose`).toBe(`${bps}:${key}`);
+          expect(costs[key]).toBeLessThanOrEqual(previous[key] + 1e-6);
+        }
+      }
+      previous = costs;
     }
-    expect(cheap.cashToClose).toBeCloseTo(cheap.totalClosingCosts + 100_000, 6);
   });
 
   it("lowers the borrower's cash to close by exactly the origination fee", () => {

@@ -21,7 +21,9 @@ import { readFileSync, readdirSync, statSync } from "fs";
 import { join, resolve } from "path";
 import {
   estimatedNoteDate,
+  evaluateFileQmFloor,
   evaluatePlatformQmFloor,
+  resolvePlatformFinanceCharges,
   knownPrepaidFinanceCharges,
   maxElectableCompensationBps,
   MAX_ELECTABLE_COMPENSATION_BPS,
@@ -151,27 +153,32 @@ describe("F-18 — the ceiling the endpoint reports back", () => {
     const ceiling = maxElectableCompensationBps(NOTE_DATE, 400_000, "lender_paid");
     expect(ceiling).not.toBeNull();
 
-    // Exactly at the ceiling: allowed. One basis point above: refused. This is
-    // the property the endpoint's error message promises.
-    expect(evaluatePlatformQmFloor(NOTE_DATE, 400_000, { model: "lender_paid", bps: ceiling! }).verdict)
+    // Exactly at the ceiling: allowed. One basis point above: refused. Scored
+    // through evaluateFileQmFloor, because the ceiling reflects what the file
+    // would ACTUALLY be charged after the F-17 fee fit.
+    expect(evaluateFileQmFloor(NOTE_DATE, 400_000, { model: "lender_paid", bps: ceiling! }).verdict)
       .not.toBe("over_cap");
-    expect(evaluatePlatformQmFloor(NOTE_DATE, 400_000, { model: "lender_paid", bps: ceiling! + 1 }).verdict)
+    expect(evaluateFileQmFloor(NOTE_DATE, 400_000, { model: "lender_paid", bps: ceiling! + 1 }).verdict)
       .toBe("over_cap");
   });
 
-  it("shrinks as the loan amount shrinks — the structural F-17 relationship", () => {
-    const big = maxElectableCompensationBps(NOTE_DATE, 400_000, "lender_paid")!;
-    const mid = maxElectableCompensationBps(NOTE_DATE, 250_000, "lender_paid")!;
-    const small = maxElectableCompensationBps(NOTE_DATE, 200_000, "lender_paid")!;
-    expect(big).toBeGreaterThan(mid);
-    expect(mid).toBeGreaterThan(small);
+  it("is now bounded by compensation, not by loan size", () => {
+    // Before the F-17 fee fit the ceiling collapsed on small loans because a
+    // fixed fee ate the cap. Now the platform's own fees get out of the way,
+    // so every realistic loan size clears the seeded comp plans (max 275 bps).
+    for (const amount of [120_000, 150_000, 200_000, 250_000, 400_000]) {
+      const ceiling = maxElectableCompensationBps(NOTE_DATE, amount, "lender_paid");
+      expect(`${amount}:${ceiling !== null && ceiling >= 275}`).toBe(`${amount}:true`);
+    }
   });
 
-  it("returns null when the fixed platform fees alone exhaust the cap", () => {
-    // At $25,000 the 2026 table's cap is a flat $1,380 — less than the $2,000
-    // of fixed platform fees. No compensation rate rescues the file; the fee
-    // schedule or the loan amount is what has to move.
-    expect(maxElectableCompensationBps(NOTE_DATE, 25_000, "lender_paid")).toBeNull();
+  it("returns null only when compensation alone exceeds the whole cap", () => {
+    // The residual, and the honest one: the top tier caps points and fees at
+    // 3% of the Reg Z total, so a comp plan at or above ~3% cannot be rescued
+    // by charging the borrower nothing. That is a comp-plan problem.
+    expect(maxElectableCompensationBps(NOTE_DATE, 400_000, "lender_paid")).toBeLessThan(300);
+    expect(evaluateFileQmFloor(NOTE_DATE, 400_000, { model: "lender_paid", bps: 320 }).verdict)
+      .toBe("over_cap");
   });
 
   it("never exceeds the rate the election schema will accept", () => {
@@ -180,47 +187,78 @@ describe("F-18 — the ceiling the endpoint reports back", () => {
   });
 });
 
-describe("F-17 — the non-QM dead band stays visible", () => {
-  // The fixed platform fees do not create a simple floor. The QM cap changes
-  // SHAPE across the note-date tiers — 5% of the Reg Z total, then a flat
-  // $4,139, then 3% — so a fixed $2,000 clears the generous low tiers, fails
-  // the flat tier as the loan grows past it, and clears again once 3% of a
-  // large loan outruns it. The result is a BAND of loan amounts that cannot be
-  // originated, with viable amounts on both sides.
-  //
-  // These edges are a property of the fee schedule, not a preference: if
-  // someone changes the platform fees or the comp plans, they move, and the
-  // change has to be noticed deliberately.
+describe("F-17 — the non-QM dead band is resolved, by construction", () => {
+  // The band existed because a FIXED fee met a cap that is proportional in the
+  // tiers that matter. No choice of fixed number fixes that — only removing the
+  // fixedness does. The platform schedule is now a CEILING: a file is charged
+  // the standard schedule when it fits, and the reducible part trims when it
+  // does not. Charging less needs no changed circumstance and is the
+  // borrower-favourable direction.
   const clears = (amount: number, bps: number): boolean =>
-    evaluatePlatformQmFloor(NOTE_DATE, amount, { model: "lender_paid", bps }).verdict !== "over_cap";
+    evaluateFileQmFloor(NOTE_DATE, amount, { model: "lender_paid", bps }).verdict !== "over_cap";
 
-  it("runs $101,951–$216,299 at the default Summit plan (200 bps)", () => {
-    expect(clears(101_950, SUMMIT)).toBe(true);
-    expect(clears(101_951, SUMMIT)).toBe(false);
-    expect(clears(216_299, SUMMIT)).toBe(false);
-    expect(clears(216_300, SUMMIT)).toBe(true);
+  it("no longer has a band — every loan size clears at every seeded comp plan", () => {
+    // The exact amounts that used to fail, and the edges of the old bands.
+    for (const bps of [175, SUMMIT, ATLAS, 275]) {
+      for (const amount of [90_623, 101_951, 120_000, 150_000, 200_000, 216_299, 288_399, 400_000]) {
+        expect(`${bps}bps/${amount}`).toBe(`${bps}bps/${amount}`);
+        expect(clears(amount, bps), `${bps} bps at $${amount} must be originable`).toBe(true);
+      }
+    }
   });
 
-  it("runs $90,623–$288,399 at the highest seeded plan (Atlas, 225 bps)", () => {
-    expect(clears(90_622, ATLAS)).toBe(true);
-    expect(clears(90_623, ATLAS)).toBe(false);
-    expect(clears(288_399, ATLAS)).toBe(false);
-    expect(clears(288_400, ATLAS)).toBe(true);
+  it("is monotonic again — no bigger loan fails where a smaller one passed", () => {
+    // The band's strangest property was non-monotonicity: $100k fine, $150k
+    // not, $400k fine again. Sweep the old range and assert it is gone.
+    for (let amount = 60_000; amount <= 400_000; amount += 1_000) {
+      expect(`${amount}:${clears(amount, SUMMIT)}`).toBe(`${amount}:true`);
+    }
   });
 
-  it("is non-monotonic in loan size — a bigger loan can be the one that fails", () => {
-    // The counterintuitive product property this finding exists to surface: a
-    // borrower at $100k is fine, the same borrower at $150k is not.
-    expect(clears(100_000, SUMMIT)).toBe(true);  // 1,950 under the flat cap
-    expect(clears(150_000, SUMMIT)).toBe(false);
-    expect(clears(400_000, SUMMIT)).toBe(true);
+  it("charges the standard schedule whenever it fits — no revenue given away", () => {
+    const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 400_000, {
+      model: "lender_paid",
+      bps: SUMMIT,
+    });
+    expect(resolved.reduced).toBe(false);
+    expect(resolved.total).toBe(PLATFORM_FINANCE_CHARGE_TOTAL);
   });
 
-  it("excludes third-party charges, so the real band is wider still", () => {
-    const floor = evaluatePlatformQmFloor(NOTE_DATE, 207_000, { model: "lender_paid", bps: SUMMIT }).floor!;
-    const names = floor.components.map(c => c.name).join(" ");
-    expect(names).not.toMatch(/appraisal|title|recording|transfer/i);
-    expect(floor.isLowerBound).toBe(true);
+  it("trims only what is ours — a vendor pass-through is never discounted", () => {
+    const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 150_000, {
+      model: "lender_paid",
+      bps: SUMMIT,
+    });
+    expect(resolved.reduced).toBe(true);
+    expect(resolved.total).toBeLessThan(PLATFORM_FINANCE_CHARGE_TOTAL);
+    // We cannot discount someone else's charge, so it survives at full value.
+    const taxService = resolved.charges.find(c => c.id === "tax_service")!;
+    expect(taxService.amount).toBe(PLATFORM_TAX_SERVICE_FEE);
+  });
+
+  it("never trims to a total that still breaches the cap", () => {
+    for (const amount of [95_000, 120_000, 150_000, 180_000, 210_000]) {
+      const resolved = resolvePlatformFinanceCharges(NOTE_DATE, amount, {
+        model: "lender_paid",
+        bps: ATLAS,
+      });
+      expect(resolved.total).toBeLessThanOrEqual(resolved.standardTotal);
+      expect(`${amount}:${clears(amount, ATLAS)}`).toBe(`${amount}:true`);
+    }
+  });
+
+  it("does not pretend a compensation problem is a fee problem", () => {
+    // 320 bps exceeds the entire 3% cap. There is nothing to trim toward, so
+    // the schedule stays standard, the file is not originable, and the gate
+    // still refuses — the honest residual.
+    const resolved = resolvePlatformFinanceCharges(NOTE_DATE, 400_000, {
+      model: "lender_paid",
+      bps: 320,
+    });
+    expect(resolved.originable).toBe(false);
+    expect(resolved.reduced).toBe(false);
+    expect(resolved.total).toBe(PLATFORM_FINANCE_CHARGE_TOTAL);
+    expect(clears(400_000, 320)).toBe(false);
   });
 });
 
@@ -240,7 +278,7 @@ describe("F-18 — the wiring cannot be silently removed", () => {
   const electionSrc = read("server/routes/lending/pricing.ts");
 
   it("the election endpoint scores the QM floor and refuses an over-cap rate", () => {
-    expect(electionSrc).toContain("evaluatePlatformQmFloor");
+    expect(electionSrc).toContain("evaluateFileQmFloor");
     expect(electionSrc).toContain("maxElectableCompensationBps");
     expect(electionSrc).toContain("qm_points_and_fees_exceeded");
     expect(electionSrc).toContain("res.status(422)");
@@ -304,7 +342,7 @@ describe("F-18 — the wiring cannot be silently removed", () => {
 
   it("submission-readiness scores the same helper, so the surfaces cannot drift", () => {
     const validationSrc = read("server/services/mismoValidation.ts");
-    expect(validationSrc).toContain("evaluatePlatformQmFloor");
+    expect(validationSrc).toContain("evaluateFileQmFloor");
     expect(validationSrc).toContain("regulationZTotalLoanAmountStandIn");
   });
 

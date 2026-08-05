@@ -23,8 +23,8 @@ sits over the segment the product is built to serve.**
 
 | # | Finding | Area | Severity |
 |---|---|---|---|
-| F-17 | A non-QM dead band ($102k–$216k at the default comp plan) sits over the target segment | Unit economics / Risk | **High** |
-| F-18 | The QM constraint is evaluated at the wrong end of the file — the fix is expired by the time the breach is found | Risk / Margin leakage | **High** |
+| F-17 | A non-QM dead band ($102k–$216k at the default comp plan) sits over the target segment | Unit economics / Risk | **High** — ✅ resolved |
+| F-18 | The QM constraint is evaluated at the wrong end of the file — the fix is expired by the time the breach is found | Risk / Margin leakage | **High** — ✅ fixed |
 | F-19 | Tax service fee counts in the QM denominator but not the numerator | Risk | Low — ✅ fixed |
 | — | F-1…F-13 remediation holds at HEAD | all | ✅ verified |
 | — | F-9 values, F-14 channel decision | — | ⚠️ still open, unchanged |
@@ -32,6 +32,11 @@ sits over the segment the product is built to serve.**
 ---
 
 ## F-17 — The fee schedule creates a non-QM dead band over the target market (High)
+
+> **✅ Resolved 2026-08-05** — see [Resolution — F-17](#resolution--f-17-2026-08-05) below. The
+> analysis in this section describes the platform as it was *before* that change; the bands quoted
+> are what the fixed schedule produced, and they no longer occur. Kept intact because the
+> reasoning is what motivated the fix.
 
 ### The architectural problem
 
@@ -136,7 +141,8 @@ pull-through leak with a specific, predictable, segment-wide cause rather than a
 
 ### Structural fix
 
-This is a business decision the code can only make visible. The three levers:
+This is a business decision the code can only make visible. The three levers — **lever 1 was
+taken**, see the resolution section:
 
 1. **Re-scale the platform fees against loan size** — the $2,000 is fixed against a percentage
    cap. A fee that is capped as a percentage of the loan amount removes the structural floor
@@ -277,6 +283,92 @@ regulatory-freshness gate passes with the new entry.
 
 ---
 
+## Resolution — F-17 (2026-08-05)
+
+**The dead band is gone, and cannot come back.**
+
+### Why no choice of fee resolved it
+
+The band existed because a **fixed** dollar fee met a cap that is 5% in one tier, a flat $4,139
+in the next, and 3% above that. Any fixed number is wrong at *some* loan size — so re-pricing the
+schedule would only move the band, and the annual CFPB threshold adjustment would move it again.
+Declaring a minimum loan amount would not resolve it either; it would abandon the segment and go
+stale every January.
+
+What had to go was the fixedness.
+
+### What shipped
+
+**The platform's own fees are now a ceiling, not a price.** A file is charged the standard
+schedule whenever it fits; when it does not, the reducible part is trimmed proportionally until
+it does.
+
+- `maxPlatformFinanceChargeTotal()` binary-searches the exact largest platform total that clears
+  the cap — monotone in the total, since a bigger fee raises the floor *and* lowers the cap — so
+  the tier tables are never duplicated.
+- `resolvePlatformFinanceCharges()` scales the reducible charges to that budget, rounding **down**
+  to whole dollars so rounding can never push a file back over.
+- **Only what is ours is reducible.** The tax service fee is a vendor's charge passed through; we
+  cannot discount someone else's fee, so it is marked `reducible: false` and survives at full
+  value. That asymmetry is what keeps the fit honest.
+- `evaluateFileQmFloor()` is what the gates now score — the file **as it would actually be
+  charged**, so a file is no longer refused over a fee it was never going to be charged.
+
+Charging less than a disclosed schedule is always permitted, needs no changed circumstance, and
+is the borrower-favourable direction — so the mechanism is safe in exactly the direction that
+matters.
+
+### Measured result
+
+Swept at $1 granularity from $20,000 to $500,000, at every seeded comp plan:
+
+| Comp plan | Before | After |
+|---|---|---|
+| BlueRiver 175 bps | dead band $116,515–$173,039 | **clears everywhere** |
+| Summit 200 bps | dead band $101,951–$216,299 | **clears everywhere** |
+| Atlas 225 bps | dead band $90,623–$288,399 | **clears everywhere** |
+| 275 bps (plan maximum) | failed even at $400,000 | **clears everywhere** |
+
+Worked cost, Summit 200 bps: $400k charges the full $2,100 (unchanged); $200k charges $1,940;
+$150k charges $1,456; $120k charges $1,738. **No file that works today pays more or less than it
+did** — the trim only touches files that were previously refused outright, converting a fully
+costed zero-revenue file into a funded one.
+
+### The honest residual
+
+This does not manufacture room that does not exist. When **compensation alone** exceeds the cap —
+at or above roughly 300 bps, since the top tier caps points and fees at 3% — there is nothing left
+to trim toward. Those files stay non-originable, the schedule stays standard rather than
+pretending, and the gates still refuse them. That is a comp-plan problem, and the fix is a comp
+plan, not a fee.
+
+The election ceiling now reflects this: it is bounded by compensation (~293–297 bps across the
+range) rather than collapsing on small loans.
+
+### What a human must confirm — this narrows an earlier invariant
+
+The F-1 remediation asserted that borrower-facing totals are **wholly invariant** to lender-paid
+compensation, because the Loan Estimate has no "paid by others" column. That is no longer
+literally true: compensation and our fees consume the same cap, so a richer comp plan now yields a
+*smaller* borrower fee. The test that encoded the old invariant is what caught this.
+
+What survives, and is now pinned instead, is the property that carries the regulatory weight:
+
+- compensation is **never added** to any borrower-facing total, and
+- **more compensation can never increase a borrower charge** — the directional invariant.
+
+Economically this is a lender credit and it always runs in the borrower's favour. But whether a
+fee that varies with the comp plan is acceptable disclosure practice is a **counsel question, not
+an engineering one**, and so is the fair-lending posture of a formulaic reduction driven by loan
+amount. Both are recorded in ledger entry `platform-fee-schedule-qm-fit` on a **30-day** review
+interval.
+
+**F-17's business levers are therefore spent down to one.** Fees are no longer the constraint at
+any loan size. What remains is the comp-plan ceiling — and that is a negotiation, not a code
+change.
+
+---
+
 ## Verified — the 2026-08-04 remediation holds at HEAD
 
 Re-checked directly, not taken from the log:
@@ -407,11 +499,10 @@ defect one layer up. So the read side landed with it:
 7 component tests (`CompensationCard.test.tsx`, 14 total) plus source-walk guards pinning that
 the card consumes the ceiling and that both surfaces build from one helper.
 
-### Deliberately left open
+### Deliberately left open at the time
 
-- **F-17 is untouched.** This surfaces the constraint at the right time; it does not resolve it.
-  A file inside the dead band still cannot be originated — staff now learn that at election
-  instead of at submission.
+- **F-17 was untouched by F-18.** Surfacing the constraint at the right time is not resolving it.
+  That resolution landed the same day — see below.
 
 ---
 
