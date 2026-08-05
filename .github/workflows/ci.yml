@@ -83,6 +83,16 @@ jobs:
         run: pnpm audit --prod --audit-level=high
       - name: Schema ↔ migration drift guard
         run: pnpm guard:schema
+      - name: Migration ledger integrity
+        # prod applies migrations/ automatically on merge, in journal `idx` order, so
+        # a duplicate/missing/misnumbered entry is a production-DDL problem that only
+        # surfaces after the merge button. Fails on duplicate idx or tag, a gap in the
+        # 0..N-1 run, an entry with no .sql, an un-journalled .sql, and a filename
+        # whose number disagrees with its idx. The case this exists for is the
+        # 2026-08-04 double-`0038` near-miss (TEAM_PRACTICES §4), which was caught by
+        # hand. (Job `name:` above deliberately unchanged — it is the verbatim
+        # required-check string; see the rename warning.)
+        run: pnpm guard:migrations
       - name: Delivery-stack freeze (F-14 channel decision)
         # A broker never delivers to Fannie Mae — the wholesale lender is the
         # seller/servicer. While shared/businessChannel.ts says "broker", the GSE
