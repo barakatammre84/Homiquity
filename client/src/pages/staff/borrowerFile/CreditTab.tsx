@@ -141,7 +141,9 @@ export function CreditTab({
 
       <PreApprovalLetterCard applicationId={applicationId} canRevoke={canRevokeLetter} />
 
-      {creditData?.adverseActionCount && creditData.adverseActionCount > 0 && (
+      {/* Compared, not truthy-tested: `count && ...` yields the number 0 when
+          there are no notices, and React renders a literal "0" on the tab. */}
+      {(creditData?.adverseActionCount ?? 0) > 0 && creditData && (
         <AdverseActionCard
           creditData={creditData}
           noticeDelivery={noticeDelivery}
