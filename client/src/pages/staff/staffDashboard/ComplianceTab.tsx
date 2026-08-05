@@ -32,6 +32,7 @@ import {
   coApplicantNames,
 } from "./model";
 import { KycReviewQueue } from "./KycReviewQueue";
+import { AuditChainStatusTiles } from "./AuditChainStatusTiles";
 
 /**
  * Compliance tab (extracted from StaffDashboard.tsx): GSE/ULDD/QM readiness
@@ -361,29 +362,9 @@ export function ComplianceTab({ complianceData }: { complianceData: ComplianceDa
           <CardDescription>Track all compliance-related activities with cryptographic verification</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3 mb-6">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="h-5 w-5 text-success-subtle-foreground" />
-                <span className="font-medium text-sm">Hash Chain Verified</span>
-              </div>
-              <p className="text-xs text-muted-foreground">All audit entries are cryptographically linked</p>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-2">
-                <FileCheck className="h-5 w-5 text-info" />
-                <span className="font-medium text-sm">Export Ready</span>
-              </div>
-              <p className="text-xs text-muted-foreground">CSV and JSON formats for regulatory exams</p>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-5 w-5 text-warning-subtle-foreground" />
-                <span className="font-medium text-sm">7-Year Retention</span>
-              </div>
-              <p className="text-xs text-muted-foreground">FCRA compliant data retention</p>
-            </div>
-          </div>
+          {/* Was three hardcoded green tiles that could never turn red (F-039).
+              Now driven by an actual chain sweep and the retention report. */}
+          <AuditChainStatusTiles report={retentionReport} />
           <div className="text-center text-muted-foreground py-4">
             <p className="text-sm">Access individual loan audit logs from the Borrower File page.</p>
           </div>

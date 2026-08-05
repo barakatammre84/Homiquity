@@ -1171,6 +1171,33 @@ export function registerComplianceRoutes(
     }
   });
 
+  /**
+   * Platform-wide audit-chain verification (finding F-039).
+   *
+   * The staff Compliance tab asserted "Hash Chain Verified — all audit entries
+   * are cryptographically linked" as literal markup: no query, no props, no
+   * reference to any verify endpoint. It said the same thing whether the log was
+   * intact or destroyed. The per-application endpoint below could not back that
+   * claim either, because the claim is platform-wide and that endpoint needs an
+   * application id.
+   *
+   * Bounded by AUDIT_CHAIN_SWEEP_LIMIT; the response carries `complete` so a
+   * partial sweep is never rendered as a full one.
+   */
+  app.get("/api/compliance/audit-chain/verify", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const result = await creditService.verifyAllAuditChains();
+      res.json(result);
+    } catch (error) {
+      console.error("Verify audit chains error:", error);
+      res.status(500).json({ error: "Failed to verify audit chains" });
+    }
+  });
+
   app.get("/api/loan-applications/:id/credit/audit-log/verify", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
