@@ -1,18 +1,16 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry, type IncomeSourceEntry } from "@shared/schema";
+import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
-import { maskCurrencyDigits } from "@/lib/formatters";
 import {
   PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
   PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
@@ -20,30 +18,21 @@ import {
 } from "@/lib/pendingAttribution";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
-import {
-  ArrowRight,
-  ChevronLeft,
-  DollarSign,
-  Home,
-  Loader2,
-  Check,
-  AlertCircle,
-  Info,
-} from "lucide-react";
+import { ArrowRight, Loader2, Info } from "lucide-react";
 
 import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
 import { PRE_APPROVAL_DEFAULTS } from "@/funnel/preApprovalMachine";
 import { useFunnelAutosave } from "@/funnel/useFunnelAutosave";
 import { VerificationPulse } from "@/funnel/VerificationPulse";
-import { Checkbox } from "@/components/ui/checkbox";
 import { QUESTIONS_BY_ID } from "./preApproval/questions";
 import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
 import { useServerDraftAutosave } from "./preApproval/useServerDraftAutosave";
 import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
-import { StateStep } from "./preApproval/StateStep";
-import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
 import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
+import { IntroScreen } from "./preApproval/IntroScreen";
+import { FunnelHeader } from "./preApproval/FunnelHeader";
+import { QuestionInput } from "./preApproval/QuestionInput";
 import { calculateAffordabilityEstimate, type AffordabilityEstimateResults } from "@/lib/affordabilityEstimate";
 import { buildTeaserInputs, parseTargetPrice } from "./preApproval/affordabilityTeaser";
 
@@ -456,270 +445,19 @@ function PreApprovalFunnel() {
     }
   };
 
-  const renderInput = () => {
-    const IconComponent = currentQ.icon;
-
-    switch (currentQ.type) {
-      case "currency": {
-        const fieldName = currentQ.field as keyof PreApprovalFormData;
-        const watchedValue = form.watch(fieldName);
-        const displayValue = typeof watchedValue === 'string' ? watchedValue : "";
-        const fieldError = form.formState.errors[fieldName];
-        return (
-          <div className="w-full max-w-md mx-auto">
-            <div className="relative">
-              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
-              <Input
-                key={`currency-${fieldName}`}
-                autoFocus
-                data-testid={`input-${currentQ.field}`}
-                value={displayValue}
-                onChange={(e) => {
-                  const formatted = maskCurrencyDigits(e.target.value);
-                  form.setValue(fieldName, formatted as never, { shouldValidate: true, shouldDirty: true });
-                }}
-                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
-                placeholder={currentQ.placeholder}
-                onKeyDown={handleKeyDown}
-              />
-            </div>
-            {fieldError && (
-              <p role="alert" className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {fieldError.message as string}
-              </p>
-            )}
-          </div>
-        );
-      }
-
-      case "number": {
-        const fieldName = currentQ.field as keyof PreApprovalFormData;
-        const watchedValue = form.watch(fieldName);
-        const displayValue = typeof watchedValue === 'string' ? watchedValue : "";
-        const fieldError = form.formState.errors[fieldName];
-        return (
-          <div className="w-full max-w-md mx-auto">
-            <div className="relative">
-              {IconComponent && <IconComponent className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />}
-              <Input
-                key={`number-${fieldName}`}
-                autoFocus
-                data-testid={`input-${currentQ.field}`}
-                type="text"
-                inputMode="numeric"
-                value={displayValue}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, "");
-                  form.setValue(fieldName, value as never, { shouldValidate: true, shouldDirty: true });
-                }}
-                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
-                placeholder={currentQ.placeholder}
-                onKeyDown={handleKeyDown}
-              />
-            </div>
-            {fieldError && (
-              <p role="alert" className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {fieldError.message as string}
-              </p>
-            )}
-          </div>
-        );
-      }
-
-      case "choice":
-        return (
-          <div className="grid gap-3 w-full max-w-lg mx-auto">
-            {currentQ.options?.map((option) => {
-              const OptionIcon = option.icon;
-              const fieldVal = form.watch(currentQ.field as keyof PreApprovalFormData);
-              const isSelected = currentQ.id === "hasAdditionalIncome"
-                ? (option.value === "yes" ? fieldVal === true : fieldVal === false)
-                : fieldVal === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  data-testid={`option-${currentQ.field}-${option.value}`}
-                  onClick={() => {
-                    if (currentQ.id === "hasAdditionalIncome") {
-                      form.setValue("hasAdditionalIncome", (option.value === "yes") as never);
-                      if (option.value === "no") {
-                        form.setValue("incomeSources", [] as never);
-                      }
-                    } else {
-                      form.setValue(currentQ.field as keyof PreApprovalFormData, option.value as never);
-                    }
-                    // The machine recomputes the route from the answers, so
-                    // injected steps (complex income) appear/disappear here.
-                    setTimeout(() => next(form.getValues()), 200);
-                  }}
-                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.99]
-                    ${isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-transparent bg-muted/40 hover:bg-muted"
-                    }`}
-                >
-                  {OptionIcon && (
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors
-                      ${isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"}`}>
-                      <OptionIcon className="h-5 w-5" />
-                    </div>
-                  )}
-                  <span className={`flex-1 ${isSelected ? "text-primary" : "text-foreground"}`}>
-                    {option.label}
-                  </span>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
-                    ${isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"}`}>
-                    {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        );
-
-      case "state":
-        return (
-          <StateStep
-            value={form.watch("propertyState")}
-            onSelectState={(v) => form.setValue("propertyState", v, { shouldValidate: true })}
-            onAdvance={() => next(form.getValues())}
-          />
-        );
-
-      case "income_sources": {
-        return (
-          <IncomeSourcesStep
-            employmentType={form.getValues("employmentType")}
-            selectedIncomeTypes={selectedIncomeTypes}
-            incomeDetails={incomeDetails}
-            rentalProperties={rentalProperties}
-            setSelectedIncomeTypes={setSelectedIncomeTypes}
-            setIncomeDetails={setIncomeDetails}
-            setRentalProperties={setRentalProperties}
-            setIncomeSources={(entries) => form.setValue("incomeSources", entries as never)}
-          />
-        );
-      }
-
-      case "boolean_pair":
-        return (
-          <div className="grid gap-4 w-full max-w-lg mx-auto">
-            {currentQ.booleanFields?.map((field) => {
-              const FieldIcon = field.icon;
-              const isChecked = form.watch(field.field) as boolean;
-              return (
-                <button
-                  key={field.field}
-                  type="button"
-                  data-testid={`toggle-${field.field}`}
-                  onClick={() => {
-                    form.setValue(field.field, !isChecked as never);
-                  }}
-                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.99]
-                    ${isChecked 
-                      ? "border-primary bg-primary/5" 
-                      : "border-muted hover:border-primary/50"
-                    }`}
-                >
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors
-                    ${isChecked ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    <FieldIcon className="h-5 w-5" />
-                  </div>
-                  <span className={`flex-1 ${isChecked ? "text-primary" : "text-foreground"}`}>
-                    {field.label}
-                  </span>
-                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors
-                    ${isChecked ? "border-primary bg-primary" : "border-muted-foreground/30"}`}>
-                    {isChecked && <Check className="w-4 h-4 text-primary-foreground" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        );
-
-      case "final": {
-        const acknowledged = funnelState.consent.softPullAcknowledged;
-        return (
-          <div className="w-full max-w-md mx-auto text-left">
-            <label
-              className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors
-                ${acknowledged ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"}`}
-              data-testid="label-soft-pull-consent"
-            >
-              <Checkbox
-                checked={acknowledged}
-                onCheckedChange={(checked) => setConsent(checked === true)}
-                className="mt-0.5"
-                data-testid="checkbox-soft-pull-consent"
-              />
-              <span className="text-sm text-muted-foreground leading-relaxed">
-                I authorize Homiquity to obtain my credit report using a{" "}
-                <span className="font-medium text-foreground">soft inquiry</span>, which will not
-                affect my credit score. This authorization is required by the Fair Credit
-                Reporting Act (FCRA) and is not an application for credit.
-              </span>
-            </label>
-          </div>
-        );
-      }
-
-      default:
-        return null;
-    }
-  };
-
   const restoreBanner = showRestoreBanner ? (
     <RestoreDraftBanner onRestore={handleRestoreDraft} onDismiss={handleDismissRestore} />
   ) : null;
 
   if (currentQ.type === "intro") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-center">
-        {restoreBanner}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-2xl"
-        >
-          <div className="mb-8 flex justify-center">
-            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center">
-              <Home className="h-10 w-10 text-primary" />
-            </div>
-          </div>
-          <h1 
-            className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground mb-6"
-            data-testid="text-intro-title"
-          >
-            {currentQ.title}
-          </h1>
-          <p className="text-xl text-muted-foreground mb-12">{currentQ.subtitle}</p>
-          <Button 
-            onClick={handleNext} 
-            size="lg" 
-            className="text-lg px-8 py-6 h-auto rounded-full"
-            data-testid="button-start-preapproval"
-          >
-            {currentQ.buttonText} <ArrowRight className="ml-2" />
-          </Button>
-          <p className="mt-8 text-sm text-muted-foreground">
-            Have a saved application?{" "}
-            <a href="/login" className="text-primary hover:underline">
-              Sign in to resume
-            </a>
-          </p>
-          {urlPropertyId && urlSource === "property-detail" && (
-            <Link href={`/properties/${urlPropertyId}`}>
-              <Button variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground" data-testid="button-back-to-property">
-                <ChevronLeft className="h-3.5 w-3.5" /> Back to property listing
-              </Button>
-            </Link>
-          )}
-        </motion.div>
-      </div>
+      <IntroScreen
+        currentQ={currentQ}
+        onStart={handleNext}
+        urlPropertyId={urlPropertyId}
+        urlSource={urlSource}
+        restoreBanner={restoreBanner}
+      />
     );
   }
 
@@ -731,42 +469,7 @@ function PreApprovalFunnel() {
       
       <VerificationPulse active={submitMutation.isPending} />
 
-      {/* Progress Bar */}
-      <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
-        <motion.div
-          className="h-full bg-primary"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress.percent}%` }}
-          transition={{ duration: 0.4 }}
-        />
-      </div>
-
-      {/* Navigation Header */}
-      <div className="fixed top-0 w-full p-4 sm:p-6 flex justify-between items-center z-40 bg-background/80 backdrop-blur-sm">
-        <button
-          onClick={handleBack}
-          disabled={progress.index === 0}
-          className={`p-2 rounded-full hover:bg-muted transition-all ${progress.index === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-          data-testid="button-back"
-        >
-          <ChevronLeft className="w-6 h-6 text-muted-foreground" />
-        </button>
-        <div className="flex flex-col items-center" data-testid="text-step-counter">
-          <span className="text-sm font-medium text-muted-foreground">
-            Step {progress.index} of {progress.total}
-          </span>
-          <span className="text-[11px] text-muted-foreground/60">
-            {progress.index <= 4 ? "~2 min left" : progress.index <= 8 ? "~1 min left" : "Almost done"}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 w-10 justify-end">
-          {progress.index > 0 && (
-            <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1" data-testid="text-autosave-indicator">
-              <Check className="h-3 w-3" /> Saved
-            </span>
-          )}
-        </div>
-      </div>
+      <FunnelHeader percent={progress.percent} index={progress.index} total={progress.total} onBack={handleBack} />
 
       {/* Advisory Panel (Desktop only) */}
       <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
@@ -829,7 +532,20 @@ function PreApprovalFunnel() {
 
             {/* Input Area */}
             <div className="mb-10">
-              {renderInput()}
+              <QuestionInput
+                currentQ={currentQ}
+                form={form}
+                next={next}
+                handleKeyDown={handleKeyDown}
+                softPullAcknowledged={funnelState.consent.softPullAcknowledged}
+                onConsentChange={setConsent}
+                selectedIncomeTypes={selectedIncomeTypes}
+                incomeDetails={incomeDetails}
+                rentalProperties={rentalProperties}
+                setSelectedIncomeTypes={setSelectedIncomeTypes}
+                setIncomeDetails={setIncomeDetails}
+                setRentalProperties={setRentalProperties}
+              />
               {currentQ.why && (
                 <p
                   className="mt-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground/70"
