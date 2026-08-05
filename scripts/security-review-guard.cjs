@@ -55,8 +55,13 @@ const LINE_TRIGGERS = [
     match: (line, file) => file.startsWith("server/") && /\b(requireRole|isAdmin)\s*\(/.test(line),
   },
   {
+    // Scoped to server/app.ts because §9 is: "any widening of
+    // RESPONSE_BODY_LOG_ALLOWLIST in `server/app.ts`". Unscoped, the rule is broader
+    // than the doctrine it enforces — and it self-triggers, since this script and its
+    // tests both name the constant. That false positive was live until it fired on
+    // this guard's own PR.
     label: "PII-adjacent logging (RESPONSE_BODY_LOG_ALLOWLIST)",
-    match: (line) => line.includes("RESPONSE_BODY_LOG_ALLOWLIST"),
+    match: (line, file) => file === "server/app.ts" && line.includes("RESPONSE_BODY_LOG_ALLOWLIST"),
   },
 ];
 
@@ -144,11 +149,27 @@ function main() {
   }
 
   const files = rawFiles.split("\n").map((s) => s.trim()).filter(Boolean);
+
+  // Set-but-empty means the diff was computed and came back with nothing — impossible
+  // for a real PR, so it is a broken invocation (wrong shas, shallow clone), not a
+  // clean bill of health. Fail rather than print the same "no trigger" line a genuine
+  // pass prints: an unobservable pass is how vercel-deployment-guard sat inert for
+  // weeks while reading as an active gate.
+  if (files.length === 0) {
+    console.error(
+      "security-review-guard: FAIL — CHANGED_FILES is empty.\n" +
+        "  A pull request always changes at least one file, so the diff did not compute\n" +
+        "  (bad base/head sha, or a shallow clone without both). Refusing to pass: this\n" +
+        "  guard cannot tell you a PR is §9-clean when it cannot see the PR.",
+    );
+    process.exit(1);
+  }
+
   const changedLines = parseChangedLines(process.env.CHANGED_LINES);
   const triggers = detectTriggers(files, changedLines);
 
   if (triggers.length === 0) {
-    console.log("security-review-guard: OK — no §9 trigger touched by this PR.");
+    console.log(`security-review-guard: OK — no §9 trigger among ${files.length} changed file(s).`);
     return;
   }
 

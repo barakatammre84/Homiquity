@@ -107,11 +107,22 @@ describe("detectTriggers — content triggers", () => {
     expect(detectTriggers([], lines)).toHaveLength(1);
   });
 
-  it("flags RESPONSE_BODY_LOG_ALLOWLIST edits (PII-adjacent logging)", () => {
+  it("flags RESPONSE_BODY_LOG_ALLOWLIST edits in server/app.ts (PII-adjacent logging)", () => {
     const lines = [{ file: "server/app.ts", line: '  RESPONSE_BODY_LOG_ALLOWLIST.push("/api/x")' }];
     expect(detectTriggers([], lines).map((t: { label: string }) => t.label)).toContain(
       "PII-adjacent logging (RESPONSE_BODY_LOG_ALLOWLIST)",
     );
+  });
+
+  it("does NOT flag merely NAMING the allowlist outside server/app.ts", () => {
+    // §9 scopes this trigger to server/app.ts. Unscoped, the guard flagged its own
+    // source and tests for containing the word — a live false positive on its own PR.
+    const lines = [
+      { file: "scripts/security-review-guard.cjs", line: " *   RESPONSE_BODY_LOG_ALLOWLIST in server/app.ts" },
+      { file: "tests/securityReviewGuard.test.ts", line: '  line: "RESPONSE_BODY_LOG_ALLOWLIST"' },
+      { file: "knowledge-base/governance/TEAM_PRACTICES.md", line: "widening of RESPONSE_BODY_LOG_ALLOWLIST" },
+    ];
+    expect(detectTriggers([], lines)).toEqual([]);
   });
 
   it("ignores a role-gate lookalike outside server/ (client gating is not the §9 trigger)", () => {
@@ -144,5 +155,44 @@ describe("parseChangedLines", () => {
   it("survives empty/undefined input", () => {
     expect(parseChangedLines(undefined)).toEqual([]);
     expect(parseChangedLines("")).toEqual([]);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// The observable-pass property, exercised through the CLI because it lives in
+// main(): a guard whose pass looks identical whether it inspected the diff or
+// never saw it is the failure mode that let vercel-deployment-guard sit inert.
+// -----------------------------------------------------------------------------
+describe("CLI: empty vs unset CHANGED_FILES", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { execFileSync } = require("child_process");
+  const run = (env: Record<string, string | undefined>) => {
+    try {
+      const stdout = execFileSync("node", ["scripts/security-review-guard.cjs"], {
+        env: { ...process.env, CHANGED_FILES: undefined, CHANGED_LINES: undefined, PR_BODY: undefined, ...env },
+        encoding: "utf8",
+      });
+      return { code: 0, out: stdout };
+    } catch (e: any) {
+      return { code: e.status, out: `${e.stdout || ""}${e.stderr || ""}` };
+    }
+  };
+
+  it("SKIPS when CHANGED_FILES is unset — not a PR build, must not red the gate", () => {
+    const got = run({});
+    expect(got.code).toBe(0);
+    expect(got.out).toMatch(/skipping/i);
+  });
+
+  it("FAILS when CHANGED_FILES is set but empty — the diff did not compute", () => {
+    const got = run({ CHANGED_FILES: "" });
+    expect(got.code).toBe(1);
+    expect(got.out).toMatch(/CHANGED_FILES is empty/);
+  });
+
+  it("reports the file count on a clean pass, so the log proves it saw the diff", () => {
+    const got = run({ CHANGED_FILES: "README.md\npackage.json" });
+    expect(got.code).toBe(0);
+    expect(got.out).toMatch(/no §9 trigger among 2 changed file\(s\)/);
   });
 });
