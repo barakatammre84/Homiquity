@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { QueryErrorState } from "@/components/ui/query-boundary";
-import { buildReasonsAndTips, calculateQualificationNumbers } from "./propertyDetail/qualification";
+import { buildReasonsAndTips, calculateQualificationNumbers } from "@/lib/propertyQualification";
 
 export default function PropertyDetail() {
   const params = useParams();

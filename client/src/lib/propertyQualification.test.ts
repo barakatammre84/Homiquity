@@ -3,7 +3,7 @@ import {
   buildReasonsAndTips,
   calculateQualificationNumbers,
   tierRate,
-} from "./qualification";
+} from "./propertyQualification";
 import type { Property } from "@shared/schema";
 
 const prop = (price: string) => ({ price }) as Property;

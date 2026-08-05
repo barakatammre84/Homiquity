@@ -31,6 +31,19 @@ const PAGES = join(REPO_ROOT, "client", "src", "pages");
 /**
  * Pages that both (a) render an empty/zero state derived from query data and
  * (b) have no error branch. Lower this as pages are converted — never raise it.
+ *
+ * The remaining 1 is client/src/pages/lending/PreApproval.tsx, and it is a
+ * KNOWN FALSE POSITIVE — do not "fix" it by adding a QueryErrorState. The
+ * heuristics below match on local scaffolding, not on query data:
+ * EMPTY_DEFAULT hits `const types: string[] = []` inside applyIncomeSources,
+ * and CLAIMS_EMPTY hits that function's `sources.length === 0` guard clause.
+ * The page's only query is /api/coach/intake/latest, whose sole consumer is
+ * useCoachPrefill — when it fails, blank fields simply aren't gap-filled and
+ * the borrower fills them in, which is the correct behaviour. There is no
+ * empty state to mislead anyone with.
+ *
+ * Left in the count rather than special-cased so the number stays a plain
+ * mechanical fact about the detector's output.
  */
 const BASELINE_UNGUARDED = 1;
 

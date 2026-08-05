@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
+import { DTI_HARD_CAP, DTI_REVIEW_THRESHOLD, calculateQualificationNumbers } from "@/lib/propertyQualification";
 import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication } from "@shared/schema";
 import { selectPreApprovalContext } from "@shared/schema";
@@ -50,6 +51,13 @@ interface AffordabilityCheck {
   status: "within_guidelines" | "requires_review" | "exceeds_guidelines";
 }
 
+/**
+ * BuyerProperties' wording over the shared qualification numbers.
+ *
+ * The arithmetic moved to lib/propertyQualification.ts, which PropertyDetail
+ * also uses. Only the strings below are page-specific — they differ from
+ * PropertyDetail's, which is why the two were not merged wholesale.
+ */
 function calculateAffordability(
   property: Property,
   preApprovalAmount: number,
@@ -57,10 +65,13 @@ function calculateAffordability(
   monthlyDebts: number,
   creditScore?: number
 ): AffordabilityCheck {
-  const price = parseFloat(property.price);
-  const reasons: string[] = [];
-  
-  if (monthlyIncome <= 0) {
+  const q = calculateQualificationNumbers(
+    property, preApprovalAmount, monthlyIncome, monthlyDebts, creditScore, 5,
+  );
+
+  // Unknown income: fail closed with an explanatory reason rather than a 0% DTI
+  // that would read as comfortably qualified.
+  if (!q) {
     return {
       meetsGuidelines: false,
       estimatedPayment: 0,
@@ -69,52 +80,27 @@ function calculateAffordability(
       status: "exceeds_guidelines",
     };
   }
-  
-  const baseRate = creditScore && creditScore >= 760 ? 0.0625 : creditScore && creditScore >= 720 ? 0.065 : creditScore && creditScore >= 680 ? 0.07 : 0.075;
-  
-  // Estimate monthly payment (P&I at rate-adjusted for 30 years + taxes + insurance)
-  const downPaymentPercent = 5; // Standard minimum
-  const loanAmount = price * (1 - downPaymentPercent / 100);
-  const monthlyRate = baseRate / 12;
-  const numPayments = 360;
-  const monthlyPI = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
-    (Math.pow(1 + monthlyRate, numPayments) - 1);
-  
-  const monthlyTax = (price * 0.0125) / 12; // 1.25% annual property tax
-  const monthlyInsurance = Math.max(100, price * 0.003 / 12); // ~0.3% of home value annually
-  const pmi = loanAmount > price * 0.8 ? (loanAmount * 0.008) / 12 : 0; // ~0.8% PMI rate
-  
-  const estimatedPayment = monthlyPI + monthlyTax + monthlyInsurance + pmi;
-  const dtiWithProperty = ((estimatedPayment + monthlyDebts) / monthlyIncome) * 100;
-  
-  // Check qualification using deterministic rules
-  let status: "within_guidelines" | "requires_review" | "exceeds_guidelines" = "within_guidelines";
-  
-  // Price vs pre-approval check
-  if (price > preApprovalAmount) {
+
+  const reasons: string[] = [];
+  const dti = q.dtiWithProperty.toFixed(1);
+
+  if (q.overPreApproval) {
     reasons.push(`Price exceeds pre-approval of ${formatCurrency(preApprovalAmount)}`);
-    status = "exceeds_guidelines";
   }
-  
-  // DTI checks (aligned with GSE guidelines)
-  if (dtiWithProperty > 50) {
-    reasons.push(`DTI would be ${dtiWithProperty.toFixed(1)}% (max allowed is 50%)`);
-    status = "exceeds_guidelines";
-  } else if (dtiWithProperty > 43) {
-    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% may require compensating factors`);
-    if (status !== "exceeds_guidelines") status = "requires_review";
-  } else if (dtiWithProperty <= 36) {
-    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% is within guidelines`);
+  if (q.dtiWithProperty > DTI_HARD_CAP) {
+    reasons.push(`DTI would be ${dti}% (max allowed is 50%)`);
+  } else if (q.dtiWithProperty > DTI_REVIEW_THRESHOLD) {
+    reasons.push(`DTI of ${dti}% may require compensating factors`);
   } else {
-    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% is within guidelines`);
+    reasons.push(`DTI of ${dti}% is within guidelines`);
   }
-  
+
   return {
-    meetsGuidelines: status !== "exceeds_guidelines",
-    estimatedPayment,
-    dtiWithProperty,
+    meetsGuidelines: q.meetsGuidelines,
+    estimatedPayment: q.estimatedPayment,
+    dtiWithProperty: q.dtiWithProperty,
     reasons,
-    status,
+    status: q.status,
   };
 }
 

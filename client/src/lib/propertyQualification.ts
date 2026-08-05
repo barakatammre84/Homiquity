@@ -1,17 +1,16 @@
 /**
- * Per-property qualification estimate for the property detail page.
+ * Per-property qualification estimate.
  *
  * Extracted verbatim from PropertyDetail.tsx. Deterministic: no clock, no
  * randomness, no I/O.
  *
- * DUPLICATION NOTE: client/src/pages/borrower/BuyerProperties.tsx carries a
- * near-identical calculateAffordability — same credit-tier rate ladder
+ * SHARED by PropertyDetail.tsx and BuyerProperties.tsx, which previously each
+ * carried their own copy of this arithmetic — same credit-tier rate ladder
  * (760/720/680), same 1.25% tax, same max($100, 0.3%) insurance, same 0.8%
- * PMI above 80% LTV, same 50/43/36 DTI thresholds. The two differ only in
- * their message wording and in this one taking downPaymentPercent as a
- * parameter (BuyerProperties hardcodes 5%). They should share this module;
- * doing so is a follow-up because the two pages' reason strings differ and
- * merging them blindly would change copy on both.
+ * PMI above 80% LTV, same 50/43/36 DTI bands. Their borrower-facing wording
+ * differs, so the numbers live here and each page builds its own strings.
+ * That split is deliberate: merging the copy too would have changed what both
+ * pages say.
  *
  * The rate ladder is a display estimate, not pricing — real pricing comes from
  * the LLPA/pricing engine.
@@ -133,13 +132,7 @@ export function calculateQualificationNumbers(
   };
 }
 
-/**
- * The borrower-facing reasons and tips.
- *
- * Kept beside the numbers but separate from them: BuyerProperties computes the
- * same figures with different wording, so when the two pages share the maths
- * only this part stays per-page.
- */
+/** PropertyDetail's wording. BuyerProperties builds its own — see that file. */
 export function buildReasonsAndTips(
   q: QualificationNumbers,
   preApprovalAmount: number,
