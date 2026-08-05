@@ -112,6 +112,59 @@ describe("computePaymentProjection — compensation independence (WF1-002)", () 
       /credit score is required/i,
     );
   });
+
+  // F-047 — the assertion the parity test structurally CANNOT make.
+  //
+  // Parity compares computePaymentProjection against generateLoanEstimate, but
+  // both call the same derivePricing. A derivation that started reading the
+  // compensation election would move both sides identically and parity would
+  // still pass. The sibling "prices a fresh intake with NO election" test above
+  // catches only the variant where compensation becomes REQUIRED (it would
+  // throw); it does not catch compensation being read WITH A DEFAULT — which is
+  // the realistic regression, because lender-paid comp is normally priced into
+  // the rate in this industry.
+  //
+  // The failure that would let through: the engine deciding on a rate that
+  // assumes an election nobody made, with §1026.36(d)(2)'s fail-closed guard
+  // bypassed for a number that had quietly become compensation-dependent.
+  //
+  // So: vary ONLY the election and require the projection not to move.
+  it("is byte-identical with no election, lender-paid, and borrower-paid", async () => {
+    h.application = application();
+    const noElection = await computePaymentProjection("app-1");
+
+    h.application = application({
+      loCompensationModel: "lender_paid",
+      loCompensationBps: 125,
+    });
+    const lenderPaid = await computePaymentProjection("app-1");
+
+    // A different MODEL and a different RATE, so a derivation reading either
+    // field — or reading only one of them — is caught.
+    h.application = application({
+      loCompensationModel: "borrower_paid",
+      loCompensationBps: 275,
+    });
+    const borrowerPaid = await computePaymentProjection("app-1");
+
+    expect(lenderPaid).toEqual(noElection);
+    expect(borrowerPaid).toEqual(noElection);
+  });
+
+  it("the note rate specifically does not move with the election", async () => {
+    // Called out separately from the whole-object comparison because the rate is
+    // where compensation would realistically enter: lender-paid comp is funded
+    // by a rate bump. If only this moved, the object comparison above would
+    // fail too — but this names the mechanism, so a failure reads as a
+    // compliance regression rather than an arithmetic one.
+    h.application = application();
+    const { interestRate: withoutElection } = await computePaymentProjection("app-1");
+
+    h.application = application({ loCompensationModel: "lender_paid", loCompensationBps: 250 });
+    const { interestRate: withElection } = await computePaymentProjection("app-1");
+
+    expect(withElection).toBe(withoutElection);
+  });
 });
 
 describe("computePaymentProjection — no drift from the Loan Estimate", () => {
