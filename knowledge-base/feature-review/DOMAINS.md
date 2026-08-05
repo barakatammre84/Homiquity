@@ -19,7 +19,7 @@ Status ledger (updated by the orchestrator after each run):
 |---|---|---|---|
 | 1 | Public funnel, acquisition & education | 2026-08-05 | public-funnel-01/02 (P2) fixed `cef2890` + 1 refuted (ApprovalStrength SEO half) — see FINDINGS.md |
 | 2 | Application & intake | 2026-08-05 | **intake-01 (P0, TRID) fixed `c27b01e`** + intake-03 same commit + intake-02 fixed `eafdb47` + intake-04 fixed `69104f9`. All Domain 2 findings closed except ux-11 (HMDA/Reg C, blocked on U-8 — regulatory source access). See FINDINGS.md |
-| 3 | AI Coach, documents & extraction | — | not yet run |
+| 3 | AI Coach, documents & extraction | 2026-08-05 | **F-027 P1** (borrower text parsed as trusted extraction → forged tier-1 provenance + prompt injection; §9 security review required) + F-028/029/030 P2 + F-031 P3, all open. Doc-drift F-032/F-033 **fixed** (`e5ab91a`, `0934e9c`); a 2nd F-013 instance fixed (`aca9377`). 2 refuted, 1 confirmed-but-deliberate. Escalations **U-9** (is prod traffic reaching Anthropic — decides AG-3 status) and **U-10** (LL-2026-04 cite provenance). **CLEAN, verified:** the "AI never decides" gate is real — `coachProfileSync` is provenance/draft/status-fenced, and no automated decision path reads `notes` or the borrower graph. See FINDINGS.md |
 | 4 | Verification & credit | — | not yet run |
 | 5 | Underwriting & decisioning | — | not yet run |
 | 6 | Pricing, rates & disclosures | — | not yet run |
@@ -30,7 +30,7 @@ Status ledger (updated by the orchestrator after each run):
 | 11 | Staff, partner & pipeline ops | — | not yet run |
 | 12 | Property, listings & homeowner | — | not yet run |
 | 13 | Security, PII & platform cross-cutting | — | not yet run |
-| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domains 1–2 surfaces) | Domain 1: ux-06 (P2) fixed `ba7706a` + 1 unverified P3 candidate (LearningCenter no-CTA) + 1 refuted (FAQ dead-end). Domain 2: ux-07/08/09 (P2) fixed + ux-10/12 (P3) fixed — all four commits `b577553`/`73cf877`/`d2ed7dc`/`eb164ef`. Only ux-11 (P2, HMDA/Reg C) still open, blocked on U-8. The corroborated-but-unregistered `AuthGateOverlay` raw-`<a>` candidate (same file as ux-12) remains unverified — see FINDINGS.md; remaining domains 3–13 surfaces not yet run |
+| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domains 1–2 surfaces) | Domain 1: ux-06 (P2) fixed `ba7706a` + 1 unverified P3 candidate (LearningCenter no-CTA) + 1 refuted (FAQ dead-end). Domain 2: ux-07/08/09 (P2) fixed + ux-10/12 (P3) fixed — all four commits `b577553`/`73cf877`/`d2ed7dc`/`eb164ef`. Only ux-11 (P2, HMDA/Reg C) still open, blocked on U-8. Domain 3: ux-13/14/15/16 (P2) + ux-17/18 (P3) confirmed, none fixed (ux-18's pixel magnitude unmeasured — no screenshot tooling). **ux-01 status update:** its `Documents.tsx:163` evidence is resolved, but `AICoach.tsx:94-112` has four queries with no `isError` — residual, not a new finding. The `AuthGateOverlay` raw-`<a>` candidate remains unverified — see FINDINGS.md; remaining domains 4–13 surfaces not yet run |
 
 ---
 
