@@ -64,6 +64,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full history so the §9 guard can diff base..head. The default shallow
+          # checkout has neither sha, and a guard that cannot see the diff would
+          # silently pass every PR.
+          fetch-depth: 0
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -112,6 +117,31 @@ jobs:
         # PR. (Job `name:` above deliberately unchanged — verbatim required-check
         # string; see the rename warning.)
         run: pnpm guard:tokens
+      - name: Security-review guard (TEAM_PRACTICES §9)
+        # Fails when the PR touches a §9 trigger (PII vault/encryption, auth/sessions,
+        # role gates, uploads, outbound messaging, PII-adjacent logging) and the PR body
+        # records no security review. §9 is binding but was unenforceable: CODEOWNERS +
+        # required code-owner review is the usual mechanism, and it cannot work with a
+        # single collaborator — GitHub forbids self-approval and enforce_admins is on, so
+        # it would deadlock every §9 PR. This enforces the ARTIFACT instead of a second
+        # approver. It proves a review was written down, never that it was correct, and it
+        # cannot see two §9 triggers at all (a PII column in shared/schema/, a new PII
+        # sub-processor) — those stay human judgement. (Job `name:` above deliberately
+        # unchanged — verbatim required-check string; see the rename warning.)
+        env:
+          # Via env, never inlined into run: — a PR body is attacker-controlled text and
+          # ${{ }} interpolation into a shell script is a command-injection vector.
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # pipefail so a git failure reds the gate instead of yielding an empty diff that
+        # the guard would read as "no triggers touched" and pass.
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")" \
+          CHANGED_LINES="$(git diff -U0 "$BASE_SHA" "$HEAD_SHA")" \
+            pnpm guard:security
       - name: Query-key convergence guard
         # Fails on a template-string queryKey in a factory-owned family
         # (loan-applications, dashboard, tasks, calculator-results,
