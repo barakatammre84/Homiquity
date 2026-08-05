@@ -5,6 +5,8 @@ import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { logAudit } from "../../auditLog";
 import { lintOutboundText, REG_Z_ADVERTISING_DISCLOSURE_BLOCK } from "@shared/compliance/loCommsLint";
+import { scanForEscalationTriggers } from "@shared/compliance/complaintEscalation";
+import { escalateFlaggedMessage } from "../../services/complaintEscalation";
 import { isStaffRole, pickWorkableLoanApplication, type User } from "@shared/schema";
 import { z } from "zod";
 import { sendNotificationEmail } from "../../services/emailService";
@@ -269,6 +271,28 @@ export function registerMessagingRoutes(
         applicationId,
         messageType,
       });
+
+      // CS2: borrower-side messages are scanned for the escalation playbook's
+      // discrimination / credit-reporting-error trigger vocabulary. A match
+      // creates an audit record + immediate founder (admin) notification —
+      // it NEVER blocks, alters, or delays the message, and the borrower
+      // response is unchanged (no tip-off). Fire-and-forget: an escalation
+      // failure must not fail the send.
+      if (!senderIsStaff) {
+        const scan = scanForEscalationTriggers(message);
+        if (scan.flagged) {
+          logAudit(req, "complaint.flagged", "team_message", newMessage.id, {
+            categories: scan.categories,
+            applicationId,
+            senderId: user.id,
+          });
+          escalateFlaggedMessage(storage, {
+            messageId: newMessage.id,
+            applicationId,
+            categories: scan.categories,
+          }).catch((e) => console.error("[complaints] founder escalation failed:", e));
+        }
+      }
 
       // Notify the recipient — the UI promises this, so the backend delivers it.
       // The email intentionally carries no message content (PII stays behind login).

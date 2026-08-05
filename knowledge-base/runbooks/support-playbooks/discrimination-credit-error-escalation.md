@@ -38,6 +38,8 @@ Any borrower communication containing language like: "discriminated," "unfair," 
 
 Support/CS never adjudicates, explains away, or adds context to an adverse-action reason. The AAN's stated reasons are the only reasons that may ever be given to the borrower about that decision — full stop. Any request to "just explain more" gets the scripted deflection above and a founder escalation, never an improvised answer.
 
-## Remediation ticket (see CTO_ROADMAP.md)
+## Remediation ticket (see CTO_ROADMAP.md) — SHIPPED 2026-08-05 (CS2)
 
-No code currently flags or specially routes discrimination/credit-error language in borrower messages — today it relies entirely on a human reading normal support inbox traffic and recognizing the trigger phrases above. A P1 ticket for an automated keyword/sentiment flag + founder notification on the messages send path has been added to CTO_ROADMAP.md.
+The automated flag now exists: `shared/compliance/complaintEscalation.ts` scans every borrower-side message on `POST /api/messages` against the trigger vocabulary above (deliberately over-flagging — the scan gates only an internal escalation, so a false positive costs a founder glance). A match writes a `complaint.flagged` audit entry and an admin-only `complaint_escalation` in-app notification pointing at the message row (the verbatim record steps 3 requires — the notification body itself never carries the borrower's text). The scan never blocks, alters, or delays the borrower's message.
+
+**What stays human:** everything from "First response" down. The flag gets the founder looking; the scripted acknowledgment (⛔ still pending signoff), the AAN cross-check, and the never-add-to-stated-reasons rail are procedure, not code. Update the trigger list here AND the scanner's patterns together — they are the same vocabulary in two forms, and the scanner cites this file.
