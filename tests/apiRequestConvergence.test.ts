@@ -50,7 +50,7 @@ const ALLOWED_RAW_FETCH: Record<string, string> = {
     "public /api/staff-invites/validate/:code, fetched in a submit handler (the authenticated redeem call uses apiRequest)",
   "client/src/pages/agent-broker/ApplyInvite.tsx":
     "public /api/application-invites/validate/:token — renders the server's error text verbatim (expired vs invalid copy), which ApiError's '<status>: <body>' shape would change",
-  "client/src/pages/calculators/RentToOwnReadiness.tsx": "public POST /api/calculators/extract-lease",
+  "client/src/pages/calculators/rentToOwnReadiness/RentCard.tsx": "public POST /api/calculators/extract-lease",
 };
 
 function sourceFiles(dir: string): string[] {
