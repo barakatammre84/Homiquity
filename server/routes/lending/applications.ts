@@ -15,6 +15,7 @@ import { sendNotificationEmail } from "../../services/emailService";
 import { evaluateTridTrigger } from "../../services/trid";
 import { intakePausedGate } from "../../services/maintenanceMode";
 import { prelaunchGate } from "../../services/prelaunchGate";
+import { updatePipelineStage } from "../../pipelineEngine";
 import { routeParam } from "../../http/routeParams";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
@@ -81,8 +82,30 @@ export function registerApplicationRoutes(
         referringBrokerId,
       };
 
-      const application = await storage.createLoanApplication(applicationData);
-      logAudit(req, "loan_application.created", "loan_application", application.id);
+      // A1: consume the user's existing draft container instead of minting a
+      // sibling row. The funnel autosaves into a server draft (POST /draft +
+      // PATCH below); a submit that created a NEW row would strand that draft
+      // to re-offer stale answers on every future visit (the exact bug
+      // useDraftRestore's module comment documents). The status flip goes
+      // through updatePipelineStage — THE single status writer (draft →
+      // submitted is a legal transition) — never a direct status update.
+      const { status: _intendedStatus, ...draftFields } = applicationData;
+      const existingDraft = (await storage.getLoanApplicationsByUser(userId)).find(
+        (a) => a.status === "draft",
+      );
+
+      let application;
+      if (existingDraft) {
+        await storage.updateLoanApplication(existingDraft.id, draftFields);
+        await updatePipelineStage(existingDraft.id, "submitted");
+        application = (await storage.getLoanApplication(existingDraft.id))!;
+        logAudit(req, "loan_application.created", "loan_application", application.id, {
+          consumedDraftId: existingDraft.id,
+        });
+      } else {
+        application = await storage.createLoanApplication(applicationData);
+        logAudit(req, "loan_application.created", "loan_application", application.id);
+      }
 
       // Roadmap A3: applying is the moment an aspiring_owner becomes an
       // active_buyer — the promotion writer this split never had. Both are
@@ -107,12 +130,16 @@ export function registerApplicationRoutes(
       // Seed the outcomes/analytics row at funnel entry (the "submitted" stamp
       // the conversion-funnel dashboard counts). createLoanApplication writes
       // status "submitted" directly, bypassing updatePipelineStage, so the
-      // intake stamp is recorded here. Best-effort — never blocks the response.
-      try {
-        const { recordStageTimestamp } = await import("../../services/outcomeTracker");
-        await recordStageTimestamp(application.id, "submitted");
-      } catch (outcomeErr) {
-        console.warn("[Intake] Outcome submitted-stamp failed (non-fatal):", outcomeErr);
+      // intake stamp is recorded here — for the CREATE path only (the
+      // consumed-draft path went through updatePipelineStage, which records
+      // the stamp itself). Best-effort — never blocks the response.
+      if (!existingDraft) {
+        try {
+          const { recordStageTimestamp } = await import("../../services/outcomeTracker");
+          await recordStageTimestamp(application.id, "submitted");
+        } catch (outcomeErr) {
+          console.warn("[Intake] Outcome submitted-stamp failed (non-fatal):", outcomeErr);
+        }
       }
 
       // TRID §1026.2(a)(3): intake may have just supplied the 6th piece of
@@ -249,6 +276,32 @@ export function registerApplicationRoutes(
     } catch (error) {
       console.error("Create application error:", error);
       res.status(500).json({ error: "Failed to create application" });
+    }
+  });
+
+  // A1: find-or-create the user's ONE draft container, so the authenticated
+  // funnel can autosave server-side (PATCH /api/loan-applications/:id, the
+  // existing drafts-only edit route) and progress survives a device switch.
+  // Idempotent — a second call returns the same row. Same intake gates as
+  // application creation: while intake is paused, autosave degrades to
+  // localStorage-only (the client treats a failure here as non-fatal).
+  // Self-only by construction (the row is minted for req.user); no figures
+  // are accepted here — answers arrive only through the validated PATCH.
+  app.post("/api/loan-applications/draft", isAuthenticated, prelaunchGate, intakePausedGate, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const existing = (await storage.getLoanApplicationsByUser(userId)).find(
+        (a) => a.status === "draft",
+      );
+      if (existing) {
+        return res.json(existing);
+      }
+      const draft = await storage.createLoanApplication({ userId, status: "draft" });
+      logAudit(req, "loan_application.draft_created", "loan_application", draft.id);
+      res.status(201).json(draft);
+    } catch (error) {
+      console.error("Create draft error:", error);
+      res.status(500).json({ error: "Failed to create draft" });
     }
   });
 
