@@ -25,14 +25,7 @@ import {
   TrendingDown,
   Wallet,
 } from "lucide-react";
-
-/** Standard amortized principal-and-interest payment. */
-function monthlyPI(balance: number, annualRatePct: number, months: number): number {
-  if (balance <= 0 || months <= 0) return 0;
-  const r = annualRatePct / 100 / 12;
-  if (r === 0) return balance / months;
-  return (balance * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
-}
+import { calculateRefi } from "./refinance/refiMath";
 
 /** Currency field: displays formatted digits, stores a plain number. */
 function CurrencyInput({
@@ -77,18 +70,10 @@ export default function Refinance() {
   const [closingCosts, setClosingCosts] = useState(0);
   const [costsOpen, setCostsOpen] = useState(false);
 
-  const results = useMemo(() => {
-    const currentMonths = yearsRemaining * 12;
-    const newMonths = newTermYears * 12;
-    const currentPayment = monthlyPI(balance, currentRate, currentMonths);
-    const newPayment = monthlyPI(balance, newRate, newMonths);
-    const monthlyDiff = currentPayment - newPayment;
-    const currentInterest = currentPayment * currentMonths - balance;
-    const newInterest = newPayment * newMonths - balance;
-    const breakEvenMonths =
-      monthlyDiff > 0 && closingCosts > 0 ? Math.ceil(closingCosts / monthlyDiff) : null;
-    return { currentPayment, newPayment, monthlyDiff, currentInterest, newInterest, breakEvenMonths };
-  }, [balance, currentRate, yearsRemaining, newRate, newTermYears, closingCosts]);
+  const results = useMemo(
+    () => calculateRefi({ balance, currentRate, yearsRemaining, newRate, newTermYears, closingCosts }),
+    [balance, currentRate, yearsRemaining, newRate, newTermYears, closingCosts],
+  );
 
   const hasInputs = balance > 0;
   const saves = results.monthlyDiff > 0.5;
