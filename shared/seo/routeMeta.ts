@@ -64,6 +64,46 @@ export const STATIC_ROUTE_META: Record<string, RouteMetaEntry> = {
     description:
       "Free mortgage calculators from Homiquity: home affordability, monthly payment, refinance, rent vs. buy, amortization, home equity, payoff, down payment, and VA/BAH — no sign-up required.",
   },
+  "/calculators/mortgage": {
+    title: "Mortgage Calculator — Monthly Payment & Cost Breakdown",
+    description:
+      "Free mortgage calculator. See your estimated monthly payment — principal, interest, taxes, insurance, PMI, and HOA — with an interactive amortization schedule. No sign-up required.",
+  },
+  "/calculators/rent-vs-buy": {
+    title: "Rent vs. Buy Calculator — Compare the True Cost of Renting and Owning",
+    description:
+      "Free rent vs. buy calculator. Compare monthly costs, equity built, and long-term net worth between renting and owning to see which makes sense for you.",
+  },
+  "/calculators/affordability": {
+    title: "Mortgage Affordability Calculator — How Much Home Can You Afford?",
+    description:
+      "Free mortgage affordability calculator. Adjust income, monthly debts, down payment, and credit score with interactive sliders to see your comfortable home price range — no sign-up, no credit check.",
+  },
+  "/calculators/amortization": {
+    title: "Amortization Calculator — See Your Full Mortgage Payoff Schedule",
+    description:
+      "Free amortization calculator. See how much of every mortgage payment goes to principal vs. interest, your full year-by-year payoff schedule, and how extra payments save you interest and time.",
+  },
+  "/calculators/home-equity": {
+    title: "Home Equity Calculator — How Much Equity Do You Have?",
+    description:
+      "Free home equity calculator. Enter your home's value and what you still owe to see your equity, your loan-to-value, and how much you could potentially borrow with a HELOC or cash-out refinance.",
+  },
+  "/calculators/payoff": {
+    title: "Mortgage Payoff Calculator — Pay Off Your Home Faster",
+    description:
+      "Free mortgage payoff calculator. See how extra monthly payments, a one-time lump sum, or a biweekly schedule can shorten your loan and save thousands in interest.",
+  },
+  "/calculators/down-payment": {
+    title: "Down Payment Calculator — How Much Cash Do You Need to Buy?",
+    description:
+      "Free down payment calculator. Enter a home price to see your down payment, estimated closing costs, and the total cash you'll need at the table — plus how much you'd need at 3%, 5%, 10%, and 20% down.",
+  },
+  "/calculators/bah": {
+    title: "BAH Calculator — Turn Your Housing Allowance Into a Home | VA Loan",
+    description:
+      "Free Basic Allowance for Housing (BAH) calculator for active-duty service members. See how much home your BAH can buy off base with a VA loan — $0 down, no PMI.",
+  },
   "/rates": {
     title: "Today's Mortgage Rates",
     description:
@@ -197,6 +237,14 @@ export const SITEMAP_STATIC_PATHS: string[] = [
   "/resources",
   "/down-payment-wizard",
   "/calculators",
+  "/calculators/mortgage",
+  "/calculators/rent-vs-buy",
+  "/calculators/affordability",
+  "/calculators/amortization",
+  "/calculators/home-equity",
+  "/calculators/payoff",
+  "/calculators/down-payment",
+  "/calculators/bah",
   "/privacy",
   "/terms",
   "/disclosures",

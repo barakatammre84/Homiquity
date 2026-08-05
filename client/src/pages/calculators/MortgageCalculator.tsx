@@ -6,6 +6,7 @@ import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
+import { SEOHead } from "@/components/SEOHead";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -202,6 +203,10 @@ export default function MortgageCalculator() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead
+        title="Mortgage Calculator — Monthly Payment & Cost Breakdown"
+        description="Free mortgage calculator. See your estimated monthly payment — principal, interest, taxes, insurance, PMI, and HOA — with an interactive amortization schedule. No sign-up required."
+      />
       <PageShell width="wide">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
