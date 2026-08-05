@@ -58,6 +58,8 @@ export default defineConfig({
       "tests/adverseActionNotice.test.ts",
       "tests/adverseActionDelivery.test.ts",
       "tests/adverseActionPdf.test.ts",
+      "tests/adverseActionFcraChokepoint.test.ts",
+      "tests/adverseActionPregenerateHardening.test.ts",
       "tests/apr.test.ts",
       "tests/aprValidation.test.ts",
       "tests/structureTranslation.test.ts",

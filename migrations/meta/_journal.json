@@ -351,6 +351,13 @@
       "when": 1785951600000,
       "tag": "0049_credit_audit_hash_version",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1785955200000,
+      "tag": "0050_adverse_action_consumer_report_basis",
+      "breakpoints": true
     }
   ]
 }
