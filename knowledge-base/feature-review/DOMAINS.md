@@ -30,7 +30,7 @@ Status ledger (updated by the orchestrator after each run):
 | 11 | Staff, partner & pipeline ops | — | not yet run |
 | 12 | Property, listings & homeowner | — | not yet run |
 | 13 | Security, PII & platform cross-cutting | — | not yet run |
-| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domain 1 surfaces only) | 1 open confirmed (ux-06, P2) + 2 unverified P3 candidates (LearningCenter no-CTA, FunnelChrome raw `<a>` tags) + 1 refuted (FAQ dead-end) — see FINDINGS.md; remaining domains 2–13 surfaces not yet run |
+| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domain 1 surfaces only) | ux-06 (P2) fixed `ba7706a` + 2 unverified P3 candidates (LearningCenter no-CTA, FunnelChrome raw `<a>` tags) + 1 refuted (FAQ dead-end) — see FINDINGS.md; remaining domains 2–13 surfaces not yet run |
 
 ---
 
