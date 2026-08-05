@@ -30,7 +30,10 @@
 import {
   borrowerPaidOriginationAllowed,
   compensationAmount,
+  evaluatePointsAndFeesFloor,
+  type CompensationModel,
   type OriginatorCompensation,
+  type QmFloorEvaluation,
 } from "@shared/compliance/loCompensation";
 import { resolveFeeAmount, type ActualFeeMap } from "@shared/compliance/feeProvenance";
 
@@ -59,6 +62,124 @@ export const PLATFORM_TAX_SERVICE_FEE = 100;
  */
 export function knownPrepaidFinanceCharges(originationFee: number, points = 0): number {
   return originationFee + points + PLATFORM_APPLICATION_FEE + PLATFORM_UNDERWRITING_FEE + PLATFORM_TAX_SERVICE_FEE;
+}
+
+// ---------------------------------------------------------------------------
+// QM points-and-fees floor, scored off THIS fee schedule
+// ---------------------------------------------------------------------------
+// Two surfaces ask "does this structure blow the QM cap?": the
+// submission-readiness check (services/mismoValidation.ts) and the
+// compensation election (routes/lending/pricing.ts). They must score the same
+// numbers, for the same reason the fee constants above are exported — two
+// surfaces, one schedule. So the basis lives here, once, next to the schedule
+// it is derived from.
+//
+// Note the ordering this enables, which is the whole point (audit F-18): the
+// election is the moment the QM outcome is DECIDED and the only moment it is
+// still free to change — it freezes at Loan Estimate issuance. Evaluating the
+// floor only at submission ran the check after its own remedy had expired.
+// ---------------------------------------------------------------------------
+
+/**
+ * Regulation Z Total Loan Amount (§1026.32(b)(4)) stand-in — the note amount
+ * less the prepaid finance charges the platform can determine before closing.
+ *
+ * Under-counts the true prepaid finance charges (prepaid interest and prepaid
+ * MI need a closing date and a rate), so the figure is an UPPER bound on the
+ * true Total Loan Amount and the cap derived from it stays slightly permissive
+ * — but strictly tighter than standing in the note amount, never looser.
+ *
+ * `compensation` may be null: the borrower-paid origination fee is a function
+ * of the compensation model, and with no election there is no origination fee
+ * to subtract.
+ */
+export function regulationZTotalLoanAmountStandIn(
+  loanAmount: number,
+  compensation: OriginatorCompensation | null,
+): number {
+  const originationFee =
+    compensation && borrowerPaidOriginationAllowed(compensation.model)
+      ? loanAmount * ORIGINATION_FEE_RATE
+      : 0;
+  return Math.max(0, loanAmount - knownPrepaidFinanceCharges(originationFee));
+}
+
+/**
+ * Evaluate the QM points-and-fees floor for one file against the platform's
+ * own fee schedule.
+ *
+ * Returns the three-valued verdict from shared/compliance/loCompensation.ts —
+ * `over_cap` is definitive (the true figure exceeds the cap too), while
+ * `not_cleared` is NOT a pass, only "the floor fits and the complete figure is
+ * still unknown".
+ */
+export function evaluatePlatformQmFloor(
+  noteDate: Date | string,
+  loanAmount: number,
+  compensation: OriginatorCompensation,
+): QmFloorEvaluation {
+  const originationFee = borrowerPaidOriginationAllowed(compensation.model)
+    ? loanAmount * ORIGINATION_FEE_RATE
+    : 0;
+  return evaluatePointsAndFeesFloor(
+    noteDate,
+    loanAmount,
+    regulationZTotalLoanAmountStandIn(loanAmount, compensation),
+    {
+      loanAmount,
+      originationFee,
+      points: 0,
+      applicationFee: PLATFORM_APPLICATION_FEE,
+      underwritingFee: PLATFORM_UNDERWRITING_FEE,
+      compensation,
+    },
+  );
+}
+
+/**
+ * Note date to score the QM thresholds against, before a note exists.
+ *
+ * The §1026.43(e) dollar amounts are adjusted annually and the tables are
+ * selected by NOTE DATE, so pre-closing the scheduled closing date stands in,
+ * and today's date stands in for that. Delivery re-checks against the real
+ * note date. Shared so every surface picks the same table.
+ */
+export function estimatedNoteDate(closingDate: string | Date | null | undefined): Date {
+  if (!closingDate) return new Date();
+  const parsed = typeof closingDate === "string" ? new Date(closingDate) : closingDate;
+  return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+/** Upper bound on an electable compensation rate; mirrors the election schema. */
+export const MAX_ELECTABLE_COMPENSATION_BPS = 1000;
+
+/**
+ * The highest whole-basis-point compensation rate that does NOT put this file
+ * definitively over the QM cap on the platform's own charges alone.
+ *
+ * Returns null when even 0 bps is over the cap — i.e. the fixed platform fees
+ * exhaust the entire cap at this loan amount, so no compensation rate rescues
+ * the file and the fee schedule (or the loan amount) is the thing that has to
+ * move. That is audit F-17, surfaced per-file.
+ *
+ * Deliberately named "electable" and not "safe": clearing the floor is
+ * `not_cleared`, never a pass, so this is the ceiling on what may be elected,
+ * not a guarantee the delivered figure will fit.
+ *
+ * The floor is non-decreasing in bps (the cap does not move with it — the Reg Z
+ * stand-in depends on the model, not the rate), so the first rate that is not
+ * over cap, scanning down, is the highest such rate.
+ */
+export function maxElectableCompensationBps(
+  noteDate: Date | string,
+  loanAmount: number,
+  model: CompensationModel,
+): number | null {
+  for (let bps = MAX_ELECTABLE_COMPENSATION_BPS; bps >= 0; bps--) {
+    const evaluation = evaluatePlatformQmFloor(noteDate, loanAmount, { model, bps });
+    if (evaluation.verdict !== "over_cap") return bps;
+  }
+  return null;
 }
 
 export interface ClosingCostInputs {

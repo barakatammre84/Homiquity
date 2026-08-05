@@ -1,16 +1,11 @@
 import { storage } from "../storage";
 import { addBusinessDays, subtractBusinessDays } from "./businessDays";
 import { evaluateCoveredPointsAndFees } from "@shared/fannieMae/qmThresholds";
+import { resolveCompensation } from "@shared/compliance/loCompensation";
 import {
-  borrowerPaidOriginationAllowed,
-  evaluatePointsAndFeesFloor,
-  resolveCompensation,
-} from "@shared/compliance/loCompensation";
-import {
-  knownPrepaidFinanceCharges,
-  ORIGINATION_FEE_RATE,
-  PLATFORM_APPLICATION_FEE,
-  PLATFORM_UNDERWRITING_FEE,
+  estimatedNoteDate,
+  evaluatePlatformQmFloor,
+  regulationZTotalLoanAmountStandIn,
 } from "./loanCosts";
 import type {
   LoanApplication,
@@ -456,7 +451,7 @@ function evaluatePointsAndFees(application: LoanApplication): {
   // date yet, so the closing date (when scheduled) or today's date stands in
   // as the expected note year. The delivery-readiness edits re-check against
   // the actual note date.
-  const estimatedNoteDate = parseDate(application.closingDate) ?? new Date();
+  const noteDate = estimatedNoteDate(application.closingDate);
 
   // Regulation Z Total Loan Amount (§1026.32(b)(4)) — the amount financed less
   // the financed points and fees. It is ALWAYS less than the note amount, so
@@ -475,18 +470,17 @@ function evaluatePointsAndFees(application: LoanApplication): {
     application.loCompensationModel,
     application.loCompensationBps,
   );
-  const originationFeeForBasis =
-    compensationForBasis && borrowerPaidOriginationAllowed(compensationForBasis.model)
-      ? loanAmount * ORIGINATION_FEE_RATE
-      : 0;
-  const regZTotalLoanAmountStandIn = Math.max(
-    0,
-    loanAmount - knownPrepaidFinanceCharges(originationFeeForBasis),
+  // Derived by services/loanCosts.ts, which owns the fee schedule this is
+  // computed from — the same helper the compensation election scores against,
+  // so the two surfaces cannot drift (audit F-18).
+  const regZTotalLoanAmountStandIn = regulationZTotalLoanAmountStandIn(
+    loanAmount,
+    compensationForBasis,
   );
 
   if (pointsAndFees !== null) {
     const evaluation = evaluateCoveredPointsAndFees(
-      estimatedNoteDate,
+      noteDate,
       loanAmount,
       regZTotalLoanAmountStandIn,
       pointsAndFees,
@@ -523,19 +517,7 @@ function evaluatePointsAndFees(application: LoanApplication): {
     };
   }
 
-  const floorEvaluation = evaluatePointsAndFeesFloor(
-    estimatedNoteDate,
-    loanAmount,
-    regZTotalLoanAmountStandIn,
-    {
-      loanAmount,
-      originationFee: originationFeeForBasis,
-      points: 0,
-      applicationFee: PLATFORM_APPLICATION_FEE,
-      underwritingFee: PLATFORM_UNDERWRITING_FEE,
-      compensation,
-    },
-  );
+  const floorEvaluation = evaluatePlatformQmFloor(noteDate, loanAmount, compensation);
 
   if (floorEvaluation.verdict === "over_cap") {
     return {
