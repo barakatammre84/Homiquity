@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
@@ -23,31 +20,17 @@ import type {
   HmdaDemographics,
 } from "@shared/schema";
 import { useActiveApplication } from "@/hooks/useActiveApplication";
-import {
-  Users,
-  FileText,
-  Save,
-  Plus,
-  Trash2,
-  Loader2,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import {
-  DECLARATION_QUESTIONS,
-  demographicsToPayload,
-  emptyDemographics,
   emptySlice,
-  hmdaToState,
   type AssetForm,
   type BorrowerSlice,
   type LiabilityForm,
   type PersonalInfoForm,
-  type SectionsPayload,
-  type UrlaSavePayload,
 } from "./urla/types";
+import { STEPS, type StepContext } from "./urla/steps";
+import { buildBorrowerData, detectCoBorrower, emptyBorrowerData } from "./urla/borrowerSlices";
+import { buildPayload } from "./urla/payload";
 import { PersonalInfoSection } from "./urla/PersonalInfoSection";
 import { EmploymentSection } from "./urla/EmploymentSection";
 import { AssetsSection } from "./urla/AssetsSection";
@@ -55,6 +38,11 @@ import { LiabilitiesSection } from "./urla/LiabilitiesSection";
 import { PropertySection } from "./urla/PropertySection";
 import { DeclarationsSection } from "./urla/DeclarationsSection";
 import { DemographicsSection } from "./urla/DemographicsSection";
+import { BorrowerSwitcherCard } from "./urla/BorrowerSwitcherCard";
+import { StepRail } from "./urla/StepRail";
+import { StepNav } from "./urla/StepNav";
+import { SaveStatus } from "./urla/SaveStatus";
+import { NoApplicationCard } from "./urla/NoApplicationCard";
 
 interface DashboardData {
   applications: LoanApplication[];
@@ -73,90 +61,6 @@ interface UrlaData {
   allDeclarations?: BorrowerDeclarations[];
   hmdaDemographics?: HmdaDemographics[];
 }
-
-interface StepContext {
-  slice: BorrowerSlice;
-  otherIncomes: Partial<OtherIncomeSource>[];
-  propertyInfo: Partial<UrlaPropertyInfo>;
-  app: LoanApplication;
-}
-
-interface UrlaStep {
-  id: string;
-  label: string;
-  estimate: string;
-  intro: string;
-  isComplete: (ctx: StepContext) => boolean;
-}
-
-// Completion is advisory only — it drives the progress bar and the check marks
-// in the step rail, never gates navigation or saving (URLA is save-as-you-go).
-const STEPS: UrlaStep[] = [
-  {
-    id: "borrower",
-    label: "About you",
-    estimate: "~4 min",
-    intro: "Let's start with you. Nothing here is graded — it's simply how your loan file gets opened.",
-    isComplete: ({ slice }) =>
-      !!(slice.personalInfo.firstName && slice.personalInfo.lastName &&
-         slice.personalInfo.dateOfBirth && (slice.personalInfo.ssn || slice.personalInfo.ssnLast4)),
-  },
-  {
-    id: "employment",
-    label: "Work & income",
-    estimate: "~5 min",
-    intro: "Your work and income story. Two years of history is the underwriting standard.",
-    isComplete: ({ slice }) =>
-      slice.employmentRecords.some((e) => e.employerName || e.positionTitle),
-  },
-  {
-    id: "assets",
-    label: "Assets",
-    estimate: "~2 min",
-    intro: "Where your down payment and reserves will come from.",
-    isComplete: ({ slice }) =>
-      slice.assets.some((a) => a.accountType || a.financialInstitution),
-  },
-  {
-    id: "liabilities",
-    label: "Liabilities",
-    estimate: "~2 min",
-    intro: "Your monthly obligations. Listing everything now prevents surprises later.",
-    isComplete: ({ slice }) =>
-      slice.liabilities.some((l) => l.liabilityType || l.creditorName),
-  },
-  {
-    id: "property",
-    label: "Property & loan",
-    estimate: "~2 min",
-    intro: "The home and loan this application is for — much of it carries over from your pre-approval.",
-    isComplete: ({ propertyInfo, app }) =>
-      !!((propertyInfo.propertyStreet || app.propertyAddress) &&
-         (propertyInfo.propertyValue || app.propertyValue || app.purchasePrice)),
-  },
-  {
-    id: "declarations",
-    label: "Declarations",
-    estimate: "~2 min",
-    intro: "Standard questions every lender must ask — answer honestly, there are no trick questions.",
-    isComplete: ({ slice }) =>
-      DECLARATION_QUESTIONS.every((q) => typeof slice.declarations[q.key] === "boolean"),
-  },
-  {
-    id: "demographics",
-    label: "Demographics",
-    estimate: "~1 min",
-    intro: "Optional federal monitoring questions. Declining to answer is always allowed.",
-    isComplete: ({ slice }) => {
-      const d = slice.demographics;
-      const ethnicity = d.ethnicityHispanicLatino || d.ethnicityNotHispanicLatino || d.ethnicityNotProvided;
-      const race = d.raceAmericanIndian || d.raceAsian || d.raceBlack || d.raceNativeHawaiian || d.raceWhite || d.raceNotProvided;
-      const sex = d.sexFemale || d.sexMale || d.sexNotProvided;
-      const age = !!d.age || d.ageNotProvided;
-      return ethnicity && race && sex && age;
-    },
-  },
-];
 
 export default function URLAForm() {
   const { isLoading: authLoading } = useAuth();
@@ -190,7 +94,7 @@ export default function URLAForm() {
   });
 
   // Per-borrower section data, keyed by borrowerSequenceNumber (1 = primary, 2 = co-borrower)
-  const [borrowerData, setBorrowerData] = useState<Record<number, BorrowerSlice>>({ 1: emptySlice(), 2: emptySlice() });
+  const [borrowerData, setBorrowerData] = useState<Record<number, BorrowerSlice>>(emptyBorrowerData);
   const [activeSeq, setActiveSeq] = useState<number>(1);
   const [hasCoBorrower, setHasCoBorrower] = useState<boolean>(false);
   // Shared (primary-only) data
@@ -213,45 +117,24 @@ export default function URLAForm() {
 
   useEffect(() => {
     if (!urlaData) return;
-    const seqOf = (r: { borrowerSequenceNumber?: number | null }) => r.borrowerSequenceNumber ?? 1;
-
-    const buildSlice = (seq: number): BorrowerSlice => {
-      const pi = (urlaData.allPersonalInfo || []).find((p) => seqOf(p) === seq);
-      const emp = (urlaData.employmentHistory || []).filter((e) => seqOf(e) === seq);
-      const ast = (urlaData.assets || []).filter((a) => seqOf(a) === seq);
-      const lia = (urlaData.liabilities || []).filter((l) => seqOf(l) === seq);
-      const decl = (urlaData.allDeclarations || []).find((d) => seqOf(d) === seq);
-      const hmda = (urlaData.hmdaDemographics || []).find((h) => seqOf(h) === seq);
-      return {
-        personalInfo: pi || {},
-        employmentRecords: emp.length ? emp : [{}],
-        assets: ast.length ? ast : [{}],
-        liabilities: lia.length ? lia : [{}],
-        declarations: decl || {},
-        demographics: hmda ? hmdaToState(hmda) : emptyDemographics(),
-      };
-    };
-
-    setBorrowerData({ 1: buildSlice(1), 2: buildSlice(2) });
+    setBorrowerData(buildBorrowerData(urlaData));
     setOtherIncomes(urlaData.otherIncomeSources?.length ? urlaData.otherIncomeSources : []);
     setPropertyInfo(urlaData.propertyInfo || {});
-
-    const hasCo =
-      (urlaData.allPersonalInfo || []).some((p) => seqOf(p) > 1) ||
-      (urlaData.employmentHistory || []).some((e) => seqOf(e) > 1) ||
-      (urlaData.assets || []).some((a) => seqOf(a) > 1) ||
-      (urlaData.liabilities || []).some((l) => seqOf(l) > 1) ||
-      (urlaData.allDeclarations || []).some((d) => seqOf(d) > 1) ||
-      (urlaData.hmdaDemographics || []).some((h) => seqOf(h) > 1);
-    if (hasCo) setHasCoBorrower(true);
+    // One-way latch: never flips back to false, so an in-progress co-borrower
+    // the borrower just added isn't dropped by a refetch that predates them.
+    if (detectCoBorrower(urlaData)) setHasCoBorrower(true);
   }, [urlaData, activeApplication?.id]);
 
   useEffect(() => {
     if (activeApplication?.id) trackFormStart("urla");
   }, [activeApplication?.id, trackFormStart]);
 
+  // The ONLY URLA write path from the client. tests/complianceInvariants.test.ts
+  // relies on that being true: it scopes its TRID-trigger assertion to the
+  // server's /save handler precisely because this is the sole caller. If a
+  // second URLA write endpoint is ever added here, that test must be revisited.
   const saveMutation = useMutation({
-    mutationFn: async ({ data }: { data: UrlaSavePayload; silent?: boolean }) => {
+    mutationFn: async ({ data }: { data: ReturnType<typeof buildPayload>; silent?: boolean }) => {
       const response = await apiRequest("POST", `/api/urla/${activeApplication?.id}/save`, data);
       return response.json();
     },
@@ -274,36 +157,11 @@ export default function URLAForm() {
     },
   });
 
-  const buildSectionsPayload = (s: BorrowerSlice): SectionsPayload => ({
-    personalInfo: s.personalInfo,
-    employmentHistory: s.employmentRecords
-      .filter(emp => emp.employerName || emp.positionTitle)
-      .map(emp => ({ ...emp, employmentType: emp.employmentType || "current" })),
-    assets: s.assets.filter(asset => asset.accountType || asset.financialInstitution),
-    liabilities: s.liabilities.filter(liability => liability.liabilityType || liability.creditorName),
-    declarations: s.declarations,
-    demographics: demographicsToPayload(s.demographics),
-  });
-
-  const buildPayload = (): UrlaSavePayload => {
-    const cleanedOtherIncomes = otherIncomes.filter(income => income.incomeSource && income.monthlyAmount);
-    const primary = buildSectionsPayload(borrowerData[1] ?? emptySlice());
-
-    const payload: UrlaSavePayload = {
-      ...primary,
-      otherIncomeSources: cleanedOtherIncomes,
-      propertyInfo,
-    };
-
-    if (hasCoBorrower) {
-      payload.coApplicants = [buildSectionsPayload(borrowerData[2] ?? emptySlice())];
-    }
-
-    return payload;
-  };
+  const currentPayload = () =>
+    buildPayload({ borrowerData, otherIncomes, propertyInfo, hasCoBorrower });
 
   const handleSave = () => {
-    saveMutation.mutate({ data: buildPayload() });
+    saveMutation.mutate({ data: currentPayload() });
   };
 
   const stepIndex = STEPS.findIndex((s) => s.id === activeStep);
@@ -311,7 +169,7 @@ export default function URLAForm() {
 
   const handleContinue = () => {
     // Final step saves loudly (toast); intermediate steps save quietly and advance.
-    saveMutation.mutate({ data: buildPayload(), silent: !isLastStep });
+    saveMutation.mutate({ data: currentPayload(), silent: !isLastStep });
     track("urla_section_complete", "/urla-form", {
       form: "urla",
       step_id: activeStep,
@@ -366,25 +224,13 @@ export default function URLAForm() {
   if (!activeApplication) {
     return (
       <PageShell width="wide">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="text-lg font-medium">No application open yet</p>
-            <p className="text-sm text-muted-foreground mt-2 max-w-md text-center">
-              Start your pre-approval and we'll open your loan file here — most people
-              finish it in about three minutes.
-            </p>
-            <Button asChild className="mt-6">
-              <Link href="/apply">Start pre-approval</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <NoApplicationCard />
       </PageShell>
     );
   }
 
   const app = urlaData?.application || activeApplication;
-  const stepContext: StepContext = { slice, otherIncomes, propertyInfo, app };
+  const stepContext: StepContext = { slice, propertyInfo, app };
   const completedCount = STEPS.filter((s) => s.isComplete(stepContext)).length;
   const currentStep = STEPS[stepIndex];
 
@@ -394,24 +240,11 @@ export default function URLAForm() {
       title="Your Loan Application"
       subtitle="Uniform Residential Loan Application · Freddie Mac Form 65 / Fannie Mae Form 1003 (Effective 1/2021)"
       headerAction={
-        <div className="flex items-center gap-4">
-          <p aria-live="polite" className="text-xs text-muted-foreground" data-testid="text-urla-save-status">
-            {saveMutation.isPending ? (
-              "Saving…"
-            ) : lastSavedAt ? (
-              <span className="flex items-center gap-1">
-                <Check aria-hidden="true" className="h-3 w-3" />
-                Saved at {lastSavedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-              </span>
-            ) : (
-              "Progress saves each time you continue"
-            )}
-          </p>
-          <Button onClick={handleSave} disabled={saveMutation.isPending} variant="outline" className="gap-2" data-testid="button-save-urla-top">
-            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save
-          </Button>
-        </div>
+        <SaveStatus
+          isSaving={saveMutation.isPending}
+          lastSavedAt={lastSavedAt}
+          onSave={handleSave}
+        />
       }
     >
       <div className="mb-8 space-y-2">
@@ -425,101 +258,25 @@ export default function URLAForm() {
         </p>
       </div>
 
-        <Card className="mb-8">
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Editing for:</span>
-              <Button
-                variant={activeSeq === 1 ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveSeq(1)}
-                data-testid="button-borrower-primary"
-              >
-                Primary Borrower
-              </Button>
-              {hasCoBorrower && (
-                <Button
-                  variant={activeSeq === 2 ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveSeq(2)}
-                  data-testid="button-borrower-co"
-                >
-                  Co-Borrower
-                </Button>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {!hasCoBorrower ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => {
-                    setHasCoBorrower(true);
-                    setActiveSeq(2);
-                  }}
-                  data-testid="button-add-coborrower"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Co-Borrower
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => {
-                    setBorrowerData((prev) => ({ ...prev, 2: emptySlice() }));
-                    setHasCoBorrower(false);
-                    setActiveSeq(1);
-                  }}
-                  data-testid="button-remove-coborrower"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Remove Co-Borrower
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <BorrowerSwitcherCard
+          activeSeq={activeSeq}
+          onSelectSeq={setActiveSeq}
+          hasCoBorrower={hasCoBorrower}
+          onAddCoBorrower={() => {
+            setHasCoBorrower(true);
+            setActiveSeq(2);
+          }}
+          onRemoveCoBorrower={() => {
+            setBorrowerData((prev) => ({ ...prev, 2: emptySlice() }));
+            setHasCoBorrower(false);
+            setActiveSeq(1);
+          }}
+        />
 
         <Tabs value={activeStep} onValueChange={setActiveStep}>
           <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-8">
             <div className="mb-6 lg:sticky lg:top-6 lg:mb-0">
-              <TabsList className="flex h-auto w-full items-stretch justify-start gap-1 overflow-x-auto bg-transparent p-0 lg:flex-col lg:overflow-visible">
-                {STEPS.map((step, index) => {
-                  const complete = step.isComplete(stepContext);
-                  return (
-                    <TabsTrigger
-                      key={step.id}
-                      value={step.id}
-                      data-testid={`tab-${step.id}`}
-                      className="h-auto shrink-0 justify-start gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left text-muted-foreground data-[state=active]:border-border data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                    >
-                      {complete ? (
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success-subtle text-success-subtle-foreground">
-                          <Check aria-hidden="true" className="h-3.5 w-3.5" />
-                          <span className="sr-only">Section complete:</span>
-                        </span>
-                      ) : (
-                        <span
-                          aria-hidden="true"
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium"
-                        >
-                          {index + 1}
-                        </span>
-                      )}
-                      <span className="flex min-w-0 flex-col">
-                        <span className="truncate text-sm font-medium">{step.label}</span>
-                        <span className="hidden text-[11px] font-normal text-muted-foreground lg:block">
-                          {step.estimate}
-                        </span>
-                      </span>
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
+              <StepRail stepContext={stepContext} />
             </div>
 
             <div className="min-w-0">
@@ -573,32 +330,13 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <div className="mt-8 flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
-                <Button
-                  variant="ghost"
-                  className="gap-2"
-                  onClick={handleBack}
-                  disabled={stepIndex === 0}
-                  data-testid="button-urla-back"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Back
-                </Button>
-                <Button
-                  className="gap-2"
-                  onClick={handleContinue}
-                  disabled={saveMutation.isPending}
-                  data-testid={isLastStep ? "button-save-urla" : "button-urla-continue"}
-                >
-                  {saveMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : isLastStep ? (
-                    <Save className="h-4 w-4" />
-                  ) : null}
-                  {isLastStep ? "Save application" : "Save & continue"}
-                  {!isLastStep && <ChevronRight className="h-4 w-4" />}
-                </Button>
-              </div>
+              <StepNav
+                isFirstStep={stepIndex === 0}
+                isLastStep={isLastStep}
+                onBack={handleBack}
+                onContinue={handleContinue}
+                isSaving={saveMutation.isPending}
+              />
             </div>
           </div>
         </Tabs>
