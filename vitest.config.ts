@@ -34,6 +34,7 @@ export default defineConfig({
       "tests/leDisclosedFeeProvenance.test.ts",
       "tests/nPlusOneBatching.test.ts",
       "tests/complaintEscalation.test.ts",
+      "tests/cycleTimeReport.test.ts",
       "tests/extensionFeeAndRegZBasis.test.ts",
       "tests/contingentLiabilities.test.ts",
       "tests/businessChannel.test.ts",

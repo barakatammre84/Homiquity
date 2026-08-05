@@ -11,8 +11,10 @@ import {
   Percent,
   Scale,
   ShieldAlert,
+  Timer,
   TrendingDown,
 } from "lucide-react";
+import type { CycleTimeReport } from "@shared/cycleTimeReport";
 import type { CompensationSummary, CompensationVariance } from "@shared/compensationLedger";
 import type { CostSummary, UnitEconomics } from "@shared/costLedger";
 import type { ClawbackRegister } from "@shared/compensationClawback";
@@ -63,6 +65,9 @@ export default function FinancialReports() {
   });
   const { data: liabilities, isLoading: liabLoading } = useQuery<ContingentLiabilityRegister>({
     queryKey: ["/api/reports/contingent-liabilities"],
+  });
+  const { data: cycle, isLoading: cycleLoading } = useQuery<CycleTimeReport>({
+    queryKey: ["/api/reports/cycle-time"],
   });
 
   return (
@@ -240,6 +245,65 @@ export default function FinancialReports() {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {/* ---- Funnel: pull-through + cycle time (roadmap G-C) ---- */}
+      {cycleLoading || !cycle ? (
+        <Skeleton className="h-40 w-full" data-testid="skeleton-cycle-time" />
+      ) : (
+        <Card data-testid="card-cycle-time">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Timer className="h-5 w-5" />
+              Funnel — last {cycle.windowDays} days
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div data-testid="stat-pull-through-resolved">
+              <StatCard
+                size="compact"
+                label="Pull-through (resolved)"
+                value={pct(cycle.pullThroughResolvedPct)}
+                hint={
+                  cycle.pullThroughResolvedPct === null
+                    ? "Nothing resolved yet — not zero, undefined"
+                    : `${cycle.outcomes.funded} funded of ${cycle.outcomes.funded + cycle.outcomes.denied + cycle.outcomes.withdrawn + cycle.outcomes.expired} resolved · gate is >70%`
+                }
+              />
+              </div>
+              <div data-testid="stat-median-cycle">
+              <StatCard
+                size="compact"
+                label="Median cycle time"
+                value={
+                  cycle.cycleTime.medianDays === null
+                    ? "—"
+                    : `${cycle.cycleTime.medianDays.toFixed(1)} days`
+                }
+                hint={
+                  cycle.cycleTime.medianDays === null
+                    ? "No measurable funded files in the window"
+                    : `p90 ${cycle.cycleTime.p90Days!.toFixed(1)} days over ${cycle.cycleTime.measuredCount} funded · gate is <12 days`
+                }
+              />
+              </div>
+              <div data-testid="stat-window-created">
+              <StatCard
+                size="compact"
+                label="Created in window"
+                value={cycle.totalCreated}
+                hint={`${cycle.outcomes.inFlight} still in flight · overall pull-through ${pct(cycle.pullThroughOverallPct)}`}
+              />
+              </div>
+            </div>
+            <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground" data-testid="list-cycle-notes">
+              {cycle.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       {/* ---- Contingent liabilities ---- */}
