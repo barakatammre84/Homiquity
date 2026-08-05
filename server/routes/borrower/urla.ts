@@ -4,7 +4,7 @@ import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { logAudit } from "../../auditLog";
-import { selfEmploymentWorksheetSchema, isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
+import { selfEmploymentWorksheetSchema, urlaLoanDetailsSchema, isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
 import { pickTableFields, sanitizePersonalInfoBody, URLA_TABLES } from "../urlaValidation";
 import { stripEncryptedFields } from "../../services/piiVault";
 import { evaluateTridTrigger } from "../../services/trid";
@@ -388,7 +388,7 @@ export function registerUrlaRoutes(
     try {
       const user = req.user as User;
       const { applicationId } = routeParams(req);
-      const { personalInfo, employmentHistory, otherIncomeSources, assets, liabilities, propertyInfo, declarations, demographics, coApplicants } = req.body;
+      const { personalInfo, employmentHistory, otherIncomeSources, assets, liabilities, propertyInfo, loanDetails, declarations, demographics, coApplicants } = req.body;
 
       // Verify the requesting user owns (or has staff access to) this application
       const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
@@ -573,6 +573,45 @@ export function registerUrlaRoutes(
           ...pickTableFields(URLA_TABLES.propertyInfo, propertyInfo),
           applicationId,
         } as any);
+      }
+
+      // URLA Section 4a — loan type + amortization type (WF2-F4). These are
+      // loan_applications columns, not URLA-table columns, and this is their
+      // only client-reachable write path: section-4 gating
+      // (services/mismoValidation.ts) requires both, and without a write path
+      // every product-created file was permanently blocked from wholesale
+      // submission. The borrower STATES the values; the server validates them
+      // against the exact MISMO-mappable vocabulary (shared
+      // urlaLoanDetailsSchema) — an invalid or partial section is a 400,
+      // never a silently guessed value.
+      if (hasContent(loanDetails)) {
+        const parsedLoanDetails = urlaLoanDetailsSchema.safeParse(loanDetails);
+        if (!parsedLoanDetails.success) {
+          return res.status(400).json({
+            error: "Invalid loan details",
+            details: parsedLoanDetails.error.flatten(),
+          });
+        }
+        const loanDetailsChanged =
+          parsedLoanDetails.data.preferredLoanType !== application.preferredLoanType ||
+          parsedLoanDetails.data.amortizationType !== application.amortizationType;
+        if (loanDetailsChanged) {
+          const updated = await storage.updateLoanApplication(applicationId, parsedLoanDetails.data);
+          results.loanDetails = updated
+            ? { preferredLoanType: updated.preferredLoanType, amortizationType: updated.amortizationType }
+            : parsedLoanDetails.data;
+          // Loan type is a pricing input (the projected rate differs by
+          // product), so a change re-runs the deterministic decision —
+          // fire-and-forget, same as the worksheet route above. Unchanged
+          // saves skip this so save-as-you-go doesn't spam snapshots.
+          const { recalculateDecision } = await import("../../services/decisionEngine");
+          void recalculateDecision(applicationId, "loan_details_updated");
+        } else {
+          results.loanDetails = {
+            preferredLoanType: application.preferredLoanType,
+            amortizationType: application.amortizationType,
+          };
+        }
       }
 
       // Other income sources (primary only)

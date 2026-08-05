@@ -552,6 +552,46 @@ export interface ClosingCostStructure {
   cashToClose: number;
 }
 
+export interface EscrowEstimateInputs {
+  purchasePrice: number;
+  /** Annual property taxes; defaults to the platform 1.2%-of-price model. */
+  annualPropertyTaxes?: number;
+  /** Annual homeowner's insurance; defaults to max($1,200, 0.3% of price). */
+  annualHomeownersInsurance?: number;
+}
+
+export interface MonthlyEscrowEstimate {
+  annualPropertyTax: number;
+  monthlyPropertyTax: number;
+  annualHomeownersInsurance: number;
+  monthlyHomeownersInsurance: number;
+  monthlyEscrow: number;
+}
+
+/**
+ * Platform escrow model — property tax at 1.2%/yr of price, homeowner's
+ * insurance at max($1,200, 0.3%/yr of price). Extracted VERBATIM from
+ * computeClosingCosts (no formula change) so the decision engine's internal
+ * payment projection (services/loanEstimate.ts computePaymentProjection) and
+ * the Loan Estimate price the SAME escrow from one source. Pure, and reads no
+ * fee or compensation input — a monthly escrow is independent of how the
+ * originator is paid.
+ */
+export function estimateMonthlyEscrow(input: EscrowEstimateInputs): MonthlyEscrowEstimate {
+  const annualPropertyTax = input.annualPropertyTaxes ?? input.purchasePrice * 0.012;
+  const monthlyPropertyTax = annualPropertyTax / 12;
+  const annualHomeownersInsurance =
+    input.annualHomeownersInsurance ?? Math.max(1200, input.purchasePrice * 0.003);
+  const monthlyHomeownersInsurance = annualHomeownersInsurance / 12;
+  return {
+    annualPropertyTax,
+    monthlyPropertyTax,
+    annualHomeownersInsurance,
+    monthlyHomeownersInsurance,
+    monthlyEscrow: monthlyPropertyTax + monthlyHomeownersInsurance,
+  };
+}
+
 /**
  * Banded conventional monthly BPMI estimate by FICO/LTV (0 at or below 80
  * LTV). This is the Loan Estimate's disclosure-grade estimate; the
@@ -585,12 +625,13 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
     );
   }
 
-  const annualPropertyTax = input.annualPropertyTaxes ?? purchasePrice * 0.012;
-  const monthlyPropertyTax = annualPropertyTax / 12;
-  const annualHomeownersInsurance =
-    input.annualHomeownersInsurance ?? Math.max(1200, purchasePrice * 0.003);
-  const monthlyHomeownersInsurance = annualHomeownersInsurance / 12;
-  const monthlyEscrow = monthlyPropertyTax + monthlyHomeownersInsurance;
+  const {
+    annualPropertyTax,
+    monthlyPropertyTax,
+    annualHomeownersInsurance,
+    monthlyHomeownersInsurance,
+    monthlyEscrow,
+  } = estimateMonthlyEscrow(input);
 
   // §1026.36(d)(2): charge the borrower an origination fee ONLY when the
   // originator takes compensation from nobody else on this transaction.
