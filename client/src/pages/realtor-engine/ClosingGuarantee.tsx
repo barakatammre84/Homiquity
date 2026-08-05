@@ -1,303 +1,22 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { formatCurrency } from "@/lib/formatters";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import {
   Shield,
   Clock,
   CheckCircle2,
   AlertTriangle,
-  XCircle,
   Search,
-  Plus,
   Info,
-  Timer,
-  CalendarClock,
-  FileCheck,
-  MessageSquare,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { format } from "date-fns";
-
-interface ClosingGuarantee {
-  id: string;
-  applicationId: string;
-  guaranteeType: string;
-  targetDate: string;
-  targetHours: number | null;
-  actualDate: string | null;
-  status: string;
-  isAtRisk: boolean;
-  riskReason: string | null;
-  isMet: boolean | null;
-  createdAt: string;
-}
-
-
-const GUARANTEE_LABELS: Record<string, string> = {
-  underwriting_24h: "24-Hour Underwriting",
-  appraisal_48h: "48-Hour Appraisal",
-  closing_10day: "10-Day Close",
-  communication_daily: "Daily Communication",
-};
-
-const GUARANTEE_ICONS: Record<string, typeof Shield> = {
-  underwriting_24h: FileCheck,
-  appraisal_48h: CalendarClock,
-  closing_10day: Timer,
-  communication_daily: MessageSquare,
-};
-
-function GuaranteeTypeBadge({ type }: { type: string }) {
-  const styles: Record<string, string> = {
-    underwriting_24h: "bg-info/10 text-info",
-    appraisal_48h: "bg-primary/10 text-primary",
-    closing_10day: "bg-success/10 text-success-subtle-foreground",
-    communication_daily: "bg-warning/10 text-warning-subtle-foreground",
-  };
-  return (
-    <Badge variant="secondary" className={styles[type] || ""} data-testid={`badge-type-${type}`}>
-      {GUARANTEE_LABELS[type] || type}
-    </Badge>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
-    active: { label: "Active", variant: "default" },
-    at_risk: { label: "At Risk", variant: "secondary" },
-    met: { label: "Met", variant: "outline" },
-    missed: { label: "Missed", variant: "destructive" },
-  };
-  const c = config[status] || { label: status, variant: "secondary" as const };
-
-  const statusStyles: Record<string, string> = {
-    active: "bg-info/10 text-info",
-    at_risk: "bg-warning/10 text-warning-subtle-foreground",
-    met: "bg-success/10 text-success-subtle-foreground",
-    missed: "",
-  };
-
-  return (
-    <Badge variant={c.variant} className={statusStyles[status] || ""} data-testid={`badge-status-${status}`}>
-      {status === "met" && <CheckCircle2 className="h-3 w-3 mr-1" />}
-      {status === "at_risk" && <AlertTriangle className="h-3 w-3 mr-1" />}
-      {status === "missed" && <XCircle className="h-3 w-3 mr-1" />}
-      {status === "active" && <Clock className="h-3 w-3 mr-1" />}
-      {c.label}
-    </Badge>
-  );
-}
-
-function useCountdown(targetDate: string) {
-  const [remaining, setRemaining] = useState("");
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    const update = () => {
-      const now = new Date().getTime();
-      const target = new Date(targetDate).getTime();
-      const diff = target - now;
-
-      if (diff <= 0) {
-        setRemaining("Expired");
-        setProgress(100);
-        return;
-      }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-      if (days > 0) {
-        setRemaining(`${days} day${days !== 1 ? "s" : ""}, ${hours} hour${hours !== 1 ? "s" : ""} remaining`);
-      } else if (hours > 0) {
-        setRemaining(`${hours} hour${hours !== 1 ? "s" : ""}, ${minutes} min remaining`);
-      } else {
-        setRemaining(`${minutes} minute${minutes !== 1 ? "s" : ""} remaining`);
-      }
-    };
-
-    update();
-    const interval = setInterval(update, 60000);
-    return () => clearInterval(interval);
-  }, [targetDate]);
-
-  return { remaining, progress };
-}
-
-function GuaranteeCard({ guarantee }: { guarantee: ClosingGuarantee }) {
-  const { remaining } = useCountdown(guarantee.targetDate);
-  const Icon = GUARANTEE_ICONS[guarantee.guaranteeType] || Shield;
-
-  const now = new Date().getTime();
-  const created = new Date(guarantee.createdAt).getTime();
-  const target = new Date(guarantee.targetDate).getTime();
-  const totalDuration = target - created;
-  const elapsed = now - created;
-  const progressPercent = totalDuration > 0 ? Math.min(100, Math.max(0, (elapsed / totalDuration) * 100)) : 0;
-
-  return (
-    <Card data-testid={`card-guarantee-${guarantee.id}`}>
-      <CardContent className="py-4">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <GuaranteeTypeBadge type={guarantee.guaranteeType} />
-              <StatusBadge status={guarantee.status} />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                <span data-testid={`text-app-id-${guarantee.id}`}>
-                  Application: {guarantee.applicationId}
-                </span>
-                <span data-testid={`text-target-date-${guarantee.id}`}>
-                  Target: {format(new Date(guarantee.targetDate), "MMM d, yyyy h:mm a")}
-                </span>
-                {guarantee.targetHours && (
-                  <span data-testid={`text-target-hours-${guarantee.id}`}>
-                    ({guarantee.targetHours}h window)
-                  </span>
-                )}
-              </div>
-
-              {guarantee.status === "active" && (
-                <div className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-info shrink-0" />
-                  <span className="text-sm font-medium text-info" data-testid={`text-countdown-${guarantee.id}`}>
-                    {remaining}
-                  </span>
-                </div>
-              )}
-
-              {guarantee.isAtRisk && guarantee.riskReason && (
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-3.5 w-3.5 text-warning-subtle-foreground shrink-0" />
-                  <span className="text-sm text-warning-subtle-foreground" data-testid={`text-risk-reason-${guarantee.id}`}>
-                    {guarantee.riskReason}
-                  </span>
-                </div>
-              )}
-
-              {guarantee.isMet && guarantee.actualDate && (
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-success-subtle-foreground shrink-0" />
-                  <span className="text-sm text-success-subtle-foreground" data-testid={`text-actual-date-${guarantee.id}`}>
-                    Completed: {format(new Date(guarantee.actualDate), "MMM d, yyyy h:mm a")}
-                  </span>
-                </div>
-              )}
-
-              <div className="pt-1">
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                  <span>Progress</span>
-                  <span>{Math.round(progressPercent)}%</span>
-                </div>
-                <Progress
-                  value={progressPercent}
-                  className="h-1.5"
-                  data-testid={`progress-${guarantee.id}`}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function CreateGuaranteeDialog() {
-  const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    applicationId: "",
-    guaranteeType: "underwriting_24h",
-    targetDate: "",
-  });
-
-  const createMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/closing-guarantees", formData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/closing-guarantees"] });
-      toast({ title: "Guarantee Created", description: "The closing guarantee has been created successfully." });
-      setOpen(false);
-      setFormData({ applicationId: "", guaranteeType: "underwriting_24h", targetDate: "" });
-    },
-    onError: () => toast({ title: "Error", description: "Failed to create guarantee.", variant: "destructive" }),
-  });
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" data-testid="button-create-guarantee">
-          <Plus className="h-4 w-4 mr-1" /> Create Guarantee
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create Closing Guarantee</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 pt-2">
-          <div>
-            <label className="text-sm font-medium text-foreground">Application ID</label>
-            <Input
-              value={formData.applicationId}
-              onChange={(e) => setFormData({ ...formData, applicationId: e.target.value })}
-              placeholder="Enter application ID"
-              className="mt-1"
-              data-testid="input-guarantee-app-id"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">Guarantee Type</label>
-            <Select value={formData.guaranteeType} onValueChange={(v) => setFormData({ ...formData, guaranteeType: v })}>
-              <SelectTrigger className="mt-1" data-testid="select-guarantee-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="underwriting_24h">24-Hour Underwriting</SelectItem>
-                <SelectItem value="appraisal_48h">48-Hour Appraisal</SelectItem>
-                <SelectItem value="closing_10day">10-Day Close</SelectItem>
-                <SelectItem value="communication_daily">Daily Communication</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground">Target Date</label>
-            <Input
-              type="datetime-local"
-              value={formData.targetDate}
-              onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
-              className="mt-1"
-              data-testid="input-guarantee-target-date"
-            />
-          </div>
-          <div className="flex justify-end">
-            <Button
-              onClick={() => createMutation.mutate()}
-              disabled={!formData.applicationId || !formData.targetDate || createMutation.isPending}
-              data-testid="button-submit-guarantee"
-            >
-              {createMutation.isPending ? "Creating..." : "Create Guarantee"}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import { type ClosingGuaranteeRecord } from "./closingGuarantee/types";
+import { GuaranteeCard } from "./closingGuarantee/GuaranteeCard";
+import { CreateGuaranteeDialog } from "./closingGuarantee/CreateGuaranteeDialog";
 
 export default function ClosingGuarantee() {
   const [searchAppId, setSearchAppId] = useState("");
@@ -307,10 +26,12 @@ export default function ClosingGuarantee() {
     ? `/api/closing-guarantees/${activeSearch}`
     : "/api/closing-guarantees";
 
-  const { data: guarantees = [], isLoading } = useQuery<ClosingGuarantee[]>({
+  const { data: guarantees = [], isLoading, isError, error, refetch } = useQuery<ClosingGuaranteeRecord[]>({
     queryKey: ["/api/closing-guarantees", activeSearch],
   });
 
+  // Counters read from the same defaulted [] — on error they are all 0, which
+  // is why the list below fails visibly rather than rendering an empty state.
   const activeCount = guarantees.filter((g) => g.status === "active").length;
   const onTrackCount = guarantees.filter((g) => g.status === "active" && !g.isAtRisk).length;
   const atRiskCount = guarantees.filter((g) => g.isAtRisk).length;
@@ -413,6 +134,16 @@ export default function ClosingGuarantee() {
 
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-36" />)}</div>
+      ) : isError ? (
+        // "No guarantees found" on a failed load reads as an all-clear on a
+        // page whose whole job is surfacing at-risk closing commitments — and
+        // the four counters above would all show 0 alongside it (ux-01).
+        <QueryErrorState
+          error={error}
+          onRetry={() => void refetch()}
+          title="We couldn't load the guarantees"
+          data-testid="closing-guarantees-error"
+        />
       ) : guarantees.length === 0 ? (
         <Card data-testid="card-no-guarantees">
           <CardContent className="py-8 text-center">

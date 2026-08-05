@@ -32,7 +32,7 @@ const PAGES = join(REPO_ROOT, "client", "src", "pages");
  * Pages that both (a) render an empty/zero state derived from query data and
  * (b) have no error branch. Lower this as pages are converted — never raise it.
  */
-const BASELINE_UNGUARDED = 3;
+const BASELINE_UNGUARDED = 2;
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
@@ -97,6 +97,12 @@ describe("query failure never renders as an empty state (ux-01)", () => {
       "client/src/pages/realtor-engine/StrategySessions.tsx",
       "client/src/pages/agent-broker/AgentPipeline.tsx",
       "client/src/pages/staff/PricingMatrices.tsx",
+      // Later additions, same rule — these two make the strongest claims when
+      // they render empty: an audit trail asserting a policy has no approval
+      // history, and a guarantee tracker showing four zeroed counters and
+      // "No guarantees found" when closing commitments may be at risk.
+      "client/src/pages/staff/policyOps/AuditTrail.tsx",
+      "client/src/pages/realtor-engine/ClosingGuarantee.tsx",
     ];
     for (const rel of converted) {
       const src = readFileSync(join(REPO_ROOT, rel), "utf8");
