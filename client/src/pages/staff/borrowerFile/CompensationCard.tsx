@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,7 +40,32 @@ import {
  *
  * No election is rendered as the blocking state it is — amber, with the
  * regulation named — not as an innocuous empty field.
+ *
+ * QM HEADROOM (audit F-18). The elected rate decides whether the file can
+ * clear the Reg Z points-and-fees cap, and the election freezes once the LE
+ * issues — so the cap is surfaced HERE, while it can still be acted on, rather
+ * than at submission where the remedy has expired. The ceiling comes from
+ * GET .../compensation/qm (the fee schedule lives server-side); the dialog
+ * mirrors the server's 422 by disabling Save above it, per the same
+ * never-offer-what-the-server-rejects rule as the LE lock above.
  */
+
+/** Ceiling + scored election from GET /api/loan-applications/:id/compensation/qm. */
+interface QmPicture {
+  evaluated: boolean;
+  loanAmount: number | null;
+  maxElectableBps: Record<CompensationModel, number | null> | null;
+  election: {
+    verdict: "over_cap" | "not_cleared" | "not_evaluated";
+    floorAmount: number | null;
+    maxAllowableAmount: number | null;
+    headroomAmount: number | null;
+    tierDescription: string | null;
+  } | null;
+}
+
+const money = (value: number) =>
+  value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 // One entry per shared COMPENSATION_MODELS — Record keeps it exhaustive at
 // compile time; the colocated test pins it against the shared vocabulary.
@@ -107,9 +133,24 @@ export function CompensationCard({
     },
   });
 
+  // The QM ceiling for this file. Staff-only surface and a cheap pure
+  // computation server-side, so it loads with the card rather than on demand.
+  const { data: qm } = useQuery<QmPicture>({
+    queryKey: loanApplicationKeys.compensationQm(applicationId),
+  });
+
+  // Ceiling for the model currently selected in the dialog — the two models
+  // price differently, so this moves as staff toggle between them. `undefined`
+  // = not evaluated yet; `null` = evaluated and NO rate clears.
+  const ceiling = qm?.evaluated ? qm.maxElectableBps?.[draftModel] ?? null : undefined;
+
   const bpsNumber = Number(draftBps);
-  const draftValid =
+  const bpsWellFormed =
     draftBps.trim() !== "" && Number.isInteger(bpsNumber) && bpsNumber >= 0 && bpsNumber <= 1000;
+  // Mirror of the server's 422: never offer a rate the election would refuse.
+  const overCeiling =
+    bpsWellFormed && ceiling !== undefined && (ceiling === null || bpsNumber > ceiling);
+  const draftValid = bpsWellFormed && !overCeiling;
 
   // Mirror of the server's 409: an elected file with an issued LE is locked.
   const locked = elected && leIssued;
@@ -133,6 +174,20 @@ export function CompensationCard({
             </span>
             <span className="text-muted-foreground">Rate:</span>
             <span data-testid="text-compensation-bps">{bps} bps</span>
+            {qm?.evaluated && qm.election && qm.election.headroomAmount !== null && (
+              <>
+                <span className="text-muted-foreground">QM headroom:</span>
+                <span data-testid="text-qm-headroom">
+                  {money(qm.election.headroomAmount)} under the cap
+                  {qm.election.floorAmount !== null && qm.election.maxAllowableAmount !== null && (
+                    <span className="block text-xs text-muted-foreground">
+                      {money(qm.election.floorAmount)} of {money(qm.election.maxAllowableAmount)} —
+                      platform charges only, so the true figure is higher.
+                    </span>
+                  )}
+                </span>
+              </>
+            )}
           </div>
         ) : (
           <p className="text-sm text-warning" data-testid="text-compensation-missing">
@@ -207,7 +262,38 @@ export function CompensationCard({
                     Whole basis points, 0–1000, from the lender&apos;s comp plan or the
                     borrower-paid agreement.
                   </p>
+                  {ceiling !== undefined && ceiling !== null && (
+                    <p className="text-xs text-muted-foreground" data-testid="text-qm-ceiling">
+                      QM ceiling for this loan amount: <strong>{ceiling} bps</strong>. Above it the
+                      platform&apos;s own charges exceed the Reg Z points-and-fees cap and the
+                      election is refused.
+                    </p>
+                  )}
+                  {overCeiling && ceiling !== null && (
+                    <p
+                      className="text-xs text-destructive"
+                      role="alert"
+                      data-testid="text-qm-over-ceiling"
+                    >
+                      {bpsNumber} bps exceeds the {ceiling} bps QM ceiling for this loan amount.
+                    </p>
+                  )}
                 </div>
+
+                {/* Audit F-17: below a certain loan size the fixed platform
+                    fees exhaust the entire cap, so no rate is electable. Say
+                    so plainly rather than letting staff hunt for a number that
+                    does not exist. */}
+                {ceiling === null && (
+                  <Alert variant="warning" data-testid="alert-qm-no-viable-rate">
+                    <AlertDescription>
+                      No compensation rate clears the QM points-and-fees cap at this loan amount —
+                      the platform&apos;s fixed application and underwriting fees exhaust it before
+                      any compensation is added. The fee schedule or the loan amount has to change,
+                      not the rate.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>

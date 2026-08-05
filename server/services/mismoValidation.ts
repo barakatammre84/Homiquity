@@ -4,9 +4,11 @@ import { evaluateCoveredPointsAndFees } from "@shared/fannieMae/qmThresholds";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import {
   estimatedNoteDate,
-  evaluatePlatformQmFloor,
+  evaluateFileQmFloor,
   regulationZTotalLoanAmountStandIn,
+  type PlatformFeeSchedule,
 } from "./loanCosts";
+import { activeFeeSchedule } from "./platformFeeSchedule";
 import type {
   LoanApplication,
   UrlaPersonalInfo,
@@ -432,7 +434,10 @@ function validateArm(application: LoanApplication): MISMOValidationResult["armVa
  * passed every file silently. Missing evidence now produces a warning or a
  * block, never a clean bill.
  */
-function evaluatePointsAndFees(application: LoanApplication): {
+function evaluatePointsAndFees(
+  application: LoanApplication,
+  feeSchedule: PlatformFeeSchedule,
+): {
   qmStatus: "QM" | "Non-QM" | "Unknown";
   compliant: boolean;
   issue: string | null;
@@ -517,7 +522,7 @@ function evaluatePointsAndFees(application: LoanApplication): {
     };
   }
 
-  const floorEvaluation = evaluatePlatformQmFloor(noteDate, loanAmount, compensation);
+  const floorEvaluation = evaluateFileQmFloor(noteDate, loanAmount, compensation, feeSchedule);
 
   if (floorEvaluation.verdict === "over_cap") {
     return {
@@ -715,7 +720,7 @@ export async function validateMISMOCompleteness(applicationId: string): Promise<
   const armValidation = validateArm(application);
   armValidation.issues.forEach(i => criticalErrors.push(`ARM: ${i}`));
 
-  const pointsAndFees = evaluatePointsAndFees(application);
+  const pointsAndFees = evaluatePointsAndFees(application, await activeFeeSchedule());
   if (pointsAndFees.issue) {
     criticalErrors.push(`ATR/QM: ${pointsAndFees.issue}`);
   }

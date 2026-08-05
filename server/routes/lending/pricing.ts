@@ -11,14 +11,18 @@ import { verifyInternalStaffApplicationAccess } from "../borrower/access";
 import {
   COMPENSATION_MODELS,
   resolveCompensation,
+  type CompensationModel,
+  type OriginatorCompensation,
   type QmFloorVerdict,
 } from "@shared/compliance/loCompensation";
 import {
   estimatedNoteDate,
-  evaluatePlatformQmFloor,
+  evaluateFileQmFloor,
   maxElectableCompensationBps,
   MAX_ELECTABLE_COMPENSATION_BPS,
+  type PlatformFeeSchedule,
 } from "../../services/loanCosts";
+import { activeFeeSchedule } from "../../services/platformFeeSchedule";
 import { hasBorrowerConsent } from "../../consentGate";
 import * as creditService from "../../services/creditService";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
@@ -29,6 +33,113 @@ import { routeParam } from "../../http/routeParams";
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// QM points-and-fees picture for one file (audit F-18).
+//
+// One shape serving both compensation surfaces: the PATCH refuses on the
+// requested election's verdict, and the GET feeds the staff card the ceiling
+// BEFORE an election is attempted. Both score through
+// services/loanCosts.ts, which owns the fee schedule the floor is derived
+// from — so no surface can disagree with another about the same file.
+// ---------------------------------------------------------------------------
+interface QmElectionScore {
+  model: CompensationModel;
+  bps: number;
+  verdict: QmFloorVerdict;
+  floorAmount: number | null;
+  maxAllowableAmount: number | null;
+  headroomAmount: number | null;
+  tierDescription: string | null;
+  message: string;
+}
+
+interface QmPicture {
+  /** True only when a note-year threshold table actually scored this file. */
+  evaluated: boolean;
+  loanAmount: number | null;
+  /**
+   * Ceiling on an electable rate, per compensation model — the models price
+   * differently, and the staff dialog toggles between them without refetching.
+   *
+   * Null for a model means no rate clears: the fixed platform fees alone
+   * exhaust the cap at this loan amount, so the fee schedule or the loan
+   * amount has to move, not the compensation (audit F-17). Null for the whole
+   * field means nothing was evaluated — read `evaluated` to tell them apart.
+   */
+  maxElectableBps: Record<CompensationModel, number | null> | null;
+  /** How a specific election scores. Null when there is none to score. */
+  election: QmElectionScore | null;
+  /** Why nothing was evaluated, when that is the case. */
+  reason?: "loan_amount_unknown" | "no_threshold_table";
+}
+
+function buildQmPicture(
+  loanAmount: number | null,
+  closingDate: string | Date | null | undefined,
+  election: OriginatorCompensation | null,
+  schedule: PlatformFeeSchedule,
+): QmPicture {
+  if (loanAmount === null || !(loanAmount > 0)) {
+    return {
+      evaluated: false,
+      loanAmount: null,
+      maxElectableBps: null,
+      election: null,
+      reason: "loan_amount_unknown",
+    };
+  }
+
+  const noteDate = estimatedNoteDate(closingDate);
+  const scored = election
+    ? evaluateFileQmFloor(noteDate, loanAmount, election, schedule)
+    : null;
+
+  // A missing threshold table for the note year means the cap is unknown, not
+  // that it is satisfied. Probe with a rate that cannot itself breach anything.
+  const probe = evaluateFileQmFloor(noteDate, loanAmount, { model: "lender_paid", bps: 0 }, schedule);
+  if (probe.verdict === "not_evaluated") {
+    return {
+      evaluated: false,
+      loanAmount,
+      maxElectableBps: null,
+      election: null,
+      reason: "no_threshold_table",
+    };
+  }
+
+  return {
+    evaluated: true,
+    loanAmount,
+    maxElectableBps: {
+      lender_paid: maxElectableCompensationBps(noteDate, loanAmount, "lender_paid", schedule),
+      borrower_paid: maxElectableCompensationBps(noteDate, loanAmount, "borrower_paid", schedule),
+    },
+    election:
+      election && scored
+        ? {
+            model: election.model,
+            bps: election.bps,
+            verdict: scored.verdict,
+            floorAmount: scored.floor?.amount ?? null,
+            maxAllowableAmount: scored.maxAllowableAmount ?? null,
+            headroomAmount:
+              scored.maxAllowableAmount !== undefined && scored.floor
+                ? Math.round((scored.maxAllowableAmount - scored.floor.amount) * 100) / 100
+                : null,
+            tierDescription: scored.tierDescription ?? null,
+            message: scored.message,
+          }
+        : null,
+  };
+}
+
+/** Loan amount off a staff application row, or null when not yet determinable. */
+function loanAmountOf(application: { purchasePrice: unknown; downPayment: unknown }): number | null {
+  if (!application.purchasePrice || !application.downPayment) return null;
+  const amount = Number(application.purchasePrice) - Number(application.downPayment);
+  return Number.isFinite(amount) ? amount : null;
+}
 
 // Intake validation lives in shared/schema/lending.ts (loanApplicationIntakeSchema),
 // derived from the same base schema the funnel validates with client-side — the
@@ -122,80 +233,39 @@ export function registerPricingRoutes(
       // for the note year) must not block: a file can legitimately be priced
       // before a purchase price exists.
       // ---------------------------------------------------------------------
-      const loanAmount =
-        application.purchasePrice && application.downPayment
-          ? Number(application.purchasePrice) - Number(application.downPayment)
-          : null;
-      const noteDate = estimatedNoteDate(application.closingDate);
+      const qm = buildQmPicture(
+        loanAmountOf(application),
+        application.closingDate,
+        { model, bps },
+        await activeFeeSchedule(),
+      );
 
-      let qm: {
-        /** True only when a threshold table actually scored this file. */
-        evaluated: boolean;
-        verdict: QmFloorVerdict;
-        reason?: string;
-        floorAmount?: number;
-        maxAllowableAmount?: number;
-        headroomAmount?: number;
-        maxElectableBps?: number | null;
-        tierDescription?: string;
-        message: string;
-      } = {
-        evaluated: false,
-        verdict: "not_evaluated",
-        reason: "loan_amount_unknown",
-        message:
-          "QM points-and-fees not evaluated: this file has no purchase price and down payment " +
-          "yet, so there is no loan amount to score the cap against.",
-      };
-
-      if (loanAmount !== null && loanAmount > 0) {
-        const evaluation = evaluatePlatformQmFloor(noteDate, loanAmount, { model, bps });
-        const ceiling = maxElectableCompensationBps(noteDate, loanAmount, model);
-
-        if (evaluation.verdict === "over_cap") {
-          logAudit(req, "loan_application.compensation_election_refused", "loan_application", id, {
-            model,
-            bps,
-            reason: "qm_points_and_fees_exceeded",
-            floorAmount: evaluation.floor?.amount ?? null,
-            maxAllowableAmount: evaluation.maxAllowableAmount ?? null,
-            maxElectableBps: ceiling,
-          });
-          return res.status(422).json({
-            error: evaluation.message,
-            code: "qm_points_and_fees_exceeded",
-            qm: {
-              floorAmount: evaluation.floor?.amount ?? null,
-              maxAllowableAmount: evaluation.maxAllowableAmount ?? null,
-              tierDescription: evaluation.tierDescription ?? null,
-              components: evaluation.floor?.components ?? [],
-              maxElectableBps: ceiling,
-              // Null means no rate rescues this file: the fixed platform fees
-              // alone exhaust the cap at this loan amount, so the fee schedule
-              // or the loan amount has to move, not the compensation.
-              remedy:
-                ceiling === null
-                  ? "The platform's fixed fees exhaust the QM cap at this loan amount before any " +
-                    "compensation is added — no compensation rate makes this file QM-eligible."
-                  : `Elect ${ceiling} bps or less on this loan amount, or revisit the fee schedule.`,
-            },
-          });
-        }
-
-        qm = {
-          // A loan amount is not enough — a note-year table must exist too.
-          evaluated: evaluation.verdict !== "not_evaluated",
-          verdict: evaluation.verdict,
-          floorAmount: evaluation.floor?.amount,
-          maxAllowableAmount: evaluation.maxAllowableAmount,
-          headroomAmount:
-            evaluation.maxAllowableAmount !== undefined && evaluation.floor
-              ? Math.round((evaluation.maxAllowableAmount - evaluation.floor.amount) * 100) / 100
-              : undefined,
+      if (qm.election?.verdict === "over_cap") {
+        const ceiling = qm.maxElectableBps?.[model] ?? null;
+        logAudit(req, "loan_application.compensation_election_refused", "loan_application", id, {
+          model,
+          bps,
+          reason: "qm_points_and_fees_exceeded",
+          floorAmount: qm.election.floorAmount,
+          maxAllowableAmount: qm.election.maxAllowableAmount,
           maxElectableBps: ceiling,
-          tierDescription: evaluation.tierDescription,
-          message: evaluation.message,
-        };
+        });
+        return res.status(422).json({
+          error: qm.election.message,
+          code: "qm_points_and_fees_exceeded",
+          qm: {
+            ...qm.election,
+            maxElectableBps: ceiling,
+            // Null means no rate rescues this file: the fixed platform fees
+            // alone exhaust the cap at this loan amount, so the fee schedule
+            // or the loan amount has to move, not the compensation.
+            remedy:
+              ceiling === null
+                ? "The platform's fixed fees exhaust the QM cap at this loan amount before any " +
+                  "compensation is added — no compensation rate makes this file QM-eligible."
+                : `Elect ${ceiling} bps or less on this loan amount, or revisit the fee schedule.`,
+          },
+        });
       }
 
       const updated = await storage.updateLoanApplication(id, {
@@ -211,8 +281,8 @@ export function registerPricingRoutes(
         bps,
         previousModel: alreadyElected?.model ?? null,
         previousBps: alreadyElected?.bps ?? null,
-        qmVerdict: qm.verdict,
-        qmHeadroomAmount: qm.headroomAmount ?? null,
+        qmVerdict: qm.election?.verdict ?? "not_evaluated",
+        qmHeadroomAmount: qm.election?.headroomAmount ?? null,
       });
 
       res.json({
@@ -223,6 +293,45 @@ export function registerPricingRoutes(
     } catch (error) {
       console.error("Elect compensation error:", error);
       res.status(500).json({ error: "Failed to record the compensation election" });
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Read side of the election: the QM ceiling BEFORE a rate is attempted.
+  //
+  // Without this the staff card can only learn the cap by tripping the PATCH's
+  // 422 — which is the F-18 sequencing defect in miniature, one layer up. Same
+  // gates as the PATCH; read-only, so no audit entry.
+  // -------------------------------------------------------------------------
+  app.get("/api/loan-applications/:id/compensation/qm", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const id = routeParam(req, "id");
+
+      if (!isInternalStaffRole(user.role)) {
+        return res.status(403).json({ error: "Internal staff only can view the QM election picture" });
+      }
+      const allowed = await verifyInternalStaffApplicationAccess(storage, id, user.id, user.role);
+      if (!allowed) {
+        return res.status(403).json({ error: "Access denied to this application" });
+      }
+
+      const application = await storage.getLoanApplication(id);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      res.json(
+        buildQmPicture(
+          loanAmountOf(application),
+          application.closingDate,
+          resolveCompensation(application.loCompensationModel, application.loCompensationBps),
+          await activeFeeSchedule(),
+        ),
+      );
+    } catch (error) {
+      console.error("Compensation QM picture error:", error);
+      res.status(500).json({ error: "Failed to evaluate the QM points-and-fees picture" });
     }
   });
 

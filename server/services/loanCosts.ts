@@ -49,6 +49,39 @@ export const PLATFORM_UNDERWRITING_FEE = 1500;
 export const PLATFORM_TAX_SERVICE_FEE = 100;
 
 /**
+ * The platform's own pricing policy for one file.
+ *
+ * Every function below takes this as a PARAMETER rather than reading a global,
+ * which is what lets the schedule become admin-editable without any of this
+ * module losing its purity: the caller resolves the active schedule (see
+ * services/platformFeeSchedule.ts) and passes it in, and the same inputs still
+ * produce the same outputs forever. That matters because a Loan Estimate must
+ * stay reproducible from the schedule it was priced under.
+ */
+export interface PlatformFeeSchedule {
+  applicationFee: number;
+  underwritingFee: number;
+  taxServiceFee: number;
+  /** Borrower-paid origination as a FRACTION of the loan amount (0.01 = 1%). */
+  originationFeeRate: number;
+}
+
+/**
+ * The compiled-in baseline, used whenever no schedule has been published.
+ *
+ * This is deliberately the single source of the default: migration 0047 seeds
+ * NO row, so an empty `platform_fee_schedules` table means "use this". Seeding
+ * the constants into the table as well would fork the baseline in two places
+ * and let them drift.
+ */
+export const DEFAULT_PLATFORM_FEE_SCHEDULE: PlatformFeeSchedule = {
+  applicationFee: PLATFORM_APPLICATION_FEE,
+  underwritingFee: PLATFORM_UNDERWRITING_FEE,
+  taxServiceFee: PLATFORM_TAX_SERVICE_FEE,
+  originationFeeRate: ORIGINATION_FEE_RATE,
+};
+
+/**
  * Prepaid finance charges the platform can determine WITHOUT a closing date —
  * its own origination-side charges (§1026.4). Deliberately excludes prepaid
  * interest and prepaid MI, which need a closing date and a rate.
@@ -60,8 +93,69 @@ export const PLATFORM_TAX_SERVICE_FEE = 100;
  * permissive, but is strictly tighter than standing in the note amount.
  * Never the reverse.
  */
-export function knownPrepaidFinanceCharges(originationFee: number, points = 0): number {
-  return originationFee + points + PLATFORM_APPLICATION_FEE + PLATFORM_UNDERWRITING_FEE + PLATFORM_TAX_SERVICE_FEE;
+/**
+ * The platform's OWN charges that are finance charges under §1026.4 — the one
+ * list, so the same charge cannot be counted in one Reg Z computation and
+ * forgotten in another (audit F-19).
+ *
+ * Two computations read this and must never diverge:
+ *   - `knownPrepaidFinanceCharges()` subtracts them to derive the Regulation Z
+ *     Total Loan Amount, which SHRINKS the QM cap (the denominator);
+ *   - `pointsAndFeesFloor()` counts them against that cap (the numerator).
+ *
+ * §1026.32(b)(1)(i) draws points and fees from the finance charge, so
+ * membership in this list is a single classification decision that lands in
+ * both places at once. Before F-19 the tax service fee was in the first and
+ * not the second: the same $100 tightened the cap without being charged
+ * against it.
+ *
+ * ⚠️ WHICH charges belong here is NOT verified against §1026.4 — the ledger
+ * entry `regz-1026-4-platform-finance-charge-classification` records exactly
+ * that, on a short review interval. What IS now guaranteed is that the answer
+ * is applied consistently: change a charge's membership here and both
+ * computations move together.
+ */
+export interface PlatformFinanceCharge {
+  id: "application" | "underwriting" | "tax_service";
+  name: string;
+  amount: number;
+  /**
+   * True when this is OUR revenue and we can therefore charge less of it.
+   *
+   * The tax service fee is a vendor's charge passed through — we cannot
+   * discount somebody else's fee, so it is not reducible. That asymmetry is
+   * what makes the F-17 fit honest rather than a fiction.
+   */
+  reducible: boolean;
+}
+
+export function platformFinanceCharges(
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
+): PlatformFinanceCharge[] {
+  return [
+    { id: "application", name: "Application fee", amount: schedule.applicationFee, reducible: true },
+    { id: "underwriting", name: "Underwriting fee", amount: schedule.underwritingFee, reducible: true },
+    { id: "tax_service", name: "Tax service fee", amount: schedule.taxServiceFee, reducible: false },
+  ];
+}
+
+/** Sum of the platform's own prepaid finance charges under a schedule. */
+export function platformFinanceChargeTotal(
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
+): number {
+  return platformFinanceCharges(schedule).reduce((sum, charge) => sum + charge.amount, 0);
+}
+
+/** The baseline schedule's charges/total — the compiled-in default. */
+export const PLATFORM_FINANCE_CHARGES: readonly PlatformFinanceCharge[] = platformFinanceCharges();
+export const PLATFORM_FINANCE_CHARGE_TOTAL = platformFinanceChargeTotal();
+
+export function knownPrepaidFinanceCharges(
+  originationFee: number,
+  points = 0,
+  platformTotal: number = PLATFORM_FINANCE_CHARGE_TOTAL,
+): number {
+  return originationFee + points + platformTotal;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,12 +190,14 @@ export function knownPrepaidFinanceCharges(originationFee: number, points = 0): 
 export function regulationZTotalLoanAmountStandIn(
   loanAmount: number,
   compensation: OriginatorCompensation | null,
+  platformTotal: number = PLATFORM_FINANCE_CHARGE_TOTAL,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): number {
   const originationFee =
     compensation && borrowerPaidOriginationAllowed(compensation.model)
-      ? loanAmount * ORIGINATION_FEE_RATE
+      ? loanAmount * schedule.originationFeeRate
       : 0;
-  return Math.max(0, loanAmount - knownPrepaidFinanceCharges(originationFee));
+  return Math.max(0, loanAmount - knownPrepaidFinanceCharges(originationFee, 0, platformTotal));
 }
 
 /**
@@ -117,23 +213,164 @@ export function evaluatePlatformQmFloor(
   noteDate: Date | string,
   loanAmount: number,
   compensation: OriginatorCompensation,
+  charges: readonly { name: string; amount: number }[] = PLATFORM_FINANCE_CHARGES,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): QmFloorEvaluation {
   const originationFee = borrowerPaidOriginationAllowed(compensation.model)
-    ? loanAmount * ORIGINATION_FEE_RATE
+    ? loanAmount * schedule.originationFeeRate
     : 0;
+  const platformTotal = charges.reduce((sum, c) => sum + c.amount, 0);
   return evaluatePointsAndFeesFloor(
     noteDate,
     loanAmount,
-    regulationZTotalLoanAmountStandIn(loanAmount, compensation),
+    // Same total on both sides — a reduced fee schedule shrinks the numerator
+    // AND raises the cap, and F-19's invariant has to survive the reduction.
+    regulationZTotalLoanAmountStandIn(loanAmount, compensation, platformTotal, schedule),
     {
       loanAmount,
       originationFee,
       points: 0,
-      applicationFee: PLATFORM_APPLICATION_FEE,
-      underwritingFee: PLATFORM_UNDERWRITING_FEE,
+      platformFinanceCharges: charges,
       compensation,
     },
   );
+}
+
+// ---------------------------------------------------------------------------
+// F-17 resolution: the platform's own fees fit the QM cap, by construction
+// ---------------------------------------------------------------------------
+// The dead band existed because a FIXED fee met a cap that is proportional in
+// the tiers that matter. Any fixed number is wrong at some loan size, so no
+// choice of number resolves this — only removing the fixedness does.
+//
+// So the schedule below is a CEILING, not a price: a file is charged the
+// standard schedule whenever it fits, and the reducible part is trimmed to fit
+// when it does not. Charging less is always permitted, needs no changed
+// circumstance, and is the borrower-favourable direction — so this is safe in
+// exactly the direction that matters.
+//
+// What it does NOT do is manufacture room that isn't there. The tax service
+// fee is a vendor's charge we cannot discount, and originator compensation is
+// set by the comp plan, not per file. When those two alone exceed the cap the
+// file is still not originable, and the gate still refuses it (see F-17's
+// residual note in the audit log).
+// ---------------------------------------------------------------------------
+
+/** The part of the platform schedule that cannot be reduced (vendor charges). */
+export function platformNonReducibleTotal(
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
+): number {
+  return platformFinanceCharges(schedule)
+    .filter(c => !c.reducible)
+    .reduce((sum, c) => sum + c.amount, 0);
+}
+
+export const PLATFORM_NON_REDUCIBLE_TOTAL = platformNonReducibleTotal();
+
+/**
+ * The largest platform finance-charge total that does not put this file over
+ * the QM cap — never more than the standard schedule.
+ *
+ * Null when even charging nothing fails: compensation alone has exhausted the
+ * cap, and no fee decision rescues the file.
+ *
+ * Monotone in the total (a bigger fee raises the floor AND lowers the cap), so
+ * a binary search finds the exact edge without duplicating the tier tables.
+ */
+export function maxPlatformFinanceChargeTotal(
+  noteDate: Date | string,
+  loanAmount: number,
+  compensation: OriginatorCompensation,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
+): number | null {
+  const fits = (total: number) =>
+    evaluatePlatformQmFloor(
+      noteDate,
+      loanAmount,
+      compensation,
+      [{ name: "Platform charges", amount: total }],
+      schedule,
+    ).verdict !== "over_cap";
+
+  if (!fits(0)) return null;
+  const scheduleTotal = platformFinanceChargeTotal(schedule);
+  const standard = Math.floor(scheduleTotal);
+  if (fits(standard)) return scheduleTotal;
+
+  let low = 0;
+  let high = standard;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    if (fits(mid)) low = mid;
+    else high = mid - 1;
+  }
+  return low;
+}
+
+export interface ResolvedPlatformCharges {
+  /** What to actually charge, id-for-id with PLATFORM_FINANCE_CHARGES. */
+  charges: PlatformFinanceCharge[];
+  total: number;
+  standardTotal: number;
+  /** True when the standard schedule was trimmed to fit the cap. */
+  reduced: boolean;
+  /**
+   * False when no fee decision makes this file QM-eligible — compensation, or
+   * compensation plus the non-reducible vendor charges, already exceeds the
+   * cap. The submission gates still refuse these.
+   */
+  originable: boolean;
+}
+
+/**
+ * The platform's own charges for one file, trimmed to fit the QM cap.
+ *
+ * Reduces only what is ours to reduce, proportionally across the reducible
+ * charges so each still appears on the Loan Estimate under its own name, and
+ * rounds DOWN to whole dollars so rounding can never push a file back over.
+ */
+export function resolvePlatformFinanceCharges(
+  noteDate: Date | string,
+  loanAmount: number,
+  compensation: OriginatorCompensation,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
+): ResolvedPlatformCharges {
+  const standardTotal = platformFinanceChargeTotal(schedule);
+  const standard = () => platformFinanceCharges(schedule);
+  const budget = maxPlatformFinanceChargeTotal(noteDate, loanAmount, compensation, schedule);
+
+  // No table for the note year, or compensation alone is over the cap: charge
+  // the standard schedule and let the gate speak. Trimming a fee cannot fix a
+  // compensation problem, and pretending otherwise would hide it.
+  if (budget === null) {
+    return { charges: standard(), total: standardTotal, standardTotal, reduced: false, originable: false };
+  }
+  if (budget >= standardTotal) {
+    return { charges: standard(), total: standardTotal, standardTotal, reduced: false, originable: true };
+  }
+
+  const reducibleBudget = budget - platformNonReducibleTotal(schedule);
+  if (reducibleBudget < 0) {
+    // The vendor pass-throughs alone break the cap. Nothing of ours is left to
+    // give, so this is not a fee problem either.
+    return { charges: standard(), total: standardTotal, standardTotal, reduced: false, originable: false };
+  }
+
+  const reducibleStandard = standardTotal - platformNonReducibleTotal(schedule);
+  const scale = reducibleStandard > 0 ? reducibleBudget / reducibleStandard : 0;
+  const charges = platformFinanceCharges(schedule).map(charge =>
+    charge.reducible
+      ? { ...charge, amount: Math.floor(charge.amount * scale) }
+      : { ...charge },
+  );
+
+  return {
+    charges,
+    total: charges.reduce((sum, c) => sum + c.amount, 0),
+    standardTotal,
+    reduced: true,
+    originable: true,
+  };
 }
 
 /**
@@ -148,6 +385,25 @@ export function estimatedNoteDate(closingDate: string | Date | null | undefined)
   if (!closingDate) return new Date();
   const parsed = typeof closingDate === "string" ? new Date(closingDate) : closingDate;
   return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+/**
+ * Score a file's QM points-and-fees floor **as it would actually be charged** —
+ * i.e. after the schedule trims to fit (F-17).
+ *
+ * This is what the gates must use. `evaluatePlatformQmFloor` above is the
+ * primitive that scores a GIVEN set of charges; this one applies the fee policy
+ * first, so a file that is originable at a trimmed fee is no longer refused for
+ * a fee we were never going to charge it.
+ */
+export function evaluateFileQmFloor(
+  noteDate: Date | string,
+  loanAmount: number,
+  compensation: OriginatorCompensation,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
+): QmFloorEvaluation {
+  const resolved = resolvePlatformFinanceCharges(noteDate, loanAmount, compensation, schedule);
+  return evaluatePlatformQmFloor(noteDate, loanAmount, compensation, resolved.charges, schedule);
 }
 
 /** Upper bound on an electable compensation rate; mirrors the election schema. */
@@ -174,10 +430,15 @@ export function maxElectableCompensationBps(
   noteDate: Date | string,
   loanAmount: number,
   model: CompensationModel,
+  schedule: PlatformFeeSchedule = DEFAULT_PLATFORM_FEE_SCHEDULE,
 ): number | null {
   for (let bps = MAX_ELECTABLE_COMPENSATION_BPS; bps >= 0; bps--) {
-    const evaluation = evaluatePlatformQmFloor(noteDate, loanAmount, { model, bps });
-    if (evaluation.verdict !== "over_cap") return bps;
+    // Scored against what this file would ACTUALLY be charged — the schedule
+    // trims to fit (F-17), so the ceiling must reflect that rather than
+    // pretending the full standard fee always applies.
+    if (resolvePlatformFinanceCharges(noteDate, loanAmount, { model, bps }, schedule).originable) {
+      return bps;
+    }
   }
   return null;
 }
@@ -215,6 +476,19 @@ export interface ClosingCostInputs {
   annualHomeownersInsurance?: number;
   /** Lender credits (e.g. the FTHB LLPA waiver), subtracted from cash to close. */
   lenderCredits?: number;
+  /**
+   * Expected note date, which selects the QM threshold table the platform's
+   * own fees are fitted against (F-17). Defaults to today; the Loan Estimate
+   * passes its estimated closing date.
+   */
+  noteDate?: string | Date | null;
+  /**
+   * The platform's own pricing policy for this file. Defaults to the compiled
+   * baseline; callers that price a real file resolve the ACTIVE published
+   * schedule (services/platformFeeSchedule.ts) and pass it, so re-pricing
+   * never needs a deploy.
+   */
+  feeSchedule?: PlatformFeeSchedule;
 }
 
 export interface ClosingCostStructure {
@@ -262,6 +536,18 @@ export interface ClosingCostStructure {
   totalClosingCosts: number;
   /** Prepaid finance charges per §1026.4 — the APR solver's fee input. */
   prepaidFinanceCharges: number;
+  /**
+   * How the platform's own fees were resolved against the QM cap (F-17).
+   * `reduced` means this file was charged less than the standard schedule so
+   * that it could be originated at all; `originable: false` means no fee
+   * decision saves it and the submission gates will still refuse.
+   */
+  platformFees: {
+    total: number;
+    standardTotal: number;
+    reduced: boolean;
+    originable: boolean;
+  };
   lenderCredits: number;
   cashToClose: number;
 }
@@ -308,14 +594,27 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
 
   // §1026.36(d)(2): charge the borrower an origination fee ONLY when the
   // originator takes compensation from nobody else on this transaction.
+  const schedule = input.feeSchedule ?? DEFAULT_PLATFORM_FEE_SCHEDULE;
   const originationFee = borrowerPaidOriginationAllowed(compensation.model)
-    ? loanAmount * ORIGINATION_FEE_RATE
+    ? loanAmount * schedule.originationFeeRate
     : 0;
   const lenderPaidCompensation =
     compensation.model === "lender_paid" ? compensationAmount(loanAmount, compensation) : 0;
   const points = 0;
-  const applicationFee = PLATFORM_APPLICATION_FEE;
-  const underwritingFee = PLATFORM_UNDERWRITING_FEE;
+  // F-17: the platform's own fees are a ceiling, not a fixed price — they trim
+  // to fit the QM points-and-fees cap when a loan size would otherwise put our
+  // own charges over it. Charging less needs no changed circumstance and is
+  // the borrower-favourable direction.
+  const resolvedPlatform = resolvePlatformFinanceCharges(
+    estimatedNoteDate(input.noteDate),
+    loanAmount,
+    compensation,
+    schedule,
+  );
+  const platformCharge = (id: PlatformFinanceCharge["id"]) =>
+    resolvedPlatform.charges.find(c => c.id === id)?.amount ?? 0;
+  const applicationFee = platformCharge("application");
+  const underwritingFee = platformCharge("underwriting");
   // Third-party charges. Every constant below is an UNVERIFIED national
   // working figure with no citation — provenance and the known-suspect entries
   // are catalogued in shared/compliance/feeProvenance.ts (audit F-9). A file
@@ -326,7 +625,7 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
   const appraisalFee = fee("appraisal", 650);
   const creditReportFee = fee("credit_report", 75);
   const floodDeterminationFee = fee("flood_determination", 25);
-  const taxServiceFee = fee("tax_service", PLATFORM_TAX_SERVICE_FEE);
+  const taxServiceFee = fee("tax_service", platformCharge("tax_service"));
   const titleInsurance = fee("title_insurance", loanAmount * 0.005);
   const titleSearch = fee("title_search", 350);
   const surveyFee = fee("survey_fee", 450);
@@ -415,6 +714,12 @@ export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStruct
     otherCostsTotal,
     totalClosingCosts,
     prepaidFinanceCharges,
+    platformFees: {
+      total: resolvedPlatform.total,
+      standardTotal: resolvedPlatform.standardTotal,
+      reduced: resolvedPlatform.reduced,
+      originable: resolvedPlatform.originable,
+    },
     lenderCredits,
     cashToClose,
   };

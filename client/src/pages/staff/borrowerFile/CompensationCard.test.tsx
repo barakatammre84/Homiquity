@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CompensationCard, COMPENSATION_MODEL_LABELS } from "./CompensationCard";
 import { COMPENSATION_MODELS } from "@shared/compliance/loCompensation";
+import { loanApplicationKeys } from "@/lib/queryClient";
 
 // Characterization tests for the staff compensation-election card — the
 // client surface for PATCH /api/loan-applications/:id/compensation (audit
@@ -16,13 +17,19 @@ import { COMPENSATION_MODELS } from "@shared/compliance/loCompensation";
 
 const APP_ID = "app-1";
 
-function renderCard(props?: Partial<Parameters<typeof CompensationCard>[0]>) {
+function renderCard(
+  props?: Partial<Parameters<typeof CompensationCard>[0]>,
+  qm?: unknown,
+) {
   const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false, staleTime: Infinity },
       mutations: { retry: false },
     },
   });
+  if (qm !== undefined) {
+    client.setQueryData(loanApplicationKeys.compensationQm(APP_ID), qm);
+  }
   return render(
     <QueryClientProvider client={client}>
       <CompensationCard
@@ -102,5 +109,103 @@ describe("CompensationCard", () => {
     for (const model of COMPENSATION_MODELS) {
       expect(screen.getByTestId(`option-${model}`)).toBeTruthy();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Audit F-18 — the QM ceiling is surfaced at the election, the last moment it
+// can still be acted on. The card mirrors the server's 422 the same way it
+// already mirrors the post-LE 409: never offer a rate the election refuses.
+// ---------------------------------------------------------------------------
+
+const qmPicture = (over: Record<string, unknown> = {}) => ({
+  evaluated: true,
+  loanAmount: 400_000,
+  maxElectableBps: { lender_paid: 297, borrower_paid: 400 },
+  election: null,
+  ...over,
+});
+
+describe("CompensationCard — QM headroom (F-18)", () => {
+  it("shows the headroom on an elected file", () => {
+    renderCard(
+      { model: "lender_paid", bps: 200 },
+      qmPicture({
+        election: {
+          verdict: "not_cleared",
+          floorAmount: 10_000,
+          maxAllowableAmount: 11_937,
+          headroomAmount: 1_937,
+          tierDescription: "3% of the Regulation Z Total Loan Amount",
+        },
+      }),
+    );
+    const headroom = screen.getByTestId("text-qm-headroom");
+    expect(headroom.textContent).toMatch(/\$1,937/);
+    // The floor is a lower bound and must never read as a cleared figure.
+    expect(headroom.textContent).toMatch(/true figure is higher/);
+  });
+
+  it("renders no headroom row when the picture has not loaded", () => {
+    renderCard({ model: "lender_paid", bps: 200 });
+    expect(screen.queryByTestId("text-qm-headroom")).toBeNull();
+  });
+
+  it("shows the ceiling for the selected model in the dialog", async () => {
+    const user = userEvent.setup();
+    renderCard({}, qmPicture());
+    await user.click(screen.getByTestId("button-elect-compensation"));
+    expect(screen.getByTestId("text-qm-ceiling").textContent).toMatch(/297 bps/);
+  });
+
+  it("moves the ceiling when the model toggles — the models price differently", async () => {
+    const user = userEvent.setup();
+    renderCard({}, qmPicture());
+    await user.click(screen.getByTestId("button-elect-compensation"));
+    await user.click(screen.getByTestId("option-borrower_paid"));
+    expect(screen.getByTestId("text-qm-ceiling").textContent).toMatch(/400 bps/);
+  });
+
+  it("mirrors the server's 422: a rate above the ceiling cannot be saved", async () => {
+    const user = userEvent.setup();
+    renderCard({}, qmPicture());
+    await user.click(screen.getByTestId("button-elect-compensation"));
+
+    const input = screen.getByTestId("input-compensation-bps");
+    const save = screen.getByTestId("button-save-compensation");
+
+    await user.type(input, "298"); // one over the 297 ceiling
+    expect(save).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("text-qm-over-ceiling").textContent).toMatch(/exceeds the 297 bps/);
+
+    await user.clear(input);
+    await user.type(input, "297"); // exactly at it
+    expect(save).toHaveProperty("disabled", false);
+    expect(screen.queryByTestId("text-qm-over-ceiling")).toBeNull();
+  });
+
+  it("says so plainly when NO rate clears the cap (audit F-17)", async () => {
+    const user = userEvent.setup();
+    renderCard({}, qmPicture({ loanAmount: 150_000, maxElectableBps: { lender_paid: null, borrower_paid: null } }));
+    await user.click(screen.getByTestId("button-elect-compensation"));
+
+    expect(screen.getByTestId("alert-qm-no-viable-rate").textContent).toMatch(
+      /fee schedule or the loan amount has to change/,
+    );
+    // No ceiling to hunt for, and nothing electable.
+    expect(screen.queryByTestId("text-qm-ceiling")).toBeNull();
+    await user.type(screen.getByTestId("input-compensation-bps"), "0");
+    expect(screen.getByTestId("button-save-compensation")).toHaveProperty("disabled", true);
+  });
+
+  it("does not constrain the draft when the file has no loan amount yet", async () => {
+    const user = userEvent.setup();
+    renderCard({}, { evaluated: false, loanAmount: null, maxElectableBps: null, election: null });
+    await user.click(screen.getByTestId("button-elect-compensation"));
+
+    await user.type(screen.getByTestId("input-compensation-bps"), "250");
+    expect(screen.getByTestId("button-save-compensation")).toHaveProperty("disabled", false);
+    expect(screen.queryByTestId("text-qm-ceiling")).toBeNull();
+    expect(screen.queryByTestId("alert-qm-no-viable-rate")).toBeNull();
   });
 });

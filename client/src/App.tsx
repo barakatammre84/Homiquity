@@ -159,6 +159,7 @@ const AdminUsers = lazy(() => import("@/pages/admin/AdminUsers"));
 const AutopilotConsole = lazy(() => import("@/pages/admin/AutopilotConsole"));
 const AdminPartnerWaitlist = lazy(() => import("@/pages/admin/AdminPartnerWaitlist"));
 const FinancialReports = lazy(() => import("@/pages/admin/FinancialReports"));
+const PricingPolicy = lazy(() => import("@/pages/admin/PricingPolicy"));
 const AdminPartners = lazy(() => import("@/pages/admin/AdminPartners"));
 
 import NotFound from "@/pages/not-found";
@@ -578,6 +579,9 @@ function Router() {
         </Route>
         <Route path="/admin/financial-reports">
           <AdminPage><FinancialReports /></AdminPage>
+        </Route>
+        <Route path="/admin/pricing-policy">
+          <AdminPage><PricingPolicy /></AdminPage>
         </Route>
 
         <Route component={NotFound} />

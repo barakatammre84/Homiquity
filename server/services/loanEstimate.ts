@@ -3,6 +3,7 @@ import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
 import { computeClosingCosts, calculatePMI } from "./loanCosts";
+import { activeFeeSchedule } from "./platformFeeSchedule";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import { toActualFeeMap, type ActualFeeMap } from "@shared/compliance/feeProvenance";
 import type { LoanApplication } from "@shared/schema";
@@ -307,6 +308,9 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   // (services/loanCosts.ts) — the LO-2 scenario simulator reads the same
   // function, so a scenario's cash-to-close matches the LE for equal inputs.
   const closingDate = estimateClosingDate();
+  // The ACTIVE published fee schedule, not the compiled-in baseline: fees are
+  // admin-editable, and the LE is the surface that discloses them.
+  const feeSchedule = await activeFeeSchedule();
   const costs = computeClosingCosts({
     purchasePrice,
     downPayment,
@@ -315,6 +319,8 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     monthlyPMI,
     prepaidInterestDays: prepaidInterestDaysFor(closingDate),
     compensation,
+    feeSchedule,
+    noteDate: closingDate,
     // Real quotes for this file replace the unverified national estimates
     // (F-9). Derived from the cost ledger: an appraisal invoice already booked
     // against the file is the actual charge, so disclose it rather than the

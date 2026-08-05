@@ -515,6 +515,26 @@
     "missing-applicationsApproved": "reject:applicationToApprovalRate,applicationsClosed,applicationsDenied,applicationsFunded,applicationsInPipeline,applicationsProcessing,applicationsUnderwriting,applicationsWithdrawn,approvalToCloseRate,loansAtRiskOfSlaBreach,newApplicationsToday,pullThroughRate,slaComplianceRate,snapshotDate,totalApplications",
     "wrongtype-snapshotDate": "reject:applicationToApprovalRate,applicationsApproved,applicationsClosed,applicationsDenied,applicationsFunded,applicationsInPipeline,applicationsProcessing,applicationsUnderwriting,applicationsWithdrawn,approvalToCloseRate,loansAtRiskOfSlaBreach,newApplicationsToday,pullThroughRate,slaComplianceRate,snapshotDate,totalApplications"
   },
+  "schema.insertPlatformFeeScheduleSchema": {
+    "undefined": "reject:",
+    "null": "reject:",
+    "empty-object": "reject:applicationFee,originationFeeRate,taxServiceFee,underwritingFee",
+    "empty-array": "reject:",
+    "empty-string": "reject:",
+    "zero": "reject:",
+    "false": "reject:",
+    "string": "reject:",
+    "number": "reject:",
+    "true": "reject:",
+    "all-keys-typed": "reject:originationFeeRate",
+    "missing-applicationFee": "reject:applicationFee,originationFeeRate",
+    "missing-underwritingFee": "reject:originationFeeRate,underwritingFee",
+    "missing-taxServiceFee": "reject:originationFeeRate,taxServiceFee",
+    "missing-originationFeeRate": "reject:originationFeeRate",
+    "missing-note": "reject:originationFeeRate",
+    "missing-createdBy": "reject:originationFeeRate",
+    "wrongtype-applicationFee": "reject:applicationFee,originationFeeRate"
+  },
   "schema.insertDisclaimerVersionSchema": {
     "undefined": "reject:",
     "null": "reject:",
