@@ -2,79 +2,24 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useParams, useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { format, formatDistanceToNow } from "date-fns";
-import {
-  Shield,
-  FileText,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  CreditCard,
-  Lock,
-  Info,
-  ChevronRight,
-  Save,
-  RefreshCw,
-} from "lucide-react";
+import { AlertTriangle, Shield } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { QueryErrorState } from "@/components/ui/query-boundary";
-import type { LoanApplication, DraftConsentProgress } from "@shared/schema";
-
-interface DisclosureData {
-  disclosureText: string;
-  disclosureVersion: string;
-}
-
-interface ConsentData {
-  consent: {
-    id: string;
-    applicationId: string;
-    userId: string;
-    consentType: string;
-    disclosureVersion: string;
-    consentGiven: boolean;
-    consentTimestamp: string;
-    borrowerFullName: string;
-    isActive: boolean;
-  } | null;
-}
-
-interface CreditSummary {
-  hasActiveConsent: boolean;
-  consent: ConsentData["consent"];
-  latestPull: {
-    id: string;
-    status: string;
-    representativeScore: number | null;
-    experianScore: number | null;
-    equifaxScore: number | null;
-    transunionScore: number | null;
-    completedAt: string | null;
-    expiresAt: string | null;
-  } | null;
-  pullCount: number;
-  adverseActionCount: number;
-}
-
-interface DraftData {
-  draft: DraftConsentProgress | null;
-}
+import type { LoanApplication } from "@shared/schema";
+import { draftStep, type CreditSummary, type DisclosureData, type DraftData } from "./creditConsent/types";
+import { ActiveConsentCard } from "./creditConsent/ActiveConsentCard";
+import { DisclosureCard, DraftResumeAlert } from "./creditConsent/DisclosureCard";
+import { AuthorizationForm } from "./creditConsent/AuthorizationForm";
+import { FcraRightsCard } from "./creditConsent/FcraRightsCard";
 
 export default function CreditConsent() {
   const { id: applicationId } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+
   const [fullName, setFullName] = useState("");
   const [ssnLast4, setSsnLast4] = useState("");
   const [dob, setDob] = useState("");
@@ -136,7 +81,7 @@ export default function CreditConsent() {
         borrowerDOB: dob,
         disclosureRead,
         acknowledged,
-        currentStep: acknowledged ? 3 : disclosureRead ? 2 : 1,
+        currentStep: draftStep(disclosureRead, acknowledged),
       });
       return await response.json();
     },
@@ -271,245 +216,33 @@ export default function CreditConsent() {
       titleTestId="text-credit-auth-title"
       contentClassName="space-y-6"
     >
-      {hasActiveConsent && (
-        <Card className="border-border bg-success-subtle">
-          <CardContent className="py-6">
-            <div className="flex items-start gap-4">
-              <CheckCircle2 className="h-6 w-6 text-success-subtle-foreground mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-success-subtle-foreground" data-testid="text-consent-active">
-                  Consent Already Provided
-                </h3>
-                <p className="text-sm text-success-subtle-foreground mt-1">
-                  {consent?.borrowerFullName} authorized a credit check on{" "}
-                  {consent?.consentTimestamp && format(new Date(consent.consentTimestamp), "MMMM d, yyyy 'at' h:mm a")}
-                </p>
-                {latestPull && (
-                  <div className="mt-4 p-4 bg-card rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CreditCard className="h-4 w-4" />
-                      <span className="font-medium">Credit Report Summary</span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Representative</span>
-                        <p className="text-xl font-bold" data-testid="text-credit-score-representative">
-                          {latestPull.representativeScore || "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Experian</span>
-                        <p className="font-semibold" data-testid="text-credit-score-experian">{latestPull.experianScore || "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Equifax</span>
-                        <p className="font-semibold" data-testid="text-credit-score-equifax">{latestPull.equifaxScore || "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">TransUnion</span>
-                        <p className="font-semibold" data-testid="text-credit-score-transunion">{latestPull.transunionScore || "—"}</p>
-                      </div>
-                    </div>
-                    {latestPull.expiresAt && (
-                      <p className="text-xs text-muted-foreground mt-3">
-                        Valid until {format(new Date(latestPull.expiresAt), "MMMM d, yyyy")}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {hasActiveConsent && <ActiveConsentCard consent={consent} latestPull={latestPull} />}
 
       {!hasActiveConsent && (
         <>
-          {draftData?.draft && (
-            <Alert className="border-border bg-info-subtle">
-              <RefreshCw className="h-4 w-4 text-info" />
-              <AlertDescription className="text-info">
-                <strong>Resume Progress:</strong> You have a saved draft from{" "}
-                {draftData.draft.lastSavedAt && formatDistanceToNow(new Date(draftData.draft.lastSavedAt), { addSuffix: true })}.
-                Your progress has been restored automatically.
-                {draftData.draft.expiresAt && (
-                  <span className="block text-sm mt-1 opacity-80">
-                    This draft expires {format(new Date(draftData.draft.expiresAt), "MMMM d, yyyy")}
-                  </span>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
+          {draftData?.draft && <DraftResumeAlert draft={draftData.draft} />}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Credit Authorization Disclosure
-              </CardTitle>
-              <CardDescription>
-                Please read the following disclosure carefully before providing your authorization
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Info className="h-4 w-4" />
-                <span>Version: {disclosure?.disclosureVersion}</span>
-              </div>
-              
-              <ScrollArea className="h-64 rounded-md border p-4 bg-muted/30">
-                <pre className="whitespace-pre-wrap text-sm font-sans" data-testid="text-disclosure-content">
-                  {disclosure?.disclosureText}
-                </pre>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+          <DisclosureCard disclosure={disclosure} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="h-5 w-5" />
-                Your Authorization
-              </CardTitle>
-              <CardDescription>
-                Provide your information to authorize the credit check
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="fullName">Full Legal Name *</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Enter your full legal name as it appears on your ID"
-                    data-testid="input-full-name"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="ssnLast4">Last 4 of SSN (optional)</Label>
-                  <Input
-                    id="ssnLast4"
-                    value={ssnLast4}
-                    onChange={(e) => setSsnLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    placeholder="1234"
-                    maxLength={4}
-                    data-testid="input-ssn-last4"
-                  />
-                  <p className="text-xs text-muted-foreground" data-testid="text-ssn-whisper">
-                    Used only to match you with your credit report — we never ask for your full
-                    SSN here, and sharing it is optional.
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="dob">Date of Birth (optional)</Label>
-                  <Input
-                    id="dob"
-                    type="date"
-                    value={dob}
-                    onChange={(e) => setDob(e.target.value)}
-                    data-testid="input-dob"
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="acknowledge"
-                  checked={acknowledged}
-                  onCheckedChange={(checked) => setAcknowledged(checked as boolean)}
-                  data-testid="checkbox-acknowledge"
-                />
-                <Label htmlFor="acknowledge" className="text-sm leading-relaxed cursor-pointer">
-                  I have read and understand the Credit Authorization Disclosure above. I authorize 
-                  Homiquity to obtain my credit report from one or more consumer reporting agencies 
-                  for the purpose of evaluating my mortgage loan application.
-                </Label>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  onClick={handleSubmitConsent}
-                  disabled={!fullName || !acknowledged || submitting}
-                  className="flex-1"
-                  data-testid="button-authorize-credit"
-                >
-                  {submitting ? (
-                    <>
-                      <Clock className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="h-4 w-4 mr-2" />
-                      I Authorize Credit Check
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={handleSaveDraft}
-                  disabled={saving}
-                  data-testid="button-save-progress"
-                >
-                  {saving ? (
-                    <>
-                      <Clock className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Progress
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setLocation("/dashboard")}
-                  data-testid="button-cancel"
-                >
-                  Cancel
-                </Button>
-              </div>
-
-              <p className="text-xs text-muted-foreground text-center">
-                By clicking "I Authorize", you are providing written authorization as required by the 
-                Fair Credit Reporting Act (FCRA). This authorization is valid for 120 days.
-              </p>
-            </CardContent>
-          </Card>
+          <AuthorizationForm
+            fullName={fullName}
+            onFullNameChange={setFullName}
+            ssnLast4={ssnLast4}
+            onSsnLast4Change={setSsnLast4}
+            dob={dob}
+            onDobChange={setDob}
+            acknowledged={acknowledged}
+            onAcknowledgedChange={setAcknowledged}
+            submitting={submitting}
+            saving={saving}
+            onSubmit={handleSubmitConsent}
+            onSaveDraft={handleSaveDraft}
+            onCancel={() => setLocation("/dashboard")}
+          />
         </>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Your Rights Under the FCRA</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex items-start gap-3">
-            <ChevronRight className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-            <p>You have the right to obtain a free credit report annually from each bureau at annualcreditreport.com</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <ChevronRight className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-            <p>You have the right to dispute any inaccurate information on your credit report</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <ChevronRight className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-            <p>If we take adverse action based on your credit, you will receive a notice explaining why</p>
-          </div>
-          <div className="flex items-start gap-3">
-            <ChevronRight className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-            <p>Multiple mortgage inquiries within 45 days count as a single inquiry for scoring purposes</p>
-          </div>
-        </CardContent>
-      </Card>
+      <FcraRightsCard />
     </PageShell>
   );
 }
