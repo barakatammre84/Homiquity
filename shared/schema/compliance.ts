@@ -293,6 +293,46 @@ export const creditAuditLog = pgTable("credit_audit_log", {
   index("idx_credit_audit_entry_hash").on(table.entryHash),
 ]);
 
+/**
+ * External end-marker for each audit chain (finding F-038).
+ *
+ * Nothing inside a hash chain can detect the removal of its own end: delete the
+ * last K entries and the remainder is perfectly self-consistent, which is
+ * exactly why tail truncation is the deletion an insider would actually use.
+ * Detecting it requires a record kept OUTSIDE the chain of where the chain last
+ * ended. This table is that record, written in the same transaction as every
+ * append.
+ *
+ * Honest about what it is: this lives in the same database as the log, so an
+ * attacker with write access can update it too. It is not a cryptographic
+ * guarantee — it turns a one-row delete into a two-table coordinated write, and
+ * it catches every non-adversarial cause (a partial restore, a bad migration, a
+ * dropped transaction) outright. A real guarantee needs an append-only store
+ * outside this database.
+ */
+export const creditAuditChainTips = pgTable("credit_audit_chain_tips", {
+  /** applicationId, or the NULL_SCOPE sentinel for entries with no application. */
+  scopeKey: varchar("scope_key").primaryKey(),
+  /** entryHash of the last entry appended to this scope. */
+  tipEntryHash: varchar("tip_entry_hash", { length: 64 }).notNull(),
+  /** sequenceNumber of that entry. */
+  tipSequenceNumber: integer("tip_sequence_number").notNull(),
+  /**
+   * The sequence number at which tip tracking began for this scope.
+   *
+   * Chains that already existed when this table shipped get a tip on their next
+   * append, not a backfill — a backfilled tip would bless whatever the chain
+   * happened to contain at that moment as authoritative, which is the
+   * falsified-provenance problem this whole mechanism exists to prevent.
+   * Verification reports entries before this point as not tail-anchored rather
+   * than claiming a coverage it does not have.
+   */
+  trackingStartedAtSequence: integer("tracking_started_at_sequence").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type CreditAuditChainTip = typeof creditAuditChainTips.$inferSelect;
+
 export const insertCreditAuditLogSchema = createInsertSchema(creditAuditLog).omit({
   id: true,
 });

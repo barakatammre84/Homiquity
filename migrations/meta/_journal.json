@@ -337,6 +337,13 @@
       "when": 1785861600000,
       "tag": "0047_platform_fee_schedules",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1785948000000,
+      "tag": "0048_credit_audit_chain_tips",
+      "breakpoints": true
     }
   ]
 }

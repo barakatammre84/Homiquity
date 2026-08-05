@@ -135,6 +135,10 @@ vi.mock("../server/db", async () => {
   class InsertBuilder {
     private row: any = null;
     private done = false;
+    // Upsert target + assignments, set by onConflictDoUpdate (F-038: the chain
+    // tip is written with ON CONFLICT DO UPDATE on every append).
+    private conflictKey: string | null = null;
+    private conflictSet: any = null;
     constructor(private table: any) {}
     values(v: any) {
       // A real database reads unset columns back as NULL, never undefined —
@@ -145,9 +149,28 @@ vi.mock("../server/db", async () => {
       this.row = { id: `row-${++h.state.idCounter}`, ...normalized };
       return this;
     }
+    onConflictDoUpdate(cfg: { target: any; set: any }) {
+      const target = Array.isArray(cfg.target) ? cfg.target[0] : cfg.target;
+      this.conflictKey = columnKey(this.table, target);
+      this.conflictSet = cfg.set;
+      return this;
+    }
     private exec() {
       if (!this.done) {
-        h.tableRows(getTableName(this.table)).push(this.row);
+        const rows = h.tableRows(getTableName(this.table));
+        // Mirror ON CONFLICT (key) DO UPDATE: an existing row with the same
+        // conflict-target value is updated in place rather than duplicated.
+        // Without this the fake would grow a second tip row per append and the
+        // verifier would read whichever it found first.
+        const existing = this.conflictKey
+          ? rows.find((r) => r[this.conflictKey!] === this.row[this.conflictKey!])
+          : undefined;
+        if (existing) {
+          Object.assign(existing, this.conflictSet ?? {});
+          this.row = existing;
+        } else {
+          rows.push(this.row);
+        }
         this.done = true;
       }
       return [{ ...this.row }];
@@ -160,12 +183,27 @@ vi.mock("../server/db", async () => {
     }
   }
 
-  return {
-    db: {
-      select: (_fields?: any) => new SelectBuilder(),
-      insert: (table: any) => new InsertBuilder(table),
+  const fakeDb: any = {
+    select: (_fields?: any) => new SelectBuilder(),
+    insert: (table: any) => new InsertBuilder(table),
+    // Same shape as the sibling fake in tests/auditReanchor.test.ts: run the
+    // callback, and on throw restore the pre-transaction snapshot so a failed
+    // append cannot leave the entry written without its chain tip (F-038).
+    transaction: async (fn: (tx: any) => Promise<any>) => {
+      const snapshot = new Map(
+        [...h.state.rows.entries()].map(([name, rows]) => [name, rows.map((r) => ({ ...r }))]),
+      );
+      try {
+        return await fn(fakeDb);
+      } catch (err) {
+        h.state.rows.clear();
+        for (const [name, rows] of snapshot) h.state.rows.set(name, rows);
+        throw err;
+      }
     },
   };
+
+  return { db: fakeDb };
 });
 
 import { getTableName } from "drizzle-orm";
@@ -333,6 +371,83 @@ describe("logAgentToolInvocation (AG-1)", () => {
     // Deleting a mid-chain entry breaks the linkage.
     auditRows().splice(1, 1);
     expect(await verifyAgentAuditLogIntegrity()).toMatchObject({ valid: false, brokenAt: 1 });
+  });
+
+  // -------------------------------------------------------------------------
+  // F-038 — the truncation modes the chain could not see about itself.
+  //
+  // The mid-chain deletion above was the ONLY deletion the old verifier caught.
+  // Head truncation and tail truncation both reported {valid: true}, and tail
+  // truncation is the one an insider would actually use: it removes the most
+  // recent — i.e. the most incriminating — entries, and leaves a remainder that
+  // is genuinely self-consistent.
+  // -------------------------------------------------------------------------
+
+  it("detects head truncation, which used to verify clean", async () => {
+    for (let i = 0; i < 4; i++) {
+      await logAgentToolInvocation({
+        toolName: "get_best_execution_rates",
+        argsHash: String(i).repeat(64),
+        outcome: "success",
+      });
+    }
+    expect(await verifyAgentAuditLogIntegrity()).toMatchObject({ valid: true, totalEntries: 4 });
+
+    // Remove the first two. Every surviving link still points at a survivor,
+    // so nothing in the old check fired.
+    auditRows().splice(0, 2);
+    const result = await verifyAgentAuditLogIntegrity();
+    expect(result.valid).toBe(false);
+    expect(result.coverage.headAnchored).toBe(false);
+  });
+
+  it("detects tail truncation via the external chain tip", async () => {
+    for (let i = 0; i < 4; i++) {
+      await logAgentToolInvocation({
+        toolName: "get_best_execution_rates",
+        argsHash: String(i).repeat(64),
+        outcome: "success",
+      });
+    }
+    const intact = await verifyAgentAuditLogIntegrity();
+    expect(intact).toMatchObject({ valid: true, totalEntries: 4 });
+    // The tip was recorded from the first append, so this scope is anchored.
+    expect(intact.coverage.tailAnchored).toBe(true);
+
+    // Delete the last two entries and leave the tip alone — a single-table
+    // delete, which is what the mechanism is meant to make insufficient.
+    auditRows().splice(2, 2);
+    const result = await verifyAgentAuditLogIntegrity();
+    expect(result.valid).toBe(false);
+    expect(result.reason).toMatch(/tail truncated/i);
+    // The remainder is internally perfect: head-anchored, links intact,
+    // sequence contiguous. ONLY the external tip catches this.
+    expect(result.coverage.headAnchored).toBe(true);
+  });
+
+  it("detects deletion of an ENTIRE chain, which used to be the cleanest of all", async () => {
+    await logAgentToolInvocation({
+      toolName: "get_best_execution_rates",
+      argsHash: "a".repeat(64),
+      outcome: "success",
+    });
+    // `entries.length === 0` used to short-circuit to {valid: true}, so wiping
+    // the log completely was the single most effective way to pass the check.
+    auditRows().length = 0;
+    const result = await verifyAgentAuditLogIntegrity();
+    expect(result.valid).toBe(false);
+    expect(result.totalEntries).toBe(0);
+    expect(result.reason).toMatch(/entire log|NO entries/i);
+  });
+
+  it("a scope that never had entries is still valid, not a false alarm", async () => {
+    // The counterpart to the case above: no tip and no entries is an empty
+    // scope, not a deleted one. Failing this would make every untouched
+    // application report tampering.
+    const result = await verifyAgentAuditLogIntegrity();
+    expect(result.valid).toBe(true);
+    expect(result.totalEntries).toBe(0);
+    expect(result.coverage.tailAnchored).toBe(false);
   });
 });
 

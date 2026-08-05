@@ -36,15 +36,50 @@ import "../server/load-env";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { eq, sql } from "drizzle-orm";
-import { creditAuditLog, type CreditAuditLog } from "@shared/schema";
+import {
+  creditAuditLog,
+  creditAuditChainTips,
+  type CreditAuditLog,
+} from "@shared/schema";
 import {
   computeAuditEntryHash,
   verifyHashChain,
 } from "../server/services/encryptionService";
+import { auditChainScopeKey } from "../server/services/creditAuditChain";
 
 export const REANCHOR_ACTION = "audit_chain_reanchored";
 
 const NULL_SCOPE = "<agent/null-application>";
+
+/**
+ * Re-point an existing chain tip at a scope's new final entry (F-038).
+ *
+ * This script rewrites every entryHash, so a tip recorded before it runs names a
+ * hash that no longer exists — and the tail check would then report a truncation
+ * that never happened. A false alarm on an audit log is its own kind of damage:
+ * it burns the credibility of the one signal that is supposed to mean something.
+ *
+ * UPDATE, never insert. A scope with no tip stays untracked until its next real
+ * append. Creating one here would assert "this is where the chain ends" from
+ * whatever this script happened to read, which — if the log had already been
+ * truncated before the re-anchor — would launder the truncated end into the
+ * authoritative record. Same reasoning as the migration's refusal to backfill.
+ */
+async function repointExistingTip(
+  tx: any,
+  scopeKey: string,
+  finalEntry: { entryHash: string; sequenceNumber: number | null } | undefined,
+): Promise<void> {
+  if (!finalEntry) return;
+  await tx
+    .update(creditAuditChainTips)
+    .set({
+      tipEntryHash: finalEntry.entryHash,
+      tipSequenceNumber: finalEntry.sequenceNumber ?? 0,
+      updatedAt: new Date(),
+    })
+    .where(eq(creditAuditChainTips.scopeKey, scopeKey));
+}
 
 export interface ScopeReport {
   scope: string;
@@ -99,6 +134,9 @@ function verifyScopes(scopes: Map<string, CreditAuditLog[]>): void {
         action: e.action,
         actionDetails: e.actionDetails as Record<string, any> | null,
         timestamp: e.timestamp,
+        // The rewrite normalizes sequence numbers to 1..N, so the contiguity
+        // check applies here and is worth asserting before committing.
+        sequenceNumber: e.sequenceNumber,
       }))
     );
     if (!result.valid) {
@@ -175,6 +213,16 @@ export async function reanchorAuditChains(options: {
         previousEntryHash = entryHash;
       }
 
+      // Every hash in this scope may have just changed, so a tip recorded
+      // earlier now names a hash that no longer exists (F-038).
+      if (options.execute) {
+        await repointExistingTip(
+          tx,
+          auditChainScopeKey(scope === NULL_SCOPE ? null : scope),
+          entries[entries.length - 1],
+        );
+      }
+
       report.entriesRewritten += rewritten;
       if (rewritten > 0) report.scopesTouched++;
       report.scopes.push({ scope, totalEntries: entries.length, rewritten });
@@ -219,6 +267,12 @@ export async function reanchorAuditChains(options: {
         previousEntryHash,
         sequenceNumber: (head?.sequenceNumber ?? 0) + 1,
         timestamp,
+      });
+      // The re-anchor event is itself a new chain end, so the null scope's tip
+      // has to advance past the one just written a few lines above.
+      await repointExistingTip(tx, auditChainScopeKey(null), {
+        entryHash,
+        sequenceNumber: (head?.sequenceNumber ?? 0) + 1,
       });
       report.eventWritten = true;
       log(`appended ${REANCHOR_ACTION} event to the null-application scope`);

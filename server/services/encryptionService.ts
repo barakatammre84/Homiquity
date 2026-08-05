@@ -308,6 +308,60 @@ export function computeAuditEntryHash(entry: AuditEntryHashInput): string {
   return computeHash(canonical);
 }
 
+/**
+ * How much of the chain the verification was actually able to attest (F-038).
+ *
+ * `verifyHashChain` used to return a bare `{valid: true}`, which read as "this
+ * log is intact" when it only ever meant "the entries I was handed link to each
+ * other". Those are very different claims, and the gap between them was the
+ * whole finding. The coverage flags make the difference legible to the caller
+ * instead of leaving it to be inferred.
+ */
+export interface HashChainCoverage {
+  /** The chain starts at a genuine genesis entry (`previousEntryHash === null`). */
+  headAnchored: boolean;
+  /**
+   * Sequence numbers were present on every entry and ran 1..N with no gaps.
+   * "unavailable" means at least one entry predates sequence numbering (they are
+   * nullable, and legacy rows written before the re-anchor may not carry one) —
+   * NOT that the check passed.
+   */
+  sequenceCoverage: "verified" | "unavailable";
+}
+
+export interface HashChainResult {
+  valid: boolean;
+  brokenAt?: number;
+  reason?: string;
+  coverage: HashChainCoverage;
+}
+
+/**
+ * Verify a tamper-evident audit chain (F-038).
+ *
+ * What this detects, and — just as importantly — what it does not:
+ *
+ *   ✔ mutation of any entry's content (own-hash check)
+ *   ✔ mutation of a link (linkage check)
+ *   ✔ deletion of the chain HEAD, and any contiguous mid-chain window, because
+ *     entry 0 must now carry `previousEntryHash === null`. Previously the
+ *     linkage check was guarded by `if (i > 0 …)`, so entry 0's backpointer was
+ *     never examined at all: lopping off the first K entries left entry K+1
+ *     pointing at a row that no longer existed and the chain still verified.
+ *     A SINGLE surviving mid-chain entry verified clean for the same reason.
+ *   ✔ mid-chain deletion that renumbers nothing (sequence contiguity)
+ *
+ *   ✘ TAIL truncation. Nothing inside a chain can detect the removal of its own
+ *     end — the remainder is perfectly self-consistent. That needs an external
+ *     record of where the chain last ended, which is why the caller pairs this
+ *     with the persisted per-scope tip; see `verifyAuditLogIntegrity`.
+ *   ✘ deletion by an attacker who also renumbers the survivors. `sequenceNumber`
+ *     is not an input to `computeAuditEntryHash`, so it can be rewritten without
+ *     invalidating any hash. Folding it into the hash would invalidate every
+ *     entry ever written — the existing log would read as tampered — so closing
+ *     this needs a versioned hash scheme, tracked separately rather than
+ *     pretended away here.
+ */
 export function verifyHashChain(
   entries: Array<{
     entryHash: string;
@@ -317,15 +371,39 @@ export function verifyHashChain(
     action: string;
     actionDetails: Record<string, any> | null;
     timestamp: Date;
+    /** Optional: when present on EVERY entry, contiguity is enforced. */
+    sequenceNumber?: number | null;
   }>
-): { valid: boolean; brokenAt?: number; reason?: string } {
+): HashChainResult {
+  const sequenced = entries.every((e) => typeof e.sequenceNumber === "number");
+  const coverage: HashChainCoverage = {
+    // An empty chain has no head to anchor; treated as anchored so a scope with
+    // no entries is not reported as a defect.
+    headAnchored: true,
+    sequenceCoverage: sequenced ? "verified" : "unavailable",
+  };
+
   if (entries.length === 0) {
-    return { valid: true };
+    return { valid: true, coverage };
   }
-  
+
+  // The chain must begin at genesis. This is the F-038 fix: without it, ANY
+  // contiguous window of a valid chain verifies as a valid chain.
+  if (entries[0].previousEntryHash !== null) {
+    return {
+      valid: false,
+      brokenAt: 0,
+      reason:
+        `Chain head missing: entry 0 references predecessor ` +
+        `${entries[0].previousEntryHash} which is not present. The start of ` +
+        `this chain has been removed, or this is a partial window.`,
+      coverage: { ...coverage, headAnchored: false },
+    };
+  }
+
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
-    
+
     const expectedHash = computeAuditEntryHash({
       applicationId: entry.applicationId,
       userId: entry.userId,
@@ -334,25 +412,44 @@ export function verifyHashChain(
       timestamp: entry.timestamp,
       previousEntryHash: entry.previousEntryHash,
     });
-    
+
     if (entry.entryHash !== expectedHash) {
       return {
         valid: false,
         brokenAt: i,
         reason: `Entry ${i} hash mismatch: expected ${expectedHash}, got ${entry.entryHash}`,
+        coverage,
       };
     }
-    
+
     if (i > 0 && entry.previousEntryHash !== entries[i - 1].entryHash) {
       return {
         valid: false,
         brokenAt: i,
         reason: `Chain broken at entry ${i}: previous hash doesn't match`,
+        coverage,
       };
     }
+
+    // Sequence numbers run 1..N. A gap is a deletion that left the hash links
+    // intact — possible because the deleted rows' successors were re-pointed,
+    // or simply because rows were lost rather than tampered with.
+    if (sequenced) {
+      const expectedSeq = i + 1;
+      if (entry.sequenceNumber !== expectedSeq) {
+        return {
+          valid: false,
+          brokenAt: i,
+          reason:
+            `Sequence gap at entry ${i}: expected sequenceNumber ${expectedSeq}, ` +
+            `got ${entry.sequenceNumber}. Entries are missing from this chain.`,
+          coverage,
+        };
+      }
+    }
   }
-  
-  return { valid: true };
+
+  return { valid: true, coverage };
 }
 
 export function maskSSN(ssn: string): string {
