@@ -17,7 +17,7 @@
 
 import { storage } from "../storage";
 import { addBusinessDays } from "./businessDays";
-import { LOAN_APP_TERMINAL_STATUSES, type LoanApplication, type UrlaPersonalInfo } from "@shared/schema";
+import { LOAN_APP_TERMINAL_STATUSES, type LoanApplication, type UrlaPersonalInfo, type UrlaPropertyInfo } from "@shared/schema";
 
 /**
  * Transitions the LE hard stop must not block: every way an application ends
@@ -58,6 +58,7 @@ function nonEmpty(value: unknown): boolean {
 export function assessSixPieces(
   application: LoanApplication,
   personalInfo: UrlaPersonalInfo | undefined,
+  propertyInfo?: UrlaPropertyInfo | undefined,
 ): SixPiecesAssessment {
   const missing: string[] = [];
 
@@ -68,10 +69,17 @@ export function assessSixPieces(
 
   if (!nonEmpty(personalInfo?.ssn)) missing.push("ssn");
 
-  if (!nonEmpty(application.propertyAddress)) missing.push("property_address");
+  // An address supplied ANYWHERE counts — the URLA property record is a valid
+  // source even before it mirrors onto the application row. Under-counting
+  // starts the LE clock late (a violation); over-counting is conservative.
+  const hasAddress =
+    nonEmpty(application.propertyAddress) || nonEmpty(propertyInfo?.propertyStreet);
+  if (!hasAddress) missing.push("property_address");
 
   const hasEstimatedValue =
-    positiveNumber(application.propertyValue) || positiveNumber(application.purchasePrice);
+    positiveNumber(application.propertyValue) ||
+    positiveNumber(application.purchasePrice) ||
+    positiveNumber(propertyInfo?.propertyValue);
   if (!hasEstimatedValue) missing.push("estimated_property_value");
 
   const purchasePrice = parseFloat(String(application.purchasePrice ?? ""));
@@ -166,8 +174,11 @@ export async function evaluateTridTrigger(applicationId: string): Promise<TridTr
     };
   }
 
-  const personalInfo = await storage.getUrlaPersonalInfo(applicationId);
-  const assessment = assessSixPieces(application, personalInfo);
+  const [personalInfo, propertyInfo] = await Promise.all([
+    storage.getUrlaPersonalInfo(applicationId),
+    storage.getUrlaPropertyInfo(applicationId),
+  ]);
+  const assessment = assessSixPieces(application, personalInfo, propertyInfo);
   if (!assessment.complete) {
     return { triggered: false, justTriggered: false, tridTriggeredAt: null, leDueDate: null, missing: assessment.missing };
   }

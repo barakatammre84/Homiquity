@@ -423,18 +423,65 @@ export default async function runApp(
 ) {
   initErrorMonitoring();
 
+  // A failing stdout/stderr must never take the process down with it: piped
+  // runs can close the read end, and the keep-alive handlers below would
+  // otherwise re-throw on their own logging — the 2026-08-05 event-loop
+  // storm (EPIPE → handler logs → EPIPE → …), which pinned the CPU at 100%
+  // and left every request dead until an external restart.
+  process.stdout.on("error", () => {});
+  process.stderr.on("error", () => {});
+
+  // Runaway breaker: a handler firing continuously means the process is
+  // wedged, and crash-and-restart beats a zombie serving nothing.
+  let stormCount = 0;
+  let stormWindowStart = 0;
+  const noteStorm = () => {
+    const now = Date.now();
+    if (now - stormWindowStart > 5_000) {
+      stormWindowStart = now;
+      stormCount = 0;
+    }
+    stormCount += 1;
+    if (stormCount >= 50) {
+      try {
+        console.error("Uncaught-exception storm detected — exiting for a clean restart.");
+      } catch {
+        /* stdout may itself be the casualty */
+      }
+      process.exit(1);
+    }
+  };
+
   process.on("uncaughtException", (err) => {
-    log(`Uncaught Exception: ${err.message}`, "error");
-    console.error(err.stack);
-    captureException(err, { kind: "uncaughtException" });
+    noteStorm();
+    try {
+      log(`Uncaught Exception: ${err.message}`, "error");
+      console.error(err.stack);
+    } catch {
+      /* logging must never re-throw here */
+    }
+    try {
+      captureException(err, { kind: "uncaughtException" });
+    } catch {
+      /* reporting must never re-throw here */
+    }
   });
 
   process.on("unhandledRejection", (reason) => {
-    log(`Unhandled Rejection: ${reason}`, "error");
-    if (reason instanceof Error) {
-      console.error(reason.stack);
+    noteStorm();
+    try {
+      log(`Unhandled Rejection: ${reason}`, "error");
+      if (reason instanceof Error) {
+        console.error(reason.stack);
+      }
+    } catch {
+      /* logging must never re-throw here */
     }
-    captureException(reason, { kind: "unhandledRejection" });
+    try {
+      captureException(reason, { kind: "unhandledRejection" });
+    } catch {
+      /* reporting must never re-throw here */
+    }
   });
 
   const { server } = await createApp(setup);

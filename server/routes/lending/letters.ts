@@ -5,7 +5,7 @@ import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
 import { insertBorrowerDeclarationsSchema, CREDIT_DECISION_ROLES, type User } from "@shared/schema";
 import { isAdmin, isStaffRole } from "@shared/roles";
-import { PREQUAL_ELIGIBLE_STATUSES, effectiveLetterStatus, letterRevocationSchema } from "@shared/letters";
+import { PREQUAL_ELIGIBLE_STATUSES, effectiveLetterStatus, letterRevocationSchema, resolveLetterAmount } from "@shared/letters";
 import { z } from "zod";
 import crypto from "crypto";
 import { logAudit } from "../../auditLog";
@@ -88,9 +88,25 @@ export function registerLetterRoutes(
       const expirationDate = new Date();
       expirationDate.setDate(expirationDate.getDate() + 90);
 
+      const resolvedAmount = resolveLetterAmount(
+        application.preApprovalAmount,
+        application.purchasePrice,
+        application.downPayment,
+      );
+      if (resolvedAmount == null) {
+        // An outward creditworthiness document must never assert $0 — the
+        // intake cascade persists "0.00" on undecidable files, and the old
+        // truthy-string fallback printed exactly that on the letter.
+        return res.status(422).json({
+          error:
+            "A pre-approval amount has not been determined for this application yet — complete the decision before generating a letter.",
+        });
+      }
+      const loanAmount = String(resolvedAmount);
+      // Display/DTI inputs for the PDF body — independent of the resolved
+      // letter amount above.
       const purchasePrice = parseFloat(application.purchasePrice || "0");
       const downPayment = parseFloat(application.downPayment || "0");
-      const loanAmount = application.preApprovalAmount || String(purchasePrice - downPayment);
 
       const conditions = [...STANDARD_PRE_APPROVAL_CONDITIONS];
 
