@@ -617,17 +617,26 @@ export function registerUrlaRoutes(
         } as any);
       }
 
-      // Other income sources (primary only) - only create new ones
+      // Other income sources (primary only)
       if (otherIncomeSources && Array.isArray(otherIncomeSources) && otherIncomeSources.length > 0) {
         results.otherIncomeSources = [];
         for (const income of otherIncomeSources) {
           if (!income.incomeSource || !income.monthlyAmount) continue;
-          if (income.id) continue;
-          const created = await storage.createOtherIncomeSource({
-            ...pickTableFields(URLA_TABLES.otherIncome, income),
-            applicationId,
-          } as any);
-          results.otherIncomeSources.push(created);
+          const cleanIncome = pickTableFields(URLA_TABLES.otherIncome, income);
+          if (income.id) {
+            const existing = await storage.getOtherIncomeSourceById(income.id);
+            if (!existing || existing.applicationId !== applicationId) {
+              return res.status(403).json({ error: "Access denied" });
+            }
+            const updated = await storage.updateOtherIncomeSource(income.id, cleanIncome as any);
+            if (updated) results.otherIncomeSources.push(updated);
+          } else {
+            const created = await storage.createOtherIncomeSource({
+              ...cleanIncome,
+              applicationId,
+            } as any);
+            results.otherIncomeSources.push(created);
+          }
         }
       }
 
