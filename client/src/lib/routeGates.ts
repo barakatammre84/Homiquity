@@ -51,6 +51,14 @@ export const ROUTE_GATES = {
   underwriterOps: ["admin", "underwriter"],
 
   /**
+   * Market-data moat surfaces (PricingIntelligence). Mirrors the exact
+   * server list on /api/market-data/* — internal staff MINUS closer
+   * (server/routes/market-data.ts STAFF const). Offering the page to a
+   * closer would render three 403s.
+   */
+  marketData: ["admin", "lo", "loa", "processor", "underwriter"],
+
+  /**
    * Application-invite tooling. POST /api/application-invites is admin/lo/loa
    * only (server/routes/agent-broker/invites.ts:32) — brokers and lenders refer
    * via their referral codes instead.

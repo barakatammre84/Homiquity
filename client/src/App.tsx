@@ -90,6 +90,7 @@ const LoCommandCenter = lazy(() => import("@/pages/staff/LoCommandCenter"));
 const BorrowerFile = lazy(() => import("@/pages/staff/BorrowerFile"));
 const PolicyOps = lazy(() => import("@/pages/staff/PolicyOps"));
 const PricingMatrices = lazy(() => import("@/pages/staff/PricingMatrices"));
+const PricingIntelligence = lazy(() => import("@/pages/staff/PricingIntelligence"));
 const TaskOperations = lazy(() => import("@/pages/staff/TaskOperations"));
 
 const AgentCoBranding = lazy(() => import("@/pages/agent-broker/AgentCoBranding"));
@@ -194,6 +195,10 @@ function InternalStaffPage({ children }: { children: React.ReactNode }) {
 
 function UnderwriterOpsPage({ children }: { children: React.ReactNode }) {
   return <PrivateLayout requiredRoles={ROUTE_GATES.underwriterOps}>{children}</PrivateLayout>;
+}
+
+function MarketDataPage({ children }: { children: React.ReactNode }) {
+  return <PrivateLayout requiredRoles={ROUTE_GATES.marketData}>{children}</PrivateLayout>;
 }
 
 function LoTeamPage({ children }: { children: React.ReactNode }) {
@@ -509,6 +514,9 @@ function Router() {
         </Route>
         <Route path="/pricing-matrices">
           <UnderwriterOpsPage><PricingMatrices /></UnderwriterOpsPage>
+        </Route>
+        <Route path="/pricing-intelligence">
+          <MarketDataPage><PricingIntelligence /></MarketDataPage>
         </Route>
         <Route path="/accelerator">
           <BorrowerPage><AcceleratorProgram /></BorrowerPage>

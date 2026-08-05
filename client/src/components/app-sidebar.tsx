@@ -25,6 +25,7 @@ import { isStaffRole, isInternalStaffRole, isPartnerRole, ROLE_DISPLAY_NAMES, ty
 import { ROUTE_GATES } from "@/lib/routeGates";
 import { useShellBadges } from "@/hooks/useShellBadges";
 import {
+  BarChart3,
   LayoutDashboard,
   FileText,
   CheckSquare,
@@ -141,6 +142,7 @@ const staffNavigation: NavSection[] = [
       { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations", roles: ROUTE_GATES.underwriterOps },
       { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops", roles: ROUTE_GATES.underwriterOps },
       { title: "Pricing Matrices", href: "/pricing-matrices", icon: Grid3x3, testId: "link-pricing-matrices", roles: ROUTE_GATES.underwriterOps },
+      { title: "Pricing Intelligence", href: "/pricing-intelligence", icon: BarChart3, testId: "link-pricing-intelligence", roles: ROUTE_GATES.marketData },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
     ],
   },
