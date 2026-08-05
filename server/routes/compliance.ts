@@ -435,14 +435,33 @@ export function registerComplianceRoutes(
         }
       }
       
+      // Constrain the type rather than accepting an arbitrary body string: it is
+      // the field the pull gate now scopes on, so an unrecognised value must not
+      // be storable. Unknown types authorize nothing (deny-by-default), but a
+      // typo should fail loudly here rather than silently at pull time.
+      const requestedConsentType = consentType || "hard_pull";
+      if (!["soft_pull", "hard_pull"].includes(requestedConsentType)) {
+        return res.status(400).json({
+          error: `Unsupported consentType "${requestedConsentType}". Expected one of: soft_pull, hard_pull.`,
+        });
+      }
+
+      // Record the disclosure ACTUALLY rendered, including any state addendum.
+      // GET /api/credit/disclosure serves getCombinedDisclosure(stateCode) while
+      // this row used to store the bare federal constant — so for any borrower in
+      // a state with an addendum the stored "text shown" was wrong even on this,
+      // the good path (F-034).
+      const disclosureStateCode = application.propertyState ?? undefined;
+
       const consent = await creditService.createCreditConsent({
         applicationId: routeParam(req, "id"),
         userId: user.id,
-        consentType: consentType || "hard_pull",
+        consentType: requestedConsentType,
         borrowerFullName,
         borrowerSSNLast4,
         borrowerDOB,
         consentGiven,
+        disclosureText: creditService.getCombinedDisclosure(disclosureStateCode),
         ipAddress: req.ip,
         userAgent: req.get("User-Agent"),
       });
@@ -451,7 +470,7 @@ export function registerComplianceRoutes(
       const { logAudit } = await import("../auditLog");
       logAudit(req, "credit_consent.created", "loan_application", routeParam(req, "id"), {
         consentId: consent.id,
-        consentType: consentType || "hard_pull",
+        consentType: requestedConsentType,
         consentGiven,
       });
 
@@ -604,16 +623,44 @@ export function registerComplianceRoutes(
         return res.status(400).json({ error: "Valid consent required before credit pull" });
       }
       
-      const { pullType, bureaus } = req.body;
-      
-      const pull = await creditService.requestCreditPull({
-        applicationId: routeParam(req, "id"),
-        consentId: consent.id,
-        requestedBy: user.id,
-        pullType: pullType || "tri_merge",
-        bureaus: bureaus || ["experian", "equifax", "transunion"],
-        ipAddress: req.ip,
+      // pullType is REQUIRED and validated (F-035). It used to be read raw off
+      // req.body with `pullType || "tri_merge"` — so an omitted field defaulted
+      // to the most invasive and most expensive option there is (a hard inquiry
+      // at all three bureaus). A fail-open default on a regulated, billable
+      // action is not a policy question; make the caller state its intent.
+      const pullRequestSchema = z.object({
+        pullType: z.enum(["soft", "hard", "tri_merge"]),
+        bureaus: z.array(z.enum(["experian", "equifax", "transunion"])).min(1).optional(),
       });
+      const parsed = pullRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "pullType is required and must be one of: soft, hard, tri_merge",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+      const { pullType, bureaus } = parsed.data;
+
+      // Surface the consent-scope refusal to the caller instead of a bare 500 —
+      // "your soft consent doesn't authorize a hard pull" is actionable; an
+      // opaque server error is not.
+      let pull;
+      try {
+        pull = await creditService.requestCreditPull({
+          applicationId: routeParam(req, "id"),
+          consentId: consent.id,
+          requestedBy: user.id,
+          pullType,
+          bureaus: bureaus || ["experian", "equifax", "transunion"],
+          ipAddress: req.ip,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Credit pull refused";
+        if (message.startsWith("Consent scope mismatch")) {
+          return res.status(403).json({ error: message, code: "CONSENT_SCOPE_MISMATCH" });
+        }
+        throw err;
+      }
       
       // In simulation mode, immediately complete the pull
       const completedPull = await creditService.simulateCreditPullCompletion(pull.id);
@@ -629,7 +676,7 @@ export function registerComplianceRoutes(
       const { logAudit } = await import("../auditLog");
       logAudit(req, "credit.pulled", "loan_application", routeParam(req, "id"), {
         pullId: completedPull.id,
-        pullType: pullType || "tri_merge",
+        pullType,
         consentId: consent.id,
         requestedBy: user.id,
       });

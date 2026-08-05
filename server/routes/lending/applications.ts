@@ -11,6 +11,7 @@ import { finalizeIntake } from "../../services/loanAnalysis";
 import { z } from "zod";
 import { logAudit } from "../../auditLog";
 import * as creditService from "../../services/creditService";
+import { FUNNEL_SOFT_PULL_CONSENT_TEXT, FUNNEL_SOFT_PULL_CONSENT_VERSION } from "@shared/creditConsentCopy";
 import { sendNotificationEmail } from "../../services/emailService";
 import { evaluateTridTrigger } from "../../services/trid";
 import { intakePausedGate } from "../../services/maintenanceMode";
@@ -169,6 +170,12 @@ export function registerApplicationRoutes(
             consentType: "soft_pull",
             borrowerFullName,
             consentGiven: true,
+            // Record what the borrower ACTUALLY saw — the funnel checkbox is the
+            // entire disclosure in this path. Previously this row stored the full
+            // FCRA authorization (both inquiry types, 120-day validity, identity
+            // attestations) that the funnel never displayed (F-034).
+            disclosureText: FUNNEL_SOFT_PULL_CONSENT_TEXT,
+            disclosureVersion: FUNNEL_SOFT_PULL_CONSENT_VERSION,
             ipAddress: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip,
             userAgent: req.get("User-Agent"),
           });

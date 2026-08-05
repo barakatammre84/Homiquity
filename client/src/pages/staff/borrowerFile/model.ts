@@ -54,6 +54,13 @@ export interface CreditSummary {
     consentTimestamp: string;
     borrowerFullName: string;
     disclosureVersion: string;
+    /**
+     * What the borrower authorized — "soft_pull" or "hard_pull". Surfaced so
+     * staff can see the SCOPE of a consent, not just that one exists: a
+     * soft-scoped consent used to look identical to a hard one on this card
+     * while silently unblocking a hard tri-merge pull (F-035).
+     */
+    consentType: string;
   } | null;
   latestPull: {
     id: string;
