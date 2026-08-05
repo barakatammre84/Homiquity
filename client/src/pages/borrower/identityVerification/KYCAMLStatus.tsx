@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, onboardingStatusKeys } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, Loader2, Search } from "lucide-react";
@@ -23,10 +23,11 @@ export function KYCAMLStatus({ kyc, applicationId }: { kyc: KycStatus | null; ap
     mutationFn: () => apiRequest("POST", "/api/onboarding/kyc/screen", { applicationId }),
     onSuccess: () => {
       toast({ title: "Screening Started", description: "Compliance checks are running. This takes about 10 seconds." });
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() }), 3000);
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() }), 6000);
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() }), 9000);
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: onboardingStatusKeys.root() }), 12000);
+      // No manual re-poll here: IdentityVerification.tsx holds this same query
+      // key with refetchInterval: 5000, so the ~10-second screening is already
+      // picked up within a tick. The four uncancellable setTimeouts that used
+      // to sit here (3s/6s/9s/12s) duplicated that, and kept firing against an
+      // unmounted tree if the borrower navigated away mid-screening.
     },
     onError: () => toast({ title: "Error", description: "Failed to start screening", variant: "destructive" }),
   });
