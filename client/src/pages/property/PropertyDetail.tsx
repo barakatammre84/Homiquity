@@ -36,117 +36,8 @@ import {
   Building,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-
-interface QualificationBreakdown {
-  meetsGuidelines: boolean;
-  status: "within_guidelines" | "requires_review" | "exceeds_guidelines";
-  estimatedPayment: number;
-  paymentBreakdown: {
-    principal: number;
-    interest: number;
-    taxes: number;
-    insurance: number;
-    pmi: number;
-    hoa: number;
-  };
-  dtiWithProperty: number;
-  requiredDownPayment: number;
-  loanAmount: number;
-  ltvRatio: number;
-  reasons: string[];
-  tips: string[];
-}
-
-function calculateQualification(
-  property: Property,
-  preApprovalAmount: number,
-  monthlyIncome: number,
-  monthlyDebts: number,
-  creditScore?: number,
-  downPaymentPercent: number = 5
-): QualificationBreakdown | null {
-  if (monthlyIncome <= 0) {
-    return null;
-  }
-  
-  const price = parseFloat(property.price);
-  const reasons: string[] = [];
-  const tips: string[] = [];
-  
-  const downPayment = price * (downPaymentPercent / 100);
-  const loanAmount = price - downPayment;
-  const ltvRatio = (loanAmount / price) * 100;
-  
-  const annualRate = creditScore && creditScore >= 760 ? 0.0625 : creditScore && creditScore >= 720 ? 0.065 : creditScore && creditScore >= 680 ? 0.07 : 0.075;
-  const monthlyRate = annualRate / 12;
-  const numPayments = 360;
-  
-  const monthlyPI = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
-    (Math.pow(1 + monthlyRate, numPayments) - 1);
-  
-  // Calculate accurate payment breakdown
-  const principalFirstMonth = monthlyPI - (loanAmount * monthlyRate);
-  const interestFirstMonth = loanAmount * monthlyRate;
-  
-  const monthlyTax = (price * 0.0125) / 12;
-  const monthlyInsurance = Math.max(100, price * 0.003 / 12);
-  const pmi = ltvRatio > 80 ? (loanAmount * 0.008) / 12 : 0;
-  const hoa = 0;
-  
-  const estimatedPayment = monthlyPI + monthlyTax + monthlyInsurance + pmi + hoa;
-  const dtiWithProperty = ((estimatedPayment + monthlyDebts) / monthlyIncome) * 100;
-  
-  // Determine qualification status using deterministic GSE rules
-  let status: "within_guidelines" | "requires_review" | "exceeds_guidelines" = "within_guidelines";
-  
-  if (price > preApprovalAmount) {
-    reasons.push(`Property price of ${formatCurrency(price)} exceeds your pre-approval of ${formatCurrency(preApprovalAmount)}`);
-    tips.push("Consider properties within your pre-approval amount");
-    status = "exceeds_guidelines";
-  }
-  
-  if (dtiWithProperty > 50) {
-    reasons.push(`Your DTI would be ${dtiWithProperty.toFixed(1)}% (maximum allowed is 50%)`);
-    tips.push("Pay down existing debts to improve your DTI ratio");
-    status = "exceeds_guidelines";
-  } else if (dtiWithProperty > 43) {
-    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% requires compensating factors`);
-    tips.push("Additional documentation of reserves or income history may be needed");
-    if (status !== "exceeds_guidelines") status = "requires_review";
-  } else if (dtiWithProperty <= 36) {
-    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% is within guidelines`);
-  } else {
-    reasons.push(`DTI of ${dtiWithProperty.toFixed(1)}% is within guidelines`);
-  }
-  
-  if (downPaymentPercent < 20 && pmi > 0) {
-    tips.push(`With ${downPaymentPercent}% down, PMI of ${formatCurrency(pmi)}/mo until 20% equity`);
-  }
-  
-  if (creditScore !== undefined && creditScore < 680) {
-    tips.push("Improving your credit score could lower your interest rate");
-  }
-  
-  return {
-    meetsGuidelines: status !== "exceeds_guidelines",
-    status,
-    estimatedPayment,
-    paymentBreakdown: {
-      principal: principalFirstMonth,
-      interest: interestFirstMonth,
-      taxes: monthlyTax,
-      insurance: monthlyInsurance,
-      pmi,
-      hoa,
-    },
-    dtiWithProperty,
-    requiredDownPayment: downPayment,
-    loanAmount,
-    ltvRatio,
-    reasons,
-    tips,
-  };
-}
+import { QueryErrorState } from "@/components/ui/query-boundary";
+import { buildReasonsAndTips, calculateQualificationNumbers } from "./propertyDetail/qualification";
 
 export default function PropertyDetail() {
   const params = useParams();
@@ -158,7 +49,13 @@ export default function PropertyDetail() {
     try { localStorage.setItem("homiquity_browsed_properties", "true"); } catch {}
   }, []);
 
-  const { data: property, isLoading: propertyLoading } = useQuery<Property>({
+  const {
+    data: property,
+    isLoading: propertyLoading,
+    isError: propertyError,
+    error: propertyErrorObj,
+    refetch: refetchProperty,
+  } = useQuery<Property>({
     queryKey: ['/api/properties', propertyId],
   });
 
@@ -185,16 +82,37 @@ export default function PropertyDetail() {
     [applications],
   );
 
-  // Calculate qualification
+  // Calculate qualification. Numbers and copy are built separately so the
+  // maths can be shared with BuyerProperties without merging the two pages'
+  // differing reason strings — see propertyDetail/qualification.ts.
   const qualification = useMemo(() => {
     if (!property) return null;
-    return calculateQualification(property, preApprovalAmount, monthlyIncome, monthlyDebts, creditScore);
+    const numbers = calculateQualificationNumbers(
+      property, preApprovalAmount, monthlyIncome, monthlyDebts, creditScore,
+    );
+    if (!numbers) return null;
+    return { ...numbers, ...buildReasonsAndTips(numbers, preApprovalAmount, 5, formatCurrency, creditScore) };
   }, [property, preApprovalAmount, monthlyIncome, monthlyDebts, creditScore]);
 
   if (propertyLoading) {
     return (
       <PageShell width="wide">
         <Skeleton className="h-96 w-full" />
+      </PageShell>
+    );
+  }
+
+  // A failed fetch is not a missing listing. "Property Not Found" told a
+  // visitor the home is gone when the request merely broke (ux-01).
+  if (propertyError) {
+    return (
+      <PageShell width="wide">
+        <QueryErrorState
+          error={propertyErrorObj}
+          onRetry={() => void refetchProperty()}
+          title="We couldn't load this property"
+          data-testid="property-detail-error"
+        />
       </PageShell>
     );
   }
