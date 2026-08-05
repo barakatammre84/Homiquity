@@ -95,6 +95,59 @@ export function registerCockpitRoutes(app: Express, storage: IStorage) {
   );
 
   // -------------------------------------------------------------------------
+  // LO-M17: pre-filled document-request draft from the file's outstanding
+  // conditions. READ-ONLY — this drafts; sending stays a human decision
+  // through POST /api/messages (document_request), whose staff gate and
+  // borrower notification path are unchanged. Same role + assignment scope
+  // as the cockpit read below.
+  // -------------------------------------------------------------------------
+  app.get(
+    "/api/staff/applications/:id/doc-request-draft",
+    requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
+    async (req, res) => {
+      try {
+        const user = req.user as User;
+        const applicationId = routeParam(req, "id");
+
+        const allowed = await verifyInternalStaffApplicationAccess(storage, applicationId, user.id, user.role);
+        if (!allowed) {
+          return res.status(403).json({ error: "Access denied to this application" });
+        }
+
+        const application = await storage.getLoanApplication(applicationId);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const [conditions, documents] = await Promise.all([
+          storage.getLoanConditionsByApplication(applicationId),
+          storage.getDocumentsByApplication(applicationId),
+        ]);
+
+        const { buildDocRequestDraft } = await import("../services/docRequestDraft");
+        const items = buildDocRequestDraft(
+          conditions.map((c) => ({
+            id: c.id,
+            status: c.status,
+            title: c.title,
+            requiredDocumentTypes: c.requiredDocumentTypes ?? null,
+          })),
+          documents.map((d) => ({ documentType: d.documentType, status: d.status })),
+        );
+
+        res.json({
+          applicationId,
+          recipientId: application.userId,
+          items,
+        });
+      } catch (error) {
+        console.error("Doc-request draft error:", error);
+        res.status(500).json({ error: "Failed to build the document-request draft" });
+      }
+    },
+  );
+
+  // -------------------------------------------------------------------------
   // Center pane + call prep — one deal-team-scoped read for the active file.
   // -------------------------------------------------------------------------
   app.get(
