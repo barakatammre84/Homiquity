@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { SEOHead } from "@/components/SEOHead";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 
 type Category = "all" | "affordability" | "agent" | "offer" | "process";
 
@@ -131,9 +132,13 @@ export default function Resources() {
   usePageView("/resources");
   const [activeCategory, setActiveCategory] = useState<Category>("all");
 
-  const filteredResources = activeCategory === "all" 
-    ? resources 
-    : resources.filter(r => r.category.includes(activeCategory));
+  const availableResources = PRELAUNCH_GATED
+    ? resources.filter((r) => r.href !== "/apply" && r.href !== "/rates")
+    : resources;
+
+  const filteredResources = activeCategory === "all"
+    ? availableResources
+    : availableResources.filter(r => r.category.includes(activeCategory));
 
   return (
     <div className="min-h-full">

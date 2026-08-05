@@ -7,6 +7,7 @@ import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency, formatDuration } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,7 +164,7 @@ export default function MortgagePayoffCalculator() {
 
   const handleRefinance = () => {
     if (user) handleSave();
-    navigate("/refinance");
+    navigate(PRELAUNCH_GATED ? "/" : "/refinance");
   };
 
   const updateInput = <K extends keyof PayoffInputs>(field: K, value: PayoffInputs[K]) => {
@@ -377,7 +378,7 @@ export default function MortgagePayoffCalculator() {
               </CardHeader>
               <CardContent>
                 <Button size="lg" className="w-full" onClick={handleRefinance} data-testid="button-refinance">
-                  Compare Refinance Options
+                  {PRELAUNCH_GATED ? "Join the Waitlist" : "Compare Refinance Options"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </CardContent>

@@ -7,6 +7,7 @@ import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency, formatDuration } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -223,7 +224,7 @@ export default function AmortizationCalculator() {
 
   const handleStartPreApproval = () => {
     if (user) handleSave();
-    navigate("/apply");
+    navigate(PRELAUNCH_GATED ? "/" : "/apply");
   };
 
   const updateInput = (field: keyof AmortizationInputs, value: number) => {
@@ -495,7 +496,7 @@ export default function AmortizationCalculator() {
             </Card>
 
             <Button size="lg" className="w-full" onClick={handleStartPreApproval} data-testid="button-start-preapproval">
-              Get Pre-Approved Now
+              {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved Now"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 

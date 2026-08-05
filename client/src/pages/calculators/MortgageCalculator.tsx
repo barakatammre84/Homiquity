@@ -15,6 +15,7 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ConversionCTA } from "@/components/ConversionCTA";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import {
   Home,
   DollarSign,
@@ -184,7 +185,7 @@ export default function MortgageCalculator() {
       const { amortizationSchedule, ...resultsWithoutSchedule } = results;
       saveResultsMutation.mutate({ inputs, results: resultsWithoutSchedule });
     }
-    navigate("/apply");
+    navigate(PRELAUNCH_GATED ? "/" : "/apply");
   };
 
   const updateInput = (field: keyof MortgageInputs, value: number) => {
@@ -461,7 +462,7 @@ export default function MortgageCalculator() {
               onClick={handleStartPreApproval}
               data-testid="button-start-preapproval"
             >
-              Get Pre-Approved Now
+              {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved Now"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 

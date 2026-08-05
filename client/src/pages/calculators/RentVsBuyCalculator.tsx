@@ -6,6 +6,7 @@ import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -213,7 +214,7 @@ export default function RentVsBuyCalculator() {
     if (user) {
       saveResultsMutation.mutate({ inputs, results });
     }
-    navigate("/apply");
+    navigate(PRELAUNCH_GATED ? "/" : "/apply");
   };
 
   const updateInput = (field: keyof CalculatorInputs, value: number) => {
@@ -537,7 +538,12 @@ export default function RentVsBuyCalculator() {
               onClick={handleStartPreApproval}
               data-testid="button-start-preapproval"
             >
-              {results.recommendation === "buy" ? (
+              {PRELAUNCH_GATED ? (
+                <>
+                  Join the Waitlist
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              ) : results.recommendation === "buy" ? (
                 <>
                   Get Pre-Approved Now
                   <ArrowRight className="ml-2 h-4 w-4" />

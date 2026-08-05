@@ -7,6 +7,7 @@ import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,7 +98,7 @@ export default function HomeEquityCalculator() {
 
   const handleTapEquity = () => {
     if (user) handleSave();
-    navigate("/apply?type=heloc");
+    navigate(PRELAUNCH_GATED ? "/" : "/apply?type=heloc");
   };
 
   const updateInput = (field: keyof EquityInputs, value: number) => {
@@ -271,7 +272,7 @@ export default function HomeEquityCalculator() {
             </Card>
 
             <Button size="lg" className="w-full" onClick={handleTapEquity} data-testid="button-tap-equity">
-              Explore HELOC & Cash-Out Options
+              {PRELAUNCH_GATED ? "Join the Waitlist" : "Explore HELOC & Cash-Out Options"}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 

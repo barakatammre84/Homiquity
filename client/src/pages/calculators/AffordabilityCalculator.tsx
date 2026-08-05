@@ -10,6 +10,7 @@ import {
   type AffordabilityEstimateResults,
 } from "@/lib/affordabilityEstimate";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { SEOHead } from "@/components/SEOHead";
 import { TermTooltip } from "@/components/TermTooltip";
 import { PageShell } from "@/components/PageShell";
@@ -236,7 +237,9 @@ export default function AffordabilityCalculator() {
         purchasePrice: Math.round(results.maxHomePrice),
       }));
     } catch {}
-    navigate(`/apply?price=${Math.round(results.maxHomePrice)}&source=calculator`);
+    navigate(
+      PRELAUNCH_GATED ? "/" : `/apply?price=${Math.round(results.maxHomePrice)}&source=calculator`
+    );
   };
 
   const updateInput = (field: keyof AffordabilityInputs, value: number | string) => {
@@ -664,7 +667,7 @@ export default function AffordabilityCalculator() {
                     onClick={handleStartPreApproval}
                     data-testid="button-start-preapproval"
                   >
-                    Get Pre-Approved Now
+                    {PRELAUNCH_GATED ? "Join the Waitlist" : "Get Pre-Approved Now"}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
 
