@@ -203,13 +203,52 @@ describe("F-18 — the wiring cannot be silently removed", () => {
     expect(refusal).toBeLessThan(write);
   });
 
-  it("refuses only on the definitive verdict, so a missing loan amount cannot block", () => {
-    expect(electionSrc).toContain('evaluation.verdict === "over_cap"');
-    expect(electionSrc).toContain("loanAmount !== null && loanAmount > 0");
+  it("refuses only on the definitive verdict", () => {
+    // `not_cleared` is a lower bound clearing the cap, NOT a pass — and it
+    // must never be the thing that blocks an election either.
+    expect(electionSrc).toContain('qm.election?.verdict === "over_cap"');
+    expect(electionSrc).not.toContain('=== "not_cleared"');
+  });
+
+  it("cannot block a file that has no loan amount to score", () => {
+    // buildQmPicture returns a null election when there is no loan amount, so
+    // the refusal above is unreachable — pricing legitimately precedes a
+    // property, and an unscoreable file must stay electable.
+    const at = electionSrc.indexOf("function buildQmPicture");
+    const body = electionSrc.slice(at, at + 700);
+    expect(body).toContain("loanAmount === null || !(loanAmount > 0)");
+    expect(body).toContain("election: null");
+    expect(body).toContain('reason: "loan_amount_unknown"');
   });
 
   it("audits the refusal, not just the successful election", () => {
     expect(electionSrc).toContain("loan_application.compensation_election_refused");
+  });
+
+  it("exposes the ceiling for reading, behind the same gates as the election", () => {
+    // Without a read side the card could only learn the cap by tripping the
+    // 422 — the F-18 sequencing defect one layer up.
+    expect(electionSrc).toContain('app.get("/api/loan-applications/:id/compensation/qm"');
+    const at = electionSrc.indexOf('app.get("/api/loan-applications/:id/compensation/qm"');
+    const handler = electionSrc.slice(at, at + 1400);
+    expect(handler).toContain("isInternalStaffRole");
+    expect(handler).toContain("verifyInternalStaffApplicationAccess");
+  });
+
+  it("both compensation surfaces build the picture from one helper", () => {
+    // buildQmPicture is the single scorer: the PATCH refuses off it and the
+    // GET reports off it, so the two can never disagree about a file.
+    const uses = electionSrc.match(/buildQmPicture\(/g) ?? [];
+    expect(uses.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("the staff card consumes the ceiling rather than leaving it unread", () => {
+    const card = read("client/src/pages/staff/borrowerFile/CompensationCard.tsx");
+    expect(card).toContain("loanApplicationKeys.compensationQm");
+    expect(card).toContain("maxElectableBps");
+    // Mirrors the server's 422 client-side, per the card's own
+    // never-offer-what-the-server-rejects rule.
+    expect(card).toContain("overCeiling");
   });
 
   it("submission-readiness scores the same helper, so the surfaces cannot drift", () => {

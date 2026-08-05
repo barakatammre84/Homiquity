@@ -332,17 +332,38 @@ Three properties are deliberate:
 
 ### Verification
 
-Typecheck clean · **2,095 unit tests green** (+24) · new suite
-`tests/compensationElectionQmGate.test.ts` · KB index, doc-freshness, schema and delivery-stack
-freeze guards all pass. No migration, no schema change, no behaviour change to any borrower
-surface.
+Typecheck clean · **2,106 tests green** (+35: 1,859 server / 247 client) · new suite
+`tests/compensationElectionQmGate.test.ts` + 7 added component tests · KB index, doc-freshness,
+schema, delivery-stack freeze and design-token guards all pass. No migration, no schema change,
+no behaviour change to any borrower surface.
+
+Not visually verified in a browser — the card is covered by component tests and the token guard,
+which is where this repo draws that line.
+
+### The staff card (follow-on, shipped same day)
+
+The endpoint alone still made staff learn the cap by tripping the 422 — the F-18 sequencing
+defect one layer up. So the read side landed with it:
+
+- **`GET /api/loan-applications/:id/compensation/qm`** — same internal-staff, assignment-scoped
+  gates as the PATCH, read-only so no audit entry. Returns the ceiling **per compensation model**
+  (they price differently, and the dialog toggles between them without refetching) plus the
+  current election's score.
+- **One scorer for both.** `buildQmPicture()` is what the PATCH refuses off and the GET reports
+  off, so the two surfaces cannot disagree about a file — the same argument that put the basis in
+  `loanCosts.ts` in the first place, applied one level up.
+- **`CompensationCard.tsx`** shows the headroom on an elected file (labelled *platform charges
+  only, so the true figure is higher* — a floor must never read as a cleared figure), shows the
+  ceiling under the bps input, and **disables Save above it**, mirroring the server's 422 the same
+  way the card already mirrors the post-LE 409. When no rate clears at all (F-17), it says so in a
+  `warning` Alert instead of leaving staff hunting for a number that does not exist.
+- A file with no loan amount yet is left unconstrained: the ceiling is absent, not zero.
+
+7 component tests (`CompensationCard.test.tsx`, 14 total) plus source-walk guards pinning that
+the card consumes the ceiling and that both surfaces build from one helper.
 
 ### Deliberately left open
 
-- **The staff card does not yet render the headroom.** `CompensationCard.tsx` shows the election;
-  the `qm` block and the 422's `maxElectableBps` are available to it but unwired. Staff learn the
-  ceiling from the refusal message today, which is functional but late — wiring it into the input
-  is the follow-on.
 - **F-19 is not fixed here.** The tax service fee remains outside the floor's components, so the
   ceiling this endpoint reports is a hair generous. Fixing it moves the numbers, which is why it
   is its own change with its own test, not a silent rider on this one.
