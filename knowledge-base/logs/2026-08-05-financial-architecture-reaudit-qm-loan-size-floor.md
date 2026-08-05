@@ -23,9 +23,9 @@ sits over the segment the product is built to serve.**
 
 | # | Finding | Area | Severity |
 |---|---|---|---|
-| F-17 | A non-QM dead band ($107k–$206k at the default comp plan) sits over the target segment | Unit economics / Risk | **High** |
+| F-17 | A non-QM dead band ($102k–$216k at the default comp plan) sits over the target segment | Unit economics / Risk | **High** |
 | F-18 | The QM constraint is evaluated at the wrong end of the file — the fix is expired by the time the breach is found | Risk / Margin leakage | **High** |
-| F-19 | Tax service fee counts in the QM denominator but not the numerator | Risk | Low |
+| F-19 | Tax service fee counts in the QM denominator but not the numerator | Risk | Low — ✅ fixed |
 | — | F-1…F-13 remediation holds at HEAD | all | ✅ verified |
 | — | F-9 values, F-14 channel decision | — | ⚠️ still open, unchanged |
 
@@ -36,7 +36,8 @@ sits over the segment the product is built to serve.**
 ### The architectural problem
 
 Homiquity's borrower-facing charges are **fixed dollars** ($500 application + $1,500
-underwriting = $2,000, `server/services/loanCosts.ts:44-46`) while the QM points-and-fees cap
+underwriting + $100 tax service = $2,100, `server/services/loanCosts.ts`) while the QM
+points-and-fees cap
 above $137,958 is a **percentage** (3% of the Reg Z Total Loan Amount,
 `shared/fannieMae/qmThresholds.ts`). Originator compensation is a third input, set in basis
 points.
@@ -55,7 +56,7 @@ Where that band sits had never been computed.
 > **Correction (2026-08-05, same day).** This section originally reported a single *minimum
 > viable loan amount* per comp plan. That framing was wrong, and the test written to pin it
 > caught the error. The QM cap changes **shape** across the note-date tiers — 5% of the Reg Z
-> total, then a flat $4,139, then 3% — so a fixed $2,000 of platform fees clears the generous low
+> total, then a flat $4,139, then 3% — so a fixed platform-fee total clears the generous low
 > tiers, fails once the loan outgrows the flat tier, and clears again when 3% of a large loan
 > outruns it. The real structure is a **dead band with viable amounts on both sides**, not a
 > floor. The numbers first reported ($166k / $207k / $276k) were the band's *upper* edge —
@@ -68,21 +69,25 @@ plans seeded in `server/seedMarketPricing.ts:77,97,117`, with a 2026 note date:
 
 | Wholesale lender | Comp plan | **Non-QM dead band** | Clears above |
 |---|---|---|---|
-| BlueRiver | lender-paid 175 bps | **$122,229 – $165,039** | $165,040 |
-| Summit | lender-paid 200 bps (default) | **$106,951 – $206,299** | $206,300 |
-| Atlas | lender-paid 225 bps | **$95,067 – $275,067** | $275,068 |
+| BlueRiver | lender-paid 175 bps | **$116,515 – $173,039** | $173,040 |
+| Summit | lender-paid 200 bps (default) | **$101,951 – $216,299** | $216,300 |
+| Atlas | lender-paid 225 bps | **$90,623 – $288,399** | $288,400 |
 
-(Each plan also fails below a low-end threshold — $70,166 at Summit — where the fixed fees exceed
+(Each plan also fails below a low-end threshold — $73,499 at Summit — where the fixed fees exceed
 even the 5% tier. Between that point and the band, files clear.)
+
+> **Figures updated 2026-08-05 by the F-19 fix**, which added the tax service fee to the
+> points-and-fees numerator. The bands above are post-fix and are what the code now enforces;
+> they were $106,951–$206,299 (Summit) and $95,067–$275,067 (Atlas) before it.
 
 Worked examples at the Summit default (200 bps):
 
 | Loan amount | Platform floor | QM cap | Verdict |
 |---|---|---|---|
-| $100,000 | $4,000 | $4,139 (flat tier) | clears by $139 |
-| $150,000 | $5,000 | $4,139 (flat tier) | **over cap** |
-| $200,000 | $6,000 | $5,937 (3% tier) | **over cap** |
-| $250,000 | $7,000 | $7,437 (3% tier) | clears by $437 |
+| $100,000 | $4,100 | $4,139 (flat tier) | clears by $39 |
+| $150,000 | $5,100 | $4,139 (flat tier) | **over cap** |
+| $200,000 | $6,100 | $5,937 (3% tier) | **over cap** |
+| $250,000 | $7,100 | $7,437 (3% tier) | clears by $337 |
 
 **The band is non-monotonic in loan size, which is the strangest part.** A borrower at $100,000
 is originable; the same borrower at $150,000 is not; at $400,000 they are again. Nothing about
@@ -91,11 +96,11 @@ move with it.
 
 **Three properties make this worse than the table suggests:**
 
-1. **The floor is a lower bound.** `pointsAndFeesFloor` counts only origination, points, the two
-   platform fees and comp. Every third-party charge that also counts toward §1026.32(b)(1) is
-   excluded. The true band is **wider** than every figure above.
-2. **The margins at the edges are nominal.** At Summit's $206,300 the file clears by single
-   dollars, and at $100,000 by $139. These are knife edges, not thresholds with headroom.
+1. **The floor is a lower bound.** `pointsAndFeesFloor` counts only origination, points, the
+   platform's own finance charges and comp. Every third-party charge that also counts toward
+   §1026.32(b)(1) is excluded. The true band is **wider** than every figure above.
+2. **The margins at the edges are nominal.** At Summit's $216,300 the file clears by single
+   dollars, and at $100,000 by $39. These are knife edges, not thresholds with headroom.
 3. **Comp plans are not a per-file dial.** A wholesale comp plan is set with the lender for a
    period, not elected loan-by-loan — so "use fewer bps on small loans" is very likely not
    available as a remedy. **This needs counsel confirmation against §1026.36(d)(1) before it is
@@ -111,7 +116,7 @@ Forgivable at 4% up to $6,000 and Deferred at 5% up to $7,500 (~$150k), Home at 
 
 **That price band maps onto loan amounts that sit largely inside the dead band.** The company has
 built an Illinois DPA directory, a gap calculator, a renter incubator and a DPA wizard aimed at
-buyers whose loan amounts fall mostly in the $107k–$206k range its own fee schedule cannot
+buyers whose loan amounts fall mostly in the $102k–$216k range its own fee schedule cannot
 originate as QM at the default comp plan.
 
 ### The consequence is a hard stop, not a warning
@@ -186,8 +191,8 @@ constants), and it is deferred to step 4.
 Every file in the F-17 band that reaches step 4 is a full origination cost converted to zero
 revenue. Using the prior audit's own cost lines, a fully-costed file that dies at submission
 forfeits the $8,000–$11,000 of comp it would have earned and consumes the cost-to-originate
-anyway. At the Summit default, that is the outcome for **every file between $106,951 and
-$206,299** — not an
+anyway. At the Summit default, that is the outcome for **every file between $101,951 and
+$216,299** — not an
 edge case in the target segment but the modal one.
 
 ### Structural fix
@@ -229,6 +234,46 @@ document why a finance charge is excluded from points and fees. Note the floor i
 a lower bound, so the omission is not *wrong* — but this is a charge the platform knows and has
 already classified, not an unknown third-party item, so leaving it out makes the bound looser
 for no benefit.
+
+### Remediation — F-19 (2026-08-05)
+
+**The fix is structural, not arithmetic.** Adding $100 to a list would have closed this instance
+and left the class open: a fourth platform fee could be added tomorrow and counted in one
+computation but not the other. So the classification became a single list, and both computations
+read it.
+
+- **`PLATFORM_FINANCE_CHARGES`** (`server/services/loanCosts.ts`) is now the one place that says
+  which of the platform's own charges are finance charges under §1026.4.
+- `knownPrepaidFinanceCharges()` sums it to derive the Reg Z Total Loan Amount — the
+  **denominator**.
+- `PointsAndFeesFloorInput.applicationFee` / `.underwritingFee` were replaced by
+  `platformFinanceCharges: readonly PointsAndFeesComponent[]`, fed the same list — the
+  **numerator**. Named fee fields were the mechanism that let the two drift; a list cannot.
+- Both the ordinary sum and the borrower-paid `max(origination, comp)` branch use it, since that
+  branch adds the platform total by hand and was a second place the asymmetry could hide.
+
+**No new regulatory reading was made.** The code already asserted the tax service fee is a
+finance charge, in `knownPrepaidFinanceCharges` and in `apr.ts`. This change propagates that
+existing assertion to the third place rather than introducing a fourth opinion. If the
+classification is wrong, it is now **one edit** and both computations correct together — which is
+the property that was missing.
+
+**What this costs, stated plainly.** Counting the fee widened the F-17 dead band: Summit's upper
+edge moved $206,300 → **$216,300**, Atlas's $275,067 → **$288,400** (exactly as predicted above).
+Roughly $10–13k of loan amounts per comp plan are now refused at the election that previously
+were not. That is conservative against the QM cap, but it **refuses business**, so it is not
+costless and must not sit unverified.
+
+**Still open — and deliberately loud.** Whether a tax service fee *is* a finance charge under
+§1026.4(a) could not be verified: `ecfr.gov` and `consumerfinance.gov` both returned CONNECT 403
+in this environment, and there is still no local Reg Z copy under `docs/`. Ledger entry
+`regz-1026-4-platform-finance-charge-classification` records exactly what was and was not
+verified, carries the consequence above, and sits on a **30-day** review interval so
+`pnpm checkup` goes loud if it is forgotten.
+
+**Verification.** Typecheck clean · **2,110 tests green** · 4 new invariant tests pinning that the
+floor's platform total equals what the stand-in subtracts, under both compensation branches ·
+regulatory-freshness gate passes with the new entry.
 
 ---
 
@@ -275,9 +320,9 @@ commitment — was closed by F-3 and the fix holds. Nothing in this pass changes
 
 ## Recommended sequence
 
-1. **F-18 first.** It is a wiring change over functions that already exist, and it converts F-17
+1. **F-18 first.** ✅ done — a wiring change over functions that already existed, converting F-17
    from a discovered-too-late blocker into a decision made at the one moment it is still free.
-2. **F-19 with it** — same file, same test, and it corrects the number F-18 would surface.
+2. **F-19 with it** — ✅ done, and it corrected the numbers F-18 surfaces.
 3. **F-17 is a founder decision**, and it should be made before acquisition spend goes into the
    DPA/first-time-buyer segment. Fees, comp plan, or a declared minimum loan amount — one of the
    three has to move.
@@ -364,9 +409,6 @@ the card consumes the ceiling and that both surfaces build from one helper.
 
 ### Deliberately left open
 
-- **F-19 is not fixed here.** The tax service fee remains outside the floor's components, so the
-  ceiling this endpoint reports is a hair generous. Fixing it moves the numbers, which is why it
-  is its own change with its own test, not a silent rider on this one.
 - **F-17 is untouched.** This surfaces the constraint at the right time; it does not resolve it.
   A file inside the dead band still cannot be originated — staff now learn that at election
   instead of at submission.

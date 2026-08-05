@@ -22,11 +22,14 @@ import { join, resolve } from "path";
 import {
   estimatedNoteDate,
   evaluatePlatformQmFloor,
+  knownPrepaidFinanceCharges,
   maxElectableCompensationBps,
   MAX_ELECTABLE_COMPENSATION_BPS,
   regulationZTotalLoanAmountStandIn,
   ORIGINATION_FEE_RATE,
   PLATFORM_APPLICATION_FEE,
+  PLATFORM_FINANCE_CHARGES,
+  PLATFORM_FINANCE_CHARGE_TOTAL,
   PLATFORM_TAX_SERVICE_FEE,
   PLATFORM_UNDERWRITING_FEE,
 } from "../server/services/loanCosts";
@@ -70,6 +73,54 @@ describe("F-18 — Reg Z Total Loan Amount stand-in is derived once", () => {
       const standIn = regulationZTotalLoanAmountStandIn(amount, { model: "lender_paid", bps: SUMMIT });
       expect(standIn).toBeLessThan(amount);
     }
+  });
+});
+
+describe("F-19 — a platform charge cannot shrink the cap without counting against it", () => {
+  // The defect: the tax service fee was a prepaid finance charge in
+  // knownPrepaidFinanceCharges and in apr.ts, and absent from the
+  // points-and-fees floor — so the same $100 reduced the Reg Z Total Loan
+  // Amount (shrinking the cap) while not being charged against that cap.
+  //
+  // The fix is structural, not arithmetic: ONE list feeds both computations.
+  // These guards pin that, so re-introducing the asymmetry fails the suite
+  // rather than quietly loosening the gate.
+
+  it("the floor's platform charges are exactly what the stand-in subtracts", () => {
+    // knownPrepaidFinanceCharges(0, 0) is the platform's own contribution with
+    // no origination fee and no points — i.e. the denominator's deduction.
+    expect(PLATFORM_FINANCE_CHARGE_TOTAL).toBe(knownPrepaidFinanceCharges(0, 0));
+
+    // And the numerator counts the same total. Lender-paid at 0 bps isolates
+    // the platform charges: no origination fee, no points, no compensation.
+    const floor = evaluatePlatformQmFloor(NOTE_DATE, 400_000, { model: "lender_paid", bps: 0 }).floor!;
+    expect(floor.amount).toBe(PLATFORM_FINANCE_CHARGE_TOTAL);
+  });
+
+  it("includes the tax service fee — the charge that was missing", () => {
+    expect(PLATFORM_FINANCE_CHARGES.map(c => c.amount)).toContain(PLATFORM_TAX_SERVICE_FEE);
+    const floor = evaluatePlatformQmFloor(NOTE_DATE, 400_000, { model: "lender_paid", bps: 200 }).floor!;
+    expect(floor.components.map(c => c.name)).toContain("Tax service fee");
+  });
+
+  it("holds under the borrower-paid branch, which sums separately", () => {
+    // pointsAndFeesFloor takes max(origination, comp) under borrower-paid to
+    // avoid double-counting, and that branch adds the platform total by hand —
+    // a second place the asymmetry could hide.
+    const loanAmount = 400_000;
+    const floor = evaluatePlatformQmFloor(NOTE_DATE, loanAmount, {
+      model: "borrower_paid",
+      bps: 100,
+    }).floor!;
+    expect(floor.amount).toBe(loanAmount * ORIGINATION_FEE_RATE + PLATFORM_FINANCE_CHARGE_TOTAL);
+  });
+
+  it("stays consistent if the schedule changes — the invariant, not the numbers", () => {
+    // The point of the fix: whatever the list becomes, both sides move
+    // together. Adding a charge must raise the floor by exactly its amount.
+    const listed = PLATFORM_FINANCE_CHARGES.reduce((sum, c) => sum + c.amount, 0);
+    expect(listed).toBe(PLATFORM_FINANCE_CHARGE_TOTAL);
+    expect(knownPrepaidFinanceCharges(1_000, 500)).toBe(1_500 + PLATFORM_FINANCE_CHARGE_TOTAL);
   });
 });
 
@@ -143,24 +194,24 @@ describe("F-17 — the non-QM dead band stays visible", () => {
   const clears = (amount: number, bps: number): boolean =>
     evaluatePlatformQmFloor(NOTE_DATE, amount, { model: "lender_paid", bps }).verdict !== "over_cap";
 
-  it("runs $106,951–$206,299 at the default Summit plan (200 bps)", () => {
-    expect(clears(106_950, SUMMIT)).toBe(true);
-    expect(clears(106_951, SUMMIT)).toBe(false);
-    expect(clears(206_299, SUMMIT)).toBe(false);
-    expect(clears(206_300, SUMMIT)).toBe(true);
+  it("runs $101,951–$216,299 at the default Summit plan (200 bps)", () => {
+    expect(clears(101_950, SUMMIT)).toBe(true);
+    expect(clears(101_951, SUMMIT)).toBe(false);
+    expect(clears(216_299, SUMMIT)).toBe(false);
+    expect(clears(216_300, SUMMIT)).toBe(true);
   });
 
-  it("runs $95,067–$275,067 at the highest seeded plan (Atlas, 225 bps)", () => {
-    expect(clears(95_066, ATLAS)).toBe(true);
-    expect(clears(95_067, ATLAS)).toBe(false);
-    expect(clears(275_067, ATLAS)).toBe(false);
-    expect(clears(275_068, ATLAS)).toBe(true);
+  it("runs $90,623–$288,399 at the highest seeded plan (Atlas, 225 bps)", () => {
+    expect(clears(90_622, ATLAS)).toBe(true);
+    expect(clears(90_623, ATLAS)).toBe(false);
+    expect(clears(288_399, ATLAS)).toBe(false);
+    expect(clears(288_400, ATLAS)).toBe(true);
   });
 
   it("is non-monotonic in loan size — a bigger loan can be the one that fails", () => {
     // The counterintuitive product property this finding exists to surface: a
     // borrower at $100k is fine, the same borrower at $150k is not.
-    expect(clears(100_000, SUMMIT)).toBe(true);
+    expect(clears(100_000, SUMMIT)).toBe(true);  // 1,950 under the flat cap
     expect(clears(150_000, SUMMIT)).toBe(false);
     expect(clears(400_000, SUMMIT)).toBe(true);
   });

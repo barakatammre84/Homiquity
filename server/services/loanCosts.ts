@@ -60,8 +60,42 @@ export const PLATFORM_TAX_SERVICE_FEE = 100;
  * permissive, but is strictly tighter than standing in the note amount.
  * Never the reverse.
  */
+/**
+ * The platform's OWN charges that are finance charges under §1026.4 — the one
+ * list, so the same charge cannot be counted in one Reg Z computation and
+ * forgotten in another (audit F-19).
+ *
+ * Two computations read this and must never diverge:
+ *   - `knownPrepaidFinanceCharges()` subtracts them to derive the Regulation Z
+ *     Total Loan Amount, which SHRINKS the QM cap (the denominator);
+ *   - `pointsAndFeesFloor()` counts them against that cap (the numerator).
+ *
+ * §1026.32(b)(1)(i) draws points and fees from the finance charge, so
+ * membership in this list is a single classification decision that lands in
+ * both places at once. Before F-19 the tax service fee was in the first and
+ * not the second: the same $100 tightened the cap without being charged
+ * against it.
+ *
+ * ⚠️ WHICH charges belong here is NOT verified against §1026.4 — the ledger
+ * entry `regz-1026-4-platform-finance-charge-classification` records exactly
+ * that, on a short review interval. What IS now guaranteed is that the answer
+ * is applied consistently: change a charge's membership here and both
+ * computations move together.
+ */
+export const PLATFORM_FINANCE_CHARGES: readonly { name: string; amount: number }[] = [
+  { name: "Application fee", amount: PLATFORM_APPLICATION_FEE },
+  { name: "Underwriting fee", amount: PLATFORM_UNDERWRITING_FEE },
+  { name: "Tax service fee", amount: PLATFORM_TAX_SERVICE_FEE },
+];
+
+/** Sum of the platform's own prepaid finance charges. */
+export const PLATFORM_FINANCE_CHARGE_TOTAL = PLATFORM_FINANCE_CHARGES.reduce(
+  (sum, charge) => sum + charge.amount,
+  0,
+);
+
 export function knownPrepaidFinanceCharges(originationFee: number, points = 0): number {
-  return originationFee + points + PLATFORM_APPLICATION_FEE + PLATFORM_UNDERWRITING_FEE + PLATFORM_TAX_SERVICE_FEE;
+  return originationFee + points + PLATFORM_FINANCE_CHARGE_TOTAL;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,8 +163,9 @@ export function evaluatePlatformQmFloor(
       loanAmount,
       originationFee,
       points: 0,
-      applicationFee: PLATFORM_APPLICATION_FEE,
-      underwritingFee: PLATFORM_UNDERWRITING_FEE,
+      // The same list knownPrepaidFinanceCharges subtracts — numerator and
+      // denominator cannot disagree about a charge (audit F-19).
+      platformFinanceCharges: PLATFORM_FINANCE_CHARGES,
       compensation,
     },
   );

@@ -16,8 +16,12 @@ import {
 } from "../shared/compliance/loCompensation";
 import {
   computeClosingCosts,
+  knownPrepaidFinanceCharges,
   ORIGINATION_FEE_RATE,
   PLATFORM_APPLICATION_FEE,
+  PLATFORM_FINANCE_CHARGES,
+  PLATFORM_FINANCE_CHARGE_TOTAL,
+  PLATFORM_TAX_SERVICE_FEE,
   PLATFORM_UNDERWRITING_FEE,
 } from "../server/services/loanCosts";
 
@@ -124,22 +128,23 @@ describe("F-2 — QM points-and-fees floor (12 CFR 1026.43(e)(2)(iii))", () => {
     loanAmount,
     originationFee: comp.model === "borrower_paid" ? loanAmount * ORIGINATION_FEE_RATE : 0,
     points: 0,
-    applicationFee: PLATFORM_APPLICATION_FEE,
-    underwritingFee: PLATFORM_UNDERWRITING_FEE,
+    // F-19: the SAME list the Reg Z Total Loan Amount subtracts, so a charge
+    // cannot shrink the cap without also counting against it.
+    platformFinanceCharges: PLATFORM_FINANCE_CHARGES,
     compensation: comp,
   });
 
   it("counts lender-paid compensation toward points and fees", () => {
     const floor = pointsAndFeesFloor(floorInput(LENDER_PAID));
-    // 0 origination + 500 app + 1500 UW + 8000 comp
-    expect(floor.amount).toBe(10_000);
+    // 0 origination + 500 app + 1500 UW + 100 tax service + 8000 comp
+    expect(floor.amount).toBe(PLATFORM_FINANCE_CHARGE_TOTAL + 8_000);
     expect(floor.isLowerBound).toBe(true);
   });
 
   it("does not double-count borrower-paid compensation against the origination fee", () => {
     // 100 bps comp and a 1% origination fee are the same $4,000.
     const floor = pointsAndFeesFloor(floorInput(BORROWER_PAID));
-    expect(floor.amount).toBe(4_000 + 500 + 1_500);
+    expect(floor.amount).toBe(4_000 + PLATFORM_FINANCE_CHARGE_TOTAL);
   });
 
   it("flags the audit's $400k / 200 bps case as over the cap", () => {
@@ -163,15 +168,16 @@ describe("F-2 — QM points-and-fees floor (12 CFR 1026.43(e)(2)(iii))", () => {
       400_000,
       floorInput({ model: "lender_paid", bps: 275 }),
     );
-    // 11,000 comp + 500 + 1,500 = 13,000 against a 12,000 cap.
+    // 11,000 comp + the platform's own finance charges, against a 12,000 cap.
     expect(evaluation.verdict).toBe("over_cap");
-    expect(evaluation.floor?.amount).toBe(13_000);
+    expect(evaluation.floor?.amount).toBe(11_000 + PLATFORM_FINANCE_CHARGE_TOTAL);
     expect(evaluation.message).toMatch(/exceed the QM cap/i);
   });
 
   it("blocks every seeded lender's minimum compensation on a $200k loan", () => {
-    // Cap is 3% of 200,000 = 6,000. Platform flat fees alone are 2,000, and a
-    // borrower-paid 1% origination adds 2,000 more.
+    // Cap is 3% of 200,000 = 6,000. The platform's own finance charges alone
+    // are PLATFORM_FINANCE_CHARGE_TOTAL, and a borrower-paid 1% origination
+    // adds 2,000 more.
     for (const bps of [100, 150, 175, 200, 225, 275]) {
       const evaluation = evaluatePointsAndFeesFloor(
         NOTE_DATE,
@@ -180,8 +186,11 @@ describe("F-2 — QM points-and-fees floor (12 CFR 1026.43(e)(2)(iii))", () => {
         floorInput({ model: "lender_paid", bps }, 200_000),
       );
       expect(evaluation.maxAllowableAmount).toBe(6_000);
-      // 2,000 flat + comp; only comp below 200 bps ($4,000) fits.
-      const expected = bps * 20 + 2_000 > 6_000 ? "over_cap" : "not_cleared";
+      // Platform charges + comp. Derived, not hardcoded: F-19 moved this
+      // total from 2,000 to 2,100 by counting the tax service fee against the
+      // cap it already shrank, which flips the 200 bps knife edge to over_cap.
+      const expected =
+        bps * 20 + PLATFORM_FINANCE_CHARGE_TOTAL > 6_000 ? "over_cap" : "not_cleared";
       expect(`${bps}:${evaluation.verdict}`).toBe(`${bps}:${expected}`);
     }
   });
