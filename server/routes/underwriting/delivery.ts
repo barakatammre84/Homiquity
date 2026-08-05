@@ -167,6 +167,16 @@ export function registerDeliveryRoutes(
       const formatted = formatLoanEstimateForDisplay(le);
       res.json(formatted);
     } catch (error) {
+      // The §1026.36(d)(2) compensation election is an expected prerequisite,
+      // not a server fault — both pre-flight verifiers hit this as a raw 500
+      // with the real reason visible only in the server log.
+      if (error instanceof Error && /compensation model and rate are required/i.test(error.message)) {
+        return res.status(409).json({
+          error:
+            "Your Loan Estimate is being prepared — a required pricing setup step by our team is still pending.",
+          code: "COMPENSATION_ELECTION_PENDING",
+        });
+      }
       console.error("Loan estimate error:", error);
       res.status(500).json({ error: "Failed to generate loan estimate" });
     }

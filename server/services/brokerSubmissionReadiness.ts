@@ -191,7 +191,9 @@ export function deriveSubmissionStages(inputs: StageDerivationInputs): Omit<Brok
   if (!inputs.urla.pointsAndFeesCompliant) {
     pkgBlockers.push("QM pre-flight: points and fees exceed the Reg Z cap for this loan amount");
   } else if (inputs.urla.qmStatus === "Unknown") {
-    pkgWarnings.push("QM pre-flight not evaluable yet (points and fees or loan amount missing)");
+    pkgWarnings.push(
+      "QM pre-flight inconclusive: the preliminary fee floor fits, but a conclusive points-and-fees figure is not yet computable from the file's fee itemization",
+    );
   }
   if (!inputs.consents.antiSteering) {
     pkgBlockers.push("Anti-steering loan-options disclosure (Reg Z §1026.36(e)(3)) has not been acknowledged");

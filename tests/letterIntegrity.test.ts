@@ -20,7 +20,7 @@ import {
   STANDARD_PRE_APPROVAL_CONDITIONS,
   type StoredPreApprovalLetter,
 } from "../server/services/pdfLetterGenerator";
-import { effectiveLetterStatus } from "../shared/letters";
+import { effectiveLetterStatus, resolveLetterAmount } from "../shared/letters";
 
 const storedRow: StoredPreApprovalLetter = {
   letterNumber: "BN-TEST123-ABCD",
@@ -299,5 +299,28 @@ describe("letter expiry sweep", () => {
       (vercelConfig.crons || []).some((c) => c.path === "/api/jobs/letter-expiry"),
       "expected a vercel.json cron entry for /api/jobs/letter-expiry — a sweep nobody schedules never runs",
     ).toBe(true);
+  });
+});
+
+// 2026-08-05 pre-flight (WF1-003): the intake cascade persists
+// preApprovalAmount "0.00" on undecidable files, and the route's old
+// truthy-string fallback printed "PRE-APPROVED AMOUNT $0" on an outward
+// creditworthiness document. The resolver is the guard.
+describe("resolveLetterAmount (the $0-letter guard)", () => {
+  it("ignores the persisted '0.00' and derives from price minus down payment", () => {
+    expect(resolveLetterAmount("0.00", "400000", "80000")).toBe(320000);
+  });
+
+  it("prefers a real persisted pre-approval amount", () => {
+    expect(resolveLetterAmount("315000.00", "400000", "80000")).toBe(315000);
+  });
+
+  it("returns null when no positive amount exists — the route must refuse, never print $0", () => {
+    expect(resolveLetterAmount("0.00", null, null)).toBeNull();
+    expect(resolveLetterAmount(null, "80000", "80000")).toBeNull();
+  });
+
+  it("derives from price alone when the down payment is absent", () => {
+    expect(resolveLetterAmount(null, "400000", null)).toBe(400000);
   });
 });

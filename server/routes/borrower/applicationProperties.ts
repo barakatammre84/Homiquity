@@ -5,6 +5,7 @@ import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { routeParams } from "../../http/routeParams";
+import { evaluateTridTrigger } from "../../services/trid";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -91,6 +92,12 @@ export function registerApplicationPropertyRoutes(
         downPayment: property.downPayment || undefined,
       });
 
+      // The attach can supply the sixth §1026.2(a)(3) piece (property
+      // address) — this funnel is deliberately address-last, so this route is
+      // the NORMAL trigger site (trid.ts module contract: every route that
+      // can supply one of the six items evaluates after persisting).
+      await evaluateTridTrigger(id);
+
       // Log the activity
       await storage.createDealActivity({
         applicationId: id,
@@ -137,6 +144,9 @@ export function registerApplicationPropertyRoutes(
         purchasePrice: property.purchasePrice,
         downPayment: property.downPayment || undefined,
       });
+
+      // Switching can supply the subject-property address (§1026.2(a)(3)).
+      await evaluateTridTrigger(id);
 
       // Log the activity
       await storage.createDealActivity({
@@ -231,6 +241,9 @@ export function registerApplicationPropertyRoutes(
           purchasePrice: property.purchasePrice,
           downPayment: property.downPayment || undefined,
         });
+
+        // An edit can complete the six §1026.2(a)(3) pieces too.
+        await evaluateTridTrigger(id);
       }
 
       res.json(property);

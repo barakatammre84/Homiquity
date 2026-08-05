@@ -108,6 +108,16 @@ function safe(v: unknown): number {
 }
 
 /**
+ * True for infrastructure errors — anything carrying a SQLSTATE-shaped pg
+ * error code — which must surface as real faults, never be translated into
+ * borrower "missing info". Exported for tests.
+ */
+export function isSystemFault(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null)?.code;
+  return typeof code === "string" && /^[0-9A-Z]{5}$/.test(code);
+}
+
+/**
  * Translate a PRICING exception (generateLoanEstimate) into borrower/staff-facing
  * "missing info" labels — surfacing raw messages verbatim would leak internal
  * jargon into the decision UI. Order matters — the specific loan-amount case is
@@ -117,8 +127,14 @@ function safe(v: unknown): number {
  * throw is a typed UnderwritingError carrying its own borrower-safe
  * publicMessage; this mapper only serves the pricing catch below.
  */
-function describeEngineGap(err: unknown): string[] {
+export function describeEngineGap(err: unknown): string[] {
   const msg = err instanceof Error ? err.message : String(err);
+  // §1026.36(d)(2): the LO compensation election is a STAFF task — name it
+  // honestly instead of the generic gap, or every un-elected file reads as
+  // the borrower's fault with nothing actionable anywhere.
+  if (/compensation model and rate are required/i.test(msg)) {
+    return ["Loan pricing setup by our team — no action needed from you"];
+  }
   if (/VA PROTOCOL/i.test(msg)) return ["Household size", "Home square footage"];
   if (/INCOME INPUT/i.test(msg)) return ["Qualifying income"];
   if (/Loan amount must be greater than zero/i.test(msg)) {
@@ -319,6 +335,11 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     const le = await generateLoanEstimate(applicationId);
     monthlyPiti = le.projectedPayments.years1Through5.estimatedTotal;
   } catch (err) {
+    // A database/system fault must never masquerade as a borrower-info gap —
+    // the underwriting catch below already rethrows faults; this catch must
+    // match (a missing table once surfaced as "additional information
+    // required" and blocked files with an unactionable message).
+    if (isSystemFault(err)) throw err;
     return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: describeEngineGap(err), metrics: null, resolvedPolicy: null, ...base };
   }
 
