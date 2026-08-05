@@ -224,6 +224,17 @@ export class UrlaStorage extends TasksStorage {
     return record;
   }
 
+  async updateOtherIncomeSource(id: string, data: Partial<OtherIncomeSource>): Promise<OtherIncomeSource | undefined> {
+    // Remove id, timestamps, and applicationId (immutable — re-parenting is not allowed)
+    const { createdAt, id: recordId, applicationId, ...cleanData } = data as any;
+    const [updated] = await db
+      .update(otherIncomeSources)
+      .set(cleanData)
+      .where(eq(otherIncomeSources.id, id))
+      .returning();
+    return updated;
+  }
+
   async deleteOtherIncomeSource(id: string): Promise<void> {
     await db.delete(otherIncomeSources).where(eq(otherIncomeSources.id, id));
   }

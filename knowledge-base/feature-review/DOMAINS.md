@@ -18,7 +18,7 @@ Status ledger (updated by the orchestrator after each run):
 | # | Domain | Last reviewed | Result |
 |---|---|---|---|
 | 1 | Public funnel, acquisition & education | 2026-08-05 | public-funnel-01/02 (P2) fixed `cef2890` + 1 refuted (ApprovalStrength SEO half) — see FINDINGS.md |
-| 2 | Application & intake | — | not yet run |
+| 2 | Application & intake | 2026-08-05 | **intake-01 (P0, TRID) fixed `c27b01e`** + intake-03 same commit + intake-02 fixed `eafdb47` + intake-04 fixed `69104f9`. All Domain 2 findings closed except ux-11 (HMDA/Reg C, blocked on U-8 — regulatory source access). See FINDINGS.md |
 | 3 | AI Coach, documents & extraction | — | not yet run |
 | 4 | Verification & credit | — | not yet run |
 | 5 | Underwriting & decisioning | — | not yet run |
@@ -30,7 +30,7 @@ Status ledger (updated by the orchestrator after each run):
 | 11 | Staff, partner & pipeline ops | — | not yet run |
 | 12 | Property, listings & homeowner | — | not yet run |
 | 13 | Security, PII & platform cross-cutting | — | not yet run |
-| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domain 1 surfaces only) | ux-06 (P2) fixed `ba7706a`; all Domain 1 P2s now closed + 2 unverified P3 candidates (LearningCenter no-CTA, FunnelChrome raw `<a>` tags) + 1 refuted (FAQ dead-end) — see FINDINGS.md; remaining domains 2–13 surfaces not yet run |
+| UX | UI/UX & friction (all surfaces) | 2026-08-05 (scoped: Domains 1–2 surfaces) | Domain 1: ux-06 (P2) fixed `ba7706a` + 1 unverified P3 candidate (LearningCenter no-CTA) + 1 refuted (FAQ dead-end). Domain 2: ux-07/08/09 (P2) fixed + ux-10/12 (P3) fixed — all four commits `b577553`/`73cf877`/`d2ed7dc`/`eb164ef`. Only ux-11 (P2, HMDA/Reg C) still open, blocked on U-8. The corroborated-but-unregistered `AuthGateOverlay` raw-`<a>` candidate (same file as ux-12) remains unverified — see FINDINGS.md; remaining domains 3–13 surfaces not yet run |
 
 ---
 

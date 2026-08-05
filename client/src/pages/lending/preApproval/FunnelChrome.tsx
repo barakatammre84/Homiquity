@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { COMPANY_IDENTITY } from "@shared/companyIdentity";
 import { ArrowRight, Clock, Home, LogIn, Shield, TrendingUp } from "lucide-react";
@@ -208,17 +209,33 @@ export function FunnelFooter() {
               <div className="mt-3 space-y-1">
                 <p className="font-medium text-foreground text-xs">Resources</p>
                 <div className="text-xs text-muted-foreground space-y-0.5">
-                  <p>FAQ</p>
-                  <p>Privacy Policy</p>
-                  <p>Terms of Use</p>
+                  <Link href="/faq" className="block hover:text-foreground transition-colors" data-testid="link-funnel-footer-faq">
+                    FAQ
+                  </Link>
+                  <Link href="/privacy" className="block hover:text-foreground transition-colors" data-testid="link-funnel-footer-privacy">
+                    Privacy Policy
+                  </Link>
+                  <Link href="/terms" className="block hover:text-foreground transition-colors" data-testid="link-funnel-footer-terms">
+                    Terms of Use
+                  </Link>
                 </div>
               </div>
             </div>
             <div>
               <p className="font-medium text-foreground mb-2">Legal</p>
               <div className="text-xs text-muted-foreground space-y-0.5">
-                <p>NMLS Consumer Access</p>
-                <p>Disclosures & Licensing</p>
+                <a
+                  href="https://www.nmlsconsumeraccess.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block hover:text-foreground transition-colors"
+                  data-testid="link-funnel-footer-nmls"
+                >
+                  NMLS Consumer Access
+                </a>
+                <Link href="/disclosures" className="block hover:text-foreground transition-colors" data-testid="link-funnel-footer-disclosures">
+                  Disclosures &amp; Licensing
+                </Link>
                 <p>Equal Housing Opportunity</p>
               </div>
             </div>

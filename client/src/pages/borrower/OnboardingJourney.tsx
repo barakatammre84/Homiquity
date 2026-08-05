@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, onboardingStatusKeys } from "@/lib/queryClient";
+import { apiRequest, onboardingStatusKeys, consentKeys, loanApplicationKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,7 +84,10 @@ function getBorrowerTypeIcon(type: string) {
   }
 }
 
-function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
+function getJourneySteps(
+  status: OnboardingStatus,
+  consentStatus: { eDisclosureGiven: boolean; creditConsentGiven: boolean },
+): JourneyStep[] {
   const identityVerified = status.kba?.status === "passed";
   const kycCleared = status.kyc?.overallStatus === "cleared";
   const hasApp = !!status.applicationId;
@@ -127,7 +130,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       description: "Agree to electronic disclosures",
       icon: ClipboardCheck,
       href: "/e-consent",
-      complete: false,
+      complete: consentStatus.eDisclosureGiven,
       active: hasApp,
       required: true,
     },
@@ -137,7 +140,7 @@ function getJourneySteps(status: OnboardingStatus): JourneyStep[] {
       description: "Lets us pull your credit report",
       icon: CreditCard,
       href: "/e-consent",
-      complete: false,
+      complete: consentStatus.creditConsentGiven,
       active: hasApp && identityVerified,
       required: true,
     },
@@ -307,6 +310,20 @@ export default function OnboardingJourney() {
     queryKey: onboardingStatusKeys.root(),
   });
 
+  // Real consent status for the e_consent/credit_consent steps below — these
+  // used to hardcode complete: false unconditionally, so progress could never
+  // reach 100% and "next step" perpetually pointed back at a step the
+  // borrower had already finished (ux-07).
+  const applicationId = status?.applicationId;
+  const { data: eDisclosureCheck } = useQuery<{ hasConsent: boolean }>({
+    queryKey: consentKeys.check(applicationId!, "e_disclosure"),
+    enabled: !!applicationId,
+  });
+  const { data: creditSummary } = useQuery<{ hasActiveConsent: boolean }>({
+    queryKey: loanApplicationKeys.credit.summary(applicationId!),
+    enabled: !!applicationId,
+  });
+
   if (isLoading) {
     return (
       <PageShell width="content" contentClassName="space-y-4">
@@ -338,7 +355,10 @@ export default function OnboardingJourney() {
   if (!status) return null;
 
   const BorrowerIcon = getBorrowerTypeIcon(status.borrowerType);
-  const steps = getJourneySteps(status);
+  const steps = getJourneySteps(status, {
+    eDisclosureGiven: !!eDisclosureCheck?.hasConsent,
+    creditConsentGiven: !!creditSummary?.hasActiveConsent,
+  });
   const completedCount = steps.filter(s => s.complete).length;
   const progressPercent = Math.round((completedCount / steps.length) * 100);
   const nextStep = steps.find(s => !s.complete && s.active);
