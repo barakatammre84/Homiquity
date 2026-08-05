@@ -4,9 +4,11 @@ import {
   declineEthnicity,
   declineRace,
   setAge,
+  setEthnicityOtherText,
   setEthnicitySubcategory,
   setEthnicityTopLevel,
   setRaceSubcategory,
+  setRaceText,
   setRaceTopLevel,
   setSex,
 } from "./hmdaSelections";
@@ -58,6 +60,42 @@ describe("ethnicity", () => {
     const state = declineEthnicity({ ...emptyEthnicity(), notProvided: true }, false);
     expect(state.notProvided).toBe(false);
   });
+
+  it("drops the subcategories when Hispanic or Latino is unchecked", () => {
+    // The sub-checkboxes stop rendering, so anything left set is invisible to
+    // the applicant and uncorrectable — but still gets POSTed. That produced a
+    // record asserting ethnicityHispanicLatino=false with ethnicityMexican=true.
+    let state = setEthnicityTopLevel(emptyEthnicity(), "hispanicLatino", true);
+    state = setEthnicitySubcategory(state, "mexican", true);
+    state = setEthnicitySubcategory(state, "otherHispanicLatino", true);
+    state = setEthnicityOtherText(state, "Salvadoran");
+
+    state = setEthnicityTopLevel(state, "hispanicLatino", false);
+
+    expect(state.mexican).toBe(false);
+    expect(state.otherHispanicLatino).toBe(false);
+    expect(state.otherText).toBe("");
+  });
+
+  it("drops the free text when Other Hispanic or Latino is unchecked", () => {
+    let state = setEthnicityTopLevel(emptyEthnicity(), "hispanicLatino", true);
+    state = setEthnicitySubcategory(state, "otherHispanicLatino", true);
+    state = setEthnicityOtherText(state, "Salvadoran");
+
+    state = setEthnicitySubcategory(state, "otherHispanicLatino", false);
+
+    expect(state.otherText).toBe("");
+  });
+
+  it("clears the free text when the applicant declines", () => {
+    let state = setEthnicityTopLevel(emptyEthnicity(), "hispanicLatino", true);
+    state = setEthnicitySubcategory(state, "otherHispanicLatino", true);
+    state = setEthnicityOtherText(state, "Salvadoran");
+
+    state = declineEthnicity(state, true);
+
+    expect(state.otherText).toBe("");
+  });
 });
 
 describe("race", () => {
@@ -88,6 +126,73 @@ describe("race", () => {
     state = setRaceTopLevel(state, "white", true);
     state = setRaceTopLevel(state, "americanIndian", true);
     expect(state.black && state.white && state.americanIndian).toBe(true);
+  });
+
+  it("drops the Asian subcategories when Asian is unchecked", () => {
+    // Produced a record asserting raceAsian=false with raceChinese=true.
+    let state = setRaceTopLevel(emptyRace(), "asian", true);
+    state = setRaceSubcategory(state, "chinese", true);
+    state = setRaceSubcategory(state, "otherAsian", true);
+    state = setRaceText(state, "otherAsianText", "Hmong");
+
+    state = setRaceTopLevel(state, "asian", false);
+
+    expect(state.chinese).toBe(false);
+    expect(state.otherAsian).toBe(false);
+    expect(state.otherAsianText).toBe("");
+  });
+
+  it("drops the Pacific Islander subcategories when the parent is unchecked", () => {
+    let state = setRaceTopLevel(emptyRace(), "nativeHawaiian", true);
+    state = setRaceSubcategory(state, "samoan", true);
+    state = setRaceSubcategory(state, "otherPacificIslander", true);
+    state = setRaceText(state, "otherPacificIslanderText", "Tongan");
+
+    state = setRaceTopLevel(state, "nativeHawaiian", false);
+
+    expect(state.samoan).toBe(false);
+    expect(state.otherPacificIslander).toBe(false);
+    expect(state.otherPacificIslanderText).toBe("");
+  });
+
+  it("drops the tribe name when American Indian or Alaska Native is unchecked", () => {
+    let state = setRaceTopLevel(emptyRace(), "americanIndian", true);
+    state = setRaceText(state, "americanIndianTribe", "Cherokee Nation");
+
+    state = setRaceTopLevel(state, "americanIndian", false);
+
+    expect(state.americanIndianTribe).toBe("");
+  });
+
+  it("clears every free-text answer when the applicant declines", () => {
+    // The most serious version: the applicant checks "I do not wish to provide
+    // this information" and their tribe name was still submitted.
+    let state = setRaceTopLevel(emptyRace(), "americanIndian", true);
+    state = setRaceText(state, "americanIndianTribe", "Cherokee Nation");
+    state = setRaceTopLevel(state, "asian", true);
+    state = setRaceSubcategory(state, "otherAsian", true);
+    state = setRaceText(state, "otherAsianText", "Hmong");
+
+    state = declineRace(state, true);
+
+    expect(state.notProvided).toBe(true);
+    expect(state.americanIndianTribe).toBe("");
+    expect(state.otherAsianText).toBe("");
+    expect(state.otherPacificIslanderText).toBe("");
+  });
+
+  it("keeps a subcategory that still has its parent", () => {
+    // The fix must not over-clear: unchecking one parent leaves the other alone.
+    let state = setRaceTopLevel(emptyRace(), "asian", true);
+    state = setRaceSubcategory(state, "chinese", true);
+    state = setRaceTopLevel(state, "nativeHawaiian", true);
+    state = setRaceSubcategory(state, "samoan", true);
+
+    state = setRaceTopLevel(state, "nativeHawaiian", false);
+
+    expect(state.chinese).toBe(true);
+    expect(state.asian).toBe(true);
+    expect(state.samoan).toBe(false);
   });
 });
 
