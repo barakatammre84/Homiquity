@@ -1,0 +1,48 @@
+-- 0046: give the borrower's upload description its own column (finding F-027, P1)
+-- Expand-only, idempotent. The currently-deployed app tolerates the new column
+-- and vice-versa: nothing reads it until the code in this same PR ships.
+--
+-- shared/schema/lendingCore.ts has always declared the invariant, verbatim:
+--
+--     `notes` stays reserved for AI-extraction lineage — never overload it.
+--
+-- The upload route broke exactly that. POST /api/documents/upload accepted a
+-- borrower-supplied `description` (free text, 500 chars) and wrote it straight
+-- into documents.notes — the same column the extraction writers use for their
+-- JSON lineage record. Two consumers then JSON.parse'd that column with no
+-- schema and treated whatever came back as trusted model output:
+--
+--   server/services/borrowerGraph.ts  — pushed parsed.grossIncome /
+--     grossPay / closingBalance as `trust: "tier1", source: "document"`,
+--     which short-circuits the income cascade over real application data.
+--   server/routes/coach.ts            — fed parsed fields into a prompt block
+--     headed "DOCUMENT-VERIFIED DATA (HIGHEST TRUST) … overrides EVERYTHING
+--     else", interpolating parsed.issues verbatim, in a request carrying live
+--     tool access.
+--
+-- So a borrower could type JSON into a description box and have it read back as
+-- machine-extracted, document-verified fact. It surfaced on two staff screens
+-- and rode an outbound wholesale-lender manifest as extraction lineage.
+--
+-- The column split is the durable half of the fix: `notes` becomes
+-- server-written-only, so no borrower-controlled string can reach a consumer
+-- that trusts it. The code half (deleting the value-reading branches, which no
+-- legitimate writer has ever populated — see F-028) ships alongside.
+--
+-- Why this cannot fail on existing rows, and therefore needs no prod data probe
+-- under DB_MIGRATIONS.md §Contract migrations:
+--   * ADD COLUMN with no NOT NULL, no DEFAULT, no CHECK, no FK — Postgres
+--     records a catalog-only change and rewrites nothing.
+--   * Nullable by construction, so no existing row can violate it.
+--   * IF NOT EXISTS makes a re-run a no-op.
+--
+-- NOT backfilled, deliberately. Historical rows keep whatever is in `notes`.
+-- Copying it across would be guesswork: for the three auto-extracted types an
+-- extractor has already overwritten the borrower's text with real lineage, and
+-- there is no way to tell a legacy description from a legacy forged blob after
+-- the fact. A null here is an honest "we don't know"; a guessed value would
+-- falsify a provenance record. Auditing historical `notes` for planted
+-- value-bearing JSON is tracked separately as a data check, not a migration.
+
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "borrower_description" text;--> statement-breakpoint
+COMMENT ON COLUMN "documents"."borrower_description" IS 'Borrower-authored free text from the upload dialog. UNTRUSTED INPUT: never parse as extraction output. documents.notes is server-written extraction lineage only (F-027).';

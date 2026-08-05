@@ -684,7 +684,20 @@ export const documents = pgTable("documents", {
   storagePath: text("storage_path").notNull(),
   
   status: varchar("status", { length: 50 }).default("uploaded"),
+
+  // SERVER-WRITTEN AI-extraction lineage ONLY (JSON: extractedAt,
+  // extractedFields, confidence, warnings, modelId, promptVersion,
+  // responseHash). Consumers are entitled to treat this as trusted machine
+  // output, which is exactly why nothing borrower-controlled may be written
+  // here — see borrowerDescription below and migration 0046 (finding F-027).
   notes: text("notes"),
+
+  // Borrower-authored free text from the upload dialog ("What is it?").
+  // UNTRUSTED INPUT — never parse as extraction output, never promote to a
+  // provenance/trust tier. Split out of `notes` by migration 0046 after a
+  // borrower-supplied string in `notes` was parsed as document-verified
+  // extraction by borrowerGraph and the AI coach (F-027).
+  borrowerDescription: text("borrower_description"),
 
   // Human review decision (POST /api/documents/:id/verify — the only writer).
   // rejectionReason is borrower-visible copy explaining what to re-upload;

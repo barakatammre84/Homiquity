@@ -350,55 +350,27 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
       uploadedAt: doc.createdAt?.toISOString() || null,
     };
 
+    // `notes` is server-written extraction LINEAGE only (field names, confidence,
+    // model/prompt ids) — it has never carried extracted VALUES from any writer
+    // in this repo's history. The value-reading branches that used to live here
+    // (grossIncome / adjustedGrossIncome / grossPay / closingBalance → tier-1
+    // income and assets) were therefore unreachable for legitimate data and
+    // reachable only by a borrower typing JSON into the upload description box,
+    // which landed verbatim in this column. That forged a `trust: "tier1",
+    // source: "document"` record, which short-circuits the income cascade over
+    // real application data and is the sole contributor to totalVerifiedAssets
+    // (F-027; the never-populated contract is F-028).
+    //
+    // Deleted rather than schema-validated: there is nothing legitimate to
+    // validate. Real tax-return income still reaches tier 1 through the
+    // tax_insights fallback below, which is where extraction actually persists
+    // values. Pay-stub income and bank-statement assets have no tier-1 path
+    // today — they never did; that gap is F-028, not a regression from here.
     if (doc.notes) {
       try {
-        const parsed = JSON.parse(doc.notes as string);
-        if (parsed.confidence && parsed.confidence !== "low") {
+        const lineage = JSON.parse(doc.notes as string);
+        if (lineage.confidence && lineage.confidence !== "low") {
           docStatus.hasExtractedData = true;
-
-          if (parsed.grossIncome) {
-            incomeSources.push({
-              source: "document",
-              trust: "tier1",
-              type: doc.documentType === "tax_return" ? "tax_return_gross" : "document_income",
-              amount: parseNum(parsed.grossIncome) || 0,
-              period: "annual",
-              employerName: parsed.employerName || null,
-              documentYear: parsed.documentYear || null,
-              confidence: parsed.confidence,
-            });
-          }
-          if (parsed.adjustedGrossIncome) {
-            incomeSources.push({
-              source: "document",
-              trust: "tier1",
-              type: "tax_return_agi",
-              amount: parseNum(parsed.adjustedGrossIncome) || 0,
-              period: "annual",
-              documentYear: parsed.documentYear || null,
-              confidence: parsed.confidence,
-            });
-          }
-          if (parsed.grossPay) {
-            incomeSources.push({
-              source: "document",
-              trust: "tier1",
-              type: "pay_stub",
-              amount: parseNum(parsed.grossPay) || 0,
-              period: "monthly",
-              employerName: parsed.employerName || null,
-              confidence: parsed.confidence,
-            });
-          }
-          if (parsed.closingBalance) {
-            assetRecords.push({
-              source: "document",
-              trust: "tier1",
-              type: "bank_account",
-              balance: parseNum(parsed.closingBalance) || 0,
-              accountType: parsed.accountType || null,
-            });
-          }
         }
       } catch (err) {
         console.warn("[BorrowerGraph] Failed to parse document notes:", doc.fileName, err);
