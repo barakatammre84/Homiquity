@@ -2,7 +2,7 @@
 // Split from the old server/services/creditService.ts — which re-exports all of it.
 import { db } from "../db";
 import { creditPulls, creditAuditLog, creditAuditChainTips, type CreditConsent, type CreditPull, type AdverseAction } from "@shared/schema";
-import { eq, desc, isNull } from "drizzle-orm";
+import { eq, desc, isNull, sql } from "drizzle-orm";
 import { verifyHashChain, type HashChainCoverage } from "./encryptionService";
 import {
   logCreditAction,
@@ -347,6 +347,93 @@ export async function logAgentToolInvocation(params: {
 
 /** Integrity check for the null-application chain (agent invocations that
  * never resolved to a loan application). */
+/**
+ * How many chains one platform-wide sweep will verify (F-039).
+ *
+ * Verification loads every entry of a scope, so an unbounded sweep grows with
+ * the whole audit table. The cap keeps a dashboard tile from turning into a
+ * full-table scan; what matters is that the result REPORTS the bound rather
+ * than presenting a partial sweep as a complete one.
+ */
+export const AUDIT_CHAIN_SWEEP_LIMIT = 50;
+
+export interface AuditChainSweepResult {
+  scopesTotal: number;
+  scopesChecked: number;
+  scopesValid: number;
+  /** Every chain that failed, so the tile can name one instead of just going red. */
+  invalid: Array<{ scopeKey: string; reason: string; totalEntries: number }>;
+  /** Chains checked whose END is externally anchored (F-038). */
+  tailAnchored: number;
+  /** Chains checked whose sequence numbers are all inside the hash (F-046). */
+  sequenceHashed: number;
+  /** True when every existing chain was checked, i.e. the cap did not bite. */
+  complete: boolean;
+}
+
+/**
+ * Verify every audit chain on the platform, most recently active first (F-039).
+ *
+ * Exists because the staff Compliance tab asserted "Hash Chain Verified — all
+ * audit entries are cryptographically linked" as literal markup: no query, no
+ * props, no reference to any verify endpoint. It could not turn red, so it said
+ * the same thing whether the log was intact or destroyed. The per-application
+ * endpoint could not back that claim either, since the claim is platform-wide.
+ *
+ * Bounded by AUDIT_CHAIN_SWEEP_LIMIT and reports `complete` so a partial sweep
+ * is never displayed as a full one.
+ */
+export async function verifyAllAuditChains(
+  limit: number = AUDIT_CHAIN_SWEEP_LIMIT
+): Promise<AuditChainSweepResult> {
+  // One grouped query for the scope list: counting chains must not itself cost
+  // a scan of every entry.
+  const scopeRows = await db
+    .select({
+      applicationId: creditAuditLog.applicationId,
+      lastAt: sql<Date>`max(${creditAuditLog.timestamp})`,
+    })
+    .from(creditAuditLog)
+    .groupBy(creditAuditLog.applicationId);
+
+  const ordered = [...scopeRows].sort(
+    (a, b) => new Date(b.lastAt as unknown as string).getTime() -
+              new Date(a.lastAt as unknown as string).getTime()
+  );
+  const selected = ordered.slice(0, limit);
+
+  const result: AuditChainSweepResult = {
+    scopesTotal: ordered.length,
+    scopesChecked: selected.length,
+    scopesValid: 0,
+    invalid: [],
+    tailAnchored: 0,
+    sequenceHashed: 0,
+    complete: selected.length === ordered.length,
+  };
+
+  for (const scope of selected) {
+    const verified = scope.applicationId
+      ? await verifyAuditLogIntegrity(scope.applicationId)
+      : await verifyAgentAuditLogIntegrity();
+    const scopeKey = scope.applicationId ?? NULL_APPLICATION_SCOPE_KEY;
+
+    if (verified.valid) {
+      result.scopesValid++;
+    } else {
+      result.invalid.push({
+        scopeKey,
+        reason: verified.reason ?? "chain verification failed",
+        totalEntries: verified.totalEntries,
+      });
+    }
+    if (verified.coverage.tailAnchored) result.tailAnchored++;
+    if (verified.coverage.sequenceIntegrity === "hashed") result.sequenceHashed++;
+  }
+
+  return result;
+}
+
 export async function verifyAgentAuditLogIntegrity(): Promise<AuditIntegrityResult> {
   const entries = await db
     .select()
