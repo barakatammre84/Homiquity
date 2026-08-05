@@ -174,6 +174,14 @@ jobs:
           node-version: 24.x
           cache: pnpm
       - run: pnpm install --frozen-lockfile --prod=false
+      - name: Migration ledger pre-flight
+        # Last line of defence, and the only ledger check that ever sees `main` itself:
+        # the `gate` job is `if: pull_request`, so nothing validates the ledger on the
+        # push that actually triggers an apply. Runs before the migrator so a malformed
+        # journal (duplicate idx, missing/un-journalled .sql, filename ≠ idx) aborts the
+        # job with prod untouched, instead of being applied in an undefined order.
+        # Cheap and offline — reads only the repo's own files, no DB connection.
+        run: pnpm guard:migrations
       - name: Apply pending migrations to prod
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
