@@ -36,6 +36,7 @@ export default defineConfig({
       "tests/complaintEscalation.test.ts",
       "tests/cycleTimeReport.test.ts",
       "tests/ruleEngine.test.ts",
+      "tests/pipelineEngineStageTransitions.test.ts",
       "tests/extensionFeeAndRegZBasis.test.ts",
       "tests/contingentLiabilities.test.ts",
       "tests/businessChannel.test.ts",
