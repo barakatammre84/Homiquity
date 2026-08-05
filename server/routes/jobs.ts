@@ -5,6 +5,7 @@ import { sweepUndeliveredAdverseActions } from "../services/adverseActionDeliver
 import { aggregateAnonymizedData } from "../services/optimizationEngine";
 import { runRateLockAlertSweep } from "../services/rateLockAlerts";
 import { runLetterExpirySweep } from "../services/letterExpiry";
+import { taskEngine } from "../services/taskEngine";
 import { logAudit } from "../auditLog";
 import { db } from "../db";
 import { intentEvents } from "@shared/schema";
@@ -103,6 +104,38 @@ export function registerJobRoutes(app: Express) {
       } catch (err) {
         console.error("[jobs] Letter-expiry sweep failed:", err);
         res.status(500).json({ ok: false, error: "Letter-expiry sweep failed" });
+      }
+    });
+  });
+
+  // Task-engine SLA escalation sweep (roadmap CS1's scheduler leg). Same
+  // dual-trigger shape: Vercel cron (CRON_SECRET) or an admin session.
+  // Escalates every active task past its slaDueAt that isn't fully escalated
+  // (taskEngine.runEscalationCheck — level bump + task audit log + configured
+  // escalation actions). taskEngine is the SINGLE owner of scheduled SLA
+  // enforcement: optimizationEngine's checkSlaBreaches duplicate (roadmap
+  // OPT-7) must never be wired here as a second channel. Daily cadence matches
+  // the plan's cron granularity — an S0's 15-minute escalation window is
+  // aspirational until the cron tier supports sub-daily schedules; the manual
+  // admin trigger (POST /api/task-engine/run-escalation) covers on-demand runs.
+  app.get("/api/jobs/task-escalation", async (req, res) => {
+    if (isCronRequest(req)) {
+      try {
+        const escalatedCount = await taskEngine.runEscalationCheck();
+        return res.json({ ok: true, trigger: "cron", escalatedCount });
+      } catch (err) {
+        console.error("[jobs] Task-escalation sweep failed:", err);
+        return res.status(500).json({ ok: false, error: "Task-escalation sweep failed" });
+      }
+    }
+    return requireRole("admin")(req, res, async () => {
+      try {
+        const escalatedCount = await taskEngine.runEscalationCheck();
+        logAudit(req, "jobs.task_escalation_sweep", "system", "task", { escalatedCount });
+        res.json({ ok: true, trigger: "manual", escalatedCount });
+      } catch (err) {
+        console.error("[jobs] Task-escalation sweep failed:", err);
+        res.status(500).json({ ok: false, error: "Task-escalation sweep failed" });
       }
     });
   });
