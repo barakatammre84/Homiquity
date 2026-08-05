@@ -48,8 +48,20 @@ const PAGES = join(REPO_ROOT, "client", "src", "pages");
  * claim in ONE file, so moving an empty state into a child component would drop
  * a page out of the set while leaving it just as unguarded. Re-check that
  * distinction on every future split.
+ *
+ * 10 → 8: AcceleratorProgram.tsx and HomeownerDashboard.tsx left together, and
+ * these are REAL conversions with a wrinkle worth spelling out — grepping either
+ * PAGE for QueryErrorState finds nothing, because the guards live in the child
+ * modules that own the failing queries: acceleratorProgram/{Milestones,
+ * CoachingSessions}Section.tsx and homeownerDashboard/{RefiAlerts,Equity}
+ * Section.tsx. Each of those fetches its own data, reads `isError`, and renders
+ * QueryErrorState with a refetch. The page containers kept only a top-level
+ * enrollment/profile query and no longer make an emptiness claim, so the
+ * detector stops seeing them. Confirmed by reading the children, not by trusting
+ * the commit subjects — which said "guard its query errors" while the page files
+ * themselves gained no error branch at all.
  */
-const BASELINE_UNGUARDED = 9;
+const BASELINE_UNGUARDED = 8;
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
