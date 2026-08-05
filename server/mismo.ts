@@ -276,6 +276,9 @@ function buildAddressNode(
   county?: string | null | undefined,
   tagName: string = "ADDRESS"
 ): XMLNode | null {
+  // ADDRESS's xsd:sequence orders: AddressLineText, AddressUnitIdentifier,
+  // CityName, CountryCode, CountyName, PostalCode, StateCode (verified against
+  // MISMO_3_0.xsd — CountryCode and PostalCode sit BEFORE StateCode).
   const children: XMLNode[] = [];
 
   if (street) {
@@ -287,16 +290,16 @@ function buildAddressNode(
   if (city) {
     children.push({ tag: "CityName", text: city });
   }
-  if (state) {
-    children.push({ tag: "StateCode", text: state });
+  children.push({ tag: "CountryCode", text: "US" });
+  if (county) {
+    children.push({ tag: "CountyName", text: county });
   }
   if (zip) {
     children.push({ tag: "PostalCode", text: zip });
   }
-  if (county) {
-    children.push({ tag: "CountyName", text: county });
+  if (state) {
+    children.push({ tag: "StateCode", text: state });
   }
-  children.push({ tag: "CountryCode", text: "US" });
 
   if (children.length === 1) return null;
 
@@ -311,9 +314,10 @@ function buildBorrowerNode(dto: MISMOLoanDTO): XMLNode {
   if (personalInfo?.dateOfBirth) {
     borrowerDetail.push({ tag: "BorrowerBirthDate", text: personalInfo.dateOfBirth });
   }
-  if (personalInfo?.ssn) {
-    borrowerDetail.push({ tag: "BorrowerSSNIdentifier", text: personalInfo.ssn.replace(/-/g, "") });
-  }
+  // No BorrowerSSNIdentifier here — the element does not exist in this
+  // schema's BORROWER_DETAIL (verified against MISMO_3_0.xsd). The SSN's one
+  // schema-valid home is PARTY/TAXPAYER_IDENTIFIERS, which buildPartyNode
+  // already emits; duplicating it here was both invalid and a wider PII spill.
   borrowerDetail.push({ tag: "BorrowerClassificationType", text: "Primary" });
   if (personalInfo?.maritalStatus) {
     const maritalMap: Record<string, string> = {
@@ -383,12 +387,40 @@ function buildBorrowerNode(dto: MISMOLoanDTO): XMLNode {
   if (employment.length > 0) {
     const employersNode: XMLNode[] = [];
     for (const emp of employment) {
+      // EMPLOYER = (INDIVIDUAL, LEGAL_ENTITY, ADDRESS, …, EMPLOYMENT, …) —
+      // there is no EmployerName/EmployerTelephoneNumber element. The employer's
+      // name lives at LEGAL_ENTITY/LEGAL_ENTITY_DETAIL/FullName and its phone at
+      // LEGAL_ENTITY/CONTACTS/CONTACT/CONTACT_POINTS/CONTACT_POINT (CONTACTS
+      // precedes LEGAL_ENTITY_DETAIL in the sequence). Verified against
+      // MISMO_3_0.xsd.
       const employerChildren: XMLNode[] = [];
-      if (emp.employerName) {
-        employerChildren.push({ tag: "EmployerName", text: emp.employerName });
-      }
-      if (emp.employerPhone) {
-        employerChildren.push({ tag: "EmployerTelephoneNumber", text: emp.employerPhone });
+      if (emp.employerName || emp.employerPhone) {
+        const legalEntityChildren: XMLNode[] = [];
+        if (emp.employerPhone) {
+          legalEntityChildren.push({
+            tag: "CONTACTS",
+            children: [{
+              tag: "CONTACT",
+              children: [{
+                tag: "CONTACT_POINTS",
+                children: [{
+                  tag: "CONTACT_POINT",
+                  children: [
+                    { tag: "ContactPointTelephoneValue", text: emp.employerPhone },
+                    { tag: "ContactPointRoleType", text: "Work" },
+                  ],
+                }],
+              }],
+            }],
+          });
+        }
+        if (emp.employerName) {
+          legalEntityChildren.push({
+            tag: "LEGAL_ENTITY_DETAIL",
+            children: [{ tag: "FullName", text: emp.employerName }],
+          });
+        }
+        employerChildren.push({ tag: "LEGAL_ENTITY", children: legalEntityChildren });
       }
 
       const empAddress = buildAddressNode(
@@ -402,30 +434,34 @@ function buildBorrowerNode(dto: MISMOLoanDTO): XMLNode {
         employerChildren.push(empAddress);
       }
 
+      // EMPLOYMENT children in schema sequence order: SelfEmployedIndicator,
+      // EndDate, MonthlyIncomeAmount, PositionDescription, StartDate,
+      // StatusType (verified against MISMO_3_0.xsd — EmploymentEndDate sits
+      // BEFORE EmploymentMonthlyIncomeAmount in the sequence).
       const employmentDetail: XMLNode[] = [];
       if (emp.isSelfEmployed !== undefined) {
-        employmentDetail.push({ 
-          tag: "EmploymentBorrowerSelfEmployedIndicator", 
-          text: emp.isSelfEmployed ? "true" : "false" 
+        employmentDetail.push({
+          tag: "EmploymentBorrowerSelfEmployedIndicator",
+          text: emp.isSelfEmployed ? "true" : "false"
         });
       }
+      if (emp.endDate) {
+        employmentDetail.push({ tag: "EmploymentEndDate", text: emp.endDate });
+      }
       if (emp.totalMonthlyIncome) {
-        employmentDetail.push({ 
-          tag: "EmploymentMonthlyIncomeAmount", 
-          text: formatCurrency(emp.totalMonthlyIncome) 
+        employmentDetail.push({
+          tag: "EmploymentMonthlyIncomeAmount",
+          text: formatCurrency(emp.totalMonthlyIncome)
         });
       }
       if (emp.positionTitle) {
-        employmentDetail.push({ 
-          tag: "EmploymentPositionDescription", 
-          text: emp.positionTitle 
+        employmentDetail.push({
+          tag: "EmploymentPositionDescription",
+          text: emp.positionTitle
         });
       }
       if (emp.startDate) {
         employmentDetail.push({ tag: "EmploymentStartDate", text: emp.startDate });
-      }
-      if (emp.endDate) {
-        employmentDetail.push({ tag: "EmploymentEndDate", text: emp.endDate });
       }
       // MISMO EmploymentStatusType is Current | Previous. The employmentType
       // column holds free-text categories ("employed"/"self_employed"/…), never
@@ -465,24 +501,24 @@ function buildBorrowerNode(dto: MISMOLoanDTO): XMLNode {
 function buildPartyNode(dto: MISMOLoanDTO): XMLNode {
   const { personalInfo, user } = dto;
 
+  // NAME children in this schema are FirstName / LastName / MiddleName /
+  // SuffixName (no *Text variants), and the xsd:sequence puts LastName BEFORE
+  // MiddleName. Verified against MISMO_3_0.xsd.
   const nameChildren: XMLNode[] = [];
   if (personalInfo?.firstName) {
-    nameChildren.push({ tag: "FirstNameText", text: personalInfo.firstName });
-  }
-  if (personalInfo?.middleName) {
-    nameChildren.push({ tag: "MiddleNameText", text: personalInfo.middleName });
+    nameChildren.push({ tag: "FirstName", text: personalInfo.firstName });
   }
   if (personalInfo?.lastName) {
-    nameChildren.push({ tag: "LastNameText", text: personalInfo.lastName });
+    nameChildren.push({ tag: "LastName", text: personalInfo.lastName });
+  }
+  if (personalInfo?.middleName) {
+    nameChildren.push({ tag: "MiddleName", text: personalInfo.middleName });
   }
   if (personalInfo?.suffix) {
-    nameChildren.push({ tag: "SuffixText", text: personalInfo.suffix });
+    nameChildren.push({ tag: "SuffixName", text: personalInfo.suffix });
   }
 
   const individualChildren: XMLNode[] = [];
-  if (nameChildren.length > 0) {
-    individualChildren.push({ tag: "NAME", children: nameChildren });
-  }
 
   const contactPoints: XMLNode[] = [];
   if (personalInfo?.email || user?.email) {
@@ -512,8 +548,14 @@ function buildPartyNode(dto: MISMOLoanDTO): XMLNode {
       ],
     });
   }
+  // INDIVIDUAL's xsd:sequence is (ALIASES, CONTACT_POINTS,
+  // IDENTIFICATION_VERIFICATION, NAME, EXTENSION) — CONTACT_POINTS comes
+  // BEFORE NAME. Verified against MISMO_3_0.xsd.
   if (contactPoints.length > 0) {
     individualChildren.push({ tag: "CONTACT_POINTS", children: contactPoints });
+  }
+  if (nameChildren.length > 0) {
+    individualChildren.push({ tag: "NAME", children: nameChildren });
   }
 
   const partyChildren: XMLNode[] = [];
@@ -595,23 +637,20 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string, loanState?: LoanStat
     loanChildren.push({ tag: "LOAN_STATE", children: stateChildren });
   }
 
+  // This schema's LOAN_IDENTIFIER uses TYPED identifier elements
+  // (LenderLoanIdentifier, MERS_MINIdentifier, …) — there is no generic
+  // LoanIdentifier + LoanIdentifierType pair. Verified against MISMO_3_0.xsd.
   const loanIdentifiers: XMLNode[] = [
     {
       tag: "LOAN_IDENTIFIER",
-      children: [
-        { tag: "LoanIdentifier", text: application.id },
-        { tag: "LoanIdentifierType", text: "LenderLoan" },
-      ],
+      children: [{ tag: "LenderLoanIdentifier", text: application.id }],
     },
   ];
 
   if (mersMin) {
     loanIdentifiers.push({
       tag: "LOAN_IDENTIFIER",
-      children: [
-        { tag: "LoanIdentifier", text: mersMin },
-        { tag: "LoanIdentifierType", text: "MERS_MIN" },
-      ],
+      children: [{ tag: "MERS_MINIdentifier", text: mersMin }],
     });
   }
 
@@ -778,13 +817,9 @@ function buildCollateralNode(dto: MISMOLoanDTO): XMLNode | null {
     propertyChildren.push(addressNode);
   }
 
+  // PROPERTY_DETAIL children in schema sequence order: ConstructionMethodType,
+  // FinancedUnitCount, PropertyUsageType (verified against MISMO_3_0.xsd).
   const propertyDetail: XMLNode[] = [];
-  if (application.propertyValue) {
-    propertyDetail.push({ 
-      tag: "PropertyEstimatedValueAmount", 
-      text: formatCurrency(application.propertyValue) 
-    });
-  }
   // ConstructionMethodType is a MISMO-enumerated construction method
   // (SiteBuilt | Manufactured | Modular | …), NOT the app's propertyType
   // (single_family/condo/townhouse/multi_family — those are attachment/project
@@ -796,27 +831,50 @@ function buildCollateralNode(dto: MISMOLoanDTO): XMLNode | null {
     tag: "ConstructionMethodType",
     text: propertyInfo?.isManufacturedHome ? "Manufactured" : "SiteBuilt",
   });
-  propertyDetail.push({ 
-    tag: "PropertyUsageType", 
-    text: mapPropertyUsage(propertyInfo?.occupancyType) 
-  });
   if (propertyInfo?.numberOfUnits) {
-    propertyDetail.push({ 
-      tag: "PropertyUnitCount", 
-      text: String(propertyInfo.numberOfUnits) 
+    // The schema has no PropertyUnitCount — FinancedUnitCount is the ULDD
+    // data point for the subject property's unit count.
+    propertyDetail.push({
+      tag: "FinancedUnitCount",
+      text: String(propertyInfo.numberOfUnits),
     });
   }
+  propertyDetail.push({
+    tag: "PropertyUsageType",
+    text: mapPropertyUsage(propertyInfo?.occupancyType)
+  });
 
   if (propertyDetail.length > 0) {
     propertyChildren.push({ tag: "PROPERTY_DETAIL", children: propertyDetail });
   }
 
+  // Estimated value and the sales contract both live under PROPERTY_VALUATIONS
+  // in this schema (PROPERTY_VALUATION_DETAIL / SALES_CONTRACT) — there is no
+  // SUBJECT_PROPERTY element and no SALES_CONTRACT_DETAIL. Verified against
+  // MISMO_3_0.xsd: PROPERTY = (ADDRESS, …, PROPERTY_DETAIL, …,
+  // PROPERTY_VALUATIONS); PROPERTY_VALUATION = (AVMS,
+  // PROPERTY_VALUATION_DETAIL, SALES_CONTRACT, EXTENSION).
+  const valuationChildren: XMLNode[] = [];
+  if (application.propertyValue) {
+    valuationChildren.push({
+      tag: "PROPERTY_VALUATION_DETAIL",
+      children: [
+        { tag: "PropertyEstimatedValueAmount", text: formatCurrency(application.propertyValue) },
+      ],
+    });
+  }
   if (application.purchasePrice) {
-    propertyChildren.push({
-      tag: "SALES_CONTRACT_DETAIL",
+    valuationChildren.push({
+      tag: "SALES_CONTRACT",
       children: [
         { tag: "SalesContractAmount", text: formatCurrency(application.purchasePrice) },
       ],
+    });
+  }
+  if (valuationChildren.length > 0) {
+    propertyChildren.push({
+      tag: "PROPERTY_VALUATIONS",
+      children: [{ tag: "PROPERTY_VALUATION", children: valuationChildren }],
     });
   }
 
@@ -828,7 +886,7 @@ function buildCollateralNode(dto: MISMOLoanDTO): XMLNode | null {
       {
         tag: "COLLATERAL",
         children: [
-          { tag: "SUBJECT_PROPERTY", children: propertyChildren },
+          { tag: "PROPERTIES", children: [{ tag: "PROPERTY", children: propertyChildren }] },
         ],
       },
     ],
@@ -989,11 +1047,29 @@ export function generateMISMO34XML(
     mersMin = generateMERSMIN(mersOrgId, loanNumber);
   }
 
+  // DEAL's xsd:sequence orders its containers ASSETS, COLLATERALS, EXPENSES,
+  // LIABILITIES, LOANS, PARTIES, RELATIONSHIPS, SERVICES (verified against
+  // MISMO_3_0.xsd) — emit in that order, not discovery order.
   const dealChildren: XMLNode[] = [];
+
+  // The ULDD Implementation Guide (Table 4) states Fannie Mae does not
+  // support the ASSET container in delivery files — it is emitted only for
+  // underwriting-style consumers.
+  if (purpose !== "loanDelivery") {
+    const assetsNode = buildAssetsNode(dto);
+    if (assetsNode) {
+      dealChildren.push(assetsNode);
+    }
+  }
 
   const collateralNode = buildCollateralNode(dto);
   if (collateralNode) {
     dealChildren.push(collateralNode);
+  }
+
+  const liabilitiesNode = buildLiabilitiesNode(dto);
+  if (liabilitiesNode) {
+    dealChildren.push(liabilitiesNode);
   }
 
   if (purpose === "loanDelivery") {
@@ -1021,21 +1097,6 @@ export function generateMISMO34XML(
     tag: "PARTIES",
     children: [buildPartyNode(dto)],
   });
-
-  // The ULDD Implementation Guide (Table 4) states Fannie Mae does not
-  // support the ASSET container in delivery files — it is emitted only for
-  // underwriting-style consumers.
-  if (purpose !== "loanDelivery") {
-    const assetsNode = buildAssetsNode(dto);
-    if (assetsNode) {
-      dealChildren.push(assetsNode);
-    }
-  }
-
-  const liabilitiesNode = buildLiabilitiesNode(dto);
-  if (liabilitiesNode) {
-    dealChildren.push(liabilitiesNode);
-  }
 
   const relationshipsNode = buildRelationshipsNode(dto);
   if (relationshipsNode) {
