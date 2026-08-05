@@ -62,6 +62,23 @@ jobs:
     name: gate (typecheck · tests · schema guard)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    services:
+      # Disposable Postgres for the self-host boot probe (Railway migration
+      # path): the probe applies the journal and boots dist/index.js against a
+      # real database. Unit tests do NOT use this — they keep their hermetic
+      # placeholder DATABASE_URL from vitest.config.ts.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: selfhost_boot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -187,6 +204,45 @@ jobs:
         # typescript majors. (Job `name:` above deliberately unchanged — verbatim
         # required-check string; see the rename warning.)
         run: pnpm vercel-build
+      - name: Self-host artifact boots (Railway migration path)
+        # Build success ≠ boot success (the 2026-07-17 postmortem rule, aimed at
+        # the persistent-host bundle Railway will actually run). `pnpm build`
+        # produces the OTHER bundle — `vercel-build` above proves only
+        # api/_app.mjs. This step applies the migration journal to the
+        # disposable Postgres service, boots dist/index.js with
+        # NODE_ENV=production, and requires /api/health to answer 200 — proving
+        # bundle + boot wiring (encryption init, seeds, routes, static mount) +
+        # DB reachability end to end. Catches the import-time death class
+        # (e.g. require(esm)) that a green build hides.
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/selfhost_boot
+        run: |
+          pnpm db:migrate
+          pnpm build
+          # Throwaway high-entropy secrets: production boot validation refuses
+          # short ones (SESSION_SECRET >= 32 chars — fail-closed by design).
+          NODE_ENV=production PORT=3999 \
+          SESSION_SECRET="$(node -e 'console.log(require("crypto").randomBytes(48).toString("base64"))')" \
+          PII_HASH_SALT="$(node -e 'console.log(require("crypto").randomBytes(48).toString("base64"))')" \
+          CREDIT_ENCRYPTION_KEY="$(node -e 'console.log(require("crypto").randomBytes(32).toString("base64"))')" \
+          node dist/index.js > /tmp/selfhost.log 2>&1 &
+          BOOT_PID=$!
+          CODE=000
+          for i in $(seq 1 45); do
+            CODE="$(curl -s -o /tmp/health.json -w '%{http_code}' http://localhost:3999/api/health 2>/dev/null || true)"
+            CODE="${CODE:-000}"
+            [ "$CODE" = "200" ] && break
+            kill -0 "$BOOT_PID" 2>/dev/null || break
+            sleep 1
+          done
+          kill "$BOOT_PID" 2>/dev/null || true
+          echo "self-host boot answered HTTP $CODE"
+          if [ "$CODE" != "200" ]; then
+            echo "--- server log ---"
+            cat /tmp/selfhost.log
+            echo "::error::dist/index.js failed to boot and serve /api/health — the self-host bundle is broken"
+            exit 1
+          fi
       - name: Vercel deployability
         # `pnpm vercel-build` above proves OUR build works. It cannot prove the
         # DEPLOYMENT works: on TypeScript 7 vite and esbuild both finished and
