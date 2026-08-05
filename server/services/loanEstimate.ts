@@ -228,6 +228,19 @@ async function resolveActualFeesFor(applicationId: string): Promise<ActualFeeMap
  * Deliberately compensation-free: nothing in here reads the §1026.36(d)(2)
  * election, because no monthly-payment input depends on how the originator is
  * paid. The election guard stays on the DISCLOSABLE path below.
+ *
+ * THAT IS AN INVARIANT, NOT A COINCIDENCE (F-047). computePaymentProjection's
+ * whole right to skip the election guard rests on it. If you are about to price
+ * lender-paid compensation into `baseRate` here — the industry-standard thing to
+ * do, and the reason this needs saying — understand that it silently makes the
+ * instant-decision engine compensation-dependent and bypasses the fail-closed
+ * guard for a number that now depends on the election.
+ *
+ * Enforced by tests/paymentProjection.test.ts ("is byte-identical with no
+ * election, lender-paid, and borrower-paid"). Note the parity tests in that file
+ * CANNOT enforce it: they compare this function's two consumers, which both call
+ * it, so a change here moves both sides equally and parity still passes. Verified
+ * by mutation — a comp-bearing rate bump left all six pre-existing tests green.
  */
 interface PricingDerivation {
   application: LoanApplication;
