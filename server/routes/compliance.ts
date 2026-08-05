@@ -904,15 +904,50 @@ export function registerComplianceRoutes(
         return res.status(400).json({ error: errorMessages });
       }
       
-      const { 
-        actionType, 
-        primaryReason, 
-        secondaryReasons, 
+      const {
+        actionType,
+        primaryReason,
+        secondaryReasons,
         creditPullId,
         creditScoreUsed,
         creditScoreSource,
       } = parseResult.data;
-      
+
+      // FCRA §615(a)(3) hardening (WF5-F2): a bureau attribution on a notice
+      // must trace to a real furnished report on THIS application. Refuse
+      // (422, the same refusal shape the deny seams surface) rather than
+      // record a fabricated attribution:
+      //  - creditPullId must reference a pull belonging to this application;
+      //  - a real-bureau creditScoreSource requires a completed,
+      //    NON-simulated pull (the referenced one, else the latest completed)
+      //    — staff must not be able to hand-attribute a bureau to simulated
+      //    data any more than the auto-deny path may.
+      let referencedPull: Awaited<ReturnType<typeof creditService.getCreditPullById>> = null;
+      if (creditPullId) {
+        referencedPull = await creditService.getCreditPullById(creditPullId);
+        if (!referencedPull || referencedPull.applicationId !== routeParam(req, "id")) {
+          return res.status(422).json({
+            error: "creditPullId does not reference a credit pull on this application",
+          });
+        }
+      }
+      if (creditScoreSource) {
+        const basisPull =
+          referencedPull ?? (await creditService.getLatestCreditPull(routeParam(req, "id")));
+        if (!basisPull || basisPull.status !== "completed") {
+          return res.status(422).json({
+            error:
+              "A completed credit pull is required before attributing a credit score to a bureau (FCRA §615(a)). Omit creditScoreSource if the decision was not based on a consumer report.",
+          });
+        }
+        if (basisPull.isSimulated) {
+          return res.status(422).json({
+            error:
+              "This application's credit pull contains simulated bureau data; no consumer reporting agency furnished a report, so a bureau cannot be truthfully identified on an FCRA §615(a) notice. Omit creditScoreSource, or wait for a live-vendor credit pull (roadmap F3).",
+          });
+        }
+      }
+
       const adverseAction = await creditService.generateAdverseAction({
         applicationId: routeParam(req, "id"),
         creditPullId,
@@ -922,6 +957,9 @@ export function registerComplianceRoutes(
         secondaryReasons,
         creditScoreUsed,
         creditScoreSource,
+        // When a source is present, the basis pull was verified non-simulated
+        // just above; computeFcraCompliant must not take that on faith.
+        basisPullVerifiedReal: !!creditScoreSource,
         generatedBy: user.id,
       });
 
