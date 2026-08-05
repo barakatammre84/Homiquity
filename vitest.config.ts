@@ -122,6 +122,7 @@ export default defineConfig({
       "tests/rateLimitRelaxed.test.ts",
       "tests/betaGate.test.ts",
       "tests/prelaunchGate.test.ts",
+      "tests/prelaunchPublicSurface.test.ts",
       "tests/taxInsight.test.ts",
       "tests/extractionService.test.ts",
       "tests/taxDocumentIntelligence.test.ts",

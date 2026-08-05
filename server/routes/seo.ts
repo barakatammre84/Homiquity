@@ -27,6 +27,7 @@ import {
   buildSitemapXml,
   DEFAULT_DESCRIPTION,
   DEFAULT_TITLE,
+  gatedPrerenderMeta,
   injectSeo,
   normalizePath,
   renderJsonLdScript,
@@ -36,6 +37,7 @@ import {
   type ResolvedMeta,
   type SitemapArticle,
 } from "@shared/seo/routeMeta";
+import { isPrelaunchGated } from "../services/prelaunchGate";
 
 let cachedTemplate: string | null = null;
 
@@ -86,7 +88,7 @@ async function loadTemplate(origin?: string): Promise<string | null> {
 export async function renderSeoDocument(
   pathname: string,
   origin?: string,
-): Promise<{ html: string | null; status: number }> {
+): Promise<{ html: string | null; status: number; noindex?: boolean }> {
   const p = normalizePath(pathname);
   const template = await loadTemplate(origin);
   if (!template) return { html: null, status: 502 };
@@ -125,6 +127,21 @@ export async function renderSeoDocument(
       canonicalPath: p,
     };
     return { html: injectSeo(template, renderSeoHeadTags(meta), ""), status: 404 };
+  }
+
+  // While the prelaunch gate is up, gated routes must not advertise their real
+  // metadata to bots — humans are redirected to "/" (the Waitlist), so the
+  // prerender serves the same launch-safe copy (+ noindex everywhere but "/").
+  // Ungated public routes (education, calculators, legal) fall through.
+  if (isPrelaunchGated()) {
+    const gated = gatedPrerenderMeta(p);
+    if (gated) {
+      return {
+        html: injectSeo(template, renderSeoHeadTags(gated.meta), ""),
+        status: 200,
+        noindex: gated.noindex,
+      };
+    }
   }
 
   // Static registry route.
@@ -185,11 +202,12 @@ export function registerSeoRoutes(app: Express) {
     try {
       const rawPath = typeof req.query.path === "string" && req.query.path ? req.query.path : "/";
       const origin = `${req.protocol}://${req.get("host")}`;
-      const { html, status } = await renderSeoDocument(rawPath, origin);
+      const { html, status, noindex } = await renderSeoDocument(rawPath, origin);
       if (!html) {
         res.status(502).send("SEO render unavailable");
         return;
       }
+      if (noindex) res.set("X-Robots-Tag", "noindex");
       res
         .status(status)
         .set("Content-Type", "text/html; charset=utf-8")
@@ -221,11 +239,12 @@ export function registerSeoRoutes(app: Express) {
       void (async () => {
         try {
           const origin = `${req.protocol}://${req.get("host")}`;
-          const { html, status } = await renderSeoDocument(req.path, origin);
+          const { html, status, noindex } = await renderSeoDocument(req.path, origin);
           if (!html) {
             res.status(502).send("SEO render unavailable");
             return;
           }
+          if (noindex) res.set("X-Robots-Tag", "noindex");
           res
             .status(status)
             .set("Content-Type", "text/html; charset=utf-8")

@@ -28,6 +28,16 @@ export const COMPANY_IDENTITY = {
 } as const;
 
 /**
+ * tel: href for the company contact phone, derived from contactPhone so the
+ * displayed number and the dial target can never drift apart. Assumes a
+ * 10-digit US number (prefixes +1).
+ */
+export function contactPhoneTel(): string {
+  const digits = COMPANY_IDENTITY.contactPhone.replace(/\D/g, "");
+  return `tel:+${digits.length === 10 ? `1${digits}` : digits}`;
+}
+
+/**
  * Display string for the company NMLS unique identifier, or null while
  * licensing is pending. Callers must render NOTHING when this is null — an
  * invented or placeholder NMLS ID on a public surface would itself be a

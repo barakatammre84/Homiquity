@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Phone, Mail } from "lucide-react";
-import { COMPANY_IDENTITY, companyNmlsDisplay } from "@shared/companyIdentity";
+import { COMPANY_IDENTITY, companyNmlsDisplay, contactPhoneTel } from "@shared/companyIdentity";
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 
 export function Footer() {
@@ -27,15 +27,15 @@ export function Footer() {
             <h3 className="text-sm font-semibold text-sidebar-foreground">Contact Us</h3>
             <ul className="mt-4 space-y-1 text-sm text-sidebar-foreground/70">
               <li>
-                <a href="mailto:hello@homiquity.com" className="flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-email">
+                <a href={`mailto:${COMPANY_IDENTITY.contactEmail}`} className="flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-email">
                   <Mail className="h-4 w-4 shrink-0" />
-                  hello@homiquity.com
+                  {COMPANY_IDENTITY.contactEmail}
                 </a>
               </li>
               <li>
-                <a href="tel:1-800-HOMIQTY" className="flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-phone">
+                <a href={contactPhoneTel()} className="flex items-center gap-2 rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-phone">
                   <Phone className="h-4 w-4 shrink-0" />
-                  1-800-HOMIQTY
+                  {COMPANY_IDENTITY.contactPhone}
                 </a>
               </li>
               <li><Link href="/faq" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-faq">FAQ</Link></li>

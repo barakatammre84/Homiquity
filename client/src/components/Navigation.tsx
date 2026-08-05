@@ -16,6 +16,7 @@ import { LayoutDashboard, Menu, X, Phone, ChevronDown, Home, Calculator, FileTex
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
+import { COMPANY_IDENTITY, contactPhoneTel } from "@shared/companyIdentity";
 
 interface NavItem {
   href: string;
@@ -207,7 +208,7 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center gap-2">
-            <a href="tel:1-800-HOMIQTY" className="hidden sm:block">
+            <a href={contactPhoneTel()} className="hidden sm:block">
               <Button
                 variant="ghost"
                 size="sm"
@@ -215,7 +216,7 @@ export function Navigation() {
                 data-testid="button-phone"
               >
                 <Phone className="h-4 w-4" />
-                <span className="hidden md:inline">1-800-HOMIQTY</span>
+                <span className="hidden md:inline">{COMPANY_IDENTITY.contactPhone}</span>
               </Button>
             </a>
 
