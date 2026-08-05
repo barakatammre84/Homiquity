@@ -49,7 +49,7 @@ const PAGES = join(REPO_ROOT, "client", "src", "pages");
  * a page out of the set while leaving it just as unguarded. Re-check that
  * distinction on every future split.
  */
-const BASELINE_UNGUARDED = 10;
+const BASELINE_UNGUARDED = 9;
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
