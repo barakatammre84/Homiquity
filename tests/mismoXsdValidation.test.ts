@@ -151,26 +151,26 @@ describe("MISMO export vs. the official schema (known-violations baseline)", () 
   // escalation U-1 (AUS data-point names pending ULDD data-dictionary confirmation; MISMO's is
   // AutomatedUnderwritingRecommendationDescription). Net structural progress; do not "fix" the
   // UNDERWRITING names from memory.
+  // L6-fix (2026-08-05): every structural violation except escalation U-1 is
+  // cleared — SUBJECT_PROPERTY → COLLATERAL/PROPERTIES/PROPERTY (estimated
+  // value + sales contract moved to PROPERTY_VALUATIONS), typed loan
+  // identifiers (LenderLoanIdentifier / MERS_MINIdentifier), NAME element
+  // names + sequence, CONTACT_POINTS-before-NAME, BorrowerSSNIdentifier
+  // dropped (SSN's one valid home is TAXPAYER_IDENTIFIERS), employer name/
+  // phone into LEGAL_ENTITY, DEAL child order (ASSETS, COLLATERALS,
+  // LIABILITIES, LOANS, PARTIES), ADDRESS child order, EMPLOYMENT child
+  // order, FinancedUnitCount. Every corrected name/path was verified against
+  // MISMO_3_0.xsd (content models extracted, xmllint re-run), never guessed.
+  // What remains is EXACTLY the U-1 escalation pair: the AUS data-point
+  // names pend ULDD data-dictionary confirmation and MUST NOT be fixed from
+  // memory (MISMO's own name would be
+  // AutomatedUnderwritingRecommendationDescription — unconfirmed).
   const KNOWN_UNDERWRITING_VIOLATIONS = [
-    "ASSETS",
     "AUTOMATED_UNDERWRITINGS",
-    "BorrowerSSNIdentifier",
-    "CONTACT_POINTS",
-    "EmployerName",
-    "FirstNameText",
-    "LoanIdentifier",
-    "SUBJECT_PROPERTY",
     "UnderwritingDecisionType",
   ];
   const KNOWN_LOAN_DELIVERY_VIOLATIONS = [
     "AUTOMATED_UNDERWRITINGS",
-    "BorrowerSSNIdentifier",
-    "CONTACT_POINTS",
-    "EmployerName",
-    "FirstNameText",
-    "LIABILITIES",
-    "LoanIdentifier",
-    "SUBJECT_PROPERTY",
     "UnderwritingDecisionType",
   ];
 
