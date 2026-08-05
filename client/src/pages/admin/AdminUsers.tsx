@@ -43,7 +43,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Search,
   MoreHorizontal,
-  Shield,
   UserCog,
   Users,
   Briefcase,
@@ -52,25 +51,23 @@ import {
   AlertCircle,
   Filter,
   UserCheck,
-  FileCheck,
-  ClipboardCheck,
-  Banknote,
   Wrench,
   Star,
   Plus,
   Copy,
   Check,
   Ticket,
-  Calculator,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
-import { 
-  ALL_ROLES, 
-  STAFF_ROLES, 
+import {
+  ALL_ROLES,
+  STAFF_ROLES,
   isStaffRole,
 } from "@shared/schema";
 import type { StaffInvite } from "@shared/schema";
+import { getRoleConfig, getInitials, getDisplayName } from "@/lib/adminUserDisplay";
+import { useAdminUserStats } from "@/hooks/useAdminUserStats";
 
 interface User {
   id: string;
@@ -84,33 +81,6 @@ interface User {
   nmlsId?: string | null;
   createdAt: string | null;
 }
-
-// Role is a CATEGORY, not a status — a 9-colour rainbow is colourblind-hostile
-// and off-system. The icon + label carry identity; colour encodes the one axis
-// that matters operationally (internal staff vs external client) via tokens.
-const ROLE_CONFIG: Record<string, { label: string; icon: typeof Shield }> = {
-  // Staff roles
-  admin: { label: "Tech/Ops Lead", icon: Wrench },
-  lo: { label: "Loan Officer", icon: UserCheck },
-  loa: { label: "LOA", icon: Briefcase },
-  processor: { label: "Processor", icon: FileCheck },
-  underwriter: { label: "Underwriter", icon: ClipboardCheck },
-  closer: { label: "Closer/Funder", icon: Banknote },
-  broker: { label: "Broker", icon: Briefcase },
-  lender: { label: "Lender", icon: Building2 },
-  // Partner roles (self-registering external partners)
-  cpa: { label: "CPA", icon: Calculator },
-  // Client roles
-  aspiring_owner: { label: "Aspiring Owner", icon: Star },
-  active_buyer: { label: "Active Buyer", icon: Home },
-};
-
-// Never index ROLE_CONFIG directly at a render site: a role present in ALL_ROLES
-// (or returned by the API) but missing here would evaluate `.icon`/`.label` on
-// undefined and blank the whole page via the error boundary. This helper always
-// returns a usable config, degrading to the raw role string + a neutral icon.
-const getRoleConfig = (role: string) =>
-  ROLE_CONFIG[role] ?? { label: role, icon: Users };
 
 const ROLES = ALL_ROLES;
 
@@ -191,49 +161,7 @@ export default function AdminUsers() {
     }
   };
 
-  const getInitials = (user: User) => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    if (user.email) {
-      return user.email[0].toUpperCase();
-    }
-    return "U";
-  };
-
-  const getDisplayName = (user: User) => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName} ${user.lastName}`;
-    }
-    return user.email || "Unknown User";
-  };
-
-  const filteredUsers = users?.filter((user) => {
-    const matchesSearch =
-      !searchTerm ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
-
-  const userStats = {
-    total: users?.length || 0,
-    // Staff roles
-    admins: users?.filter((u) => u.role === "admin").length || 0,
-    loanOfficers: users?.filter((u) => u.role === "lo").length || 0,
-    loas: users?.filter((u) => u.role === "loa").length || 0,
-    processors: users?.filter((u) => u.role === "processor").length || 0,
-    underwriters: users?.filter((u) => u.role === "underwriter").length || 0,
-    closers: users?.filter((u) => u.role === "closer").length || 0,
-    // Client roles
-    aspiringOwners: users?.filter((u) => u.role === "aspiring_owner").length || 0,
-    activeBuyers: users?.filter((u) => u.role === "active_buyer").length || 0,
-    // Aggregates
-    totalStaff: users?.filter((u) => isStaffRole(u.role)).length || 0,
-    totalClients: users?.filter((u) => !isStaffRole(u.role)).length || 0,
-  };
+  const { filteredUsers, userStats } = useAdminUserStats(users, searchTerm, roleFilter);
 
   if (authLoading) {
     return (
