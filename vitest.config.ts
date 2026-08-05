@@ -15,6 +15,7 @@ export default defineConfig({
       "tests/zodSchemaSemantics.test.ts",
       "tests/routeGates.test.ts",
       "tests/queryErrorHandling.test.ts",
+      "tests/activeApplicationListParity.test.ts",
       "tests/apiRequestConvergence.test.ts",
       "tests/queryKeyConvergence.test.ts",
       "tests/borrowerTaskView.test.ts",

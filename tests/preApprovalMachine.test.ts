@@ -7,6 +7,8 @@ import {
   PRE_APPROVAL_DEFAULTS,
   resolveRouteIndex,
   routeProgress,
+  ROUTING_ANSWER_FIELDS,
+  routingSignature,
   stepGate,
   type FunnelState,
 } from "../client/src/funnel/preApprovalMachine";
@@ -280,5 +282,76 @@ describe("resolveRouteIndex / routeProgress", () => {
     const p = routeProgress(route, "final");
     expect(p.index).toBe(route.length - 1);
     expect(p.percent).toBe(100);
+  });
+});
+
+/**
+ * ROUTING_ANSWER_FIELDS is what lets the React binding skip an ANSWERS_CHANGED
+ * dispatch — and therefore a second full render of the funnel — when a keystroke
+ * cannot move the route or the flags.
+ *
+ * The whole optimisation rests on that list being COMPLETE. If someone adds a
+ * field to computeFlags or computeRoute and forgets to list it, the funnel
+ * silently stops re-routing on that answer: the step that should appear never
+ * does, and nothing errors. So rather than trust the list, derive the check —
+ * mutate every field that is NOT listed and prove neither output moves.
+ */
+describe("ROUTING_ANSWER_FIELDS completeness", () => {
+  // A distinct, schema-plausible value per field, so "no change" is a real
+  // result and not an accidental no-op assignment.
+  const PROBE: Partial<Record<keyof PreApprovalFormData, unknown>> = {
+    annualIncome: "999,999",
+    employmentYears: "42",
+    monthlyDebts: "7,777",
+    creditScore: "excellent",
+    propertyType: "condo",
+    propertyState: "IL",
+    isFirstTimeBuyer: true,
+    householdFamilySize: "9",
+    homeSquareFootage: "4200",
+    avoidsInterestFinancing: true,
+  };
+
+  const base = completeAnswers({ isVeteran: true, hasAdditionalIncome: true });
+  const nonRouting = (Object.keys(base) as (keyof PreApprovalFormData)[]).filter(
+    (field) => !ROUTING_ANSWER_FIELDS.includes(field),
+  );
+
+  it("covers every field the machine actually derives from", () => {
+    for (const field of nonRouting) {
+      const probe = PROBE[field];
+      // A field with no probe value is a gap in THIS test, not in the source.
+      expect(probe, `no probe value for non-routing field "${field}"`).toBeDefined();
+
+      const mutated = { ...base, [field]: probe } as PreApprovalFormData;
+      expect(computeRoute(mutated), `route moved on "${field}"`).toEqual(computeRoute(base));
+      expect(computeFlags(mutated), `flags moved on "${field}"`).toEqual(computeFlags(base));
+    }
+  });
+
+  it("changing a non-routing answer leaves the signature identical", () => {
+    const mutated = completeAnswers({
+      isVeteran: true,
+      hasAdditionalIncome: true,
+      annualIncome: "1",
+      monthlyDebts: "2",
+      creditScore: "fair",
+    });
+    expect(routingSignature(mutated)).toBe(routingSignature(base));
+  });
+
+  it("changing a routing answer DOES move the signature", () => {
+    for (const field of ROUTING_ANSWER_FIELDS) {
+      const flipped =
+        typeof base[field] === "boolean"
+          ? !base[field]
+          : Array.isArray(base[field])
+            ? [{ type: "rental", annualAmount: "1" }]
+            : "___changed___";
+      const mutated = { ...base, [field]: flipped } as PreApprovalFormData;
+      expect(routingSignature(mutated), `signature ignored "${field}"`).not.toBe(
+        routingSignature(base),
+      );
+    }
   });
 });
