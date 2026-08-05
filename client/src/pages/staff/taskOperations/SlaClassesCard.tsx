@@ -2,6 +2,7 @@ import { Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatTimeRemaining } from "@/lib/formatters";
+import { slaBadgeClass } from "./slaClassBadge";
 import type { SlaClassConfig } from "./types";
 
 export function SlaClassesCard({ slaClasses }: { slaClasses: SlaClassConfig[] | undefined }) {
@@ -26,7 +27,8 @@ export function SlaClassesCard({ slaClasses }: { slaClasses: SlaClassConfig[] | 
               <div className="flex items-center gap-2">
                 <Badge
                   variant="outline"
-                  className={`bg-${sla.colorCode}-500/10 text-${sla.colorCode}-600 border-${sla.colorCode}-500/20`}
+                  className={slaBadgeClass(sla.colorCode)}
+                  data-testid={`badge-sla-class-${sla.slaClass}`}
                 >
                   {sla.slaClass}
                 </Badge>
