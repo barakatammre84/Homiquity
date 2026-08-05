@@ -172,6 +172,73 @@ export function registerDeliveryRoutes(
     }
   });
 
+  // The same Loan Estimate as a downloadable PDF — the artifact behind the page's
+  // "Save this Loan Estimate to compare with your Closing Disclosure."
+  //
+  // DELIBERATELY READ-ONLY. The JSON route above stamps leIssuedDate,
+  // reconciles the disclosure baseline and closes changes of circumstance,
+  // because serving it IS the electronic delivery. Downloading a copy is not a
+  // second delivery, so this route performs none of those transitions —
+  // re-running them here would record TRID events that never happened.
+  //
+  // It still renders what the borrower is entitled to see: the issued baseline
+  // when one exists, via applyDisclosedFees. Generating a fresh LE and printing
+  // that instead could hand the borrower a PDF with higher figures than the
+  // disclosure in force — exactly the §1026.19(e)(3) violation the reconcile
+  // step exists to prevent, only laundered through a download.
+  //
+  // Same e_disclosure consent gate as the JSON route: the ESIGN gate must not
+  // be bypassable by asking for a different content type.
+  app.get(
+    "/api/loan-applications/:id/loan-estimate/pdf",
+    isAuthenticated,
+    requireConsent("e_disclosure"),
+    async (req, res) => {
+      try {
+        const { id } = routeParams(req);
+        const application = await storage.getLoanApplicationWithAccess(id, req.user!.id, req.user!.role);
+        if (!application) {
+          return res.status(404).json({ error: "Application not found" });
+        }
+
+        const { generateLoanEstimate } = await import("../../services/loanEstimate");
+        const le = await generateLoanEstimate(id);
+
+        const baselineRow = await storage.getLatestLoanEstimateDisclosure(id);
+        const effective = baselineRow
+          ? applyDisclosedFees(le, baselineRow.snapshot as DisclosureSnapshot)
+          : le;
+
+        const borrower = await storage.getUser(application.userId);
+        const borrowerName = [borrower?.firstName, borrower?.lastName].filter(Boolean).join(" ") || "Applicant";
+
+        const { generateLoanEstimatePDF } = await import("../../services/pdfLetterGenerator");
+        const { COMPANY_CONFIG } = await import("../../config/company");
+        const pdfBuffer = await generateLoanEstimatePDF({
+          ...effective,
+          borrowerName,
+          companyLegalName: COMPANY_CONFIG.legalName,
+          companyNmlsId: COMPANY_CONFIG.nmlsId,
+        });
+
+        // Not a delivery event — the action name says so. Logged because the
+        // artifact carries the disclosed figures.
+        const { logAudit } = await import("../../auditLog");
+        logAudit(req, "trid.loan_estimate_downloaded", "loan_application", id, {
+          disclosureVersion: baselineRow?.version ?? null,
+          downloadedBy: req.user!.id,
+        });
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="loan-estimate-${id.substring(0, 8)}.pdf"`);
+        res.send(pdfBuffer);
+      } catch (error) {
+        console.error("Loan estimate PDF error:", error);
+        res.status(500).json({ error: "Failed to generate loan estimate PDF" });
+      }
+    },
+  );
+
   // Staff-only tolerance posture: what would this file owe in cures if it
   // closed on today's numbers? Read-only — never creates or resets a baseline.
   app.get("/api/loan-applications/:id/le-tolerance", isAuthenticated, async (req, res) => {

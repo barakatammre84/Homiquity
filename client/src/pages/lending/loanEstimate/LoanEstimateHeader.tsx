@@ -1,30 +1,55 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, FileText, Printer } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { downloadResponseAsFile } from "@/lib/downloadFile";
+import { friendlyApiError } from "@/lib/errorMessage";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Page chrome above the disclosure.
  *
- * KNOWN GAP. Print and Download PDF are inert — neither has ever had a click
- * handler. Both need work outside this component to fix honestly:
+ * Both actions were inert for the life of the page. They are wired now:
  *
- *  - Print: the disclosure body lives inside a fixed-height Radix ScrollArea,
- *    so window.print() on its own would emit only the visible viewport. A
- *    truncated Loan Estimate is a worse artefact than no printout, so wiring
- *    the handler means adding print styles that release the scroll container
- *    and hide this bar first.
- *  - Download PDF: there is no PDF endpoint. The only Loan Estimate route is
- *    GET /api/loan-applications/:id/loan-estimate (server/routes/underwriting/
- *    delivery.ts), which returns JSON.
+ *  - Print calls window.print(). On its own that would have emitted only the
+ *    visible viewport, because the disclosure body sits inside a fixed-height
+ *    Radix ScrollArea — a clipped Loan Estimate, which is worse than none. The
+ *    print rules in index.css release the scroll container and hide this bar,
+ *    so the whole document paginates.
+ *  - Download PDF fetches GET /api/loan-applications/:id/loan-estimate/pdf,
+ *    which renders the disclosure in force (the issued baseline when one
+ *    exists) behind the same e_disclosure consent gate as the page itself.
  *
- * Left inert and documented rather than half-wired, because the card below
- * tells the borrower to "Save this Loan Estimate to compare with your Closing
- * Disclosure" — a button that produces a clipped disclosure would be worse
- * than one that visibly does nothing.
+ * The bar carries `print:hidden`: the buttons must not appear on the printed
+ * disclosure.
  */
 export function LoanEstimateHeader({ applicationId }: { applicationId: string | undefined }) {
+  const { toast } = useToast();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!applicationId) return;
+    setDownloading(true);
+    try {
+      const res = await apiRequest("GET", `/api/loan-applications/${applicationId}/loan-estimate/pdf`)
+        .catch((err: unknown) => {
+          throw new Error(friendlyApiError(err, "Failed to generate the Loan Estimate PDF."));
+        });
+      await downloadResponseAsFile(res, `loan-estimate-${applicationId.substring(0, 8)}.pdf`);
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: error instanceof Error ? error.message : "Unexpected error.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
-    <div className="flex items-center justify-between border-b bg-background px-6 py-3">
+    <div className="flex items-center justify-between border-b bg-background px-6 py-3 print:hidden">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" aria-label="Back" asChild>
           <Link href={`/borrower-file/${applicationId}`}>
@@ -42,13 +67,13 @@ export function LoanEstimateHeader({ applicationId }: { applicationId: string | 
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" data-testid="button-print">
+        <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print">
           <Printer className="mr-2 h-4 w-4" />
           Print
         </Button>
-        <Button size="sm" data-testid="button-download">
+        <Button size="sm" onClick={handleDownload} disabled={downloading || !applicationId} data-testid="button-download">
           <Download className="mr-2 h-4 w-4" />
-          Download PDF
+          {downloading ? "Preparing…" : "Download PDF"}
         </Button>
       </div>
     </div>

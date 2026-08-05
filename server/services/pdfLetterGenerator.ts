@@ -658,3 +658,242 @@ function formatProductType(type: string): string {
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
+
+// ---------------------------------------------------------------------------
+// Loan Estimate
+// ---------------------------------------------------------------------------
+
+export interface LoanEstimatePdfData {
+  applicationId: string;
+  dateIssued: Date;
+  expirationDate: Date;
+  loanTerms: {
+    loanAmount: number;
+    interestRate: number;
+    monthlyPrincipalAndInterest: number;
+    prepaymentPenalty: boolean;
+    balloonPayment: boolean;
+  };
+  projectedPayments: {
+    years1Through5: { principalAndInterest: number; mortgageInsurance: number; estimatedEscrow: number; estimatedTotal: number };
+    years6Through30?: { principalAndInterest: number; mortgageInsurance: number; estimatedEscrow: number; estimatedTotal: number };
+  };
+  costsAtClosing: { estimatedClosingCosts: number; estimatedCashToClose: number };
+  closingCostDetails: {
+    loanCosts: {
+      originationCharges: { originationFee: number; points: number; applicationFee: number; underwritingFee: number; total: number };
+      servicesYouCannotShopFor: { appraisal: number; creditReport: number; floodDetermination: number; taxService: number; total: number };
+      servicesYouCanShopFor: { titleInsurance: number; titleSearch: number; surveyFee: number; pestInspection: number; total: number };
+      totalLoanCosts: number;
+    };
+    otherCosts: {
+      taxesAndGovernmentFees: { recordingFees: number; transferTaxes: number; total: number };
+      prepaids: { homeownersInsurance: number; mortgageInsurance: number; prepaidInterest: number; propertyTaxes: number; total: number };
+      initialEscrowPaymentAtClosing: { homeownersInsurance: number; mortgageInsurance: number; propertyTaxes: number; total: number };
+      totalOtherCosts: number;
+    };
+    totalClosingCosts: number;
+  };
+  comparisons: {
+    inFiveYears: { totalYouWillHavePaid: number; principalPaidOff: number };
+    apr: number;
+    totalInterestPercentage: number;
+  };
+  lenderCredits: number;
+  borrowerName: string;
+  companyLegalName: string;
+  companyNmlsId: string;
+}
+
+function money(n: number): string {
+  return `$${Math.round(n).toLocaleString("en-US")}`;
+}
+
+/**
+ * Render a Loan Estimate as a PDF the borrower can save alongside their
+ * Closing Disclosure.
+ *
+ * The figures are passed in, never recomputed here: the caller supplies the
+ * disclosure that is actually in force (the issued baseline, when one exists),
+ * so this cannot emit numbers the borrower was never shown. Section lettering
+ * follows the Loan Estimate form's own A/B structure.
+ *
+ * This renders the disclosure's content for the borrower's records. It is not
+ * the official CFPB-formatted H-24 form, and the footer says so.
+ */
+export function generateLoanEstimatePDF(data: LoanEstimatePdfData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: "LETTER",
+      margins: { top: 54, bottom: 54, left: 54, right: 54 },
+      info: {
+        Title: `Loan Estimate ${data.applicationId}`,
+        Author: data.companyLegalName,
+        Subject: "Loan Estimate (TRID / Reg Z §1026.37)",
+      },
+    });
+
+    const chunks: Uint8Array[] = [];
+    doc.on("data", (chunk: Uint8Array) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const left = doc.page.margins.left;
+    const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const right = left + pageWidth;
+
+    // Keeps the flow honest across pages: every writer advances `y`, and any
+    // block that would run off the page starts a new one first.
+    let y = doc.page.margins.top;
+    const bottomLimit = doc.page.height - doc.page.margins.bottom;
+    const ensure = (needed: number) => {
+      if (y + needed > bottomLimit) {
+        doc.addPage();
+        y = doc.page.margins.top;
+      }
+    };
+
+    const rule = () => {
+      doc.moveTo(left, y).lineTo(right, y).stroke(BORDER_COLOR);
+      y += 10;
+    };
+
+    const heading = (text: string) => {
+      ensure(34);
+      doc.fontSize(12).fillColor(DEEP_NAVY).text(text, left, y, { width: pageWidth });
+      y = doc.y + 4;
+      rule();
+    };
+
+    const row = (label: string, value: string, bold = false) => {
+      ensure(16);
+      doc.fontSize(bold ? 10 : 9.5).fillColor(bold ? DEEP_NAVY : GRAY_600);
+      doc.text(label, left, y, { width: pageWidth * 0.68 });
+      doc.text(value, left, y, { width: pageWidth, align: "right" });
+      y += bold ? 15 : 13;
+    };
+
+    // Masthead
+    doc.rect(left, y, pageWidth, 70).fill(DEEP_NAVY);
+    doc.fontSize(20).fillColor("#ffffff").text("HOMIQUITY", left + 18, y + 16, { width: pageWidth - 36 });
+    doc.fontSize(9).fillColor(GRAY_400).text("Loan Estimate", left + 18, y + 42, { width: pageWidth - 36 });
+    doc.fontSize(9).fillColor(GRAY_400).text(`NMLS #${data.companyNmlsId}`, left + 18, y + 42, {
+      width: pageWidth - 36,
+      align: "right",
+    });
+    y += 88;
+
+    doc.fontSize(9).fillColor(GRAY_400).text("PREPARED FOR", left, y);
+    doc.text("DATE ISSUED", left, y, { width: pageWidth, align: "right" });
+    y += 12;
+    doc.fontSize(11).fillColor(DEEP_NAVY).text(data.borrowerName, left, y);
+    doc.text(formatDate(data.dateIssued), left, y, { width: pageWidth, align: "right" });
+    y += 18;
+    doc.fontSize(9).fillColor(GRAY_600).text(
+      `Save this Loan Estimate to compare with your Closing Disclosure. Estimate expires ${formatDate(data.expirationDate)}.`,
+      left,
+      y,
+      { width: pageWidth },
+    );
+    y = doc.y + 12;
+    rule();
+
+    heading("Loan Terms");
+    row("Loan Amount", money(data.loanTerms.loanAmount));
+    row("Interest Rate", `${data.loanTerms.interestRate}%`);
+    row("Monthly Principal & Interest", money(data.loanTerms.monthlyPrincipalAndInterest));
+    row("Prepayment Penalty", data.loanTerms.prepaymentPenalty ? "Yes - see loan documents" : "No prepayment penalty");
+    row("Balloon Payment", data.loanTerms.balloonPayment ? "Yes - see loan documents" : "No balloon payment");
+    y += 8;
+
+    heading("Projected Payments");
+    const p1 = data.projectedPayments.years1Through5;
+    row("Years 1-5 — Principal & Interest", money(p1.principalAndInterest));
+    row("Years 1-5 — Mortgage Insurance", money(p1.mortgageInsurance));
+    row("Years 1-5 — Estimated Escrow", money(p1.estimatedEscrow));
+    row("Years 1-5 — Estimated Total", money(p1.estimatedTotal), true);
+    const p2 = data.projectedPayments.years6Through30;
+    if (p2) {
+      y += 4;
+      row("Years 6-30 — Principal & Interest", money(p2.principalAndInterest));
+      row("Years 6-30 — Mortgage Insurance", money(p2.mortgageInsurance));
+      row("Years 6-30 — Estimated Escrow", money(p2.estimatedEscrow));
+      row("Years 6-30 — Estimated Total", money(p2.estimatedTotal), true);
+    }
+    y += 8;
+
+    heading("Costs at Closing");
+    row("Estimated Closing Costs", money(data.costsAtClosing.estimatedClosingCosts), true);
+    row("Estimated Cash to Close", money(data.costsAtClosing.estimatedCashToClose), true);
+    y += 8;
+
+    const { loanCosts, otherCosts } = data.closingCostDetails;
+    heading("A. Loan Costs");
+    row("Origination Fee", money(loanCosts.originationCharges.originationFee));
+    row("Points", money(loanCosts.originationCharges.points));
+    row("Application Fee", money(loanCosts.originationCharges.applicationFee));
+    row("Underwriting Fee", money(loanCosts.originationCharges.underwritingFee));
+    row("Origination Charges Subtotal", money(loanCosts.originationCharges.total), true);
+    y += 4;
+    row("Appraisal", money(loanCosts.servicesYouCannotShopFor.appraisal));
+    row("Credit Report", money(loanCosts.servicesYouCannotShopFor.creditReport));
+    row("Flood Determination", money(loanCosts.servicesYouCannotShopFor.floodDetermination));
+    row("Tax Service", money(loanCosts.servicesYouCannotShopFor.taxService));
+    row("Services You Cannot Shop For Subtotal", money(loanCosts.servicesYouCannotShopFor.total), true);
+    y += 4;
+    row("Title Insurance", money(loanCosts.servicesYouCanShopFor.titleInsurance));
+    row("Title Search", money(loanCosts.servicesYouCanShopFor.titleSearch));
+    row("Survey", money(loanCosts.servicesYouCanShopFor.surveyFee));
+    row("Pest Inspection", money(loanCosts.servicesYouCanShopFor.pestInspection));
+    row("Services You Can Shop For Subtotal", money(loanCosts.servicesYouCanShopFor.total), true);
+    y += 4;
+    row("Total Loan Costs (A)", money(loanCosts.totalLoanCosts), true);
+    y += 8;
+
+    heading("B. Other Costs");
+    row("Recording Fees", money(otherCosts.taxesAndGovernmentFees.recordingFees));
+    row("Transfer Taxes", money(otherCosts.taxesAndGovernmentFees.transferTaxes));
+    row("Taxes and Government Fees Subtotal", money(otherCosts.taxesAndGovernmentFees.total), true);
+    y += 4;
+    row("Prepaid Homeowner's Insurance", money(otherCosts.prepaids.homeownersInsurance));
+    row("Prepaid Mortgage Insurance", money(otherCosts.prepaids.mortgageInsurance));
+    row("Prepaid Interest", money(otherCosts.prepaids.prepaidInterest));
+    row("Prepaid Property Taxes", money(otherCosts.prepaids.propertyTaxes));
+    row("Prepaids Subtotal", money(otherCosts.prepaids.total), true);
+    y += 4;
+    row("Escrow — Homeowner's Insurance", money(otherCosts.initialEscrowPaymentAtClosing.homeownersInsurance));
+    row("Escrow — Mortgage Insurance", money(otherCosts.initialEscrowPaymentAtClosing.mortgageInsurance));
+    row("Escrow — Property Taxes", money(otherCosts.initialEscrowPaymentAtClosing.propertyTaxes));
+    row("Initial Escrow Payment at Closing Subtotal", money(otherCosts.initialEscrowPaymentAtClosing.total), true);
+    y += 4;
+    row("Total Other Costs (B)", money(otherCosts.totalOtherCosts), true);
+    y += 8;
+
+    heading("Total Closing Costs");
+    row("Total Closing Costs (A + B)", money(data.closingCostDetails.totalClosingCosts), true);
+    if (data.lenderCredits > 0) {
+      row("Lender Credits", `-${money(data.lenderCredits)}`);
+    }
+    y += 8;
+
+    heading("Comparisons");
+    row("In 5 Years — Total You Will Have Paid", money(data.comparisons.inFiveYears.totalYouWillHavePaid));
+    row("In 5 Years — Principal Paid Off", money(data.comparisons.inFiveYears.principalPaidOff));
+    row("Annual Percentage Rate (APR)", `${data.comparisons.apr}%`);
+    row("Total Interest Percentage", `${data.comparisons.totalInterestPercentage}%`);
+    y += 12;
+
+    ensure(60);
+    rule();
+    doc.fontSize(8).fillColor(GRAY_400).text(
+      "Your actual rate, payment, and costs could be higher. This document reproduces the figures of the " +
+        "Loan Estimate issued for your records; it is not the official CFPB Loan Estimate form. " +
+        `${data.companyLegalName} — NMLS #${data.companyNmlsId}. Equal Housing Lender.`,
+      left,
+      y,
+      { width: pageWidth, lineGap: 1.5 },
+    );
+
+    doc.end();
+  });
+}
