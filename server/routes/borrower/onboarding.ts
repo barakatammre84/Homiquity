@@ -2,11 +2,19 @@
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
 import { type IStorage } from "../../storage";
-import { isAuthenticated } from "../../auth";
+import { isAuthenticated, requireRole } from "../../auth";
+import { logAudit } from "../../auditLog";
+import { type User } from "@shared/schema";
 import crypto from "crypto";
 import { z } from "zod";
 import { firstQueryValue } from "../queryParams";
 import { routeParam } from "../../http/routeParams";
+
+// How long a human KYC/AML clearance stays good before the borrower must be
+// re-screened. Sanctions and PEP lists change continuously, so a clearance is a
+// point-in-time statement, never a permanent one. One year matches the BSA/AML
+// convention of periodic CIP refresh; shorten it, never lengthen it silently.
+const KYC_CLEARANCE_VALIDITY_DAYS = 365;
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -342,6 +350,147 @@ export function registerOnboardingRoutes(
       res.status(500).json({ error: "Failed to get screening status" });
     }
   });
+
+  // ================================
+  // KYC/AML compliance clearance (staff) — finding F-044
+  // ================================
+  //
+  // simulateKycScreening ends every screening at `pending_review` on purpose:
+  // "a staff member must review and explicitly clear this record via the admin
+  // compliance workflow", because auto-clearing "would produce a falsely-cleared
+  // compliance record". That refusal is correct — but the workflow it deferred to
+  // was never built, so nothing in the codebase could write `cleared` and EVERY
+  // borrower sat at pending_review indefinitely. onboarding.ts:315 even reads
+  // `overallStatus === "cleared"` to skip re-screening, a branch that could never
+  // be reached. These two routes are the missing workflow.
+  //
+  // ROLE SCOPE — deliberately narrow: admin + underwriter only. This is an
+  // OFAC/sanctions/PEP adjudication, not a sales or processing task, so lo/loa/
+  // processor/closer are excluded. Widening is easy and reversible; a too-broad
+  // clearance authority on an AML record is not. Confirm the intended authority
+  // before widening.
+
+  /** The clearance queue. */
+  app.get(
+    "/api/compliance/kyc/pending",
+    requireRole("admin", "underwriter"),
+    async (_req, res) => {
+      try {
+        const screenings = await storage.getKycScreeningsPendingReview();
+
+        // Resolve borrower identity in ONE query, not one per row — a review queue
+        // is unbounded and this is the N+1 shape tests/nPlusOneBatching.test.ts
+        // guards against. Name + email only; the reviewer needs to know who they
+        // are adjudicating, not the borrower's full PII record.
+        const userIds = Array.from(new Set(screenings.map((s) => s.userId)));
+        const users = userIds.length ? await storage.getUsersByIds(userIds) : [];
+        const byId = new Map(users.map((u) => [u.id, u]));
+
+        res.json({
+          screenings: screenings.map((s) => {
+            const borrower = byId.get(s.userId);
+            return {
+              ...s,
+              borrower: borrower
+                ? {
+                    id: borrower.id,
+                    firstName: borrower.firstName,
+                    lastName: borrower.lastName,
+                    email: borrower.email,
+                  }
+                : null,
+            };
+          }),
+        });
+      } catch (error) {
+        console.error("Get pending KYC screenings error:", error);
+        res.status(500).json({ error: "Failed to load the KYC review queue" });
+      }
+    },
+  );
+
+  /** Record a human clearance decision. The ONLY writer of `cleared`. */
+  app.post(
+    "/api/compliance/kyc/:screeningId/decision",
+    requireRole("admin", "underwriter"),
+    async (req, res) => {
+      try {
+        const user = req.user as User;
+        const screeningId = routeParam(req, "screeningId");
+
+        const decisionSchema = z.object({
+          decision: z.enum(["cleared", "failed"]),
+          // Required, and non-trivially so. A clearance with no stated basis is a
+          // weak record precisely where the record is the point — this row is the
+          // evidence that a human adjudicated a sanctions screening.
+          notes: z.string().trim().min(10, "Record the basis for this decision (10+ characters)"),
+        });
+        const parsed = decisionSchema.safeParse(req.body);
+        if (!parsed.success) {
+          return res.status(400).json({
+            error: "Invalid decision",
+            details: parsed.error.flatten().fieldErrors,
+          });
+        }
+        const { decision, notes } = parsed.data;
+
+        const screening = await storage.getKycScreening(screeningId);
+        if (!screening) {
+          return res.status(404).json({ error: "Screening not found" });
+        }
+
+        // Only an undecided screening may be decided. Re-deciding a settled record
+        // would overwrite one adjudication with another and leave no trace of the
+        // first — the falsified-record class this whole workflow exists to prevent.
+        // A changed decision needs a new screening, not a silent overwrite.
+        if (screening.overallStatus !== "pending_review") {
+          return res.status(409).json({
+            error: `This screening is already ${screening.overallStatus}. Run a new screening rather than re-deciding a settled record.`,
+            code: "SCREENING_ALREADY_DECIDED",
+          });
+        }
+
+        // Preserve what the screening FOUND. Only sub-checks sitting at
+        // `pending_review` (i.e. carrying no adverse finding) advance to cleared;
+        // a `flagged` or `failed` check keeps its value, because overwriting a real
+        // OFAC hit with "cleared" would destroy the finding while making the record
+        // look clean. The human's verdict lives in overallStatus, not in the
+        // individual check results.
+        const resolve = (current: string | null | undefined) =>
+          current === "pending_review" ? "cleared" : current ?? undefined;
+
+        const updated = await storage.updateKycScreening(screeningId, {
+          overallStatus: decision,
+          reviewedByUserId: user.id,
+          reviewedAt: new Date(),
+          screeningNotes: notes,
+          ...(decision === "cleared"
+            ? {
+                ofacStatus: resolve(screening.ofacStatus),
+                sanctionsStatus: resolve(screening.sanctionsStatus),
+                pepStatus: resolve(screening.pepStatus),
+                adverseMediaStatus: resolve(screening.adverseMediaStatus),
+                // onboarding.ts:315 skips re-screening only while a cleared record
+                // is unexpired, so a clearance with no expiry would never re-screen.
+                expiresAt: new Date(Date.now() + KYC_CLEARANCE_VALIDITY_DAYS * 24 * 60 * 60 * 1000),
+              }
+            : {}),
+        });
+
+        logAudit(req, `kyc.${decision}`, "kyc_screening", screeningId, {
+          borrowerUserId: screening.userId,
+          applicationId: screening.applicationId,
+          decidedBy: user.id,
+          priorStatus: screening.overallStatus,
+        });
+
+        res.json({ screening: updated });
+      } catch (error) {
+        console.error("KYC decision error:", error);
+        res.status(500).json({ error: "Failed to record the decision" });
+      }
+    },
+  );
 
   // Onboarding Feedback
   app.post("/api/onboarding/feedback", isAuthenticated, async (req, res) => {

@@ -72,6 +72,23 @@ export class IdentityStorage extends MessagingStorage {
     return updated;
   }
 
+  /**
+   * Screenings awaiting a compliance decision — the staff clearance queue (F-044).
+   *
+   * `simulateKycScreening` deliberately refuses to auto-clear ("prevents any
+   * automated path from producing a falsely-cleared compliance record") and defers
+   * to a staff workflow that did not exist, so every screening sat at
+   * `pending_review` forever and nothing could ever reach `cleared`. This is the
+   * read side of the workflow it was waiting for.
+   */
+  async getKycScreeningsPendingReview(): Promise<KycScreening[]> {
+    return db
+      .select()
+      .from(kycScreenings)
+      .where(eq(kycScreenings.overallStatus, "pending_review"))
+      .orderBy(desc(kycScreenings.createdAt));
+  }
+
   // Onboarding Profiles
   async createOnboardingProfile(data: InsertOnboardingProfile): Promise<OnboardingProfile> {
     const [profile] = await db.insert(onboardingProfiles).values({
