@@ -1,6 +1,7 @@
 // Underwriting routes: Pipeline view, conditions, milestones, advance-stage (ECOA denial chokepoint + TRID hard stop), queue/pool/claim.
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
 import { isInFlightLoanAppStatus, isLoanAppStatus, isStaffRole, LOAN_APP_STATUSES, LOAN_CONDITION_STATUSES } from "@shared/schema";
@@ -416,7 +417,7 @@ export function registerPipelineRoutes(
       const user = req.user as User;
       let applications: Awaited<ReturnType<typeof storage.getAllLoanApplications>>;
 
-      if (user.role === "admin") {
+      if (isAdmin(user)) {
         applications = await storage.getAllLoanApplications();
       } else {
         const teamMemberships = await storage.getTeamMembersByUser(user.id);

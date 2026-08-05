@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../storage";
 import { isAuthenticated, requireRole } from "../auth";
 import { isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
@@ -380,7 +381,7 @@ export function registerComplianceRoutes(
 
       if (isInternalStaffRole(user.role)) {
         // Admin has unrestricted access; all other internal staff must be on the deal team.
-        if (user.role !== "admin") {
+        if (!isAdmin(user)) {
           const teamMembers = await storage.getDealTeamMembers(routeParam(req, "id"));
           const isMember = teamMembers.some(m => m.userId === user.id);
           if (!isMember) {
@@ -484,7 +485,7 @@ export function registerComplianceRoutes(
           return res.status(403).json({ error: "Access denied" });
         }
         // Non-admin internal staff must be assigned to the linked application.
-        if (user.role !== "admin" && consent.applicationId) {
+        if (!isAdmin(user) && consent.applicationId) {
           const teamMembers = await storage.getDealTeamMembers(consent.applicationId);
           const isMember = teamMembers.some(m => m.userId === user.id);
           if (!isMember) {
@@ -590,7 +591,7 @@ export function registerComplianceRoutes(
 
       // Non-admin staff must be assigned to the application before they can
       // initiate a credit pull, which is a regulated FCRA action.
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const teamMembers = await storage.getDealTeamMembers(routeParam(req, "id"));
         const isMember = teamMembers.some(m => m.userId === user.id);
         if (!isMember) {
@@ -771,7 +772,7 @@ export function registerComplianceRoutes(
         return res.status(404).json({ error: "Credit pull not found" });
       }
 
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const teamMembers = await storage.getDealTeamMembers(pull.applicationId);
         const isMember = teamMembers.some(m => m.userId === user.id);
         if (!isMember) {
@@ -796,7 +797,7 @@ export function registerComplianceRoutes(
   app.get("/api/credit/archive-eligible", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         return res.status(403).json({ error: "Admin access required" });
       }
       const eligible = await creditService.getArchiveEligibleRecords();
@@ -841,7 +842,7 @@ export function registerComplianceRoutes(
 
       // Non-admin internal staff must be assigned to the application to generate
       // an adverse-action notice — this is a regulated, borrower-facing credit action.
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const teamMembers = await storage.getDealTeamMembers(routeParam(req, "id"));
         const isMember = teamMembers.some(m => m.userId === user.id);
         if (!isMember) {
@@ -960,7 +961,7 @@ export function registerComplianceRoutes(
         return res.status(404).json({ error: "Adverse action not found" });
       }
 
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const teamMembers = await storage.getDealTeamMembers(action.applicationId);
         const isMember = teamMembers.some(m => m.userId === user.id);
         if (!isMember) {
@@ -1030,7 +1031,7 @@ export function registerComplianceRoutes(
         return res.status(404).json({ error: "Adverse action not found" });
       }
 
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const teamMembers = await storage.getDealTeamMembers(action.applicationId);
         const isMember = teamMembers.some(m => m.userId === user.id);
         if (!isMember) {

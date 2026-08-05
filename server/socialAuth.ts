@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import { authStorage } from "./integrations/auth/storage";
 import { randomBytes, createSign } from "crypto";
 
@@ -348,7 +349,7 @@ export function setupSocialAuth(app: Express) {
               return res.redirect("/login?error=auth_failed");
             }
             const roleRoute =
-              user.role === "admin" ? "/admin" :
+              isAdmin(user) ? "/admin" :
               ["lo", "loa", "processor", "underwriter", "closer", "broker", "lender"].includes(user.role) ? "/staff-dashboard" :
               "/dashboard";
             res.redirect(roleRoute);

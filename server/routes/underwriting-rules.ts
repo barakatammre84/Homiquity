@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../storage";
 import { requireRole } from "../auth";
 import { insertUnderwritingRuleDslSchema } from "@shared/schema";
@@ -80,7 +81,7 @@ export function registerUnderwritingRulesRoutes(
         return res.status(404).json({ error: "Rule not found" });
       }
 
-      if (user.role !== "admin" && rule.createdBy !== user.id) {
+      if (!isAdmin(user) && rule.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only edit rules you created" });
       }
 
@@ -148,7 +149,7 @@ export function registerUnderwritingRulesRoutes(
         return res.status(404).json({ error: "Rule not found" });
       }
 
-      if (user.role !== "admin" && rule.createdBy !== user.id) {
+      if (!isAdmin(user) && rule.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only version rules you created" });
       }
 

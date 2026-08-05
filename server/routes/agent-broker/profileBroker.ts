@@ -3,7 +3,7 @@
 import type { Express } from "express";
 import type { IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
-import { isPartnerRole } from "@shared/roles";
+import { isAdmin, isPartnerRole } from "@shared/roles";
 import { z } from "zod";
 import crypto from "crypto";
 import { db } from "../../db";
@@ -209,7 +209,7 @@ export function registerProfileBrokerRoutes(
 
       // Status transitions (including "paid", "approved", "rejected") are admin-only.
       // Brokers and LOs can only update the notes field.
-      if (body.status !== undefined && user.role !== "admin") {
+      if (body.status !== undefined && !isAdmin(user)) {
         return res.status(403).json({ error: "Only admins can change commission status" });
       }
 
@@ -222,7 +222,7 @@ export function registerProfileBrokerRoutes(
       const updateData: Record<string, any> = {};
       // Only admit fields that callers are permitted to set
       if (body.notes !== undefined) updateData.notes = body.notes;
-      if (body.status !== undefined && user.role === "admin") {
+      if (body.status !== undefined && isAdmin(user)) {
         updateData.status = body.status;
       }
       // paidAt and paidBy are server-controlled only; never accepted from client body

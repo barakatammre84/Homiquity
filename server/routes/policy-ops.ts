@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import type { IStorage } from "../storage";
 import { requireRole } from "../auth";
 import {
@@ -46,7 +47,7 @@ export function registerPolicyOpsRoutes(
       if (status && typeof status === "string") filters.status = status;
 
       let profiles = await storage.getPolicyProfiles(filters);
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         profiles = profiles.filter((p) => p.createdBy === user.id);
       }
       res.json(profiles);
@@ -64,7 +65,7 @@ export function registerPolicyOpsRoutes(
         return res.status(404).json({ error: "Policy profile not found" });
       }
 
-      if (user.role !== "admin" && profile.createdBy !== user.id) {
+      if (!isAdmin(user) && profile.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -115,7 +116,7 @@ export function registerPolicyOpsRoutes(
         return res.status(404).json({ error: "Policy profile not found" });
       }
 
-      if (user.role !== "admin" && profile.createdBy !== user.id) {
+      if (!isAdmin(user) && profile.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only edit policies you created" });
       }
 
@@ -160,7 +161,7 @@ export function registerPolicyOpsRoutes(
         return res.status(404).json({ error: "Policy profile not found" });
       }
 
-      if (user.role !== "admin" && profile.createdBy !== user.id) {
+      if (!isAdmin(user) && profile.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only submit policies you created" });
       }
 
@@ -381,7 +382,7 @@ export function registerPolicyOpsRoutes(
         return res.status(400).json({ error: "policyProfileId query parameter is required" });
       }
 
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const profile = await storage.getPolicyProfile(policyProfileId);
         if (!profile || profile.createdBy !== user.id) {
           return res.status(403).json({ error: "Access denied" });
@@ -409,7 +410,7 @@ export function registerPolicyOpsRoutes(
         return res.status(404).json({ error: "Policy profile not found" });
       }
 
-      if (user.role !== "admin" && profile.createdBy !== user.id) {
+      if (!isAdmin(user) && profile.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only add thresholds to policies you created" });
       }
 
@@ -441,7 +442,7 @@ export function registerPolicyOpsRoutes(
       }
 
       const profile = await storage.getPolicyProfile(threshold.policyProfileId);
-      if (user.role !== "admin" && profile && profile.createdBy !== user.id) {
+      if (!isAdmin(user) && profile && profile.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only edit thresholds on policies you created" });
       }
 
@@ -498,7 +499,7 @@ export function registerPolicyOpsRoutes(
       }
 
       const profile = await storage.getPolicyProfile(threshold.policyProfileId);
-      if (user.role !== "admin" && profile && profile.createdBy !== user.id) {
+      if (!isAdmin(user) && profile && profile.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only delete thresholds on policies you created" });
       }
 
@@ -533,7 +534,7 @@ export function registerPolicyOpsRoutes(
         return res.status(400).json({ error: "basePolicyProfileId query parameter is required" });
       }
 
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const baseProfile = await storage.getPolicyProfile(basePolicyProfileId);
         if (!baseProfile || baseProfile.createdBy !== user.id) {
           return res.status(403).json({ error: "Access denied" });
@@ -555,7 +556,7 @@ export function registerPolicyOpsRoutes(
       if (!overlay) {
         return res.status(404).json({ error: "Overlay not found" });
       }
-      if (user.role !== "admin" && overlay.createdBy !== user.id) {
+      if (!isAdmin(user) && overlay.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied" });
       }
       res.json(overlay);
@@ -578,7 +579,7 @@ export function registerPolicyOpsRoutes(
         return res.status(404).json({ error: "Base policy profile not found" });
       }
 
-      if (user.role !== "admin" && baseProfile.createdBy !== user.id) {
+      if (!isAdmin(user) && baseProfile.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only add overlays to policies you created" });
       }
 
@@ -609,7 +610,7 @@ export function registerPolicyOpsRoutes(
         return res.status(404).json({ error: "Overlay not found" });
       }
 
-      if (user.role !== "admin" && overlay.createdBy !== user.id) {
+      if (!isAdmin(user) && overlay.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only edit overlays you created" });
       }
 
@@ -650,7 +651,7 @@ export function registerPolicyOpsRoutes(
         return res.status(404).json({ error: "Overlay not found" });
       }
 
-      if (user.role !== "admin" && overlay.createdBy !== user.id) {
+      if (!isAdmin(user) && overlay.createdBy !== user.id) {
         return res.status(403).json({ error: "Access denied: you can only delete overlays you created" });
       }
 
@@ -679,7 +680,7 @@ export function registerPolicyOpsRoutes(
   app.get("/api/policy-approvals/:policyProfileId", requireRole("admin", "underwriter"), async (req, res) => {
     try {
       const user = req.user as any;
-      if (user.role !== "admin") {
+      if (!isAdmin(user)) {
         const profile = await storage.getPolicyProfile(routeParam(req, "policyProfileId"));
         if (!profile || profile.createdBy !== user.id) {
           return res.status(403).json({ error: "Access denied" });

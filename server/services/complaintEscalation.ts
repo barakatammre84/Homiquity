@@ -16,6 +16,7 @@
  *    route fires and forgets, matching the leadNotifications pattern.
  */
 import type { IStorage } from "../storage";
+import { isAdmin } from "@shared/roles";
 import type { ComplaintCategory } from "@shared/compliance/complaintEscalation";
 
 const CATEGORY_LABELS: Record<ComplaintCategory, string> = {
@@ -34,7 +35,7 @@ export async function escalateFlaggedMessage(
   ref: FlaggedMessageRef,
 ): Promise<void> {
   const admins = (await storage.getStaffUsersForTeamDisplay()).filter(
-    (u) => u.role === "admin",
+    (u) => isAdmin(u),
   );
   if (admins.length === 0) {
     console.warn("[complaints] flagged message but no admin to notify:", ref.messageId);

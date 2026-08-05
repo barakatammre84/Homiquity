@@ -85,7 +85,7 @@ describe("client route gates match their server APIs", () => {
     const handler = server.slice(
       server.indexOf('app.get("/api/closing-guarantees"'),
     );
-    expect(handler.slice(0, 400)).toContain('req.user!.role !== "admin"');
+    expect(handler.slice(0, 400)).toContain("!isAdmin(req.user)"); // CH-4: shared predicate
   });
 });
 

@@ -93,7 +93,7 @@ describe("founder escalation service data-minimization", () => {
   const src = read("server/services/complaintEscalation.ts");
 
   it("notifies admins only (the founder carries the compliance hat)", () => {
-    expect(src).toContain('u.role === "admin"');
+    expect(src).toContain("isAdmin(u)"); // CH-4: the shared predicate, not a raw string compare
   });
 
   it("never receives or forwards the borrower's message text", () => {

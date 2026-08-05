@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import { isAuthenticated, requireRole } from "../auth";
 import type { User } from "@shared/schema";
 import { storage } from "../storage";
@@ -262,7 +263,7 @@ export function registerDataIntelligenceRoutes(app: Express) {
         const { userId } = routeParams(req);
         const applicationId = firstQueryValue(req.query.applicationId);
 
-        if (caller.role !== "admin") {
+        if (!isAdmin(caller)) {
           // Non-admin staff must supply an applicationId and must be an active
           // deal-team member on that specific application. getLoanApplicationWithAccess
           // grants internal staff global access, so we need a direct deal-team query

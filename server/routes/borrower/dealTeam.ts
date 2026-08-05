@@ -1,6 +1,7 @@
 // Borrower routes: Deal-team membership CRUD, application withdraw, LO assignment, staff lists.
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
+import { isAdmin } from "@shared/roles";
 import { type IStorage } from "../../storage";
 import { isAuthenticated, requireRole } from "../../auth";
 import { isStaffRole, isInternalStaffRole, LOAN_APP_TERMINAL_STATUSES, type User } from "@shared/schema";
@@ -122,7 +123,7 @@ export function registerDealTeamRoutes(
           return res.status(403).json({ error: "You can only withdraw your own applications" });
         }
         // Non-admin internal staff must be on the deal team.
-        if (user.role !== "admin") {
+        if (!isAdmin(user)) {
           const teamMembers = await storage.getDealTeamMembers(applicationId);
           const isMember = teamMembers.some(m => m.userId === user.id);
           if (!isMember) {

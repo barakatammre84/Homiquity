@@ -86,6 +86,18 @@ export const INTERNAL_STAFF_ROLES = [
   "closer",
 ] as const;
 
+/**
+ * Object-level admin check for use INSIDE handlers — ownership overrides,
+ * scope widening, "admins see everything" branches (roadmap CH-4). Route-level
+ * gating stays requireRole("admin"); this exists so the string literal can't
+ * typo in fifty hand-rolled comparisons and so the source guard
+ * (tests/adminPredicate.test.ts) can forbid new ones. Accepts anything with a
+ * role field, including a missing/null user: no user is never an admin.
+ */
+export function isAdmin(user: { role?: string | null } | null | undefined): boolean {
+  return user?.role === "admin";
+}
+
 // Helper to check if role is staff (includes external partner roles)
 export function isStaffRole(role: string): boolean {
   return STAFF_ROLES.includes(role as typeof STAFF_ROLES[number]);
