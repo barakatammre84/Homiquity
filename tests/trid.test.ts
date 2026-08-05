@@ -1,7 +1,39 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addBusinessDays, subtractBusinessDays } from "../server/services/businessDays";
-import { assessSixPieces, getTridStatus, tridHardStopError } from "../server/services/trid";
 import type { LoanApplication, UrlaPersonalInfo } from "@shared/schema";
+
+// In-memory double for evaluateTridTrigger's storage calls — evaluateTridTrigger
+// (unlike the pure functions above) is I/O-bearing, so it needs a real exercise
+// against a mocked storage, not just a source-grep (that grep-only gap is what
+// let intake-01 ship: the /save route never called this function, and nothing
+// caught it).
+const h = vi.hoisted(() => ({
+  application: null as (LoanApplication & { id: string }) | null,
+  personalInfo: undefined as UrlaPersonalInfo | undefined,
+  activities: [] as any[],
+  notifications: [] as any[],
+}));
+
+vi.mock("../server/storage", () => ({
+  storage: {
+    getLoanApplication: async (_id: string) => h.application,
+    getUrlaPersonalInfo: async (_id: string) => h.personalInfo,
+    updateLoanApplication: async (_id: string, patch: any) => {
+      h.application = { ...(h.application as any), ...patch };
+      return h.application;
+    },
+    createDealActivity: async (data: any) => {
+      h.activities.push(data);
+      return data;
+    },
+    createNotification: async (data: any) => {
+      h.notifications.push(data);
+      return data;
+    },
+  },
+}));
+
+import { assessSixPieces, getTridStatus, tridHardStopError, evaluateTridTrigger } from "../server/services/trid";
 
 /**
  * TRID trigger + timing rules (Reg Z §1026.2(a)(3), §1026.19(e)(1)(iii)).
@@ -137,5 +169,87 @@ describe("LE clock and hard stop (§1026.19(e)(1)(iii))", () => {
 
   it("hard stop is silent while the file is within the window", () => {
     expect(tridHardStopError(triggeredMonday, "underwriting", new Date("2026-06-10T12:00:00Z"))).toBeNull();
+  });
+});
+
+describe("evaluateTridTrigger — the I/O-bearing function that actually sets tridTriggeredAt", () => {
+  beforeEach(() => {
+    h.application = null;
+    h.personalInfo = undefined;
+    h.activities = [];
+    h.notifications = [];
+  });
+
+  it("does not write when a piece is still missing", async () => {
+    h.application = { ...app({}), id: "app-1" } as any;
+    h.personalInfo = undefined; // no SSN yet
+
+    const result = await evaluateTridTrigger("app-1");
+
+    expect(result.triggered).toBe(false);
+    expect(result.justTriggered).toBe(false);
+    expect(result.missing).toContain("ssn");
+    expect(h.application!.tridTriggeredAt).toBeNull();
+    expect(h.activities).toHaveLength(0);
+    expect(h.notifications).toHaveLength(0);
+  });
+
+  it("sets tridTriggeredAt, logs a compliance activity, and notifies the assigned LO on first completion", async () => {
+    h.application = { ...app({}), id: "app-2", loanOfficerId: "lo-1" } as any;
+    h.personalInfo = withSsn;
+
+    const result = await evaluateTridTrigger("app-2");
+
+    expect(result.triggered).toBe(true);
+    expect(result.justTriggered).toBe(true);
+    expect(result.tridTriggeredAt).not.toBeNull();
+    expect(h.application!.tridTriggeredAt).not.toBeNull();
+    expect(h.activities).toHaveLength(1);
+    expect(h.activities[0].activityType).toBe("compliance_event");
+    expect(h.notifications).toHaveLength(1);
+    expect(h.notifications[0].userId).toBe("lo-1");
+  });
+
+  it("is idempotent — a second call is a no-op that reports the original trigger time", async () => {
+    h.application = { ...app({}), id: "app-3" } as any;
+    h.personalInfo = withSsn;
+
+    const first = await evaluateTridTrigger("app-3");
+    expect(first.justTriggered).toBe(true);
+    expect(h.activities).toHaveLength(1);
+
+    const second = await evaluateTridTrigger("app-3");
+    expect(second.triggered).toBe(true);
+    expect(second.justTriggered).toBe(false);
+    expect(second.tridTriggeredAt).toEqual(first.tridTriggeredAt);
+    // No duplicate activity/notification on the repeat call.
+    expect(h.activities).toHaveLength(1);
+    expect(h.notifications).toHaveLength(0);
+  });
+
+  it("regression guard for intake-01: reproduces the URLA /save write order — application already has income/address/value/amount, SSN arrives via getUrlaPersonalInfo the same way the /save handler's personalInfo write feeds it", async () => {
+    // This mirrors the real shape: application intake creates the file with
+    // the first five pieces already known, and the SSN is supplied later
+    // through urla.ts's writeBorrowerSections -> storage.upsertUrlaPersonalInfo,
+    // which is exactly what getUrlaPersonalInfo reads back here.
+    h.application = {
+      ...app({}),
+      id: "app-4",
+      loanOfficerId: "lo-2",
+      tridTriggeredAt: null,
+    } as any;
+    h.personalInfo = undefined;
+
+    const beforeSsn = await evaluateTridTrigger("app-4");
+    expect(beforeSsn.triggered).toBe(false);
+
+    // The primary borrower's personal-info write lands...
+    h.personalInfo = withSsn;
+    // ...and urla.ts now calls evaluateTridTrigger right after that write.
+    const afterSsn = await evaluateTridTrigger("app-4");
+
+    expect(afterSsn.triggered).toBe(true);
+    expect(afterSsn.justTriggered).toBe(true);
+    expect(h.application!.tridTriggeredAt).not.toBeNull();
   });
 });

@@ -480,6 +480,28 @@ export function registerUrlaRoutes(
             borrowerSequenceNumber: seq,
             isPrimaryBorrower: isPrimary,
           } as any);
+
+          // TRID §1026.2(a)(3): the SSN often arrives here as the 6th piece of
+          // application information — evaluate the Loan Estimate trigger right
+          // after the write, not at the end of the handler. This is the only
+          // client-reachable SSN write path (the /personal-info route below is
+          // dead — no client ever calls it), so this must not be skipped by a
+          // later section (co-applicant validation, etc.) failing and early-
+          // returning before the handler's end. evaluateTridTrigger reads the
+          // primary borrower's data (borrowerSequenceNumber 1), so only run it
+          // for the primary borrower's write.
+          if (isPrimary) {
+            try {
+              const trid = await evaluateTridTrigger(applicationId);
+              if (trid.justTriggered) {
+                logAudit(req, "trid.application_triggered", "loan_application", applicationId, {
+                  leDueDate: trid.leDueDate?.toISOString(),
+                });
+              }
+            } catch (tridErr) {
+              console.error("[TRID] Trigger evaluation failed (non-fatal):", tridErr);
+            }
+          }
         }
 
         if (Array.isArray(opts.employmentHistory) && opts.employmentHistory.length > 0) {
