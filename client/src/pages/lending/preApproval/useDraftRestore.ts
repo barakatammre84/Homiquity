@@ -19,8 +19,6 @@ import type { FunnelStepId } from "@/funnel/preApprovalMachine";
 import type { FunnelSaved } from "@/funnel/useFunnelAutosave";
 import { toStepId } from "./questions";
 
-type IncomeSources = PreApprovalFormData["incomeSources"];
-
 interface UseDraftRestoreArgs {
   form: UseFormReturn<PreApprovalFormData>;
   isAuthenticated: boolean;
@@ -31,8 +29,6 @@ interface UseDraftRestoreArgs {
   hasPendingSubmit: () => boolean;
   readSaved: () => FunnelSaved<PreApprovalFormData> | null;
   clearAutosave: () => void;
-  /** Rebuild the income-sources step's UI state from restored entries (page-owned). */
-  applyIncomeSources: (sources: IncomeSources) => void;
   goTo: (stepId: FunnelStepId) => void;
   hydrate: (stepId: FunnelStepId, answers: PreApprovalFormData) => void;
   toast: (opts: { title: string; description?: string }) => void;
@@ -80,7 +76,6 @@ export function useDraftRestore({
   hasPendingSubmit,
   readSaved,
   clearAutosave,
-  applyIncomeSources,
   goTo,
   hydrate,
   toast,
@@ -126,8 +121,11 @@ export function useDraftRestore({
   const restore = useCallback(() => {
     if (isAuthenticated && serverDraft && draftHasAnswers(serverDraft)) {
       const values = draftToFormValues(serverDraft, form.getValues());
+      // form.reset IS the restore: IncomeSourcesStep derives its selected
+      // types, per-type details and rental rows from form.incomeSources, so
+      // there is no second store to reseed (there used to be, via a
+      // page-owned applyIncomeSources threaded in as an argument).
       form.reset(values);
-      applyIncomeSources(values.incomeSources);
       goTo("loanPurpose");
       setShowRestoreBanner(false);
       toast({
@@ -144,14 +142,13 @@ export function useDraftRestore({
       }
       const merged = { ...form.getValues(), ...saved.values };
       form.reset(merged);
-      applyIncomeSources(merged.incomeSources);
       hydrate(toStepId(saved.stepId), merged);
       setShowRestoreBanner(false);
       toast({ title: "Progress restored", description: "We picked up where you left off." });
     } catch {
       setShowRestoreBanner(false);
     }
-  }, [isAuthenticated, serverDraft, form, applyIncomeSources, goTo, hydrate, readSaved, toast]);
+  }, [isAuthenticated, serverDraft, form, goTo, hydrate, readSaved, toast]);
 
   const dismiss = useCallback(() => {
     // "No" adopts nothing: the form keeps only what this visit produced, and

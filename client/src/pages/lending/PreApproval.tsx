@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocation, Link } from "wouter";
+import { useLocation, useSearchParams, Link } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { preApprovalFormSchema, type PreApprovalFormData, type RentalPropertyEntry, type IncomeSourceEntry } from "@shared/schema";
+import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 
 import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
-import { PRE_APPROVAL_DEFAULTS } from "@/funnel/preApprovalMachine";
+import { PRE_APPROVAL_DEFAULTS, routingSignature } from "@/funnel/preApprovalMachine";
 import { useFunnelAutosave } from "@/funnel/useFunnelAutosave";
 import { VerificationPulse } from "@/funnel/VerificationPulse";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -71,9 +71,6 @@ function PreApprovalFunnel() {
     state: funnelState,
   } = useFunnel();
   const direction = funnelState.direction;
-  const [selectedIncomeTypes, setSelectedIncomeTypes] = useState<string[]>([]);
-  const [incomeDetails, setIncomeDetails] = useState<Record<string, { annualAmount: string; employerName: string; yearsInRole: string }>>({});
-  const [rentalProperties, setRentalProperties] = useState<RentalPropertyEntry[]>([]);
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
@@ -84,7 +81,11 @@ function PreApprovalFunnel() {
   useTrackFormAbandon("preapproval", progress.index > 0 && stepId !== "final");
   const prevStepRef = useRef(0);
 
-  const urlParams = new URLSearchParams(window.location.search);
+  // Through the router, not `window.location.search`. Reading the global at
+  // render made these values invisible to wouter — a client-side nav that
+  // changed ?type= left the page reading the old query string — and made the
+  // component untestable without stubbing window.
+  const [urlParams] = useSearchParams();
   const urlType = urlParams.get("type");
   const urlPrice = urlParams.get("price");
   const urlState = urlParams.get("state");
@@ -205,15 +206,21 @@ function PreApprovalFunnel() {
   const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
 
   // Mirror form values into the machine so routing always sees the latest
-  // answers (guarded so an unchanged snapshot doesn't dispatch every render).
-  const lastSyncedRef = useRef("");
+  // answers — but ONLY when a routing-relevant answer moved.
+  //
+  // This used to key on JSON.stringify(watchedValues), i.e. on every keystroke.
+  // Each dispatch replaces FunnelState, which rebuilds FunnelContext's memo
+  // (computeRoute + computeFlags + routeProgress) and re-renders this whole
+  // 900-line component a SECOND time — for a character typed into a field the
+  // route does not depend on. `routingSignature` covers exactly the answers
+  // computeFlags/computeRoute read (preApprovalMachine.ts), and
+  // preApprovalMachine.test.ts proves that list is complete, so skipping the
+  // rest cannot change what the machine decides. Everything else already reads
+  // fresh values: next/back/checkGate/submit all pass form.getValues().
+  const routingKey = routingSignature(watchedValues);
   useEffect(() => {
-    const snapshot = JSON.stringify(watchedValues);
-    if (snapshot !== lastSyncedRef.current) {
-      lastSyncedRef.current = snapshot;
-      syncAnswers(watchedValues);
-    }
-  }, [watchedValues, syncAnswers]);
+    syncAnswers(form.getValues());
+  }, [routingKey, syncAnswers, form]);
 
   // A blocked NEXT (validation gate) surfaces as a toast.
   useEffect(() => {
@@ -235,31 +242,10 @@ function PreApprovalFunnel() {
     shouldPersist: hasMeaningfulData,
   });
 
-  // Rebuild the income-sources step's UI stores from restored entries — they
-  // mirror form.incomeSources (see the income_sources case in renderInput), so
-  // a restore has to reseed them or the step renders empty.
-  const applyIncomeSources = useCallback((sources: PreApprovalFormData["incomeSources"]) => {
-    if (!Array.isArray(sources) || sources.length === 0) return;
-    const types: string[] = [];
-    const details: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }> = {};
-    let rentals: RentalPropertyEntry[] = [];
-    for (const src of sources) {
-      types.push(src.type);
-      details[src.type] = {
-        annualAmount: src.annualAmount || "",
-        employerName: src.employerName || "",
-        yearsInRole: src.yearsInRole || "",
-      };
-      if (src.type === "rental" && Array.isArray(src.rentalProperties)) {
-        rentals = src.rentalProperties;
-      }
-    }
-    setSelectedIncomeTypes(types);
-    setIncomeDetails(details);
-    if (rentals.length > 0) {
-      setRentalProperties(rentals);
-    }
-  }, []);
+  // (There used to be an applyIncomeSources here, rebuilding the income step's
+  // three mirror stores from restored entries. IncomeSourcesStep now derives
+  // its whole UI from form.incomeSources, so form.reset() is the entire
+  // restore — no second store to reseed, and no way to forget to.)
 
   const hasPendingSubmit = useCallback(() => {
     if (pendingSubmitRef.current) return true;
@@ -285,7 +271,6 @@ function PreApprovalFunnel() {
     hasPendingSubmit,
     readSaved,
     clearAutosave,
-    applyIncomeSources,
     goTo,
     hydrate,
     toast,
@@ -591,16 +576,14 @@ function PreApprovalFunnel() {
         );
 
       case "income_sources": {
+        // Single source of truth: the step derives its whole UI from
+        // form.incomeSources, so a restore that resets the form is all a
+        // restore has to do.
         return (
           <IncomeSourcesStep
             employmentType={form.getValues("employmentType")}
-            selectedIncomeTypes={selectedIncomeTypes}
-            incomeDetails={incomeDetails}
-            rentalProperties={rentalProperties}
-            setSelectedIncomeTypes={setSelectedIncomeTypes}
-            setIncomeDetails={setIncomeDetails}
-            setRentalProperties={setRentalProperties}
-            setIncomeSources={(entries) => form.setValue("incomeSources", entries as never)}
+            value={watchedValues.incomeSources}
+            onChange={(entries) => form.setValue("incomeSources", entries as never)}
           />
         );
       }

@@ -16,34 +16,72 @@ import {
 import type { RentalPropertyEntry, IncomeSourceEntry, PreApprovalFormData } from "@shared/schema";
 import { maskCurrencyDigits } from "@/lib/formatters";
 
+const EMPTY_DETAILS = { annualAmount: "", employerName: "", yearsInRole: "" };
+const EMPTY_RENTAL: RentalPropertyEntry = {
+  address: "",
+  monthlyRentalIncome: "",
+  monthlyDebtPayment: "",
+};
+
+type RentalAwareEntry = IncomeSourceEntry & { rentalProperties?: RentalPropertyEntry[] };
+
+function monthlyRentTotal(props: readonly RentalPropertyEntry[]): number {
+  return props.reduce(
+    (sum, p) => sum + (parseFloat((p.monthlyRentalIncome || "").replace(/,/g, "")) || 0),
+    0,
+  );
+}
+
 /**
- * Complex-income step (extracted from PreApproval.tsx). CONTROLLED on purpose:
- * the three UI stores (selected types, per-type details, rental rows) live in
- * the parent because the draft-restore path (`applyIncomeSources` in
- * useDraftRestore's wiring) reseeds them — owning them here would render the
- * step empty after a restore. Every mutation rebuilds form.incomeSources via
- * `setIncomeSources` so the machine's gate always validates current entries;
- * rental annualAmount is derived (Σ monthly rents × 12), never typed.
+ * Rental annual income is DERIVED — Σ monthly rents × 12 — never typed. Applied
+ * on every rental mutation so the reported entry and the on-screen total can't
+ * disagree.
+ */
+function withDerivedRentalAmount(entry: RentalAwareEntry): RentalAwareEntry {
+  const total = monthlyRentTotal(entry.rentalProperties ?? []);
+  return {
+    ...entry,
+    annualAmount: total > 0 ? maskCurrencyDigits(String(Math.round(total * 12))) : "",
+  };
+}
+
+/**
+ * Complex-income step (extracted from PreApproval.tsx).
+ *
+ * ONE source of truth: the `incomeSources` array itself. Selected types,
+ * per-type details, and rental rows are all PROJECTIONS of it, derived on
+ * render — not separate state.
+ *
+ * They used to be three `useState` stores in the page, written alongside the
+ * form field on every mutation. That duplication is why the draft-restore path
+ * had to hand-rebuild them (`applyIncomeSources`, threaded down through
+ * useDraftRestore as a ninth argument): restoring the form field alone left the
+ * step rendering empty with the data sitting right there. It also let the two
+ * drift within a single interaction — toggling "rental" on passed the PREVIOUS
+ * (empty) rental array to the entry builder, so the form said "no properties"
+ * while the UI showed a property row. Deriving instead of mirroring retires
+ * both, and every future restore entry point gets it for free.
  */
 export function IncomeSourcesStep({
   employmentType,
-  selectedIncomeTypes,
-  incomeDetails,
-  rentalProperties,
-  setSelectedIncomeTypes,
-  setIncomeDetails,
-  setRentalProperties,
-  setIncomeSources,
+  value,
+  onChange,
 }: {
   employmentType: PreApprovalFormData["employmentType"] | undefined;
-  selectedIncomeTypes: string[];
-  incomeDetails: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }>;
-  rentalProperties: RentalPropertyEntry[];
-  setSelectedIncomeTypes: (types: string[]) => void;
-  setIncomeDetails: (details: Record<string, { annualAmount: string; employerName: string; yearsInRole: string }>) => void;
-  setRentalProperties: (props: RentalPropertyEntry[]) => void;
-  setIncomeSources: (entries: IncomeSourceEntry[]) => void;
+  /** THE state — `form.incomeSources`. */
+  value: IncomeSourceEntry[] | undefined;
+  onChange: (entries: IncomeSourceEntry[]) => void;
 }) {
+  const entries: RentalAwareEntry[] = value ?? [];
+  // `string[]`, not the entry union: the toggle list is keyed by the plain
+  // option values rendered below, and narrowing happens where an entry is built.
+  const selectedIncomeTypes: string[] = entries.map((e) => e.type);
+  const rentalProperties = entries.find((e) => e.type === "rental")?.rentalProperties ?? [];
+
+  /** Replace the entry of `type` (creating nothing) and report upward. */
+  const updateEntry = (type: string, update: (entry: RentalAwareEntry) => RentalAwareEntry) => {
+    onChange(entries.map((e) => (e.type === type ? update(e) : e)));
+  };
   const employmentTypeMap: Record<string, string> = { employed: "w2", self_employed: "self_employed", retired: "pension" };
   // Self-employed borrowers keep their primary type in the list — the
   // complex-income block exists precisely to detail 1099/business income.
@@ -59,78 +97,55 @@ export function IncomeSourcesStep({
     { value: "other", label: "Other Income", icon: DollarSign },
   ].filter((t) => t.value !== primaryType);
 
-  const buildFormEntries = (types: string[], details: typeof incomeDetails, rentals: RentalPropertyEntry[]) => {
-    return types.map((t) => {
-      const d = details[t] || { annualAmount: "", employerName: "", yearsInRole: "" };
-      const entry: IncomeSourceEntry & { rentalProperties?: RentalPropertyEntry[] } = {
-        type: t as IncomeSourceEntry["type"],
-        annualAmount: d.annualAmount || "",
-        employerName: d.employerName || "",
-        yearsInRole: d.yearsInRole || "",
-      };
-      if (t === "rental" && rentals.length > 0) {
-        entry.rentalProperties = rentals;
-        const totalMonthly = rentals.reduce((sum, p) => sum + (parseFloat(p.monthlyRentalIncome.replace(/,/g, "")) || 0), 0);
-        entry.annualAmount = totalMonthly > 0 ? maskCurrencyDigits(String(Math.round(totalMonthly * 12))) : "";
-      }
-      return entry;
-    });
-  };
-
   const toggleIncomeType = (typeValue: string) => {
-    const isSelected = selectedIncomeTypes.includes(typeValue);
-    let newTypes: string[];
-    if (isSelected) {
-      newTypes = selectedIncomeTypes.filter((t) => t !== typeValue);
-      const newDetails = { ...incomeDetails };
-      delete newDetails[typeValue];
-      setIncomeDetails(newDetails);
-      if (typeValue === "rental") {
-        setRentalProperties([]);
-      }
-    } else {
-      newTypes = [...selectedIncomeTypes, typeValue];
-      if (!incomeDetails[typeValue]) {
-        setIncomeDetails({ ...incomeDetails, [typeValue]: { annualAmount: "", employerName: "", yearsInRole: "" } });
-      }
-      if (typeValue === "rental" && rentalProperties.length === 0) {
-        setRentalProperties([{ address: "", monthlyRentalIncome: "", monthlyDebtPayment: "" }]);
-      }
+    if (selectedIncomeTypes.includes(typeValue)) {
+      // Removing the entry removes its details and (for rental) its rows with
+      // it — there is no second store left holding them.
+      onChange(entries.filter((e) => e.type !== typeValue));
+      return;
     }
-    setSelectedIncomeTypes(newTypes);
-    setIncomeSources(buildFormEntries(newTypes, isSelected ? incomeDetails : { ...incomeDetails, [typeValue]: incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" } }, typeValue === "rental" && isSelected ? [] : rentalProperties));
-  };
-
-  const updateDetail = (typeValue: string, field: string, value: string) => {
-    const newDetails = {
-      ...incomeDetails,
-      [typeValue]: { ...incomeDetails[typeValue], [field]: value },
+    const added: RentalAwareEntry = {
+      ...EMPTY_DETAILS,
+      type: typeValue as IncomeSourceEntry["type"],
+      // Rental opens with one blank row, which is what the card renders. The
+      // entry carries it so the form and the screen agree from the first frame.
+      ...(typeValue === "rental" ? { rentalProperties: [{ ...EMPTY_RENTAL }] } : {}),
     };
-    setIncomeDetails(newDetails);
-    setIncomeSources(buildFormEntries(selectedIncomeTypes, newDetails, rentalProperties));
+    onChange([...entries, added]);
   };
 
-  const addRentalProperty = () => {
-    const updated = [...rentalProperties, { address: "", monthlyRentalIncome: "", monthlyDebtPayment: "" }];
-    setRentalProperties(updated);
-    setIncomeSources(buildFormEntries(selectedIncomeTypes, incomeDetails, updated));
+  const updateDetail = (typeValue: string, field: string, fieldValue: string) => {
+    updateEntry(typeValue, (entry) => ({ ...entry, [field]: fieldValue }));
   };
 
-  const removeRentalProperty = (index: number) => {
-    const updated = rentalProperties.filter((_, i) => i !== index);
-    setRentalProperties(updated);
-    setIncomeSources(buildFormEntries(selectedIncomeTypes, incomeDetails, updated));
+  const updateRentals = (
+    update: (props: RentalPropertyEntry[]) => RentalPropertyEntry[],
+  ) => {
+    updateEntry("rental", (entry) =>
+      withDerivedRentalAmount({
+        ...entry,
+        rentalProperties: update(entry.rentalProperties ?? []),
+      }),
+    );
   };
 
-  const updateRentalProperty = (index: number, field: keyof RentalPropertyEntry, value: string) => {
-    const updated = rentalProperties.map((p, i) => i === index ? { ...p, [field]: value } : p);
-    setRentalProperties(updated);
-    setIncomeSources(buildFormEntries(selectedIncomeTypes, incomeDetails, updated));
-  };
+  const addRentalProperty = () => updateRentals((props) => [...props, { ...EMPTY_RENTAL }]);
+
+  const removeRentalProperty = (index: number) =>
+    updateRentals((props) => props.filter((_, i) => i !== index));
+
+  const updateRentalProperty = (
+    index: number,
+    field: keyof RentalPropertyEntry,
+    fieldValue: string,
+  ) =>
+    updateRentals((props) =>
+      props.map((p, i) => (i === index ? { ...p, [field]: fieldValue } : p)),
+    );
 
   const needsEmployerDetails = (typeValue: string) => typeValue === "w2" || typeValue === "self_employed";
 
-  const rentalAnnualTotal = rentalProperties.reduce((sum, p) => sum + (parseFloat(p.monthlyRentalIncome.replace(/,/g, "")) || 0), 0) * 12;
+  const rentalAnnualTotal = monthlyRentTotal(rentalProperties) * 12;
 
   return (
     <div className="w-full max-w-lg mx-auto space-y-6">
@@ -170,7 +185,7 @@ export function IncomeSourcesStep({
         <div className="space-y-4">
           {selectedIncomeTypes.map((typeValue) => {
             const typeInfo = allIncomeTypes.find((t) => t.value === typeValue);
-            const details = incomeDetails[typeValue] || { annualAmount: "", employerName: "", yearsInRole: "" };
+            const details = entries.find((e) => e.type === typeValue) ?? EMPTY_DETAILS;
 
             if (typeValue === "rental") {
               return (
@@ -268,7 +283,7 @@ export function IncomeSourcesStep({
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       data-testid={`input-income-amount-${typeValue}`}
-                      value={details.annualAmount}
+                      value={details.annualAmount ?? ""}
                       onChange={(e) => updateDetail(typeValue, "annualAmount", maskCurrencyDigits(e.target.value))}
                       className="pl-9"
                       placeholder="75,000"
@@ -281,7 +296,7 @@ export function IncomeSourcesStep({
                   </label>
                   <Input
                     data-testid={`input-income-employer-${typeValue}`}
-                    value={details.employerName}
+                    value={details.employerName ?? ""}
                     onChange={(e) => updateDetail(typeValue, "employerName", e.target.value)}
                     placeholder={needsEmployerDetails(typeValue) ? "Company name" : "Source name (optional)"}
                   />
@@ -291,7 +306,7 @@ export function IncomeSourcesStep({
                     <label className="text-sm text-muted-foreground mb-1 block">Years in Role</label>
                     <Input
                       data-testid={`input-income-years-${typeValue}`}
-                      value={details.yearsInRole}
+                      value={details.yearsInRole ?? ""}
                       onChange={(e) => updateDetail(typeValue, "yearsInRole", e.target.value.replace(/\D/g, ""))}
                       placeholder="3"
                       inputMode="numeric"

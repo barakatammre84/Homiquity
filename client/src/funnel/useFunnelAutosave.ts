@@ -38,13 +38,23 @@ export function useFunnelAutosave<TValues>({
 }) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Depend on the serialized snapshot, not the object identity. Callers pass
+  // `form.watch()`, which returns a FRESH OBJECT every render — keying the
+  // effect on it re-armed the debounce on every render rather than every
+  // change, so any render source firing faster than debounceMs starved the
+  // write indefinitely and the drop-off restore silently had nothing to offer.
+  // (useServerDraftAutosave already did this; its sibling did not.)
+  const snapshotJson = JSON.stringify(values);
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+
   useEffect(() => {
     if (!enabled) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       try {
-        if (shouldPersist && !shouldPersist(values)) return;
-        localStorage.setItem(storageKey, JSON.stringify(values));
+        if (shouldPersist && !shouldPersist(valuesRef.current)) return;
+        localStorage.setItem(storageKey, snapshotJson);
         localStorage.setItem(stepStorageKey, stepId);
       } catch {
         // Private browsing / quota — autosave is best-effort by design.
@@ -53,7 +63,12 @@ export function useFunnelAutosave<TValues>({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [values, stepId, enabled, debounceMs, storageKey, stepStorageKey, shouldPersist]);
+    // `shouldPersist` is read through the ref-backed callback at fire time, so
+    // it is deliberately not a dependency — a caller passing an unmemoized
+    // predicate would otherwise re-arm the debounce on every render, which is
+    // the exact bug this snapshot dependency exists to fix.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshotJson, stepId, enabled, debounceMs, storageKey, stepStorageKey]);
 
   const readSaved = useCallback((): FunnelSaved<TValues> | null => {
     try {

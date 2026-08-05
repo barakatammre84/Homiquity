@@ -696,11 +696,12 @@ export interface Underwriting {
   automatedUnderwritings?: AutomatedUnderwritings;
 }
 
+// U-1 (2026-08-05): these mirror the XSD content models exactly — the prior
+// fields (underwritingDecisionType / underwritingMethodType /
+// automatedUnderwritingResultType) do not exist in MISMO 3.4 and were removed.
 export interface UnderwritingDetail {
-  underwritingDecisionType?: string;
-  underwritingMethodType?: string;
-  underwriterName?: string;
-  underwritingDecisionDate?: string;
+  loanManualUnderwritingIndicator?: boolean;
+  loanUnderwriterName?: string;
 }
 
 export interface AutomatedUnderwritings {
@@ -708,9 +709,11 @@ export interface AutomatedUnderwritings {
 }
 
 export interface AutomatedUnderwriting {
-  automatedUnderwritingResultType?: string;
-  automatedUnderwritingSystemType?: string;
   automatedUnderwritingCaseIdentifier?: string;
+  automatedUnderwritingDecisionDatetime?: string;
+  automatedUnderwritingRecommendationDescription?: string;
+  automatedUnderwritingSystemType?: string;
+  automatedUnderwritingSystemTypeOtherDescription?: string;
 }
 
 export interface Parties {

@@ -724,30 +724,37 @@ function buildLoanNode(dto: MISMOLoanDTO, mersMin?: string, loanState?: LoanStat
   }
 
   if (isApprovedGradeLoanAppStatus(application.status)) {
+    // Schema-true AUS expression (U-1, verified against MISMO_3_0.xsd):
+    // AUTOMATED_UNDERWRITINGS must precede UNDERWRITING_DETAIL, the
+    // recommendation rides in AutomatedUnderwritingRecommendationDescription
+    // (before SystemType in the sequence), and UNDERWRITING_DETAIL has no
+    // decision element — its nearest legal statement is the manual-UW flag.
+    // SystemType stays "Other" with an honest description: the AUS legs are
+    // deterministic simulations, and a delivery file must never claim
+    // DesktopUnderwriter until the real DU integration (F6) produces the
+    // casefile id (aus_casefile_id) it would assert.
     loanChildren.push({
       tag: "UNDERWRITING",
       children: [
-        {
-          tag: "UNDERWRITING_DETAIL",
-          children: [
-            {
-              tag: "UnderwritingDecisionType",
-              text: "Approve"
-            },
-            { tag: "UnderwritingMethodType", text: "AutomatedUnderwriting" },
-          ],
-        },
         {
           tag: "AUTOMATED_UNDERWRITINGS",
           children: [
             {
               tag: "AUTOMATED_UNDERWRITING",
               children: [
+                { tag: "AutomatedUnderwritingRecommendationDescription", text: "Approve" },
                 { tag: "AutomatedUnderwritingSystemType", text: "Other" },
-                { tag: "AutomatedUnderwritingResultType", text: "Approve" },
+                {
+                  tag: "AutomatedUnderwritingSystemTypeOtherDescription",
+                  text: "Proprietary deterministic underwriting cascade",
+                },
               ],
             },
           ],
+        },
+        {
+          tag: "UNDERWRITING_DETAIL",
+          children: [{ tag: "LoanManualUnderwritingIndicator", text: "false" }],
         },
       ],
     });
