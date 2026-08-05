@@ -142,7 +142,21 @@ function parseChangedLines(diff) {
 }
 
 function main() {
-  const rawFiles = process.env.CHANGED_FILES;
+  // Both inputs may arrive EITHER inline in an env var or as a path to a file
+  // holding the same text. The file form exists because `git diff -U0` on a large
+  // PR exceeds Linux's MAX_ARG_STRLEN (131,072 bytes — the per-string cap on the
+  // environment, not the better-known total-size cap). When it does, execve fails
+  // with E2BIG and the step dies as `pnpm: Argument list too long` BEFORE this
+  // script runs at all — i.e. a misleading infrastructure error, after every real
+  // check in the gate has already passed. Observed at 137,761 bytes on a
+  // documentation-heavy PR. Reading from a file removes the ceiling entirely.
+  const readInput = (name) => {
+    const filePath = process.env[`${name}_FILE`];
+    if (filePath) return require("fs").readFileSync(filePath, "utf8");
+    return process.env[name];
+  };
+
+  const rawFiles = readInput("CHANGED_FILES");
   if (rawFiles === undefined) {
     console.log("security-review-guard: CHANGED_FILES unset (not a PR build) — skipping.");
     return;
@@ -165,7 +179,7 @@ function main() {
     process.exit(1);
   }
 
-  const changedLines = parseChangedLines(process.env.CHANGED_LINES);
+  const changedLines = parseChangedLines(readInput("CHANGED_LINES"));
   const triggers = detectTriggers(files, changedLines);
 
   if (triggers.length === 0) {

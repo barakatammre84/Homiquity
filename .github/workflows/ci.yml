@@ -149,8 +149,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")" \
-          CHANGED_LINES="$(git diff -U0 "$BASE_SHA" "$HEAD_SHA")" \
+          # Via FILES, not env vars. `git diff -U0` on a large PR exceeds Linux's
+          # MAX_ARG_STRLEN (131,072 bytes — the per-STRING environment cap, not the
+          # total-size one). Past it, execve fails with E2BIG and this step dies as
+          # `pnpm: Argument list too long` before the guard runs at all — a
+          # misleading infra failure reported AFTER every real check in the gate has
+          # passed. First hit at 137,761 bytes on a documentation-heavy PR; the
+          # guard reads *_FILE in preference to the inline vars.
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/changed_files.txt"
+          git diff -U0 "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/changed_lines.diff"
+          CHANGED_FILES_FILE="$RUNNER_TEMP/changed_files.txt" \
+          CHANGED_LINES_FILE="$RUNNER_TEMP/changed_lines.diff" \
             pnpm guard:security
       - name: Query-key convergence guard
         # Fails on a template-string queryKey in a factory-owned family

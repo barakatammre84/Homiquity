@@ -46,6 +46,7 @@ import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
 import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
 import { calculateAffordabilityEstimate, type AffordabilityEstimateResults } from "@/lib/affordabilityEstimate";
 import { buildTeaserInputs, parseTargetPrice } from "./preApproval/affordabilityTeaser";
+import { FUNNEL_SOFT_PULL_CONSENT_TEXT } from "@shared/creditConsentCopy";
 
 export default function PreApproval() {
   return (
@@ -656,11 +657,21 @@ function PreApprovalFunnel() {
                 className="mt-0.5"
                 data-testid="checkbox-soft-pull-consent"
               />
-              <span className="text-sm text-muted-foreground leading-relaxed">
-                I authorize Homiquity to obtain my credit report using a{" "}
-                <span className="font-medium text-foreground">soft inquiry</span>, which will not
-                affect my credit score. This authorization is required by the Fair Credit
-                Reporting Act (FCRA) and is not an application for credit.
+              {/*
+                Rendered from the SHARED constant the server also persists as
+                `credit_consents.disclosure_text`, so the words on screen and the
+                words in the evidence record cannot drift (F-034). Split only to
+                emphasise "soft inquiry" — the concatenation is byte-identical to
+                the constant, so fidelity is preserved. Edit the copy in
+                shared/creditConsentCopy.ts, never here.
+              */}
+              <span
+                className="text-sm text-muted-foreground leading-relaxed"
+                data-testid="text-soft-pull-consent"
+              >
+                {FUNNEL_SOFT_PULL_CONSENT_TEXT.split("soft inquiry")[0]}
+                <span className="font-medium text-foreground">soft inquiry</span>
+                {FUNNEL_SOFT_PULL_CONSENT_TEXT.split("soft inquiry")[1]}
               </span>
             </label>
           </div>

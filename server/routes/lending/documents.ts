@@ -220,7 +220,12 @@ export function registerDocumentRoutes(
         mimeType: fileMeta.mimeType,
         storagePath: fileMeta.storagePath,
         status: DOCUMENT_STATUS.UPLOADED,
-        notes: description || null,
+        // Borrower free text goes to its OWN column. It used to land in
+        // `notes`, which borrowerGraph and the coach parse as trusted
+        // extraction output — so a borrower could type JSON and have it read
+        // back as document-verified fact (F-027). `notes` is now written only
+        // by the extraction routes.
+        borrowerDescription: description || null,
       });
 
       logAudit(req, "document.uploaded", "document", document.id, {

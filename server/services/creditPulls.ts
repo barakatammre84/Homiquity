@@ -5,7 +5,7 @@ import { creditPulls, adverseActions, type InsertCreditPull, type CreditPull, ty
 import { eq, and, desc } from "drizzle-orm";
 import { encryptSensitiveData, computeHash } from "./encryptionService";
 import { logCreditAction } from "./creditAuditChain";
-import { getActiveConsent } from "./creditConsents";
+import { getActiveConsent, consentCoversPullType } from "./creditConsents";
 
 /**
  * Per-pull vendor cost, in dollars, by pull type.
@@ -67,6 +67,21 @@ export async function requestCreditPull(
     throw new Error("Valid consent required before credit pull");
   }
 
+  // The consent must AUTHORIZE this pull type, not merely exist (F-035).
+  // Previously the only check was the id comparison above — which is
+  // tautological, since the caller gets that id from getActiveConsent — so a
+  // `soft_pull` consent from the pre-approval funnel (whose checkbox promises
+  // "a soft inquiry, which will not affect my credit score") unblocked a hard
+  // tri-merge pull. Every other consent surface in this codebase already
+  // resolves BY TYPE via consentGate.ts; this was the one call site that
+  // ignored the taxonomy its own schema declares.
+  if (!consentCoversPullType(consent.consentType, data.pullType)) {
+    throw new Error(
+      `Consent scope mismatch: a "${consent.consentType}" consent does not authorize a "${data.pullType}" pull. ` +
+        `Obtain the borrower's authorization for this inquiry type before pulling.`,
+    );
+  }
+
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 120);
 
@@ -79,6 +94,17 @@ export async function requestCreditPull(
     status: "pending",
     requestedAt: new Date(),
     expiresAt,
+    // Flag at INSERT, not at completion (F-036). `isSimulated` is
+    // `default(false).notNull()` and the only other assignment lives inside
+    // simulateCreditPullCompletion — which throws in production before
+    // reaching it. So a production row used to persist forever as
+    // `tri_merge / pending / isSimulated: FALSE`, affirmatively asserting a
+    // REAL bureau inquiry that never happened, corroborated by a
+    // `pull_requested` entry in the tamper-evident audit chain. The column's
+    // own contract is "Surfaced so staff and audit can tell a real pull from a
+    // simulated one at a glance." L2 invariant I10 requires flag AND throw;
+    // flagging here makes the record true regardless of which path runs next.
+    isSimulated: creditVendorIsSimulated(),
   };
 
   const [result] = await db.insert(creditPulls).values(pull).returning();

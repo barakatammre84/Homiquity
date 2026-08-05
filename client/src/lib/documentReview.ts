@@ -35,11 +35,17 @@ export interface ParsedExtractionNotes {
 }
 
 /**
- * documents.notes is overloaded: a plain-text description at upload time, then
- * a JSON extraction record once an extractor runs — and that JSON has shipped
- * in several shapes (routes/documents.ts, routes/lending/documents.ts, the
- * autopilot orchestrator, plus legacy value-bearing blobs the coach tolerates).
- * Parse defensively; return null for anything that isn't an extraction record.
+ * documents.notes is SERVER-WRITTEN extraction lineage only, in one of several
+ * shapes (routes/documents.ts, routes/lending/documents.ts, the autopilot
+ * orchestrator). It is no longer overloaded: the borrower's upload description
+ * moved to its own `borrowerDescription` column in migration 0046, because
+ * while it shared this column a borrower could type JSON here and have
+ * borrowerGraph and the AI coach read it back as document-verified extraction
+ * (F-027). Anything borrower-authored belongs in `borrowerDescription`.
+ *
+ * Still parse defensively — historical rows predating 0046 may hold a
+ * plain-text description, or value-bearing JSON — and return null for anything
+ * that isn't an extraction record.
  */
 export function parseExtractionNotes(notes: string | null | undefined): ParsedExtractionNotes | null {
   if (!notes) return null;
