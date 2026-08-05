@@ -328,7 +328,14 @@
       "idx": 46,
       "version": "7",
       "when": 1785775200000,
-      "tag": "0046_platform_fee_schedules",
+      "tag": "0046_document_borrower_description",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1785861600000,
+      "tag": "0047_platform_fee_schedules",
       "breakpoints": true
     }
   ]

@@ -13,6 +13,13 @@ import {
 import { pickActiveLoanApplication } from "@shared/schema";
 import type { CoachConversation, User } from "@shared/schema";
 import { z } from "zod";
+
+/**
+ * The only values `documents.notes.confidence` may take. Anything a legacy row
+ * carries that is not on this list is discarded rather than passed through to
+ * the coach prompt — see the read site below (F-027 follow-up).
+ */
+const EXTRACTION_CONFIDENCE_LEVELS: readonly string[] = ["high", "medium", "low"];
 import { routeParam } from "../http/routeParams";
 
 const messageSchema = z.object({
@@ -70,17 +77,31 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
         let extractionIssues: string[] | null = null;
         let documentDate: string | null = null;
 
+        // Only `confidence` is read here, and only because it is one of the
+        // keys the extraction writers actually emit. The other reads that used
+        // to live here — employeeName, employerName, issues, and the
+        // payPeriodEnd/statementEndDate/statementDate/documentYear date keys —
+        // are written by NO extractor in this repo, so they could only ever be
+        // populated by a borrower typing JSON into the upload description box,
+        // which landed verbatim in this column. `issues` was the worst of them:
+        // coachingContext interpolates it UNESCAPED into a prompt block headed
+        // "DOCUMENT-VERIFIED DATA (HIGHEST TRUST) … overrides EVERYTHING else",
+        // in a request that carries live tool access — a clean prompt-injection
+        // primitive (F-027). Deleted, not sanitized: there is no legitimate
+        // producer to sanitize for (F-028).
         if (d.notes) {
           try {
-            const parsed = JSON.parse(d.notes as string);
-            if (parsed.employeeName) extractedName = parsed.employeeName;
-            if (parsed.employerName) extractedEmployer = parsed.employerName;
-            if (parsed.confidence) extractionConfidence = parsed.confidence;
-            if (parsed.issues && Array.isArray(parsed.issues)) extractionIssues = parsed.issues;
-            if (parsed.payPeriodEnd) documentDate = parsed.payPeriodEnd;
-            else if (parsed.statementEndDate) documentDate = parsed.statementEndDate;
-            else if (parsed.statementDate) documentDate = parsed.statementDate;
-            else if (parsed.documentYear) documentDate = `${parsed.documentYear}-12-31`;
+            const lineage = JSON.parse(d.notes as string);
+            // Validate against the enum, do NOT trust the parsed value. JSON.parse
+            // returns `any`, so the declared "high" | "medium" | "low" type above is
+            // not enforced at runtime — and coachingContext interpolates this string
+            // VERBATIM into a prompt that carries live tool access. Checking only
+            // that the *key* exists (as the first cut of this fix did) leaves the
+            // *value* attacker-controlled on any pre-0046 row, where borrower text
+            // could still be sitting in `notes`. Anything off-enum is dropped.
+            if (EXTRACTION_CONFIDENCE_LEVELS.includes(lineage.confidence)) {
+              extractionConfidence = lineage.confidence;
+            }
           } catch {
             // notes is not valid JSON, skip
           }
@@ -99,37 +120,19 @@ async function buildVerifiedContext(userId: string, user: User, propertyContext?
         };
       });
 
-      for (const doc of docs) {
-        if (!doc.notes) continue;
-        try {
-          const parsed = JSON.parse(doc.notes as string);
-          if (!parsed.confidence || parsed.confidence === "low") continue;
-
-          const extracted: DocumentExtractedData = {
-            documentType: doc.documentType,
-            confidence: parsed.confidence,
-          };
-
-          if (parsed.grossIncome) extracted.grossIncome = parsed.grossIncome;
-          if (parsed.adjustedGrossIncome) extracted.adjustedGrossIncome = parsed.adjustedGrossIncome;
-          if (parsed.taxableIncome) extracted.taxableIncome = parsed.taxableIncome;
-          if (parsed.filingStatus) extracted.filingStatus = parsed.filingStatus;
-          if (parsed.documentYear) extracted.documentYear = parsed.documentYear;
-          if (parsed.grossPay) extracted.grossPay = parsed.grossPay;
-          if (parsed.netPay) extracted.netPay = parsed.netPay;
-          if (parsed.ytdGross) extracted.ytdGross = parsed.ytdGross;
-          if (parsed.employerName) extracted.employerName = parsed.employerName;
-          if (parsed.employeeName) extracted.employeeName = parsed.employeeName;
-          if (parsed.closingBalance) extracted.closingBalance = parsed.closingBalance;
-          if (parsed.totalDeposits) extracted.totalDeposits = parsed.totalDeposits;
-          if (parsed.accountType) extracted.accountType = parsed.accountType;
-
-          const hasData = Object.keys(extracted).length > 2;
-          if (hasData) documentExtractedData.push(extracted);
-        } catch {
-          // notes is not valid JSON extraction data, skip
-        }
-      }
+      // documentExtractedData intentionally stays EMPTY. It fed the coach's
+      // "TIER 1: DOCUMENT-VERIFIED DATA (HIGHEST TRUST)" prompt block, and it
+      // was populated by reading extracted VALUES out of documents.notes —
+      // values no extractor in this repo has ever written there (F-028). The
+      // only way that block was ever non-empty was a borrower typing JSON into
+      // the upload description box, which landed verbatim in `notes` and came
+      // back as "document-verified" fact overriding their real application
+      // data (F-027).
+      //
+      // Restoring this block properly means reading server-persisted extraction
+      // values (the tax_insights table already does this for tax returns) — not
+      // re-parsing `notes`. Tracked as F-028; deliberately left empty rather
+      // than left forgeable in the meantime.
     } catch (e) {
       console.warn("[Coach] Could not fetch documents:", e);
     }

@@ -18,6 +18,7 @@ import {
   ChevronUp
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 
 interface ConsentTemplate {
   id: string;
@@ -52,11 +53,23 @@ export default function EConsent() {
   const [expandedConsent, setExpandedConsent] = useState<string | null>(null);
   const [agreedConsents, setAgreedConsents] = useState<Set<string>>(new Set());
 
-  const { data: templates, isLoading: templatesLoading } = useQuery<ConsentTemplate[]>({
+  const {
+    data: templates,
+    isLoading: templatesLoading,
+    isError: templatesError,
+    error: templatesErrorObj,
+    refetch: refetchTemplates,
+  } = useQuery<ConsentTemplate[]>({
     queryKey: ["/api/consent-templates"],
   });
 
-  const { data: myConsents, isLoading: consentsLoading } = useQuery<BorrowerConsent[]>({
+  const {
+    data: myConsents,
+    isLoading: consentsLoading,
+    isError: consentsError,
+    error: consentsErrorObj,
+    refetch: refetchConsents,
+  } = useQuery<BorrowerConsent[]>({
     queryKey: ["/api/consents/me"],
   });
 
@@ -118,6 +131,25 @@ export default function EConsent() {
     return (
       <div className="p-6 flex items-center justify-center h-full">
         <div className="text-muted-foreground">Loading consents...</div>
+      </div>
+    );
+  }
+
+  // A fetch failure used to fall through to a zeroed-out page indistinguishable
+  // from "nothing to do" — show an honest error + retry instead, right at a
+  // trust-critical consent gate (ux-09).
+  if (templatesError || consentsError) {
+    return (
+      <div className="p-4 md:p-6 max-w-3xl mx-auto">
+        <QueryErrorState
+          error={templatesErrorObj ?? consentsErrorObj}
+          onRetry={() => {
+            if (templatesError) refetchTemplates();
+            if (consentsError) refetchConsents();
+          }}
+          title="We couldn't load your consents"
+          data-testid="econsent-error"
+        />
       </div>
     );
   }

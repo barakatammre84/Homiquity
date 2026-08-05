@@ -27,6 +27,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { QueryErrorState } from "@/components/ui/query-boundary";
 import type { LoanApplication, DraftConsentProgress } from "@shared/schema";
 
 interface DisclosureData {
@@ -83,12 +84,24 @@ export default function CreditConsent() {
   const [saving, setSaving] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
-  const { data: application, isLoading: appLoading } = useQuery<LoanApplication>({
+  const {
+    data: application,
+    isLoading: appLoading,
+    isError: appError,
+    error: appErrorObj,
+    refetch: refetchApp,
+  } = useQuery<LoanApplication>({
     queryKey: loanApplicationKeys.detail(applicationId),
     enabled: !!applicationId,
   });
 
-  const { data: disclosure, isLoading: disclosureLoading } = useQuery<DisclosureData>({
+  const {
+    data: disclosure,
+    isLoading: disclosureLoading,
+    isError: disclosureError,
+    error: disclosureErrorObj,
+    refetch: refetchDisclosure,
+  } = useQuery<DisclosureData>({
     queryKey: ["/api/credit/disclosure"],
     enabled: !!applicationId,
   });
@@ -207,6 +220,26 @@ export default function CreditConsent() {
       <PageShell width="content" contentClassName="space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
+      </PageShell>
+    );
+  }
+
+  // A fetch failure on `application` used to be indistinguishable from a
+  // genuine 404 below — right at a page that authorizes a credit pull, that's
+  // the worst place to tell a borrower their file vanished when the real
+  // problem is a transient network error (ux-10).
+  if (appError || disclosureError) {
+    return (
+      <PageShell width="content">
+        <QueryErrorState
+          error={appErrorObj ?? disclosureErrorObj}
+          onRetry={() => {
+            if (appError) refetchApp();
+            if (disclosureError) refetchDisclosure();
+          }}
+          title="We couldn't load this page"
+          data-testid="credit-consent-error"
+        />
       </PageShell>
     );
   }
@@ -438,7 +471,7 @@ export default function CreditConsent() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => setLocation(`/application/${applicationId}`)}
+                  onClick={() => setLocation("/dashboard")}
                   data-testid="button-cancel"
                 >
                   Cancel

@@ -6,6 +6,38 @@ import { eq, and, desc } from "drizzle-orm";
 import { logCreditAction } from "./creditAuditChain";
 import { CURRENT_DISCLOSURE_VERSION, FCRA_DISCLOSURE_TEXT } from "./creditCatalogs";
 
+/**
+ * Which consent types authorize which pull types (F-035).
+ *
+ * DENY BY DEFAULT and exact-match. A `soft_pull` consent authorizes ONLY a soft
+ * pull — that is the whole point: the pre-approval funnel's checkbox tells the
+ * borrower "a soft inquiry, which will not affect my credit score", and before
+ * this map existed that consent silently unblocked a hard tri-merge.
+ *
+ * `hard_pull` covers soft as lesser-included, because the hard-pull disclosure
+ * the borrower is shown at /credit-consent explicitly authorizes "both 'soft'
+ * inquiries ... and 'hard' inquiries".
+ *
+ * `credit_pull` and `monitoring` appear in the schema's taxonomy comment but no
+ * code path has ever written them; they intentionally authorize nothing, so a
+ * future writer fails closed rather than inheriting a guessed permission.
+ *
+ * ⚠ The MECHANISM here needs no legal interpretation; the MAP does. It encodes a
+ * reading of FCRA's written-instruction requirement that could not be verified
+ * against primary sources (absent from this repo — escalations U-11/U-12), so it
+ * is deliberately the strictest defensible mapping. Widen it only on a ratified
+ * answer, never to make a call site pass.
+ */
+const CONSENT_PULL_COVERAGE: Record<string, readonly string[]> = {
+  soft_pull: ["soft"],
+  hard_pull: ["soft", "hard", "tri_merge"],
+};
+
+/** True when `consentType` authorizes `pullType`. Unknown types authorize nothing. */
+export function consentCoversPullType(consentType: string, pullType: string): boolean {
+  return (CONSENT_PULL_COVERAGE[consentType] ?? []).includes(pullType);
+}
+
 export async function createCreditConsent(
   data: {
     applicationId: string;
@@ -17,14 +49,28 @@ export async function createCreditConsent(
     consentGiven: boolean;
     ipAddress?: string;
     userAgent?: string;
+    /**
+     * The disclosure text ACTUALLY RENDERED to this borrower, and its version.
+     * The schema contract for this column is "Full text of disclosure shown"
+     * (shared/schema/compliance.ts) — so it must be what they saw, not a
+     * constant. Hardcoding `FCRA_DISCLOSURE_TEXT` here meant a funnel borrower
+     * who only ever saw a one-line soft-inquiry checkbox had a ~1,700-character
+     * both-inquiry-types authorization recorded against them, with IP, user
+     * agent and signatureType "electronic" attached as e-signature evidence
+     * (F-034). Callers pass what they displayed; the fallback preserves prior
+     * behaviour only for callers not yet migrated.
+     */
+    disclosureText?: string;
+    disclosureVersion?: string;
   }
 ): Promise<CreditConsent> {
+  const disclosureVersion = data.disclosureVersion ?? CURRENT_DISCLOSURE_VERSION;
   const consent: InsertCreditConsent = {
     applicationId: data.applicationId,
     userId: data.userId,
     consentType: data.consentType,
-    disclosureVersion: CURRENT_DISCLOSURE_VERSION,
-    disclosureText: FCRA_DISCLOSURE_TEXT,
+    disclosureVersion,
+    disclosureText: data.disclosureText ?? FCRA_DISCLOSURE_TEXT,
     consentGiven: data.consentGiven,
     consentTimestamp: new Date(),
     borrowerFullName: data.borrowerFullName,
@@ -45,7 +91,7 @@ export async function createCreditConsent(
     action: data.consentGiven ? "consent_given" : "consent_declined",
     actionDetails: {
       consentType: data.consentType,
-      disclosureVersion: CURRENT_DISCLOSURE_VERSION,
+      disclosureVersion,
     },
     performedBy: data.userId,
     ipAddress: data.ipAddress,

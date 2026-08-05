@@ -16,7 +16,7 @@
 // other instances.
 //
 // An EMPTY table is valid and means "use the compiled-in baseline". Nothing is
-// seeded (migration 0046 deliberately inserts no row), so
+// seeded (migration 0047 deliberately inserts no row), so
 // DEFAULT_PLATFORM_FEE_SCHEDULE remains the documented default until an admin
 // publishes over it.
 // ---------------------------------------------------------------------------

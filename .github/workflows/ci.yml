@@ -64,6 +64,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full history so the §9 guard can diff base..head. The default shallow
+          # checkout has neither sha, and a guard that cannot see the diff would
+          # silently pass every PR.
+          fetch-depth: 0
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -112,6 +117,50 @@ jobs:
         # PR. (Job `name:` above deliberately unchanged — verbatim required-check
         # string; see the rename warning.)
         run: pnpm guard:tokens
+      - name: Knowledge-base index guard
+        # "An unindexed doc is an unread doc" (TEAM_PRACTICES). Fails on a
+        # knowledge-base/*.md missing from the index, or an index link pointing at a
+        # path that does not exist. Deterministic — it reads only repo contents, which
+        # is why it belongs in the required gate while its sibling doc-freshness guard
+        # does NOT: that one goes overdue on a calendar date and would block every
+        # merge in the repo for a reason no PR caused. See doc-freshness.yml.
+        # (Job `name:` above deliberately unchanged — verbatim required-check string;
+        # see the rename warning.)
+        run: pnpm guard:kb
+      - name: Security-review guard (TEAM_PRACTICES §9)
+        # Fails when the PR touches a §9 trigger (PII vault/encryption, auth/sessions,
+        # role gates, uploads, outbound messaging, PII-adjacent logging) and the PR body
+        # records no security review. §9 is binding but was unenforceable: CODEOWNERS +
+        # required code-owner review is the usual mechanism, and it cannot work with a
+        # single collaborator — GitHub forbids self-approval and enforce_admins is on, so
+        # it would deadlock every §9 PR. This enforces the ARTIFACT instead of a second
+        # approver. It proves a review was written down, never that it was correct, and it
+        # cannot see two §9 triggers at all (a PII column in shared/schema/, a new PII
+        # sub-processor) — those stay human judgement. (Job `name:` above deliberately
+        # unchanged — verbatim required-check string; see the rename warning.)
+        env:
+          # Via env, never inlined into run: — a PR body is attacker-controlled text and
+          # ${{ }} interpolation into a shell script is a command-injection vector.
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # pipefail so a git failure reds the gate instead of yielding an empty diff that
+        # the guard would read as "no triggers touched" and pass.
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Via FILES, not env vars. `git diff -U0` on a large PR exceeds Linux's
+          # MAX_ARG_STRLEN (131,072 bytes — the per-STRING environment cap, not the
+          # total-size one). Past it, execve fails with E2BIG and this step dies as
+          # `pnpm: Argument list too long` before the guard runs at all — a
+          # misleading infra failure reported AFTER every real check in the gate has
+          # passed. First hit at 137,761 bytes on a documentation-heavy PR; the
+          # guard reads *_FILE in preference to the inline vars.
+          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/changed_files.txt"
+          git diff -U0 "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/changed_lines.diff"
+          CHANGED_FILES_FILE="$RUNNER_TEMP/changed_files.txt" \
+          CHANGED_LINES_FILE="$RUNNER_TEMP/changed_lines.diff" \
+            pnpm guard:security
       - name: Query-key convergence guard
         # Fails on a template-string queryKey in a factory-owned family
         # (loan-applications, dashboard, tasks, calculator-results,

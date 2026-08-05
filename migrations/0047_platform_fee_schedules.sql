@@ -1,4 +1,4 @@
--- 0046: admin-editable platform fee schedule (audit findings F-17 / F-19)
+-- 0047: admin-editable platform fee schedule (audit findings F-17 / F-19)
 -- Expand-only, idempotent, NEW table only. The currently-deployed app tolerates
 -- it (it simply never reads it) and the new app tolerates its absence of rows.
 --

@@ -266,6 +266,11 @@ export const onboardingStatusKeys = {
   root: () => ["/api/onboarding/status"] as const,
 };
 
+export const consentKeys = {
+  check: (applicationId: string, consentType: string) =>
+    ["/api/consents/check", applicationId, consentType] as const,
+};
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

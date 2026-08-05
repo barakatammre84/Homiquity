@@ -369,7 +369,7 @@ Resolving F-17 in code left both of its inputs still requiring a deploy to move:
 was compile-time constants, and the wholesale comp bands were seed data with no surface. Since
 those are exactly the numbers a lender negotiation changes, they are now admin-editable.
 
-- **`platform_fee_schedules`** (migration `0046`) — **append-only and versioned**. Publishing
+- **`platform_fee_schedules`** (migration `0047`) — **append-only and versioned**. Publishing
   supersedes the active row and inserts a new one inside one transaction; nothing is ever updated
   in place, because a fee schedule is a fact about how a file was priced and an issued Loan
   Estimate has to stay reproducible. A partial unique index makes a concurrent double-publish fail

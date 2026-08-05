@@ -177,7 +177,33 @@ export function CreditTab({
                   <p>Signed by: {creditData.consent?.borrowerFullName}</p>
                   <p>Date: {creditData.consent?.consentTimestamp && format(new Date(creditData.consent.consentTimestamp), "MMM d, yyyy 'at' h:mm a")}</p>
                   <p>Version: {creditData.consent?.disclosureVersion}</p>
+                  {/*
+                    Show what the borrower actually authorized. The card used to
+                    show signer/date/version only, so a soft-scoped consent looked
+                    identical to a hard one and staff clicked "Pull Credit" in good
+                    faith (F-035). The server now refuses the mismatch; this is so
+                    the human is not surprised by that refusal.
+                  */}
+                  <p data-testid="text-consent-scope">
+                    Authorizes:{" "}
+                    <span className="font-medium text-foreground">
+                      {creditData.consent?.consentType === "soft_pull"
+                        ? "soft inquiry only"
+                        : creditData.consent?.consentType === "hard_pull"
+                          ? "soft or hard inquiry"
+                          : (creditData.consent?.consentType ?? "unknown")}
+                    </span>
+                  </p>
                 </div>
+                {creditData.consent?.consentType === "soft_pull" && (
+                  <p
+                    className="rounded-md bg-warning-subtle p-2 text-xs text-warning-subtle-foreground"
+                    data-testid="text-consent-soft-only-warning"
+                  >
+                    This borrower authorized a soft inquiry only. A hard or tri-merge pull will be
+                    refused until they authorize one.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-3">

@@ -69,7 +69,7 @@ export interface PlatformFeeSchedule {
 /**
  * The compiled-in baseline, used whenever no schedule has been published.
  *
- * This is deliberately the single source of the default: migration 0046 seeds
+ * This is deliberately the single source of the default: migration 0047 seeds
  * NO row, so an empty `platform_fee_schedules` table means "use this". Seeding
  * the constants into the table as well would fork the baseline in two places
  * and let them drift.

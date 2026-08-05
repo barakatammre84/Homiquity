@@ -130,7 +130,7 @@ export function registerPricingPolicyRoutes(app: Express) {
   // -------------------------------------------------------------------------
   // Publish a new version. Append-only: supersede the active row and insert,
   // both inside one transaction so there is never a window with zero or two
-  // active schedules (the partial unique index in migration 0046 is the
+  // active schedules (the partial unique index in migration 0047 is the
   // backstop if two publishes race).
   // -------------------------------------------------------------------------
   app.post("/api/admin/pricing-policy/fee-schedule", requireRole("admin"), async (req, res) => {
