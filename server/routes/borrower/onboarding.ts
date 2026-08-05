@@ -16,6 +16,62 @@ import { routeParam } from "../../http/routeParams";
 // convention of periodic CIP refresh; shorten it, never lengthen it silently.
 const KYC_CLEARANCE_VALIDITY_DAYS = 365;
 
+// ---------------------------------------------------------------------------
+// Onboarding-profile field policy (finding F-045)
+//
+// `identityVerified` and `kycCleared` were borrower-writable through
+// PATCH /api/onboarding/profile/:id. The server declines to write both itself,
+// deliberately: the KBA handler refuses `identityVerified` because "granting
+// identity-verified status from a simulated challenge would create false
+// compliance evidence", and `simulateKycScreening` refuses to clear a screening
+// for the same reason — which is the whole premise of the staff clearance
+// workflow (F-044). Two deliberate refusals, defeated by one PATCH.
+//
+// The rule that decides membership below: **if the server deliberately declines
+// to write a field itself, no client may write it either.**
+// `documentsComplete`/`personalInfoComplete` fail that test — nothing refuses to
+// write them — so they stay borrower-attestable. If either ever gates anything,
+// derive it server-side rather than promoting a borrower's claim about their
+// own file.
+//
+// Exported so the policy is testable as behaviour rather than as source text.
+// ---------------------------------------------------------------------------
+
+/** Journey state the borrower legitimately drives. */
+export const BORROWER_ATTESTABLE_PROFILE_FIELDS = [
+  "journeyStatus",
+  "currentStep",
+  "completedSteps",
+  "progressPercent",
+  "documentsComplete",
+  "personalInfoComplete",
+] as const;
+
+/** Compliance attestations. Only identity verification and compliance review write these. */
+export const SERVER_ONLY_PROFILE_FIELDS = ["identityVerified", "kycCleared"] as const;
+
+/**
+ * Split a PATCH body into the fields that may be applied and the server-only
+ * fields the caller tried to set.
+ *
+ * `rejected` is returned rather than quietly dropped: filtering a
+ * self-attestation attempt out silently makes it indistinguishable from a
+ * well-formed request, and that signal is worth keeping.
+ */
+export function partitionProfileUpdate(body: Record<string, unknown>): {
+  update: Record<string, unknown>;
+  rejected: string[];
+} {
+  const rejected = SERVER_ONLY_PROFILE_FIELDS.filter((f) => body?.[f] !== undefined);
+  const update: Record<string, unknown> = {};
+  for (const key of BORROWER_ATTESTABLE_PROFILE_FIELDS) {
+    if (body?.[key] !== undefined) {
+      update[key] = body[key];
+    }
+  }
+  return { update, rejected: [...rejected] };
+}
+
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
 // deal-team membership for processor/underwriter/closer.
@@ -168,16 +224,19 @@ export function registerOnboardingRoutes(
         return res.status(404).json({ error: "Profile not found" });
       }
 
-      const allowedFields = [
-        "journeyStatus", "currentStep", "completedSteps", "progressPercent",
-        "identityVerified", "kycCleared", "documentsComplete",
-        "personalInfoComplete",
-      ];
-      const safeUpdate: Record<string, any> = {};
-      for (const key of allowedFields) {
-        if (req.body[key] !== undefined) {
-          safeUpdate[key] = req.body[key];
-        }
+      // Field policy — see BORROWER_ATTESTABLE_PROFILE_FIELDS at module scope (F-045).
+      const { update: safeUpdate, rejected } = partitionProfileUpdate(req.body ?? {});
+
+      if (rejected.length > 0) {
+        logAudit(req, "onboarding.server_only_field_rejected", "onboarding_profile", profile.id, {
+          fields: rejected,
+        });
+        return res.status(400).json({
+          error:
+            "identityVerified and kycCleared are set by identity verification and compliance review, not by this endpoint.",
+          code: "SERVER_ONLY_FIELD",
+          fields: rejected,
+        });
       }
 
       const updated = await storage.updateOnboardingProfile(routeParam(req, "id"), safeUpdate);
