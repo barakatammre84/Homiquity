@@ -412,6 +412,22 @@ export function registerSubmissionRoutes(
   // minimum net worth are real exposures with no figure here, and a number
   // that looked complete would be worse than no number.
   // ---------------------------------------------------------------------
+  // Roadmap G-C: pull-through % + cycle-time days for a created-in window
+  // (default 90 days, clamp 7–365). Derived from the audit trail's status
+  // ledger, computed by the pure shared module. Admin-only: company-level
+  // funnel metrics, not a per-file view.
+  app.get("/api/reports/cycle-time", requireRole("admin"), async (req, res) => {
+    try {
+      const raw = parseInt(String(req.query.days ?? ""), 10);
+      const days = Number.isFinite(raw) ? Math.min(365, Math.max(7, raw)) : 90;
+      const { buildCycleTimeReport } = await import("../../services/cycleTimeReport");
+      res.json(await buildCycleTimeReport(days));
+    } catch (error) {
+      console.error("Cycle-time report error:", error);
+      res.status(500).json({ error: "Failed to build the cycle-time report" });
+    }
+  });
+
   app.get("/api/reports/contingent-liabilities", requireRole("admin"), async (_req, res) => {
     try {
       const { buildLiveContingentLiabilityRegister } = await import(

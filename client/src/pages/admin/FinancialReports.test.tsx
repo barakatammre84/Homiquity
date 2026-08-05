@@ -95,9 +95,23 @@ const liabilityRegister = {
   summary: "$8650.00 of contingent liability is measurable today across 4 exposure types. 3 further exposure(s) are real but unquantified here, so this is a FLOOR, not a reserve figure.",
 };
 
+const cycleReport = {
+  windowDays: 90,
+  totalCreated: 6,
+  outcomes: { funded: 2, denied: 1, withdrawn: 1, expired: 0, inFlight: 2 },
+  pullThroughResolvedPct: 50,
+  pullThroughOverallPct: 33.3,
+  cycleTime: { measuredCount: 1, unmeasuredFundedCount: 1, medianDays: 11, p90Days: 11 },
+  notes: [
+    "Resolved pull-through divides funded by files that reached any terminal state — the number the >70% gate means. Overall divides by everything created in the window; in-flight files drag it down.",
+    "1 funded file(s) have no usable funding transition in the audit trail — counted in pull-through, excluded from cycle time.",
+  ],
+};
+
 function renderPage(overrides?: {
   comp?: Record<string, unknown> | null;
   liabilities?: Record<string, unknown> | null;
+  cycle?: Record<string, unknown> | null;
 }) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity, enabled: false } },
@@ -105,14 +119,43 @@ function renderPage(overrides?: {
   const comp = overrides?.comp === undefined ? compensationReport : overrides.comp;
   const liabilities =
     overrides?.liabilities === undefined ? liabilityRegister : overrides.liabilities;
+  const cycle = overrides?.cycle === undefined ? cycleReport : overrides.cycle;
   if (comp) client.setQueryData(["/api/reports/compensation"], comp);
   if (liabilities) client.setQueryData(["/api/reports/contingent-liabilities"], liabilities);
+  if (cycle) client.setQueryData(["/api/reports/cycle-time"], cycle);
   return render(
     <QueryClientProvider client={client}>
       <FinancialReports />
     </QueryClientProvider>,
   );
 }
+
+describe("FinancialReports — funnel cycle-time card (G-C)", () => {
+  it("renders both pull-through denominators and the median with its gate", () => {
+    renderPage();
+    const card = screen.getByTestId("card-cycle-time");
+    expect(screen.getByTestId("stat-pull-through-resolved").textContent).toMatch(/gate is >70%/);
+    expect(screen.getByTestId("stat-median-cycle").textContent).toMatch(/11\.0 days/);
+    expect(card.textContent).toMatch(/in-flight files drag it down/i);
+  });
+
+  it("renders null funnel metrics as —, never zero, and keeps the unmeasured note verbatim", () => {
+    renderPage({
+      cycle: {
+        ...cycleReport,
+        pullThroughResolvedPct: null,
+        cycleTime: { measuredCount: 0, unmeasuredFundedCount: 1, medianDays: null, p90Days: null },
+      },
+    });
+    expect(screen.getByTestId("stat-pull-through-resolved").textContent).toMatch(
+      /not zero, undefined/i,
+    );
+    expect(screen.getByTestId("stat-median-cycle").textContent).toContain("—");
+    expect(screen.getByTestId("list-cycle-notes").textContent).toMatch(
+      /no usable funding transition/,
+    );
+  });
+});
 
 describe("FinancialReports", () => {
   it("flags zero approved lenders as the blocked state it is (F-5)", () => {
