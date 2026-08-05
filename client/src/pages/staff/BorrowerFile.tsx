@@ -1,57 +1,45 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
-import { useParams, useSearch, Link } from "wouter";
+import { useParams, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, ApiError, loanApplicationKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import { DealTeam } from "@/components/DealTeam";
 import { DealTeamManagement } from "@/components/DealTeamManagement";
-import { TaxIntelligencePanel } from "@/components/staff/TaxIntelligencePanel";
-import { ReviewWorkbenchPanel } from "@/components/staff/ReviewWorkbenchPanel";
 import {
   FileText,
   User,
-  DollarSign,
   CheckCircle2,
   Clock,
-  Download,
-  ArrowLeft,
-  Briefcase,
   CreditCard,
-  Home,
   Users,
   Brain,
   Receipt,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { ChangeOfCircumstancePanel } from "@/components/staff/ChangeOfCircumstancePanel";
-import { RiskBriefPanel } from "@/components/staff/RiskBriefPanel";
 import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { canReviewDocuments } from "@shared/documentStatus";
-import { formatCurrency } from "@/lib/formatters";
-import { DocumentReviewPanel } from "@/components/staff/DocumentReviewPanel";
 import { CREDIT_DECISION_ROLES, FINANCIAL_VERIFICATION_ROLES, type UrlaPersonalInfo } from "@shared/schema";
 
 import { type ApplicationData, type PipelineData } from "./borrowerFile/model";
 import { StatusUpdateDialog } from "./borrowerFile/StatusUpdateDialog";
-import { CompensationCard } from "./borrowerFile/CompensationCard";
 import { ConditionsTab } from "./borrowerFile/ConditionsTab";
 import { CreditTab } from "./borrowerFile/CreditTab";
 import { FinancialsTab } from "./borrowerFile/FinancialsTab";
 import { TimelineTab } from "./borrowerFile/TimelineTab";
-
-// Lazy so pdfjs-dist stays in a staff-only async chunk, off every borrower
-// bundle and off this page's own initial render.
-const DocumentViewer = lazy(() => import("@/components/staff/DocumentViewer"));
+import { FileHeaderBar } from "./borrowerFile/FileHeaderBar";
+import { FileSummaryCards } from "./borrowerFile/FileSummaryCards";
+import { OverviewTab } from "./borrowerFile/OverviewTab";
+import { DocumentsTab } from "./borrowerFile/DocumentsTab";
+import { TaxIntelTab } from "./borrowerFile/TaxIntelTab";
+import { FileNotFoundCard } from "./borrowerFile/FileNotFoundCard";
 
 const TAB_VALUES = ["overview", "documents", "conditions", "timeline", "credit", "financials", "tax-intel", "team"];
 
@@ -153,25 +141,20 @@ export default function BorrowerFile() {
   const personalInfo = urlaData?.personalInfo;
 
   if (!application) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>File Not Found</CardTitle>
-            <CardDescription>
-              This borrower file could not be found.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <Link href="/staff-dashboard">Back to Dashboard</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <FileNotFoundCard />;
   }
 
+  // ---------------------------------------------------------------------
+  // Role gates. Every one is computed HERE rather than inside the component
+  // that renders the control, so the whole set is greppable in one place and
+  // each can be read against the server route it mirrors. Sub-components take
+  // booleans, never the user object.
+  //
+  // canVerifyFinancials and the {canVerifyFinancials && ( ... )} block below
+  // must additionally stay in THIS FILE: tests/routeGateDrift.test.ts reads
+  // this source by path and asserts both. Moving either into ./borrowerFile/
+  // takes it out of that guard's view.
+  // ---------------------------------------------------------------------
   const isStaff2 = isStaffRole(user?.role || "");
   // Mirrors the server's role gate on PATCH /:id/status (statusDecisions.ts):
   // final credit decisions are 403'd for everyone else, so grey them out here.
@@ -180,6 +163,9 @@ export default function BorrowerFile() {
   // are 403'd there, so they must not be offered the button. Both sides read
   // FINANCIAL_VERIFICATION_ROLES (shared/schema/lendingCore.ts) so they can't drift.
   const canVerifyFinancials = FINANCIAL_VERIFICATION_ROLES.includes(user?.role || "");
+  // GSE delivery is internal-staff-only; the server route rejects broker/lender.
+  const canExportMismo = isInternalStaffRole(user?.role || "");
+  const canReviewDocs = canReviewDocuments(user?.role);
 
   // Pre-underwriting validator flags (loan_applications.pre_uw_flags) — the
   // machine-readable signal staff should see before opening any tab.
@@ -189,51 +175,12 @@ export default function BorrowerFile() {
 
   return (
     <>
-      <div className="flex items-center justify-between border-b bg-background px-6 py-3">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/staff-dashboard">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Dashboard
-            </Link>
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          {preUwFlags.map((flag) => (
-            <Badge
-              key={flag.code}
-              variant="secondary"
-              title={flag.reason}
-              className={`no-default-hover-elevate no-default-active-elevate text-[10px] ${
-                flag.severity === "blocking"
-                  ? "bg-status-danger/10 text-status-danger"
-                  : "bg-status-warning/10 text-status-warning"
-              }`}
-              data-testid={`badge-preuw-${flag.code}`}
-            >
-              {flag.code.replace(/_/g, " ")}
-            </Badge>
-          ))}
-          {/* GSE delivery is internal-staff-only; the server route rejects
-              broker/lender, so don't offer them a button that can only 403. */}
-          {isInternalStaffRole(user?.role || "") && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportMismo}
-              disabled={exportingMismo}
-              data-testid="button-export-mismo"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              {exportingMismo ? "Exporting…" : "Export MISMO"}
-            </Button>
-          )}
-          <Button size="sm" data-testid="button-generate-le">
-            <FileText className="mr-2 h-4 w-4" />
-            Generate LE
-          </Button>
-        </div>
-      </div>
+      <FileHeaderBar
+        preUwFlags={preUwFlags}
+        canExportMismo={canExportMismo}
+        onExportMismo={handleExportMismo}
+        exportingMismo={exportingMismo}
+      />
 
       <PageShell width="wide" contentClassName="space-y-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -286,75 +233,7 @@ export default function BorrowerFile() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Loan Amount</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="text-loan-amount">
-                      {formatCurrency(
-                        application.purchasePrice && application.downPayment
-                          ? Number(application.purchasePrice) - Number(application.downPayment)
-                          : application.purchasePrice
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {application.loanPurpose === "purchase" ? "Purchase" : "Refinance"}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Credit Score</CardTitle>
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="text-credit-score">
-                      {application.creditScore || "---"}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {application.creditScore && application.creditScore >= 740 ? "740+" :
-                       application.creditScore && application.creditScore >= 680 ? "680-739" :
-                       application.creditScore && application.creditScore >= 620 ? "620-679" : "Pending"}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Documents</CardTitle>
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="text-doc-count">
-                      {progress?.documentsReceived || 0}/{progress?.documentsRequired || 0}
-                    </div>
-                    <Progress 
-                      value={progress?.documentsRequired ? (progress.documentsReceived / progress.documentsRequired) * 100 : 0} 
-                      className="mt-2 h-2" 
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Conditions</CardTitle>
-                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold" data-testid="text-condition-count">
-                      {progress?.conditionsCleared || 0}/{progress?.conditionsTotal || 0}
-                    </div>
-                    <Progress 
-                      value={progress?.conditionsTotal ? (progress.conditionsCleared / progress.conditionsTotal) * 100 : 0} 
-                      className="mt-2 h-2" 
-                    />
-                  </CardContent>
-                </Card>
-              </div>
+              <FileSummaryCards application={application} progress={progress} />
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                 <TabsList>
@@ -393,139 +272,18 @@ export default function BorrowerFile() {
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
-                  {/* Compensation election (Reg Z §1026.36(d)(2)) — full width and
-                      first: with no election the Loan Estimate cannot generate,
-                      so this is the file's blocking state, not a detail. */}
-                  <CompensationCard
-                    applicationId={application.id}
-                    model={application.loCompensationModel ?? null}
-                    bps={application.loCompensationBps ?? null}
-                    leIssued={!!application.leIssuedDate}
-                  />
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <User className="h-5 w-5" />
-                          Borrower Information
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <span className="text-muted-foreground">Name:</span>
-                          <span>{personalInfo?.firstName || "N/A"} {personalInfo?.lastName || ""}</span>
-                          <span className="text-muted-foreground">Email:</span>
-                          <span>{personalInfo?.email || "N/A"}</span>
-                          <span className="text-muted-foreground">Phone:</span>
-                          <span>{personalInfo?.cellPhone || personalInfo?.homePhone || "N/A"}</span>
-                          <span className="text-muted-foreground">SSN:</span>
-                          <span>XXX-XX-{personalInfo?.ssnLast4 || "XXXX"}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Briefcase className="h-5 w-5" />
-                          Employment
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <span className="text-muted-foreground">Type:</span>
-                          <span className="capitalize">{application.employmentType || "N/A"}</span>
-                          <span className="text-muted-foreground">Employer:</span>
-                          <span>{application.employerName || "N/A"}</span>
-                          <span className="text-muted-foreground">Years:</span>
-                          <span>{application.employmentYears || 0} years</span>
-                          <span className="text-muted-foreground">Income:</span>
-                          <span>{formatCurrency(application.annualIncome)}/year</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Home className="h-5 w-5" />
-                          Property
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <span className="text-muted-foreground">Address:</span>
-                          <span>{application.propertyAddress || "N/A"}</span>
-                          <span className="text-muted-foreground">City/State:</span>
-                          <span>{application.propertyCity}, {application.propertyState}</span>
-                          <span className="text-muted-foreground">Value:</span>
-                          <span>{formatCurrency(application.propertyValue)}</span>
-                          <span className="text-muted-foreground">Type:</span>
-                          <span className="capitalize">{application.propertyType || "SFR"}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <DollarSign className="h-5 w-5" />
-                          Loan Details
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <span className="text-muted-foreground">Purpose:</span>
-                          <span className="capitalize">{application.loanPurpose || "Purchase"}</span>
-                          <span className="text-muted-foreground">Down Payment:</span>
-                          <span>{formatCurrency(application.downPayment)}</span>
-                          <span className="text-muted-foreground">LTV:</span>
-                          <span>{application.ltvRatio ? `${Number(application.ltvRatio).toFixed(1)}%` : "N/A"}</span>
-                          <span className="text-muted-foreground">DTI:</span>
-                          <span>{application.dtiRatio ? `${Number(application.dtiRatio).toFixed(1)}%` : "N/A"}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <ChangeOfCircumstancePanel applicationId={application.id} />
-
-                  <RiskBriefPanel applicationId={application.id} />
+                  <OverviewTab application={application} personalInfo={personalInfo} />
                 </TabsContent>
 
                 <TabsContent value="documents" className="space-y-4">
-                  {/* Split workbench (roadmap A6): review list left, safe
-                      rasterizing viewer right. Stacks on narrow viewports. */}
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-                    <DocumentReviewPanel
-                      applicationId={applicationId}
-                      documents={documents}
-                      application={application}
-                      canReview={canReviewDocuments(user?.role)}
-                      selectedDocumentId={selectedDocumentId}
-                      onSelectDocument={setSelectedDocumentId}
-                    />
-                    {(() => {
-                      const selectedDocument = documents.find((d) => d.id === selectedDocumentId);
-                      return selectedDocument ? (
-                        <Suspense
-                          fallback={<Skeleton className="h-[560px] w-full" data-testid="viewer-suspense" />}
-                        >
-                          <DocumentViewer
-                            documentId={selectedDocument.id}
-                            fileName={selectedDocument.fileName}
-                            mimeType={selectedDocument.mimeType}
-                          />
-                        </Suspense>
-                      ) : (
-                        <Card className="flex min-h-[320px] items-center justify-center">
-                          <CardContent className="py-10 text-sm text-muted-foreground" data-testid="viewer-placeholder">
-                            Select a document to preview it here.
-                          </CardContent>
-                        </Card>
-                      );
-                    })()}
-                  </div>
+                  <DocumentsTab
+                    applicationId={applicationId}
+                    documents={documents}
+                    application={application}
+                    canReview={canReviewDocs}
+                    selectedDocumentId={selectedDocumentId}
+                    onSelectDocument={setSelectedDocumentId}
+                  />
                 </TabsContent>
 
                 <TabsContent value="conditions" className="space-y-4">
@@ -551,28 +309,14 @@ export default function BorrowerFile() {
                 </TabsContent>
 
                 <TabsContent value="tax-intel" className="space-y-4">
-                  {application?.userId ? (
-                    <>
-                      <ReviewWorkbenchPanel
-                        borrowerUserId={application.userId}
-                        applicationId={application.id}
-                      />
-                      <TaxIntelligencePanel
-                        borrowerUserId={application.userId}
-                        applicationId={application.id}
-                      />
-                    </>
-                  ) : (
-                    <Card>
-                      <CardContent className="py-6 text-sm text-muted-foreground">
-                        Borrower not loaded yet.
-                      </CardContent>
-                    </Card>
-                  )}
+                  <TaxIntelTab
+                    borrowerUserId={application?.userId}
+                    applicationId={application.id}
+                  />
                 </TabsContent>
 
                 <TabsContent value="team" className="space-y-4">
-                  {isStaffRole(user?.role || "") ? (
+                  {isStaff2 ? (
                     <DealTeamManagement applicationId={applicationId} />
                   ) : (
                     <DealTeam applicationId={applicationId} />
