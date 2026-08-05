@@ -70,19 +70,31 @@ Status ledger (updated by the orchestrator after each run):
 
 ## 3. AI Coach, documents & extraction
 
-- **Server**: `server/services/coachingService.ts` + `coachIntake.ts` + `server/routes/coach.ts`,
-  `server/extractionService.ts` (Gemini OCR/extraction), `server/services/documentConfidence.ts`,
-  `server/routes/documents.ts`, `server/integrations/object_storage/*`.
-- **Client**: `pages/education/AICoach.tsx`, `Documents.tsx` + `UploadDocumentDialog`.
+- **Server**: `server/routes/coach.ts` + `server/services/coachIntake.ts`; the coach engine is
+  `server/services/coaching{Client,Context,Lint,Prompt,Turn}.ts` (`coachingService.ts` is a
+  re-export shim only). Extraction is `server/extraction{Core,Validation,Documents,TaxIntel}.ts`
+  (`extractionService.ts` is likewise a shim — split 2026-07-17). Plus
+  `server/services/documentConfidence.ts`, `server/routes/documents.ts`,
+  `server/integrations/object_storage/*`.
+- **AI vendor is Anthropic, not Gemini** (migrated 2026-07-17, migrations `0030`/`0031`):
+  `extractionCore.ts` pins `claude-sonnet-5` (single-doc) / `claude-opus-4-8` (tax package) behind
+  `AI_INTEGRATIONS_ANTHROPIC_API_KEY`. There is no Gemini code path and no `GEMINI_API_KEY` — the
+  only `gemini` strings left are legacy DB enum values. *(Governance docs still say Gemini — see
+  the open doc-drift finding in `FINDINGS.md`; don't take them as current.)*
+- **Client**: `pages/education/AICoach.tsx` + `components/coach/*`, `Documents.tsx` +
+  `UploadDocumentDialog`.
 - **Intended use**: conversational homebuyer coaching + document extraction feeding
   qualification; uploads via presigned GCS URLs only; **AI never decides** (P1 of
   `AI_GOVERNANCE_POLICY`) — extracted values must pass a human/confidence gate before they
-  influence a regulated outcome; sensitive extracted values encrypted; unconfigured Gemini is a
-  safe no-op.
+  influence a regulated outcome; sensitive extracted values encrypted; an unconfigured Anthropic
+  key is a safe no-op (`confidence: "low"` + warnings, never a guessed value).
 - **Source docs**: `knowledge-base/governance/AI_GOVERNANCE_POLICY.md`, `knowledge-base/governance/MODEL_RISK_GOVERNANCE.md`, tax-insight
   pipeline docs (§7216), `knowledge-base/handbook/app-guide/08-services.md`.
-- **Owned tests**: `tests/uploadsPresignedOnly*`, `tests/taxInsight*`. **Coverage gap:**
-  `coachingService`/`coachIntake`/`extractionService`/`documentConfidence` have **zero tests**.
+- **Owned tests**: `tests/uploadsPresignedOnly*`, `tests/taxInsight*`, plus `tests/extractionService`,
+  `documentConfidence`, `coachProfileSync`, `coachTools`, `coachSse`, `coachLintFilter` — all in
+  `vitest.config.ts` and executing (**72 tests**; the old "zero tests" line here was wrong and
+  primed reviewers to re-file a phantom coverage gap). **Real gap:** `coachIntake.ts` is the one
+  module with no direct test. Note `tests/taxInsightRoutes.test.ts` is integration-config only.
 - **Compliance**: AI-in-decision-path invariant, IRC §7216 (tax info), RESPA §8 (no steering),
   prompt-injection via uploaded documents.
 
