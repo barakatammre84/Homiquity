@@ -15,9 +15,10 @@ LL-2026-04 and the Freddie Mac equivalent require any approved seller/servicer t
 
 | Surface | Why it is in scope |
 |---------|--------------------|
-| Gemini document extraction (M-1) | Generative LLM output populates borrower financial fields |
+| Anthropic document extraction (M-1) | Generative LLM output populates borrower financial fields |
 | MCP tool surface (M-6, `server/mcp/`) | Exposes credit pull, best-execution pricing, and AVM tools to external LLM agents; the *consuming agent* is an AI system in the origination path even though the tools themselves are deterministic |
-| Heuristic coaching/predictive engines (M-5) | Borrower-facing nudges and readiness scoring |
+| Coaching/predictive engines **and the generative AI Coach chat** (M-5) | Borrower-facing nudges and readiness scoring, **plus generative Claude chat that is borrower-facing and writes back to draft applications** — the highest-exposure surface in the inventory |
+| AI file risk brief (M-7) | Generative Claude summarisation over borrower-file facts for staff |
 | Future vendor AI (Lender Price MCP/LLM pricing, per the PPE strategy) | Third-party AI in the pricing path — vendor-oversight obligations attach at contract time (§7) |
 
 **In scope under SR 11-7 but not "AI":** the deterministic underwriting engine (M-2), decision orchestrator (M-3), and pricing/LLPA matrices are models for model-risk purposes and are covered by the inventory, change management (§5.5), and fair-lending testing (§8) — but they are intentionally not AI, and keeping them that way is itself the primary control (§2, principle P1).
@@ -84,7 +85,7 @@ Retiring an AI system requires: inventory row marked retired (not deleted), line
 
 ## 6. Information security obligations
 
-- Borrower PII sent to any third-party model requires an executed DPA with a no-training clause and documented sub-processor locations **before production traffic** (Gemini action item — MRG §5, tracked as AG-3).
+- Borrower PII sent to any third-party model requires an executed DPA with a no-training clause and documented sub-processor locations **before production traffic** (Anthropic action item covering M-1, M-5 and M-7 — MRG §5, tracked as AG-3). This obligation attaches to the class "any third-party model", not to a named vendor: the 2026-07-17 Gemini→Anthropic migration moved the exposure, it did not discharge the requirement.
 - Raw model responses containing PII are stored encrypted (AES-256-GCM) and never returned to clients (`publicExtraction` pattern).
 - Prompt-injection surface: any document or free-text field that reaches a model is treated as adversarial input; schema validation and confidence-capping (MR-1) plus the human-verification ceiling (MR-2) are the standing controls. New model integrations must document their equivalent.
 - The MCP server owns stdout for JSON-RPC and routes `console.log` to stderr (`server/mcp/bootstrap.ts`) — protocol-stream integrity is a security control, not a nicety; the bootstrap-first import order is mandatory.
@@ -92,9 +93,11 @@ Retiring an AI system requires: inventory row marked retired (not deleted), line
 
 ## 7. Vendor AI oversight
 
-Applies to Gemini today and to any PPE with AI capability (Lender Price MCP/LLM pricing) at contract time.
+Applies to **Anthropic** today (M-1 extraction, M-5 coach chat, M-7 risk brief) and to any PPE with AI capability (Lender Price MCP/LLM pricing) at contract time. No evidence exists that this checklist was ever run for Anthropic; the migration inherited Gemini's unfinished onboarding rather than completing its own.
 
-Onboarding checklist — all items recorded in the vendor register before production use:
+Onboarding checklist — all items recorded in the vendor register before production use
+(⚠ **no "vendor register" artifact exists in this repo** — see MRG §5; this checklist currently
+has no real destination):
 1. Data sent, retention, and training exclusion — contractual, not just settings-page.
 2. Sub-processor locations for GLBA/state privacy notices.
 3. Vendor's own model-change notification process (we must learn of model swaps that would invalidate our golden-set results).
@@ -120,7 +123,7 @@ Open items required for full LL-2026-04 conformance. Same status legend as MRG �
 |----|-----|--------|--------|
 | AG-1 | MCP tool invocations bypass the tamper-evident audit chain | `run_soft_credit_pull` inserts `credit_pulls` via direct `db.insert` (`server/mcp/index.ts`) instead of the `creditService` path, so no hash-chained `credit_audit_log` entry records the pull; pricing and AVM tool calls are not audit-logged at all | ✅ **Done.** Soft-pull persistence routes through `recordExternalSoftPull` (`server/services/creditAudit.ts`; split #196) with chained `pull_requested`/`pull_completed` entries and a server-side consent re-check; every tool terminal outcome additionally writes a hash-chained `mcp_tool_invocation` entry (tool name, SHA-256 args hash, outcome, result summary) via `logAgentToolInvocation`, with application-less entries chained in a null-application scope (`verifyAgentAuditLogIntegrity`). En route, chain verification itself was fixed (jsonb key-order hash canonicalization; serialized chain-head writes). Guarded by `tests/complianceInvariants.test.ts` + `tests/mcpAudit.test.ts`. |
 | AG-2 | No per-agent identity on the MCP surface | The stdio server runs with full DB access; `requestedBy` records the *borrower*, not the invoking agent/operator. LL-2026-04 audit expectations require knowing which AI agent (and on whose authority) triggered a borrower interaction | ✅ **Done.** `server/mcp/identity.ts`: the deployment presents `MCP_AGENT_ID` + `MCP_AGENT_TOKEN`, validated (SHA-256, constant-time) against the env-scoped `MCP_AGENT_REGISTRY` (`[{agentId, tokenHash, operator}]` — no plaintext credentials at rest); a failed handshake is fatal, and production or `MCP_REQUIRE_AGENT_IDENTITY=true` refuses to serve unauthenticated (startup gate before the transport connects). The resolved identity is stamped on every audit entry (`performedByRole` + `actionDetails.agentContext`: agentId, operator, authenticated flag, self-reported MCP clientInfo) and on every persisted row (`credit_pulls.agent_identity`, `properties.avm_agent_identity` — migration 0005); `requestedBy` stays the borrower. Unauthenticated local dev falls back to the AG-1 transport identity flagged `authenticated:false`. A future networked (non-stdio) transport must move the handshake per-session; the startup gate blocks such a deployment until then. Guarded by `tests/mcpAgentIdentity.test.ts` + AG-2 invariants in `tests/complianceInvariants.test.ts`. |
-| AG-3 | Gemini DPA + training-exclusion not yet contractually confirmed | Carried from MRG §5 | ⬜ Before production borrower documents flow |
+| AG-3 | **Anthropic** DPA + training-exclusion not yet contractually confirmed | Carried from MRG §5. **Re-scoped 2026-08-05 from Gemini to Anthropic and deliberately NOT closed** — §6 attaches this to "any third-party model", so the vendor migration transferred the obligation rather than discharging it. Scope is M-1 (extraction) + M-5 (generative coach chat) + M-7 (risk brief), not extraction alone. The §7 onboarding checklist has no recorded run for Anthropic. | ⬜ **OPEN.** Status wording pending founder confirmation: §6 requires the DPA *before production traffic*, so if borrower documents already reach Anthropic in production this is a **breach of adopted policy**, not a pending item. Not determinable from the repo — see escalation **U-9**. |
 | AG-4 | No independent model validation | Single-operator shop: builder and validator are the same person; golden-set harness (MR-6 follow-on) not yet built in `tests/` | ◑ Cadence + CI gates in place; golden-set harness and (eventually) a second reviewer outstanding |
 | AG-5 | Freddie Mac guidance not yet read against this policy line-by-line | Policy drafted from LL-2026-04 requirements; Freddie's Guide update is described as equivalent but has not been independently diffed | ⬜ At PPE/GSE onboarding, before first loan sale |
 
@@ -130,3 +133,4 @@ Open items required for full LL-2026-04 conformance. Same status legend as MRG �
 |------|---------|--------|
 | 2026-07-04 | 1.0 | Initial adoption. Prompted by LL-2026-04 scope analysis: the MCP tool surface (M-6) put Homiquity's own platform in scope independent of any vendor AI. |
 | 2026-07-04 | 1.1 | AG-1 closed (MCP actions chained into `credit_audit_log`; hash canonicalization + chain-head serialization fixed en route). AG-2 closed (per-agent identity handshake, env-scoped credential registry, identity stamped on all MCP-persisted rows and audit entries, unauthenticated production deployments blocked). |
+| 2026-08-05 | 1.2 | **Vendor correction, overdue under §4.** Recorded the 2026-07-17 Gemini→Anthropic migration that §1's M-1 inventory row captured but this policy and MRG §5 did not — leaving the corpus self-contradictory for ~3 weeks and pointing an open gap at a vendor that processes nothing. §1 scope table: M-1 renamed to Anthropic, M-5 amended to name the generative coach chat, M-7 added (was absent). §6/§7 re-scoped to Anthropic across M-1/M-5/M-7. AG-3 re-scoped and **kept OPEN** — the obligation transfers with the data, and only an executed DPA closes it. Flagged three things a doc edit cannot fix: the "vendor register" both docs point at does not exist; §5.5's golden-set review was unmeetable for the migration (AG-4 concedes no harness); §5.6 credential removal is unverified (`AI_INTEGRATIONS_GEMINI_API_KEY` still recorded as provisioned). Found by the feature-review programme (Domain 3), compliance-auditor verdict recorded in the PR. |

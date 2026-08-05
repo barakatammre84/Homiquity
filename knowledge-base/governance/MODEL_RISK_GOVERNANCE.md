@@ -36,7 +36,7 @@
 - **Tamper-evident audit**: SHA-256 hash chain over credit actions with `verifyAuditLogIntegrity` and exportable audit packages (JSON/CSV).
 - **Adverse-action explainability**: enumerated reason taxonomy with Experian/Equifax/TransUnion/FICO reason codes; free-text reasons are rejected (`validateAdverseActionReason`).
 - **Data retention policies** codified with legal basis and regulatory references (FCRA §604(b)(3), 12 CFR 1002.12, GLBA).
-- **Extraction degradation**: when Gemini is unconfigured or parsing fails, extraction returns `confidence: "low"` with warnings rather than fabricated values; low-confidence extractions raise `DOCUMENT_OCR_ISSUE` tasks for human review.
+- **Extraction degradation**: when the Anthropic key is unconfigured or parsing fails, extraction returns `confidence: "low"` with warnings rather than fabricated values; low-confidence extractions raise `DOCUMENT_OCR_ISSUE` tasks for human review.
 - **Fair-lending isolation**: no LLM output feeds M-2 inputs directly; credit score enters only via the (currently simulated) credit-pull pipeline under FCRA consent gating.
 
 ## 4. Identified model-risk gaps and remediation status
@@ -91,11 +91,43 @@ per-bureau columns on `credit_pulls` (display-only) while keeping
 band (e.g. `700-739`) for any filtering. Pending sign-off, the columns remain
 cleartext.
 
-## 5. Third-party model dependency (Gemini)
+## 5. Third-party model dependency (Anthropic)
 
-- Provider: Google (`@google/genai`), model pinned in code to `gemini-2.0-flash`.
-- Data sent: borrower document images/PDFs (full PII). **Action required before production:** confirm the Google API tier in use contractually excludes training on submitted data, execute a DPA, and record it in the vendor register; document sub-processor location for GLBA/state privacy notices.
+> Corrected 2026-08-05. This section previously described Google/Gemini
+> (`@google/genai`, `gemini-2.0-flash`). That was stale from the 2026-07-17 migration:
+> §1's M-1 row was updated then, this section was not, leaving the document
+> self-contradictory for ~3 weeks. **The vendor changed; the obligation below did not.**
+
+- Provider: Anthropic (`@anthropic-ai/sdk`), models pinned in code at
+  `server/extractionCore.ts` — `claude-sonnet-5` (single document),
+  `claude-opus-4-8` (tax package). Key: `AI_INTEGRATIONS_ANTHROPIC_API_KEY`.
+  There is no Gemini code path and no `GEMINI_API_KEY` in the repo.
+- **Scope is wider than extraction.** Three inventory rows send borrower data to
+  Anthropic: **M-1** (document extraction), **M-5** (AI Coach generative chat —
+  borrower-facing, writes back to draft applications), **M-7** (AI file risk brief).
+  Any contractual remedy must cover all three, not extraction alone.
+- Data sent: borrower document images/PDFs (full PII), coach chat content, borrower-file
+  facts. **Action still required before production traffic:** execute a DPA with a
+  no-training clause and document sub-processor locations for GLBA/state privacy notices.
+  Tracked as **AG-3**, which re-scopes to Anthropic and remains **OPEN** — retiring Gemini
+  extinguished Google's exposure, not the requirement (`AI_GOVERNANCE_POLICY.md` §6 attaches
+  it to "any third-party model," not to a named vendor).
+- ⚠ **The "vendor register" this section and §7 direct findings into does not exist**
+  anywhere in the repo. `security/ASSET_REGISTER.md` is not it — its Anthropic row defers
+  governance back to `AI_GOVERNANCE_POLICY.md`, whose §7 scope named Gemini, so the pointer
+  chain dead-ended at a vendor that processes nothing. Either create the register or
+  re-point both references at a real destination.
 - Fallback behavior: graceful degradation to manual processing (documented above).
+- ⚠ **§5.5 golden-set review was structurally unmeetable for this migration.** A
+  model-version change of this size requires a documented golden-set accuracy review; AG-4
+  concedes no such harness exists in `tests/`. The version-constant half was satisfied
+  (`EXTRACTION_PROMPT_VERSION`, both model ids stamped); the accuracy half was not. Do not
+  read this correction as evidence the swap cleared §5.5.
+- ⚠ **§5.6 decommissioning may be incomplete.** `AI_INTEGRATIONS_GEMINI_API_KEY` is still
+  recorded as provisioned in `knowledge-base/archive/INFRASTRUCTURE_RISKS.md` and
+  `LAUNCH_READINESS_CHECKLIST.md`. §5.6 requires credential removal at decommissioning;
+  whether it was deprovisioned in Vercel is not visible from the repo. Env action, not a
+  doc edit.
 
 ## 6. Change management
 
