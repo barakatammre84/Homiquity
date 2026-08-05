@@ -30,6 +30,7 @@ grep a file to confirm):
 | `borrower/` (14 groups) | 121 | The borrower portal: applications, URLA form sections, dashboard data, pre-approvals, invites, Plaid verification, partner orders |
 | `agent-broker/` (6 groups) | 47 | Agent/broker portal: referrals, invites, deal visibility, revenue tools |
 | `admin.ts` | 36 | Admin panel: users/roles, config, audit, automation |
+| `admin/pricingPolicy.ts` | 5 | Platform fee schedule (append-only, versioned) + wholesale comp bands — the two halves of one Reg Z points-and-fees budget, editable without a deploy |
 | `compliance.ts` | 33 | Consents, credit pulls, adverse action, data retention, disclosures |
 | `lending/` (7 groups) | 27 | Loan pipeline operations, letters, MISMO export, intake + status machine |
 | `task-engine.ts` | 23 | Staff task engine: rules-driven task creation/assignment |

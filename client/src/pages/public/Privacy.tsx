@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { SEOHead } from "@/components/SEOHead";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { COMPANY_IDENTITY } from "@shared/companyIdentity";
 import {
   Shield,
   Lock,
@@ -129,7 +130,7 @@ const POLICY_SECTIONS = [
   },
   {
     title: "Contact Us",
-    content: "If you have questions about this Privacy Policy or wish to exercise your privacy rights, contact our privacy team at privacy@homiquity.com or by phone at 1-800-HOMIQTY. We will respond within the timeframes required by applicable law.",
+    content: `If you have questions about this Privacy Policy or wish to exercise your privacy rights, contact us at ${COMPANY_IDENTITY.contactEmail} or by phone at ${COMPANY_IDENTITY.contactPhone}. We will respond within the timeframes required by applicable law.`,
   },
 ];
 
@@ -309,8 +310,8 @@ export default function Privacy() {
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
             Our team is here to help. Contact us anytime with questions about how we handle your data.
           </p>
-          <a href="mailto:privacy@homiquity.com" className="text-sm text-primary font-medium" data-testid="link-privacy-email">
-            privacy@homiquity.com
+          <a href={`mailto:${COMPANY_IDENTITY.contactEmail}`} className="text-sm text-primary font-medium" data-testid="link-privacy-email">
+            {COMPANY_IDENTITY.contactEmail}
           </a>
         </section>
       </div>

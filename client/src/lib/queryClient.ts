@@ -202,6 +202,9 @@ export const loanApplicationKeys = {
   leTolerance: (id: string) => ["/api/loan-applications", id, "le-tolerance"] as const,
   /** F-11's per-file cost ledger (staff). */
   costs: (id: string) => ["/api/loan-applications", id, "costs"] as const,
+  /** F-18's QM ceiling for the compensation election (staff). */
+  compensationQm: (id: string) =>
+    ["/api/loan-applications", id, "compensation", "qm"] as const,
   hmda: (id: string) => ["/api/loan-applications", id, "hmda"] as const,
   incomeSummary: (id: string) => ["/api/loan-applications", id, "income-summary"] as const,
   submissionReadiness: (id: string) =>

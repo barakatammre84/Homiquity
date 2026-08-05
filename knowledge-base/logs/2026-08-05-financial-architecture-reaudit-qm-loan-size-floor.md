@@ -23,9 +23,9 @@ sits over the segment the product is built to serve.**
 
 | # | Finding | Area | Severity |
 |---|---|---|---|
-| F-17 | A non-QM dead band ($107k–$206k at the default comp plan) sits over the target segment | Unit economics / Risk | **High** |
-| F-18 | The QM constraint is evaluated at the wrong end of the file — the fix is expired by the time the breach is found | Risk / Margin leakage | **High** |
-| F-19 | Tax service fee counts in the QM denominator but not the numerator | Risk | Low |
+| F-17 | A non-QM dead band ($102k–$216k at the default comp plan) sits over the target segment | Unit economics / Risk | **High** — ✅ resolved |
+| F-18 | The QM constraint is evaluated at the wrong end of the file — the fix is expired by the time the breach is found | Risk / Margin leakage | **High** — ✅ fixed |
+| F-19 | Tax service fee counts in the QM denominator but not the numerator | Risk | Low — ✅ fixed |
 | — | F-1…F-13 remediation holds at HEAD | all | ✅ verified |
 | — | F-9 values, F-14 channel decision | — | ⚠️ still open, unchanged |
 
@@ -33,10 +33,16 @@ sits over the segment the product is built to serve.**
 
 ## F-17 — The fee schedule creates a non-QM dead band over the target market (High)
 
+> **✅ Resolved 2026-08-05** — see [Resolution — F-17](#resolution--f-17-2026-08-05) below. The
+> analysis in this section describes the platform as it was *before* that change; the bands quoted
+> are what the fixed schedule produced, and they no longer occur. Kept intact because the
+> reasoning is what motivated the fix.
+
 ### The architectural problem
 
 Homiquity's borrower-facing charges are **fixed dollars** ($500 application + $1,500
-underwriting = $2,000, `server/services/loanCosts.ts:44-46`) while the QM points-and-fees cap
+underwriting + $100 tax service = $2,100, `server/services/loanCosts.ts`) while the QM
+points-and-fees cap
 above $137,958 is a **percentage** (3% of the Reg Z Total Loan Amount,
 `shared/fannieMae/qmThresholds.ts`). Originator compensation is a third input, set in basis
 points.
@@ -55,7 +61,7 @@ Where that band sits had never been computed.
 > **Correction (2026-08-05, same day).** This section originally reported a single *minimum
 > viable loan amount* per comp plan. That framing was wrong, and the test written to pin it
 > caught the error. The QM cap changes **shape** across the note-date tiers — 5% of the Reg Z
-> total, then a flat $4,139, then 3% — so a fixed $2,000 of platform fees clears the generous low
+> total, then a flat $4,139, then 3% — so a fixed platform-fee total clears the generous low
 > tiers, fails once the loan outgrows the flat tier, and clears again when 3% of a large loan
 > outruns it. The real structure is a **dead band with viable amounts on both sides**, not a
 > floor. The numbers first reported ($166k / $207k / $276k) were the band's *upper* edge —
@@ -68,21 +74,25 @@ plans seeded in `server/seedMarketPricing.ts:77,97,117`, with a 2026 note date:
 
 | Wholesale lender | Comp plan | **Non-QM dead band** | Clears above |
 |---|---|---|---|
-| BlueRiver | lender-paid 175 bps | **$122,229 – $165,039** | $165,040 |
-| Summit | lender-paid 200 bps (default) | **$106,951 – $206,299** | $206,300 |
-| Atlas | lender-paid 225 bps | **$95,067 – $275,067** | $275,068 |
+| BlueRiver | lender-paid 175 bps | **$116,515 – $173,039** | $173,040 |
+| Summit | lender-paid 200 bps (default) | **$101,951 – $216,299** | $216,300 |
+| Atlas | lender-paid 225 bps | **$90,623 – $288,399** | $288,400 |
 
-(Each plan also fails below a low-end threshold — $70,166 at Summit — where the fixed fees exceed
+(Each plan also fails below a low-end threshold — $73,499 at Summit — where the fixed fees exceed
 even the 5% tier. Between that point and the band, files clear.)
+
+> **Figures updated 2026-08-05 by the F-19 fix**, which added the tax service fee to the
+> points-and-fees numerator. The bands above are post-fix and are what the code now enforces;
+> they were $106,951–$206,299 (Summit) and $95,067–$275,067 (Atlas) before it.
 
 Worked examples at the Summit default (200 bps):
 
 | Loan amount | Platform floor | QM cap | Verdict |
 |---|---|---|---|
-| $100,000 | $4,000 | $4,139 (flat tier) | clears by $139 |
-| $150,000 | $5,000 | $4,139 (flat tier) | **over cap** |
-| $200,000 | $6,000 | $5,937 (3% tier) | **over cap** |
-| $250,000 | $7,000 | $7,437 (3% tier) | clears by $437 |
+| $100,000 | $4,100 | $4,139 (flat tier) | clears by $39 |
+| $150,000 | $5,100 | $4,139 (flat tier) | **over cap** |
+| $200,000 | $6,100 | $5,937 (3% tier) | **over cap** |
+| $250,000 | $7,100 | $7,437 (3% tier) | clears by $337 |
 
 **The band is non-monotonic in loan size, which is the strangest part.** A borrower at $100,000
 is originable; the same borrower at $150,000 is not; at $400,000 they are again. Nothing about
@@ -91,11 +101,11 @@ move with it.
 
 **Three properties make this worse than the table suggests:**
 
-1. **The floor is a lower bound.** `pointsAndFeesFloor` counts only origination, points, the two
-   platform fees and comp. Every third-party charge that also counts toward §1026.32(b)(1) is
-   excluded. The true band is **wider** than every figure above.
-2. **The margins at the edges are nominal.** At Summit's $206,300 the file clears by single
-   dollars, and at $100,000 by $139. These are knife edges, not thresholds with headroom.
+1. **The floor is a lower bound.** `pointsAndFeesFloor` counts only origination, points, the
+   platform's own finance charges and comp. Every third-party charge that also counts toward
+   §1026.32(b)(1) is excluded. The true band is **wider** than every figure above.
+2. **The margins at the edges are nominal.** At Summit's $216,300 the file clears by single
+   dollars, and at $100,000 by $39. These are knife edges, not thresholds with headroom.
 3. **Comp plans are not a per-file dial.** A wholesale comp plan is set with the lender for a
    period, not elected loan-by-loan — so "use fewer bps on small loans" is very likely not
    available as a remedy. **This needs counsel confirmation against §1026.36(d)(1) before it is
@@ -111,7 +121,7 @@ Forgivable at 4% up to $6,000 and Deferred at 5% up to $7,500 (~$150k), Home at 
 
 **That price band maps onto loan amounts that sit largely inside the dead band.** The company has
 built an Illinois DPA directory, a gap calculator, a renter incubator and a DPA wizard aimed at
-buyers whose loan amounts fall mostly in the $107k–$206k range its own fee schedule cannot
+buyers whose loan amounts fall mostly in the $102k–$216k range its own fee schedule cannot
 originate as QM at the default comp plan.
 
 ### The consequence is a hard stop, not a warning
@@ -131,7 +141,8 @@ pull-through leak with a specific, predictable, segment-wide cause rather than a
 
 ### Structural fix
 
-This is a business decision the code can only make visible. The three levers:
+This is a business decision the code can only make visible. The three levers — **lever 1 was
+taken**, see the resolution section:
 
 1. **Re-scale the platform fees against loan size** — the $2,000 is fixed against a percentage
    cap. A fee that is capped as a percentage of the loan amount removes the structural floor
@@ -186,8 +197,8 @@ constants), and it is deferred to step 4.
 Every file in the F-17 band that reaches step 4 is a full origination cost converted to zero
 revenue. Using the prior audit's own cost lines, a fully-costed file that dies at submission
 forfeits the $8,000–$11,000 of comp it would have earned and consumes the cost-to-originate
-anyway. At the Summit default, that is the outcome for **every file between $106,951 and
-$206,299** — not an
+anyway. At the Summit default, that is the outcome for **every file between $101,951 and
+$216,299** — not an
 edge case in the target segment but the modal one.
 
 ### Structural fix
@@ -229,6 +240,160 @@ document why a finance charge is excluded from points and fees. Note the floor i
 a lower bound, so the omission is not *wrong* — but this is a charge the platform knows and has
 already classified, not an unknown third-party item, so leaving it out makes the bound looser
 for no benefit.
+
+### Remediation — F-19 (2026-08-05)
+
+**The fix is structural, not arithmetic.** Adding $100 to a list would have closed this instance
+and left the class open: a fourth platform fee could be added tomorrow and counted in one
+computation but not the other. So the classification became a single list, and both computations
+read it.
+
+- **`PLATFORM_FINANCE_CHARGES`** (`server/services/loanCosts.ts`) is now the one place that says
+  which of the platform's own charges are finance charges under §1026.4.
+- `knownPrepaidFinanceCharges()` sums it to derive the Reg Z Total Loan Amount — the
+  **denominator**.
+- `PointsAndFeesFloorInput.applicationFee` / `.underwritingFee` were replaced by
+  `platformFinanceCharges: readonly PointsAndFeesComponent[]`, fed the same list — the
+  **numerator**. Named fee fields were the mechanism that let the two drift; a list cannot.
+- Both the ordinary sum and the borrower-paid `max(origination, comp)` branch use it, since that
+  branch adds the platform total by hand and was a second place the asymmetry could hide.
+
+**No new regulatory reading was made.** The code already asserted the tax service fee is a
+finance charge, in `knownPrepaidFinanceCharges` and in `apr.ts`. This change propagates that
+existing assertion to the third place rather than introducing a fourth opinion. If the
+classification is wrong, it is now **one edit** and both computations correct together — which is
+the property that was missing.
+
+**What this costs, stated plainly.** Counting the fee widened the F-17 dead band: Summit's upper
+edge moved $206,300 → **$216,300**, Atlas's $275,067 → **$288,400** (exactly as predicted above).
+Roughly $10–13k of loan amounts per comp plan are now refused at the election that previously
+were not. That is conservative against the QM cap, but it **refuses business**, so it is not
+costless and must not sit unverified.
+
+**Still open — and deliberately loud.** Whether a tax service fee *is* a finance charge under
+§1026.4(a) could not be verified: `ecfr.gov` and `consumerfinance.gov` both returned CONNECT 403
+in this environment, and there is still no local Reg Z copy under `docs/`. Ledger entry
+`regz-1026-4-platform-finance-charge-classification` records exactly what was and was not
+verified, carries the consequence above, and sits on a **30-day** review interval so
+`pnpm checkup` goes loud if it is forgotten.
+
+**Verification.** Typecheck clean · **2,110 tests green** · 4 new invariant tests pinning that the
+floor's platform total equals what the stand-in subtracts, under both compensation branches ·
+regulatory-freshness gate passes with the new entry.
+
+---
+
+## Resolution — F-17 (2026-08-05)
+
+**The dead band is gone, and cannot come back.**
+
+### Why no choice of fee resolved it
+
+The band existed because a **fixed** dollar fee met a cap that is 5% in one tier, a flat $4,139
+in the next, and 3% above that. Any fixed number is wrong at *some* loan size — so re-pricing the
+schedule would only move the band, and the annual CFPB threshold adjustment would move it again.
+Declaring a minimum loan amount would not resolve it either; it would abandon the segment and go
+stale every January.
+
+What had to go was the fixedness.
+
+### What shipped
+
+**The platform's own fees are now a ceiling, not a price.** A file is charged the standard
+schedule whenever it fits; when it does not, the reducible part is trimmed proportionally until
+it does.
+
+- `maxPlatformFinanceChargeTotal()` binary-searches the exact largest platform total that clears
+  the cap — monotone in the total, since a bigger fee raises the floor *and* lowers the cap — so
+  the tier tables are never duplicated.
+- `resolvePlatformFinanceCharges()` scales the reducible charges to that budget, rounding **down**
+  to whole dollars so rounding can never push a file back over.
+- **Only what is ours is reducible.** The tax service fee is a vendor's charge passed through; we
+  cannot discount someone else's fee, so it is marked `reducible: false` and survives at full
+  value. That asymmetry is what keeps the fit honest.
+- `evaluateFileQmFloor()` is what the gates now score — the file **as it would actually be
+  charged**, so a file is no longer refused over a fee it was never going to be charged.
+
+Charging less than a disclosed schedule is always permitted, needs no changed circumstance, and
+is the borrower-favourable direction — so the mechanism is safe in exactly the direction that
+matters.
+
+### Measured result
+
+Swept at $1 granularity from $20,000 to $500,000, at every seeded comp plan:
+
+| Comp plan | Before | After |
+|---|---|---|
+| BlueRiver 175 bps | dead band $116,515–$173,039 | **clears everywhere** |
+| Summit 200 bps | dead band $101,951–$216,299 | **clears everywhere** |
+| Atlas 225 bps | dead band $90,623–$288,399 | **clears everywhere** |
+| 275 bps (plan maximum) | failed even at $400,000 | **clears everywhere** |
+
+Worked cost, Summit 200 bps: $400k charges the full $2,100 (unchanged); $200k charges $1,940;
+$150k charges $1,456; $120k charges $1,738. **No file that works today pays more or less than it
+did** — the trim only touches files that were previously refused outright, converting a fully
+costed zero-revenue file into a funded one.
+
+### The honest residual
+
+This does not manufacture room that does not exist. When **compensation alone** exceeds the cap —
+at or above roughly 300 bps, since the top tier caps points and fees at 3% — there is nothing left
+to trim toward. Those files stay non-originable, the schedule stays standard rather than
+pretending, and the gates still refuse them. That is a comp-plan problem, and the fix is a comp
+plan, not a fee.
+
+The election ceiling now reflects this: it is bounded by compensation (~293–297 bps across the
+range) rather than collapsing on small loans.
+
+### What a human must confirm — this narrows an earlier invariant
+
+The F-1 remediation asserted that borrower-facing totals are **wholly invariant** to lender-paid
+compensation, because the Loan Estimate has no "paid by others" column. That is no longer
+literally true: compensation and our fees consume the same cap, so a richer comp plan now yields a
+*smaller* borrower fee. The test that encoded the old invariant is what caught this.
+
+What survives, and is now pinned instead, is the property that carries the regulatory weight:
+
+- compensation is **never added** to any borrower-facing total, and
+- **more compensation can never increase a borrower charge** — the directional invariant.
+
+Economically this is a lender credit and it always runs in the borrower's favour. But whether a
+fee that varies with the comp plan is acceptable disclosure practice is a **counsel question, not
+an engineering one**, and so is the fair-lending posture of a formulaic reduction driven by loan
+amount. Both are recorded in ledger entry `platform-fee-schedule-qm-fit` on a **30-day** review
+interval.
+
+### Follow-on — the levers became operable, not just visible (2026-08-05)
+
+Resolving F-17 in code left both of its inputs still requiring a deploy to move: the fee schedule
+was compile-time constants, and the wholesale comp bands were seed data with no surface. Since
+those are exactly the numbers a lender negotiation changes, they are now admin-editable.
+
+- **`platform_fee_schedules`** (migration `0047`) — **append-only and versioned**. Publishing
+  supersedes the active row and inserts a new one inside one transaction; nothing is ever updated
+  in place, because a fee schedule is a fact about how a file was priced and an issued Loan
+  Estimate has to stay reproducible. A partial unique index makes a concurrent double-publish fail
+  loudly rather than leaving two rows claiming to be current.
+- **No seed row, deliberately.** An empty table means "use the compiled-in baseline"
+  (`DEFAULT_PLATFORM_FEE_SCHEDULE`). Seeding the constants into the table as well would fork the
+  baseline in two places and let them drift.
+- **Purity is preserved.** `services/loanCosts.ts` still reads no global — every function takes
+  the schedule as a *parameter*. `services/platformFeeSchedule.ts` is the one impure edge that
+  reads the published row and hands it in, with a short cache invalidated on publish and a
+  fall back to the baseline if the read fails, so pricing never hard-fails on a config table.
+- **The admin panel previews before it publishes** (`/admin/pricing-policy`). Raising fees does
+  not merely raise revenue — it eats the room compensation needs — so the page shows, per loan
+  size, what would actually be charged, whether our own fees get trimmed, and the resulting comp
+  ceiling. A fee change also cannot be anonymous: a reason is required and the publish is audited.
+- **Wholesale comp bands** were already DB-backed and simply had no surface; they now have one,
+  with the same audit trail.
+
+F-19's invariant is pinned for *any* schedule, not just the default: `tests/platformFeeSchedule.test.ts`
+asserts the numerator and denominator draw on the same total whatever an admin publishes.
+
+**F-17's business levers are therefore spent down to one.** Fees are no longer the constraint at
+any loan size. What remains is the comp-plan ceiling — and that is a negotiation, not a code
+change.
 
 ---
 
@@ -275,9 +440,9 @@ commitment — was closed by F-3 and the fix holds. Nothing in this pass changes
 
 ## Recommended sequence
 
-1. **F-18 first.** It is a wiring change over functions that already exist, and it converts F-17
+1. **F-18 first.** ✅ done — a wiring change over functions that already existed, converting F-17
    from a discovered-too-late blocker into a decision made at the one moment it is still free.
-2. **F-19 with it** — same file, same test, and it corrects the number F-18 would surface.
+2. **F-19 with it** — ✅ done, and it corrected the numbers F-18 surfaces.
 3. **F-17 is a founder decision**, and it should be made before acquisition spend goes into the
    DPA/first-time-buyer segment. Fees, comp plan, or a declared minimum loan amount — one of the
    three has to move.
@@ -332,23 +497,66 @@ Three properties are deliberate:
 
 ### Verification
 
-Typecheck clean · **2,095 unit tests green** (+24) · new suite
-`tests/compensationElectionQmGate.test.ts` · KB index, doc-freshness, schema and delivery-stack
-freeze guards all pass. No migration, no schema change, no behaviour change to any borrower
-surface.
+Typecheck clean · **2,106 tests green** (+35: 1,859 server / 247 client) · new suite
+`tests/compensationElectionQmGate.test.ts` + 7 added component tests · KB index, doc-freshness,
+schema, delivery-stack freeze and design-token guards all pass. No migration, no schema change,
+no behaviour change to any borrower surface.
 
-### Deliberately left open
+Not visually verified in a browser — the card is covered by component tests and the token guard,
+which is where this repo draws that line.
 
-- **The staff card does not yet render the headroom.** `CompensationCard.tsx` shows the election;
-  the `qm` block and the 422's `maxElectableBps` are available to it but unwired. Staff learn the
-  ceiling from the refusal message today, which is functional but late — wiring it into the input
-  is the follow-on.
-- **F-19 is not fixed here.** The tax service fee remains outside the floor's components, so the
-  ceiling this endpoint reports is a hair generous. Fixing it moves the numbers, which is why it
-  is its own change with its own test, not a silent rider on this one.
-- **F-17 is untouched.** This surfaces the constraint at the right time; it does not resolve it.
-  A file inside the dead band still cannot be originated — staff now learn that at election
-  instead of at submission.
+### The staff card (follow-on, shipped same day)
+
+The endpoint alone still made staff learn the cap by tripping the 422 — the F-18 sequencing
+defect one layer up. So the read side landed with it:
+
+- **`GET /api/loan-applications/:id/compensation/qm`** — same internal-staff, assignment-scoped
+  gates as the PATCH, read-only so no audit entry. Returns the ceiling **per compensation model**
+  (they price differently, and the dialog toggles between them without refetching) plus the
+  current election's score.
+- **One scorer for both.** `buildQmPicture()` is what the PATCH refuses off and the GET reports
+  off, so the two surfaces cannot disagree about a file — the same argument that put the basis in
+  `loanCosts.ts` in the first place, applied one level up.
+- **`CompensationCard.tsx`** shows the headroom on an elected file (labelled *platform charges
+  only, so the true figure is higher* — a floor must never read as a cleared figure), shows the
+  ceiling under the bps input, and **disables Save above it**, mirroring the server's 422 the same
+  way the card already mirrors the post-LE 409. When no rate clears at all (F-17), it says so in a
+  `warning` Alert instead of leaving staff hunting for a number that does not exist.
+- A file with no loan amount yet is left unconstrained: the ceiling is absent, not zero.
+
+7 component tests (`CompensationCard.test.tsx`, 14 total) plus source-walk guards pinning that
+the card consumes the ceiling and that both surfaces build from one helper.
+
+### Deliberately left open at the time
+
+- **F-17 was untouched by F-18.** Surfacing the constraint at the right time is not resolving it.
+  That resolution landed the same day — see below.
+
+---
+
+## Security review — TEAM_PRACTICES §9 (2026-08-05)
+
+The admin pricing-policy surface adds `requireRole("admin")` gates, which is a §9
+**role/permission gate** trigger. Structured pass run before merge; outcome recorded in the PR
+body per §9. **No HIGH or MEDIUM findings.**
+
+Covered: authorization (5/5 new admin endpoints gated, pinned by a count-parity test; the new
+staff QM read endpoint reuses the sibling PATCH's `isInternalStaffRole` +
+`verifyInternalStaffApplicationAccess` assignment scoping), SQL injection (Drizzle-parameterized
+throughout; the one raw fragment interpolates a column reference, not a string), mass assignment
+(Zod strips unknown keys, and `version`/`createdBy`/`effectiveFrom` are server-derived — the
+session supplies `createdBy`, never the body), XSS (React, no `dangerouslySetInnerHTML`), CSRF
+(covered — the only carve-out is `/api/webhooks/`), and data exposure (the new table holds no
+PII, and is not on `RESPONSE_BODY_LOG_ALLOWLIST`).
+
+Confirmed by inspection that neither of the two triggers the guard **cannot** see is present: no
+`shared/schema/` column holding PII, and no new PII sub-processor.
+
+> **Correction to the merge commit `2cacf33`.** Its message states "no TEAM_PRACTICES §9 trigger
+> among the 28 changed files". That was wrong. The local guard invocation behind that claim passed
+> only file *names*; CI passes the diff *content*, which is what detects an added `requireRole`.
+> CI was right and the commit message is not — the trigger fired, and the review above is the
+> response. Recorded here because a pushed commit message cannot be corrected in place.
 
 ---
 

@@ -110,8 +110,22 @@ export interface PointsAndFeesFloorInput {
   originationFee: number;
   /** Discount/origination points, in dollars. */
   points: number;
-  applicationFee: number;
-  underwritingFee: number;
+  /**
+   * The platform's own charges that are finance charges under §1026.4.
+   *
+   * MUST be the same set the Reg Z Total Loan Amount subtracts as prepaid
+   * finance charges. §1026.32(b)(1)(i) draws points and fees FROM the finance
+   * charge, so a charge classified as one belongs in both computations or
+   * neither — it cannot shrink the cap without also counting against it.
+   *
+   * Passed as a list rather than as named fee fields precisely so that adding
+   * a charge to the schedule cannot count it in one place and forget it in the
+   * other. That asymmetry is what audit F-19 found: the tax service fee was a
+   * prepaid finance charge in `knownPrepaidFinanceCharges` and in the APR, and
+   * absent from this floor, so the same $100 tightened the cap without being
+   * charged against it.
+   */
+  platformFinanceCharges: readonly PointsAndFeesComponent[];
   compensation: OriginatorCompensation;
 }
 
@@ -146,8 +160,7 @@ export function pointsAndFeesFloor(input: PointsAndFeesFloorInput): PointsAndFee
   const components: PointsAndFeesComponent[] = [
     { name: "Origination fee (borrower-paid)", amount: input.originationFee },
     { name: "Points", amount: input.points },
-    { name: "Application fee", amount: input.applicationFee },
-    { name: "Underwriting fee", amount: input.underwritingFee },
+    ...input.platformFinanceCharges,
     {
       name:
         input.compensation.model === "lender_paid"
@@ -163,8 +176,10 @@ export function pointsAndFeesFloor(input: PointsAndFeesFloorInput): PointsAndFee
   const borrowerPaidDouble =
     input.compensation.model === "borrower_paid" && input.originationFee > 0 && comp > 0;
 
+  const platformTotal = input.platformFinanceCharges.reduce((sum, c) => sum + c.amount, 0);
+
   const amount = borrowerPaidDouble
-    ? Math.max(input.originationFee, comp) + input.points + input.applicationFee + input.underwritingFee
+    ? Math.max(input.originationFee, comp) + input.points + platformTotal
     : components.reduce((sum, c) => sum + c.amount, 0);
 
   return {
