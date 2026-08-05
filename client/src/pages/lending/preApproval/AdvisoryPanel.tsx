@@ -51,22 +51,36 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
     const estRate = estRatePct / 100;
     const monthlyRate = estRate / 12;
     const numPayments = 360;
-    
+
+    const ltv = price > 0 ? ((price - down) / price) * 100 : 0;
+    // VA purchase loans carry no PMI at any LTV — the same branch the advisory
+    // copy below keys on. Everyone else gets PMI in the estimate when LTV > 80,
+    // so "20% down avoids PMI" is true in the number, not just the copy.
+    const vaNoPmi = !!formValues.isVeteran && formValues.loanPurpose === "purchase";
+
     let estMortgage = 0;
+    let pmiMonthly = 0;
     if (loanAmount > 0 && monthlyRate > 0) {
-      estMortgage = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
+      estMortgage = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
                     (Math.pow(1 + monthlyRate, numPayments) - 1);
+      // 1.25%/yr of price is the platform-standard taxes+insurance estimate
+      // (preUnderwriting.TAX_INSURANCE_ANNUAL_PCT) — it never included PMI.
       estMortgage += (price * 0.0125) / 12;
+      if (!vaNoPmi && ltv > 80) {
+        // Illustrative conventional PMI, same 0.5%/yr-of-loan figure as
+        // ScenarioDesk's conventional branch.
+        pmiMonthly = (loanAmount * 0.005) / 12;
+        estMortgage += pmiMonthly;
+      }
     }
-    
+
     const monthlyIncome = income / 12;
     const totalMonthlyObligation = debts + estMortgage;
-    
+
     const dti = monthlyIncome > 0 ? (totalMonthlyObligation / monthlyIncome) * 100 : 0;
-    const ltv = price > 0 ? ((price - down) / price) * 100 : 0;
     const downPaymentPercent = price > 0 ? (down / price) * 100 : 0;
-    
-    return { dti, estMortgage, loanAmount, ltv, downPaymentPercent, estRatePct };
+
+    return { dti, estMortgage, pmiMonthly, vaNoPmi, loanAmount, ltv, downPaymentPercent, estRatePct };
   }, [formValues, advertised30YrRate]);
 
   if (ADVISORY_HIDDEN_STEPS.includes(currentStepId)) {
@@ -199,9 +213,11 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
               ${stats.estMortgage.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               <span className="text-sm text-muted-foreground font-normal">/mo</span>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
+            <p className="text-[10px] text-muted-foreground mt-1" data-testid="text-payment-disclaimer">
               Estimate only — based on {advertised30YrRate ? "today's advertised" : "an illustrative"} {stats.estRatePct}% rate,
-              30-year fixed, plus estimated taxes and insurance. Not an offer of credit; your rate will differ.
+              30-year fixed, plus estimated taxes{stats.pmiMonthly > 0 ? ", insurance, and PMI" : " and insurance"}.
+              {stats.vaNoPmi && stats.ltv > 80 ? " No PMI included — VA loans don't require it." : ""}
+              {" "}Not an offer of credit; your rate will differ.
             </p>
           </div>
         )}
