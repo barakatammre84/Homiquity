@@ -2,64 +2,29 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, taskKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { useLocation, useRoute } from "wouter";
 import { isStaffRole } from "@shared/roles";
-import type { Task, Document, TaskDocument, TaskPriority } from "@shared/schema";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
-  Upload,
-  Calendar,
-  X,
-  Loader2,
-} from "lucide-react";
+import type { Task, Document, TaskDocument } from "@shared/schema";
+import { ArrowLeft, AlertCircle, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { PageShell } from "@/components/PageShell";
+import { getPriorityBadge, getStatusBadge } from "./taskDetail/taskBadges";
+import { DocumentsCard } from "./taskDetail/DocumentsCard";
+import { VerifyDocumentsCard } from "./taskDetail/VerifyDocumentsCard";
+import {
+  CompletedBanner,
+  RejectedBanner,
+  TaskDetailsCard,
+  VerificationNotesCard,
+} from "./taskDetail/TaskSidebar";
 
 interface TaskWithDocs extends Task {
   documents: (TaskDocument & { document: Document })[];
-}
-
-// Badge over both task axes: lifecycle (tasks.status, canonical uppercase) and
-// the verification verdict (verificationStatus) — a rejection outranks the
-// lifecycle label because it is the thing the borrower must act on.
-function getStatusBadge(task: Pick<Task, "status" | "verificationStatus">) {
-  if (task.verificationStatus === "rejected" && task.status !== "COMPLETED") {
-    return <Badge variant="destructive">Rejected</Badge>;
-  }
-  const statusConfig: Record<Task["status"], { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-    OPEN: { variant: "secondary", label: "Pending" },
-    IN_PROGRESS:
-      task.verificationStatus === "pending"
-        ? { variant: "outline", label: "Submitted - Awaiting Review" }
-        : { variant: "default", label: "In Progress" },
-    BLOCKED: { variant: "secondary", label: "Blocked" },
-    COMPLETED: { variant: "default", label: "Completed" },
-    EXPIRED: { variant: "secondary", label: "Expired" },
-  };
-  const config = statusConfig[task.status] || { variant: "secondary" as const, label: task.status };
-  return <Badge variant={config.variant}>{config.label}</Badge>;
-}
-
-function getPriorityBadge(priority: TaskPriority) {
-  const config: Record<TaskPriority, { className: string; label: string }> = {
-    low: { className: "bg-muted text-muted-foreground", label: "Low Priority" },
-    normal: { className: "bg-info-subtle text-info", label: "Normal Priority" },
-    high: { className: "bg-warning-subtle text-warning-subtle-foreground", label: "High Priority" },
-    urgent: { className: "bg-destructive-subtle text-destructive", label: "Urgent" },
-  };
-  const p = config[priority] ?? config.normal; // runtime guard: pre-0034 legacy rows
-  return <Badge className={p.className}>{p.label}</Badge>;
 }
 
 export default function TaskDetail() {
@@ -216,268 +181,65 @@ export default function TaskDetail() {
         </div>
       }
     >
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 space-y-6">
-                {task.documentInstructions && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Instructions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground" data-testid="text-instructions">
-                        {task.documentInstructions}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+          {task.documentInstructions && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Instructions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground" data-testid="text-instructions">
+                  {task.documentInstructions}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-                {task.description && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Description</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground">{task.description}</p>
-                    </CardContent>
-                  </Card>
-                )}
+          {task.description && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Description</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">{task.description}</p>
+              </CardContent>
+            </Card>
+          )}
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Uploaded Documents</CardTitle>
-                    <CardDescription>
-                      {task.documents?.length || 0} document(s) uploaded for this task
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {(!task.documents || task.documents.length === 0) ? (
-                      <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                        <FileText className="mx-auto h-12 w-12 mb-4" />
-                        <p>No documents uploaded yet</p>
-                        {canUpload && (
-                          <p className="text-sm mt-2">
-                            Click the upload button to add your document
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {task.documents.map((taskDoc) => (
-                          <div
-                            key={taskDoc.id}
-                            className={`flex items-center justify-between rounded-lg border p-4 ${
-                              taskDoc.isVerified
-                                ? "bg-success-subtle border-border"
-                                : ""
-                            }`}
-                            data-testid={`document-${taskDoc.id}`}
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                                <FileText className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{taskDoc.document.fileName}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {format(new Date(taskDoc.createdAt!), "MMM d, yyyy 'at' h:mm a")}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {taskDoc.isVerified ? (
-                                <Badge variant="success">
-                                  <CheckCircle2 className="mr-1 h-3 w-3" />
-                                  Verified
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary">Pending Review</Badge>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+          <DocumentsCard
+            documents={task.documents}
+            canUpload={canUpload}
+            isUploading={isUploading}
+            fileInputRef={fileInputRef}
+            onFileSelect={handleFileSelect}
+          />
 
-                    {canUpload && (
-                      <div className="mt-6">
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleFileSelect}
-                          className="hidden"
-                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          data-testid="input-file-upload"
-                        />
-                        <Button
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isUploading}
-                          className="w-full"
-                          data-testid="button-upload-document"
-                        >
-                          {isUploading ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="mr-2 h-4 w-4" />
-                              Upload Document
-                            </>
-                          )}
-                        </Button>
-                        <p className="text-sm text-muted-foreground text-center mt-2">
-                          Supported formats: PDF, JPG, PNG, DOC, DOCX
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+          {canVerify && task.documents && task.documents.length > 0 && (
+            <VerifyDocumentsCard
+              documents={task.documents}
+              verificationNotes={verificationNotes}
+              onVerificationNotesChange={setVerificationNotes}
+              onVerify={(docId, isVerified) => verifyDocumentMutation.mutate({ docId, isVerified })}
+              isPending={verifyDocumentMutation.isPending}
+            />
+          )}
+        </div>
 
-                {canVerify && task.documents && task.documents.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Verify Documents</CardTitle>
-                      <CardDescription>
-                        Review the uploaded documents and verify or reject them
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="notes">Verification Notes (Optional)</Label>
-                        <Textarea
-                          id="notes"
-                          placeholder="Add any notes about the verification..."
-                          value={verificationNotes}
-                          onChange={(e) => setVerificationNotes(e.target.value)}
-                          data-testid="input-verification-notes"
-                        />
-                      </div>
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            const lastDoc = task.documents?.[task.documents.length - 1];
-                            if (lastDoc) {
-                              verifyDocumentMutation.mutate({ docId: lastDoc.id, isVerified: false });
-                            }
-                          }}
-                          disabled={verifyDocumentMutation.isPending}
-                          data-testid="button-reject-document"
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Reject
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            const lastDoc = task.documents?.[task.documents.length - 1];
-                            if (lastDoc) {
-                              verifyDocumentMutation.mutate({ docId: lastDoc.id, isVerified: true });
-                            }
-                          }}
-                          disabled={verifyDocumentMutation.isPending}
-                          data-testid="button-approve-document"
-                        >
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
-                          Approve & Verify
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+        <div className="space-y-6">
+          <TaskDetailsCard task={task} />
 
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Task Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Task Type</p>
-                      <p className="font-medium capitalize">{task.taskType.replace(/_/g, " ")}</p>
-                    </div>
-                    {task.documentCategory && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Document Type</p>
-                        <p className="font-medium capitalize">{task.documentCategory.replace(/_/g, " ")}</p>
-                      </div>
-                    )}
-                    {task.documentYear && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Year</p>
-                        <p className="font-medium">{task.documentYear}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-muted-foreground">Created</p>
-                      <p className="font-medium">
-                        {format(new Date(task.createdAt!), "MMMM d, yyyy")}
-                      </p>
-                    </div>
-                    {task.verifiedAt && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Verified</p>
-                        <p className="font-medium">
-                          {format(new Date(task.verifiedAt), "MMMM d, yyyy")}
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+          {/* Server strips verificationNotes for client roles
+              (borrowerTaskView); the isStaff guard states the intent. */}
+          {isStaff && task.verificationNotes && (
+            <VerificationNotesCard notes={task.verificationNotes} />
+          )}
 
-                {/* Server strips verificationNotes for client roles
-                    (borrowerTaskView); the isStaff guard states the intent. */}
-                {isStaff && task.verificationNotes && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Verification Notes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground" data-testid="text-verification-notes">
-                        {task.verificationNotes}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
+          {task.verificationStatus === "rejected" && task.status !== "COMPLETED" && <RejectedBanner />}
 
-                {task.verificationStatus === "rejected" && task.status !== "COMPLETED" && (
-                  <Card className="border-border bg-destructive-subtle">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
-                        <div>
-                          <p className="font-medium text-destructive">
-                            Document Rejected
-                          </p>
-                          <p className="text-sm text-destructive mt-1">
-                            Please upload a new copy of this document.
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {task.status === "COMPLETED" && (
-                  <Card className="border-border bg-success-subtle">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-success-subtle-foreground mt-0.5" />
-                        <div>
-                          <p className="font-medium text-success-subtle-foreground">
-                            Task Complete
-                          </p>
-                          <p className="text-sm text-success-subtle-foreground mt-1">
-                            Your document has been verified and accepted.
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
+          {task.status === "COMPLETED" && <CompletedBanner />}
+        </div>
+      </div>
     </PageShell>
   );
 }
