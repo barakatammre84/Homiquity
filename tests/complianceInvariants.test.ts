@@ -195,11 +195,12 @@ describe("TRID (Reg Z §1026.19): the LE clock is triggered, business-day based,
     expect(read("server/routes/lending/applications.ts")).toMatch(/evaluateTridTrigger\(/);
     expect(read("server/routes/lending/statusDecisions.ts")).toMatch(/evaluateTridTrigger\(/);
     // …and the URLA SSN save. A whole-file match here is NOT sufficient: the
-    // client only ever calls POST /api/urla/:id/save (URLAForm.tsx), never the
-    // POST /api/urla/:id/personal-info route — a whole-file regex would pass
-    // even if only the unreachable personal-info route called the trigger and
-    // /save never did (this happened for real — intake-01, fixed alongside
-    // this test). Scope the assertion to the /save handler specifically.
+    // client only ever calls POST /api/urla/:id/save (URLAForm.tsx). A
+    // whole-file regex previously passed even though /save never called the
+    // trigger, because a dead POST /api/urla/:id/personal-info route (no
+    // client caller — since deleted, intake-04) happened to contain the call
+    // instead (this happened for real — intake-01, fixed alongside this
+    // test). Scope the assertion to the /save handler specifically.
     const borrowerUrla = read("server/routes/borrower/urla.ts");
     const saveHandlerStart = borrowerUrla.indexOf('app.post("/api/urla/:applicationId/save"');
     const saveHandlerEnd = borrowerUrla.indexOf("// ===== ASPIRING OWNER JOURNEY API =====");

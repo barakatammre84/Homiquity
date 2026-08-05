@@ -1,7 +1,7 @@
 // Borrower routes: URLA sections (personal info/SSN/employment/income/assets/liabilities/property) + bulk save.
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
-import { InvalidSsnError, type IStorage } from "../../storage";
+import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { logAudit } from "../../auditLog";
 import { selfEmploymentWorksheetSchema, isStaffRole, isInternalStaffRole, type User } from "@shared/schema";
@@ -54,48 +54,6 @@ export function registerUrlaRoutes(
     } catch (error) {
       console.error("Get URLA data error:", error);
       res.status(500).json({ error: "Failed to get URLA data" });
-    }
-  });
-
-  app.post("/api/urla/:applicationId/personal-info", isAuthenticated, async (req, res) => {
-    try {
-      const user = req.user as User;
-      const { applicationId } = routeParams(req);
-      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
-      if (!application) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-      // Whitelist to table columns (mass-assignment defense) and pass the raw
-      // `ssn` through to storage, where ssnVault validates + encrypts it
-      // (InvalidSsnError → 400 below). stripEncryptedFields keeps ciphertext
-      // out of the response.
-      const sanitized = sanitizePersonalInfoBody(req.body);
-      if (!sanitized.ok) {
-        return res.status(400).json({ error: sanitized.error });
-      }
-      const data = { ...sanitized.data, applicationId };
-      const result = await storage.upsertUrlaPersonalInfo(data as any);
-
-      // TRID §1026.2(a)(3): the SSN often arrives here as the 6th piece of
-      // application information — evaluate the Loan Estimate trigger.
-      try {
-        const trid = await evaluateTridTrigger(applicationId);
-        if (trid.justTriggered) {
-          logAudit(req, "trid.application_triggered", "loan_application", applicationId, {
-            leDueDate: trid.leDueDate?.toISOString(),
-          });
-        }
-      } catch (tridErr) {
-        console.error("[TRID] Trigger evaluation failed (non-fatal):", tridErr);
-      }
-
-      res.json(stripEncryptedFields(result));
-    } catch (error) {
-      if (error instanceof InvalidSsnError) {
-        return res.status(400).json({ error: error.message });
-      }
-      console.error("Save personal info error:", error);
-      res.status(500).json({ error: "Failed to save personal info" });
     }
   });
 
