@@ -42,4 +42,4 @@ Content-Type: application/json
 ```
 
 Logging in upserts the user (`id: test-<name>`), so accounts self-heal if the dev database
-is reset. Integration-test auth gotchas: see `.agents/memory/integration-test-auth.md`.
+is reset. **Integration-test auth gotcha:** the session cookie is `secure: true`, so an HTTP test must send `X-Forwarded-Proto: https` on login **and every authenticated request after it** — without it the login "succeeds" and every later call 401s.

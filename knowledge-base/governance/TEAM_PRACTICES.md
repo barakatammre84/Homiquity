@@ -92,11 +92,12 @@ Practically:
    same commit** — no citation, no code change. Never invent MISMO names (see
    [CLAUDE.md](../../CLAUDE.md) compliance-first rules).
 6. Schema changes are **hand-authored** SQL in `migrations/` (drizzle-kit generate has
-   snapshot drift). Never `npm run db:push` from a worktree — the shared dev DB serves
-   multiple branches and push drops other branches' columns. Full gotcha doctrine:
-   [.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md) — note that
-   `.agents/memory/` is in-repo agent memory, visible to every session; check it before
-   fighting a known battle.
+   snapshot drift). Never `pnpm db:push` from a worktree — the shared dev DB serves
+   multiple branches and push drops other branches' columns. Since #251 `db:push` and
+   `db:generate` are exit-1 stubs that print this doctrine, and `--force` would additionally
+   drop the `sessions` table (created by the session store, not `shared/schema/`), logging out
+   every user. Use targeted `ALTER TABLE … ADD COLUMN IF NOT EXISTS`. Full doctrine:
+   [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md) and CLAUDE.md.
 7. New or changed environment variables land in `.env.example` **and** the env-var list in
    [CICD.md](../runbooks/CICD.md) in the same PR — production values live as **Railway service
    variables** (Railway → project *Homiquity* → service *Homiquity* → Variables).
@@ -116,10 +117,11 @@ Practically:
 ### Known traps index (check before fighting a known battle)
 
 The trap doctrine lives where it lives — this is the one-stop pointer list. A newly
-discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR.
+discovered trap gets a line here in the same PR.
 
-- **`npm run db:push` from a worktree** drops other branches' columns on the shared dev DB;
-  never `--force` — [.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md).
+- **`pnpm db:push` from a worktree** drops other branches' columns on the shared dev DB, and
+  `--force` also drops `sessions` (logging out every user); it is an exit-1 stub for that reason
+  — [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md).
 - **`drizzle-kit generate` has snapshot drift** in this repo — hand-author migration SQL
   (point 6 above; [CLAUDE.md](../../CLAUDE.md) database rules).
 - **Prod migrations are auto-applied by CI — never hand-apply.** The `migrate-prod` job
