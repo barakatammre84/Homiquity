@@ -10,6 +10,7 @@ import {
   decimal,
   jsonb,
   index,
+  uniqueIndex,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
@@ -121,6 +122,59 @@ export const smsOptOuts = pgTable(
 );
 
 export type SmsOptOut = typeof smsOptOuts.$inferSelect;
+
+// The verified phone ↔ user link. `users` carries only an email, so an inbound
+// SMS — which yields nothing but a phone string — could not be attributed to
+// anyone, and `teamMessages` requires real user FKs on both ends. This table is
+// what makes an inbound message routable.
+//
+// VERIFICATION IS STRUCTURAL, NOT POLISH. A self-asserted number is a claim,
+// not an identity: honoring one would route a borrower's loan conversation to
+// whoever typed the digits. Possession must be proven by an OTP round-trip
+// before the row can receive anything, which is why `verifiedAt` is nullable
+// and why the uniqueness constraint below is partial rather than plain.
+export const userPhones = pgTable(
+  "user_phones",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references((): AnyPgColumn => users.id),
+    // Digits-only US national form ("1XXXXXXXXXX") — exactly what
+    // normalizePhone() emits and what smsOptOuts.phone stores, so one
+    // normalization of a webhook's `From` matches against both tables.
+    phone: varchar("phone", { length: 40 }).notNull(),
+    // NULL until an OTP round-trip proves possession of the handset.
+    // A row with a NULL verified_at MUST NEVER receive a message.
+    verifiedAt: timestamp("verified_at"),
+    // TCPA prior express consent, captured in the same step as verification.
+    // NULL is an honest gap — never backfill a guessed value onto a consent
+    // column, the same rule the migration guide applies to provenance fields.
+    consentAt: timestamp("consent_at"),
+    consentSource: varchar("consent_source", { length: 40 }),
+    // varchar(64) to match clientIpForRecord()'s truncation in server/clientIp.ts.
+    consentIp: varchar("consent_ip", { length: 64 }),
+    isPrimary: boolean("is_primary").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+  },
+  (table) => [
+    index("user_phones_user_idx").on(table.userId),
+    index("user_phones_phone_idx").on(table.phone),
+    // At most one VERIFIED owner per number. Partial on purpose: two people may
+    // each claim the same number (a recycled line, a typo), but only one can
+    // ever hold it verified — and an unverified claim must not block the real
+    // owner from verifying, which a plain unique constraint would do.
+    uniqueIndex("uq_user_phones_verified_phone")
+      .on(table.phone)
+      .where(sql`${table.verifiedAt} IS NOT NULL`),
+    // At most one primary number per user.
+    uniqueIndex("uq_user_phones_primary")
+      .on(table.userId)
+      .where(sql`${table.isPrimary}`),
+  ],
+);
+
+export type UserPhone = typeof userPhones.$inferSelect;
+export type InsertUserPhone = typeof userPhones.$inferInsert;
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
