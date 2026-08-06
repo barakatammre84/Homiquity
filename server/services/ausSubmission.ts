@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { plaidClient } from "../plaid";
+import { COMPANY_IDENTITY } from "@shared/companyIdentity";
 
 /**
  * AUS (Automated Underwriting System) submission service.
@@ -275,6 +276,13 @@ export interface CommitmentLetter {
   issuedAt: string;
   expiresAt: string;
   lender: { name: string; nmls: string };
+  /**
+   * True when the AUS findings behind this letter came from the deterministic
+   * simulation rather than a live DU submission. Carried onto the document
+   * itself, not just the server log — a reader holding the letter must be able
+   * to tell, and the log is not attached to it.
+   */
+  simulated: boolean;
   borrower: { name: string; applicationId: string };
   property: { address: string | null; value: number };
   loanTerms: { loanAmount: number; ltvPercent: number; dtiPercent: number | null };
@@ -303,7 +311,12 @@ export function buildCommitmentLetter(args: {
     letterType: approved ? "commitment" : conditional ? "conditional_commitment" : "declined",
     issuedAt: issuedAt.toISOString(),
     expiresAt: expiresAt.toISOString(),
-    lender: { name: "Homiquity Mortgage Corporation", nmls: "PENDING" },
+    // NMLS was hardcoded "PENDING" — false since 2026-07-13, when the company
+    // was licensed as #427468. A document issued under the company name stating
+    // its own licensure is unresolved is a misstatement about licensure, so it
+    // reads from the single source rather than a literal.
+    lender: { name: COMPANY_IDENTITY.legalName, nmls: COMPANY_IDENTITY.nmlsId },
+    simulated: findings.simulated,
     borrower: { name: args.borrowerName, applicationId: args.applicationId },
     property: { address: args.propertyAddress, value: args.propertyValue },
     loanTerms: {
@@ -318,7 +331,17 @@ export function buildCommitmentLetter(args: {
       employment: findings.day1Certainty.employment.relief,
     },
     conditions: findings.messages.filter((m) => m.severity !== "info").map((m) => `[${m.code}] ${m.text}`),
+    // A simulated run must say so ON the document, first, before anything a
+    // reader could mistake for a commitment. `findings.simulated` is true
+    // whenever the DU leg is the deterministic adapter — which is every run
+    // today, since a set FANNIE_DU_API_KEY throws rather than going live.
     disclaimer:
+      (findings.simulated
+        ? "SIMULATED — NOT A REAL UNDERWRITING DECISION. These findings were produced by an " +
+          "internal deterministic model, not by Desktop Underwriter, and no automated underwriting " +
+          "system has evaluated this file. This document must not be relied on or presented as a " +
+          "commitment to lend. "
+        : "") +
       "This commitment is based on automated underwriting findings and the information provided. " +
       "It is subject to final verification, property appraisal, and applicable regulatory requirements. " +
       "This is not a loan approval guarantee.",
