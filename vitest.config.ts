@@ -124,6 +124,9 @@ export default defineConfig({
       // algorithm against Twilio's published test vector and the route's
       // fail-closed posture.
       "tests/twilioWebhookSignature.test.ts",
+      // Outbound delivery receipts: that ONLY error 21610 converges the opt-out
+      // ledger, and that the status callback authenticates against its OWN URL.
+      "tests/twilioMessageStatus.test.ts",
       "tests/errorMonitoring.test.ts",
       "tests/auditReanchor.test.ts",
       "tests/auditChainTruncation.test.ts",
