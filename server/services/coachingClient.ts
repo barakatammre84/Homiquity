@@ -25,7 +25,7 @@ export {
 // Lazily constructed: the SDK client is built on first use, and this module is
 // imported by the route registry — an eager client here would make boot depend
 // on AI credentials. (The old OpenAI client THREW at construction with no key
-// and took down every API route on Vercel; the Anthropic SDK defers key
+// and took down every API route in production; the Anthropic SDK defers key
 // validation to the first request, but we keep the lazy pattern and the
 // isCoachConfigured() gate so the coach degrades to labeled offline guidance
 // instead of erroring per-request.)

@@ -1,3 +1,9 @@
+# STATUS 2026-08-06: Vercel preview deployments no longer exist (Railway
+# cutover), so nothing consumes this branch automatically today. Retained
+# deliberately — it is also the only routine that replays the migration chain
+# from zero against a real Postgres — pending a decision to retire or re-point
+# it at Railway PR environments. See knowledge-base/runbooks/NEON_PREVIEW_DB.md.
+#
 # Builds/refreshes the PII-free `preview-seed` Neon branch that Vercel Preview
 # deployments point at (doctrine + founder cutover steps:
 # kb/runbooks/NEON_PREVIEW_DB.md). Manual-dispatch only: it is a provisioning

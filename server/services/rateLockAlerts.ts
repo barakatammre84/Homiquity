@@ -19,8 +19,8 @@ function daysUntil(expiresAt: string | Date): number {
  * never lapses unseen. One notification per lock — once created it lingers in
  * the LO's inbox until read, so a daily cron does not re-spam the same lock.
  *
- * Intended to run from a Vercel cron (see server/routes/jobs.ts and
- * vercel.json). Safe to run manually as an admin.
+ * Intended to run from the daily cron scheduler (see server/routes/jobs.ts
+ * and .github/workflows/cron-jobs.yml). Safe to run manually as an admin.
  */
 export async function runRateLockAlertSweep(): Promise<{ scanned: number; notified: number }> {
   const expiring = await storage.getExpiringRateLocks(ALERT_WINDOW_DAYS);

@@ -22,7 +22,7 @@ function generateRawToken(): string {
 /**
  * The public origin to build links against: an explicit PUBLIC_BASE_URL wins
  * (set this in production), otherwise derive it from the forwarded request
- * headers so links are correct behind Vercel's proxy and in local dev.
+ * headers so links are correct behind the platform proxy and in local dev.
  */
 export function publicBaseUrl(req: Request): string {
   const configured = process.env.PUBLIC_BASE_URL;

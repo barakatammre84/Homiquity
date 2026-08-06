@@ -37,14 +37,14 @@ app.set("trust proxy", trustProxyHops());
 // Express 5 changed the default `query parser` from "extended" (qs) to "simple"
 // (Node's querystring), which stops nesting brackets: `?arr[]=a&obj[k]=v` parses
 // to the literal keys "arr[]" and "obj[k]" instead of an array and an object.
-// This app was built against qs semantics and tests/vercelEntryHelpers.test.ts
-// pins them — that assertion came from a live prod probe where a scalar cast
+// This app was built against qs semantics — the requirement came from a live
+// prod probe where a scalar cast
 // meeting an array surfaced as a handler error rather than a silent empty
 // result. Keep the Express 4 behaviour explicit rather than inheriting a
 // default that just changed underneath us.
 app.set("query parser", "extended");
 
-// Response compression, self-host replacement for Vercel's edge br/gzip.
+// Response compression, done in-process (no CDN edge does it for us).
 // First in the chain so every later writer (API JSON, static assets, SPA
 // shell, prerendered documents) is covered. SSE must NOT be compressed:
 // buffering would hold frames past their flush (server/sse.ts already sets
@@ -106,8 +106,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Google Maps tiles are not CORP-tagged
 }));
 
-// Private-beta gate (Express port of root middleware.ts — the Vercel Edge
-// original keeps serving Vercel until cutover). Total no-op unless
+// Private-beta gate (server/middleware/betaGate.ts). Total no-op unless
 // BETA_ACCESS_CODE is set. Must mount ahead of the whole route surface:
 // /robots.txt's Disallow-all override has to win over the static file, and
 // non-API document routes registered later (e.g. /sitemap.xml) are gated
@@ -407,9 +406,8 @@ app.use((req, res, next) => {
 });
 
 // Builds the fully-wired Express app (routes, error handler, and the provided
-// setup step) WITHOUT binding a port. Persistent hosts call runApp() below,
-// which listens; serverless targets (e.g. Vercel) import createApp() and hand
-// the returned app to the platform's request handler instead of listening.
+// setup step) WITHOUT binding a port. runApp() below listens; createApp() is
+// exported separately so tests can drive the app without a socket.
 export async function createApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ): Promise<{ app: Express; server: Server }> {

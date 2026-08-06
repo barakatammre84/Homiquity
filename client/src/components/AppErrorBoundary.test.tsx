@@ -5,7 +5,7 @@ import { AppErrorBoundary } from "./AppErrorBoundary";
 import * as errorReporter from "@/lib/errorReporter";
 
 // The root error boundary (audit finding C1). Every route is React.lazy(), so a
-// rolling Vercel deploy rotates chunk hashes under a tab that still holds the
+// rolling deploy rotates chunk hashes under a tab that still holds the
 // previous index.html — the next lazy import() rejects and, with no boundary,
 // blanks the whole app. These tests pin the two behaviours that make that
 // recoverable: reload-once on a stale chunk, and a real fallback (never a blank

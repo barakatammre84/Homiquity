@@ -41,7 +41,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       // Local dev runs plain http; a secure-only cookie would never be stored
-      // and every login would silently fail. Production (Vercel) is https
+      // and every login would silently fail. Production is https
       // behind a trusted proxy, so the cookie is secure there.
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

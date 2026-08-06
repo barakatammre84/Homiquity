@@ -2,7 +2,7 @@ import { Component, type ReactNode, type ErrorInfo } from "react";
 import { reportCaughtError } from "@/lib/errorReporter";
 
 /**
- * Root error boundary (C1). Every route is `React.lazy()`, so a rolling Vercel
+ * Root error boundary (C1). Every route is `React.lazy()`, so a rolling
  * deploy — which rotates chunk hashes while a user still holds the previous
  * `index.html` — makes the next lazy `import()` *reject*. That rejection throws
  * during render; with nothing to catch it, React unmounts the whole tree and

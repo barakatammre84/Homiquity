@@ -1,10 +1,11 @@
 /**
  * Crawler / link-unfurler user-agent matcher for the SEO bot prerender.
  *
- * Ported VERBATIM from the vercel.json bot-rewrite's `has: user-agent` value —
- * the two must stay byte-identical until the Vercel cutover PR deletes that
- * file, because during the transition BOTH platforms decide "is this a bot?"
- * with this pattern and a divergence would prerender different URL sets per
+ * Originally ported verbatim from a platform edge-rewrite user-agent matcher,
+ * and kept deliberately GENERIC rather than tightened: this is now the single
+ * place that decides "is this a bot?", so narrowing it silently stops
+ * prerendering for whichever crawler falls out. Divergence would prerender
+ * different URL sets per
  * platform. Deliberately not "improved": the generic [Bb]ot / [Cc]rawler /
  * [Ss]pider alternations are the tested production trigger (they also admit
  * e.g. AhrefsBot/SemrushBot, by design), and the mixed-case classes exist

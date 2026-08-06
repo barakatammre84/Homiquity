@@ -11,7 +11,7 @@ import type { RequestHandler } from "express";
  * Existing borrowers keep full access to their applications, documents, and
  * messages — the switch stops new intake, not service. The env var is read
  * per-request (never cached at module load) so flipping it in dev needs no
- * restart, and on Vercel the change takes effect with the next deployment.
+ * restart; setting the variable on the host redeploys and applies it.
  *
  * Blocked requests get 503 { code: "INTAKE_PAUSED" } with a borrower-safe
  * message; friendlyApiError lets a deliberate 503 envelope through to the
