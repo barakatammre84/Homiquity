@@ -29,6 +29,7 @@ export default defineConfig({
       "tests/loCompensation.test.ts",
       "tests/onboardingDocumentProgress.test.ts",
       "tests/loanEstimatePdf.test.ts",
+      "tests/inertButtons.test.ts",
       "tests/feeTolerance.test.ts",
       "tests/rateLockConfirmation.test.ts",
       "tests/leDisclosureBaseline.test.ts",
