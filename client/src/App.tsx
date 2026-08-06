@@ -5,7 +5,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PublicLayout } from "@/components/layouts/PublicLayout";
-import { PrivateLayout } from "@/components/layouts/PrivateLayout";
 import { BareLayout } from "@/components/layouts/BareLayout";
 import { Loader2 } from "lucide-react";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
@@ -41,6 +40,17 @@ function EmailCaptureGate() {
     </Suspense>
   );
 }
+
+// Lazy for the same reason EmailCaptureModal is. PrivateLayout is the
+// authenticated app shell — it pulls ui/sidebar, app-sidebar, the
+// notifications panel and the mobile nav (~1.6k lines plus their Radix deps).
+// Imported eagerly, all of that landed in the entry chunk, so every anonymous
+// visitor to a landing or SEO page downloaded the signed-in dashboard chrome
+// before anything rendered. Every consumer below sits inside Router's
+// <Suspense>, which is what makes this safe.
+const PrivateLayout = lazy(() =>
+  import("@/components/layouts/PrivateLayout").then((m) => ({ default: m.PrivateLayout })),
+);
 
 const Landing = lazy(() => import("@/pages/public/Landing"));
 const Refinance = lazy(() => import("@/pages/public/Refinance"));
