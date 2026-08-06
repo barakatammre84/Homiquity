@@ -530,6 +530,27 @@ export async function ensureAdverseActionForDenial(params: {
   const latestPull = await getLatestCreditPull(params.applicationId);
   const posture = resolveDenialFcraPosture(latestPull);
   if (posture.kind === "refuse") {
+    // A refusal is the compliance-relevant event — it is the moment the system
+    // declined to act on credit data — so it belongs in the tamper-evident
+    // chain, not only in the caller's 422. Without this, "show me every time
+    // you refused to deny on simulated data" has no answer.
+    //
+    // The pull id rides in actionDetails as well as the FK column because
+    // computeAuditEntryHash digests actionDetails but NOT the FK columns
+    // (creditAuditChain.ts) — linkage recorded only in the column would sit
+    // outside the hash and would not be tamper-evident.
+    await logCreditAction({
+      applicationId: params.applicationId,
+      userId: params.userId,
+      creditPullId: latestPull?.id,
+      action: "adverse_action_refused",
+      actionDetails: {
+        reason: posture.reason,
+        creditPullId: latestPull?.id ?? null,
+        isSimulated: latestPull?.isSimulated ?? null,
+        attemptedBy: params.generatedBy,
+      },
+    });
     return { ok: false, error: posture.error };
   }
 
