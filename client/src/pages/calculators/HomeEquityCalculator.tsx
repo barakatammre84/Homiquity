@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation} from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
-import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
@@ -61,7 +61,6 @@ export default function HomeEquityCalculator() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const queryClient = useQueryClient();
   const [inputs, setInputs] = useState<EquityInputs>(defaultInputs);
 
   usePageView("/calculators/home-equity");
@@ -87,7 +86,10 @@ export default function HomeEquityCalculator() {
     },
     onSuccess: () => {
       toast({ title: "Results Saved", description: "Your home equity estimate has been saved to your profile." });
-      queryClient.invalidateQueries({ queryKey: calculatorResultKeys.all() });
+      // No calculatorResultKeys.all() invalidation: POST /api/calculator-results
+      // saves the result, but no client surface QUERIES the saved-results list, so
+      // the invalidation matched nothing (guard:querykeys reachability). Re-add it
+      // here when a "my saved calculations" view lands.
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to save results. Please try again.", variant: "destructive" });

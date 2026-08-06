@@ -338,8 +338,6 @@ function PreApprovalFunnel() {
 
       if (inviteId.current) {
         sessionStorage.removeItem("inviteId");
-        sessionStorage.removeItem("prefillName");
-        sessionStorage.removeItem("prefillEmail");
       }
 
       toast({

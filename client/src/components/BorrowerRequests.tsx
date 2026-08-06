@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { taskEngineKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +64,7 @@ interface BorrowerRequestsProps {
 
 export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhenEmpty = false }: BorrowerRequestsProps) {
   const { data: tasks, isLoading } = useQuery<BorrowerTask[]>({
-    queryKey: ["/api/task-engine/applications", applicationId, "borrower-tasks"],
+    queryKey: taskEngineKeys.borrowerTasks(applicationId),
     enabled: !!applicationId,
   });
 

@@ -8,6 +8,10 @@ import {
   calculatorResultKeys,
   coachConversationKeys,
   onboardingStatusKeys,
+  consentKeys,
+  taskEngineKeys,
+  applicationResourceKeys,
+  homeownershipGoalKeys,
 } from "../client/src/lib/queryClient";
 
 // -----------------------------------------------------------------------------
@@ -228,5 +232,115 @@ describe("sibling resource key factories (batch 1)", () => {
   it("nests a coach conversation under the conversations prefix", () => {
     const prefix = coachConversationKeys.all();
     expect(coachConversationKeys.detail(ID).slice(0, prefix.length)).toEqual([...prefix]);
+  });
+});
+
+
+// -----------------------------------------------------------------------------
+// Reachability: an invalidation prefix must ACTUALLY match its family's keys.
+//
+// The shape rules above stop a template-string key. They do not stop the other
+// half of the same hazard: a key written as a perfectly good segment array that
+// no invalidation can reach. `partialMatchKey` compares queryKey arrays ELEMENT
+// BY ELEMENT — ["/api/task-engine"] does NOT match ["/api/task-engine/metrics"].
+// Four families shipped with that mistake; Task Operations was the visible one
+// (escalate / status-update refreshed nothing, so a changed task kept rendering
+// its old status). `scripts/query-key-reachability.cjs` is the surface-wide
+// guard; these are the unit-level assertions for the families it protects.
+// -----------------------------------------------------------------------------
+
+/**
+ * query-core's matcher, reimplemented so these tests assert REAL behaviour
+ * rather than our belief about it. Faithful to
+ * node_modules/@tanstack/query-core — arrays compare element-wise over the
+ * FILTER's length, which is exactly why a longer path string never matches a
+ * shorter one.
+ */
+function partialMatchKey(queryKey: readonly unknown[], filterKey: readonly unknown[]): boolean {
+  if (queryKey.length < filterKey.length) return false;
+  return filterKey.every((seg, i) => seg === queryKey[i]);
+}
+
+describe("partialMatchKey is element-wise, not a string prefix", () => {
+  it("does NOT match a flat path against a shorter prefix (the original bug)", () => {
+    expect(partialMatchKey(["/api/task-engine/metrics"], ["/api/task-engine"])).toBe(false);
+    expect(partialMatchKey(["/api/consents/me"], ["/api/consents"])).toBe(false);
+  });
+
+  it("DOES match once the path is segmented", () => {
+    expect(partialMatchKey(["/api/task-engine", "metrics"], ["/api/task-engine"])).toBe(true);
+    expect(partialMatchKey(["/api/consents", "me"], ["/api/consents"])).toBe(true);
+  });
+
+  it("does not match a narrower filter against a broader key", () => {
+    // Invalidating one file's cockpit must not claim to refresh the whole list.
+    expect(
+      partialMatchKey(["/api/staff/applications"], ["/api/staff/applications", "id", "cockpit"]),
+    ).toBe(false);
+  });
+});
+
+describe("re-segmented families keep their URLs", () => {
+  const ID = "app-1";
+
+  // The refactor's safety property: segmenting a path changes the CACHE KEY and
+  // must not change the REQUEST. If any of these drift, a page silently 404s.
+  it.each([
+    [consentKeys.me(), "/api/consents/me"],
+    [consentKeys.check(ID, "anti_steering"), "/api/consents/check/app-1/anti_steering"],
+    [taskEngineKeys.metrics(), "/api/task-engine/metrics"],
+    [taskEngineKeys.slaClasses(), "/api/task-engine/sla-classes"],
+    [taskEngineKeys.myTasks(), "/api/task-engine/my-tasks"],
+    [taskEngineKeys.tasksByRole("underwriter"), "/api/task-engine/tasks/by-role/underwriter"],
+    [taskEngineKeys.borrowerTasks(ID), "/api/task-engine/applications/app-1/borrower-tasks"],
+    [applicationResourceKeys.documentChecklist(ID), "/api/applications/app-1/document-checklist"],
+    [applicationResourceKeys.team(ID), "/api/applications/app-1/team"],
+    [homeownershipGoalKeys.all(), "/api/homeownership-goal"],
+    [homeownershipGoalKeys.gapAnalysis(), "/api/homeownership-goal/gap-analysis"],
+    [homeownershipGoalKeys.creditRecommendations(), "/api/homeownership-goal/credit-recommendations"],
+  ])("joins to the endpoint URL: %s", (key, url) => {
+    expect(key.join("/")).toBe(url);
+  });
+});
+
+describe("every family root reaches its own children", () => {
+  const ID = "app-1";
+
+  it.each([
+    ["consents", consentKeys.all(), [consentKeys.me(), consentKeys.check(ID, "anti_steering")]],
+    [
+      "task-engine",
+      taskEngineKeys.all(),
+      [
+        taskEngineKeys.metrics(),
+        taskEngineKeys.slaClasses(),
+        taskEngineKeys.myTasks(),
+        taskEngineKeys.tasksByRole("underwriter"),
+        taskEngineKeys.borrowerTasks(ID),
+      ],
+    ],
+    [
+      "applications",
+      applicationResourceKeys.all(),
+      [applicationResourceKeys.documentChecklist(ID), applicationResourceKeys.team(ID)],
+    ],
+    [
+      "homeownership-goal",
+      homeownershipGoalKeys.all(),
+      [homeownershipGoalKeys.gapAnalysis(), homeownershipGoalKeys.creditRecommendations()],
+    ],
+  ])("%s: all() matches every child", (_name, root, children) => {
+    for (const child of children) {
+      expect(partialMatchKey(child, root)).toBe(true);
+    }
+  });
+
+  it("homeownershipGoalKeys.all() reaches credit-recommendations", () => {
+    // The specific miss: GapCalculator invalidated the goal and the gap analysis
+    // by hand and omitted this third sibling, so saving a new target left the
+    // credit advice computed against the OLD one.
+    expect(
+      partialMatchKey(homeownershipGoalKeys.creditRecommendations(), homeownershipGoalKeys.all()),
+    ).toBe(true);
   });
 });

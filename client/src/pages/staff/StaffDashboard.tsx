@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient, taskKeys } from "@/lib/queryClient";
+import { queryClient, taskKeys, taskEngineKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -102,7 +102,7 @@ export default function StaffDashboard() {
   });
 
   const { data: queueTasks, isLoading: queueLoading } = useQuery<QueueTask[]>({
-    queryKey: ["/api/task-engine/tasks/by-role", ownerRole],
+    queryKey: taskEngineKeys.tasksByRole(ownerRole),
     enabled: !authLoading && !!user && isInternalStaff && !!ownerRole,
   });
 

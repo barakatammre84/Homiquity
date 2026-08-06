@@ -33,7 +33,7 @@
     "guard:tokens": "node scripts/design-token-guard.cjs",
     "guard:channel": "node scripts/delivery-stack-freeze-guard.cjs",
     "guard:docs": "node scripts/doc-freshness-guard.cjs",
-    "guard:querykeys": "node scripts/query-key-guard.cjs",
+    "guard:querykeys": "node scripts/query-key-guard.cjs && node scripts/query-key-reachability.cjs",
     "guard:migrations": "node scripts/migration-ledger-guard.cjs",
     "guard:security": "node scripts/security-review-guard.cjs",
     "guard:kb": "node scripts/kb-index-guard.cjs",

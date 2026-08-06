@@ -7,7 +7,7 @@ import { AutopilotBanner } from "@/components/AutopilotBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, dashboardKeys, coachConversationKeys, loanApplicationKeys } from "@/lib/queryClient";
+import { apiRequest, queryClient, dashboardKeys, coachConversationKeys, loanApplicationKeys, taskEngineKeys } from "@/lib/queryClient";
 import { deriveJourneyStepDetails } from "@shared/borrowerJourney";
 import { formatCurrency } from "@/lib/formatters";
 import { hasPendingPreApprovalSubmit } from "@/lib/pendingAttribution";
@@ -147,7 +147,7 @@ export default function Dashboard() {
   const { data: journeyTasks } = useQuery<
     Array<{ taskTypeCode?: string; ownerRole?: string; status: string }>
   >({
-    queryKey: ["/api/task-engine/applications", activeApplication?.id, "borrower-tasks"],
+    queryKey: taskEngineKeys.borrowerTasks(activeApplication?.id),
     enabled: !!activeApplication?.id,
   });
   const journeyDetails = deriveJourneyStepDetails({

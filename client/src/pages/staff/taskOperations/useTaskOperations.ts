@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, taskEngineKeys } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { USER_ROLE_TO_TASK_ROLE, type TaskMetrics, type SlaClassConfig, type TaskWithSlaStatus } from "./model";
@@ -21,21 +21,21 @@ export function useTaskOperations() {
   const [escalationReason, setEscalationReason] = useState("");
 
   const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery<TaskMetrics>({
-    queryKey: ["/api/task-engine/metrics"],
+    queryKey: taskEngineKeys.metrics(),
     refetchInterval: 30000,
   });
 
   const { data: slaClasses } = useQuery<SlaClassConfig[]>({
-    queryKey: ["/api/task-engine/sla-classes"],
+    queryKey: taskEngineKeys.slaClasses(),
   });
 
   const { data: allTasks, isLoading: tasksLoading, refetch: refetchTasks } = useQuery<TaskWithSlaStatus[]>({
-    queryKey: ["/api/task-engine/tasks/by-role", selectedRole],
+    queryKey: taskEngineKeys.tasksByRole(selectedRole),
     enabled: selectedRole !== "all",
   });
 
   const { data: myTasks } = useQuery<TaskWithSlaStatus[]>({
-    queryKey: ["/api/task-engine/my-tasks"],
+    queryKey: taskEngineKeys.myTasks(),
   });
 
   const escalateMutation = useMutation({
@@ -43,7 +43,7 @@ export function useTaskOperations() {
       return apiRequest("POST", `/api/task-engine/tasks/${taskId}/escalate`, { reason });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/task-engine"] });
+      queryClient.invalidateQueries({ queryKey: taskEngineKeys.all() });
       setEscalateDialogOpen(false);
       setSelectedTaskId(null);
       setEscalationReason("");
@@ -62,7 +62,7 @@ export function useTaskOperations() {
       return apiRequest("PATCH", `/api/task-engine/tasks/${taskId}/status`, { status });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/task-engine"] });
+      queryClient.invalidateQueries({ queryKey: taskEngineKeys.all() });
     },
     onError: (error: Error) => {
       toast({
@@ -78,7 +78,7 @@ export function useTaskOperations() {
       return apiRequest("POST", "/api/task-engine/run-escalation");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/task-engine"] });
+      queryClient.invalidateQueries({ queryKey: taskEngineKeys.all() });
     },
     onError: (error: Error) => {
       toast({

@@ -37,7 +37,10 @@ export default function PropertyForm() {
   const { toast } = useToast();
 
   const { data: property, isLoading } = useQuery<Property>({
-    queryKey: propertyId ? [`/api/properties/${propertyId}`] : [],
+    // Segments, not a template string — same URL, but a template key is
+    // invisible to array-prefix invalidateQueries. The ternary is why the
+    // original `queryKey:`-anchored guard never saw this one.
+    queryKey: propertyId ? ["/api/properties", propertyId] : [],
     enabled: !!propertyId,
   });
 
