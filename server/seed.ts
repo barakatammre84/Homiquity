@@ -2,6 +2,7 @@ import { db } from "./db";
 import { contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders, properties, dpaPrograms, slaClassConfigs, taskTypeSlaMapping } from "@shared/schema";
 import { refreshRates, syncBestExecutionRates } from "./services/rateService";
 import { seedMarketPricing } from "./seedMarketPricing";
+import { seedWholesaleLenderCounterparties } from "./seedWholesaleLenders";
 import { ILLINOIS_DPA_ARTICLES, ILLINOIS_DPA_PROGRAMS } from "./seedData/illinoisDpa";
 import { EDUCATION_ARTICLES } from "./seedData/educationContent";
 import { SLA_CLASS_CONFIG_SEED, TASK_TYPE_SLA_MAPPING_SEED } from "./seedData/taskEngineSla";
@@ -817,6 +818,10 @@ For more information, visit www.consumerfinance.gov/learnmore`,
     await seedIllinoisDpaContent();
     await seedEducationContent();
     await seedTaskEngineSla();
+
+    // Real counterparties (Target-5) — all at "target", no agreements.
+    // Seeded before the pricing demo data so the table's real rows exist first.
+    await seedWholesaleLenderCounterparties();
 
     await seedMarketPricing();
 

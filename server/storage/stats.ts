@@ -6,10 +6,10 @@ import { eq, desc, and, sql } from "drizzle-orm";
 // branch — main leaves account numbers plaintext).
 import { AMOUNT_BEARING_STATUSES } from "@shared/stageRequirements";
 
-import { users, loanApplications, loanOptions, documents, lenderSubmissions, isApprovedGradeLoanAppStatus } from "@shared/schema";
+import { users, loanApplications, loanOptions, documents, lenderSubmissions, wholesaleLenders, isApprovedGradeLoanAppStatus } from "@shared/schema";
 import { summarizeCompensation } from "@shared/compensationLedger";
 import { buildClawbackRegister } from "@shared/compensationClawback";
-import { approvedLenderCount } from "@shared/wholesaleLenders";
+import { approvedLenderCount, isLenderApprovalStatus } from "@shared/wholesaleLenders";
 import { PropertiesStorage } from "./properties";
 export class StatsStorage extends PropertiesStorage {
   // Stats
@@ -103,6 +103,21 @@ export class StatsStorage extends PropertiesStorage {
     // — revenue already banked that is not yet earned.
     const clawback = buildClawbackRegister(submissions);
 
+    // Counterparty capacity is read off the wholesale_lenders table — the same
+    // source pricing uses. An unrecognised approval_status falls back to
+    // "target" so a typo can never inflate the approved count.
+    const lenderRows = (await db
+      .select({
+        lenderId: wholesaleLenders.lenderId,
+        lenderName: wholesaleLenders.lenderName,
+        approvalStatus: wholesaleLenders.approvalStatus,
+        isDemo: wholesaleLenders.isDemo,
+      })
+      .from(wholesaleLenders)).map(l => ({
+        ...l,
+        approvalStatus: isLenderApprovalStatus(l.approvalStatus) ? l.approvalStatus : "target" as const,
+      }));
+
     return {
       totalUsers: userCount.count,
       totalApplications,
@@ -112,7 +127,7 @@ export class StatsStorage extends PropertiesStorage {
         ...compensation,
         // The binding constraint on every number above it: zero approved
         // counterparties means zero revenue capacity (F-5).
-        approvedLenderCount: approvedLenderCount(),
+        approvedLenderCount: approvedLenderCount(lenderRows),
       },
       clawbackExposure: {
         atRiskCount: clawback.atRiskCount,

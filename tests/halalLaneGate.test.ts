@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { WHOLESALE_LENDERS } from "../shared/wholesaleLenders";
+import { TARGET_LENDERS } from "../server/seedData/wholesaleLenderTargets";
 
 /**
  * UAL P7 — the mechanical gates for the halal lane (funder-agnostic slice).
@@ -42,13 +42,13 @@ describe("halal lane gate: no funder without in-repo program authority", () => {
   const HALAL_MARKERS = /halal|ijara|islamic|shariah|sharia|musharaka|murabaha/i;
 
   it("any halal-lane catalog entry requires docs/lender-programs/<id>/ to exist", () => {
-    for (const lender of WHOLESALE_LENDERS) {
-      const isHalalLane = HALAL_MARKERS.test(lender.id) || HALAL_MARKERS.test(lender.specialty);
+    for (const lender of TARGET_LENDERS) {
+      const isHalalLane = HALAL_MARKERS.test(lender.lenderId) || HALAL_MARKERS.test(lender.specialty);
       if (!isHalalLane) continue;
-      const dir = path.join(ROOT, "docs", "lender-programs", lender.id);
+      const dir = path.join(ROOT, "docs", "lender-programs", lender.lenderId);
       expect(
         fs.existsSync(dir),
-        `${lender.id} is a halal-lane funder but has no program-reference docs at docs/lender-programs/${lender.id}/ ` +
+        `${lender.lenderId} is a halal-lane funder but has no program-reference docs at docs/lender-programs/${lender.lenderId}/ ` +
           "— the founder calls + transcribed program docs are the gate (UAL program §P7)",
       ).toBe(true);
     }
@@ -59,8 +59,8 @@ describe("halal lane gate: no funder without in-repo program authority", () => {
     // back "yes" and the program docs land, replace this with assertions on
     // the real entry (per the extensibility contract: one docs dir + one
     // catalog entry + P6 package shaping — no schema rewrite).
-    const halalEntries = WHOLESALE_LENDERS.filter(
-      (l) => HALAL_MARKERS.test(l.id) || HALAL_MARKERS.test(l.specialty),
+    const halalEntries = TARGET_LENDERS.filter(
+      (l) => HALAL_MARKERS.test(l.lenderId) || HALAL_MARKERS.test(l.specialty),
     );
     expect(halalEntries).toHaveLength(0);
   });
