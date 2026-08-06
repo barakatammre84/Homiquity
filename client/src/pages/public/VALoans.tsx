@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
+import { RelatedGuides } from "@/components/RelatedGuides";
 import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
@@ -349,6 +350,8 @@ export default function VALoans() {
           </div>
         </section>
       </main>
+
+      <RelatedGuides families={["va"]} heading="VA loan guides" />
 
       <Footer />
     </div>

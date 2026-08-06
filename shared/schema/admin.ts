@@ -15,6 +15,7 @@ import { z } from "zod";
 import { users } from "./core";
 import { loanApplications } from "./lending";
 import { agentProfiles } from "./property";
+import { DOC_METHODS, LOAN_PRODUCT_FAMILIES, TRANSACTION_PURPOSES } from "../loanProducts";
 
 // ================================
 // Learning Center & FAQ System
@@ -51,6 +52,22 @@ export const articles = pgTable("articles", {
   featuredImage: varchar("featured_image", { length: 500 }),
   categoryId: varchar("category_id").references(() => contentCategories.id),
   tags: text("tags").array(),
+
+  // --- Loan product taxonomy (migration 0052) ------------------------------
+  // `categoryId` is an editorial topic ("Getting Started") and `tags` is free
+  // text; neither can be joined to a loan product, which is why education
+  // content and the conversion funnel had no wiring between them. These three
+  // carry the shared vocabulary in shared/loanProducts.ts.
+  //
+  // Arrays because an article legitimately spans several — a first-time-buyer
+  // guide covers both FHA and conventional. Empty/NULL means "general" and is
+  // a valid state: not every article is about a product, and guessing a
+  // classification is worse than admitting there isn't one.
+  loanProductFamilies: text("loan_product_families").array(),
+  transactionPurposes: text("transaction_purposes").array(),
+  /** Qualification methods — meaningful for non-QM / self-employed content. */
+  docMethods: text("doc_methods").array(),
+
   metaTitle: varchar("meta_title", { length: 255 }),
   metaDescription: text("meta_description"),
   status: varchar("status", { length: 20 }).default("draft").notNull(),
@@ -64,9 +81,29 @@ export const articles = pgTable("articles", {
   index("idx_articles_category").on(table.categoryId),
   index("idx_articles_status").on(table.status),
   index("idx_articles_published_at").on(table.publishedAt),
+  // GIN: the related-content lookup is "articles overlapping these families",
+  // i.e. an array-containment query, which a btree cannot serve.
+  index("idx_articles_product_families").using("gin", table.loanProductFamilies),
 ]);
 
-export const insertArticleSchema = createInsertSchema(articles).omit({
+/**
+ * Taxonomy columns are typed to the shared vocabulary rather than accepted as
+ * raw text[], so a typo cannot be published and then silently fail to match any
+ * persona page's query.
+ *
+ * Deliberately NOT refined with .superRefine here. The update route derives its
+ * body schema with `insertArticleSchema.omit({...}).partial()`, and zod 4
+ * throws ".omit() cannot be used on object schemas containing refinements" at
+ * RUNTIME while still type-checking. The cross-axis coherence rules therefore
+ * live in `articleTaxonomyIssues` (shared/loanProducts.ts), which both the
+ * create and update routes call explicitly — and which is a pure function, so
+ * it is testable without constructing a request.
+ */
+export const insertArticleSchema = createInsertSchema(articles, {
+  loanProductFamilies: z.array(z.enum(LOAN_PRODUCT_FAMILIES)).optional().nullable(),
+  transactionPurposes: z.array(z.enum(TRANSACTION_PURPOSES)).optional().nullable(),
+  docMethods: z.array(z.enum(DOC_METHODS)).optional().nullable(),
+}).omit({
   id: true,
   viewCount: true,
   createdAt: true,

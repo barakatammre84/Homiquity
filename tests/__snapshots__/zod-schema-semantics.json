@@ -2494,14 +2494,14 @@
     "string": "reject:",
     "number": "reject:",
     "true": "reject:",
-    "all-keys-typed": "reject:publishedAt,readTimeMinutes,tags",
-    "missing-title": "reject:publishedAt,readTimeMinutes,tags,title",
-    "missing-slug": "reject:publishedAt,readTimeMinutes,slug,tags",
-    "missing-excerpt": "reject:publishedAt,readTimeMinutes,tags",
-    "missing-content": "reject:content,publishedAt,readTimeMinutes,tags",
-    "missing-featuredImage": "reject:publishedAt,readTimeMinutes,tags",
-    "missing-categoryId": "reject:publishedAt,readTimeMinutes,tags",
-    "wrongtype-title": "reject:publishedAt,readTimeMinutes,tags,title"
+    "all-keys-typed": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,transactionPurposes",
+    "missing-title": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,title,transactionPurposes",
+    "missing-slug": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,slug,tags,transactionPurposes",
+    "missing-excerpt": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,transactionPurposes",
+    "missing-content": "reject:content,docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,transactionPurposes",
+    "missing-featuredImage": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,transactionPurposes",
+    "missing-categoryId": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,transactionPurposes",
+    "wrongtype-title": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,title,transactionPurposes"
   },
   "schema.insertFaqSchema": {
     "undefined": "reject:",
