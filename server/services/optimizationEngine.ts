@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { canonicalDocumentType } from "@shared/documentTypes";
 import { storage } from "../storage";
 import { getCoachIntakeSnapshots } from "./coachIntake";
 import {
@@ -45,9 +46,14 @@ import crypto from "crypto";
 // undefined/null/"" means "this document did not yield that fact" and the field
 // is skipped honestly rather than being recorded as document-extracted.
 //
-// `w2` and `government_id` entries were REMOVED rather than corrected: there is
-// no W-2 or ID extractor, and the only caller (POST /api/documents/:id/extract)
-// rejects every type outside the four below, so those rows were unreachable.
+// `w2` and `government_id` are not in THIS map because no W-2 or ID extractor
+// exists — the only caller (POST /api/documents/:id/extract) rejects those
+// types outright. They are not dropped, though: both are REQUIRED readiness
+// fields, and they are satisfied by DOCUMENT_PRESENCE_FIELD below, which
+// credits presence on upload without needing a model to read the page. An
+// earlier pass deleted them from here and stopped, which left two required
+// fields with no writer at all — see that block's header.
+//
 // `lease_agreement` has an extractor but no honest readiness target — rental
 // income is not a READINESS_FIELDS entry — so it is deliberately unmapped.
 // ---------------------------------------------------------------------------
@@ -99,6 +105,68 @@ const DOCUMENT_FIELD_MAP: Record<string, ReadinessMapping[]> = {
     { fieldName: "bank_statements", sourceField: "documentPresence", resolve: PRESENT },
   ],
 };
+
+// ---------------------------------------------------------------------------
+// Document presence → readiness, INDEPENDENT of extraction.
+//
+// Why this exists separately from the map above: `w2_forms` and `government_id`
+// are seeded as REQUIRED readiness fields (weight 1.5 and 1.0), but there is no
+// W-2 or ID extractor and there never was, so no automated path could ever
+// satisfy them. The readiness score was permanently capped and the borrower was
+// asked again for documents they had already uploaded — the busy work the
+// extraction fix was meant to remove, arriving through a different door.
+//
+// Presence is its own fact and does not need a model to read the page. Handing
+// over your driver's licence IS the completion of "government-issued ID". So
+// this credits presence on upload for every canonical type with a readiness
+// row, whether or not an extractor exists for it.
+//
+// TRUST LADDER — deliberately honest, and it only ever climbs because
+// updateReadinessField upgrades by tier rank and never downgrades:
+//   upload → self_reported      (tier3) "the borrower says this is their W-2"
+//   extract → document_extracted (tier1) a model actually read it
+//   verify → manually_verified   (tier1) a human confirmed it
+// Upload does NOT claim tier 1: an unread, unverified file is the borrower's
+// assertion about what they attached, nothing stronger.
+// ---------------------------------------------------------------------------
+const DOCUMENT_PRESENCE_FIELD: Record<string, string> = {
+  pay_stub: "pay_stubs",
+  w2: "w2_forms",
+  tax_return: "tax_returns",
+  bank_statement: "bank_statements",
+  government_id: "government_id",
+};
+
+/** The readiness field a document type completes by simply existing, if any. */
+export function presenceFieldFor(documentType: string): string | null {
+  return DOCUMENT_PRESENCE_FIELD[canonicalDocumentType(documentType)] ?? null;
+}
+
+export async function creditDocumentPresence(
+  userId: string,
+  documentId: string,
+  documentType: string,
+  /** "uploaded" = the borrower's assertion; "verified" = a human confirmed it. */
+  strength: "uploaded" | "verified",
+): Promise<{ fieldUpdated: string | null }> {
+  // Aliases resolve first — drivers_license/passport/id all mean government_id.
+  const fieldName = presenceFieldFor(documentType);
+  if (!fieldName) return { fieldUpdated: null };
+
+  await initializeReadinessChecklist(userId);
+  try {
+    await updateReadinessField(userId, fieldName, {
+      verificationStatus: strength === "verified" ? "manually_verified" : "self_reported",
+      sourceTable: "documents",
+      sourceField: "documentPresence",
+      sourceRecordId: documentId,
+    });
+    return { fieldUpdated: fieldName };
+  } catch (err) {
+    console.warn(`[Readiness] presence credit failed for ${fieldName}:`, err);
+    return { fieldUpdated: null };
+  }
+}
 
 export async function wireExtractionToReadiness(
   userId: string,

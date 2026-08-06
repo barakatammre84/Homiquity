@@ -228,6 +228,17 @@ export function registerDocumentRoutes(
         borrowerDescription: description || null,
       });
 
+      // Handing over the document IS the completion of "we need your W-2".
+      // Credited at tier 3 (the borrower's assertion about what they attached);
+      // extraction and staff verification upgrade it from there. Non-fatal —
+      // a readiness signal must never fail an upload.
+      try {
+        const { creditDocumentPresence } = await import("../../services/optimizationEngine");
+        await creditDocumentPresence(userId, document.id, documentType, "uploaded");
+      } catch (readinessErr) {
+        console.warn("[Readiness] presence credit on upload failed (non-fatal):", readinessErr);
+      }
+
       logAudit(req, "document.uploaded", "document", document.id, {
         applicationId,
         documentType,

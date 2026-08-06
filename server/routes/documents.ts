@@ -498,6 +498,19 @@ export function registerDocumentRoutes(
           reviewedAt: new Date(),
         });
 
+        // A human confirmed this really is the document it claims to be, so the
+        // presence credit granted at upload climbs from tier 3 to tier 1. Only
+        // on verify: a rejection must never promote, and updateReadinessField
+        // never downgrades, so a bounce simply leaves the tier-3 credit alone.
+        if (status === DOCUMENT_STATUS.VERIFIED) {
+          try {
+            const { creditDocumentPresence } = await import("../services/optimizationEngine");
+            await creditDocumentPresence(document.userId, id, document.documentType, "verified");
+          } catch (readinessErr) {
+            console.warn("[Readiness] presence credit on verify failed (non-fatal):", readinessErr);
+          }
+        }
+
         // Close the MR-6 accuracy loop: a verify/reject IS a completed human
         // review, so stamp the confidence row (no-op when extraction never
         // ran). Non-fatal — the human verdict must stand even if the stamp

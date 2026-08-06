@@ -153,3 +153,65 @@ describe("F-030 — the field map only names fields the extractors actually emit
     expect(result.skipped.join(" ")).toMatch(/employer_name/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Document presence → readiness, independent of extraction.
+//
+// The gap these pin: `w2_forms` and `government_id` are seeded REQUIRED
+// (weight 1.5 and 1.0) but no W-2 or ID extractor exists, so before this there
+// was no automated writer for either. The readiness score could never reach
+// 100% and the borrower kept being asked for documents already uploaded.
+// ---------------------------------------------------------------------------
+const { creditDocumentPresence, presenceFieldFor } = await import(
+  "../server/services/optimizationEngine"
+);
+
+describe("document presence credit — the required fields that had no writer", () => {
+  it("credits w2_forms on a W-2 upload", async () => {
+    const result = await creditDocumentPresence("u1", "doc-w2", "w2", "uploaded");
+    expect(result.fieldUpdated).toBe("w2_forms");
+  });
+
+  it("credits government_id on an ID upload", async () => {
+    const result = await creditDocumentPresence("u1", "doc-id", "government_id", "uploaded");
+    expect(result.fieldUpdated).toBe("government_id");
+  });
+
+  it("resolves document-type aliases to the canonical readiness field", () => {
+    // A borrower picks "Driver's licence"; the readiness field is government_id.
+    expect(presenceFieldFor("drivers_license")).toBe("government_id");
+    expect(presenceFieldFor("passport")).toBe("government_id");
+  });
+
+  it("covers every REQUIRED document-category readiness field", async () => {
+    // The regression guard: if a required documents-category field is added to
+    // READINESS_FIELDS with no presence mapping, it silently becomes
+    // unsatisfiable again. Assert the full set explicitly.
+    const required = ["pay_stubs", "w2_forms", "tax_returns", "bank_statements", "government_id"];
+    const covered = new Set(
+      ["pay_stub", "w2", "tax_return", "bank_statement", "government_id"].map(presenceFieldFor),
+    );
+    for (const field of required) expect(covered).toContain(field);
+  });
+});
+
+describe("document presence credit — the trust ladder is honest", () => {
+  it("an upload is tier-3 self_reported, never tier-1", async () => {
+    updateReadinessField.mockClear();
+    await creditDocumentPresence("u1", "doc-w2", "w2", "uploaded");
+    // An unread, unverified file is the borrower's assertion about what they
+    // attached — claiming document-grade trust for it would be a lie.
+    expect((updateReadinessField.mock.calls[0] as any)[2].verificationStatus).toBe("self_reported");
+  });
+
+  it("a staff verify promotes to manually_verified", async () => {
+    updateReadinessField.mockClear();
+    await creditDocumentPresence("u1", "doc-w2", "w2", "verified");
+    expect((updateReadinessField.mock.calls[0] as any)[2].verificationStatus).toBe("manually_verified");
+  });
+
+  it("ignores a document type with no readiness meaning", async () => {
+    const result = await creditDocumentPresence("u1", "doc-x", "lease_agreement", "uploaded");
+    expect(result.fieldUpdated).toBeNull();
+  });
+});
