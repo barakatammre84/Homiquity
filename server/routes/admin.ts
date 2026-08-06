@@ -18,6 +18,7 @@ import { prelaunchGate } from "../services/prelaunchGate";
 import { parseBodyOr400 } from "./validate";
 import { firstQueryValue } from "./queryParams";
 import { RATE_LOAN_TYPES, isRateLoanType } from "@shared/rateLoanTypes";
+import { articleTaxonomyIssues } from "@shared/loanProducts";
 import { routeParam } from "../http/routeParams";
 
 export function registerAdminRoutes(
@@ -189,6 +190,13 @@ export function registerAdminRoutes(
         authorId: req.user!.id,
         publishedAt: req.body.status === "published" ? new Date() : null,
       });
+      // Cross-axis coherence (e.g. an FHA article tagged DSCR). Kept out of the
+      // zod schema because the PATCH route below derives from it with .omit()/
+      // .partial(), which zod 4 refuses on a refined schema at runtime.
+      const taxonomyIssues = articleTaxonomyIssues(validatedData);
+      if (taxonomyIssues.length > 0) {
+        return res.status(400).json({ error: "Invalid loan product classification", details: taxonomyIssues });
+      }
       const article = await storage.createArticle(validatedData);
       res.status(201).json(article);
     } catch (error) {
@@ -205,6 +213,17 @@ export function registerAdminRoutes(
     try {
       const data = parseBodyOr400(insertArticleSchema.omit({ authorId: true }).partial(), req.body, res);
       if (data === undefined) return;
+      // A PATCH can set one axis while the others stay as stored, so coherence
+      // is checked against the MERGED classification, not the patch alone.
+      const current = await storage.getArticle(routeParam(req, "id"));
+      const taxonomyIssues = articleTaxonomyIssues({
+        loanProductFamilies: data.loanProductFamilies ?? current?.loanProductFamilies,
+        transactionPurposes: data.transactionPurposes ?? current?.transactionPurposes,
+        docMethods: data.docMethods ?? current?.docMethods,
+      });
+      if (taxonomyIssues.length > 0) {
+        return res.status(400).json({ error: "Invalid loan product classification", details: taxonomyIssues });
+      }
       const updateData: Record<string, unknown> = { ...data };
       // Set publishedAt when publishing for the first time
       if (data.status === "published") {
@@ -327,17 +346,32 @@ export function registerAdminRoutes(
   // increments a view counter.
   app.get("/api/articles", microCache(120), async (req, res) => {
     try {
-      const { category, search } = req.query;
-      
+      const { category, search, productFamily, purpose } = req.query;
+      const asList = (v: unknown): string[] =>
+        (Array.isArray(v) ? v : v === undefined ? [] : [v]).filter(
+          (x): x is string => typeof x === "string",
+        );
+
       let articles;
       if (search && typeof search === "string") {
         articles = await storage.searchArticles(search);
+      } else if (productFamily || purpose) {
+        // Persona pages ask "what should a VA / refinance / self-employed
+        // visitor read next?" — the education→conversion link in reverse.
+        // Accepts repeated params (?productFamily=fha&productFamily=conventional)
+        // or a single value; unknown values are dropped by the storage layer.
+        const limit = Number(req.query.limit);
+        articles = await storage.getRelatedArticles({
+          families: asList(productFamily),
+          purposes: asList(purpose),
+          limit: Number.isFinite(limit) && limit > 0 ? Math.min(limit, 12) : 3,
+        });
       } else if (category && typeof category === "string") {
         articles = await storage.getArticlesByCategory(category);
       } else {
         articles = await storage.getPublishedArticles();
       }
-      
+
       res.json(articles);
     } catch (error) {
       console.error("Get articles error:", error);

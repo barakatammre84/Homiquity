@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
+import { RelatedGuides } from "@/components/RelatedGuides";
 import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
@@ -497,6 +498,8 @@ export default function FirstTimeBuyer() {
           </div>
         </section>
       </main>
+
+      <RelatedGuides families={["fha", "conventional"]} heading="First-time buyer guides" />
 
       <Footer />
     </div>
