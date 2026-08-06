@@ -1,18 +1,16 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocation, useSearchParams, Link } from "wouter";
+import { useLocation, useSearchParams } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
-import { maskCurrencyDigits } from "@/lib/formatters";
 import {
   PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
   PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
@@ -20,24 +18,16 @@ import {
 } from "@/lib/pendingAttribution";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
-import {
-  ArrowRight,
-  ChevronLeft,
-  DollarSign,
-  Home,
-  Loader2,
-  Check,
-  AlertCircle,
-  Info,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, Loader2, Info } from "lucide-react";
 
 import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
 import { PRE_APPROVAL_DEFAULTS, routingSignature } from "@/funnel/preApprovalMachine";
 import { useFunnelAutosave } from "@/funnel/useFunnelAutosave";
 import { VerificationPulse } from "@/funnel/VerificationPulse";
-import { Checkbox } from "@/components/ui/checkbox";
 import { QUESTIONS_BY_ID } from "./preApproval/questions";
+import { TextEntryStep, ChoiceStep, BooleanPairStep, SoftPullConsentStep } from "./preApproval/StepInputs";
+import { FunnelIntroScreen, FunnelProgressHeader } from "./preApproval/FunnelShell";
+import { isChoiceOptionSelected, choiceSelectionUpdates } from "./preApproval/choiceAnswers";
 import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
 import { useServerDraftAutosave } from "./preApproval/useServerDraftAutosave";
@@ -47,7 +37,6 @@ import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
 import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
 import { calculateAffordabilityEstimate, type AffordabilityEstimateResults } from "@/lib/affordabilityEstimate";
 import { buildTeaserInputs, parseTargetPrice } from "./preApproval/affordabilityTeaser";
-import { FUNNEL_SOFT_PULL_CONSENT_TEXT } from "@shared/creditConsentCopy";
 
 export default function PreApproval() {
   return (
@@ -442,128 +431,52 @@ function PreApprovalFunnel() {
   };
 
   const renderInput = () => {
-    const IconComponent = currentQ.icon;
-
     switch (currentQ.type) {
-      case "currency": {
-        const fieldName = currentQ.field as keyof PreApprovalFormData;
-        const watchedValue = form.watch(fieldName);
-        const displayValue = typeof watchedValue === 'string' ? watchedValue : "";
-        const fieldError = form.formState.errors[fieldName];
-        return (
-          <div className="w-full max-w-md mx-auto">
-            <div className="relative">
-              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
-              <Input
-                key={`currency-${fieldName}`}
-                autoFocus
-                data-testid={`input-${currentQ.field}`}
-                value={displayValue}
-                onChange={(e) => {
-                  const formatted = maskCurrencyDigits(e.target.value);
-                  form.setValue(fieldName, formatted as never, { shouldValidate: true, shouldDirty: true });
-                }}
-                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
-                placeholder={currentQ.placeholder}
-                onKeyDown={handleKeyDown}
-              />
-            </div>
-            {fieldError && (
-              <p role="alert" className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {fieldError.message as string}
-              </p>
-            )}
-          </div>
-        );
-      }
-
+      case "currency":
       case "number": {
         const fieldName = currentQ.field as keyof PreApprovalFormData;
         const watchedValue = form.watch(fieldName);
-        const displayValue = typeof watchedValue === 'string' ? watchedValue : "";
-        const fieldError = form.formState.errors[fieldName];
         return (
-          <div className="w-full max-w-md mx-auto">
-            <div className="relative">
-              {IconComponent && <IconComponent className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />}
-              <Input
-                key={`number-${fieldName}`}
-                autoFocus
-                data-testid={`input-${currentQ.field}`}
-                type="text"
-                inputMode="numeric"
-                value={displayValue}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, "");
-                  form.setValue(fieldName, value as never, { shouldValidate: true, shouldDirty: true });
-                }}
-                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
-                placeholder={currentQ.placeholder}
-                onKeyDown={handleKeyDown}
-              />
-            </div>
-            {fieldError && (
-              <p role="alert" className="mt-2 text-sm text-destructive flex items-center gap-1.5" data-testid={`error-${currentQ.field}`}>
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {fieldError.message as string}
-              </p>
-            )}
-          </div>
+          <TextEntryStep
+            variant={currentQ.type}
+            fieldName={fieldName}
+            value={typeof watchedValue === "string" ? watchedValue : ""}
+            error={form.formState.errors[fieldName]?.message as string | undefined}
+            placeholder={currentQ.placeholder}
+            icon={currentQ.icon}
+            onChange={(masked) =>
+              form.setValue(fieldName, masked as never, { shouldValidate: true, shouldDirty: true })
+            }
+            onKeyDown={handleKeyDown}
+          />
         );
       }
 
-      case "choice":
+      case "choice": {
+        // From the already-subscribed watchedValues rather than a form.watch()
+        // per option: the values are identical, and a watch() called inside the
+        // child's render would subscribe the child instead of this page.
+        const fieldValue = watchedValues[currentQ.field as keyof PreApprovalFormData];
         return (
-          <div className="grid gap-3 w-full max-w-lg mx-auto">
-            {currentQ.options?.map((option) => {
-              const OptionIcon = option.icon;
-              const fieldVal = form.watch(currentQ.field as keyof PreApprovalFormData);
-              const isSelected = currentQ.id === "hasAdditionalIncome"
-                ? (option.value === "yes" ? fieldVal === true : fieldVal === false)
-                : fieldVal === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  data-testid={`option-${currentQ.field}-${option.value}`}
-                  onClick={() => {
-                    if (currentQ.id === "hasAdditionalIncome") {
-                      form.setValue("hasAdditionalIncome", (option.value === "yes") as never);
-                      if (option.value === "no") {
-                        form.setValue("incomeSources", [] as never);
-                      }
-                    } else {
-                      form.setValue(currentQ.field as keyof PreApprovalFormData, option.value as never);
-                    }
-                    // The machine recomputes the route from the answers, so
-                    // injected steps (complex income) appear/disappear here.
-                    setTimeout(() => next(form.getValues()), 200);
-                  }}
-                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 group hover:scale-[1.02] active:scale-[0.99]
-                    ${isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-transparent bg-muted/40 hover:bg-muted"
-                    }`}
-                >
-                  {OptionIcon && (
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors
-                      ${isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"}`}>
-                      <OptionIcon className="h-5 w-5" />
-                    </div>
-                  )}
-                  <span className={`flex-1 ${isSelected ? "text-primary" : "text-foreground"}`}>
-                    {option.label}
-                  </span>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
-                    ${isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"}`}>
-                    {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          <ChoiceStep
+            field={currentQ.field as string}
+            options={currentQ.options ?? []}
+            isSelected={(optionValue) => isChoiceOptionSelected(currentQ.id, optionValue, fieldValue)}
+            onSelect={(optionValue) => {
+              for (const update of choiceSelectionUpdates(
+                currentQ.id,
+                currentQ.field as keyof PreApprovalFormData,
+                optionValue,
+              )) {
+                form.setValue(update.field, update.value as never);
+              }
+              // The machine recomputes the route from the answers, so
+              // injected steps (complex income) appear/disappear here.
+              setTimeout(() => next(form.getValues()), 200);
+            }}
+          />
         );
+      }
 
       case "state":
         return (
@@ -589,97 +502,20 @@ function PreApprovalFunnel() {
 
       case "boolean_pair":
         return (
-          <div className="grid gap-4 w-full max-w-lg mx-auto">
-            {currentQ.booleanFields?.map((field) => {
-              const FieldIcon = field.icon;
-              const isChecked = form.watch(field.field) as boolean;
-              return (
-                <button
-                  key={field.field}
-                  type="button"
-                  data-testid={`toggle-${field.field}`}
-                  onClick={() => {
-                    form.setValue(field.field, !isChecked as never);
-                  }}
-                  className={`flex items-center gap-4 p-5 text-left text-lg font-medium border-2 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.99]
-                    ${isChecked 
-                      ? "border-primary bg-primary/5" 
-                      : "border-muted hover:border-primary/50"
-                    }`}
-                >
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors
-                    ${isChecked ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    <FieldIcon className="h-5 w-5" />
-                  </div>
-                  <span className={`flex-1 ${isChecked ? "text-primary" : "text-foreground"}`}>
-                    {field.label}
-                  </span>
-                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors
-                    ${isChecked ? "border-primary bg-primary" : "border-muted-foreground/30"}`}>
-                    {isChecked && <Check className="w-4 h-4 text-primary-foreground" />}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          <BooleanPairStep
+            fields={currentQ.booleanFields ?? []}
+            isChecked={(field) => watchedValues[field] === true}
+            onToggle={(field) => form.setValue(field, (watchedValues[field] !== true) as never)}
+          />
         );
 
-      case "final": {
-        const acknowledged = funnelState.consent.softPullAcknowledged;
+      case "final":
         return (
-          <div className="w-full max-w-md mx-auto text-left">
-            <label
-              className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors
-                ${acknowledged ? "border-primary bg-primary/5" : "border-muted hover:border-primary/50"}`}
-              data-testid="label-soft-pull-consent"
-            >
-              <Checkbox
-                checked={acknowledged}
-                onCheckedChange={(checked) => setConsent(checked === true)}
-                className="mt-0.5"
-                data-testid="checkbox-soft-pull-consent"
-              />
-              {/*
-                Rendered from the SHARED constant the server also persists as
-                `credit_consents.disclosure_text`, so the words on screen and the
-                words in the evidence record cannot drift (F-034). Split only to
-                emphasise "soft inquiry" — the concatenation is byte-identical to
-                the constant, so fidelity is preserved. Edit the copy in
-                shared/creditConsentCopy.ts, never here.
-              */}
-              <span
-                className="text-sm text-muted-foreground leading-relaxed"
-                data-testid="text-soft-pull-consent"
-              >
-                {FUNNEL_SOFT_PULL_CONSENT_TEXT.split("soft inquiry")[0]}
-                <span className="font-medium text-foreground">soft inquiry</span>
-                {FUNNEL_SOFT_PULL_CONSENT_TEXT.split("soft inquiry")[1]}
-              </span>
-            </label>
-            {/*
-              Data-handling reassurance at the funnel's most sensitive moment.
-              This copy already existed but only in the auth-gate overlay and the
-              FunnelFooter, both of which sit below the fold of the centred
-              question card — so the visitor deciding whether to authorise a
-              credit pull never saw it.
-
-              Deliberately OUTSIDE the <label> above: everything inside that
-              element is the verbatim disclosure persisted as
-              `credit_consents.disclosure_text`, and rendered text that is not in
-              FUNNEL_SOFT_PULL_CONSENT_TEXT must never appear to be part of it
-              (F-034). This is page chrome, not disclosure — it makes no claim
-              about the inquiry itself, which the consent copy already covers.
-            */}
-            <p
-              className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground"
-              data-testid="text-consent-security-note"
-            >
-              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-              Your information is encrypted and never sold.
-            </p>
-          </div>
+          <SoftPullConsentStep
+            acknowledged={funnelState.consent.softPullAcknowledged}
+            onChange={setConsent}
+          />
         );
-      }
 
       default:
         return null;
@@ -694,45 +530,13 @@ function PreApprovalFunnel() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background text-center">
         {restoreBanner}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-2xl"
-        >
-          <div className="mb-8 flex justify-center">
-            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center">
-              <Home className="h-10 w-10 text-primary" />
-            </div>
-          </div>
-          <h1 
-            className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground mb-6"
-            data-testid="text-intro-title"
-          >
-            {currentQ.title}
-          </h1>
-          <p className="text-xl text-muted-foreground mb-12">{currentQ.subtitle}</p>
-          <Button 
-            onClick={handleNext} 
-            size="lg" 
-            className="text-lg px-8 py-6 h-auto rounded-full"
-            data-testid="button-start-preapproval"
-          >
-            {currentQ.buttonText} <ArrowRight className="ml-2" />
-          </Button>
-          <p className="mt-8 text-sm text-muted-foreground">
-            Have a saved application?{" "}
-            <a href="/login" className="text-primary hover:underline">
-              Sign in to resume
-            </a>
-          </p>
-          {urlPropertyId && urlSource === "property-detail" && (
-            <Link href={`/properties/${urlPropertyId}`}>
-              <Button variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground" data-testid="button-back-to-property">
-                <ChevronLeft className="h-3.5 w-3.5" /> Back to property listing
-              </Button>
-            </Link>
-          )}
-        </motion.div>
+        <FunnelIntroScreen
+          title={currentQ.title}
+          subtitle={currentQ.subtitle}
+          buttonText={currentQ.buttonText}
+          onStart={handleNext}
+          backToPropertyId={urlSource === "property-detail" ? urlPropertyId : null}
+        />
       </div>
     );
   }
@@ -745,42 +549,12 @@ function PreApprovalFunnel() {
       
       <VerificationPulse active={submitMutation.isPending} />
 
-      {/* Progress Bar */}
-      <div className="fixed top-0 left-0 w-full h-1 bg-muted z-50">
-        <motion.div
-          className="h-full bg-primary"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress.percent}%` }}
-          transition={{ duration: 0.4 }}
-        />
-      </div>
-
-      {/* Navigation Header */}
-      <div className="fixed top-0 w-full p-4 sm:p-6 flex justify-between items-center z-40 bg-background/80 backdrop-blur-sm">
-        <button
-          onClick={handleBack}
-          disabled={progress.index === 0}
-          className={`p-2 rounded-full hover:bg-muted transition-all ${progress.index === 0 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-          data-testid="button-back"
-        >
-          <ChevronLeft className="w-6 h-6 text-muted-foreground" />
-        </button>
-        <div className="flex flex-col items-center" data-testid="text-step-counter">
-          <span className="text-sm font-medium text-muted-foreground">
-            Step {progress.index} of {progress.total}
-          </span>
-          <span className="text-[11px] text-muted-foreground/60">
-            {progress.index <= 4 ? "~2 min left" : progress.index <= 8 ? "~1 min left" : "Almost done"}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 w-10 justify-end">
-          {progress.index > 0 && (
-            <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1" data-testid="text-autosave-indicator">
-              <Check className="h-3 w-3" /> Saved
-            </span>
-          )}
-        </div>
-      </div>
+      <FunnelProgressHeader
+        index={progress.index}
+        total={progress.total}
+        percent={progress.percent}
+        onBack={handleBack}
+      />
 
       {/* Advisory Panel (Desktop only) */}
       <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />

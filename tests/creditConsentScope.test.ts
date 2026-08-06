@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { consentCoversPullType } from "../server/services/creditConsents";
 import {
@@ -96,11 +96,22 @@ describe("F-034: the ledger records the disclosure actually shown", () => {
     expect(FUNNEL_SOFT_PULL_CONSENT_VERSION).toBeTruthy();
   });
 
-  it("the funnel page renders the shared constant so screen and record cannot drift", () => {
-    const src = read("client/src/pages/lending/PreApproval.tsx");
-    expect(src).toMatch(/FUNNEL_SOFT_PULL_CONSENT_TEXT/);
-    // The old hardcoded JSX copy must be gone.
-    expect(src).not.toMatch(/I authorize Homiquity to obtain my credit report using a\{" "\}/);
+  it("the funnel renders the shared constant so screen and record cannot drift", () => {
+    // The consent checkbox lives in the funnel's step-input module; the page
+    // composes it. Assert over the whole funnel surface so moving the markup
+    // between those files can never quietly drop the constant.
+    const funnel = [
+      "client/src/pages/lending/PreApproval.tsx",
+      ...readdirSync(join(ROOT, "client/src/pages/lending/preApproval"))
+        .filter((f) => /\.tsx?$/.test(f) && !f.includes(".test."))
+        .map((f) => `client/src/pages/lending/preApproval/${f}`),
+    ].map(read);
+
+    expect(funnel.filter((src) => /FUNNEL_SOFT_PULL_CONSENT_TEXT/.test(src)).length).toBeGreaterThan(0);
+    // The old hardcoded JSX copy must be gone from every one of them.
+    for (const src of funnel) {
+      expect(src).not.toMatch(/I authorize Homiquity to obtain my credit report using a\{" "\}/);
+    }
   });
 
   it("the /credit-consent path stores the state-combined text it renders", () => {
