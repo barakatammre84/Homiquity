@@ -77,7 +77,8 @@ export interface BehaviorSignals {
 export interface ReadinessSnapshot {
   completionPercentage: number;
   tier: "ready_now" | "almost_ready" | "building" | "exploring" | "unknown";
-  source: "coach" | "calculated";
+  /** Which model answered. "checklist" is the evidence model and wins when populated. */
+  source: "checklist" | "coach" | "calculated";
   completedInputs: string[];
   outstandingInputs: string[];
   estimatedTimeline: string | null;
@@ -824,7 +825,60 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     lastAssessedAt: null,
   };
 
-  if (coachConvWithProfile) {
+  // ONE readiness number, derived from the checklist that actually holds the
+  // evidence. Three models used to answer "how ready are you": this checklist
+  // (25 weighted fields with trust tiers), the coach's conversational
+  // percentage, and an ad-hoc status-plus-bonuses calculation below. Only the
+  // coach's ever reached a borrower, and the three could disagree freely.
+  //
+  // The checklist wins when it has data because it is the only one that knows
+  // WHAT is missing rather than just how far along the file is — `missingRequired`
+  // is a list of field labels, which is the answer a borrower actually wants.
+  // It is fed by the application (tier 2) and upgraded by documents (tier 1),
+  // so it no longer starts empty; before that feed existed it would have
+  // reported 0% for an advanced file, which is why it could not be primary.
+  //
+  // The coach and calculated paths remain as fallbacks, in that order, for a
+  // borrower with no checklist rows yet (pure-coach users, pre-application).
+  const checklistScore = checklistRows.length > 0
+    ? (() => {
+        let totalWeight = 0;
+        let collectedWeight = 0;
+        const collected: string[] = [];
+        const outstanding: string[] = [];
+        for (const row of checklistRows) {
+          const weight = parseFloat(row.weight || "1");
+          totalWeight += weight;
+          if (row.isCollected) {
+            collectedWeight += weight;
+            collected.push(row.fieldLabel);
+          } else if (row.isRequired) {
+            outstanding.push(row.fieldLabel);
+          }
+        }
+        return {
+          percentage: totalWeight > 0 ? Math.round((collectedWeight / totalWeight) * 100) : 0,
+          collected,
+          outstanding,
+        };
+      })()
+    : null;
+
+  if (checklistScore) {
+    readiness.source = "checklist";
+    readiness.completionPercentage = checklistScore.percentage;
+    readiness.completedInputs = checklistScore.collected;
+    readiness.outstandingInputs = checklistScore.outstanding;
+    readiness.tier =
+      checklistScore.percentage >= 80 ? "ready_now"
+      : checklistScore.percentage >= 60 ? "almost_ready"
+      : checklistScore.percentage >= 35 ? "building"
+      : "exploring";
+    readiness.estimatedTimeline = coachConvWithProfile
+      ? ((coachConvWithProfile.financialProfile as any)?.estimatedTimeline ?? null)
+      : null;
+    readiness.lastAssessedAt = new Date().toISOString();
+  } else if (coachConvWithProfile) {
     const fp = coachConvWithProfile.financialProfile as any;
     readiness.source = "coach";
     readiness.completionPercentage = coachConvWithProfile.completionPercentage || fp?.completionPercentage || fp?.readinessScore || 0;

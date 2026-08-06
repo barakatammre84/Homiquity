@@ -108,6 +108,20 @@ export function registerApplicationRoutes(
         logAudit(req, "loan_application.created", "loan_application", application.id);
       }
 
+      // Seed the readiness checklist from what the application already says.
+      // Until now nothing fed it from the application — only the document
+      // paths wrote to it — so a borrower who had stated income, employer,
+      // credit score and property still scored near zero on the model that
+      // knew the most, and the borrower-facing percentage had to come from
+      // somewhere else. Recorded at `application_stated` (tier 2); documents
+      // upgrade the same rows to tier 1. Non-fatal: readiness is a signal.
+      try {
+        const { syncApplicationToReadiness } = await import("../../services/readinessSync");
+        await syncApplicationToReadiness(userId, application.id, application);
+      } catch (readinessErr) {
+        console.warn("[Intake] readiness sync failed (non-fatal):", readinessErr);
+      }
+
       // Roadmap A3: applying is the moment an aspiring_owner becomes an
       // active_buyer — the promotion writer this split never had. Both are
       // CLIENT_ROLES with identical server-side authorization (verified: no
