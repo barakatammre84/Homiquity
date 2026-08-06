@@ -19,6 +19,7 @@ import { intakePausedGate } from "../../services/maintenanceMode";
 import { prelaunchGate } from "../../services/prelaunchGate";
 import { updatePipelineStage } from "../../pipelineEngine";
 import { routeParam } from "../../http/routeParams";
+import { clientIpForRecord } from "../../clientIp";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -177,7 +178,7 @@ export function registerApplicationRoutes(
             // attestations) that the funnel never displayed (F-034).
             disclosureText: FUNNEL_SOFT_PULL_CONSENT_TEXT,
             disclosureVersion: FUNNEL_SOFT_PULL_CONSENT_VERSION,
-            ipAddress: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip,
+            ipAddress: clientIpForRecord(req) ?? undefined,
             userAgent: req.get("User-Agent"),
           });
           logAudit(req, "credit_consent.created", "loan_application", application.id, {

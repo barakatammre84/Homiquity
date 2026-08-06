@@ -14,6 +14,7 @@ import { registerRoutes } from "./routes";
 import { pool } from "./db";
 import { betaGateMiddleware } from "./middleware/betaGate";
 import { trustProxyHops } from "./trustProxy";
+import { rateLimitKey } from "./clientIp";
 import { isRateLimitRelaxed } from "./services/rateLimitPolicy";
 import { captureException, initErrorMonitoring } from "./services/errorMonitoring";
 
@@ -135,6 +136,7 @@ app.use(helmet(HELMET_OPTIONS));
 app.use(betaGateMiddleware);
 
 const generalLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 500,
   standardHeaders: true,
@@ -144,6 +146,7 @@ const generalLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
@@ -153,6 +156,7 @@ const authLimiter = rateLimit({
 });
 
 const uploadLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 50,
   standardHeaders: true,
@@ -161,6 +165,7 @@ const uploadLimiter = rateLimit({
 });
 
 const trackLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,
@@ -169,6 +174,7 @@ const trackLimiter = rateLimit({
 });
 
 const emailCaptureLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 5,
   standardHeaders: true,
@@ -180,6 +186,7 @@ const emailCaptureLimiter = rateLimit({
 // paid LLM per request, so they are a cost-DoS vector and need a tighter cap than
 // the general 500/15min limiter.
 const extractionLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 15,
   standardHeaders: true,
@@ -191,6 +198,7 @@ const extractionLimiter = rateLimit({
 // every message invokes a paid model. The per-user 30/day cap in the route is
 // the primary ceiling; this per-IP limiter blunts bursts and scripted abuse.
 const aiCoachLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
@@ -203,6 +211,7 @@ const aiCoachLimiter = rateLimit({
 // property/listing data vendors). Tighter than the general limiter because
 // each request is billable and requires no login — a cheap cost-DoS vector.
 const vendorProxyLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,
@@ -213,6 +222,7 @@ const vendorProxyLimiter = rateLimit({
 // Public, unauthenticated lead intake. Aggregators post server-to-server so a
 // modest per-IP ceiling still admits legitimate bursts while blunting spam.
 const leadsLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,

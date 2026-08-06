@@ -12,6 +12,7 @@ import {
   PARTNER_PROFILE_STATUSES,
 } from "@shared/schema";
 import { routeParam } from "../http/routeParams";
+import { clientIpForRecord } from "../clientIp";
 
 /**
  * PartnerHub identity spine (PH-1 — knowledge-base/specs/PARTNER_HUB_PROGRAM.md).
@@ -295,7 +296,7 @@ export function registerPartnerRoutes(app: Express, storage: IStorage) {
         user.id,
         me.referredByUserId,
         parsed.data.share,
-        { ipAddress: req.ip ?? null },
+        { ipAddress: clientIpForRecord(req) },
       );
       logAudit(req, parsed.data.share ? "partner_progress.shared" : "partner_progress.revoked",
         "partner_profile", partnerProfile.id, { share: parsed.data.share });
