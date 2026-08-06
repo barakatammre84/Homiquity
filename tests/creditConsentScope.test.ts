@@ -96,8 +96,12 @@ describe("F-034: the ledger records the disclosure actually shown", () => {
     expect(FUNNEL_SOFT_PULL_CONSENT_VERSION).toBeTruthy();
   });
 
-  it("the funnel page renders the shared constant so screen and record cannot drift", () => {
-    const src = read("client/src/pages/lending/PreApproval.tsx");
+  it("the funnel's final step renders the shared constant so screen and record cannot drift", () => {
+    // Renders from preApproval/StepInput.tsx (extracted from PreApproval.tsx's
+    // renderInput()) — check both so the assertion survives either location.
+    const src =
+      read("client/src/pages/lending/preApproval/StepInput.tsx") +
+      read("client/src/pages/lending/PreApproval.tsx");
     expect(src).toMatch(/FUNNEL_SOFT_PULL_CONSENT_TEXT/);
     // The old hardcoded JSX copy must be gone.
     expect(src).not.toMatch(/I authorize Homiquity to obtain my credit report using a\{" "\}/);
