@@ -287,17 +287,26 @@ jobs:
         # job with prod untouched, instead of being applied in an undefined order.
         # Cheap and offline — reads only the repo's own files, no DB connection.
         run: pnpm guard:migrations
-      - name: Apply pending migrations to prod
+      # ===================================================================
+      # PROBE BRANCH ONLY — DO NOT MERGE.
+      #
+      # The "Apply pending migrations to prod" step has been REPLACED (not
+      # appended to) by the read-only probe for migration 0046, per
+      # DB_MIGRATIONS.md §Contract migrations. Replacing is the point: with the
+      # apply step gone from this ref entirely, no combination of dispatch
+      # inputs can reach a write. `dry_run` is now inert here.
+      #
+      # This branch exists to answer one question — would
+      # CREATE UNIQUE INDEX on policy_profiles (profile_id, version) abort on
+      # existing rows? — and is deleted immediately afterwards.
+      # ===================================================================
+      - name: READ-ONLY probe — 0046 policy_profiles duplicates
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           # Only needed when the API key can see more than one Neon project.
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
         run: |
-          ARGS=""
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
-            ARGS="--dry-run"
-          fi
-          # The connection string is piped straight into migrate-prod's env via
-          # command substitution: never echoed, never written to GITHUB_ENV, and
-          # neither script ever prints it.
-          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" node scripts/migrate-prod.cjs $ARGS
+          # The connection string is piped straight into the probe's env via
+          # command substitution: never echoed, never written to GITHUB_ENV,
+          # and neither script ever prints it.
+          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" node scripts/probe-0046-policy-profiles.cjs
