@@ -55,6 +55,27 @@ export function PolicyProfileView({
     enabled: !!policy?.id,
   });
 
+  const cloneMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/policy-profiles/${policy!.id}/clone`);
+      return res.json();
+    },
+    onSuccess: (clone) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/policy-profiles"] });
+      toast({
+        title: "Draft Created",
+        description: `${clone.profileId} v${clone.version} is a DRAFT copy, thresholds included.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Clone Failed",
+        description: error.message || "The policy could not be cloned.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const submitMutation = useMutation({
     mutationFn: async ({ id, justification }: { id: string; justification: string }) => {
       await apiRequest("POST", `/api/policy-profiles/${id}/submit`, { justification });
@@ -257,9 +278,17 @@ export function PolicyProfileView({
               <RefreshCw className="h-4 w-4 mr-2" />
               View COC Rules
             </Button>
-            <Button variant="outline" className="w-full justify-start" data-testid="button-clone-policy">
+            {/* Server-side and transactional: a clone is the profile plus
+                every threshold, and a half-copied policy looks complete. */}
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => cloneMutation.mutate()}
+              disabled={!policy || cloneMutation.isPending}
+              data-testid="button-clone-policy"
+            >
               <FileText className="h-4 w-4 mr-2" />
-              Clone as Draft
+              {cloneMutation.isPending ? "Cloning…" : "Clone as Draft"}
             </Button>
             <Button variant="outline" className="w-full justify-start" onClick={onViewHistory} data-testid="button-view-history">
               <History className="h-4 w-4 mr-2" />

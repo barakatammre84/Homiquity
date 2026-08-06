@@ -19,6 +19,7 @@ import { PageShell } from "@/components/PageShell";
 import { type PolicyProfile, type RuleCategory, RULE_CATEGORIES, StatusBadge } from "./model";
 import { PolicyProfileView } from "./ProfileView";
 import { RuleEditor } from "./RuleEditor";
+import { CreatePolicyDialog } from "./CreatePolicyDialog";
 import { MaterialityMatrix } from "./MaterialityMatrix";
 import { AuditTrail } from "./AuditTrail";
 
@@ -26,6 +27,7 @@ export function PolicyOpsDashboard() {
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyProfile | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<RuleCategory>("DTI");
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [createOpen, setCreateOpen] = useState(false);
   const { toast } = useToast();
 
   const {
@@ -58,12 +60,13 @@ export function PolicyOpsDashboard() {
             <RefreshCw className={`h-4 w-4 mr-2 ${policiesFetching ? "animate-spin" : ""}`} />
             {policiesFetching ? "Checking…" : "Check for Updates"}
           </Button>
-          <Button data-testid="button-create-policy">
+          <Button onClick={() => setCreateOpen(true)} data-testid="button-create-policy">
             Create Policy Draft
           </Button>
         </div>
       }
     >
+      <CreatePolicyDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">

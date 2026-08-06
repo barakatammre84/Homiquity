@@ -1,0 +1,42 @@
+-- 0046: one row per (profile_id, version) in policy_profiles
+--
+-- shared/schema/underwritingPolicy.ts comments version as "CRITICAL for legal
+-- compliance" and policy_profiles carries a full DRAFT -> PENDING_APPROVAL ->
+-- APPROVED -> ACTIVE -> RETIRED lifecycle with approver and activator columns.
+-- A versioned, approved artefact whose (identifier, version) pair can repeat
+-- is not versioned: two rows could both claim to be FNMA_CONVENTIONAL_2026_Q3
+-- v1.1.0 with different thresholds, and nothing would say which one an
+-- approval or an activation referred to.
+--
+-- Nothing prevents that today. The only indexes on the table are the four
+-- non-unique ones in the schema (authority, product_type, status,
+-- effective_date); no migration has ever added a unique constraint here.
+--
+-- The clone endpoint added alongside this migration depends on it: it derives
+-- a new version by bumping the highest one in use for that profile_id, and the
+-- index is what makes that derivation a guarantee rather than a convention.
+--
+-- CONTRACT MIGRATION — DB_MIGRATIONS.md §Contract migrations.
+-- A unique index aborts if duplicates already exist, so the assumption has to
+-- be stated. What was verified in the repository:
+--   * policy_profiles has no seed data. Searched migrations/, scripts/ and
+--     server/ for inserts or fixtures against the table: none exist.
+--   * exactly one code path creates a row — storage.createPolicyProfile,
+--     called only from POST /api/policy-profiles.
+--   * that endpoint's only UI trigger was the "Create Policy Draft" button,
+--     which had no click handler at all until this same change set. It could
+--     not have been called from the app.
+-- Therefore the expected production count is 0 rows and 0 duplicate pairs.
+--
+-- NOT verified from here: a live count. NEON_API_KEY is write-only in GitHub,
+-- so the read-only probe runs through CI, not from a workstation. If any rows
+-- were created out of band, this migration fails loudly in the migrate-prod
+-- job rather than silently permitting duplicate versions — which is the
+-- correct failure for this constraint. To confirm before merging, run the
+-- probe from DB_MIGRATIONS.md:
+--   SELECT profile_id, version, COUNT(*) FROM policy_profiles
+--   GROUP BY profile_id, version HAVING COUNT(*) > 1;
+-- Expected: 0 rows.
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_policy_profiles_id_version
+  ON policy_profiles (profile_id, version);

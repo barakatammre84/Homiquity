@@ -10,6 +10,7 @@ import {
 } from "@shared/schema";
 import { logAudit } from "../auditLog";
 import { z } from "zod";
+import { nextCloneVersion } from "@shared/policyProfileIdentity";
 import { routeParam } from "../http/routeParams";
 
 // Typed against the canonical POLICY_STATUSES vocabulary — a phantom key or
@@ -152,6 +153,58 @@ export function registerPolicyOpsRoutes(
   // ============================================================================
   // POLICY WORKFLOW TRANSITIONS
   // ============================================================================
+
+  // Clone a policy into a new DRAFT revision of the SAME profile id.
+  //
+  // Server-side and transactional rather than a sequence of client calls: a
+  // clone is a profile plus every one of its thresholds, and a network drop
+  // partway through the client version would leave a policy that looks
+  // complete while missing half its rules.
+  //
+  // The new version is derived from the highest version already in use for
+  // that profile id, not from the source being cloned, so cloning the same
+  // policy twice yields 1.1.0 then 1.2.0 instead of colliding — which the
+  // unique index on (profile_id, version) added in migration 0046 would
+  // otherwise reject.
+  app.post("/api/policy-profiles/:id/clone", requireRole("admin", "underwriter"), async (req, res) => {
+    try {
+      const source = await storage.getPolicyProfile(routeParam(req, "id"));
+      if (!source) {
+        return res.status(404).json({ error: "Policy profile not found" });
+      }
+
+      const existingVersions = await storage.getPolicyProfileVersions(source.profileId);
+      const version = nextCloneVersion(source.version, existingVersions);
+      if (!version) {
+        // Refused rather than guessed: version is the field the compliance
+        // record hangs off, and inventing one would stamp a fabricated version
+        // on a policy document.
+        return res.status(400).json({
+          error: `Cannot derive a version from "${source.version}". Set a semver version (e.g. 1.0.0) on the source policy first.`,
+        });
+      }
+
+      const clone = await storage.clonePolicyProfile(source.id, {
+        version,
+        createdBy: req.user!.id,
+      });
+      if (!clone) {
+        return res.status(404).json({ error: "Policy profile not found" });
+      }
+
+      await logAudit(req, "POLICY_CLONE", "policy_profile", clone.id, {
+        sourceProfileRowId: source.id,
+        profileId: clone.profileId,
+        sourceVersion: source.version,
+        newVersion: clone.version,
+      });
+
+      res.status(201).json(clone);
+    } catch (error) {
+      console.error("Clone policy profile error:", error);
+      res.status(500).json({ error: "Failed to clone policy profile" });
+    }
+  });
 
   app.post("/api/policy-profiles/:id/submit", requireRole("admin", "underwriter"), async (req, res) => {
     try {

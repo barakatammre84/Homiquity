@@ -316,6 +316,76 @@ export class PricingPolicyStorage extends NotificationsOpsStorage {
   }
 
   // Policy Thresholds
+  /** Every version already recorded under a profile id. */
+  async getPolicyProfileVersions(profileId: string): Promise<string[]> {
+    const rows = await db
+      .select({ version: policyProfiles.version })
+      .from(policyProfiles)
+      .where(eq(policyProfiles.profileId, profileId));
+    return rows.map((r) => r.version);
+  }
+
+  /**
+   * Copy a policy and all of its thresholds into a new DRAFT.
+   *
+   * One transaction on purpose: a policy whose thresholds only half-copied is
+   * worse than no copy at all, because it looks complete. Every threshold is
+   * carried over with its bounds, materiality action and display metadata
+   * intact — the clone must start out identical to its source, so that the
+   * only difference an approver sees later is what the operator deliberately
+   * changed.
+   */
+  async clonePolicyProfile(
+    sourceId: string,
+    overrides: { version: string; createdBy: string },
+  ): Promise<PolicyProfile | undefined> {
+    return db.transaction(async (tx) => {
+      const [source] = await tx
+        .select()
+        .from(policyProfiles)
+        .where(eq(policyProfiles.id, sourceId))
+        .limit(1);
+      if (!source) return undefined;
+
+      const [clone] = await tx
+        .insert(policyProfiles)
+        .values({
+          profileId: source.profileId,
+          authority: source.authority,
+          productType: source.productType,
+          version: overrides.version,
+          effectiveDate: source.effectiveDate,
+          expirationDate: source.expirationDate,
+          // A clone always starts at the beginning of the lifecycle: it has
+          // been approved by nobody, so the approver and activator columns are
+          // left unset rather than inherited.
+          status: "DRAFT",
+          description: source.description,
+          bulletinReference: source.bulletinReference,
+          sourceUrl: source.sourceUrl,
+          parentProfileId: source.id,
+          createdBy: overrides.createdBy,
+        })
+        .returning();
+
+      const sourceThresholds = await tx
+        .select()
+        .from(policyThresholds)
+        .where(eq(policyThresholds.policyProfileId, sourceId));
+
+      if (sourceThresholds.length > 0) {
+        await tx.insert(policyThresholds).values(
+          sourceThresholds.map(({ id, createdAt, updatedAt, policyProfileId, ...rest }) => ({
+            ...rest,
+            policyProfileId: clone.id,
+          })),
+        );
+      }
+
+      return clone;
+    });
+  }
+
   async getPolicyThresholds(policyProfileId: string): Promise<PolicyThreshold[]> {
     return db.select().from(policyThresholds)
       .where(eq(policyThresholds.policyProfileId, policyProfileId))
