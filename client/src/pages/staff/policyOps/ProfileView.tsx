@@ -35,10 +35,16 @@ export function PolicyProfileView({
   policy,
   onBack,
   onEditRules,
+  onViewCocRules,
+  onViewHistory,
 }: {
   policy: PolicyProfile | null;
   onBack: () => void;
   onEditRules: () => void;
+  /** Rules tab, with the change-of-circumstance category selected. */
+  onViewCocRules: () => void;
+  /** The audit tab, which already lists this policy's approval history. */
+  onViewHistory: () => void;
 }) {
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishReason, setPublishReason] = useState("");
@@ -247,7 +253,7 @@ export function PolicyProfileView({
               <Edit className="h-4 w-4 mr-2" />
               Edit Rule Parameters
             </Button>
-            <Button variant="outline" className="w-full justify-start" data-testid="button-view-coc">
+            <Button variant="outline" className="w-full justify-start" onClick={onViewCocRules} data-testid="button-view-coc">
               <RefreshCw className="h-4 w-4 mr-2" />
               View COC Rules
             </Button>
@@ -255,7 +261,7 @@ export function PolicyProfileView({
               <FileText className="h-4 w-4 mr-2" />
               Clone as Draft
             </Button>
-            <Button variant="outline" className="w-full justify-start" data-testid="button-view-history">
+            <Button variant="outline" className="w-full justify-start" onClick={onViewHistory} data-testid="button-view-history">
               <History className="h-4 w-4 mr-2" />
               View Version History
             </Button>

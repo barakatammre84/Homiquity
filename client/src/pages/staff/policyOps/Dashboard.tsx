@@ -28,7 +28,12 @@ export function PolicyOpsDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const { toast } = useToast();
 
-  const { data: policies = [], isLoading: policiesLoading } = useQuery<PolicyProfile[]>({
+  const {
+    data: policies = [],
+    isLoading: policiesLoading,
+    refetch: refetchPolicies,
+    isFetching: policiesFetching,
+  } = useQuery<PolicyProfile[]>({
     queryKey: ['/api/policy-profiles'],
   });
 
@@ -44,9 +49,14 @@ export function PolicyOpsDashboard() {
       contentClassName="space-y-6"
       headerAction={
         <div className="flex gap-2">
-          <Button variant="outline" data-testid="button-refresh-policies">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Check for Updates
+          <Button
+            variant="outline"
+            onClick={() => void refetchPolicies()}
+            disabled={policiesFetching}
+            data-testid="button-refresh-policies"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${policiesFetching ? "animate-spin" : ""}`} />
+            {policiesFetching ? "Checking…" : "Check for Updates"}
           </Button>
           <Button data-testid="button-create-policy">
             Create Policy Draft
@@ -192,6 +202,11 @@ export function PolicyOpsDashboard() {
             policy={selectedPolicy}
             onBack={() => setSelectedPolicy(null)}
             onEditRules={() => setActiveTab("rules")}
+            onViewCocRules={() => {
+              setSelectedCategory("COC");
+              setActiveTab("rules");
+            }}
+            onViewHistory={() => setActiveTab("audit")}
           />
         </TabsContent>
 

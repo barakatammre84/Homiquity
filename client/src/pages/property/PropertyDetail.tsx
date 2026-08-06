@@ -416,16 +416,27 @@ export default function PropertyDetail() {
                     </div>
                   </div>
                   <div className="mt-4 flex gap-2">
+                    {/* tel:/mailto: rather than an in-app flow: the agent's
+                        number and address are already on screen, and handing the
+                        tap to the device's own dialer or mail client is what the
+                        icons promise. Each is rendered only when we actually
+                        have the detail to act on. */}
                     {agent.phoneNumber && (
-                      <Button variant="outline" size="sm" className="flex-1 gap-1">
-                        <Phone className="h-4 w-4" />
-                        Call
+                      <Button variant="outline" size="sm" className="flex-1 gap-1" asChild data-testid="button-call-agent">
+                        <a href={`tel:${agent.phoneNumber}`}>
+                          <Phone className="h-4 w-4" />
+                          Call
+                        </a>
                       </Button>
                     )}
-                    <Button size="sm" className="flex-1 gap-1">
-                      <Mail className="h-4 w-4" />
-                      Message
-                    </Button>
+                    {agent.user?.email && (
+                      <Button size="sm" className="flex-1 gap-1" asChild data-testid="button-message-agent">
+                        <a href={`mailto:${agent.user.email}?subject=${encodeURIComponent(`Enquiry about ${property.address}`)}`}>
+                          <Mail className="h-4 w-4" />
+                          Message
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

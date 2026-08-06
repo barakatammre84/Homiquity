@@ -35,7 +35,7 @@ const CLIENT_SRC = join(REPO_ROOT, "client", "src");
  * Lower this as buttons are wired — never raise it. The current inventory is
  * printed in the failure message, so a regression names itself.
  */
-const BASELINE_INERT = 13;
+const BASELINE_INERT = 8;
 
 /** Anything that makes a child Button actionable by wrapping it. */
 const WRAPPER = /<(Link|a|\w*Trigger)\b/;
