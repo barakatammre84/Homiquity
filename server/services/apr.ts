@@ -19,11 +19,11 @@ import {
   PLATFORM_UNDERWRITING_FEE,
 } from "./loanCosts";
 
-export function monthlyPrincipalAndInterest(loanAmount: number, annualRatePct: number, termMonths: number): number {
-  if (annualRatePct === 0) return loanAmount / termMonths;
-  const r = annualRatePct / 100 / 12;
-  return (loanAmount * (r * Math.pow(1 + r, termMonths))) / (Math.pow(1 + r, termMonths) - 1);
-}
+// The payment formula lives in @shared/lib/amortization — one canonical copy
+// shared by the calculators, the letter path, and this APR solver. Re-exported
+// here so existing importers of `./apr` keep working unchanged.
+export { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 export interface MortgageStreamParams {
   loanAmount: number;

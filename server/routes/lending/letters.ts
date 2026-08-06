@@ -15,6 +15,7 @@ import { COMPANY_CONFIG } from "../../config/company";
 import { assertVerifiedForDecisioning, type DataProvenance } from "@shared/dataProvenance";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { routeParams } from "../../http/routeParams";
+import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -124,11 +125,8 @@ export function registerLetterRoutes(
       const monthlyDebts = parseFloat(application.monthlyDebts || "0");
       const loanAmountNum = parseFloat(loanAmount) || 0;
       const rate = await currentAdvertised30YrRate(storage);
-      const months = 360;
-      const monthlyRate = rate / 12;
-      const monthlyPayment = loanAmountNum > 0
-        ? (loanAmountNum * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1)
-        : 0;
+      // currentAdvertised30YrRate returns a FRACTION (0.07-style), not a percent.
+      const monthlyPayment = monthlyPrincipalAndInterestFromFraction(loanAmountNum, rate, 360);
       let rentalDebtTotal = 0;
       if (Array.isArray(application.incomeSources)) {
         for (const src of application.incomeSources as any[]) {
