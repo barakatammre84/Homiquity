@@ -23,6 +23,12 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle2, CircleDashed, Send, XCircle } from "lucide-react";
+import { SubmissionLifecycleControl } from "@/components/SubmissionLifecycleControl";
+import {
+  PackageConformanceBadge,
+  type XsdConformance,
+} from "@/components/PackageConformanceBadge";
+import type { LenderSubmissionStatus } from "@shared/wholesaleLenders";
 
 // -----------------------------------------------------------------------------
 // Submission readiness + submit-to-lender dialog.
@@ -70,6 +76,11 @@ interface LenderSubmissionRow {
   submittedAt: string;
   /** Rollup of loan_conditions rows linked to this submission (lender-issued). */
   conditionStats?: { total: number; open: number; cleared: number };
+  /**
+   * The immutable snapshot taken at submit time. Already on this payload — the
+   * recorded XSD result is read straight off it, no extra round trip.
+   */
+  readinessSnapshot?: { xsdConformance?: XsdConformance | null } | null;
 }
 
 const STAGE_ICON: Record<StageStatus, { icon: typeof CheckCircle2; className: string; label: string }> = {
@@ -290,6 +301,26 @@ export function SubmissionReadinessDialog({
                             submission to conditions cleared.
                           </p>
                         )}
+                        {/*
+                          The XSD result recorded on this submission's immutable
+                          snapshot. The service claimed it was "shown to staff";
+                          until now nothing read the field.
+                        */}
+                        <PackageConformanceBadge
+                          submissionId={s.id}
+                          conformance={s.readinessSnapshot?.xsdConformance}
+                        />
+                        {/*
+                          The control that hint points at. Without it the row was
+                          read-only after submission and the funded figures (F-6)
+                          had no UI writer at all — WF2-F5.
+                        */}
+                        <SubmissionLifecycleControl
+                          applicationId={applicationId}
+                          submissionId={s.id}
+                          status={s.status as LenderSubmissionStatus}
+                          lenderName={lenderName(s.lenderId)}
+                        />
                         {logConditionsFor === s.id ? (
                           <div className="space-y-2">
                             <Label htmlFor={`conditions-input-${s.id}`} className="text-xs">
