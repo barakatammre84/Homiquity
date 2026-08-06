@@ -31,6 +31,8 @@ import {
   initializeReadinessChecklist,
   updateReadinessField,
   getReadinessScore,
+  READINESS_FIELD_NAMES,
+  BORROWER_ASSERTABLE_STATUSES,
 } from "../services/intentTracker";
 import { routeParam, routeParams } from "../http/routeParams";
 
@@ -265,17 +267,44 @@ export function registerIntelligenceRoutes(
     }
   });
 
+  // The borrower's own "I've got this" toggle. Everything it accepts is
+  // constrained, because the readiness checklist carries a TRUST vocabulary:
+  //
+  //   * fieldName must be one the checklist actually seeds. updateReadinessField
+  //     only UPDATEs, so an unknown name was already a silent no-op rather than
+  //     a row injection — but a 400 beats a 200 that did nothing.
+  //   * verificationStatus is restricted to what a borrower may say about
+  //     themselves. document_extracted / third_party_verified /
+  //     manually_verified all map to TIER 1 and mean a model read it, a vendor
+  //     confirmed it, or a human checked it. Self-asserting those would let a
+  //     borrower hand themselves document-grade trust and would undo the
+  //     upload → extract → verify ladder that document presence credit relies on.
+  //   * lineage (sourceTable/sourceField/sourceRecordId) is STAMPED BY THE
+  //     SERVER, never accepted from the body. It was accepted before, so a
+  //     borrower could point a readiness row at any document id and forge the
+  //     provenance of their own record.
   app.put("/api/intelligence/readiness/:fieldName", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
       const { fieldName } = routeParams(req);
-      const { verificationStatus, sourceTable, sourceField, sourceRecordId } = req.body;
+      const { verificationStatus } = req.body ?? {};
+
+      if (!READINESS_FIELD_NAMES.includes(fieldName)) {
+        return res.status(400).json({ error: "Unknown readiness field" });
+      }
+      if (!BORROWER_ASSERTABLE_STATUSES.includes(verificationStatus)) {
+        return res.status(400).json({
+          error:
+            "verificationStatus must be one of: " + BORROWER_ASSERTABLE_STATUSES.join(", ") +
+            ". Verified tiers are earned through document review or a third-party check.",
+        });
+      }
 
       await updateReadinessField(user.id, fieldName, {
         verificationStatus,
-        sourceTable,
-        sourceField,
-        sourceRecordId,
+        sourceTable: "self_attested",
+        sourceField: fieldName,
+        sourceRecordId: user.id,
       });
       const score = await getReadinessScore(user.id);
       res.json(score);

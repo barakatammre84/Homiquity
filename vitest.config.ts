@@ -138,6 +138,7 @@ export default defineConfig({
       "tests/taxDocumentIntelligence.test.ts",
       "tests/taxReconciliation.test.ts",
       "tests/situationClassifier.test.ts",
+      "tests/readinessSelfAttestation.test.ts",
       "tests/extractionReadinessWiring.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/documentReview.test.ts",
