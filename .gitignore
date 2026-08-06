@@ -4,9 +4,6 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
-.env
-.env.local
-!.env.example
 uploads
 
 # MISMO XML exports (generated at runtime, not source)
@@ -16,3 +13,12 @@ mismo-*.xml
 # Per-session git worktrees (TEAM_PRACTICES §4: one session = one worktree =
 # one branch). They live inside the repo but are never part of it.
 .claude/worktrees/
+
+# Secrets. `.env*` is deliberately broad — it catches `.env.production`,
+# `.env.railway` and any other suffix someone invents, which the old explicit
+# `.env` + `.env.local` pair did not. ORDER MATTERS: the negation must stay
+# BELOW the wildcard, because git applies the LAST matching rule. Appending
+# `.env*` underneath `!.env.example` (as an earlier edit did) silently
+# re-ignores the tracked template this negation exists to keep.
+.env*
+!.env.example

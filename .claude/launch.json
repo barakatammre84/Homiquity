@@ -8,31 +8,7 @@
         "run",
         "dev"
       ],
-      "port": 5002,
-      "autoPort": true
-    },
-    {
-      "name": "renter-ramp-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "/Users/ammrebarakat/Developer/Homiquity/.claude/worktrees/renter-ramp",
-        "run",
-        "dev"
-      ],
-      "port": 5002,
-      "autoPort": true
-    },
-    {
-      "name": "rate-pitch-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "/Users/ammrebarakat/Developer/Homiquity/.claude/worktrees/rate-pitch-program",
-        "run",
-        "dev"
-      ],
-      "port": 5002,
+      "port": 5001,
       "autoPort": true
     }
   ]
