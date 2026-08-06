@@ -76,7 +76,18 @@ export function registerDocumentRoutes(
       if (!objectStorageService.isConfigured()) {
         if (!isLocalFallbackEnabled()) {
           return res.status(503).json({
-            error: "Document uploads are temporarily unavailable. Please try again later.",
+            // This message is what the borrower READS: friendlyApiError's
+            // deliberate-503 carve-out passes an enveloped 503 through
+            // verbatim, and UploadDocumentDialog renders it.
+            //
+            // It used to say "temporarily unavailable — please try again
+            // later". Both halves were false. Object storage is unconfigured,
+            // not degraded, so nothing about waiting or retrying changes the
+            // outcome; a borrower could retry a pay stub indefinitely and
+            // never succeed, while believing the failure was transient or
+            // their fault. Say what is true and give them a route that works.
+            error:
+              "Document upload isn't available yet — that's a setup step on our side, not a problem with your file, and retrying won't help. Please send your documents to your loan officer directly.",
             code: "UPLOADS_UNCONFIGURED",
           });
         }

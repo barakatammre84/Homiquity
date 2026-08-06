@@ -13,6 +13,7 @@ export default defineConfig({
     include: [
       "tests/accessControl.test.ts",
       "tests/commitmentLetterProvenance.test.ts",
+      "tests/uploadsUnavailableCopy.test.ts",
       "tests/liveCreditPullImport.test.ts",
       "tests/creditVendorInterlock.test.ts",
       "tests/clientIp.test.ts",
