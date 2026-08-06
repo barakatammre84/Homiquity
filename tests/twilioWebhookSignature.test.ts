@@ -254,11 +254,16 @@ describe("evaluateTwilioWebhookAuth", () => {
 
 type Handler = (req: any, res: any) => Promise<unknown>;
 
-function captureHandler(storage: Partial<IStorage>): Handler {
-  let handler: Handler | undefined;
-  const app = { post: (_path: string, h: Handler) => { handler = h; } };
+// Keyed BY PATH, not "last one wins". registerWebhookRoutes now registers more
+// than one route, and an overwriting capture would silently hand every test in
+// this file the handler that happens to be registered last — the tests would
+// still pass, against the wrong endpoint.
+function captureHandler(storage: Partial<IStorage>, path = "/api/webhooks/sms"): Handler {
+  const handlers = new Map<string, Handler>();
+  const app = { post: (p: string, h: Handler) => { handlers.set(p, h); } };
   registerWebhookRoutes(app as never, storage as IStorage);
-  if (!handler) throw new Error("route was not registered");
+  const handler = handlers.get(path);
+  if (!handler) throw new Error(`route ${path} was not registered`);
   return handler;
 }
 
@@ -266,8 +271,10 @@ function fakeRes() {
   return {
     statusCode: 200,
     payload: undefined as unknown,
+    ended: false,
     status(code: number) { this.statusCode = code; return this; },
     json(body: unknown) { this.payload = body; return this; },
+    end() { this.ended = true; return this; },
   };
 }
 
