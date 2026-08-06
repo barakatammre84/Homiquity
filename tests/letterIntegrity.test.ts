@@ -295,9 +295,29 @@ describe("letter expiry sweep", () => {
     const vercelConfig = JSON.parse(
       await readFile(join(__dirname, "../vercel.json"), "utf8"),
     ) as { crons?: { path: string; schedule: string }[] };
+    const vercelCron = (vercelConfig.crons || []).find((c) => c.path === "/api/jobs/letter-expiry");
     expect(
-      (vercelConfig.crons || []).some((c) => c.path === "/api/jobs/letter-expiry"),
+      vercelCron,
       "expected a vercel.json cron entry for /api/jobs/letter-expiry — a sweep nobody schedules never runs",
+    ).toBeDefined();
+
+    // Vercel→Railway transition: the GitHub Actions scheduler must carry the
+    // same sweep on the same expression until the cutover PR deletes
+    // vercel.json (and the assertion above with it). Both halves pinned: the
+    // schedule trigger exists, and the resolve step maps that expression to
+    // this job's path — an unmapped expression never curls anything.
+    const cronWorkflow = await readFile(
+      join(__dirname, "../.github/workflows/cron-jobs.yml"),
+      "utf8",
+    );
+    expect(
+      cronWorkflow.includes(`- cron: "${vercelCron!.schedule}"`),
+      `expected cron-jobs.yml to register a schedule trigger for "${vercelCron!.schedule}"`,
+    ).toBe(true);
+    const escaped = vercelCron!.schedule.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    expect(
+      new RegExp(`"${escaped}"\\)\\s+job="letter-expiry"`).test(cronWorkflow),
+      `expected cron-jobs.yml to map "${vercelCron!.schedule}" to the letter-expiry job path`,
     ).toBe(true);
   });
 });

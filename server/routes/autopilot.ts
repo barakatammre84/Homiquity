@@ -19,15 +19,19 @@ import { routeParams } from "../http/routeParams";
  *
  * Both are read-only and access-gated (the borrower who owns the file, or staff
  * on the deal team). The SSE pushes in-process transitions immediately AND
- * re-derives from the DB on an interval, so it's correct across serverless
- * instances; the connection is bounded so a serverless function isn't held open
- * indefinitely (the client's EventSource auto-reconnects).
+ * re-derives from the DB on an interval, so it stays correct even when another
+ * instance/process performs the transition; the connection is bounded (see
+ * MAX_CONNECTION_MS) so no stream is held open indefinitely (the client's
+ * EventSource auto-reconnects).
  */
 
 const POLL_INTERVAL_MS = 5_000;
-// Bound the connection under typical serverless max-duration; the browser
-// EventSource transparently reconnects, re-sending a fresh snapshot each time.
-const MAX_CONNECTION_MS = 55_000;
+// LB-idle safety bound, not a serverless ceiling: keepalive comment frames
+// flow every poll tick so an idle-timeout never fires mid-stream, and the
+// periodic teardown just forces a clean re-handshake (the browser EventSource
+// transparently reconnects, re-sending a fresh snapshot) so a dead client the
+// close event missed can never hold a subscription forever.
+const MAX_CONNECTION_MS = 300_000;
 
 export function registerAutopilotRoutes(app: Express) {
   app.get("/api/autopilot/status/:applicationId", isAuthenticated, async (req, res) => {

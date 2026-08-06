@@ -1,0 +1,94 @@
+# Production sweep scheduler — the platform-independent replacement for
+# vercel.json's "crons" block (Vercel Cron only fires while Vercel hosts the
+# app). Each schedule below MUST stay identical to its vercel.json twin until
+# the Vercel cutover PR deletes that file: during the transition BOTH
+# schedulers exist, and the app's sweeps are idempotent per day, so a double
+# fire is safe while a silent zero fire is not (the "a sweep nobody schedules
+# never runs" invariant — pinned for letter-expiry and task-escalation by
+# tests/letterIntegrity.test.ts and tests/taskEngineSlaSeed.test.ts).
+#
+# Auth: /api/jobs/* accepts `Authorization: Bearer <CRON_SECRET>`
+# (server/routes/jobs.ts) and degrades to admin-session-only when unset.
+# FOUNDER ACTION REQUIRED: create the CRON_SECRET **repository secret**
+# (Settings → Secrets and variables → Actions) with the SAME value as the
+# app's CRON_SECRET env var — until then every run here fails loudly, which
+# is the wanted posture (a scheduler that silently no-ops hides a dead sweep).
+#
+# GitHub exposes only WHICH cron expression fired (github.event.schedule), so
+# one workflow carries all six expressions and the resolve step maps the
+# expression back to its job path. An expression with no mapping fails the
+# run rather than skipping — editing a schedule without its case arm must be
+# loud. Scheduled workflows run against the default branch only.
+
+name: cron-jobs
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # /api/jobs/lifecycle
+    - cron: "0 12 * * *" # /api/jobs/rate-lock-alerts
+    - cron: "30 12 * * *" # /api/jobs/letter-expiry
+    - cron: "0 14 * * *" # /api/jobs/adverse-action-delivery
+    - cron: "45 13 * * *" # /api/jobs/task-escalation
+    - cron: "17 11 * * 1" # /api/jobs/aggregate-data (Mondays)
+  # Manual lever: lets the founder prove CRON_SECRET end-to-end without
+  # waiting for a schedule, and re-fire a missed sweep after an outage.
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Sweep to trigger (path suffix of /api/jobs/)"
+        required: true
+        type: choice
+        options:
+          - lifecycle
+          - rate-lock-alerts
+          - letter-expiry
+          - adverse-action-delivery
+          - task-escalation
+          - aggregate-data
+
+permissions:
+  contents: none
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve job from schedule
+        id: resolve
+        env:
+          FIRED: ${{ github.event.schedule }}
+          DISPATCHED: ${{ inputs.job }}
+        run: |
+          if [ -n "$DISPATCHED" ]; then
+            job="$DISPATCHED"
+          else
+            case "$FIRED" in
+              "0 13 * * *") job="lifecycle" ;;
+              "0 12 * * *") job="rate-lock-alerts" ;;
+              "30 12 * * *") job="letter-expiry" ;;
+              "0 14 * * *") job="adverse-action-delivery" ;;
+              "45 13 * * *") job="task-escalation" ;;
+              "17 11 * * 1") job="aggregate-data" ;;
+              *)
+                echo "::error::No job mapped for schedule '$FIRED' — a cron expression was edited without updating this case list"
+                exit 1
+                ;;
+            esac
+          fi
+          echo "job=$job" >> "$GITHUB_OUTPUT"
+      - name: Trigger the sweep
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          JOB: ${{ steps.resolve.outputs.job }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repository secret is not set — sweep NOT triggered (founder: create it with the same value as the app env var)"
+            exit 1
+          fi
+          # -f fails the step on any HTTP >= 400; --retry re-attempts curl's
+          # transient set (timeouts, 429, 5xx) so a deploy-window blip does
+          # not surface as a missed sweep.
+          curl -sf --retry 3 --max-time 120 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://www.homiquity.com/api/jobs/${JOB}"
