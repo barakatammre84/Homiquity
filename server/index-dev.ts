@@ -9,6 +9,7 @@ import { createServer as createViteServer, createLogger } from "vite";
 
 import viteConfig from "../vite.config";
 import runApp from "./app";
+import { prerenderMiddleware } from "./routes/seo";
 import { SPA_CATCH_ALL_PATTERN } from "./spaCatchAll";
 
 export async function setupVite(app: Express, server: Server) {
@@ -32,6 +33,14 @@ export async function setupVite(app: Express, server: Server) {
     server: serverOptions,
     appType: "custom",
   });
+
+  // Same mount contract as serveStatic (server/index-prod.ts): the bot
+  // prerender must see document requests before Vite's middleware — mounted
+  // after, Vite's HTML fallback would answer crawlers with the raw shell.
+  // Dev-only Vite paths without a dot (/@vite/client, /@react-refresh) are
+  // only ever requested by a browser running the SPA, so the middleware's
+  // bot-UA guard keeps them on Vite's path.
+  app.use(prerenderMiddleware);
 
   app.use(vite.middlewares);
   app.use(SPA_CATCH_ALL_PATTERN, async (req, res, next) => {

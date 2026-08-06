@@ -8,8 +8,12 @@ import express, {
 } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import compression from "compression";
 
 import { registerRoutes } from "./routes";
+import { pool } from "./db";
+import { betaGateMiddleware } from "./middleware/betaGate";
+import { trustProxyHops } from "./trustProxy";
 import { isRateLimitRelaxed } from "./services/rateLimitPolicy";
 import { captureException, initErrorMonitoring } from "./services/errorMonitoring";
 
@@ -26,7 +30,9 @@ export function log(message: string, source = "express") {
 
 export const app = express();
 
-app.set("trust proxy", 1);
+// Hop count must match the real proxy chain or req.ip records the LB instead
+// of the caller (TCPA consent + audit rows) — see server/trustProxy.ts.
+app.set("trust proxy", trustProxyHops());
 
 // Express 5 changed the default `query parser` from "extended" (qs) to "simple"
 // (Node's querystring), which stops nesting brackets: `?arr[]=a&obj[k]=v` parses
@@ -37,6 +43,22 @@ app.set("trust proxy", 1);
 // result. Keep the Express 4 behaviour explicit rather than inheriting a
 // default that just changed underneath us.
 app.set("query parser", "extended");
+
+// Response compression, self-host replacement for Vercel's edge br/gzip.
+// First in the chain so every later writer (API JSON, static assets, SPA
+// shell, prerendered documents) is covered. SSE must NOT be compressed:
+// buffering would hold frames past their flush (server/sse.ts already sets
+// no-transform for intermediaries), so event-stream responses are excluded
+// explicitly rather than trusting the mime-db compressible flag.
+app.use(
+  compression({
+    filter: (req, res) => {
+      const contentType = String(res.getHeader("Content-Type") ?? "");
+      if (contentType.includes("text/event-stream")) return false;
+      return compression.filter(req, res);
+    },
+  }),
+);
 
 // Content Security Policy — the authorized-script control for PCI DSS 4.0.1
 // Req 6.4.3 / 11.6.1. Every third-party origin listed here is a deliberate,
@@ -84,6 +106,13 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Google Maps tiles are not CORP-tagged
 }));
 
+// Private-beta gate (Express port of root middleware.ts — the Vercel Edge
+// original keeps serving Vercel until cutover). Total no-op unless
+// BETA_ACCESS_CODE is set. Must mount ahead of the whole route surface:
+// /robots.txt's Disallow-all override has to win over the static file, and
+// non-API document routes registered later (e.g. /sitemap.xml) are gated
+// exactly as they were at the edge. /api/* passes through inside the gate.
+app.use(betaGateMiddleware);
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -465,6 +494,12 @@ export default async function runApp(
     } catch {
       /* reporting must never re-throw here */
     }
+    // A persistent process that survives an uncaught throw keeps serving in
+    // an undefined state behind a green /api/health (the DB ping still
+    // passes). The platform supervises restarts, so crash clean instead —
+    // log-and-continue was only safe when serverless recycled the instance.
+    // Capture above is fire-and-forget by design; stderr is the crash record.
+    process.exit(1);
   });
 
   process.on("unhandledRejection", (reason) => {
@@ -486,6 +521,14 @@ export default async function runApp(
 
   const { server } = await createApp(setup);
 
+  // Node's 5s keep-alive default is shorter than a typical platform LB's
+  // ~60s idle window — the LB reuses a socket the server just closed and the
+  // caller sees a sporadic 502. Keep-alive must outlive the LB's idle timer,
+  // and headersTimeout must exceed keepAliveTimeout so a parked keep-alive
+  // socket is not torn down as a slow-header client.
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
+
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
@@ -494,4 +537,35 @@ export default async function runApp(
   server.listen({ port, host: "0.0.0.0" }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Graceful drain on the platform's stop signal (deploy replace, restart,
+  // scale-down): stop accepting, let in-flight requests finish, release the
+  // pg pool, exit 0 so the supervisor reads a clean stop. The drain is
+  // bounded — long-lived SSE connections are active sockets and would hold
+  // server.close() open indefinitely, so a force-exit timer caps the window
+  // (unref'd: it must never keep an otherwise-finished process alive).
+  let shuttingDown = false;
+  const shutdown = (signal: NodeJS.Signals) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    log(`${signal} received — draining connections`, "shutdown");
+    const forceExit = setTimeout(() => {
+      log("drain window elapsed — forcing exit", "shutdown");
+      process.exit(1);
+    }, 10_000);
+    forceExit.unref();
+    server.close(() => {
+      void Promise.resolve()
+        .then(() => pool.end())
+        .catch(() => {
+          /* a failed pool teardown must not block the exit */
+        })
+        .then(() => process.exit(0));
+    });
+    // Parked keep-alive sockets are not "in flight" — without this, close()
+    // waits out every idle browser connection for the full drain window.
+    server.closeIdleConnections();
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }

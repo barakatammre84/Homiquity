@@ -54,6 +54,10 @@ export const COACH_MODEL = "claude-sonnet-5";
 export const COACH_PROMPT_VERSION = "coach-2.2.0";
 
 export const MAX_MODEL_CALLS_PER_TURN = 2;
-export const TURN_BUDGET_MS = 25_000; // Vercel function maxDuration is 30s — leave headroom
+// Product turn budget, not a platform ceiling (the persistent host has none):
+// bounds a runaway multi-tool turn so a wedged upstream stream cannot pin a
+// coach turn open indefinitely, while leaving room for both model calls plus
+// tool round-trips to finish instead of truncating mid-answer.
+export const TURN_BUDGET_MS = 90_000;
 export const MAX_COMPLETION_TOKENS = 2_048;
 export const HISTORY_WINDOW_MESSAGES = 24; // ≈12 exchanges resent per turn
