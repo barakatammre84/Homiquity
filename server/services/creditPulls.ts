@@ -322,6 +322,145 @@ export async function simulateCreditPullCompletion(
   return updated;
 }
 
+/**
+ * Complete a credit pull with REAL bureau data, obtained outside the app.
+ *
+ * WHY THIS EXISTS RATHER THAN A HAND-WRITTEN INSERT
+ *
+ * Completing a pull is not one row. It also appends to `credit_audit_log` —
+ * a hash chain (entryHash / previousEntryHash / sequenceNumber, with a v2
+ * hashVersion that folds the sequence number into the digest) — and updates
+ * `credit_audit_chain_tips` in the SAME transaction, the external end-marker
+ * that exists to detect tail truncation.
+ *
+ * An `UPDATE credit_pulls SET ...` by hand gets the scores and none of that.
+ * The chain would not break, because nothing touched it — you would simply
+ * have a real consumer report with no audit entry saying who pulled it, when,
+ * or under which consent. In an FCRA or ECOA dispute that log IS the artifact,
+ * and a missing entry is worse than a corrupt one because nothing flags it.
+ *
+ * Hand-writing the audit row instead is worse again: it means reproducing the
+ * v2 digest, linking previousEntryHash to the live tip, incrementing the
+ * sequence and updating the tip table atomically. Any slip produces a
+ * verification failure that is indistinguishable from tampering.
+ *
+ * PROVENANCE IS A PROPERTY OF THE DATA, NOT OF THE ENVIRONMENT
+ *
+ * `isSimulated` is written FALSE here unconditionally — deliberately not via
+ * creditVendorIsSimulated(), which reads CREDIT_VENDOR_API_KEY and describes
+ * the *adapter's* posture. During the pre-F3 window that key is unset (there is
+ * no adapter), yet a report typed in from a real bureau is real. The stamp must
+ * describe where THIS report came from.
+ *
+ * That is also why `vendorRequestId` is required and must be non-empty: it is
+ * the only link back to the bureau's own record, and an unattributable "real"
+ * pull is not meaningfully better than a simulated one.
+ */
+export async function recordLiveCreditPullCompletion(input: {
+  creditPullId: string;
+  /** The bureau's own reference for this inquiry. Required — this is the provenance. */
+  vendorRequestId: string;
+  scores: { experian?: number; equifax?: number; transunion?: number };
+  /** Verbatim vendor payload, if you have it. Encrypted at rest like any other. */
+  rawResponse?: string;
+  tradelines?: { total?: number; open?: number };
+  derogatoryCount?: number;
+  inquiries?: { last30Days?: number; last90Days?: number };
+  debt?: { total?: number; monthlyPayment?: number };
+  liabilities?: unknown[];
+}): Promise<CreditPull> {
+  const { creditPullId, vendorRequestId } = input;
+
+  if (!vendorRequestId?.trim()) {
+    throw new Error(
+      "vendorRequestId is required: a credit pull recorded as REAL bureau data must carry the bureau's own reference, or it cannot be tied back to an actual inquiry.",
+    );
+  }
+
+  // Claiming real data while the fabricating path is still permitted is a
+  // contradiction — resolve the configuration before importing.
+  if (process.env.CREDIT_VENDOR_MODE === "simulation") {
+    throw new Error(
+      "CREDIT_VENDOR_MODE=simulation is set, which permits fabricated scores in this environment. Refusing to record a pull as REAL bureau data until that override is removed, so a simulated and a genuine report cannot coexist under the same configuration.",
+    );
+  }
+
+  const present = (["experian", "equifax", "transunion"] as const)
+    .map((b) => input.scores[b])
+    .filter((v): v is number => typeof v === "number");
+
+  if (present.length === 0) {
+    throw new Error("At least one bureau score is required to complete a credit pull.");
+  }
+  for (const score of present) {
+    if (!Number.isInteger(score) || score < 300 || score > 850) {
+      throw new Error(`Credit score ${score} is outside the valid 300-850 range.`);
+    }
+  }
+
+  const [pull] = await db.select().from(creditPulls).where(eq(creditPulls.id, creditPullId));
+  if (!pull) throw new Error("Credit pull not found");
+  if (pull.status === "completed") {
+    throw new Error(
+      `Credit pull ${creditPullId} is already completed. Completing it twice would append a second "pull_completed" entry to the audit chain for one inquiry.`,
+    );
+  }
+
+  // Representative = MIDDLE of three, or the LOWER of two, matching the
+  // tri-merge convention the underwriting layer already assumes.
+  const sorted = [...present].sort((a, b) => a - b);
+  const representativeScore =
+    sorted.length >= 3 ? sorted[1] : sorted.length === 2 ? sorted[0] : sorted[0];
+
+  const encrypted = input.rawResponse ? encryptSensitiveData(input.rawResponse) : null;
+
+  const [updated] = await db
+    .update(creditPulls)
+    .set({
+      status: "completed",
+      experianScore: input.scores.experian ?? null,
+      equifaxScore: input.scores.equifax ?? null,
+      transunionScore: input.scores.transunion ?? null,
+      representativeScore,
+      totalTradelines: input.tradelines?.total ?? null,
+      openTradelines: input.tradelines?.open ?? null,
+      totalDebt: input.debt?.total?.toString() ?? null,
+      monthlyPayments: input.debt?.monthlyPayment?.toString() ?? null,
+      derogatoryCount: input.derogatoryCount ?? null,
+      inquiryCount30Days: input.inquiries?.last30Days ?? null,
+      inquiryCount90Days: input.inquiries?.last90Days ?? null,
+      liabilities: input.liabilities ?? null,
+      encryptedRawResponse: encrypted?.encryptedContent ?? null,
+      encryptionKeyId: encrypted?.keyId ?? null,
+      encryptionIV: encrypted?.iv ?? null,
+      vendorResponseHash: input.rawResponse ? computeHash(input.rawResponse) : null,
+      vendorRequestId: vendorRequestId.trim(),
+      isSimulated: false,
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(creditPulls.id, creditPullId))
+    .returning();
+
+  await logCreditAction({
+    applicationId: pull.applicationId,
+    creditPullId,
+    consentId: pull.consentId,
+    action: "pull_completed",
+    actionDetails: {
+      representativeScore,
+      bureausReturned: pull.bureaus,
+      responseHashStored: Boolean(input.rawResponse),
+      // Recorded explicitly: this pull was completed from data entered outside
+      // the app, not returned by an in-process adapter.
+      source: "manual_import",
+      vendorRequestId: vendorRequestId.trim(),
+    },
+  });
+
+  return updated;
+}
+
 export async function getCreditPullById(creditPullId: string): Promise<CreditPull | null> {
   const [pull] = await db
     .select()
