@@ -10,6 +10,12 @@
 export const MISMO_NAMESPACE = "http://www.mismo.org/residential/2009/schemas";
 export const XLINK_NAMESPACE = "http://www.w3.org/1999/xlink";
 export const XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance";
+/**
+ * Target namespace of `ULDD_Phase_5_Extension.xsd` — the Fannie/Freddie
+ * extension layered over the MISMO base model. Everything Fannie adds beyond
+ * MISMO (the `OTHER` wrapper and the `*_EXTENSION` containers) lives here.
+ */
+export const ULDD_EXTENSION_NAMESPACE = "http://www.datamodelextension.org/Schema/ULDD";
 
 export interface MISMOMessage {
   aboutVersions?: AboutVersions;
@@ -839,30 +845,73 @@ export interface CurrentIncomeItem {
   incomeType: string;
 }
 
+// 2026-08-06: these mirror the XSD content models exactly (same treatment the
+// U-1 fix applied above). The prior `Declaration` was a THIRD parallel
+// vocabulary, agreeing with neither the emitter nor the schema: 16 of its 22
+// fields name elements that exist in NEITHER local XSD, it flattened
+// DECLARATION_DETAIL away entirely, and it modelled the three enumerated points
+// (citizenship, intent-to-occupy, homeowner-past-three-years) as booleans.
+// Corrected rather than deleted — nothing imports it today, but this file is
+// the reference-model map an implementer reads before touching server/mismo.ts,
+// and a wrong map is worse than no map.
 export interface Declaration {
+  declarationDetail?: DeclarationDetail;
+}
+
+/**
+ * `DECLARATION/DECLARATION_DETAIL` — MISMO_3_0.xsd:4052-4138. The XSD is an
+ * xsd:sequence, and the field order below is that sequence: emitters must
+ * follow it or a legal element is rejected for arriving late.
+ */
+export interface DeclarationDetail {
   alimonyChildSupportObligationIndicator?: boolean;
   bankruptcyIndicator?: boolean;
   borrowedDownPaymentIndicator?: boolean;
-  coSignerUndisclosedLoanIndicator?: boolean;
-  homeownerPastThreeYearsIndicator?: boolean;
-  intentToOccupyIndicator?: boolean;
-  judgmentAgainstIndicator?: boolean;
-  loanForeclosureIndicator?: boolean;
-  otherLoanOnPropertyIndicator?: boolean;
+  borrowerFirstTimeHomebuyerIndicator?: boolean;
+  /** CitizenshipResidencyTypeEnumerated — NOT a pair of booleans. */
+  citizenshipResidencyType?: CitizenshipResidencyType;
+  coMakerEndorserOfNoteIndicator?: boolean;
+  /** HomeownerPastThreeYearsTypeEnumerated. */
+  homeownerPastThreeYearsType?: YesNoUnknownType;
+  /** IntentToOccupyTypeEnumerated. */
+  intentToOccupyType?: YesNoUnknownType;
+  loanForeclosureOrJudgmentIndicator?: boolean;
   outstandingJudgmentsIndicator?: boolean;
   partyToLawsuitIndicator?: boolean;
-  presentDelinquentCreditIndicator?: boolean;
-  priorPropertyForeclosureCompletedIndicator?: boolean;
-  priorPropertyShortSaleCompletedIndicator?: boolean;
-  priorPropertyDeedInLieuCompletedIndicator?: boolean;
-  propertyProposedCleanEnergyLienIndicator?: boolean;
-  undisclosedBorrowedFundsIndicator?: boolean;
-  undisclosedMortgageApplicationIndicator?: boolean;
-  undisclosedCreditApplicationIndicator?: boolean;
-  undisclosedComakerOfNoteIndicator?: boolean;
-  usCitizenIndicator?: boolean;
-  permanentResidentAlienIndicator?: boolean;
+  presentlyDelinquentIndicator?: boolean;
+  priorPropertyTitleType?: PriorPropertyTitleType;
+  priorPropertyUsageType?: PriorPropertyUsageType;
+  propertyForeclosedPastSevenYearsIndicator?: boolean;
+  extension?: DeclarationDetailExtension;
 }
+
+/**
+ * `EXTENSION/ULDD:OTHER/ULDD:DECLARATION_DETAIL_EXTENSION` —
+ * ULDD_Phase_5_Extension.xsd:95-98. The short sale (URLA 2020 5b-K) has no
+ * base-model home; this is its only legal expression.
+ */
+export interface DeclarationDetailExtension {
+  priorPropertyShortSaleCompletedIndicator?: boolean;
+}
+
+export type CitizenshipResidencyType =
+  | "NonPermanentResidentAlien"
+  | "NonResidentAlien"
+  | "PermanentResidentAlien"
+  | "Unknown"
+  | "USCitizen";
+
+export type YesNoUnknownType = "Yes" | "No" | "Unknown";
+
+export type PriorPropertyTitleType =
+  | "JointWithOtherThanSpouse"
+  | "JointWithSpouse"
+  | "Sole";
+
+export type PriorPropertyUsageType =
+  | "Investment"
+  | "PrimaryResidence"
+  | "SecondHome";
 
 export interface Dependents {
   dependentCount?: number;

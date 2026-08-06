@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   validateAgainstXsd,
+  validateMismoExport,
   extractOffendingElements,
   MISMO_BASE_XSD,
 } from "../server/services/mismoXsdValidation";
@@ -38,6 +39,28 @@ beforeAll(() => {
   }
 });
 
+/**
+ * A fixture that MUST stay representative of a real borrower file.
+ *
+ * 2026-08-06: it was not, and that made this suite lie. It set
+ * `declarations: null` and left every phone field empty, so the export emitted
+ * neither a single declaration indicator nor a single
+ * `ContactPointTelephoneValue` — and the suite happily asserted "validates
+ * clean" over an export that omitted the offending elements entirely. Once the
+ * fixture carried real data, 15 of the 19 declaration elements were rejected
+ * (14 of the 19 names exist in NEITHER local schema) and all three phone sites
+ * failed the `\d*` facet.
+ *
+ * Two rules this encodes:
+ *  - A conformance fixture is only worth its assertions if it exercises what
+ *    production actually emits. Adding a field to the export means adding it
+ *    here.
+ *  - Phones must be stored FORMATTED here. A digits-only phone satisfies the
+ *    `MISMONumericString` facet by accident, so it proves nothing about
+ *    normalization — that vacuous pass is exactly how this defect stayed
+ *    hidden. `server/scripts/seedDemoFile.ts` seeds `"512-555-0142"`, and
+ *    `PersonalInfoSection.tsx` stores whatever the borrower types.
+ */
 function baseDto(overrides: Partial<MISMOLoanDTO> = {}): MISMOLoanDTO {
   return {
     application: {
@@ -57,16 +80,55 @@ function baseDto(overrides: Partial<MISMOLoanDTO> = {}): MISMOLoanDTO {
       ...(overrides.application ?? {}),
     } as any,
     user: { id: "user-abc123", email: "b@example.com" } as any,
-    personalInfo: { firstName: "Jane", lastName: "Doe", ssn: "123-45-6789" } as any,
+    personalInfo: (overrides.personalInfo ?? {
+      firstName: "Jane",
+      lastName: "Doe",
+      ssn: "123-45-6789",
+      email: "jane@example.com",
+      // FORMATTED on purpose — see the docblock above.
+      cellPhone: "(512) 555-0134",
+      homePhone: "512-555-0143",
+    }) as any,
     employment: overrides.employment ?? [
-      { employerName: "Acme", employmentType: "employed", startDate: "2020-01-01" } as any,
+      {
+        employerName: "Acme",
+        employmentType: "employed",
+        startDate: "2020-01-01",
+        employerPhone: "(512) 555-0100",
+      } as any,
     ],
     assets: overrides.assets ?? [{ accountType: "checking", cashOrMarketValue: "5000" } as any],
     liabilities: overrides.liabilities ?? [
       { liabilityType: "credit_card", monthlyPayment: "50" } as any,
     ],
     propertyInfo: overrides.propertyInfo ?? null,
-    declarations: null,
+    // URLA §5 + §1 citizenship. Every field non-null, so the export emits every
+    // declaration data point it is capable of emitting — the fields with no
+    // MISMO 3.0 home are omitted by the exporter, not by the fixture.
+    declarations: (overrides.declarations ?? {
+      willOccupyAsPrimaryResidence: true,
+      hasOwnershipInterestInPast3Years: false,
+      priorPropertyType: "primary_residence",
+      priorPropertyTitle: "sole",
+      hasRelationshipWithSeller: false,
+      isBorrowingForDownPayment: false,
+      hasAppliedForMortgageOnOtherProperty: false,
+      hasCreditForMortgageOnOtherProperty: false,
+      hasPriorityLienOnSubjectProperty: false,
+      hasCoMakerEndorser: false,
+      hasOutstandingJudgments: false,
+      isDelinquentOnFederalDebt: false,
+      isPartyToLawsuit: false,
+      hasConveyedTitleInLieuOfForeclosure: false,
+      hasCompletedShortSale: false,
+      hasBeenForeclosed: false,
+      hasDeclaredBankruptcy: false,
+      hasUndisclosedDebt: false,
+      hasAppliedForNewCredit: false,
+      hasPriorityLienToBePaidOff: false,
+      isUSCitizen: true,
+      isPermanentResidentAlien: false,
+    }) as any,
     loanOptions: overrides.loanOptions ?? [],
     documents: [],
   };
@@ -177,7 +239,7 @@ describe("MISMO export vs. the official schema (known-violations baseline)", () 
   it("underwriting-purpose export validates clean against the official schema", () => {
     if (!xmllintInstalled) return;
     const xml = generateMISMO34XML(baseDto());
-    const result = validateAgainstXsd(xml, MISMO_BASE_XSD);
+    const result = validateMismoExport(xml);
     expect(extractOffendingElements(result.errors)).toEqual([]);
     expect(result.valid).toBe(true);
   });
@@ -185,8 +247,239 @@ describe("MISMO export vs. the official schema (known-violations baseline)", () 
   it("loanDelivery-purpose export validates clean against the official schema", () => {
     if (!xmllintInstalled) return;
     const xml = generateMISMO34XML(baseDto(), { purpose: "loanDelivery", noteDate: "2026-03-15" });
-    const result = validateAgainstXsd(xml, MISMO_BASE_XSD);
+    const result = validateMismoExport(xml);
     expect(extractOffendingElements(result.errors)).toEqual([]);
     expect(result.valid).toBe(true);
+  });
+});
+
+describe("phone normalization (MISMONumericString \\d* facet)", () => {
+  // The fixture already stores formatted phones, so the two suites above cover
+  // this. These pin the mechanism directly, because the failure mode is a
+  // SILENT one: a digits-only fixture validates whether or not normalization
+  // happens, and that vacuous pass is how the defect survived.
+  it("emits only digits for every formatted phone the fixture carries", () => {
+    const xml = generateMISMO34XML(baseDto());
+    const values = [...xml.matchAll(/<ContactPointTelephoneValue>([^<]*)</g)].map(m => m[1]);
+    // borrower cell + borrower home + employer work
+    expect(values).toEqual(["5125550134", "5125550143", "5125550100"]);
+    for (const v of values) expect(v).toMatch(/^\d*$/);
+  });
+
+  it("survives every format the client can store, incl. E.164 and extensions", () => {
+    if (!xmllintInstalled) return;
+    const xml = generateMISMO34XML(
+      baseDto({
+        personalInfo: {
+          firstName: "Jane",
+          lastName: "Doe",
+          ssn: "123-45-6789",
+          cellPhone: "+1 (512) 555-0134",
+          homePhone: "512 555 0143 x22",
+        } as any,
+        employment: [
+          {
+            employerName: "Acme",
+            employmentType: "employed",
+            startDate: "2020-01-01",
+            employerPhone: "512.555.0100",
+          } as any,
+        ],
+      }),
+    );
+    expect(validateMismoExport(xml).valid).toBe(true);
+  });
+
+  it("omits the element entirely when nothing numeric survives", () => {
+    const xml = generateMISMO34XML(
+      baseDto({
+        personalInfo: { firstName: "Jane", lastName: "Doe", cellPhone: "n/a" } as any,
+        employment: [
+          { employerName: "Acme", startDate: "2020-01-01", employerPhone: "--" } as any,
+        ],
+      }),
+    );
+    // An empty ContactPointTelephoneValue would be a worse record than none.
+    expect(xml).not.toContain("ContactPointTelephoneValue");
+    expect(xml).toContain("<FullName>Acme</FullName>");
+  });
+});
+
+describe("URLA §5 DECLARATION block", () => {
+  /** Direct children of DECLARATION_DETAIL, in document order. */
+  function detailChildren(xml: string): string[] {
+    const block = xml.match(/<DECLARATION_DETAIL>([\s\S]*?)<\/DECLARATION_DETAIL>/);
+    expect(block, "export emitted no DECLARATION_DETAIL").not.toBeNull();
+    const names: string[] = [];
+    let depth = 0;
+    for (const [, closing, name, selfClosing] of block![1].matchAll(
+      /<(\/?)([A-Za-z_][\w:.-]*)[^>]*?(\/?)>/g,
+    )) {
+      if (closing) {
+        depth--;
+      } else {
+        if (depth === 0) names.push(name);
+        if (!selfClosing) depth++;
+      }
+    }
+    return names;
+  }
+
+  it("puts every data point inside DECLARATION/DECLARATION_DETAIL", () => {
+    const xml = generateMISMO34XML(baseDto());
+    // Nothing may sit directly under DECLARATION — that was defect #1, and it
+    // masked the other fourteen (libxml2 stops a container at its first
+    // content-model failure).
+    expect(xml).toMatch(/<DECLARATION>\s*<DECLARATION_DETAIL>/);
+    expect(xml).toMatch(/<\/DECLARATION_DETAIL>\s*<\/DECLARATION>/);
+  });
+
+  it("emits DECLARATION_DETAIL children in the XSD's xsd:sequence order", () => {
+    // MISMO_3_0.xsd:4052-4138. Order is mandatory: BankruptcyIndicator is a
+    // real element name and was STILL rejected before this fix, purely for
+    // being emitted fourteenth. Renaming without reordering does not validate.
+    expect(detailChildren(generateMISMO34XML(baseDto()))).toEqual([
+      "BankruptcyIndicator",
+      "BorrowedDownPaymentIndicator",
+      "CitizenshipResidencyType",
+      "CoMakerEndorserOfNoteIndicator",
+      "HomeownerPastThreeYearsType",
+      "IntentToOccupyType",
+      "OutstandingJudgmentsIndicator",
+      "PartyToLawsuitIndicator",
+      "PresentlyDelinquentIndicator",
+      "EXTENSION",
+    ]);
+  });
+
+  it("emits the two enumerated points as Yes/No, not true/false", () => {
+    const yes = generateMISMO34XML(baseDto());
+    expect(yes).toContain("<IntentToOccupyType>Yes</IntentToOccupyType>");
+    expect(yes).toContain("<HomeownerPastThreeYearsType>No</HomeownerPastThreeYearsType>");
+
+    const no = generateMISMO34XML(
+      baseDto({
+        declarations: {
+          willOccupyAsPrimaryResidence: false,
+          hasOwnershipInterestInPast3Years: true,
+        } as any,
+      }),
+    );
+    expect(no).toContain("<IntentToOccupyType>No</IntentToOccupyType>");
+    expect(no).toContain("<HomeownerPastThreeYearsType>Yes</HomeownerPastThreeYearsType>");
+  });
+
+  it("collapses the two citizenship booleans onto one enumerated element", () => {
+    expect(generateMISMO34XML(baseDto())).toContain(
+      "<CitizenshipResidencyType>USCitizen</CitizenshipResidencyType>",
+    );
+    expect(
+      generateMISMO34XML(
+        baseDto({ declarations: { isPermanentResidentAlien: true } as any }),
+      ),
+    ).toContain("<CitizenshipResidencyType>PermanentResidentAlien</CitizenshipResidencyType>");
+  });
+
+  it("omits citizenship rather than inventing a category when both flags are false", () => {
+    // The two-boolean model cannot tell "not a permanent resident alien" from
+    // "never asked", and CitizenshipResidencyType offers NonPermanentResidentAlien
+    // / NonResidentAlien / Unknown. Picking one would fabricate a fair-lending
+    // -sensitive answer the borrower never gave.
+    const bothFalse = generateMISMO34XML(
+      baseDto({ declarations: { isUSCitizen: false, isPermanentResidentAlien: false } as any }),
+    );
+    expect(bothFalse).not.toContain("CitizenshipResidencyType");
+    const neitherAsked = generateMISMO34XML(
+      baseDto({ declarations: { willOccupyAsPrimaryResidence: true } as any }),
+    );
+    expect(neitherAsked).not.toContain("CitizenshipResidencyType");
+  });
+
+  it("never emits an element name that exists in neither local schema", () => {
+    const xml = generateMISMO34XML(baseDto());
+    // The 14 names the old emitter used that appear in NEITHER MISMO_3_0.xsd
+    // nor ULDD_Phase_5_Extension.xsd. Their concepts stay captured in
+    // borrower_declarations; an omitted data point is honest, an invented
+    // element name is a fabricated record.
+    for (const invented of [
+      "IntentToOccupyIndicator",
+      "HomeownerPastThreeYearsIndicator",
+      "PropertySellerRelationshipIndicator",
+      "MortgageOnOtherPropertyIndicator",
+      "PriorityLienIndicator",
+      "DelinquentPastDueIndicator",
+      "DeedInLieuIndicator",
+      "ShortSaleIndicator",
+      "LoanForeclosureIndicator",
+      "UndisclosedBorrowedFundsIndicator",
+      "NewCreditIndicator",
+      "PriorityLienPayoffIndicator",
+      "USCitizenIndicator",
+      "PermanentResidentAlienIndicator",
+    ]) {
+      expect(xml, `${invented} exists in neither schema`).not.toContain(`<${invented}>`);
+    }
+  });
+
+  it("leaves the foreclosure pair undelivered pending escalation E-2", () => {
+    // Two URLA 2020 questions (5b-J, 5b-L) map ambiguously onto two OVERLAPPING
+    // MISMO points; the local sources do not settle which goes where. Guessing
+    // would mis-state a seven-year derogatory event in a GSE delivery.
+    const xml = generateMISMO34XML(
+      baseDto({
+        declarations: {
+          hasBeenForeclosed: true,
+          hasConveyedTitleInLieuOfForeclosure: true,
+        } as any,
+      }),
+    );
+    expect(xml).not.toContain("PropertyForeclosedPastSevenYearsIndicator");
+    expect(xml).not.toContain("LoanForeclosureOrJudgmentIndicator");
+  });
+
+  it("omits DECLARATION entirely when no data point has a home", () => {
+    const xml = generateMISMO34XML(
+      baseDto({ declarations: { hasRelationshipWithSeller: true } as any }),
+    );
+    expect(xml).not.toContain("<DECLARATION>");
+  });
+});
+
+describe("EXTENSION content is actually validated (not skipped)", () => {
+  // MISMO_3_0.xsd's EXTENSION is `<xsd:any namespace="##any"
+  // processContents="lax"/>`. `lax` validates only what it can RESOLVE, so with
+  // the base schema alone every ULDD-namespace element was skipped in silence —
+  // a fabricated name passed. These are the negative controls for that.
+  const fabricated = (xml: string) =>
+    xml.replace(
+      "<ULDD:PriorPropertyShortSaleCompletedIndicator>",
+      "<ULDD:TotallyMadeUpIndicator>",
+    ).replace(
+      "</ULDD:PriorPropertyShortSaleCompletedIndicator>",
+      "</ULDD:TotallyMadeUpIndicator>",
+    );
+
+  it("emits the short sale at its one legal home, and it validates", () => {
+    if (!xmllintInstalled) return;
+    const xml = generateMISMO34XML(baseDto({ declarations: { hasCompletedShortSale: true } as any }));
+    expect(xml).toContain(
+      "<ULDD:PriorPropertyShortSaleCompletedIndicator>true</ULDD:PriorPropertyShortSaleCompletedIndicator>",
+    );
+    expect(validateMismoExport(xml).valid).toBe(true);
+  });
+
+  it("REJECTS a fabricated ULDD element name — the whole point of the wrapper", () => {
+    if (!xmllintInstalled) return;
+    const bad = fabricated(generateMISMO34XML(baseDto()));
+    expect(bad).toContain("ULDD:TotallyMadeUpIndicator");
+    expect(validateMismoExport(bad).valid).toBe(false);
+  });
+
+  it("documents the blind spot: the base schema alone passes that same document", () => {
+    if (!xmllintInstalled) return;
+    // Not an aspiration — this is what the gate did before 2026-08-06, and it
+    // is why `validateMismoExport` exists rather than a bare MISMO_BASE_XSD.
+    const bad = fabricated(generateMISMO34XML(baseDto()));
+    expect(validateAgainstXsd(bad, MISMO_BASE_XSD).valid).toBe(true);
   });
 });

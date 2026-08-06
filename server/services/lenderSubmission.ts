@@ -215,8 +215,14 @@ export async function submitToWholesaleLender(
   // snapshot value. That "shown to staff" claim was false for as long as it stood
   // here: nothing in the client read the field, so a non-conformant package was
   // recorded and no human was ever told. Keep a reader wired to it.
-  const { validateAgainstXsd, MISMO_BASE_XSD, extractOffendingElements } = await import("./mismoXsdValidation");
-  const xsd = validateAgainstXsd(pkg.xml, MISMO_BASE_XSD);
+  //
+  // The validator checks BOTH the base model and the ULDD extension. Against the
+  // base model alone, everything inside an EXTENSION was skipped in silence
+  // (`xsd:any processContents="lax"` with no resolvable declaration), so a
+  // fabricated ULDD name recorded as conformant — the badge above would have
+  // shown staff a green result over an unvalidated subtree.
+  const { validateMismoExport, extractOffendingElements } = await import("./mismoXsdValidation");
+  const xsd = validateMismoExport(pkg.xml);
   const xsdConformance = {
     valid: xsd.valid,
     skipped: xsd.skipped,
