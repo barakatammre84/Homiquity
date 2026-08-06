@@ -295,7 +295,11 @@ export default function Dashboard() {
                 {fileHealth === "action" && (
                   <span
                     className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-medium text-warning-subtle-foreground"
-                    title={activePreUw?.flags?.map((f) => f.reason).join(" ")}
+                    // Never the raw flag reasons: they carry staff-side signal prose
+                    // (creditor names, balances, what-if DTI figures) computed over
+                    // unverified data — the C2 class barred from borrower surfaces.
+                    // Staff see the full flags on the BorrowerFile panels.
+                    title="Automated review found items to address — your loan team will guide you through them"
                     data-testid="chip-file-action-needed"
                   >
                     <AlertTriangle className="h-3 w-3" />

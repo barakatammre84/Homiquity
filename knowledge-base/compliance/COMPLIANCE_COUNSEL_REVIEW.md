@@ -202,6 +202,82 @@ manual-review posture — no automated tolerance-baseline reset or charge compar
 
 ---
 
+## 7. Educational readiness surfaces vs. the Reg N approval-likelihood line (12 CFR §1014.3(q)) — added 2026-08-04
+
+Origin: the [renter-incubation adjudication](../logs/2026-08-04-renter-incubation-pitch-adjudication.md)
+§5.5 counsel item. A compliance audit (2026-08-04) verified the regulatory text against eCFR
+(versioner API, Title 12 issue date 2026-07-31 — the HTML pages are bot-gated) and inventoried
+every shipped borrower surface. Engineering can state what the text says and what the code
+renders; where the line falls is counsel's call.
+
+**Verified text.** §1014.3(q) is confirmed verbatim as the approval-likelihood paragraph: *"The
+consumer's ability or likelihood to obtain any mortgage credit product or term, including but
+not limited to misrepresentations concerning whether the consumer has been preapproved or
+guaranteed for any such product or term."* The repo's primary cite (loCommsLint
+`regn-guaranteed-approval`, hardBlock, no override) is the correct letter. Two collateral
+letters are now factually resolved against eCFR and await ratification (they were deliberately
+left pending sign-off): no-fees is **(c)** not (f) (the (c) text contains the verbatim example
+"misrepresentations that no fees are charged"), and government-affiliation is **(n)** alone —
+(m) is debt-relief effectiveness. A stale "(i)" in the loCommsLint JSDoc and one test title
+(remnants of the PR #138 (i)→(q) correction) was fixed in this PR; the emitted citations were
+already correct.
+
+**Built (the surfaces under review):** the gap analysis (`server/routes/borrower/journeyGoals.ts`
+— status vocabulary "ready/close/working", `monthsToGoal` = savings gap ÷ self-reported rate,
+DTI "within_guideline/above_guideline" vs a stated 43% ceiling, and score-band credit
+recommendations carrying hardcoded `estimatedPointsGain` figures of +8…+20 points);
+`GapCalculator.tsx` and `RenterHome.tsx` rendering that data under "Gap to Homeownership" /
+"home-ready" framing with a page-level `PresalesDisclaimer` ("not a commitment to lend… or an
+approval"); the post-denial recovery card (copy machine-tested: no digits, no likelihood, no
+timelines, no denial words); and the coach rails (prompt-level bans on predicting approvals,
+tier-banded `estimatedTimeline` strings, `statusNote` "never approval likelihood").
+
+**Closest to the line (factual ranking, not conclusions):**
+1. `GapCalculator.tsx` CTA: *"Based on your numbers, see what you qualify for with a 3-minute
+   pre-approval."* — the only shipped sentence coupling the consumer's figures to "qualify";
+   the page disclaimer sits at the top, not beside the CTA.
+2. `estimatedPointsGain` (+8…+20 pts): a numeric credit-score prediction with **no in-repo
+   citation or substantiation**, rendered inside a mortgage-readiness frame (credit score is a
+   "condition… related to the availability of the product" under §1014.2's "term" definition).
+3. `monthsToGoal` ("N months to goal" / "About N months to go"): arithmetically a self-set
+   savings-goal timeline, but rendered adjacent to credit-gap framing — it differs from the
+   bindingly-rejected "You are 60 days away from a home" only in denominator and label.
+
+**Known engineering wrinkles (flagged, not fixed here):** the RenterHome header `/100` block
+never renders (it reads `readiness.score`, which the server does not emit — the
+HomeReadinessPassport ring, reading `completionPercentage`, is the number users actually see;
+review that one), and that number blends input-completeness with application-status weights
+(a pre-approved file scores 60 before any completeness bonus) under a "home-ready" label. The
+coach's model-authored `estimatedTimeline`/`statusNote` side-panel strings pass shape
+validation but bypass the deterministic lint rail (prompt-rule only).
+
+**For counsel:**
+1. **Scope threshold:** does §1014.2 "commercial communication" ("designed to effect a sale or
+   create interest in purchasing… Web pages are included") reach authenticated borrower-portal
+   surfaces for an existing applicant — generally, or only where an apply/pre-approval CTA
+   appears? Confirm FTC-jurisdiction status under §1014.1.
+2. The "see what you qualify for" CTA: permissible invitation or (q) representation? If
+   retained, what disclaimer proximity is required?
+3. The `estimatedPointsGain` figures: representations "regarding any term"? What substantiation
+   does a numeric score estimate need, and does "estimated"/range framing cure it?
+4. `monthsToGoal`: does self-set-goal arithmetic become a timing-of-credit representation via
+   adjacency to credit-gap framing — i.e., where exactly does it diverge from the rejected
+   "60 days away from a home"?
+5. The readiness number: given its status-weight composition under a "home-ready" label, does
+   it implicate (q); is a relabel ("file completeness") needed? (Review the passport ring — the
+   live surface.)
+6. Recovery-card placement beside the ECOA notice: confirm it neither dilutes the notice nor
+   implies reapplication outcomes (its (q)-avoidance is machine-tested).
+7. Ratify the letter corrections — no-fees (f)→(c); government-affiliation (m),(n)→(n) — and
+   the standing WARN-not-block posture for government-affiliation (truthful FHA/VA forms exist).
+8. True-status pre-approval copy ("You're pre-approved", "Renew it…"): what accuracy discipline
+   does (q) require — noting the displayed 30-day expiry derives from application `createdAt`,
+   not decision issuance, and can understate the actual validity window?
+9. Coach `estimatedTimeline` tier bands ("1-3 months" etc.): preparation-process timelines
+   outside (q), or approval-timing representations — noting they bypass the deterministic lint?
+
+---
+
 ## Counsel checklist
 
 - [ ] §1 — reason descriptions acceptable; "Other" specificity; incompleteness vs. denial
