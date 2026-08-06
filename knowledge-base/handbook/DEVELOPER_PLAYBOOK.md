@@ -244,7 +244,7 @@ Honesty matters more than aspiration here. New engineers must know which guardra
 - **CSRF:** enabled app-wide with a single carve-out for `/api/webhooks/*`; webhook receivers authenticate with shared-secret headers instead.
 - **Audit trail:** `server/auditLog.ts` — PII-touching mutations should write an entry.
 - **TCPA quiet hours:** `server/services/quietHours.ts` — ZIP→timezone resolution, 8 AM–9 PM recipient-local window, fail-safe on unknown/non-US ZIPs (roadmap #24; `tests/quietHours.test.ts`).
-- **SMS STOP / opt-out ledger:** `POST /api/webhooks/sms` (`server/routes/webhooks.ts`) records STOP/START/HELP into the canonical `sms_opt_outs` ledger and flips matching leads to do-not-contact; `server/services/smsCompliance.ts`'s `evaluateOutboundSms` is the single guard (opt-out + quiet hours) every future sender must pass (roadmap #25). The webhook's **signature verification is still stubbed** (finding F-008) — a blocker only if SMS goes live.
+- **SMS STOP / opt-out ledger:** `POST /api/webhooks/sms` (`server/routes/webhooks.ts`) records STOP/START/HELP into the canonical `sms_opt_outs` ledger and flips matching leads to do-not-contact; `server/services/smsCompliance.ts`'s `evaluateOutboundSms` is the single guard (opt-out + quiet hours) every future sender must pass (roadmap #25). The webhook **verifies `X-Twilio-Signature`** against `TWILIO_AUTH_TOKEN` (`server/services/twilioSignature.ts`; F-008 closed) — fail-closed with a 503 in production when the token is unset, permissive only outside production when it is unset. The signing key is the account **auth token**, not an API key secret. Replay is still open (F-050).
 
 ### Not built yet — required before state expansion ships
 
