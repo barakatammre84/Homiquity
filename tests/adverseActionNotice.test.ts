@@ -8,6 +8,7 @@ import {
   BUREAU_CONTACT_INFO,
 } from "../server/services/creditService";
 import type { CreditPull } from "../shared/schema";
+import { COMPANY_IDENTITY, companyAddressLines } from "../shared/companyIdentity";
 
 /**
  * Adverse-action notice content (ECOA/Reg B §1002.9, FCRA §615(a)).
@@ -48,6 +49,38 @@ describe("Adverse-action notice — ECOA is unconditional", () => {
       expect(notice).toContain("CREDITOR:");
     });
   }
+
+  // §1002.9(b)(1) requires the creditor's NAME AND ADDRESS. The notice carried
+  // the name, NMLS id, email and phone but no address until the founder
+  // supplied one (2026-08-06) — counsel flagged it as resolve-before-un-gating.
+  // Pinned in BOTH report-basis postures because the ECOA block is
+  // unconditional; the FCRA block is not a substitute for it.
+  for (const basedOnConsumerReport of [true, false]) {
+    it(`carries the creditor's mailing address (§1002.9(b)(1)) when basedOnConsumerReport=${basedOnConsumerReport}`, () => {
+      const notice = generateAdverseActionNotice({
+        actionType: "denial",
+        primaryReason: "Debt-to-income ratio exceeds maximum threshold",
+        basedOnConsumerReport,
+        bureau: basedOnConsumerReport ? bureau : null,
+      });
+      const addr = COMPANY_IDENTITY.mailingAddress;
+      expect(notice).toContain(addr.street);
+      expect(notice).toContain(`${addr.city}, ${addr.state} ${addr.postalCode}`);
+      // And it must sit inside the CREDITOR block, not merely somewhere in the
+      // document — an address under the CRA heading would identify the wrong party.
+      const creditorBlock = notice.slice(notice.indexOf("CREDITOR:"));
+      expect(creditorBlock).toContain(addr.street);
+    });
+  }
+
+  it("publishes the same address the Disclosures page shows", () => {
+    // One source, so the public disclosure and the legal notice cannot drift.
+    expect(companyAddressLines("\n")).toContain(COMPANY_IDENTITY.mailingAddress.street);
+    expect(companyAddressLines(", ")).toBe(
+      `${COMPANY_IDENTITY.mailingAddress.street}, ${COMPANY_IDENTITY.mailingAddress.city}, ` +
+        `${COMPANY_IDENTITY.mailingAddress.state} ${COMPANY_IDENTITY.mailingAddress.postalCode}`,
+    );
+  });
 });
 
 describe("Adverse-action notice — FCRA content is gated on report use", () => {
