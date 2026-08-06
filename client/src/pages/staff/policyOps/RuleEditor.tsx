@@ -7,9 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
 import { Save, Settings } from "lucide-react";
 import { type RuleCategory } from "./model";
+import { DisconnectedEditorFooter, NotConnectedNotice } from "./NotConnectedNotice";
 import { COCRuleBuilder } from "./COCRuleBuilder";
 
 export function RuleEditor({ category }: { category: RuleCategory }) {
@@ -30,18 +30,11 @@ export function RuleEditor({ category }: { category: RuleCategory }) {
   const [autoExpireOnCOC, setAutoExpireOnCOC] = useState(true);
   const [creditRepullRequired, setCreditRepullRequired] = useState(true);
   const [confidenceThreshold, setConfidenceThreshold] = useState("B");
-  const { toast } = useToast();
-
-  const handleSave = () => {
-    toast({
-      title: "Draft Saved",
-      description: "Changes saved to draft. Publish when ready.",
-    });
-  };
 
   if (category === "DTI") {
     return (
       <div className="space-y-8">
+        <NotConnectedNotice />
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-base">Max Back-End DTI</Label>
@@ -126,15 +119,7 @@ export function RuleEditor({ category }: { category: RuleCategory }) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" data-testid="button-discard-changes">
-            Discard Changes
-          </Button>
-          <Button onClick={handleSave} data-testid="button-save-draft">
-            <Save className="h-4 w-4 mr-2" />
-            Save Draft
-          </Button>
-        </div>
+        <DisconnectedEditorFooter />
       </div>
     );
   }
@@ -142,6 +127,7 @@ export function RuleEditor({ category }: { category: RuleCategory }) {
   if (category === "INCOME") {
     return (
       <div className="space-y-8">
+        <NotConnectedNotice />
         <div className="space-y-4">
           <Label className="text-base">Rental Income (Schedule E)</Label>
           <div className="grid gap-4 md:grid-cols-2">
@@ -192,15 +178,7 @@ export function RuleEditor({ category }: { category: RuleCategory }) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" data-testid="button-discard-changes">
-            Discard Changes
-          </Button>
-          <Button onClick={handleSave} data-testid="button-save-draft">
-            <Save className="h-4 w-4 mr-2" />
-            Save Draft
-          </Button>
-        </div>
+        <DisconnectedEditorFooter />
       </div>
     );
   }
@@ -208,6 +186,7 @@ export function RuleEditor({ category }: { category: RuleCategory }) {
   if (category === "CREDIT") {
     return (
       <div className="space-y-8">
+        <NotConnectedNotice />
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-base">Minimum Credit Score</Label>
@@ -226,13 +205,7 @@ export function RuleEditor({ category }: { category: RuleCategory }) {
           </p>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline">Discard Changes</Button>
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            Save Draft
-          </Button>
-        </div>
+        <DisconnectedEditorFooter />
       </div>
     );
   }
@@ -240,6 +213,7 @@ export function RuleEditor({ category }: { category: RuleCategory }) {
   if (category === "PRE_APPROVAL") {
     return (
       <div className="space-y-8">
+        <NotConnectedNotice />
         <div className="space-y-4">
           <Label className="text-base">Pre-Approval Validity Period</Label>
           <Select value={preApprovalValidity} onValueChange={setPreApprovalValidity}>
@@ -307,13 +281,7 @@ export function RuleEditor({ category }: { category: RuleCategory }) {
           </p>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline">Discard Changes</Button>
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
-            Save Draft
-          </Button>
-        </div>
+        <DisconnectedEditorFooter />
       </div>
     );
   }

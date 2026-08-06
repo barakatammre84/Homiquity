@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { NotConnectedNotice } from "./NotConnectedNotice";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
 import { Edit, Info } from "lucide-react";
 
 export function COCRuleBuilder() {
@@ -17,17 +17,10 @@ export function COCRuleBuilder() {
   const [triggerValue, setTriggerValue] = useState("");
   const [severity, setSeverity] = useState("REVIEW");
   const [appliesTo, setAppliesTo] = useState<string[]>(["FANNIE", "FREDDIE"]);
-  const { toast } = useToast();
-
-  const handleAddRule = () => {
-    toast({
-      title: "COC Rule Added",
-      description: "Rule added to draft. Publish policy to activate.",
-    });
-  };
 
   return (
     <div className="space-y-8">
+      <NotConnectedNotice />
       <Alert>
         <Info className="h-4 w-4" />
         <AlertTitle>Change-of-Circumstance Rules</AlertTitle>
@@ -180,17 +173,26 @@ export function COCRuleBuilder() {
         </div>
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button variant="outline">Cancel</Button>
-        <Button onClick={handleAddRule} disabled={!triggerType} data-testid="button-add-coc-rule">
-          Add COC Rule
-        </Button>
+      <div className="flex flex-col items-end gap-2">
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" disabled>Cancel</Button>
+          <Button disabled data-testid="button-add-coc-rule">
+            Add COC Rule
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Adding rules is disabled until this builder is connected to policy storage.
+        </p>
       </div>
 
       <Separator />
 
       <div className="space-y-4">
-        <Label className="text-base">Existing COC Rules</Label>
+        <Label className="text-base">Example COC Rules</Label>
+        <p className="text-xs text-muted-foreground">
+          Illustrative only — these three rows are hardcoded in this component,
+          not the change-of-circumstance rules in force for your files.
+        </p>
         <Table>
           <TableHeader>
             <TableRow>
@@ -206,7 +208,7 @@ export function COCRuleBuilder() {
               <TableCell><Badge variant="destructive">Invalidate</Badge></TableCell>
               <TableCell>FANNIE, FREDDIE</TableCell>
               <TableCell>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" disabled aria-label="Edit rule (not connected)">
                   <Edit className="h-4 w-4" />
                 </Button>
               </TableCell>
@@ -216,7 +218,7 @@ export function COCRuleBuilder() {
               <TableCell><Badge variant="outline">Re-verify</Badge></TableCell>
               <TableCell>FANNIE, FREDDIE, FHA</TableCell>
               <TableCell>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" disabled aria-label="Edit rule (not connected)">
                   <Edit className="h-4 w-4" />
                 </Button>
               </TableCell>
@@ -226,7 +228,7 @@ export function COCRuleBuilder() {
               <TableCell><Badge variant="outline">Re-verify</Badge></TableCell>
               <TableCell>All</TableCell>
               <TableCell>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" disabled aria-label="Edit rule (not connected)">
                   <Edit className="h-4 w-4" />
                 </Button>
               </TableCell>
