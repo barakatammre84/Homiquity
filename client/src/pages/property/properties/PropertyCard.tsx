@@ -1,5 +1,6 @@
 import { Link } from "wouter";
-import { Bath, Bed, DollarSign, Heart, Home, MapPin, Square } from "lucide-react";
+import { SavePropertyButton, SharePropertyButton } from "@/components/property/SavePropertyButton";
+import { Bath, Bed, DollarSign, Home, MapPin, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,9 +37,7 @@ export function PropertyCard({ property, viewMode }: { property: Property; viewM
                     <span className="text-sm">{property.address}, {property.city}, {property.state}</span>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" aria-label="Save">
-                  <Heart className="h-5 w-5" />
-                </Button>
+                <SavePropertyButton propertyId={property.id} />
               </div>
 
               <div className="mt-4 flex items-center gap-6 text-sm text-muted-foreground">
@@ -88,13 +87,10 @@ export function PropertyCard({ property, viewMode }: { property: Property; viewM
         <Badge className="absolute left-3 top-3 capitalize">
           {property.status}
         </Badge>
-        <Button
-          variant="ghost"
-          size="icon" aria-label="Save"
+        <SavePropertyButton
+          propertyId={property.id}
           className="absolute right-3 top-3 bg-white/80"
-        >
-          <Heart className="h-5 w-5" />
-        </Button>
+        />
       </div>
       <CardContent className="p-4">
         <p className="text-2xl font-bold">

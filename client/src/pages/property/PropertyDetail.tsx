@@ -1,4 +1,5 @@
 import { useMemo, useEffect } from "react";
+import { SavePropertyButton, SharePropertyButton } from "@/components/property/SavePropertyButton";
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { loanApplicationKeys } from "@/lib/queryClient";
@@ -29,8 +30,6 @@ import {
   Phone,
   Mail,
   ChevronLeft,
-  Heart,
-  Share2,
   Percent,
   PiggyBank,
   Building,
@@ -161,12 +160,8 @@ export default function PropertyDetail() {
               
               {/* Action Buttons */}
               <div className="absolute right-4 top-4 flex gap-2">
-                <Button variant="secondary" size="icon" aria-label="Save">
-                  <Heart className="h-4 w-4" />
-                </Button>
-                <Button variant="secondary" size="icon" aria-label="Share">
-                  <Share2 className="h-4 w-4" />
-                </Button>
+                <SavePropertyButton propertyId={property.id} variant="secondary" />
+                <SharePropertyButton title={property.address} variant="secondary" />
               </div>
             </div>
 

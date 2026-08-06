@@ -69,8 +69,36 @@ export class PropertiesStorage extends ApplicationsStorage {
     return await query.orderBy(desc(properties.createdAt));
   }
 
+  /**
+   * Idempotent by check-then-insert: saved_properties has no unique index on
+   * (user_id, property_id), so a bare insert let a double click record the
+   * same property twice and getSavedProperties returned it twice. The check
+   * races in principle; unsaveProperty deletes every matching row, so a
+   * duplicate that slips through is still fully removable.
+   */
   async saveProperty(userId: string, propertyId: string): Promise<void> {
+    const [existing] = await db
+      .select({ id: savedProperties.id })
+      .from(savedProperties)
+      .where(and(eq(savedProperties.userId, userId), eq(savedProperties.propertyId, propertyId)))
+      .limit(1);
+    if (existing) return;
     await db.insert(savedProperties).values({ userId, propertyId });
+  }
+
+  async unsaveProperty(userId: string, propertyId: string): Promise<void> {
+    await db
+      .delete(savedProperties)
+      .where(and(eq(savedProperties.userId, userId), eq(savedProperties.propertyId, propertyId)));
+  }
+
+  /** Just the ids — what the UI needs to render each heart's state. */
+  async getSavedPropertyIds(userId: string): Promise<string[]> {
+    const rows = await db
+      .select({ propertyId: savedProperties.propertyId })
+      .from(savedProperties)
+      .where(eq(savedProperties.userId, userId));
+    return Array.from(new Set(rows.map((r) => r.propertyId)));
   }
 
   async getSavedProperties(userId: string): Promise<Property[]> {

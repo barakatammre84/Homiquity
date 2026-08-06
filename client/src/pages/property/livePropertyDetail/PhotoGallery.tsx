@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Heart, Home, Share2 } from "lucide-react";
+import { SharePropertyButton } from "@/components/property/SavePropertyButton";
+import { ChevronLeft, ChevronRight, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function PhotoGallery({ photos, address }: { photos: string[]; address: string }) {
@@ -56,12 +57,13 @@ export function PhotoGallery({ photos, address }: { photos: string[]; address: s
             </Button>
           </div>
           <div className="absolute bottom-4 right-4 flex gap-2">
-            <Button variant="secondary" size="icon" aria-label="Save">
-              <Heart className="h-4 w-4" />
-            </Button>
-            <Button variant="secondary" size="icon" aria-label="Share">
-              <Share2 className="h-4 w-4" />
-            </Button>
+            {/* Share only, no save. This gallery shows a LIVE MLS listing,
+                whose property_id comes from the feed — saved_properties.property_id
+                is a foreign key into our own properties table, so there is
+                nothing valid to save against until the listing is persisted.
+                That is a product decision, not something to fake with a heart
+                that 404s. */}
+            <SharePropertyButton title={address} variant="secondary" />
           </div>
         </div>
 

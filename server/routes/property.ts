@@ -456,6 +456,70 @@ export function registerPropertyRoutes(
     }
   });
 
+  // ==========================================================================
+  // Saved properties (the listing "save" hearts)
+  //
+  // The saved_properties table and its storage methods have existed since the
+  // property schema landed, but nothing ever exposed them over HTTP, so every
+  // heart in the UI was inert. These three routes are that missing layer.
+  //
+  // Scoped to the caller throughout: the user id comes from the session, never
+  // from the request, so one signed-in user cannot read or change another's
+  // saved list.
+  // ==========================================================================
+
+  app.get("/api/saved-properties", isAuthenticated, async (req, res) => {
+    try {
+      const properties = await storage.getSavedProperties(req.user!.id);
+      res.json(properties);
+    } catch (error) {
+      console.error("Get saved properties error:", error);
+      res.status(500).json({ error: "Failed to get saved properties" });
+    }
+  });
+
+  /** Ids only — what the hearts need to render their state. */
+  app.get("/api/saved-properties/ids", isAuthenticated, async (req, res) => {
+    try {
+      const ids = await storage.getSavedPropertyIds(req.user!.id);
+      res.json(ids);
+    } catch (error) {
+      console.error("Get saved property ids error:", error);
+      res.status(500).json({ error: "Failed to get saved properties" });
+    }
+  });
+
+  // Idempotent: saving an already-saved property succeeds rather than
+  // erroring, so a double click cannot produce a failure the user did nothing
+  // to cause.
+  app.post("/api/saved-properties/:propertyId", isAuthenticated, async (req, res) => {
+    try {
+      const propertyId = routeParam(req, "propertyId");
+      const property = await storage.getProperty(propertyId);
+      if (!property) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+      await storage.saveProperty(req.user!.id, propertyId);
+      res.status(201).json({ propertyId, saved: true });
+    } catch (error) {
+      console.error("Save property error:", error);
+      res.status(500).json({ error: "Failed to save property" });
+    }
+  });
+
+  // Also idempotent: removing something not saved is the state the caller
+  // asked for, so it is a success.
+  app.delete("/api/saved-properties/:propertyId", isAuthenticated, async (req, res) => {
+    try {
+      const propertyId = routeParam(req, "propertyId");
+      await storage.unsaveProperty(req.user!.id, propertyId);
+      res.json({ propertyId, saved: false });
+    } catch (error) {
+      console.error("Unsave property error:", error);
+      res.status(500).json({ error: "Failed to remove saved property" });
+    }
+  });
+
   app.get("/api/properties", async (req, res) => {
     try {
       const { search, type, minPrice, maxPrice } = req.query;

@@ -35,7 +35,7 @@ const CLIENT_SRC = join(REPO_ROOT, "client", "src");
  * Lower this as buttons are wired — never raise it. The current inventory is
  * printed in the failure message, so a regression names itself.
  */
-const BASELINE_INERT = 19;
+const BASELINE_INERT = 13;
 
 /** Anything that makes a child Button actionable by wrapping it. */
 const WRAPPER = /<(Link|a|\w*Trigger)\b/;
@@ -125,6 +125,10 @@ describe("no new buttons that do nothing", () => {
       // Per-document staff verdicts, rather than only the last upload.
       ["client/src/pages/borrower/taskDetail/VerifyDocumentsCard.tsx", /onVerify\(taskDoc\.id, true\)/],
       ["client/src/pages/borrower/taskDetail/VerifyDocumentsCard.tsx", /onVerify\(taskDoc\.id, false\)/],
+      // The listing hearts: saved_properties had a table and storage methods
+      // but no HTTP route, so every one of them was inert.
+      ["client/src/components/property/SavePropertyButton.tsx", /\/api\/saved-properties\/\$\{propertyId\}/],
+      ["client/src/components/property/SavePropertyButton.tsx", /navigator\.share/],
     ];
     for (const [rel, pattern] of wired) {
       const src = readFileSync(join(REPO_ROOT, rel), "utf8");
