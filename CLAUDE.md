@@ -66,7 +66,12 @@ escalate discrepancies to the user instead of picking an interpretation.
 
 Full rules in [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md); the non-negotiables:
 
-- `main` is production — every push deploys to Vercel. No long-lived branches; land work via PRs.
+- `main` is production — every merge deploys. **Platform: migrating Vercel → Railway**
+  (decided 2026-08-05; `railway.json` is the service config). **Vercel still serves production
+  until cutover**, so `vercel.json` and `api/_app.mjs` remain load-bearing — do not delete them
+  or the Edge `middleware.ts` until Railway is verified serving traffic. New deploy-shaped work
+  targets the Express server (`server/index-prod.ts`), never a serverless-only assumption.
+  No long-lived branches; land work via PRs.
 - `client/` never imports from `server/`; `server/` never imports from `client/`; both import
   from `shared/`.
 - All vendor integrations (credit, AVM, GSE) are **deterministic simulations** behind adapter

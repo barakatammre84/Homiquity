@@ -103,7 +103,9 @@ notice). All six verified live then, shipped as PRs #135–#139.
   Vercel stays live untouched as the fallback during the transition — its 24h freeze
   self-expires and deploys resume meanwhile; decommissioning is the last step of the
   migration plan, not now.
-- [ ] **1. `[ENV]` LS-2 ops env in Vercel (production scope).** GCS
+- [ ] **1. `[ENV]` LS-2 ops env — in Railway** *(was "in Vercel"; corrected 2026-08-06 to
+  match item 0. Paste these **inside item 0's env set** rather than doing it twice. Only
+  mirror them into Vercel if you intend to keep the fallback genuinely warm.)* GCS
   (`GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` — else
   uploads correctly 503) · `SENDGRID_API_KEY` + `FROM_EMAIL` + SPF/DKIM DNS ·
   `SENTRY_DSN` + an uptime monitor on `/api/health` · `CRON_SECRET` (the four
@@ -156,6 +158,29 @@ notice). All six verified live then, shipped as PRs #135–#139.
   ⛔ green → sign-off table + [CICD ledger](CICD.md) row → invite beta users → when
   ready for public: delete `BETA_ACCESS_CODE` (middleware becomes a no-op — site public,
   no rebuild).
+
+## 3b. Vercel → Railway cutover (added 2026-08-06)
+
+**Ordering is the whole safety property.** Vercel serves production *today* and is still
+receiving production deploys from `main` (verified via the Vercel API 2026-08-06: the latest
+`target: "production"` deployment is current `main`). `vercel.json`, `api/_app.mjs` and the
+Edge `middleware.ts` are therefore **load-bearing right now** — deleting them before Railway
+serves traffic removes production's only deploy config. Engineering phases 1–2 (#412) and the
+service config (#411) are already in; nothing below is blocked on more parity work.
+
+| # | Step | Who | Gate before the next step |
+|---|---|---|---|
+| 1 | Railway service deployed from `main`, full env pasted, build green, `/api/health` 200 on the Railway-generated URL | founder | health check passes on Railway's own domain |
+| 2 | `CRON_SECRET` added as a **GitHub repo secret** (the #412 scheduler workflow no-ops without it) | founder | one cron job run succeeds against the Railway URL |
+| 3 | Verification battery against the Railway URL: [PROD_ACCEPTANCE_TEST.md](PROD_ACCEPTANCE_TEST.md) top to bottom, plus bot-prerender (curl with a Googlebot UA), beta-gate redemption, an SSE stream, and a file upload | both | every ⛔ green |
+| 4 | DNS: point `homiquity.com` + `www` at Railway | founder | live domain served by Railway; Vercel still deployable as rollback |
+| 5 | **Soak** — leave Vercel deployable but unused | both | 24–48h clean, no Sentry regressions |
+| 6 | **Remove Vercel from the repo**: `vercel.json`, `api/_app.mjs`, the `vercel-build` script, root `middleware.ts` (Edge beta gate — superseded by `server/middleware/betaGate.ts`), the Vercel-only guard tests, and flip the cron-pin tests from both-manifests to GitHub-Actions-only | engineering | CI green; this PR merges **only after step 5** |
+| 7 | Rewrite [CICD.md](CICD.md) + [ROLLBACK.md](ROLLBACK.md) to the Railway path (new rollback = redeploy previous Railway deployment, not `vercel rollback`). Per-deploy **ledger rows are immutable history and stay as written** | engineering | — |
+| 8 | Delete the Vercel project / remove the domain aliases | founder | — |
+
+**Rollback at any point up to step 6:** repoint DNS at Vercel. That is why steps 6–8 come
+last and why the fallback stays deployable through the soak.
 
 ## 4. Honest limitations (unchanged by launch)
 
