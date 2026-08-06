@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -216,8 +215,6 @@ export default function Properties() {
       {!isAuthenticated && (selectedLocation || filteredProperties.length > 0) && (
         <StickyPreApprovalBanner />
       )}
-
-      <Footer />
     </>
   );
 }

@@ -6,6 +6,7 @@ import { loadBuyingPowerScenario } from "@/lib/buyingPowerScenario";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PropertyMap } from "@/components/PropertyMap";
+import { SEOHead } from "@/components/SEOHead";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRight } from "lucide-react";
 import { calculateAffordabilityForProperty, getBasisPrice } from "./affordabilityCheck/affordability";
@@ -90,6 +91,12 @@ export default function AffordabilityCheck() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Mirrors the "/afford" entry in shared/seo/routeMeta.ts — keep the two in
+          sync (that registry is what a crawler actually sees). */}
+      <SEOHead
+        title="How Much House Can I Afford? | Homiquity"
+        description="Estimate the home price range your income, debts, and down payment support, and see the assumptions behind the number. An estimate for planning — not an approval or a commitment to lend."
+      />
       <SearchHero
         query={query}
         onQueryChange={setQuery}

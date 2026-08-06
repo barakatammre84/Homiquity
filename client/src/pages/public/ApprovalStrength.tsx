@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { SEOHead } from "@/components/SEOHead";
 import { formatInputCurrency, parseCurrencyInput } from "@/lib/formatters";
 import {
   assessApprovalStrength,
@@ -126,6 +127,12 @@ export default function ApprovalStrength() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Mirrors the "/approval-strength" entry in shared/seo/routeMeta.ts — keep
+          the two in sync (that registry is what a crawler actually sees). */}
+      <SEOHead
+        title="Approval Strength Check - See Where You Stand | Homiquity"
+        description="Answer a few questions and see which parts of your profile are working for you and which need attention. An educational readout of your file's strengths, not a credit decision. Nothing collected, nothing stored."
+      />
       <div className="bg-primary/5 dark:bg-primary/10 border-b">
         <div className="max-w-4xl mx-auto px-4 py-12 md:py-16 text-center">
           <Link href="/">
