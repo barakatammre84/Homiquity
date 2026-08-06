@@ -176,6 +176,7 @@ export default function BorrowerFile() {
   return (
     <>
       <FileHeaderBar
+        applicationId={applicationId}
         preUwFlags={preUwFlags}
         canExportMismo={canExportMismo}
         onExportMismo={handleExportMismo}

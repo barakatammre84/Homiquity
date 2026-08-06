@@ -223,16 +223,9 @@ export default function Resources() {
                       <ChevronRight className="h-4 w-4" />
                     </Link>
                   </Button>
-                ) : (
-                  <Button
-                    variant="link"
-                    className="mt-4 w-fit gap-1 p-0"
-                    data-testid={`button-resource-${resource.id}`}
-                  >
-                    {resource.action}
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                )}
+                ) : null /* No href, no call to action: a link-styled button
+                    with a chevron that goes nowhere reads as a broken link
+                    rather than as "this resource has no destination yet". */}
               </CardContent>
             </Card>
           ))}

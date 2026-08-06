@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { dashboardKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -73,9 +74,11 @@ export default function ApplicationSummary() {
                   title="No active application"
                   description="Start your pre-approval to see your application summary."
                   action={
-                    <Button className="gap-2" data-testid="button-start-application">
-                      Start Pre-Approval
-                      <ChevronRight className="h-4 w-4" />
+                    <Button className="gap-2" asChild data-testid="button-start-application">
+                      <Link href="/apply">
+                        Start Pre-Approval
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
                     </Button>
                   }
                 />

@@ -35,10 +35,18 @@ const CLIENT_SRC = join(REPO_ROOT, "client", "src");
  * Lower this as buttons are wired — never raise it. The current inventory is
  * printed in the failure message, so a regression names itself.
  */
-const BASELINE_INERT = 33;
+const BASELINE_INERT = 19;
 
 /** Anything that makes a child Button actionable by wrapping it. */
 const WRAPPER = /<(Link|a|\w*Trigger)\b/;
+
+/**
+ * A Button handed to a `trigger={...}` prop is actionable: the only consumer
+ * of that prop, UploadDocumentDialog, renders it inside
+ * `<DialogTrigger asChild>{trigger}</DialogTrigger>`. Without this the
+ * detector reported two upload buttons that work perfectly well.
+ */
+const TRIGGER_PROP = /\btrigger=\{\s*$/;
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
@@ -71,6 +79,7 @@ export function inertButtons(): string[] {
       // A wrapping <Link> or Radix *Trigger supplies the behaviour instead.
       const before = lines.slice(Math.max(0, lineNo - 4), lineNo).join("\n");
       if (WRAPPER.test(before)) continue;
+      if (TRIGGER_PROP.test(lines[lineNo - 1] ?? "")) continue;
       const after = lines.slice(lineNo, lineNo + 10).join("\n");
       if (after.includes("</Link>") || after.includes("</a>")) continue;
 
@@ -121,5 +130,41 @@ describe("no new buttons that do nothing", () => {
       const src = readFileSync(join(REPO_ROOT, rel), "utf8");
       expect(src, `${rel} lost ${pattern}`).toMatch(pattern);
     }
+  });
+});
+
+describe("the policy console never claims a save it did not make", () => {
+  // Worse than a dead button: RuleEditor's Save Draft and COCRuleBuilder's Add
+  // COC Rule persisted nothing and raised "Draft Saved — changes saved to
+  // draft, publish when ready" / "COC Rule Added". Every value in those
+  // editors is a hardcoded useState default, and the console is role-gated to
+  // admin and underwriter — precisely the people who would act on a false
+  // confirmation that an underwriting threshold had moved.
+  const POLICY_OPS = join(REPO_ROOT, "client", "src", "pages", "staff", "policyOps");
+
+  it("raises no success toast from the disconnected editors", () => {
+    for (const file of ["RuleEditor.tsx", "COCRuleBuilder.tsx"]) {
+      const src = readFileSync(join(POLICY_OPS, file), "utf8");
+      expect(src, `${file} must not toast`).not.toMatch(/useToast|toast\(/);
+      expect(src).not.toMatch(/Draft Saved|COC Rule Added/);
+    }
+  });
+
+  it("says plainly that the values are placeholders", () => {
+    for (const file of ["RuleEditor.tsx", "COCRuleBuilder.tsx"]) {
+      const src = readFileSync(join(POLICY_OPS, file), "utf8");
+      expect(src, `${file} lost its not-connected notice`).toMatch(/<NotConnectedNotice \/>/);
+    }
+    const notice = readFileSync(join(POLICY_OPS, "NotConnectedNotice.tsx"), "utf8");
+    expect(notice).toMatch(/placeholders, not your policy/);
+    expect(notice).toMatch(/changes made\s*\n?\s*here are not saved/);
+  });
+
+  it("keeps the save controls disabled while nothing is persisted", () => {
+    const footer = readFileSync(join(POLICY_OPS, "NotConnectedNotice.tsx"), "utf8");
+    // Both controls disabled, and the reason stated next to them.
+    expect(footer).toMatch(/disabled data-testid="button-save-draft"/);
+    expect(footer).toMatch(/disabled data-testid="button-discard-changes"/);
+    expect(footer).toMatch(/Saving is disabled until this editor is connected/);
   });
 });

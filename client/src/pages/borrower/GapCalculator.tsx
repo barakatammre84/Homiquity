@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -244,8 +245,10 @@ export default function GapCalculator() {
                   Your credit and savings goals have been met. You can now proceed with your mortgage application.
                 </p>
               </div>
-              <Button className="ml-auto" data-testid="button-apply-now">
-                Apply Now <ArrowRight className="ml-2 h-4 w-4" />
+              <Button className="ml-auto" asChild data-testid="button-apply-now">
+                <Link href="/apply">
+                  Apply Now <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
             </div>
           </CardContent>

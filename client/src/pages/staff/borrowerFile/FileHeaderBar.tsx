@@ -10,6 +10,8 @@ export interface PreUwFlag {
 }
 
 export interface FileHeaderBarProps {
+  /** Drives the Loan Estimate link; the LE route is /loan-estimate/:id. */
+  applicationId: string;
   preUwFlags: PreUwFlag[];
   /** Decided in BorrowerFile.tsx alongside the other role gates. */
   canExportMismo: boolean;
@@ -18,6 +20,7 @@ export interface FileHeaderBarProps {
 }
 
 export function FileHeaderBar({
+  applicationId,
   preUwFlags,
   canExportMismo,
   onExportMismo,
@@ -63,9 +66,13 @@ export function FileHeaderBar({
             {exportingMismo ? "Exporting…" : "Export MISMO"}
           </Button>
         )}
-        <Button size="sm" data-testid="button-generate-le">
-          <FileText className="mr-2 h-4 w-4" />
-          Generate LE
+        {/* The LE page generates and delivers the disclosure; this is the
+            way in. The button had no handler at all before. */}
+        <Button size="sm" asChild data-testid="button-generate-le">
+          <Link href={`/loan-estimate/${applicationId}`}>
+            <FileText className="mr-2 h-4 w-4" />
+            Generate LE
+          </Link>
         </Button>
       </div>
     </div>
