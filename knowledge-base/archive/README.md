@@ -21,6 +21,7 @@ runs cite earlier ones), which is why they moved as one unit rather than pieceme
 
 | File | Archived | Why |
 |---|---|---|
+| [ux-audit/](./ux-audit/) | 2026-08-06 | The UX daily-loop routine is dead (last run 2026-07-16). It also sat under `logs/`, declared immutable, while describing a routine that rewrote its own artifacts daily. Its own exec-summary names the successor: `feature-review/FINDINGS.md` |
 | [LAUNCH_READINESS_CHECKLIST.md](./LAUNCH_READINESS_CHECKLIST.md) | 2026-07-04 | Feb-2026 Replit-era checklist; superseded by the CTO_ROADMAP.md launch sprint |
 | [INFRASTRUCTURE_RISKS.md](./INFRASTRUCTURE_RISKS.md) | 2026-07-04 | Feb-2026 findings since fixed (fail-closed encryption, versioned migrations) |
 | [founder-routines/](./founder-routines/) | 2026-07-08 | Launch-sprint daily C-suite routine runs (07-04 → 07-06); superseded by CTO_ROADMAP + later runs |
