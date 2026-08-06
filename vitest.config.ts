@@ -120,6 +120,10 @@ export default defineConfig({
       "tests/mcpAudit.test.ts",
       "tests/mcpAgentIdentity.test.ts",
       "tests/smsCompliance.test.ts",
+      // X-Twilio-Signature verification on the inbound SMS webhook — pins the
+      // algorithm against Twilio's published test vector and the route's
+      // fail-closed posture.
+      "tests/twilioWebhookSignature.test.ts",
       "tests/errorMonitoring.test.ts",
       "tests/auditReanchor.test.ts",
       "tests/auditChainTruncation.test.ts",
