@@ -35,7 +35,17 @@ if (isSmtpConfigured) {
 }
 
 if (!isSendGridConfigured && !isSmtpConfigured) {
-  console.log("[Email] No email provider configured — emails will be logged to console");
+  if (process.env.NODE_ENV === "production") {
+    // Not an informational notice in production: password resets, borrower
+    // notifications and ECOA adverse-action emails all silently reach nobody.
+    console.error(
+      "[Email] NO EMAIL PROVIDER CONFIGURED IN PRODUCTION — every outbound email will be logged and DISCARDED. " +
+        "Password reset, email verification, borrower notifications and adverse-action delivery are all non-functional. " +
+        "Set SENDGRID_API_KEY (or SMTP_*) on the service.",
+    );
+  } else {
+    console.log("[Email] No email provider configured — emails will be logged to console");
+  }
 }
 
 interface EmailOptions {
@@ -113,11 +123,25 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     }
   }
 
-  // No provider configured — log to console (development).
-  console.log(`[Email][DEV] To: ${message.to}`);
-  console.log(`[Email][DEV] Subject: ${message.subject}`);
-  console.log(`[Email][DEV] Body preview: ${(message.text || "").substring(0, 200)}...`);
-  return true;
+  // No provider configured. Log the message so local development can still
+  // read it — but report FAILURE, because nothing was sent.
+  //
+  // This returned `true` until 2026-08-06, and the cost was not theoretical:
+  // callers recorded "email delivered" into an audit log for mail that reached
+  // nobody, and a caller had no way to distinguish "sent" from "swallowed".
+  // A send function is the wrong place to be optimistic — everything above it
+  // reasons about delivery.
+  //
+  // The label is environment-aware. "[DEV]" printed under NODE_ENV=production
+  // read like a harmless development notice while it was the only trace that a
+  // legally-obligated notice had gone nowhere.
+  const label = process.env.NODE_ENV === "production" ? "[Email][NOT SENT]" : "[Email][DEV]";
+  const log = process.env.NODE_ENV === "production" ? console.error : console.log;
+  log(`${label} no provider configured — this message was NOT delivered`);
+  log(`${label} To: ${message.to}`);
+  log(`${label} Subject: ${message.subject}`);
+  log(`${label} Body preview: ${(message.text || "").substring(0, 200)}...`);
+  return false;
 }
 
 function stripHtml(html: string): string {
