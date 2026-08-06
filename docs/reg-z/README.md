@@ -63,21 +63,37 @@ Run `pnpm checkup` to see live due dates.
 |---|---|---|---|
 | `regz-1026-36d2-dual-compensation` | **§1026.36(d)(2)** + Supp. I commentary | Whether the borrower may be charged an origination fee when the lender also pays the originator. Currently: never. | `shared/compliance/loCompensation.ts`, `server/services/loanCosts.ts` |
 | `regz-1026-32b1-points-and-fees-floor` | **§1026.32(b)(1)** (esp. `(i)`) + Supp. I | Exactly which charges compose "points and fees". Our floor is a deliberate *lower bound* because this list could not be confirmed. | `shared/compliance/loCompensation.ts`, `server/services/mismoValidation.ts` |
-| `regz-1026-4-platform-finance-charge-classification` | **§1026.4(a)**, **§1026.4(c)** + Supp. I | Whether a **tax service fee** is a finance charge. Drives both the QM numerator and denominator — see the note below. | `server/services/loanCosts.ts` (`PLATFORM_FINANCE_CHARGES`) |
+| `regz-1026-4-platform-finance-charge-classification` | **§1026.4(a)**, **§1026.4(c)** + Supp. I | Whether a **tax service fee** is a finance charge. Drives both the QM numerator and denominator. Post-F-17 this no longer changes originability — see below. | `server/services/loanCosts.ts` (`PLATFORM_FINANCE_CHARGES`) |
 | `trid-1026-19e3-fee-tolerance` | **§1026.19(e)(3)(i)–(iv)**, **§1026.19(f)(2)(v)** + Supp. I | Which tolerance bucket each fee sits in (zero / ten-percent / none), reset rules, and the 60-day refund. | `shared/compliance/feeTolerance.ts`, `server/services/leDisclosureBaseline.ts` |
 | `platform-fee-schedule-qm-fit` | **§1026.36(d)(1)**, **§1026.17/19** disclosure rules | Whether a platform fee that varies with the comp plan is acceptable disclosure practice, and its fair-lending posture. | `server/services/loanCosts.ts` (`resolvePlatformFinanceCharges`) |
 
-### Why the tax service fee question is worth doing first
+### Which one to do first — corrected
 
-It is the only one of the five that **changes numbers today**. The code classifies the tax
-service fee as a finance charge in three places, so it both shrinks the QM cap and counts against
-it. If that classification is wrong, the fix is a single edit to `PLATFORM_FINANCE_CHARGES` — but
-until it is checked, roughly $10–13k of loan amounts per comp plan are refused at the
-compensation election that arguably should not be.
+> **Correction (2026-08-05).** The first version of this file said the tax service fee question
+> should go first because it "changes numbers today", citing ~$10–13k of loan amounts per comp
+> plan being refused. **That was written from the pre-F-17 state and is wrong.** Measured across
+> every loan size $20k–$500k at 175/200/225/275/290 bps: the classification now changes
+> originability in **zero** cases. The F-17 fee-fit absorbed it — because the platform's own
+> fees trim to fit the cap, a $100 reclassification no longer pushes any file over.
 
-Everything else in the list is conservative in the borrower's favour and safe to sit on: the
-readings can only *remove* a borrower charge or *tighten* a gate, never create the violation they
-guard against.
+What the classification still decides, post-F-17:
+
+- **Accuracy of the disclosed points-and-fees figure.** The tax service fee is counted against
+  the QM cap. If it is not a finance charge, that figure overstates by $100 on every file.
+- **$100 of our own revenue on budget-bound files.** The fee is non-reducible (a vendor
+  pass-through we cannot discount), so where the trim binds it consumes $100 of the same budget
+  that would otherwise fund our application/underwriting fees. At $120k the total charged is
+  $1,738 either way — the difference is only who gets the $100.
+
+So none of the five is urgent on *outcome* grounds. Prioritise instead by **due date** — the
+three 14-day entries (`regz-1026-36d2`, `regz-1026-32b1`, `trid-1026-19e3`) go loud first — and
+by the fact that **§1026.32(b)(1) is the keystone**: confirming the points-and-fees composition
+would let the floor stop being a deliberate lower bound, which is the single change that would
+most improve the QM math's precision.
+
+Every reading in the table is conservative in the borrower's favour and safe to sit on: each can
+only *remove* a borrower charge or *tighten* a gate, never create the violation it guards
+against. That is why they shipped flagged rather than blocked.
 
 ## Once the document is here
 
