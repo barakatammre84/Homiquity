@@ -198,3 +198,21 @@ export function isValidSubmissionTransition(
   if (to === "denied" || to === "withdrawn" || to === "suspended") return true;
   return FORWARD[from]?.includes(to) ?? false;
 }
+
+/** A terminal submission accepts no further transitions — the machine is done. */
+export function isTerminalSubmissionStatus(status: LenderSubmissionStatus): boolean {
+  return TERMINAL.includes(status);
+}
+
+/**
+ * Every status the machine will accept from `from` — the set a staff UI may
+ * offer. DERIVED from `isValidSubmissionTransition`, never a second table: the
+ * client must not be able to offer a transition the server would reject, and
+ * the only way to guarantee that is to ask the same predicate the service asks.
+ * Terminal statuses yield [] , which is how a UI knows to offer nothing.
+ */
+export function nextSubmissionStatuses(
+  from: LenderSubmissionStatus,
+): LenderSubmissionStatus[] {
+  return LENDER_SUBMISSION_STATUSES.filter(to => isValidSubmissionTransition(from, to));
+}

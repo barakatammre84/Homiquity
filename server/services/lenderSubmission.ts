@@ -210,7 +210,11 @@ export async function submitToWholesaleLender(
   // / F-025) whose remaining element fixes are pending MISMO data-dictionary
   // confirmation, and xmllint is absent in serverless (→ skipped). The
   // structural validateMISMOXML gate above stays the hard gate. A violation here
-  // is captured (auditable, shown to staff), not silently swallowed.
+  // is captured (auditable, shown to staff), not silently swallowed — surfaced by
+  // client/src/components/PackageConformanceBadge.tsx, which reads this recorded
+  // snapshot value. That "shown to staff" claim was false for as long as it stood
+  // here: nothing in the client read the field, so a non-conformant package was
+  // recorded and no human was ever told. Keep a reader wired to it.
   const { validateAgainstXsd, MISMO_BASE_XSD, extractOffendingElements } = await import("./mismoXsdValidation");
   const xsd = validateAgainstXsd(pkg.xml, MISMO_BASE_XSD);
   const xsdConformance = {
