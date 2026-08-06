@@ -2,87 +2,19 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Search,
-  MoreHorizontal,
-  UserCog,
-  Users,
-  Briefcase,
-  Building2,
-  Home,
-  AlertCircle,
-  Filter,
-  UserCheck,
-  Wrench,
-  Star,
-  Plus,
-  Copy,
-  Check,
-  Ticket,
-} from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { format } from "date-fns";
-import {
-  ALL_ROLES,
-  STAFF_ROLES,
-  isStaffRole,
-} from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 import type { StaffInvite } from "@shared/schema";
-import { getRoleConfig, getInitials, getDisplayName } from "@/lib/adminUserDisplay";
 import { useAdminUserStats } from "@/hooks/useAdminUserStats";
-
-interface User {
-  id: string;
-  email: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  profileImageUrl: string | null;
-  role: string;
-  isPartner?: boolean;
-  partnerCompanyName?: string | null;
-  nmlsId?: string | null;
-  createdAt: string | null;
-}
-
-const ROLES = ALL_ROLES;
+import type { User } from "./adminUsers/types";
+import { UserStatsGrid } from "./adminUsers/UserStatsGrid";
+import { UsersTable } from "./adminUsers/UsersTable";
+import { InvitesTable } from "./adminUsers/InvitesTable";
+import { InviteDialog } from "./adminUsers/InviteDialog";
+import { RoleDialog } from "./adminUsers/RoleDialog";
 
 export default function AdminUsers() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
@@ -196,475 +128,49 @@ export default function AdminUsers() {
       titleTestId="text-page-title"
       contentClassName="space-y-6"
     >
+      <UserStatsGrid stats={userStats} />
 
-      {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <Users className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="text-total-users">{userStats.total}</p>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card data-testid="card-stat-admins">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-destructive-subtle">
-                <Wrench className="h-5 w-5 text-destructive" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="text-admin-count">{userStats.admins}</p>
-                <p className="text-sm text-muted-foreground">Tech/Ops Leads</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card data-testid="card-stat-staff">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-info-subtle">
-                <UserCheck className="h-5 w-5 text-info" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="text-staff-count">{userStats.totalStaff}</p>
-                <p className="text-sm text-muted-foreground">Staff Members</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card data-testid="card-stat-clients">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-success-subtle">
-                <Home className="h-5 w-5 text-success-subtle-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="text-client-count">{userStats.totalClients}</p>
-                <p className="text-sm text-muted-foreground">Clients</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <UsersTable
+        filteredUsers={filteredUsers}
+        isLoading={usersLoading}
+        currentUserId={currentUser?.id}
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+        roleFilter={roleFilter}
+        onRoleFilterChange={setRoleFilter}
+        onEditRole={openEditDialog}
+      />
 
-      {/* Detailed Role Breakdown */}
-      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-lo-count">{userStats.loanOfficers}</p>
-              <p className="text-xs text-muted-foreground">Loan Officers</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-loa-count">{userStats.loas}</p>
-              <p className="text-xs text-muted-foreground">LOAs</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-processor-count">{userStats.processors}</p>
-              <p className="text-xs text-muted-foreground">Processors</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-underwriter-count">{userStats.underwriters}</p>
-              <p className="text-xs text-muted-foreground">Underwriters</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-closer-count">{userStats.closers}</p>
-              <p className="text-xs text-muted-foreground">Closers</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center border-l-2 border-muted pl-2">
-              <p className="text-xl font-bold" data-testid="text-aspiring-count">{userStats.aspiringOwners}</p>
-              <p className="text-xs text-muted-foreground">Aspiring</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-active-buyer-count">{userStats.activeBuyers}</p>
-              <p className="text-xs text-muted-foreground">Active Buyers</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <InvitesTable
+        invites={invitesData?.invites}
+        isLoading={invitesLoading}
+        copiedCode={copiedCode}
+        onCopy={copyToClipboard}
+        onCreateInvite={() => { setInviteDialogOpen(true); setInviteRole(""); setInviteEmail(""); setCopiedCode(""); }}
+      />
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle>All Users</CardTitle>
-              <CardDescription>View and manage user accounts</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64"
-                  data-testid="input-search-users"
-                />
-              </div>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-36" data-testid="select-role-filter">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Filter role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  {ROLES.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {getRoleConfig(role).label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {usersLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : filteredUsers && filteredUsers.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => {
-                  const roleConfig = getRoleConfig(user.role);
-                  const RoleIcon = roleConfig.icon;
-                  const isCurrentUser = user.id === currentUser?.id;
+      <InviteDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        inviteRole={inviteRole}
+        onInviteRoleChange={setInviteRole}
+        inviteEmail={inviteEmail}
+        onInviteEmailChange={setInviteEmail}
+        copiedCode={copiedCode}
+        onCopy={copyToClipboard}
+        onGenerate={handleCreateInvite}
+        isPending={createInviteMutation.isPending}
+      />
 
-                  return (
-                    <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar>
-                            <AvatarImage src={user.profileImageUrl || undefined} />
-                            <AvatarFallback>{getInitials(user)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{getDisplayName(user)}</p>
-                            {isCurrentUser && (
-                              <Badge variant="outline" className="text-xs">You</Badge>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {user.email || "No email"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={isStaffRole(user.role) ? "info" : "secondary"}>
-                          <RoleIcon className="h-3 w-3 mr-1" />
-                          {roleConfig.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {user.createdAt
-                          ? format(new Date(user.createdAt), "MMM d, yyyy")
-                          : "Unknown"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon" aria-label="More options"
-                              data-testid={`button-actions-${user.id}`}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => openEditDialog(user)}
-                              disabled={isCurrentUser}
-                              data-testid={`button-change-role-${user.id}`}
-                            >
-                              <UserCog className="h-4 w-4 mr-2" />
-                              Change Role
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8">
-              <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                {searchTerm || roleFilter !== "all"
-                  ? "No users match your search criteria"
-                  : "No users found"}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card data-testid="card-staff-invites">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Ticket className="h-5 w-5" />
-                Staff Invites
-              </CardTitle>
-              <CardDescription>Generate invite codes for new staff members</CardDescription>
-            </div>
-            <Button onClick={() => { setInviteDialogOpen(true); setInviteRole(""); setInviteEmail(""); setCopiedCode(""); }} data-testid="button-create-invite">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Invite
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {invitesLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : invitesData?.invites && invitesData.invites.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Expires</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invitesData.invites.map((invite: StaffInvite) => {
-                  const isUsed = !!invite.usedAt;
-                  const isExpired = invite.expiresAt && new Date(invite.expiresAt) < new Date();
-                  return (
-                    <TableRow key={invite.id} data-testid={`row-invite-${invite.id}`}>
-                      <TableCell>
-                        <code className="px-2 py-1 rounded bg-muted text-sm font-mono" data-testid={`text-invite-code-${invite.id}`}>
-                          {invite.code}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {getRoleConfig(invite.role).label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {invite.email || "Any"}
-                      </TableCell>
-                      <TableCell>
-                        {isUsed ? (
-                          <Badge variant="success">Used</Badge>
-                        ) : isExpired ? (
-                          <Badge variant="destructive">Expired</Badge>
-                        ) : (
-                          <Badge variant="info">Active</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {invite.expiresAt ? format(new Date(invite.expiresAt), "MMM d, yyyy") : "Never"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {!isUsed && !isExpired && (
-                          <Button
-                            variant="ghost"
-                            size="icon" aria-label="Copy"
-                            onClick={() => copyToClipboard(invite.code)}
-                            data-testid={`button-copy-invite-${invite.id}`}
-                          >
-                            {copiedCode === invite.code ? <Check className="h-4 w-4 text-success-subtle-foreground" /> : <Copy className="h-4 w-4" />}
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8">
-              <Ticket className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No invites created yet</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Staff Invite</DialogTitle>
-            <DialogDescription>
-              Generate an invite code that a user can redeem to get a staff role
-            </DialogDescription>
-          </DialogHeader>
-          {copiedCode ? (
-            <div className="py-4 text-center">
-              <p className="text-sm text-muted-foreground mb-3">Share this invite code:</p>
-              <div className="flex items-center justify-center gap-2">
-                <code className="px-4 py-2 rounded-lg bg-muted text-lg font-mono font-bold tracking-widest" data-testid="text-new-invite-code">
-                  {copiedCode}
-                </code>
-                <Button variant="ghost" size="icon" aria-label="Copy" onClick={() => copyToClipboard(copiedCode)} data-testid="button-copy-new-code">
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                The recipient can enter this code in their account settings to activate their staff role.
-              </p>
-            </div>
-          ) : (
-            <div className="py-4 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Staff Role</label>
-                <Select value={inviteRole} onValueChange={setInviteRole}>
-                  <SelectTrigger data-testid="select-invite-role">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STAFF_ROLES.filter(r => r !== "admin").map((role) => {
-                      const config = getRoleConfig(role);
-                      const Icon = config.icon;
-                      return (
-                        <SelectItem key={role} value={role}>
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            {config.label}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Email (optional)</label>
-                <Input
-                  placeholder="Restrict to specific email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  data-testid="input-invite-email"
-                />
-                <p className="text-xs text-muted-foreground">Leave blank to allow anyone with the code to redeem it</p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteDialogOpen(false)} data-testid="button-cancel-invite">
-              {copiedCode ? "Done" : "Cancel"}
-            </Button>
-            {!copiedCode && (
-              <Button onClick={handleCreateInvite} disabled={!inviteRole || createInviteMutation.isPending} data-testid="button-generate-invite">
-                {createInviteMutation.isPending ? "Creating..." : "Generate Code"}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Change User Role</DialogTitle>
-            <DialogDescription>
-              Update the role for {selectedUser ? getDisplayName(selectedUser) : "this user"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="flex items-center gap-4 mb-6 p-4 rounded-lg bg-muted">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={selectedUser?.profileImageUrl || undefined} />
-                <AvatarFallback>{selectedUser ? getInitials(selectedUser) : "U"}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">{selectedUser ? getDisplayName(selectedUser) : ""}</p>
-                <p className="text-sm text-muted-foreground">{selectedUser?.email}</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Select New Role</label>
-              <Select value={newRole} onValueChange={setNewRole}>
-                <SelectTrigger data-testid="select-new-role">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLES.map((role) => {
-                    const config = getRoleConfig(role);
-                    const Icon = config.icon;
-                    return (
-                      <SelectItem key={role} value={role}>
-                        <div className="flex items-center gap-2">
-                          <Icon className="h-4 w-4" />
-                          {config.label}
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)} data-testid="button-cancel-role">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateRole}
-              disabled={updateRoleMutation.isPending || newRole === selectedUser?.role}
-              data-testid="button-save-role"
-            >
-              {updateRoleMutation.isPending ? "Saving..." : "Update Role"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RoleDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        selectedUser={selectedUser}
+        newRole={newRole}
+        onNewRoleChange={setNewRole}
+        onSave={handleUpdateRole}
+        isPending={updateRoleMutation.isPending}
+      />
     </PageShell>
   );
 }
