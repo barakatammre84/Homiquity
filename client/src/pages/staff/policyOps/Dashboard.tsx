@@ -20,6 +20,7 @@ import { type PolicyProfile, type RuleCategory, RULE_CATEGORIES, StatusBadge } f
 import { PolicyProfileView } from "./ProfileView";
 import { RuleEditor } from "./RuleEditor";
 import { CreatePolicyDialog } from "./CreatePolicyDialog";
+import { GovernanceNotice } from "./GovernanceNotice";
 import { MaterialityMatrix } from "./MaterialityMatrix";
 import { AuditTrail } from "./AuditTrail";
 
@@ -67,6 +68,8 @@ export function PolicyOpsDashboard() {
       }
     >
       <CreatePolicyDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      <GovernanceNotice />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
