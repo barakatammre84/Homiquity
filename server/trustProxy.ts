@@ -1,14 +1,19 @@
 /**
  * Trust-proxy hop count, env-configurable for the persistent-host path.
  *
- * `req.ip` feeds the TCPA/audit IP capture (server/auditLog.ts, borrower
- * consents, lead intake) and the per-IP rate limiters, and `req.protocol`
- * drives secure-cookie behavior — all of it is wrong if the hop count does
- * not match the real proxy chain. One hop (the platform's TLS-terminating
- * LB) is the default; fronting the app with a CDN adds a second, which
- * TRUST_PROXY_HOPS=2 covers without a code change. Parsed defensively: a
- * missing, non-numeric, or negative value falls back to 1 rather than
- * throwing at boot or silently trusting everything.
+ * This governs `req.protocol` (and therefore secure-cookie behavior). One hop
+ * (the platform's TLS-terminating LB) is the default; fronting the app with a
+ * CDN adds a second, which TRUST_PROXY_HOPS=2 covers without a code change.
+ * Parsed defensively: a missing, non-numeric, or negative value falls back to
+ * 1 rather than throwing at boot or silently trusting everything.
+ *
+ * ⚠️ It does NOT govern client-IP identity any more, and no value of
+ * TRUST_PROXY_HOPS can. Express derives `req.ip` from `X-Forwarded-For`, and
+ * Railway's edge does not send that header (its spec lists `X-Real-IP`
+ * instead), so `req.ip` is the socket peer — a rotating internal proxy
+ * address. Rate limiting and every consent/audit IP go through
+ * server/clientIp.ts, which reads `X-Real-IP`. Setting a hop count here to
+ * "fix" an IP problem changes nothing except a maintainer's confidence.
  *
  * Both trust-proxy call sites (server/app.ts and the defensive re-set in
  * server/integrations/auth/session.ts) MUST read this one function — two
