@@ -212,3 +212,76 @@ describe("the admin surface cannot quietly lose its guarantees", () => {
     expect(resolverSrc).toContain("baselineFeeSchedule()");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Audit FA-20 — a file is PINNED to the fee schedule it was disclosed under.
+//
+// Fees are admin-editable and four of the lines they set are zero-tolerance.
+// Resolving the schedule late meant a publish raised those lines on every file
+// already in flight, and since a creditor re-pricing itself is not a
+// §1026.19(e)(3)(iv) changed circumstance, each of those files became a
+// dollar-for-dollar cure. These pin the fix.
+// ---------------------------------------------------------------------------
+describe("FA-20 — fee schedule version pinning", () => {
+  const RAISED: PlatformFeeSchedule = {
+    ...DEFAULT_PLATFORM_FEE_SCHEDULE,
+    underwritingFee: 1_800,
+    originationFeeRate: 0.0125,
+  };
+
+  const feesOf = (schedule: PlatformFeeSchedule, loanAmount: number) => {
+    const c = computeClosingCosts({
+      purchasePrice: loanAmount / 0.8,
+      downPayment: (loanAmount / 0.8) * 0.2,
+      loanAmount,
+      interestRate: 6.875,
+      monthlyPMI: 0,
+      prepaidInterestDays: 15,
+      compensation: { model: "borrower_paid" as const, bps: 200 },
+      feeSchedule: schedule,
+      noteDate: new Date("2026-09-01"),
+    } as any) as any;
+    return {
+      originationFee: c.originationFee,
+      applicationFee: c.applicationFee,
+      underwritingFee: c.underwritingFee,
+      taxServiceFee: c.taxServiceFee,
+    };
+  };
+
+  it("re-pricing DOES move zero-tolerance lines — which is why pinning matters", () => {
+    const before = feesOf(DEFAULT_PLATFORM_FEE_SCHEDULE, 300_000);
+    const after = feesOf(RAISED, 300_000);
+    // The exposure the pin exists to prevent, measured on the real functions.
+    const delta =
+      after.originationFee - before.originationFee +
+      (after.underwritingFee - before.underwritingFee);
+    expect(delta).toBeGreaterThan(0);
+  });
+
+  it("loanEstimate resolves the schedule PER APPLICATION, not globally", () => {
+    const src = read("server/services/loanEstimate.ts");
+    expect(src).toMatch(/resolveFeeScheduleForApplication\(applicationId\)/);
+    // The global reader is what late-bound every in-flight file to a new price.
+    expect(src).not.toMatch(/await activeFeeSchedule\(\)/);
+  });
+
+  it("both disclosure write paths persist the pin", () => {
+    const src = read("server/services/leDisclosureBaseline.ts");
+    const writes = src.split("createLoanEstimateDisclosure(").slice(1);
+    expect(writes.length).toBe(2); // version 1, and the redisclosure
+    for (const write of writes) {
+      expect(write.slice(0, 600)).toMatch(/feeScheduleVersion/);
+    }
+  });
+
+  it("the tolerance evaluator is never handed a bare boolean again (FA-21)", () => {
+    for (const file of [
+      "server/services/leDisclosureBaseline.ts",
+    ]) {
+      const src = read(file);
+      expect(src).not.toMatch(/evaluateTolerance\([^)]*,\s*(true|false|!!\w+)\s*\)/s);
+      expect(src).toMatch(/authorizationFrom\(/);
+    }
+  });
+});

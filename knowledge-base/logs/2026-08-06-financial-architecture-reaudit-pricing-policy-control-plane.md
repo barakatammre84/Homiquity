@@ -185,3 +185,82 @@ Spot-checked and still sound:
   bucket. The architecture to replace them per-file (`resolveActualFeesFor`) exists and is wired
   into the LE; the *values* are still working figures.
 - **F-14** — the channel decision remains founder-owned. Nothing here changes it.
+
+---
+
+# Remediation — 2026-08-06
+
+Landed the same day, in the scope the founder authorized: **the FA-20 version pin, and the
+structural half of FA-21.** The regulatory reading FA-21 depends on was deliberately not
+invented — see "What is deliberately NOT fixed" below.
+
+**Verification:** typecheck clean · **2,143 unit tests green** (159 files) · `guard:schema`,
+`guard:migrations`, `guard:channel`, `guard:querykeys`, `guard:kb`, `guard:docs` all OK.
+
+## FA-20 — fixed at the root
+
+The file is now **pinned** to the fee schedule it was disclosed under.
+
+- `loan_estimate_disclosures.fee_schedule_version` (migration `0051`) records the pin at first
+  issuance. Tri-state and documented on the column: `NULL` = issued before pinning existed
+  (an honest gap, never backfilled with a guess), `0` = the compiled-in baseline, `N` = published
+  version N.
+- `resolveFeeScheduleForApplication()` (`server/services/platformFeeSchedule.ts`) resolves the
+  governing schedule per file rather than globally. `loanEstimate.ts` no longer calls
+  `activeFeeSchedule()` at all.
+- `reconcileDisclosure` persists the pin on version 1 and **carries it forward on redisclosure** —
+  a borrower's changed circumstance is not a reason to adopt a fee schedule the file was never
+  disclosed under.
+
+**The consequence:** publishing a new schedule now affects new files only. The $546–$1,300
+per-file cure the audit measured can no longer be created by a re-price.
+
+Chose the same failure posture the module already had: an unreadable pin logs loudly and falls
+back to the active schedule rather than hard-failing, because pricing must not break when a
+config table is unreachable — and the disclosure baseline is the backstop that keeps the
+borrower on the issued figures regardless.
+
+## FA-21 — structurally fixed; the mapping stays a counsel item
+
+- `evaluateTolerance`'s third parameter is no longer a boolean. It takes a
+  `ToleranceAuthorization` — "is there a record, and **which charges** does it reach?" — and
+  every increase now carries an `authorized` flag.
+- `cureAmount` now means **what is actually owed** (the unauthorized subset).
+  `zeroToleranceIncrease` keeps reporting the gross figure, and
+  `unauthorizedZeroToleranceIncrease` was added, so partial coverage produces a partial cure
+  instead of an all-or-nothing verdict.
+- `PLATFORM_SCHEDULE_FEE_IDS` (application, underwriting, tax service) can be authorized by **no**
+  circumstance, however it is scoped. These are flat dollars that only a platform re-price can
+  move, and a creditor re-pricing itself is not one of the six §1026.19(e)(3)(iv) reasons. That
+  much needs no interpretation. `origination_fee` is deliberately **excluded** from that set — it
+  is a rate on the loan amount, so a borrower-requested increase in loan size raises it
+  legitimately.
+- `change_of_circumstances.affected_charge_ids` (migration `0051`) carries the scope when it is
+  known.
+
+## What is deliberately NOT fixed
+
+- **The per-reason charge mapping.** Which charges each of the six reasons may reset is a
+  regulatory reading, and this repo already routes exactly that question to counsel
+  (`shared/compliance/changeOfCircumstance.ts:10-12`). `affected_charge_ids` defaults to `NULL`
+  = unscoped, which **preserves today's behaviour** for non-platform charges. So an unrelated
+  circumstance can still authorize an unrelated third-party increase until the sets are
+  populated. **FA-21 is therefore half-closed, not closed.** What is closed is the leg that
+  needed no reading: no circumstance can launder the platform's own fixed fees.
+- **The publish-time exposure preview** (FA-20 structural fix #2) and **previewing both
+  compensation models** (#3). Pinning removes the liability those were meant to surface, so they
+  drop from mitigations to diagnostics. The admin preview is still hardcoded to `lender_paid`,
+  where `borrowerPaidOriginationAllowed()` forces origination to zero — so the origination-rate
+  dial still shows no effect in the surface that sets it. Worth fixing; no longer urgent.
+
+## Coverage
+
+`tests/feeTolerance.test.ts` (+4) pins the FA-21 behaviour: no circumstance authorizes a platform
+fixed fee **even when it is named explicitly**; a rate-lock scope does not justify an appraisal
+overrun; a circumstance that genuinely reaches a charge authorizes it; and partial coverage cures
+only the remainder ($850 gross → $300 owed).
+
+`tests/platformFeeSchedule.test.ts` (+3) pins FA-20's wiring: a re-price really does move
+zero-tolerance lines (the exposure the pin prevents), `loanEstimate.ts` resolves per application
+and no longer calls `activeFeeSchedule()`, both disclosure write paths persist the pin, and
+`evaluateTolerance` is never handed a bare boolean again.

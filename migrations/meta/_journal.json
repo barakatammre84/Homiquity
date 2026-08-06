@@ -358,6 +358,13 @@
       "when": 1785955200000,
       "tag": "0050_adverse_action_consumer_report_basis",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1786032000000,
+      "tag": "0051_fee_schedule_pin_and_coc_scope",
+      "breakpoints": true
     }
   ]
 }
