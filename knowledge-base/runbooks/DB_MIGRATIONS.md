@@ -32,6 +32,10 @@ PR touches shared/schema/**
   migrate-prod job (.github/workflows/ci.yml, on: push to main)
     pnpm guard:migrations          →  ledger pre-flight; aborts with prod untouched
     node scripts/migrate-prod.cjs  →  applies pending migrations to PROD (Neon DIRECT url)
+        │
+        ▼
+  verify-deploy job (needs: migrate-prod, on: push to main)
+    polls /api/health until `commit` == this SHA  →  proves Railway actually shipped it
 ```
 
 - **Author-time gate:** [`scripts/schema-migration-guard.cjs`](../../scripts/schema-migration-guard.cjs)
@@ -45,6 +49,22 @@ PR touches shared/schema/**
 - **Deploy-time apply:** [`scripts/migrate-prod.cjs`](../../scripts/migrate-prod.cjs) applies pending
   migrations over a plain `pg` client (NOT the Neon serverless pool — that has the pooler gotcha).
   Idempotent: a no-op when nothing is pending, safe to re-run on every merge.
+- **Ship confirmation:** `verify-deploy` polls `https://www.homiquity.com/api/health` until its
+  `commit` field equals the pushed SHA, and fails the run if it never does. It is ordered *after*
+  `migrate-prod` deliberately, so a schema failure is reported as itself rather than as a mysterious
+  stale deployment. This job exists because of 2026-08-06: nine consecutive Railway builds failed,
+  and a **failed** Railway deploy leaves the previous container serving — so the site stayed up,
+  every check was green, and prod sat ~8 commits behind. **`migrate-prod` green does not mean the
+  code that needs the migration is live.** That asymmetry is survivable only because of the
+  expand/contract rule (§Adding a migration, step 2): the DB may run ahead of the app, never the
+  reverse. If `verify-deploy` reds after a schema merge, prod is stale — fix the deploy
+  ([ROLLBACK.md](./ROLLBACK.md) §0), do not "roll back" the migration.
+
+  ⚠️ A `SUCCESS` deploy status and a 200 from `/api/health` are **not** evidence a merge shipped.
+  Only the `commit` field is. (On the same day, `/api/health` returned 200 while its `SELECT 1`
+  succeeded against a *stale Neon branch* — 28 of 53 migrations — so `/api/articles` and
+  `/sitemap.xml` 500'd. A healthy health check does not prove the right database either; if data
+  routes 500 while health is 200, check Railway's `DATABASE_URL` before anything else.)
 
 ## One-time setup (done in GitHub)
 
@@ -78,8 +98,11 @@ PR touches shared/schema/**
    | Force-push / delete `main` | blocked | |
    | `strict` (branch up to date) | off | avoids an update+re-run cycle on every merge |
 
-   Deliberately **not** required: `migrate-prod` (it reports `skipped` on PRs — requiring it would
-   deadlock every PR) and Vercel's checks (third-party, not a correctness gate).
+   Deliberately **not** required: `migrate-prod` and `verify-deploy` — both are `on: push`-only
+   jobs (they report `skipped` on PRs), so requiring either would deadlock every PR. There are no
+   third-party deploy checks to consider any more: Railway builds from GitHub after the merge and
+   reports nothing back onto the PR (the Vercel project, whose checks this line used to name, was
+   deleted at the 2026-08-06 migration).
 
    ⚠️ **The required context is the gate job's `name:`, matched verbatim.** Renaming that job
    without re-pointing the rule deadlocks every PR, unbypassable. See the warning comment on the

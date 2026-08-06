@@ -4,13 +4,18 @@ The whole app runs on your machine. Only Postgres is a managed service — the f
 tier of Neon costs nothing, so this is a $0 local setup.
 
 ## 1. Prerequisites
-- Node.js 24.x (`node -v`) — matches the pinned `engines.node` in `package.json` (what Vercel builds with)
+- Node.js 24 (`node -v`) — matches the pinned `engines.node` in `package.json` (what Railway builds with)
+  - ⚠️ **Keep `engines.node` an exact major (`"24"`), never an npm range like `"24.x"`.** Railway's
+    builder (Railpack) resolves the toolchain with mise, which does **not** understand npm range
+    syntax; on 2026-08-06 `"24.x"` made nine consecutive Railway builds fail — and because a failed
+    Railway deploy leaves the *previous* container serving, the site stayed up and nothing noticed
+    for ~8 commits.
 - A Postgres database (see step 3)
 - `git` and this repo cloned locally
 
 ## 2. Install dependencies
 
-pnpm is the package manager (pinned via `packageManager` in `package.json`; it's the only lockfile — `pnpm-lock.yaml` — and what Vercel builds with). Activate it once with corepack, which ships with Node:
+pnpm is the package manager (pinned via `packageManager` in `package.json`; it's the only lockfile — `pnpm-lock.yaml` — and what Railway builds with). Activate it once with corepack, which ships with Node:
 ```bash
 corepack enable      # one-time; activates the pinned pnpm
 pnpm install
@@ -144,25 +149,40 @@ git tag beta-1 && git push origin beta-1
 
 ---
 
-## Alternative low-cost hosts (the primary deploy is Vercel — see CICD.md)
+## How production runs it (and the alternatives)
 
-This is one Express server + Postgres, so host it as a single web service:
+The primary deploy is **Railway** — see [CICD.md](./CICD.md). Production is not a
+different program: it is exactly the two commands below, run by Railway on a single
+persistent Node process. One Express server serves both the API and the built client
+(`express.static` + SPA catch-all) — there is no CDN, no serverless function, no edge
+middleware.
+
+**Build/run — locally and on any host:**
+```bash
+pnpm build          # vite build + esbuild server -> dist/index.js
+pnpm start          # NODE_ENV=production node dist/index.js
+```
+Railway runs precisely these, declared as config-as-code in
+[`railway.json`](../../railway.json) (builder `RAILPACK`, build
+`pnpm install --frozen-lockfile && pnpm build`, start `pnpm start`, health check
+`/api/health`, restart policy `ON_FAILURE`).
+
+Set the same env vars in the host's dashboard (`DATABASE_URL`, `CREDIT_ENCRYPTION_KEY`,
+`PII_HASH_SALT`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `PORT`). The host provides
+`PORT`; the server already reads it. On Railway these live in **service variables**
+(Railway → project `Homiquity` → service `Homiquity` → **Variables**). Note that
+`VITE_*` variables are **build-time** — they are compiled into the client bundle, so
+changing one requires a **redeploy**, not a restart.
+
+Because the whole thing is "one Express process + Postgres", it stays portable. If
+Railway ever has to be left behind, these are equivalent single-web-service hosts —
+no code changes, just the same build/start pair and the same env vars:
 
 | Option | Cost | Notes |
 |--------|------|-------|
-| **Neon (Postgres) + Fly.io** | ~free–$5/mo | Fly's small shared VM + Neon free tier. Good default. |
+| **Neon (Postgres) + Fly.io** | ~free–$5/mo | Fly's small shared VM + Neon free tier. |
 | **Neon + Render** | free tier (spins down) / $7/mo | Simplest dashboard; free tier sleeps when idle. |
-| **Neon + Railway** | ~$5/mo credit | Easy Git deploys. |
 | **Cheap VPS (Hetzner / DigitalOcean) + Neon** | $4–6/mo | Most control, cheapest at scale; you manage the box. |
 
-**Build/run for any host:**
-```bash
-pnpm build          # vite build + esbuild server -> dist/
-pnpm start              # NODE_ENV=production node dist/index.js
-```
-Set the same env vars in the host's dashboard (`DATABASE_URL`, `CREDIT_ENCRYPTION_KEY`,
-`PII_HASH_SALT`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `PORT`). The host provides
-`PORT`; the server already reads it.
-
-**The app has no Replit dependencies** — it deploys to Vercel today (see
-[CICD.md](./CICD.md)) and can move to any of the hosts above without code changes.
+**The app has no host-specific dependencies** — no Replit, and (since the 2026-08-06
+migration) no Vercel. It runs on Railway today and can move without code changes.

@@ -12,7 +12,7 @@
 | Source claim | Verified reality |
 |---|---|
 | "MISMO 3.6 XML export" | We generate **MISMO 3.4** (`server/mismo.ts`, `DataVersionIdentifier 3.4.0`) — deliberately: 3.4 is what DU/LPA and the F11 PPE middleware target. Do not chase 3.6 until a counterparty demands it. |
-| "Log into Plaid/Equifax/Experian portals" | No live vendor portals exist yet — credit, Plaid, Truv, AVM are **simulated until contracts** (roadmap F3–F7). Real portals today: **Vercel, SendGrid, Sentry, RapidAPI**. |
+| "Log into Plaid/Equifax/Experian portals" | No live vendor portals exist yet — credit, Plaid, Truv, AVM are **simulated until contracts** (roadmap F3–F7). Real portals today: **Railway, Neon, SendGrid, Sentry, RapidAPI**. *(This row said "Vercel" when written 2026-07-04; the platform moved to Railway on 2026-08-06 and the Vercel project was deleted.)* |
 | "July 2026 Reg B rules and the Medical Debt DTI exclusion are explicitly tested" | **Verified 2026-07-04 (roadmap #28):** the "federal Medical Debt DTI exclusion" **does not exist** — the CFPB Reg V medical-debt rule was vacated 2025-07-11 (no appeal; same ruling held FCRA preempts state reporting bans). The real "July 2026 Reg B rule" is the **disparate-impact amendment eff. 2026-07-21** — unrelated to medical debt; our four-fifths monitoring is retained as internal risk management, never framed as a Reg B requirement. The citable medical carve-outs are *agency* policies, now in `regulatory-ledger.json`: Fannie B3-5.3-09 (medical collections exempt from payoff limits) and FHA 4000.1 (non-medical collections > $2,000 add 5% of balance to DTI; medical excluded). Engine build ships with F3. |
 | "Verify AAN routes via emailService.ts" | It now does at both seams: staff status→denied fires the neutral email (`server/routes/lending/statusDecisions.ts`), and **AAN generation itself** now also fires it (`server/routes/compliance.ts`, added 2026-07-04) so ECOA delivery never depends on a separate status flip. |
 | "Flip the environment variable... that pauses all new applications" | **Did not exist — built 2026-07-04** (roadmap #27): `INTAKE_PAUSED=true`, see Routine 3. |
@@ -25,7 +25,13 @@
 
 Clear the hurdles that can physically prevent launch before doing anything else.
 
-1. **Vendor portal sweep (today's real list):** Vercel (build/deploy status, env vars), SendGrid (domain auth, suppression list — once the key is set, roadmap #3 ops), Sentry (new errors — once DSN is set, roadmap #4 ops), RapidAPI (rate-limit warnings on realty-us). ⛔ Plaid/credit-bureau/Truv portals join this sweep as F3–F5 contracts land.
+1. **Vendor portal sweep (today's real list):** Railway (project `Homiquity` → service `Homiquity` → **Deployments** for build/deploy status, **Variables** for env), Neon (branch/compute state), SendGrid (domain auth, suppression list — once the key is set, roadmap #3 ops), Sentry (new errors — once DSN is set, roadmap #4 ops), RapidAPI (rate-limit warnings on realty-us). ⛔ Plaid/credit-bureau/Truv portals join this sweep as F3–F5 contracts land.
+
+   ⚠️ **Reading the Railway deploy status is not enough.** A *failed* Railway deploy leaves the previous container serving, so the site stays up and every check stays green while prod silently goes stale — that is exactly the 2026-08-06 incident (nine consecutive failed builds, ~8 commits behind, nothing said so). The one-line sweep that actually proves the merge shipped:
+   ```bash
+   curl -sS https://www.homiquity.com/api/health   # compare `commit` against `git rev-parse origin/main`
+   ```
+   A 200 proves the process is alive and *a* database answered — nothing more. On 2026-08-06 it answered 200 from a **stale Neon branch** while `/api/articles` and `/sitemap.xml` 500'd, so spot-check one data-backed route too. Full triage: [ROLLBACK.md](./ROLLBACK.md) §0.
 2. **The 2026 guardrail check:**
    ```bash
    npx vitest run tests/complianceInvariants.test.ts --config vitest.config.ts
@@ -55,7 +61,7 @@ Intentionally try to break the system daily.
    PORT=5002 INTAKE_PAUSED=true npm run dev
    curl -i -X POST localhost:5002/api/leads -H "Content-Type: application/json" -d '{"email":"drill@test.com"}'
    ```
-   Expect `503 {"code":"INTAKE_PAUSED"}` + `Retry-After: 600`; funnel submit shows the graceful maintenance toast; `rateService` logs `INTAKE_PAUSED set, skipping live rate vendor fetch` instead of calling vendors. Existing borrowers keep full access — the switch stops **new intake**, not service. In production: set `INTAKE_PAUSED=true` in Vercel env + redeploy (takes effect next deployment).
+   Expect `503 {"code":"INTAKE_PAUSED"}` + `Retry-After: 600`; funnel submit shows the graceful maintenance toast; `rateService` logs `INTAKE_PAUSED set, skipping live rate vendor fetch` instead of calling vendors. Existing borrowers keep full access — the switch stops **new intake**, not service. In production: set `INTAKE_PAUSED=true` as a **Railway service variable** (Railway → project `Homiquity` → service `Homiquity` → **Variables**), then let the service restart with it. It is read from `process.env` **per request** (`server/services/maintenanceMode.ts`), so it takes effect as soon as the process is running with the variable — no rebuild is needed, unlike the `VITE_*` build-time flags.
 3. **Zero-inbox the drill fallout:** every failure found goes to `CTO_ROADMAP.md` or `kb/my-research/` the same day — a drill that finds a bug nobody triages is theater.
 
 ## Routine 4 — Evening: Unit Economics & Go-To-Market Sync (strategy)

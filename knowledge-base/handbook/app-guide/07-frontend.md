@@ -82,5 +82,13 @@ Shadcn primitives).
 
 `pnpm dev` runs Express with Vite as middleware — client edits hot-reload
 instantly; **server** edits require a restart (tsx is not in watch mode).
-The client build outputs to `dist/public` (`vite.config.ts`), which is exactly
-what Vercel's CDN (prod) or `serveStatic` (VM prod) serves.
+The client build outputs to `dist/public` (`vite.config.ts`), which in production
+is served by `serveStatic` in the **same Express process** that answers `/api/*`
+(`server/index-prod.ts`) — there is no CDN in front of it. Assets are
+content-hashed and served `immutable`; `index.html` is served `no-cache` so a
+deploy can't strand clients on a stale asset graph.
+
+⚠️ **`VITE_*` env vars are build-time, not runtime.** Vite inlines them into the
+bundle at `vite build`, so changing one (e.g. `VITE_PRELAUNCH_GATED`) in Railway
+requires a **redeploy**, not a restart. Anything that must be flippable at
+runtime belongs behind an API call, not an `import.meta.env` read.

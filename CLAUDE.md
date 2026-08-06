@@ -81,7 +81,14 @@ carries the shopping list and what to do once the document arrives.
 
 Full rules in [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md); the non-negotiables:
 
-- `main` is production — every push deploys to Vercel. No long-lived branches; land work via PRs.
+- `main` is production — every merge to `main` triggers a **Railway** build + deploy from GitHub
+  (config as code in [`railway.json`](railway.json); one persistent Node process, `dist/index.js`,
+  serving both the API and the static client). No long-lived branches; land work via PRs.
+- **A green check is not a shipped deploy.** A failed Railway build leaves the *previous* container
+  serving, so the site stays up and every check stays green while prod goes stale (2026-08-06: nine
+  consecutive failed deploys, ~8 commits behind, undetected). The only proof is the `commit` field
+  of `GET /api/health` — the CI `verify-deploy` job polls it after every push to `main`. A 200 from
+  `/api/health` proves the process is alive, nothing more.
 - `client/` never imports from `server/`; `server/` never imports from `client/`; both import
   from `shared/`.
 - All vendor integrations (credit, AVM, GSE) are **deterministic simulations** behind adapter
