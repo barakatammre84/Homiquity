@@ -28,6 +28,7 @@ export default defineConfig({
       "tests/dependabotReactGrouping.test.ts",
       "tests/loCommsLint.test.ts",
       "tests/borrowerConditionView.test.ts",
+      "tests/securityHeaders.test.ts",
       "tests/loanProducts.test.ts",
       "tests/loCompensation.test.ts",
       "tests/compensationElectionQmGate.test.ts",

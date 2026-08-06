@@ -95,7 +95,13 @@ const cspDirectives = {
   reportUri: ["/api/csp-report"],
 };
 
-app.use(helmet({
+/**
+ * Baseline security headers. Exported so tests can assert the real config
+ * produces the real headers — the X-Frame-Options value differed between the
+ * CDN (vercel.json: DENY) and the app (helmet default: SAMEORIGIN), and nothing
+ * caught it because nothing tested it.
+ */
+export const HELMET_OPTIONS = {
   contentSecurityPolicy:
     process.env.NODE_ENV === "production"
       ? {
@@ -103,8 +109,20 @@ app.use(helmet({
           reportOnly: process.env.CSP_ENFORCE !== "true",
         }
       : false,
-  crossOriginEmbedderPolicy: false, // Google Maps tiles are not CORP-tagged
-}));
+  crossOriginEmbedderPolicy: false as const, // Google Maps tiles are not CORP-tagged
+  // DENY, not helmet's SAMEORIGIN default, to match what vercel.json serves at
+  // the CDN layer today. Nothing frames this app, and on the self-host path
+  // there is no CDN header to fall back on — leaving the default would have
+  // quietly WEAKENED clickjacking protection at the Railway cutover.
+  //
+  // The modern equivalent (CSP frame-ancestors 'none', in cspDirectives above)
+  // does not cover the gap on its own: CSP ships Report-Only until CSP_ENFORCE
+  // is set, so frame-ancestors is observed, not enforced. X-Frame-Options is
+  // the one actually blocking a frame right now.
+  frameguard: { action: "deny" as const },
+};
+
+app.use(helmet(HELMET_OPTIONS));
 
 // Private-beta gate (Express port of root middleware.ts — the Vercel Edge
 // original keeps serving Vercel until cutover). Total no-op unless
