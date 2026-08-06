@@ -125,9 +125,12 @@ cleartext.
   read this correction as evidence the swap cleared §5.5.
 - ⚠ **§5.6 decommissioning may be incomplete.** `AI_INTEGRATIONS_GEMINI_API_KEY` is still
   recorded as provisioned in `knowledge-base/archive/INFRASTRUCTURE_RISKS.md` and
-  `LAUNCH_READINESS_CHECKLIST.md`. §5.6 requires credential removal at decommissioning;
-  whether it was deprovisioned in Vercel is not visible from the repo. Env action, not a
-  doc edit.
+  `LAUNCH_READINESS_CHECKLIST.md`. §5.6 requires credential removal at decommissioning. The
+  hosting platform that held that variable (Vercel) was retired in the 2026-08 move to Railway
+  and its project deleted, so the platform-side copy is gone with it — but **deleting a variable
+  is not revoking a credential.** Revocation at Google AI Studio, and confirmation that no
+  Gemini key was carried into the Railway service variables, are env actions not visible from
+  the repo. Env action, not a doc edit.
 
 ## 6. Change management
 

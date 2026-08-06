@@ -20,6 +20,18 @@ confirm. New this pass: `shared/businessChannel.ts` declares the channel `broker
 delivery stack is frozen (`pnpm guard:channel`) pending
 [CHANNEL_DECISION.md](./CHANNEL_DECISION.md).
 
+**2026-08-06 platform note (not a verification pass).** Hosting moved from Vercel to **Railway**;
+the Vercel project has been deleted, so every "in Vercel" phrase in the rows below now reads
+*Railway service variable* (Railway → project *Homiquity* → service *Homiquity* → Variables).
+The 2026-08-04 note above is left as written — it records what that pass did and did not check.
+Two ops facts the move surfaced, both worth knowing before you trust any "prod is fine" claim:
+a **failed** Railway deploy leaves the previous container serving (nine failed in a row on
+2026-08-06, prod ~8 commits stale, every check green — only `/api/health`'s `commit` field
+disproves it), and `/api/health`'s `SELECT 1` succeeds against *any* reachable Postgres, so a
+green health check does not prove `DATABASE_URL` points at the intended Neon branch (it did not
+— data routes 500'd while health stayed 200). See
+[TEAM_PRACTICES](./TEAM_PRACTICES.md) §5 known-traps index.
+
 Last full verification pass: **2026-07-04** (source-of-truth audit). Spot-updated **2026-07-08**
 for migration HEAD and the pre-license gated-launch state, and **2026-07-12** (docs-hygiene pass)
 for: prod migration HEAD now **`0023`** (0000–0023 applied), the gated-beta money path (intake →
@@ -43,7 +55,7 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 | DU (Fannie) AUS submission | Simulated response, DU-12.1-shaped — the Run-DU/LPA **UI trigger** + XSD-conformance recording are wired (#135); the vendor leg stays simulated | `server/services/ausSubmission.ts` (F6) |
 | LPA (Freddie) AUS leg | Simulated (dual-AUS strategy decided 2026-07-04) | `server/services/ausSubmission.ts` (F6) |
 | Asset/income verification (Plaid, Truv) | Wiring + webhooks exist; no production keys | `server/plaid.ts` (F4, F5) |
-| Property valuation (AVM) | Simulated; realty-us/RealEstimate live endpoints exist but `RAPIDAPI_KEY` is Vercel-only (503 locally) | `server/services/rateService.ts`, property services (F7) |
+| Property valuation (AVM) | Simulated. realty-us/RealEstimate live endpoints exist in code, but **`RAPIDAPI_KEY` is not set anywhere** — it lived only in the Vercel project, which was deleted 2026-08-06, and was never re-created in Railway. The live endpoints therefore 503 in production too, not just locally. Setting it is LS-2-class ops work | `server/services/rateService.ts`, property services (F7) |
 | Rate sheets / pricing | Self-refreshing **demo** sheets (`version = "1.0-demo"`); internal PPE is the demo behind the future Lender Price/Mortech adapter | `seedMarketPricing`, roadmap F11 |
 | Wholesale lender submissions | Target-5 catalog + status machine built; **no lender has credentialed us** | `server/services/lenderSubmission.ts`, `shared/wholesaleLenders.ts` |
 | SMS sending | Compliance guards built (quiet hours, STOP ledger); **no SMS provider wired**, webhook signature check stubbed | `server/services/smsCompliance.ts` |
@@ -53,11 +65,11 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 | Assumption | Reality (verified 2026-07-04) | Unblocks |
 |---|---|---|
 | "Homiquity is a licensed broker" | **True at company level** *(corrected 2026-07-19)*: `shared/companyIdentity.ts` carries NMLS **#427468** with an Illinois-only `LICENSED_STATES` footprint (#154/#201). `mersOrgId` is still `PENDING`, and go-live remains behind the founder's pre-launch-gate flips — nothing commercial is real until those flip. | Go-live flips |
-| "The app sends email" | **False in prod.** Code is complete (SendGrid + SMTP fallback) but no `SENDGRID_API_KEY` in Vercel → emails log to console | LS-2 |
+| "The app sends email" | **False in prod.** Code is complete (SendGrid + SMTP fallback) but no `SENDGRID_API_KEY` in the Railway service variables → emails log to console | LS-2 |
 | "Production errors are visible" | **False.** Sentry-style reporter built, no-op until `SENTRY_DSN` is set; no uptime monitor | LS-2 |
-| "Uploaded documents persist in prod" | **False until LS-2.** Code side done (merged 2026-07-04, PR #44): the multer disk path is deleted, presigned-URL flow is the only path, and `request-url` returns a deliberate 503 `UPLOADS_UNCONFIGURED` until storage exists. Remaining = GCS bucket + credentials in Vercel, then the prod acceptance test | LS-2 |
-| "CI runs on every push" | **True** *(re-verified 2026-07-19 evening)*: `.github/workflows/ci.yml` runs the required **`gate`** check (typecheck · unit tests · blocking prod audit · schema guard · design-token ratchet) on every PR, branch protection enforces it with `enforce_admins` on, and the `migrate-prod` job auto-applies migrations on merge ([CICD.md](../runbooks/CICD.md)). ⚠️ Enforcement follows plan/visibility: a 2026-07-19 private flip silently **deleted** the rule for ~2½ hours (#252–#259 merged pre-green; re-applied when the repo went public again) — verify protection is live before trusting `--auto` ([TEAM_PRACTICES](./TEAM_PRACTICES.md) §6). Integration tests stay manual — CI never runs them. | — |
-| "Live mortgage rates" | Real vendor (realty-us RapidAPI) but key exists only in Vercel; local/dev sees simulated survey | — |
+| "Uploaded documents persist in prod" | **False until LS-2.** Code side done (merged 2026-07-04, PR #44): the multer disk path is deleted, presigned-URL flow is the only path, and `request-url` returns a deliberate 503 `UPLOADS_UNCONFIGURED` until storage exists. Remaining = GCS bucket + credentials as Railway service variables, then the prod acceptance test | LS-2 |
+| "CI runs on every push" | **True** *(re-verified 2026-07-19 evening)*: `.github/workflows/ci.yml` runs the required **`gate`** check (typecheck · unit tests · blocking prod audit · schema guard · design-token ratchet) on every PR, branch protection enforces it with `enforce_admins` on, and the `migrate-prod` job auto-applies migrations on merge ([CICD.md](../runbooks/CICD.md)). Added 2026-08-06: a `verify-deploy` job polls `/api/health` after every push to `main` and fails if prod is not serving that commit — the control for the silent-failed-deploy class above. Scheduled jobs are **not** platform cron: `.github/workflows/cron-jobs.yml` curls `/api/jobs/*` with `Authorization: Bearer $CRON_SECRET`, so `CRON_SECRET` must match between the GitHub **repository secret** and the **Railway service variable** or every job 401s silently. ⚠️ Enforcement follows plan/visibility: a 2026-07-19 private flip silently **deleted** the rule for ~2½ hours (#252–#259 merged pre-green; re-applied when the repo went public again) — verify protection is live before trusting `--auto` ([TEAM_PRACTICES](./TEAM_PRACTICES.md) §6). Integration tests stay manual — CI never runs them. | — |
+| "Live mortgage rates" | **False everywhere as of 2026-08-06.** The vendor leg (realty-us RapidAPI) is real in code, but `RAPIDAPI_KEY` is set in no environment — it died with the Vercel project and was not re-created in Railway — so prod and local both fall back to the simulated survey | — |
 | "Homiquity is heading to correspondent" | **UNDECIDED — the largest open question about the capital structure.** The repo carried a full Fannie Mae seller/servicer delivery stack (1,482 lines) that a broker never uses. As of 2026-08-04 the channel is DECLARED `broker` in `shared/businessChannel.ts`, the stack is frozen by `pnpm guard:channel` (may shrink, not grow), and `mersOrgId` reads `NOT_APPLICABLE_BROKER_CHANNEL` rather than `PENDING`. Flipping to correspondent invalidates the asset-light finding (F-16) and makes the contingent-liability register incomplete. Checklist + consequences: [CHANNEL_DECISION.md](./CHANNEL_DECISION.md) | Founder decision |
 
 ## 3. Uncited policy values — live code, unverified provenance

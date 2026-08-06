@@ -2,7 +2,8 @@
 
 An AI-native mortgage **brokerage** platform: borrower intake (digital 1003), document
 collection, deterministic underwriting, MISMO 3.4 packaging, and delivery of complete
-loan files to wholesale lenders. Deployed at <https://www.homiquity.com> (Vercel).
+loan files to wholesale lenders. Deployed at <https://www.homiquity.com> (Railway — one persistent
+Node process serving both the API and the static client; `www` is the canonical host).
 
 **Current status (2026-07-19): company NMLS licensure is real — NMLS #427468, Illinois
 (`shared/companyIdentity.ts`, #154/#201) — and the site remains in pre-launch gated mode
@@ -14,7 +15,9 @@ commercial machine — intake, deterministic pre-approval, LO claim/handoff, dua
 MISMO packaging, wholesale delivery — is **built and verified end-to-end behind the gate
 against simulated vendors** (2026-07-12 founder walkthrough, PRs #135–#139; see
 [BETA_GO_LIVE_READINESS.md](knowledge-base/runbooks/BETA_GO_LIVE_READINESS.md)), one config
-flip from go-live (`VITE_PRELAUNCH_GATED` + beta access code — founder-only). Nothing
+flip from go-live (`VITE_PRELAUNCH_GATED` + beta access code — founder-only; both are Railway
+service variables, and the `VITE_*` one is baked into the client bundle at build time, so flipping
+it takes a **redeploy**, not a restart). Nothing
 commercial is legally real until that flip — see
 [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md) for what is real, simulated, or
 pending, and [CTO_ROADMAP.md](CTO_ROADMAP.md) for the live work queue.
@@ -101,8 +104,11 @@ history. Never act on these.
 
 ## Repository ground rules (summary — full rules in CLAUDE.md)
 
-- `main` is production and protected: every merge deploys to Vercel. Land work via
-  short-lived PR branches through the required `gate` check — direct pushes are rejected.
+- `main` is production and protected: every merge builds and deploys on Railway (`railway.json`).
+  Land work via short-lived PR branches through the required `gate` check — direct pushes are
+  rejected. A green check is not proof the merge shipped: a failed Railway build leaves the previous
+  container serving, so only the `commit` field of `/api/health` (polled by CI's `verify-deploy`
+  job) proves prod is on your code. Rollback: [runbooks/ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md).
 - `client/` and `server/` never import from each other; both import from `shared/`.
 - Vendor integrations are deterministic simulations behind adapters until real contracts exist.
 - Borrower PII goes through `server/services/encryptionService.ts` / `ssnVault.ts` + audit log.

@@ -134,8 +134,12 @@ kill switch works, and the LS-2 env vars have a home. Verify `/api/health` respo
 
 ## 5. Founder critical path (only Amr can do — no team moves these)
 
-- [ ] **LS-2 — env vars in Vercel:** GCS bucket creds, `SENDGRID_API_KEY`/`FROM_EMAIL` +
-      SPF/DKIM DNS, `SENTRY_DSN` + uptime monitor on `/api/health`. (~1h)
+- [ ] **LS-2 — env vars as Railway service variables** *(these were Vercel project env vars when
+      this charter was written; hosting moved to Railway in 2026-08 — set them at Railway →
+      project *Homiquity* → service *Homiquity* → Variables)*: GCS bucket creds,
+      `SENDGRID_API_KEY`/`FROM_EMAIL` + SPF/DKIM DNS, `SENTRY_DSN` + uptime monitor on
+      `/api/health`. Point the uptime monitor at `https://www.homiquity.com/api/health` — `www`
+      is the canonical host on Railway; the apex is not served by Railway. (~1h)
 - [ ] **Push `ci.yml`** from a normal environment — the automation token lacks `workflow`
       scope. (~10 min)
 - [ ] **LS-6 — supervised prod reseed** (destructive wipe-and-reseed; founder-supervised).
@@ -249,6 +253,21 @@ pricing from an admitted tester). Rollout:
 3. **F1:** real NMLS id + `PRELAUNCH_GATED=false` + `VITE_PRELAUNCH_GATED=false` → funnel lights
    up for testers (site still invite-only).
 4. **Public launch:** delete `BETA_ACCESS_CODE` → middleware no-op, site public + funnel live.
+
+> **Platform note added 2026-08-06 — the decision above stands; only its mechanics moved.**
+> The "Edge Middleware" of PR #53 no longer exists: the beta gate is now an ordinary Express
+> middleware inside our own process (`server/middleware/betaGate.ts`), ported with its semantics
+> deliberately unchanged (same `BETA_ACCESS_CODE` comma-separated list, same `hq_beta`
+> SHA-256 cookie, same `/api/*` exemption, same Disallow-all `robots.txt` while armed). The
+> layering decision — beta gate is the front door, `prelaunchGate` hides the funnel inside — is
+> unaffected. Two mechanical corrections for whoever executes steps 2–4:
+> - The four env vars are now **Railway service variables** (Railway → project *Homiquity* →
+>   service *Homiquity* → Variables), not Vercel project env vars. The Vercel project is deleted.
+> - **`VITE_PRELAUNCH_GATED` is a build-time variable** — it is baked into the client bundle by
+>   `pnpm build`. Step 3 is therefore *not* a live toggle: setting it requires a **redeploy**
+>   before the browser sees the change. `PRELAUNCH_GATED` (server-side) and `BETA_ACCESS_CODE`
+>   are read at runtime. Expect a window where the two halves disagree, and verify the public
+>   surface after the redeploy, not after the variable edit.
 
 **Open seam (founder call):** an admitted tester lands on this PR's Waitlist at `/` (odd —
 they're already in; and #53's invite screen collects no public emails, so the Waitlist is

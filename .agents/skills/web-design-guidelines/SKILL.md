@@ -11,6 +11,14 @@ metadata:
 
 Review files for compliance with Web Interface Guidelines.
 
+> **Provenance note:** this is a third-party skill authored by Vercel Labs and its rules are fetched
+> from that public repository. The "vercel" references here are the *author* of the guidelines and
+> have nothing to do with Homiquity's hosting — the app runs on Railway. Don't "correct" them.
+> On conflict, Homiquity's own design rules win:
+> [`design_guidelines.md`](../../../knowledge-base/handbook/design/design_guidelines.md) and
+> [`visual-consistency-standard.md`](../../../knowledge-base/handbook/design/visual-consistency-standard.md)
+> (Royal Blue Emerald tokens, the design-token guard, WCAG AA).
+
 ## How It Works
 
 1. Fetch the latest guidelines from the source URL below

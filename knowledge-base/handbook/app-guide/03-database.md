@@ -10,7 +10,7 @@
 - **Driver selection** ([`server/db.ts`](../../../server/db.ts)): a
   `localhost`/`127.0.0.1` `DATABASE_URL` (or `USE_LOCAL_PG=true`) uses the
   standard `pg` driver; any other URL uses the **Neon serverless** driver
-  (WebSocket-based — what runs on Vercel).
+  (WebSocket-based — what runs in production against Neon).
 - **Migrations**: versioned SQL in [`migrations/`](../../../migrations/)
   (`0000_baseline.sql` onward), **hand-authored** — `drizzle-kit generate` has
   snapshot drift in this repo and produces wrong output. Apply with
@@ -23,7 +23,16 @@
 | Environment | Database | How |
 |-------------|----------|-----|
 | Local dev | Native Postgres on `localhost:5432`, db `homiquity` | `DATABASE_URL` in `.env` |
-| Production (Vercel) | Neon (us-east-2, pooled) | `DATABASE_URL` in Vercel env. **No prod credential lives locally** — the `migrate-prod` CI job mints a DIRECT (unpooled) URL from `NEON_API_KEY` at run time, and prod data checks run *through CI* ([DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md)) |
+| Production (Railway) | Neon (us-east-2, pooled) | `DATABASE_URL` as a **Railway service variable** (Railway → project `Homiquity` → service `Homiquity` → Variables). **No prod credential lives locally** — the `migrate-prod` CI job mints a DIRECT (unpooled) URL from `NEON_API_KEY` at run time, and prod data checks run *through CI* ([DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md)) |
+
+> ⚠️ **The app's `DATABASE_URL` and CI's minted URL are two independent settings, and
+> nothing reconciles them.** On 2026-08-06 Railway's `DATABASE_URL` was pointed at a
+> stale Neon branch (28 of 53 migrations applied, no writes since 07-15) while
+> `migrate-prod` kept migrating the real one. `/api/health` stayed 200 the whole time —
+> its probe is a bare `SELECT 1`, which the wrong database answers just as happily —
+> while `/api/articles` and `/sitemap.xml` 500'd. **If health is green but real endpoints
+> fail on missing tables/columns, check which Neon branch the service variable points
+> at** before you suspect the code.
 
 ## Schema domains (what lives where)
 

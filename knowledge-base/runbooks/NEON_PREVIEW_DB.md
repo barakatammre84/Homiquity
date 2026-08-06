@@ -1,8 +1,38 @@
 # Neon preview databases — getting prod PII out of previews
 
-**Status 2026-07-17: tooling BUILT (this runbook + `preview-seed.yml`); the
-cutover needs two founder Console actions (§3). Until those happen, previews
-still clone production.**
+> ## ⚪ STATUS 2026-08-06: DORMANT — there are no preview deployments any more
+>
+> The platform moved from Vercel to Railway and **the Vercel project was deleted**
+> (its API now 404s). The Neon↔Vercel integration this runbook was written against
+> is therefore gone, and with it the per-push preview branches:
+>
+> - **The hazard is moot for now.** Nothing creates a `preview/*` Neon branch, so
+>   nothing is cloning the production borrower dataset. The "every preview
+>   connection string is a production credential" exposure described in §1 has no
+>   live surface.
+> - **The two founder Console actions in §3 are NO LONGER REQUIRED.** They existed
+>   to stop the Vercel integration from branching prod; there is no integration to
+>   stop. Do not action them; they are kept below as the recipe, not as a to-do.
+>   (Wherever another doc still lists them as an open founder item — e.g. the
+>   go-live checklist — that item is closed by removal, not by being done.)
+> - **The doctrine below stays.** It is the design the next preview environment must
+>   satisfy. Railway supports per-PR environments; **if PR environments are ever
+>   enabled for this project, the whole of §1–§5 applies again** — re-read it *before*
+>   turning them on, not after, and re-derive the Neon side rather than assuming the
+>   Vercel-specific mechanics (branch-per-push, integration-managed parent) carry over.
+>   Whether Railway's PR environments would need Neon branching at all, or how they
+>   would be wired to it, has **not** been investigated.
+> - **`preview-seed` may still exist as a Neon branch.** It is harmless and no longer
+>   consumed by anything. Leave it, or have the founder delete it — but be certain of
+>   *which* branch you are looking at first (see the mis-pointing warning at the end
+>   of §5).
+>
+> Prior status (superseded, kept for context): *2026-07-17 — tooling BUILT (this
+> runbook + `preview-seed.yml`); the cutover needs two founder Console actions (§3).
+> Until those happen, previews still clone production.*
+
+**Everything below §1 describes the Vercel-era mechanism, in the present tense as it
+was written. Read it as the design record, not as current state.**
 
 ## 1. The problem (verified by CI probe, 2026-07-17)
 
@@ -65,7 +95,11 @@ The workflow (`.github/workflows/preview-seed.yml`, manual-dispatch only —
 
 No step prints a connection string or password.
 
-## 3. Founder cutover (Console-only; Claude cannot click these)
+## 3. Founder cutover (Console-only; Claude cannot click these) — ⚪ NOT REQUIRED, see STATUS
+
+*These two clicks existed to disarm the Neon↔Vercel integration. That integration no longer
+exists (the Vercel project was deleted), so there is nothing to turn off and no Preview-scoped
+`DATABASE_URL` to repoint. Kept verbatim as the recipe for a future preview environment.*
 
 1. **Neon Console → Integrations → Vercel → Manage**: turn **off** automatic
    preview-branch creation.
@@ -104,3 +138,15 @@ No step prints a connection string or password.
   not real borrowers.
 - Prod migrations still target production: `migrate-prod` is untouched
   (`NEON_BRANCH_NAME` is opt-in and only `preview-seed.yml` sets it).
+
+> ⚠️ **A non-production Neon branch handed to the production app is its own outage
+> class, and it is *quiet*.** On 2026-08-06 the running app's `DATABASE_URL` was
+> pointed at a stale Neon branch (28 of 53 migrations applied, no writes since 07-15):
+> `/api/articles` and `/sitemap.xml` 500'd for half an hour while `GET /api/health`
+> kept returning **200**, because its `SELECT 1` succeeded perfectly well against the
+> wrong database. Health checks cannot detect this. Whenever a second Neon branch
+> exists for any reason — `preview-seed`, an orphaned clone, a restore — treat "which
+> branch is the running service actually connected to?" as a thing to *verify*, not
+> assume: Railway → project `Homiquity` → service `Homiquity` → **Variables** →
+> `DATABASE_URL`, matched against the branch's connection string in the Neon Console.
+> This is the strongest argument for deleting preview branches once they are done with.

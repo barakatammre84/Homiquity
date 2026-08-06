@@ -97,9 +97,13 @@ Practically:
    [.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md) — note that
    `.agents/memory/` is in-repo agent memory, visible to every session; check it before
    fighting a known battle.
-7. New or changed environment variables land in `.env.example` **and** the Vercel env-var
-   list in [CICD.md](../runbooks/CICD.md) in the same PR. *(Prevents: a variable that exists only in
-   someone's `.env` or the Vercel dashboard, invisible to the next deployer.)*
+7. New or changed environment variables land in `.env.example` **and** the env-var list in
+   [CICD.md](../runbooks/CICD.md) in the same PR — production values live as **Railway service
+   variables** (Railway → project *Homiquity* → service *Homiquity* → Variables).
+   *(Prevents: a variable that exists only in someone's `.env` or the Railway dashboard,
+   invisible to the next deployer.)* Say in the PR body whether the new variable is `VITE_*`:
+   those are **build-time**, baked into the client bundle by `pnpm build`, so changing one
+   takes effect on the next **redeploy**, not on a restart.
 8. PR body contract: verification evidence (point 4), each new dependency justified in one
    line, a prod-impact note (migrations to apply / env vars to set / "none"), and an explicit
    doc-sync line — "docs updated: <files>" or "no doc update required". Silence is not a
@@ -127,10 +131,25 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
   `_journal.json` `when` as well as by hash (`scripts/migrate-prod.cjs`), so a copy-pasted
   `when` makes prod treat the new migration as already applied. Every `when` must be unique
   and strictly increasing ([DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md) §Adding a migration).
-- **npm crashes mid-install on Vercel** ("Exit handler never called") — Vercel builds with
-  pnpm, and `pnpm-lock.yaml` is the **only** lockfile: after any dependency change run
-  `pnpm install` and commit `pnpm-lock.yaml`. Never resurrect `package-lock.json` via
-  `pnpm import` — it was deleted as proxy-poisoned (CH-1, 2026-07-08; [CICD.md](../runbooks/CICD.md)).
+- **`pnpm-lock.yaml` is the only lockfile, and a stale one now fails the deploy outright** —
+  the Railway build runs `pnpm install --frozen-lockfile && pnpm build` ([railway.json](../../railway.json)),
+  which refuses to reconcile a lockfile that disagrees with `package.json`. After any dependency
+  change run `pnpm install` and commit `pnpm-lock.yaml`. Never resurrect `package-lock.json` via
+  `pnpm import` — it was deleted as proxy-poisoned (CH-1, 2026-07-08, when npm crashed mid-install
+  with "Exit handler never called" on the then-host; [CICD.md](../runbooks/CICD.md)).
+- **A failed Railway deploy leaves the previous container serving — the site stays up and every
+  check stays green.** On 2026-08-06 nine consecutive deploys failed (`engines.node: "24.x"` is
+  npm range syntax that mise, the Railpack toolchain resolver, cannot resolve) and prod sat ~8
+  commits stale while `/api/health` answered 200 throughout. Neither a Railway deployment reading
+  SUCCESS nor a 200 from `/api/health` is evidence your merge shipped — **only the `commit` field
+  of `/api/health`** (it carries `RAILWAY_GIT_COMMIT_SHA`). CI's `verify-deploy` job polls it after
+  every push to `main` and fails when prod is not serving that commit; if that job is red, treat
+  prod as stale no matter what the dashboard says.
+- **`/api/health` returning 200 does not mean the app is talking to the right database.** Its
+  probe is a `SELECT 1`, which succeeds against *any* reachable Postgres. Also on 2026-08-06 the
+  Railway service's `DATABASE_URL` was pointed at a stale Neon branch (28 of 53 migrations, no
+  writes since 07-15): health stayed green while `/api/articles` and `/sitemap.xml` 500'd. After
+  any DB env change, probe a **data-bearing** route as well, not just health.
 - **Racing merges can land a tree the gate never tested** — the gate runs on the PR branch
   as pushed, so a PR that merges while other PRs land is combined with `main` untested
   (discovered 2026-07-17). The control is `strict: true` on `main`'s required status checks
@@ -175,13 +194,17 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
   ledgered founder action — the `enforce_admins` toggle while protection is live, a
   knowing direct push only when it is not. Never autonomous, never silent —
   [ROLLBACK.md](../runbooks/ROLLBACK.md) §2.)*
-- Every merge to `main` deploys production. A deploying merge — and any action against the
-  production DB or env — is not complete until its entry lands in the **production change
-  ledger** in [CICD.md](../runbooks/CICD.md), same session: what shipped, prod DB/env actions,
-  validation evidence, rollback pointer. Validation **must include the binding post-deploy
-  health probe** — `curl https://www.homiquity.com/api/health` — because Vercel READY attests
-  the build, not the runtime. *(Prevents: an unledgered deploy invisible to the next incident
-  responder — and the 2026-07-17 class of outage, where a READY deploy served a dead API.)*
+- Every merge to `main` deploys production — Railway builds from GitHub and rolls a new
+  container. A deploying merge — and any action against the production DB or env — is not
+  complete until its entry lands in the **production change ledger** in
+  [CICD.md](../runbooks/CICD.md), same session: what shipped, prod DB/env actions, validation
+  evidence, rollback pointer. Validation **must include the binding post-deploy health probe** —
+  `curl https://www.homiquity.com/api/health` — and must read the **`commit`** field, not just
+  the status code: a build status attests the build, not the runtime, and a *failed* Railway
+  deploy leaves the previous container serving, so a healthy 200 can be the old code answering
+  (2026-08-06: nine failed deploys, prod ~8 commits stale, every check green). *(Prevents: an
+  unledgered deploy invisible to the next incident responder — and the 2026-07-17 class of
+  outage, where a deploy marked READY served a dead API.)*
 - Scheduled routines publish **docs-only, through the same PR lane** (docs-only branch →
   gate watched to green → merge; the routine inspects every commit's paths before opening
   the PR). A routine never carries code.

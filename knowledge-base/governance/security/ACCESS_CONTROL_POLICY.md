@@ -23,7 +23,7 @@ policy's onboarding requirements (2FA before first access), and a row in the
 ## 3. Console authentication requirements
 
 **2FA (authenticator app or passkey — not SMS where avoidable) is required on every console**
-that can reach source code, production infrastructure, or borrower data: GitHub, Vercel,
+that can reach source code, production infrastructure, or borrower data: GitHub, Railway,
 Neon, Google Workspace / Google Cloud, Anthropic Console, and ancillary vendor consoles
 (property data, error monitoring, email delivery, and the Plaid Dashboard upon issuance).
 Per-console status is tracked in the register; a console found without 2FA is remediated
@@ -33,8 +33,10 @@ within 7 days or has its access suspended.
 
 - **Grant:** Security Owner approval; narrowest workable scope.
 - **Review:** quarterly, alongside the register review — confirm every seat is still needed.
-- **Revoke:** within 24 hours of departure or role change — remove the GitHub, Vercel, Neon,
-  and Google seats; then rotate anything the departing person could have held: vendor API
+- **Revoke:** within 24 hours of departure or role change — remove the GitHub, Railway, Neon,
+  and Google seats (note that a Railway seat is often held via a GitHub or Google login:
+  removing the identity-provider seat is not the same as removing the Railway project member,
+  so do both); then rotate anything the departing person could have held: vendor API
   keys at their consoles, `SESSION_SECRET` (invalidates all sessions), the Neon password, and
   PII encryption keys by versioned rotate-forward (`ENCRYPTION_ACTIVE_KEY_ID` — new writes use
   the new key, old rows still decrypt).
@@ -52,14 +54,22 @@ within 7 days or has its access suspended.
   connection string **minted at run time** from `NEON_API_KEY`
   (`scripts/neon-connection-uri.cjs`); no standing production database password exists in
   GitHub, and the migration tool refuses non-TLS URLs (`scripts/migrate-prod.cjs`).
+- Merged changes are built and deployed by Railway from GitHub; no one deploys from a laptop.
+  A post-deploy CI job (`verify-deploy`) confirms production is serving the merged commit by
+  reading the `commit` field of `GET /api/health`, because a failed Railway build leaves the
+  previous container running and therefore looks healthy from outside.
 - Destructive production actions (data changes, env flips, credential rotation) are
   Security-Owner-supervised and recorded in the production change ledger
   ([CICD.md](../../runbooks/CICD.md)) — see [TEAM_PRACTICES.md](../TEAM_PRACTICES.md) §6.
 
 ## 6. Secrets
 
-- Production secrets exist only in Vercel project environment variables; local development
-  uses a gitignored `.env` (`.env.example` in the repo carries empty placeholders only).
+- Production secrets exist only as **Railway service variables** (Railway → project
+  *Homiquity* → service *Homiquity* → Variables); local development uses a gitignored `.env`
+  (`.env.example` in the repo carries empty placeholders only).
+- **Never put a secret in a `VITE_*` variable.** Those are build-time values compiled into the
+  client bundle by `pnpm build` and therefore shipped to every browser. `VITE_*` is for public
+  configuration only (e.g. the pre-launch gate flag); anything secret stays server-side.
 - No secrets in code, logs, or URLs; API response-body logging is restricted to an explicit
   allowlist (`server/app.ts`), widening of which is itself a §9 security-review trigger.
 - `SESSION_SECRET` has a boot-enforced entropy floor in production. PII encryption keys are

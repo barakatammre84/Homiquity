@@ -5,7 +5,8 @@
 **Deeper dives:** the [`kb/app-guide/`](./app-guide/) handbook covers each subsystem in more detail. This playbook is the map; the handbook is the terrain.
 
 > **Golden rules**
-> 1. `main` is production **and protected** — work lands as short-lived PR branches through the required `gate` check (squash-merge your own green PR; direct pushes are rejected, founder included — [CICD.md](../runbooks/CICD.md)). Every merge deploys to Vercel. Rollback = Vercel Promote first, then revert **via PR** ([ROLLBACK.md](../runbooks/ROLLBACK.md)).
+> 1. `main` is production **and protected** — work lands as short-lived PR branches through the required `gate` check (squash-merge your own green PR; direct pushes are rejected, founder included — [CICD.md](../runbooks/CICD.md)). Every merge is built and deployed by **Railway** from GitHub. Rollback = Railway **Deployments → ⋯ → Rollback** first, then revert **via PR** ([ROLLBACK.md](../runbooks/ROLLBACK.md)).
+>    **And a green merge is not a shipped deploy:** a failed Railway build leaves the *previous* container serving, so the site stays up and every check stays green while prod goes stale (2026-08-06: nine failed deploys, ~8 commits behind, unnoticed). The only proof is the `commit` field of `GET /api/health`; the CI `verify-deploy` job polls it after every push to `main`.
 > 2. The client **never** imports from `server/`. The server **never** imports from `client/`. Both import from `shared/`.
 > 3. All vendor integrations (credit, AVM, GSE) run through adapter functions that are **deterministic simulations** until the real API keys exist. Never hardcode a vendor call outside its adapter.
 > 4. Anything that touches borrower PII goes through `server/services/encryptionService.ts` and gets an audit-log entry.
@@ -20,10 +21,12 @@ This is a single workspace, not a multi-package monorepo. The blueprint concepts
 | Concept | Real directory |
 |---|---|
 | Web app (React SPA) | `client/` |
-| API server (Express) | `server/` |
+| API server (Express) — also serves the built client in prod | `server/` |
 | MCP server (agent tools) | `server/mcp/` |
 | Shared types + schemas | `shared/` |
-| Serverless entry (Vercel) | `api/` |
+| Production entry (Railway) | `server/index-prod.ts` → `dist/index.js` |
+
+There is **no serverless entry and no edge middleware**: the former `api/` directory and root `middleware.ts` were deleted at the Railway cutover. Production is one persistent Node process that answers `/api/*` and serves `dist/public`.
 
 ### Annotated tree
 
@@ -54,7 +57,13 @@ This is a single workspace, not a multi-package monorepo. The blueprint concepts
 │   ├── app.ts                  createApp(): middleware, CSRF (with /api/webhooks/
 │   │                           carve-out), session auth, route registration
 │   ├── index-dev.ts            Dev entry (tsx + Vite middleware + dotenv)
-│   ├── index-prod.ts           Persistent-server prod entry (VM/dist build)
+│   ├── index-prod.ts           THE prod entry (bundled to dist/index.js): bot
+│   │                           prerender → express.static(dist/public) → SPA
+│   │                           catch-all, in the same process as the API
+│   ├── prerender.ts            Bot prerender middleware (in-process; replaced
+│   │                           the old platform prerender feature)
+│   ├── middleware/betaGate.ts  Private-beta gate (Express; replaced the old
+│   │                           platform edge middleware)
 │   ├── db.ts                   Drizzle connection (Neon serverless driver, or
 │   │                           node-postgres automatically for localhost URLs)
 │   ├── storage/                Data-access layer — 22 domain files composed into
@@ -94,17 +103,16 @@ This is a single workspace, not a multi-package monorepo. The blueprint concepts
 │   ├── mismo.ts                MISMO 3.4 reference-model types (ULDD Phase 5)
 │   └── dataProvenance.ts
 │
-├── api/                        Vercel serverless target
-│   ├── index.ts                Handler: dynamic-imports the bundle below
-│   └── _app.mjs                esbuild pre-bundle of server/app.ts (generated
-│                               by `pnpm vercel-build` — never edit by hand)
-│
 ├── tests/                      Vitest suites (unit + integration configs)
 ├── migrations/                 Hand-authored versioned SQL (never drizzle-kit generate)
 ├── knowledge-base/             All documentation, indexed in its README (handbook/,
 │                               specs/, runbooks/, compliance/, governance/, logs/, archive/)
+├── .github/workflows/          ci.yml (gate · migrate-prod · verify-deploy) and
+│                               cron-jobs.yml — THE scheduler for /api/jobs/*
 ├── drizzle.config.ts           Points at shared/schema.ts
-├── vercel.json                 pnpm install --frozen-lockfile, function config
+├── railway.json                Deploy config as code: Railpack builder,
+│                               `pnpm install --frozen-lockfile && pnpm build`,
+│                               `pnpm start`, healthcheck /api/health, ON_FAILURE
 └── .env.example                Copy to .env — documents every variable
 ```
 
@@ -118,7 +126,7 @@ Configured in `tsconfig.json` and `vite.config.ts` (they must stay in sync):
 | `@shared/*` | `shared/*` | client **and** server |
 | `@assets/*` | `attached_assets/*` | client only (Vite) |
 
-There is deliberately **no `@api/` alias**: server files import each other with shallow relative paths (`../db`, `./services/…`), which keeps the esbuild serverless bundle trivial. If you find yourself writing `../../../`, you are putting the file in the wrong place.
+There is deliberately **no `@api/` alias**: server files import each other with shallow relative paths (`../db`, `./services/…`), which keeps the esbuild production bundle (`dist/index.js`) trivial. If you find yourself writing `../../../`, you are putting the file in the wrong place.
 
 ### Naming conventions
 
@@ -292,5 +300,9 @@ Prereqs: Node 24.x (corepack ships with it), and either Docker **or** a local/ho
                              # note: creates loan applications for buyer@test.com
    ```
 8. **MCP server (stdio):** registered for Claude Code in `.mcp.json` as `homiquity`; run manually with `pnpm mcp`. Smoke test by piping newline-delimited JSON-RPC (`initialize` → `notifications/initialized` → `tools/list` → `tools/call`) into `npx tsx server/mcp/index.ts`. Tools: `run_soft_credit_pull`, `get_best_execution_rates`, `retrieve_property_valuation`. **Never** add a `console.log` to the MCP import graph — stdout is the protocol; `bootstrap.ts` rebinds logging to stderr and must remain the first import.
-9. **Ship:** branch → PR → the `gate` check goes green → `gh pr merge --squash` (direct pushes to `main` are blocked by branch protection and barred by doctrine; before trusting `--auto`, verify protection is live — it silently vanished for 2½ hours on 2026-07-19; [TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6; full recipe in [CICD.md](../runbooks/CICD.md) §Shipping). Vercel builds (`pnpm install --frozen-lockfile`, `pnpm vercel-build`) and deploys every merge — then verify `https://www.homiquity.com/api/health` (**READY is not healthy**; [CICD.md](../runbooks/CICD.md) §Post-deploy health check). Roll back per [ROLLBACK.md](../runbooks/ROLLBACK.md): Vercel Promote first, then revert via PR.
+9. **Ship:** branch → PR → the `gate` check goes green → `gh pr merge --squash` (direct pushes to `main` are blocked by branch protection and barred by doctrine; before trusting `--auto`, verify protection is live — it silently vanished for 2½ hours on 2026-07-19; [TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6; full recipe in [CICD.md](../runbooks/CICD.md) §Shipping). Railway builds every merge from GitHub per [`railway.json`](../../railway.json) (`pnpm install --frozen-lockfile && pnpm build`, then `pnpm start`) — then verify the deploy actually shipped:
+   ```bash
+   curl -sS https://www.homiquity.com/api/health   # `commit` must equal `git rev-parse origin/main`
+   ```
+   **SUCCESS is not shipped and 200 is not healthy** — a failed build leaves the previous container serving, and the health probe is a bare `SELECT 1` that the *wrong* database answers just as happily (both failure modes happened on 2026-08-06). CI's `verify-deploy` job polls this for you. Roll back per [ROLLBACK.md](../runbooks/ROLLBACK.md): Railway → service → Deployments → ⋯ → **Rollback** first (not `railway redeploy`, which rebuilds the broken commit), then revert via PR.
 10. **Read next:** [`app-guide/01-start-here.md`](./app-guide/01-start-here.md) and the rest of the handbook for architecture, data flow, schema, and secrets deep-dives.
