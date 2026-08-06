@@ -8,6 +8,7 @@ import {
   extractBankStatementData,
   extractLeaseData,
 } from "../extractionService";
+import type { ExtractedDocumentData, ExtractedTaxReturnData } from "../extractionCore";
 import { recordCoarseExtraction, markHumanReviewCompleted } from "../services/documentConfidence";
 import { allowedUploadTypes, bufferMatchesAllowedSignature } from "./utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
@@ -294,7 +295,10 @@ export function registerDocumentRoutes(
       }
 
       const { documentYear } = req.body;
-      let extractedData: any;
+      // Typed, not `any`: the readiness wiring below reads real fields off this
+      // object, and an `any` here is exactly what hid F-030 from tsc — a map
+      // indexed by field names that exist on none of these interfaces.
+      let extractedData: ExtractedDocumentData;
 
       switch (document.documentType) {
         case "tax_return":
@@ -359,21 +363,31 @@ export function registerDocumentRoutes(
           const { hasUserConsent } = await import("../consentGate");
           if (await hasUserConsent("tax_document_use", document.userId)) {
             const { saveTaxInsightForDocument } = await import("../services/taxInsightService");
-            await saveTaxInsightForDocument(document.userId, id, extractedData);
+            // Safe by construction: this branch is guarded on
+            // documentType === "tax_return", which is exactly the case that
+            // selected extractTaxReturnData in the switch above.
+            await saveTaxInsightForDocument(
+              document.userId,
+              id,
+              extractedData as ExtractedTaxReturnData,
+            );
           }
         } catch (insightErr) {
           console.warn("[TaxInsight] Insight derivation failed (non-fatal):", insightErr);
         }
       }
 
-      if (extractedData.confidence !== "low" && extractedData.extractedFields) {
+      if (extractedData.confidence !== "low") {
         try {
           const { wireExtractionToReadiness } = await import("../services/optimizationEngine");
+          // Pass the extraction RESULT, not `extractedFields` — the latter is a
+          // string[] of field NAMES, and handing it to a value-reading map is
+          // what made every value-bearing readiness row silently skip (F-030).
           const readinessResult = await wireExtractionToReadiness(
             document.userId,
             id,
             document.documentType,
-            extractedData.extractedFields,
+            extractedData as unknown as Record<string, any>,
             extractedData.confidence
           );
           console.log(`[OPT-1] Readiness fields updated: ${readinessResult.fieldsUpdated.join(", ") || "none"}`);
