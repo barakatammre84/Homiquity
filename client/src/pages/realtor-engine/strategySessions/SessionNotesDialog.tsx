@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -36,7 +36,7 @@ export function SessionNotesDialog({
           {session && (
             <div className="text-sm text-muted-foreground" data-testid="text-dialog-session-info">
               {session.topic || "Untitled Session"} -{" "}
-              {format(new Date(session.scheduledAt), "MMM d, yyyy")}
+              {formatDateSafe(session.scheduledAt, "MMM d, yyyy", "Not scheduled")}
             </div>
           )}
           <div>

@@ -7,7 +7,7 @@ import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
-import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import type { EquitySnapshot } from "./types";
 
 export function EquitySection({ profileId }: { profileId: string }) {
@@ -86,7 +86,7 @@ export function EquitySection({ profileId }: { profileId: string }) {
                       />
                     </div>
                     <span className="text-[9px] text-muted-foreground">
-                      {format(new Date(snap.snapshotDate), "M/yy")}
+                      {formatDateSafe(snap.snapshotDate, "M/yy")}
                     </span>
                   </div>
                 );

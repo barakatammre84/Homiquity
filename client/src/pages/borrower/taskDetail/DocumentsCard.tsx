@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, FileText, Loader2, Upload } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import type { Document, TaskDocument } from "@shared/schema";
 
 export type TaskDocumentWithFile = TaskDocument & { document: Document };
@@ -67,7 +67,7 @@ export function DocumentsCard({
                   <div>
                     <p className="font-medium">{taskDoc.document.fileName}</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(taskDoc.createdAt!), "MMM d, yyyy 'at' h:mm a")}
+                      {formatDateSafe(taskDoc.createdAt, "MMM d, yyyy 'at' h:mm a")}
                     </p>
                   </div>
                 </div>

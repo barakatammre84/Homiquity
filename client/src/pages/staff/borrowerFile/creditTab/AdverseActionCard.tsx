@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { AlertOctagon, CheckCircle2, Download } from "lucide-react";
 import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import type { CreditSummary } from "../model";
 
 export interface NoticeDeliveryState {
@@ -75,7 +76,7 @@ export function AdverseActionCard({
               {creditData.latestAdverseAction.primaryReason}
             </p>
             <p className="text-xs text-muted-foreground">
-              Generated: {format(new Date(creditData.latestAdverseAction.noticeDate), "MMM d, yyyy")}
+              Generated: {formatDateSafe(creditData.latestAdverseAction.noticeDate, "MMM d, yyyy")}
             </p>
             {creditData.latestAdverseAction.deliveredAt ? (
               <p className="text-xs text-muted-foreground" data-testid="text-notice-delivered">

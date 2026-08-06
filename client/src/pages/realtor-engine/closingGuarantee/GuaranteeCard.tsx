@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock, Shield } from "lucide-react";
 import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { GuaranteeTypeBadge, StatusBadge } from "./badges";
@@ -40,7 +41,7 @@ export function GuaranteeCard({ guarantee }: { guarantee: ClosingGuaranteeRecord
                   Application: {guarantee.applicationId}
                 </span>
                 <span data-testid={`text-target-date-${guarantee.id}`}>
-                  Target: {format(new Date(guarantee.targetDate), "MMM d, yyyy h:mm a")}
+                  Target: {formatDateSafe(guarantee.targetDate, "MMM d, yyyy h:mm a")}
                 </span>
                 {guarantee.targetHours && (
                   <span data-testid={`text-target-hours-${guarantee.id}`}>

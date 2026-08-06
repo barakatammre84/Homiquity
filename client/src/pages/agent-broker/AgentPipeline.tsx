@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import {
   Users,
   MapPin,
@@ -157,7 +158,7 @@ function PipelineCard({ item }: { item: PipelineItem }) {
               )}
               <span className="flex items-center gap-1" data-testid={`text-updated-${item.id}`}>
                 <Clock className="h-3 w-3" />
-                Updated: {format(new Date(item.lastUpdatedAt), "MMM d, yyyy")}
+                Updated: {formatDateSafe(item.lastUpdatedAt, "MMM d, yyyy")}
               </span>
             </div>
           </div>

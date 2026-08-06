@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronRight, MessageSquare } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import { NewScenarioDialog, emptyScenarioDraft } from "./NewScenarioDialog";
 import type { DealDeskThread } from "./types";
 
@@ -91,7 +91,7 @@ export function DealDeskTab() {
                     <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       {thread.loanAmount && <span>${Number(thread.loanAmount).toLocaleString()}</span>}
                       {thread.creditScore && <span>Score: {thread.creditScore}</span>}
-                      <span>{format(new Date(thread.createdAt), "MMM d, yyyy")}</span>
+                      <span>{formatDateSafe(thread.createdAt, "MMM d, yyyy")}</span>
                     </div>
                   </div>
                   <Button size="icon" aria-label="Next" variant="ghost" data-testid={`button-view-thread-${thread.id}`}>

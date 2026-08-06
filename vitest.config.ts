@@ -30,6 +30,7 @@ export default defineConfig({
       "tests/onboardingDocumentProgress.test.ts",
       "tests/loanEstimatePdf.test.ts",
       "tests/inertButtons.test.ts",
+      "tests/unguardedDateFormatting.test.ts",
       "tests/policyProfileIdentity.test.ts",
       "tests/policyScalarRegistry.test.ts",
       "tests/feeTolerance.test.ts",

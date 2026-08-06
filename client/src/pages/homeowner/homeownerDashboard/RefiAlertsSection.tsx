@@ -8,7 +8,7 @@ import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
-import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import type { RefiAlert } from "./types";
 
 export function RefiAlertsSection({ profileId }: { profileId: string }) {
@@ -119,7 +119,7 @@ export function RefiAlertsSection({ profileId }: { profileId: string }) {
                       )}
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-2">
-                      Created: {format(new Date(alert.createdAt), "MMM d, yyyy")}
+                      Created: {formatDateSafe(alert.createdAt, "MMM d, yyyy")}
                     </p>
                   </div>
                   <Button

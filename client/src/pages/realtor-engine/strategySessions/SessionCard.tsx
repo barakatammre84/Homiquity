@@ -1,5 +1,5 @@
 import { Calendar, CheckCircle2, Clock, FileText, ListChecks, XCircle } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SessionTypeBadge, StatusBadge } from "./badges";
@@ -32,7 +32,7 @@ export function SessionCard({
               <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1" data-testid={`text-date-${session.id}`}>
                   <Calendar className="h-3 w-3" />
-                  {format(new Date(session.scheduledAt), "MMM d, yyyy 'at' h:mm a")}
+                  {formatDateSafe(session.scheduledAt, "MMM d, yyyy 'at' h:mm a", "Not scheduled")}
                 </span>
                 <span className="flex items-center gap-1" data-testid={`text-duration-${session.id}`}>
                   <Clock className="h-3 w-3" />

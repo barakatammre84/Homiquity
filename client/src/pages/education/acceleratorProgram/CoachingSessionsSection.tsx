@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-boundary";
-import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import { ScheduleSessionDialog } from "./ScheduleSessionDialog";
 import type { CoachingSession } from "./types";
 
@@ -77,7 +77,7 @@ export function CoachingSessionsSection({ enrollmentId }: { enrollmentId: string
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
                       <span className="flex items-center gap-1" data-testid={`text-session-date-${session.id}`}>
                         <Calendar className="h-3 w-3" />
-                        {format(new Date(session.scheduledAt), "MMM d, yyyy 'at' h:mm a")}
+                        {formatDateSafe(session.scheduledAt, "MMM d, yyyy 'at' h:mm a", "Not scheduled")}
                       </span>
                       <span className="flex items-center gap-1" data-testid={`text-session-duration-${session.id}`}>
                         <Clock className="h-3 w-3" />

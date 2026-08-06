@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import type { Task } from "@shared/schema";
 
 export function TaskDetailsCard({ task }: { task: Task }) {
@@ -29,7 +30,7 @@ export function TaskDetailsCard({ task }: { task: Task }) {
         <div>
           <p className="text-sm text-muted-foreground">Created</p>
           <p className="font-medium">
-            {format(new Date(task.createdAt!), "MMMM d, yyyy")}
+            {formatDateSafe(task.createdAt, "MMMM d, yyyy")}
           </p>
         </div>
         {task.verifiedAt && (

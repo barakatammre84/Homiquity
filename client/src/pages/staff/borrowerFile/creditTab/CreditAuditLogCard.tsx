@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileWarning } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import type { CreditAuditEntry } from "../model";
 
 /** Append-only record of credit actions, retained for FCRA compliance. */
@@ -37,7 +37,7 @@ export function CreditAuditLogCard({ entries }: { entries: CreditAuditEntry[] | 
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {format(new Date(entry.timestamp), "MMM d, h:mm a")}
+                    {formatDateSafe(entry.timestamp, "MMM d, h:mm a")}
                   </span>
                 </div>
               ))}

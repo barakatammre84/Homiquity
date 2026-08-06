@@ -2,7 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, CheckCircle2, Clock, MapPin, User } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
+import { formatDistanceToNowSafe } from "@/lib/dates";
 import {
   formatIssueType,
   formatStatusLabel,
@@ -78,7 +79,7 @@ export function EscalationCard({ esc, onResolve }: { esc: DealRescueEscalation; 
                 </span>
               )}
               <span data-testid={`text-created-${esc.id}`}>
-                Reported {formatDistanceToNow(new Date(esc.createdAt), { addSuffix: true })}
+                Reported {formatDistanceToNowSafe(esc.createdAt, { addSuffix: true })}
               </span>
             </div>
 

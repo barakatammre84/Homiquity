@@ -1,5 +1,5 @@
 import { Calendar, CheckCircle2, Clock } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateSafe } from "@/lib/dates";
 import { Card, CardContent } from "@/components/ui/card";
 import type { StrategySession } from "./types";
 
@@ -53,7 +53,7 @@ export function SessionStatsCards({
             </div>
             <div>
               <p className="text-sm font-bold text-foreground" data-testid="text-next-session">
-                {next ? format(new Date(next.scheduledAt), "MMM d, h:mm a") : "None"}
+                {next ? formatDateSafe(next.scheduledAt, "MMM d, h:mm a", "Not scheduled") : "None"}
               </p>
               <p className="text-xs text-muted-foreground">Next Session</p>
             </div>
