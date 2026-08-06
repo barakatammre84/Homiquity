@@ -102,6 +102,15 @@ describe("ARC-3 — nothing disclosable escapes", () => {
     expect(handler).toMatch(/\.max\(4\)/);
   });
 
+  it("never echoes an internal error message to the borrower", () => {
+    // derivePricing's own errors are safe, but an unexpected failure beneath it
+    // (storage, the LLPA lookup) would otherwise put an internal message in a
+    // borrower-reachable response body. Log the cause, return a generic reason.
+    expect(handler).not.toContain("error.message");
+    expect(handler).toContain("console.warn");
+    expect(handler).toContain('"Pricing is not available for this file yet"');
+  });
+
   it("treats an unpriceable file as an answer, not a 500", () => {
     // derivePricing throws named errors for genuinely missing inputs; the file
     // is simply not priceable yet, and saying so is correct.

@@ -399,7 +399,14 @@ export function registerPricingRoutes(
         // derivePricing throws named, honest errors for genuinely missing
         // inputs (no purchase price, no credit score). That is not a 500 — the
         // file simply is not priceable yet, and saying so is the right answer.
-        unavailable = error instanceof Error ? error.message : "Pricing is not available yet";
+        //
+        // The specific message is LOGGED, not returned. derivePricing's own
+        // errors are safe, but an unexpected failure underneath it (storage, the
+        // LLPA lookup) would otherwise put an internal message in a
+        // borrower-reachable response body. The client renders its own copy
+        // regardless, so nothing is lost by keeping this generic.
+        console.warn("[what-if] baseline not priceable:", error);
+        unavailable = "Pricing is not available for this file yet";
       }
 
       if (!baseline) {
@@ -425,12 +432,14 @@ export function registerPricingRoutes(
             };
           } catch (error) {
             // One impossible scenario (down payment above price) must not fail
-            // the others.
+            // the others. Same reasoning as the baseline: log the specific
+            // cause, return a generic one.
+            console.warn("[what-if] scenario not priceable:", error);
             return {
               label: scenario.label,
               projection: null,
               monthlyDeltaFromBaseline: null,
-              unavailable: error instanceof Error ? error.message : "Could not price this scenario",
+              unavailable: "Could not price this scenario",
             };
           }
         }),
