@@ -151,9 +151,41 @@ export async function simulateCreditPullCompletion(
     transunion?: number;
   }
 ): Promise<CreditPull> {
+  // INTERLOCK — the two credit-vendor flags must never both be on.
+  //
+  // CREDIT_VENDOR_API_KEY is a PROVENANCE switch, not a connection setting:
+  // while it is unset every row this function writes is stamped
+  // `isSimulated: true` (creditVendorIsSimulated, above). Setting it flips that
+  // stamp to false. CREDIT_VENDOR_MODE=simulation separately permits this
+  // function — which FABRICATES scores with Math.random — to run in production.
+  //
+  // Together they produce the single worst state available in this codebase:
+  // invented bureau scores recorded as a REAL consumer report. Downstream that
+  // is not a bad number, it is a falsified regulated record — it would let an
+  // FCRA §615(a) adverse-action notice truthfully-looking-ly name a bureau that
+  // was never contacted (the check at server/routes/compliance.ts keys off
+  // isSimulated, so a false stamp disarms it), and it would book unsimulated
+  // cost-ledger entries against a vendor that never invoiced.
+  //
+  // This refuses at the OPERATION rather than at boot, deliberately. A throw
+  // during boot on Railway is near-invisible: the failed deploy leaves the
+  // previous container serving, so the site keeps answering 200 while the
+  // contradiction persists unnoticed (that is the 2026-08-06 stale-deploy
+  // class). Refusing here surfaces as a loud, attributable API error the first
+  // time anyone tries a pull.
+  //
+  // Expected during the F3 handoff: when the live vendor lands, set
+  // CREDIT_VENDOR_API_KEY and REMOVE CREDIT_VENDOR_MODE in the same change.
+  if (process.env.CREDIT_VENDOR_API_KEY && process.env.CREDIT_VENDOR_MODE === "simulation") {
+    throw new Error(
+      "Contradictory credit-vendor configuration: CREDIT_VENDOR_API_KEY is set (so pulls are recorded as REAL bureau data) while CREDIT_VENDOR_MODE=simulation permits fabricated scores. Refusing to fabricate a score that would be stamped as a genuine consumer report. Remove CREDIT_VENDOR_MODE now that a live vendor is configured.",
+    );
+  }
+
   // Simulated bureau data must never ground a real credit decision. Production
   // refuses to fabricate scores unless CREDIT_VENDOR_MODE=simulation is set
-  // explicitly (e.g. a staging deploy running a production build). Remove that
+  // explicitly (e.g. a staging deploy running a production build, or the
+  // pre-F3 window where the vendor contract has not landed yet). Remove that
   // override entirely once live bureau contracts are wired in.
   if (
     process.env.NODE_ENV === "production" &&
