@@ -225,11 +225,17 @@ export function PolicyOpsDashboard() {
                   {RULE_CATEGORIES.find((c) => c.id === selectedCategory)?.label} Rules
                 </CardTitle>
                 <CardDescription>
-                  Adjust parameters below. No formulas, no code.
+                  {selectedPolicy
+                    ? `Editing ${selectedPolicy.profileId} v${selectedPolicy.version}. Adjust parameters below. No formulas, no code.`
+                    : "Adjust parameters below. No formulas, no code."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <RuleEditor category={selectedCategory} />
+                <RuleEditor
+                  policyProfileId={selectedPolicy?.id ?? null}
+                  policyStatus={selectedPolicy?.status ?? null}
+                  category={selectedCategory}
+                />
               </CardContent>
             </Card>
           </div>

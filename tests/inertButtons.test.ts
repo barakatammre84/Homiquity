@@ -134,37 +134,47 @@ describe("no new buttons that do nothing", () => {
 });
 
 describe("the policy console never claims a save it did not make", () => {
-  // Worse than a dead button: RuleEditor's Save Draft and COCRuleBuilder's Add
-  // COC Rule persisted nothing and raised "Draft Saved — changes saved to
-  // draft, publish when ready" / "COC Rule Added". Every value in those
-  // editors is a hardcoded useState default, and the console is role-gated to
-  // admin and underwriter — precisely the people who would act on a false
-  // confirmation that an underwriting threshold had moved.
+  // Both editors used to persist nothing and confirm success anyway:
+  // RuleEditor's "Draft Saved — changes saved to draft, publish when ready"
+  // and COCRuleBuilder's "COC Rule Added", over hardcoded useState defaults,
+  // on a console gated to admin and underwriter. The two are now in different
+  // positions and the tests say which is which.
   const POLICY_OPS = join(REPO_ROOT, "client", "src", "pages", "staff", "policyOps");
+  const read = (file: string) => readFileSync(join(POLICY_OPS, file), "utf8");
 
-  it("raises no success toast from the disconnected editors", () => {
-    for (const file of ["RuleEditor.tsx", "COCRuleBuilder.tsx"]) {
-      const src = readFileSync(join(POLICY_OPS, file), "utf8");
-      expect(src, `${file} must not toast`).not.toMatch(/useToast|toast\(/);
-      expect(src).not.toMatch(/Draft Saved|COC Rule Added/);
-    }
+  it("the threshold editor writes to the API it reports success for", () => {
+    const src = read("RuleEditor.tsx");
+    // Reads real thresholds...
+    expect(src).toMatch(/useQuery<PolicyThreshold\[\]>/);
+    expect(src).toMatch(/"\/api\/policy-thresholds"/);
+    // ...and its success toast is inside a mutation that PATCHes them.
+    expect(src).toMatch(/apiRequest\("PATCH", `\/api\/policy-thresholds\/\$\{id\}`/);
+    expect(src).toMatch(/onSuccess[\s\S]{0,400}Thresholds Updated/);
+    // A failure must not pass silently, and must not clear the operator's work.
+    expect(src).toMatch(/onError[\s\S]{0,300}Changes Not Saved/);
+    expect(src).not.toMatch(/Draft Saved/);
   });
 
-  it("says plainly that the values are placeholders", () => {
-    for (const file of ["RuleEditor.tsx", "COCRuleBuilder.tsx"]) {
-      const src = readFileSync(join(POLICY_OPS, file), "utf8");
-      expect(src, `${file} lost its not-connected notice`).toMatch(/<NotConnectedNotice \/>/);
-    }
-    const notice = readFileSync(join(POLICY_OPS, "NotConnectedNotice.tsx"), "utf8");
+  it("the threshold editor never invents values when it has none", () => {
+    const src = read("RuleEditor.tsx");
+    // No policy selected, none configured, and a failed load are three
+    // different things and each says so. The last one matters most: an error
+    // rendered as "no thresholds" reads as an unconfigured policy.
+    expect(src).toMatch(/rule-editor-no-policy/);
+    expect(src).toMatch(/rule-editor-empty/);
+    expect(src).toMatch(/QueryErrorState/);
+  });
+
+  it("the COC builder still says plainly that it is not connected", () => {
+    // No COC table and no COC endpoint exist, and a COC rule does not fit a
+    // threshold row (it carries a GSE list with no column for it), so this one
+    // stays honest rather than being wired on a guess.
+    const src = read("COCRuleBuilder.tsx");
+    expect(src).toMatch(/<NotConnectedNotice \/>/);
+    expect(src, "COCRuleBuilder must not toast").not.toMatch(/useToast|toast\(/);
+    expect(src).not.toMatch(/COC Rule Added/);
+    const notice = read("NotConnectedNotice.tsx");
     expect(notice).toMatch(/placeholders, not your policy/);
-    expect(notice).toMatch(/changes made\s*\n?\s*here are not saved/);
-  });
-
-  it("keeps the save controls disabled while nothing is persisted", () => {
-    const footer = readFileSync(join(POLICY_OPS, "NotConnectedNotice.tsx"), "utf8");
-    // Both controls disabled, and the reason stated next to them.
-    expect(footer).toMatch(/disabled data-testid="button-save-draft"/);
-    expect(footer).toMatch(/disabled data-testid="button-discard-changes"/);
-    expect(footer).toMatch(/Saving is disabled until this editor is connected/);
+    expect(notice).toMatch(/changes made here are not saved/);
   });
 });
