@@ -233,7 +233,20 @@ function setupEmailPasswordAuth(app: Express) {
       const email = rawEmail.trim().toLowerCase();
       const user = await authStorage.getUserByEmail(email);
       if (user && user.passwordHash) {
-        await issuePasswordReset(user, publicBaseUrl(req));
+        const delivered = await issuePasswordReset(user, publicBaseUrl(req));
+        if (!delivered) {
+          // The RESPONSE stays generic — revealing a send failure would leak
+          // that the account exists, which is the whole point of the uniform
+          // reply. But the operator must not be left in the dark: with no
+          // email provider configured this endpoint tells every user a link is
+          // on its way while the account is, in practice, unrecoverable.
+          // Logged as an error so it surfaces wherever errors surface.
+          console.error(
+            "[auth] password reset requested but the email was NOT delivered — " +
+              "the account is unrecoverable until an email provider is configured. " +
+              "The user was shown the standard 'a reset link is on its way' message.",
+          );
+        }
       }
       res.json({
         success: true,

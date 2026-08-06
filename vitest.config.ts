@@ -14,6 +14,7 @@ export default defineConfig({
       "tests/accessControl.test.ts",
       "tests/commitmentLetterProvenance.test.ts",
       "tests/uploadsUnavailableCopy.test.ts",
+      "tests/emailDeliveryTruthfulness.test.ts",
       "tests/liveCreditPullImport.test.ts",
       "tests/creditVendorInterlock.test.ts",
       "tests/clientIp.test.ts",
