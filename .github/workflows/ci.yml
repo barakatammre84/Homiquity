@@ -36,13 +36,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    # PROBE BRANCH ONLY — `probe/**` is added here because the integration token
-    # this ran under lacks `actions: write`, so workflow_dispatch returns 403.
-    # A `push` event uses the workflow file FROM THE PUSHED REF, so scoping a
-    # push trigger to this throwaway branch runs this ref's version — the one
-    # whose apply step has been replaced by the read-only probe. Deleted with
-    # the branch. DO NOT MERGE.
-    branches: [main, "probe/**"]
+    branches: [main]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -293,26 +287,17 @@ jobs:
         # job with prod untouched, instead of being applied in an undefined order.
         # Cheap and offline — reads only the repo's own files, no DB connection.
         run: pnpm guard:migrations
-      # ===================================================================
-      # PROBE BRANCH ONLY — DO NOT MERGE.
-      #
-      # The "Apply pending migrations to prod" step has been REPLACED (not
-      # appended to) by the read-only probe for migration 0046, per
-      # DB_MIGRATIONS.md §Contract migrations. Replacing is the point: with the
-      # apply step gone from this ref entirely, no combination of dispatch
-      # inputs can reach a write. `dry_run` is now inert here.
-      #
-      # This branch exists to answer one question — would
-      # CREATE UNIQUE INDEX on policy_profiles (profile_id, version) abort on
-      # existing rows? — and is deleted immediately afterwards.
-      # ===================================================================
-      - name: READ-ONLY probe — 0046 policy_profiles duplicates
+      - name: Apply pending migrations to prod
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           # Only needed when the API key can see more than one Neon project.
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
         run: |
-          # The connection string is piped straight into the probe's env via
-          # command substitution: never echoed, never written to GITHUB_ENV,
-          # and neither script ever prints it.
-          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" node scripts/probe-0046-policy-profiles.cjs
+          ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="--dry-run"
+          fi
+          # The connection string is piped straight into migrate-prod's env via
+          # command substitution: never echoed, never written to GITHUB_ENV, and
+          # neither script ever prints it.
+          DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" node scripts/migrate-prod.cjs $ARGS
