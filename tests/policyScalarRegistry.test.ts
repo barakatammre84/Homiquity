@@ -102,6 +102,20 @@ describe("the policy catalogue does not yet decide loans", () => {
     }
   });
 
+  it("Policy Operations stays off the navigation while it governs nothing", () => {
+    // Parked, not deleted: the routes still resolve for anyone with the URL,
+    // but a role-gated console that looks authoritative and decides no loan is
+    // an invitation to change a DTI cap and believe it took effect. It comes
+    // back to the nav when activating a policy compiles its thresholds into
+    // the catalogue the engine reads.
+    const sidebar = readFileSync(join(ROOT, "client/src/components/app-sidebar.tsx"), "utf8");
+    expect(sidebar, "Policy Operations is back on the nav").not.toMatch(
+      /title:\s*"Policy Operations"/,
+    );
+    // Pricing Matrices — the console that DOES govern decisions — stays.
+    expect(sidebar).toMatch(/title:\s*"Pricing Matrices"/);
+  });
+
   it("the Policy Ops console says so, so no underwriter believes otherwise", () => {
     // Same failure class as the "Draft Saved" toast one level up: an
     // underwriter editing a DTI cap here could reasonably believe it governs

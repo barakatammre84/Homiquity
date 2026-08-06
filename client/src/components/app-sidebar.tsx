@@ -140,7 +140,16 @@ const staffNavigation: NavSection[] = [
       // The gate is shared with the router (ROUTE_GATES.underwriterOps) so the
       // nav can't offer a link the route would bounce.
       { title: "Task Operations", href: "/task-operations", icon: ListTodo, testId: "link-task-operations", roles: ROUTE_GATES.underwriterOps },
-      { title: "Policy Operations", href: "/policy-ops", icon: Scale, testId: "link-policy-ops", roles: ROUTE_GATES.underwriterOps },
+      // Policy Operations is PARKED, not deleted. Its routes still resolve for
+      // anyone with the URL, but it is off the nav: the console stores,
+      // versions and approves thresholds correctly while governing no loan
+      // decision, because the engine resolves everything it uses from the
+      // lookup_matrices catalogue instead (see shared/policyScalarRegistry.ts).
+      // A role-gated console that looks authoritative and decides nothing is
+      // an invitation to change a DTI cap and believe it took effect. It comes
+      // back when activating a policy compiles its thresholds into the
+      // matrices the engine actually reads. Pricing Matrices, immediately
+      // below, is the console that does govern decisions today.
       { title: "Pricing Matrices", href: "/pricing-matrices", icon: Grid3x3, testId: "link-pricing-matrices", roles: ROUTE_GATES.underwriterOps },
       { title: "Pricing Intelligence", href: "/pricing-intelligence", icon: BarChart3, testId: "link-pricing-intelligence", roles: ROUTE_GATES.marketData },
       { title: "Messages", href: "/messages", icon: MessageCircle, testId: "link-messages", showMessageBadge: true },
@@ -205,7 +214,7 @@ const adminNavigation: NavSection[] = [
       { title: "Partner Waitlist", href: "/admin/partners", icon: Handshake, testId: "link-admin-partners" },
       { title: "Manage Rates", href: "/admin/rates", icon: Percent, testId: "link-admin-rates" },
       { title: "Manage Content", href: "/admin/content", icon: PenSquare, testId: "link-admin-content" },
-      { title: "Policy Operations", href: "/admin/policy-ops", icon: Scale, testId: "link-admin-policy-ops" },
+      // Parked — same reason as the underwriter-ops entry above.
       { title: "Pricing Matrices", href: "/admin/pricing-matrices", icon: Grid3x3, testId: "link-admin-pricing-matrices" },
       { title: "Autopilot", href: "/admin/autopilot", icon: Brain, testId: "link-admin-autopilot" },
       { title: "Financial Reports", href: "/admin/financial-reports", icon: Scale, testId: "link-admin-financial-reports" },
