@@ -9,7 +9,7 @@ import { SPA_CATCH_ALL_PATTERN } from "../server/spaCatchAll";
 // non-API URL renders the client bundle. Under Express 5 / path-to-regexp v8 a
 // bare `/*splat` requires at least one path segment, so it matched `/login` but
 // NOT `/` — `pnpm dev` served a 404 for the homepage while every deep link
-// worked. Prod was masked by Vercel's static `/(.*)` → `/index.html` rewrite,
+// worked. Prod was masked by a platform static `/(.*)` → `/index.html` rewrite,
 // which answers `/` before Express ever sees it, so this only bit dev.
 //
 // These tests assert the behavior of the real exported constant, not a copy of
@@ -17,7 +17,7 @@ import { SPA_CATCH_ALL_PATTERN } from "../server/spaCatchAll";
 // fails here.
 
 // --- minimal in-process request driver (no sockets, no listening server) ---
-// Mirrors tests/vercelEntryHelpers.test.ts.
+// Mirrors tests/seoPrerender.test.ts.
 
 function makeReqRes(url: string) {
   const req: any = new EventEmitter();

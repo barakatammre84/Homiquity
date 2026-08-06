@@ -78,7 +78,7 @@ export interface LookupResolverOptions {
  * Cross-process cache coherence
  * -----------------------------
  * The resolved-value cache is per-process and in-memory. Because production
- * runs on autoscaling infrastructure (serverless functions on Vercel),
+ * may run on more than one replica,
  * more than one instance can serve traffic, and a lifecycle mutation handled by
  * one instance does not reach another instance's local cache. To prevent a
  * sibling instance from quoting a stale/expired value for the full cache TTL,

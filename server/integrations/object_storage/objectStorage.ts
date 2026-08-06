@@ -11,7 +11,7 @@ import {
 
 // Credential resolution, in order:
 // 1. GCS_SERVICE_ACCOUNT_KEY — the full service-account JSON in an env var.
-//    Works anywhere (Vercel, Fly, local) and enables native V4 URL signing.
+//    Works on any host (Railway, local) and enables native V4 URL signing.
 // 2. Application Default Credentials — GOOGLE_APPLICATION_CREDENTIALS file
 //    path, gcloud auth, or GCE/Cloud Run metadata.
 function createStorageClient(): Storage {

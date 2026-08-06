@@ -19,7 +19,7 @@ import type { AdverseAction } from "@shared/schema";
  * of silent.
  *
  * The classifier is a pure function (tested in tests/adverseActionDelivery.test.ts);
- * the sweep is the daily job wired to Vercel cron via /api/jobs/adverse-action-delivery.
+ * the sweep is the daily job wired to the cron scheduler via /api/jobs/adverse-action-delivery.
  */
 
 /** ECOA §1002.9(a)(1): applicant must be notified within 30 days of adverse action. */

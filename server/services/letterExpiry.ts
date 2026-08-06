@@ -16,8 +16,8 @@ import { preApprovalLetters, preQualificationLetters, letterGenerationLogs } fro
  * written with their own provenance (revokedBy / supersededBy) and must
  * never be overwritten by a clock.
  *
- * Intended to run from a Vercel cron (see server/routes/jobs.ts and
- * vercel.json). Safe to run manually as an admin.
+ * Intended to run from the daily cron scheduler (see server/routes/jobs.ts
+ * and .github/workflows/cron-jobs.yml). Safe to run manually as an admin.
  */
 export async function runLetterExpirySweep(): Promise<{
   preApprovalExpired: number;

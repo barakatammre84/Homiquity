@@ -16,8 +16,8 @@ import { routeParam } from "../http/routeParams";
  * Scheduled-job endpoints.
  *
  * /api/jobs/lifecycle is invoked two ways:
- * - Vercel cron (vercel.json "crons") — authenticated with the CRON_SECRET
- *   env var, which Vercel sends as "Authorization: Bearer <CRON_SECRET>".
+ * - the cron scheduler (.github/workflows/cron-jobs.yml) — authenticated with the
+ *   CRON_SECRET env var, sent as "Authorization: Bearer <CRON_SECRET>".
  * - Manually by an admin session (useful locally and for on-demand runs).
  *
  * If CRON_SECRET is unset (e.g. before the env var is configured), only the
@@ -55,7 +55,7 @@ export function registerJobRoutes(app: Express) {
   });
 
   // Rate-lock expiration watchdog. Same dual-trigger shape as the lifecycle
-  // sweep: Vercel cron (CRON_SECRET) or an admin session. Notifies the assigned
+  // sweep: the cron scheduler (CRON_SECRET) or an admin session. Notifies the assigned
   // loan officer about locks expiring within the alert window so a lock never
   // lapses unseen (one notification per lock; it lingers until read).
   app.get("/api/jobs/rate-lock-alerts", async (req, res) => {
@@ -82,7 +82,7 @@ export function registerJobRoutes(app: Express) {
   });
 
   // Letter-expiry sweep. Same dual-trigger shape as the lifecycle sweep:
-  // Vercel cron (CRON_SECRET) or an admin session. Persists "expired" onto
+  // the cron scheduler (CRON_SECRET) or an admin session. Persists "expired" onto
   // issued letters past their expiration date so the stored row matches what
   // the read paths already compute (shared/letters.ts effectiveLetterStatus).
   app.get("/api/jobs/letter-expiry", async (req, res) => {
@@ -109,7 +109,7 @@ export function registerJobRoutes(app: Express) {
   });
 
   // Task-engine SLA escalation sweep (roadmap CS1's scheduler leg). Same
-  // dual-trigger shape: Vercel cron (CRON_SECRET) or an admin session.
+  // dual-trigger shape: the cron scheduler (CRON_SECRET) or an admin session.
   // Escalates every active task past its slaDueAt that isn't fully escalated
   // (taskEngine.runEscalationCheck — level bump + task audit log + configured
   // escalation actions). taskEngine is the SINGLE owner of scheduled SLA
@@ -141,7 +141,7 @@ export function registerJobRoutes(app: Express) {
   });
 
   // ECOA §1002.9 adverse-action delivery watchdog. Same dual-trigger shape as
-  // the lifecycle sweep: Vercel cron (CRON_SECRET) or an admin session. Flags
+  // the lifecycle sweep: the cron scheduler (CRON_SECRET) or an admin session. Flags
   // any generated-but-undelivered adverse-action notice approaching or past the
   // 30-day statutory delivery window and raises a staff task for it.
   app.get("/api/jobs/adverse-action-delivery", async (req, res, next) => {
@@ -174,7 +174,7 @@ export function registerJobRoutes(app: Express) {
 
   // Anonymized cohort-data pipeline (OPT-9). Buckets borrower graphs into
   // PII-hashed aggregate facts for benchmarking — no PII, no outbound, purely
-  // internal analytics. Same dual-trigger shape as the sweeps above: Vercel
+  // internal analytics. Same dual-trigger shape as the sweeps above: the cron
   // cron (CRON_SECRET) or an admin session.
   app.get("/api/jobs/aggregate-data", async (req, res) => {
     if (isCronRequest(req)) {

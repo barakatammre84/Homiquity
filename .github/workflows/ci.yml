@@ -205,25 +205,25 @@ jobs:
         # The gate used to prove only that the code TYPECHECKS. `tsc --noEmit` never
         # runs vite or esbuild, so a broken import, a failing vite plugin, or a
         # client-library bump that only explodes at bundle time reached `main` green
-        # and died in Vercel — where a failed build is invisible, because Vercel keeps
-        # the last good deployment serving (that is how #268/#278/#277 sat unshipped
-        # for half an hour with the site up and every check green).
+        # and the deploy died on the platform — where a failed build is invisible,
+        # because the last good deployment keeps serving (#268/#278/#277 sat
+        # unshipped with the site up and every check green; the same shape recurred
+        # on Railway 2026-08-06, nine consecutive failed deploys, nothing alerting).
         #
-        # Scope honestly: this runs OUR build (the same command Vercel runs), so it
-        # catches our build breaking. It would NOT have caught #279's TypeScript 7
-        # failure — that build log shows vite and esbuild both finishing before
-        # Vercel's own post-build step died loading the user-provided compiler.
-        # Catching that class needs the deployment's real state, which means a
-        # VERCEL_TOKEN secret; until then it is covered by the dependabot ignore on
-        # typescript majors. (Job `name:` above deliberately unchanged — verbatim
-        # required-check string; see the rename warning.)
-        run: pnpm vercel-build
+        # This is the SAME command Railway runs (`railway.json` buildCommand ->
+        # `pnpm build`), so it catches our build breaking before merge. It cannot
+        # prove the DEPLOY succeeded — platform-side failure after a good build is
+        # a different signal, owned by the `verify-deploy` job.
+        #
+        # Runs BEFORE the boot step below so a database failure there can never
+        # mask a broken bundle. (Job `name:` above deliberately unchanged —
+        # verbatim required-check string; see the rename warning.)
+        run: pnpm build
       - name: Self-host artifact boots (Railway migration path)
         # Build success ≠ boot success (the 2026-07-17 postmortem rule, aimed at
-        # the persistent-host bundle Railway will actually run). `pnpm build`
-        # produces the OTHER bundle — `vercel-build` above proves only
-        # api/_app.mjs. This step applies the migration journal to the
-        # disposable Postgres service, boots dist/index.js with
+        # the persistent-host bundle Railway actually runs). The `Production
+        # build` step above produced dist/index.js; this step applies the
+        # migration journal to the disposable Postgres service, boots it with
         # NODE_ENV=production, and requires /api/health to answer 200 — proving
         # bundle + boot wiring (encryption init, seeds, routes, static mount) +
         # DB reachability end to end. Catches the import-time death class
@@ -232,7 +232,6 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/selfhost_boot
         run: |
           pnpm db:migrate
-          pnpm build
           # Throwaway high-entropy secrets: production boot validation refuses
           # short ones (SESSION_SECRET >= 32 chars — fail-closed by design).
           NODE_ENV=production PORT=3999 \
@@ -257,25 +256,6 @@ jobs:
             echo "::error::dist/index.js failed to boot and serve /api/health — the self-host bundle is broken"
             exit 1
           fi
-      - name: Vercel deployability
-        # `pnpm vercel-build` above proves OUR build works. It cannot prove the
-        # DEPLOYMENT works: on TypeScript 7 vite and esbuild both finished and
-        # Vercel's own post-build step died afterwards, so #268 went in green and
-        # froze prod for three merges. This reads the deployment's real state from
-        # the Vercel API — the signal that was correct all along (it showed ERROR
-        # on #268's previews before it merged, while the GitHub "Vercel" status
-        # said `pending`, which is why that status is NOT the required check: it
-        # never resolves on a PR head and requiring it deadlocks every PR).
-        #
-        # No-ops with a warning until VERCEL_TOKEN exists, so adding this cannot
-        # red the gate. (Job `name:` above deliberately unchanged — verbatim
-        # required-check string; see the rename warning.)
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          # The PR HEAD, not github.sha: on pull_request that is a synthetic merge
-          # commit which Vercel never builds, so it would never match a deployment.
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node scripts/vercel-deployment-guard.cjs
 
   migrate-prod:
     name: migrate-prod (apply pending migrations)

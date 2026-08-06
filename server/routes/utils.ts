@@ -11,7 +11,7 @@ export const allowedUploadTypes = ACCEPTED_UPLOAD_MIME_TYPES;
 // the request and persists nothing. Every PERSISTED document goes through the
 // presigned-URL flow (/api/uploads/request-url → direct PUT to object storage
 // → JSON registration on /api/documents/upload) — there is deliberately no
-// disk storage here, because serverless disk (Vercel) is ephemeral and files
+// disk storage here, because container disk is ephemeral and files
 // written to it vanish on redeploy.
 export const upload = multer({
   storage: multer.memoryStorage(),

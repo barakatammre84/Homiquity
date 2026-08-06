@@ -91,7 +91,7 @@ export function registerDocumentRoutes(
   // One ingestion mode, one registration path: the file goes browser → object
   // storage via a presigned URL (/api/uploads/request-url), then this endpoint
   // registers its metadata. The old multipart leg (multer → serverless disk)
-  // was removed — files written to Vercel's disk vanish on redeploy (roadmap #1).
+  // was removed — files written to container disk vanish on redeploy (roadmap #1).
   // Every accepted upload becomes a document record — unsolicited files are
   // stamped onto the borrower's latest application instead of being lost.
   const uploadRegistrationSchema = z.object({

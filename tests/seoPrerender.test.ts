@@ -11,17 +11,18 @@ import {
   resolveStaticMeta,
 } from "../shared/seo/routeMeta";
 
-// The self-host bot prerender replaces vercel.json's rewrite
+// The bot prerender is the sole implementation of what was once an
+// edge rewrite,
 // `/((?!api/|.*\.).*)` + user-agent matcher, and the failure modes are
 // asymmetric: an over-broad match swallows static assets as injected HTML
-// (the ordering trap that kept the old catch-all gated to process.env.VERCEL),
+// (the ordering trap that once kept the catch-all behind a platform env var),
 // while an under-broad one silently turns SEO prerendering off with humans
 // noticing nothing. These tests pin both edges — the ported regex against
 // representative real UA strings, and the middleware's four guards
 // (GET + non-/api + undotted path + bot UA) over a live Express dispatch.
 
 // --- minimal in-process request driver (no sockets, no listening server) ---
-// Mirrors tests/spaCatchAll.test.ts / tests/vercelEntryHelpers.test.ts, plus
+// Mirrors tests/spaCatchAll.test.ts, plus
 // method/headers control and a stub socket (req.protocol reads socket.encrypted).
 
 function makeReqRes(url: string, opts: { method?: string; headers?: Record<string, string> } = {}) {
@@ -79,7 +80,7 @@ const GOOGLEBOT =
 const CHROME_MAC =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
-describe("BOT_UA_REGEX (verbatim port of the vercel.json user-agent matcher)", () => {
+describe("BOT_UA_REGEX (the single bot user-agent matcher)", () => {
   it.each([
     ["Googlebot", GOOGLEBOT],
     ["bingbot", "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"],

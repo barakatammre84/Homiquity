@@ -163,40 +163,35 @@ describe("task-type SLA mapping seed", () => {
  */
 describe("SLA escalation is scheduled", () => {
   const jobsSrc = readFileSync(join(ROOT, "server/routes/jobs.ts"), "utf8");
-  const vercelJson = JSON.parse(readFileSync(join(ROOT, "vercel.json"), "utf8"));
   const cronWorkflow = readFileSync(join(ROOT, ".github/workflows/cron-jobs.yml"), "utf8");
+  // The schedule this sweep must run on. Previously re-derived from
+  // vercel.json; with Vercel gone the workflow is the only scheduler, so the
+  // expected value is stated here and asserted against it.
+  const SCHEDULE = "45 13 * * *";
 
   it("the jobs surface exposes the dual-trigger task-escalation sweep", () => {
     expect(jobsSrc).toContain('"/api/jobs/task-escalation"');
     expect(jobsSrc).toContain("taskEngine.runEscalationCheck()");
   });
 
-  it("vercel.json schedules it", () => {
-    const cron = (vercelJson.crons as Array<{ path: string; schedule: string }>).find(
-      (c) => c.path === "/api/jobs/task-escalation",
-    );
-    expect(cron, "task-escalation cron entry missing from vercel.json").toBeDefined();
-    expect(cron!.schedule).toMatch(/^\S+ \S+ \* \* \*$/); // at least daily
+  it("the schedule is at least daily", () => {
+    expect(SCHEDULE).toMatch(/^\S+ \S+ \* \* \*$/);
   });
 
-  // Vercel→Railway transition: BOTH schedulers must carry the sweep until the
-  // cutover PR deletes vercel.json (and drops the assertion above with it) —
-  // whichever platform serves prod, the sweep fires. The workflow needs two
-  // things pinned: the schedule trigger is registered, and the resolve step
-  // maps that exact expression to this job's path (an expression with no
-  // mapping never curls anything).
-  it("the GitHub Actions cron workflow schedules it on the same expression", () => {
-    const cron = (vercelJson.crons as Array<{ path: string; schedule: string }>).find(
-      (c) => c.path === "/api/jobs/task-escalation",
-    )!;
+  // .github/workflows/cron-jobs.yml is now the ONLY scheduler. Two halves must
+  // hold together or the sweep silently never fires: the schedule trigger is
+  // registered, AND the resolve step maps that exact expression to this job's
+  // path (an expression with no mapping never curls anything). This is the
+  // "a sweep nobody schedules never runs" invariant.
+  it("the GitHub Actions cron workflow schedules it on that expression", () => {
     expect(
-      cronWorkflow.includes(`- cron: "${cron.schedule}"`),
-      `cron-jobs.yml is missing a schedule trigger for "${cron.schedule}"`,
+      cronWorkflow.includes(`- cron: "${SCHEDULE}"`),
+      `cron-jobs.yml is missing a schedule trigger for "${SCHEDULE}"`,
     ).toBe(true);
-    const escaped = cron.schedule.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escaped = SCHEDULE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     expect(
       new RegExp(`"${escaped}"\\)\\s+job="task-escalation"`).test(cronWorkflow),
-      `cron-jobs.yml does not map "${cron.schedule}" to the task-escalation job path`,
+      `cron-jobs.yml does not map "${SCHEDULE}" to the task-escalation job path`,
     ).toBe(true);
   });
 

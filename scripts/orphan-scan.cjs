@@ -29,8 +29,7 @@ const PLATFORM_ENTRIES = new Set([
   "client/src/main.tsx", // Vite html entry
   "server/index-dev.ts",
   "server/index-prod.ts",
-  "server/app.ts", // esbuild entry for the Vercel bundle (api/_app.mjs)
-  "api/index.ts", // Vercel serverless function
+  "server/app.ts", // composed by index-dev/index-prod; also imported directly by tests
   "server/seed.ts",
 ]);
 
