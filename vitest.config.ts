@@ -12,6 +12,7 @@ export default defineConfig({
     // vitest.integration.config.ts instead.
     include: [
       "tests/accessControl.test.ts",
+      "tests/securityHeaders.test.ts",
       "tests/canonicalHost.test.ts",
       "tests/zodSchemaSemantics.test.ts",
       "tests/routeGates.test.ts",
