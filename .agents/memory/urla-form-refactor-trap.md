@@ -42,9 +42,34 @@ latch (`:257`, only ever set `true`). That monotonicity is what lets Add
 Co-Borrower survive the post-save refetch. And `stepContext`/`completedCount` are
 computed *after* the three early returns, so they can never become hooks.
 
-**What IS safe:** presentational-only JSX blocks (the borrower switcher, the step
-rail, the empty/error states) — they carry no invariant. But measure the gain
-first: the page's line count is not the problem it appears to be.
+**What IS safe: nothing that has been checked so far.** Eight extraction
+proposals went through independent adversarial review and **all eight were
+refuted** — including the three that look like inert JSX moves. Do not read the
+list above as "everything else is fine".
+
+The JSX blocks fail for a different reason than the logic does: the *core* move
+is inert, but each proposal was mis-scoped, and the natural implementation breaks
+something. Two worked examples, so the shape of the hazard is clear:
+
+- **The three early returns (`:347-396`) cannot be moved to a dispatcher.**
+  `if (!activeApplication) return …` at `:378` is the ONLY thing that narrows
+  `activeApplication` from `LoanApplication | undefined`
+  (`useActiveApplication.ts:84`, `strict: true`) so that `app` at `:398` types as
+  `LoanApplication`. Three consumers need the non-optional type — `StepContext.app`
+  (`:83`), `EmploymentSection` (`urla/EmploymentSection.tsx:19`) and
+  `PropertySection` (`urla/PropertySection.tsx:24`). Replace the `if/return`s with
+  `const state = renderStates(...); if (state) return state;` and `pnpm check`
+  fails in three places — a **hard CI red** in the gate job. The wrapper/children
+  form crashes at runtime instead. Only a third shape works, and it is not the
+  obvious one.
+- **A "save lifecycle" hook over `:317-338` silently swallows `:321-322`**
+  (`stepIndex` / `isLastStep`), which seven sites outside the save path consume
+  and which must stay.
+
+The reusable lesson: on this page, a proposal that names a **line range** but not
+the **shape** of the resulting call site is not yet a safe plan. Verify the shape
+compiles under `strict` before believing it. And measure the gain first — the
+page's line count is not the problem it appears to be.
 
 **Related, NOT fixed (real defects found during this review, needs a decision):**
 `isUSCitizen` is required by `server/services/mismoValidation.ts:345` and
