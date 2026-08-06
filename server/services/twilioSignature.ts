@@ -106,20 +106,34 @@ export function jsonBodyHashMatches(url: string, rawBody: string): boolean {
  * Trying several candidates does not weaken the check: each is a full HMAC
  * comparison against the same secret, and a caller without the auth token
  * cannot produce a valid signature for any host they name.
+ *
+ * `options` exists because there is now more than one Twilio webhook endpoint,
+ * and each is configured in the console with its OWN URL. Defaulting the pin to
+ * TWILIO_WEBHOOK_URL for every endpoint would hand the status callback the
+ * INBOUND url — a pin that can never match, silently failing closed on a
+ * correctly configured deployment. So a second endpoint passes its own pin
+ * explicitly, and passing `null` means "no pin, derive from the request".
  */
-export function candidateWebhookUrls(req: {
-  originalUrl?: string;
-  protocol?: string;
-  headers: Record<string, unknown>;
-  get?: (header: string) => string | undefined;
-}): string[] {
+export function candidateWebhookUrls(
+  req: {
+    originalUrl?: string;
+    protocol?: string;
+    headers: Record<string, unknown>;
+    get?: (header: string) => string | undefined;
+  },
+  options: { configuredUrl?: string | null; defaultPath?: string } = {},
+): string[] {
   const urls: string[] = [];
   const push = (u: string | null | undefined) => {
     if (u && !urls.includes(u)) urls.push(u);
   };
 
-  const configured = process.env.TWILIO_WEBHOOK_URL?.trim();
-  const path = req.originalUrl ?? "/api/webhooks/sms";
+  // Absent key => fall back to the inbound pin (preserves existing callers);
+  // an explicit null/"" => deliberately unpinned.
+  const configured = (
+    options.configuredUrl === undefined ? process.env.TWILIO_WEBHOOK_URL : options.configuredUrl
+  )?.trim();
+  const path = req.originalUrl ?? options.defaultPath ?? "/api/webhooks/sms";
   const queryIndex = path.indexOf("?");
   const query = queryIndex === -1 ? "" : path.slice(queryIndex);
 
