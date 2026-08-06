@@ -75,16 +75,19 @@ export default function ApplyInvite() {
     retry: false,
   });
 
+  // Only `inviteId` is handed off. This also wrote `prefillEmail` /
+  // `prefillName`, and PreApproval dutifully DELETED both on submit — but
+  // nothing ever read them: the funnel form has no name or email field (it is
+  // anonymous until the auth gate), so there was nowhere to put them. The write
+  // and the cleanup made the handoff look wired when the read path did not
+  // exist, and meanwhile parked the client's name and email in sessionStorage
+  // for no purpose. Prefilling /signup from an invite is a reasonable feature —
+  // it just has to be built deliberately, on the auth surface, not left as a
+  // dangling half-wire here.
   useEffect(() => {
     if (data?.invite?.id) {
       setInviteId(data.invite.id);
       sessionStorage.setItem("inviteId", data.invite.id);
-      if (data.invite.clientEmail) {
-        sessionStorage.setItem("prefillEmail", data.invite.clientEmail);
-      }
-      if (data.invite.clientName) {
-        sessionStorage.setItem("prefillName", data.invite.clientName);
-      }
     }
   }, [data]);
 

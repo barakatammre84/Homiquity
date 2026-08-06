@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -60,7 +60,19 @@ export function DocumentUploadButton({
     },
     onSuccess: () => {
       setDone(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      // Invalidate the checklist ROOT, not a scoped key: `applicationId` is
+      // optional here (the server auto-attaches to the borrower's most recent
+      // application when it's omitted), so this uploader often has no id to
+      // scope with. The root prefix reaches every mounted checklist either way.
+      //
+      // This used to fire `["/api/documents"]`, which no client query has ever
+      // read — the borrower Documents page moved to the checklist endpoint and
+      // the invalidation was never migrated. The result was that a document
+      // uploaded from the AI Coach panel (the only place this button mounts)
+      // refreshed nothing, while the same upload through UploadDocumentDialog
+      // refreshed correctly.
+      queryClient.invalidateQueries({ queryKey: applicationResourceKeys.all() });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       queryClient.invalidateQueries({ queryKey: ["/api/coach/insights"] });
       toast({ title: "Document received", description: "Thanks — that's added to your file. I'll take it from here." });
       onDone?.();

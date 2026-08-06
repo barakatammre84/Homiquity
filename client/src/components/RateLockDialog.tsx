@@ -54,7 +54,11 @@ export function RateLockDialog({ applicationId, borrowerName }: RateLockDialogPr
   const [optionId, setOptionId] = useState("");
   const [lockPeriod, setLockPeriod] = useState("30");
 
-  const locksKey = [`/api/rate-locks/application/${applicationId}`];
+  // Segments, not a template string. Written as
+  // [`/api/rate-locks/application/${applicationId}`] this fetched the same URL
+  // but slipped past `guard:querykeys`, whose regex only fires on a template
+  // key written INLINE in `queryKey:` — hoisting it into a const hid it.
+  const locksKey = ["/api/rate-locks/application", applicationId] as const;
   const { data: locks, isLoading: locksLoading } = useQuery<RateLock[]>({
     queryKey: locksKey,
     enabled: open,
@@ -69,7 +73,9 @@ export function RateLockDialog({ applicationId, borrowerName }: RateLockDialogPr
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: locksKey });
-    queryClient.invalidateQueries({ queryKey: ["/api/rate-locks/expiring"] });
+    // No ["/api/rate-locks/expiring"] here: GET /api/rate-locks/expiring exists
+    // on the server but no client surface queries it, so invalidating it was
+    // inert. Add it back alongside the query if a expiring-locks view lands.
   };
 
   const createLock = useMutation({

@@ -179,11 +179,25 @@ jobs:
           CHANGED_LINES_FILE="$RUNNER_TEMP/changed_lines.diff" \
             pnpm guard:security
       - name: Query-key convergence guard
-        # Fails on a template-string queryKey in a factory-owned family
-        # (loan-applications, dashboard, tasks, calculator-results,
-        # coach/conversations, onboarding/status). Such a key joins to the right
-        # URL but is invisible to array-prefix invalidateQueries — the #297
-        # stale-panel bug class. Green as landed; build keys from the factories in
+        # TWO checks, both behind this one script. `invalidateQueries` is the only
+        # write→read feedback mechanism in the client, so a key that matches
+        # nothing is a mutation that silently refreshes nothing.
+        #
+        # 1. query-key-guard.cjs (SHAPE) — fails on an interpolated template-string
+        #    queryKey for an /api endpoint. Such a key joins to the right URL but is
+        #    invisible to array-prefix invalidateQueries — the #297 stale-panel bug
+        #    class. Not anchored to `queryKey:`, so hoisting the template into a
+        #    `const` no longer evades it.
+        #
+        # 2. query-key-reachability.cjs (WIRING) — fails when an /api invalidation
+        #    matches NO fetch key, or when a fetch key sits in a subtree its own
+        #    file invalidates yet is spelled so the invalidation misses it.
+        #    partialMatchKey compares arrays ELEMENT BY ELEMENT: ["/api/x"] does
+        #    NOT match ["/api/x/y"]. Seven dead invalidations shipped before this
+        #    existed, the worst leaving Task Operations' queue stale after every
+        #    status change.
+        #
+        # Green as landed; build keys from the factories in
         # client/src/lib/queryClient.ts. (Job `name:` above deliberately unchanged
         # — verbatim required-check string; see the rename warning.)
         run: pnpm guard:querykeys

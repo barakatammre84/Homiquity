@@ -15,7 +15,7 @@ import {
   goalFormSchema,
   type GoalFormValues,
 } from "./GapGoalOnboardingForm";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, homeownershipGoalKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { HomeownershipGoal, CreditAction, SavingsTransaction, JourneyMilestone } from "@shared/schema";
 import type { CreditRecommendation, GapAnalysis } from "./gapCalculator/types";
@@ -42,11 +42,11 @@ export default function GapCalculator() {
     savingsTransactions: SavingsTransaction[];
     milestones: JourneyMilestone[];
   }>({
-    queryKey: ["/api/homeownership-goal"],
+    queryKey: homeownershipGoalKeys.all(),
   });
 
   const { data: gapAnalysis } = useQuery<GapAnalysis>({
-    queryKey: ["/api/homeownership-goal/gap-analysis"],
+    queryKey: homeownershipGoalKeys.gapAnalysis(),
     enabled: !!goalData?.goal,
   });
 
@@ -55,7 +55,7 @@ export default function GapCalculator() {
     currentScore: number;
     targetScore: number;
   }>({
-    queryKey: ["/api/homeownership-goal/credit-recommendations"],
+    queryKey: homeownershipGoalKeys.creditRecommendations(),
     enabled: !!goalData?.goal,
   });
 
@@ -111,8 +111,9 @@ export default function GapCalculator() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/homeownership-goal"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/homeownership-goal/gap-analysis"] });
+      // One prefix covers the goal AND both derived views. Enumerating them by
+      // hand is what left credit-recommendations stale after a goal change.
+      queryClient.invalidateQueries({ queryKey: homeownershipGoalKeys.all() });
       setShowOnboarding(false);
       toast({
         title: "Journey Started!",
@@ -145,8 +146,9 @@ export default function GapCalculator() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/homeownership-goal"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/homeownership-goal/gap-analysis"] });
+      // One prefix covers the goal AND both derived views. Enumerating them by
+      // hand is what left credit-recommendations stale after a goal change.
+      queryClient.invalidateQueries({ queryKey: homeownershipGoalKeys.all() });
       toast({
         title: "Updated",
         description: "Your financial information has been updated.",

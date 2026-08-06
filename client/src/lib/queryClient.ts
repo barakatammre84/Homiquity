@@ -262,6 +262,15 @@ export const taskKeys = {
   detail: (id: string) => ["/api/tasks", id] as const,
 };
 
+/**
+ * NO READER YET — kept as the canonical key shape, not as live wiring.
+ *
+ * `POST /api/calculator-results` saves a calculation and `GET
+ * /api/calculator-results` serves the list, but no client surface queries that
+ * list today. Eight calculators used to invalidate `all()` on save, which
+ * matched nothing; those calls are gone (see the note at each save handler).
+ * Re-wire them here when a "my saved calculations" view lands.
+ */
 export const calculatorResultKeys = {
   all: () => ["/api/calculator-results"] as const,
 };
@@ -275,9 +284,99 @@ export const onboardingStatusKeys = {
   root: () => ["/api/onboarding/status"] as const,
 };
 
+/**
+ * The borrower's homeownership goal and the two derived views GapCalculator
+ * renders beside it.
+ *
+ * Segmented so `all()` reaches every one. The page used to invalidate
+ * `["/api/homeownership-goal"]` and `["/api/homeownership-goal/gap-analysis"]`
+ * by hand after create/update and simply omit the third sibling, so saving a
+ * goal refreshed the goal and the gap analysis while the credit
+ * recommendations kept advising against the OLD target. Enumerating siblings by
+ * hand is the failure mode; one prefix that genuinely covers them is the fix.
+ */
+export const homeownershipGoalKeys = {
+  all: () => ["/api/homeownership-goal"] as const,
+  gapAnalysis: () => ["/api/homeownership-goal", "gap-analysis"] as const,
+  creditRecommendations: () =>
+    ["/api/homeownership-goal", "credit-recommendations"] as const,
+};
+
+/**
+ * Consent reads. SEGMENTED under a bare `/api/consents` root on purpose.
+ *
+ * `partialMatchKey` (query-core) compares queryKey arrays ELEMENT BY ELEMENT —
+ * it is not a string-prefix test. So `invalidateQueries({ queryKey:
+ * ["/api/consents"] })` matched neither `["/api/consents/me"]` nor
+ * `["/api/consents/check", id, type]`: `"/api/consents/me" !== "/api/consents"`.
+ * ConsentGateCard fired exactly that key after recording a consent, so every
+ * OTHER mounted consent surface (EConsent, TaxReturnInsightCard) kept rendering
+ * "not consented" for a borrower who had just consented. The gate itself
+ * recovered through its `onConsented()` callback, which is why this survived.
+ *
+ * Splitting the path into segments leaves the fetched URL identical
+ * (`buildQueryUrl` joins with "/") while making `all()` a real invalidation
+ * prefix. `/api/consent-templates` is deliberately NOT modelled here: it is a
+ * different top-level path, and nesting it would rewrite its URL.
+ */
 export const consentKeys = {
+  /** Every consent read — the prefix a write should invalidate. */
+  all: () => ["/api/consents"] as const,
+  /** The borrower's own consent records. */
+  me: () => ["/api/consents", "me"] as const,
   check: (applicationId: string, consentType: string) =>
-    ["/api/consents/check", applicationId, consentType] as const,
+    ["/api/consents", "check", applicationId, consentType] as const,
+};
+
+/**
+ * Task-engine reads. Segmented for the same reason as `consentKeys` — and here
+ * the breakage was user-visible rather than latent.
+ *
+ * Task Operations fired `invalidateQueries({ queryKey: ["/api/task-engine"] })`
+ * after escalate / status-update / run-escalation while its four queries were
+ * keyed `["/api/task-engine/metrics"]`, `["/api/task-engine/sla-classes"]`,
+ * `["/api/task-engine/tasks/by-role", role]` and `["/api/task-engine/my-tasks"]`.
+ * Element-wise matching means none of those matched: all three invalidations
+ * were dead. `metrics` self-healed on its 30s `refetchInterval`, but the task
+ * lists have none, so with `staleTime: 5min` an underwriter changed a task's
+ * status and the row kept showing the old one until they hit Refresh or
+ * re-focused the tab — which reads as "the change didn't take".
+ *
+ * Every URL is byte-identical to what the hand-typed keys produced; only the
+ * cache addressing changed. `all()` is now a prefix that genuinely reaches all
+ * of them, so the existing broad invalidation became correct instead of inert.
+ */
+export const taskEngineKeys = {
+  /** Every task-engine read — the prefix a task write should invalidate. */
+  all: () => ["/api/task-engine"] as const,
+  metrics: () => ["/api/task-engine", "metrics"] as const,
+  slaClasses: () => ["/api/task-engine", "sla-classes"] as const,
+  myTasks: () => ["/api/task-engine", "my-tasks"] as const,
+  tasksByRole: (role: string) =>
+    ["/api/task-engine", "tasks", "by-role", role] as const,
+  borrowerTasks: (applicationId: string | undefined) =>
+    ["/api/task-engine", "applications", applicationId, "borrower-tasks"] as const,
+};
+
+/**
+ * Document-checklist / deal-team resource. NOTE: `/api/applications` is a
+ * DIFFERENT endpoint from `/api/loan-applications` — see the note on
+ * `loanApplicationKeys`. Kept separate so nobody conflates the two.
+ *
+ * `all()` exists because a document upload does not always know which file it
+ * landed on: `POST /api/documents/upload` auto-attaches to the borrower's most
+ * recent application when `applicationId` is omitted, so the uploader has no id
+ * to scope an invalidation with. Invalidating the root reaches every checklist.
+ */
+export const applicationResourceKeys = {
+  all: () => ["/api/applications"] as const,
+  // `string | null | undefined`: call sites hold an id that may not have
+  // resolved yet (and pair the query with `enabled: !!applicationId`). Widening
+  // here beats a `!` at every call site, which would assert away a real state.
+  documentChecklist: (applicationId: string | null | undefined) =>
+    ["/api/applications", applicationId, "document-checklist"] as const,
+  team: (applicationId: string | null | undefined) =>
+    ["/api/applications", applicationId, "team"] as const,
 };
 
 export const queryClient = new QueryClient({

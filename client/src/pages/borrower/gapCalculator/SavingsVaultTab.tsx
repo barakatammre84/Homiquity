@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, homeownershipGoalKeys } from "@/lib/queryClient";
 import type { SavingsTransaction } from "@shared/schema";
 import { savingsFormSchema, type GapAnalysis, type SavingsFormValues } from "./types";
 
@@ -48,8 +48,9 @@ export function SavingsVaultTab({ analysis, savingsTransactions }: SavingsVaultT
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/homeownership-goal"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/homeownership-goal/gap-analysis"] });
+      // One prefix covers the goal and both derived views (gap analysis AND
+      // credit recommendations). The old pair enumerated two of the three.
+      queryClient.invalidateQueries({ queryKey: homeownershipGoalKeys.all() });
       setShowSavingsDialog(false);
       savingsForm.reset();
       toast({

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, dashboardKeys } from "@/lib/queryClient";
+import { queryClient, apiRequest, dashboardKeys, consentKeys, applicationResourceKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -71,7 +71,7 @@ export function TaxReturnInsightCard() {
     queryKey: ["/api/tax-insights/me"],
   });
   const { data: consents } = useQuery<ConsentRecord[]>({
-    queryKey: ["/api/consents/me"],
+    queryKey: consentKeys.me(),
   });
   const { data: templates } = useQuery<ConsentTemplateRecord[]>({
     queryKey: ["/api/consent-templates", "tax_document_use"],
@@ -111,7 +111,9 @@ export function TaxReturnInsightCard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tax-insights/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      // Was ["/api/documents"] — a key no client query reads. The tax return is
+      // registered as a document, so the checklist root is what needs refreshing.
+      queryClient.invalidateQueries({ queryKey: applicationResourceKeys.all() });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       setPendingFile(null);
       setStep("idle");
@@ -147,7 +149,7 @@ export function TaxReturnInsightCard() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consents/me"] });
+      queryClient.invalidateQueries({ queryKey: consentKeys.me() });
       if (pendingFile) process.mutate(pendingFile);
     },
     onError: (error: Error) => {
@@ -168,7 +170,7 @@ export function TaxReturnInsightCard() {
       await apiRequest("POST", "/api/consents/tax_document_use/revoke");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consents/me"] });
+      queryClient.invalidateQueries({ queryKey: consentKeys.me() });
       queryClient.invalidateQueries({ queryKey: ["/api/tax-insights/me"] });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
       setConfirmingRevoke(false);

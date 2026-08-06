@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, applicationResourceKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -116,7 +116,7 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
   const [externalCompany, setExternalCompany] = useState("");
 
   const { data: team, isLoading: teamLoading } = useQuery<DealTeamMember[]>({
-    queryKey: ["/api/applications", applicationId, "team"],
+    queryKey: applicationResourceKeys.team(applicationId),
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/applications/${applicationId}/team`);
       return res.json();
@@ -146,7 +146,7 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applications", applicationId, "team"] });
+      queryClient.invalidateQueries({ queryKey: applicationResourceKeys.team(applicationId) });
       toast({
         title: "Team member added",
         description: "The team member has been added to this deal.",
@@ -169,7 +169,7 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applications", applicationId, "team"] });
+      queryClient.invalidateQueries({ queryKey: applicationResourceKeys.team(applicationId) });
       toast({
         title: "Team member removed",
         description: "The team member has been removed from this deal.",

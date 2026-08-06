@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, applicationResourceKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -75,7 +75,7 @@ interface DealTeamProps {
 
 export function DealTeam({ applicationId, compact = false }: DealTeamProps) {
   const { data: team, isLoading } = useQuery<DealTeamMember[]>({
-    queryKey: ["/api/applications", applicationId, "team"],
+    queryKey: applicationResourceKeys.team(applicationId),
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/applications/${applicationId}/team`);
       return res.json();

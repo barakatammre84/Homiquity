@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, consentKeys } from "@/lib/queryClient";
 import { 
   CheckCircle, 
   Clock,
@@ -70,7 +70,7 @@ export default function EConsent() {
     error: consentsErrorObj,
     refetch: refetchConsents,
   } = useQuery<BorrowerConsent[]>({
-    queryKey: ["/api/consents/me"],
+    queryKey: consentKeys.me(),
   });
 
   const recordConsentMutation = useMutation({
@@ -83,7 +83,7 @@ export default function EConsent() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/consents/me"] });
+      queryClient.invalidateQueries({ queryKey: consentKeys.me() });
       toast({
         title: "Consent Recorded",
         description: "Your consent has been securely recorded.",
