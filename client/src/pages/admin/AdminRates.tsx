@@ -176,7 +176,7 @@ export default function AdminRates() {
     <PageShell width="wide">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" aria-label="Copy link" asChild>
+            <Button variant="ghost" size="icon" aria-label="Back" asChild>
               <Link href="/admin" data-testid="button-back-admin">
                 <ArrowLeft className="h-5 w-5" />
               </Link>

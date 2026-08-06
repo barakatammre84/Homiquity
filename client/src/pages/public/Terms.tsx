@@ -3,6 +3,7 @@ import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Scale, AlertCircle } from "lucide-react";
+import { COMPANY_IDENTITY } from "@shared/companyIdentity";
 
 const SECTIONS = [
   {
@@ -43,7 +44,7 @@ const SECTIONS = [
   },
   {
     title: "SMS / Text Message Consent",
-    content: "By providing your telephone contact information, you consent in writing to receive SMS text-message communications from Homiquity, our subsidiaries, and our service-provider partners (including title and settlement partners) at any number you provide in connection with your account, application, loan, or closing. These \"SMS Account Notifications\" may relate to application status, account and loan information, information and document requests, due dates, delinquent accounts, closings, and program updates, and are considered to be \"in writing.\" Message frequency varies based on account activity. There is no service fee for SMS Account Notifications, but message and data rates from your carrier may apply. You may withdraw your consent at any time by replying STOP, END, CANCEL, UNSUBSCRIBE, or QUIT, or by calling 1-800-HOMIQTY; withdrawal becomes effective after we have had a reasonable period of time to process it. To receive SMS Account Notifications you must have an SMS-capable mobile phone, an active account with a wireless carrier, and sufficient storage on your device. We may modify or discontinue text-message services at any time, for any reason, and without notice.",
+    content: `By providing your telephone contact information, you consent in writing to receive SMS text-message communications from Homiquity, our subsidiaries, and our service-provider partners (including title and settlement partners) at any number you provide in connection with your account, application, loan, or closing. These "SMS Account Notifications" may relate to application status, account and loan information, information and document requests, due dates, delinquent accounts, closings, and program updates, and are considered to be "in writing." Message frequency varies based on account activity. There is no service fee for SMS Account Notifications, but message and data rates from your carrier may apply. You may withdraw your consent at any time by replying STOP, END, CANCEL, UNSUBSCRIBE, or QUIT, or by calling ${COMPANY_IDENTITY.contactPhone}; withdrawal becomes effective after we have had a reasonable period of time to process it. To receive SMS Account Notifications you must have an SMS-capable mobile phone, an active account with a wireless carrier, and sufficient storage on your device. We may modify or discontinue text-message services at any time, for any reason, and without notice.`,
   },
   {
     title: "Consent to Employment and Income Verification",
@@ -143,8 +144,8 @@ export default function Terms() {
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
             Contact our legal team for clarification on any of these terms.
           </p>
-          <a href="mailto:legal@homiquity.com" className="text-sm text-primary font-medium" data-testid="link-terms-email">
-            legal@homiquity.com
+          <a href={`mailto:${COMPANY_IDENTITY.contactEmail}`} className="text-sm text-primary font-medium" data-testid="link-terms-email">
+            {COMPANY_IDENTITY.contactEmail}
           </a>
         </section>
       </div>

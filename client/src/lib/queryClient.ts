@@ -89,7 +89,8 @@ export async function apiRequest(
 }
 
 /**
- * Build a request URL from a query key.
+ * Build a request URL from a query key. THE URL builder — every queryFn in this
+ * file routes through it, public and authenticated alike.
  *
  * Scalar segments join with "/" (the historical behaviour); a trailing plain
  * object becomes the query string. That makes `["/api/faqs", { search, category }]`
@@ -98,6 +99,14 @@ export async function apiRequest(
  *
  * Empty, null and undefined params are dropped, so an unset filter produces
  * `/api/faqs` rather than `/api/faqs?search=&category=`.
+ *
+ * It did not always cover both paths: `getQueryFn` (the authenticated default)
+ * used a bare `queryKey.join("/")`, so the params-object form documented here
+ * worked ONLY on public surfaces and silently produced
+ * `/api/consent-templates/[object Object]` behind the session. ConsentGateCard
+ * hit exactly that and worked around it with a hand-written queryFn whose URL
+ * was a second, independent spelling of its key — the drift this module's key
+ * factories exist to prevent. One builder, both paths, no second spelling.
  */
 export function buildQueryUrl(queryKey: readonly unknown[]): string {
   const last = queryKey[queryKey.length - 1];
@@ -154,7 +163,7 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const res = await fetch(buildQueryUrl(queryKey), {
       credentials: "include",
     });
 
@@ -169,11 +178,11 @@ export const getQueryFn: <T>(options: {
 /**
  * THE query keys for the loan-application resource family.
  *
- * The default `getQueryFn` above builds the URL with `queryKey.join("/")`, so a
- * key written as one template string (`` [`/api/loan-applications/${id}/options`] ``)
- * and one written as segments (`["/api/loan-applications", id, "options"]`)
- * fetch the *same URL* — but they are two different cache entries, and only the
- * segmented form participates in prefix invalidation.
+ * `buildQueryUrl` joins scalar segments with "/", so a key written as one
+ * template string (`` [`/api/loan-applications/${id}/options`] ``) and one
+ * written as segments (`["/api/loan-applications", id, "options"]`) fetch the
+ * *same URL* — but they are two different cache entries, and only the segmented
+ * form participates in prefix invalidation.
  *
  * That distinction was silently breaking refreshes: `invalidateQueries({
  * queryKey: ["/api/loan-applications", id] })` — fired from BorrowerFile,

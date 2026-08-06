@@ -111,6 +111,40 @@ export function computeFlags(answers: PreApprovalFormData): FunnelFlags {
   return { vaZeroDown, complexIncome, pmiLikely };
 }
 
+/**
+ * The ONLY answers `computeFlags` and `computeRoute` read.
+ *
+ * `state.answers` exists to derive the route and the flags — nothing else reads
+ * it (NEXT/BACK/checkGate/submit all receive fresh `form.getValues()` from the
+ * caller), so an ANSWERS_CHANGED dispatch that cannot move either output is
+ * pure cost. The React binding uses `routingSignature` to skip those: without
+ * it, every keystroke in every text step dispatched, rebuilt the context value,
+ * and re-rendered the whole funnel a second time.
+ *
+ * Keep this list in step with computeFlags/computeRoute above.
+ * `preApprovalMachine.test.ts` proves it is complete — it mutates every field
+ * NOT listed here and asserts neither output moves — so adding a field to
+ * computeFlags without adding it here fails the build rather than silently
+ * freezing the route.
+ */
+export const ROUTING_ANSWER_FIELDS: readonly (keyof PreApprovalFormData)[] = [
+  "isVeteran", // route: injects the VA residual-income steps; flags: vaZeroDown
+  "loanPurpose", // flags: vaZeroDown
+  "employmentType", // flags: complexIncome
+  "hasAdditionalIncome", // route: injects incomeSources
+  "incomeSources", // route + flags: rental count drives complexIncome
+  "purchasePrice", // flags: pmiLikely
+  "downPayment", // flags: pmiLikely
+];
+
+/**
+ * A stable string over exactly the routing-relevant answers. Equal signature ⇒
+ * identical route and flags, so the binding can skip the dispatch.
+ */
+export function routingSignature(answers: PreApprovalFormData): string {
+  return JSON.stringify(ROUTING_ANSWER_FIELDS.map((field) => answers[field] ?? null));
+}
+
 /** The route is a pure function of the answers. Same answers → same route. */
 export function computeRoute(answers: PreApprovalFormData): FunnelStepId[] {
   const flags = computeFlags(answers);
@@ -252,6 +286,14 @@ export interface FunnelState {
   stepId: FunnelStepId;
   /** 1 = advancing, -1 = going back; drives the slide animation. */
   direction: 1 | -1;
+  /**
+   * ROUTING-AUTHORITATIVE ONLY. Current for every field in
+   * `ROUTING_ANSWER_FIELDS`; every other field may lag the form, because the
+   * binding skips ANSWERS_CHANGED when it cannot move the route or the flags.
+   * Read this to derive sequencing — never to read a borrower's answer. NEXT,
+   * BACK, `checkGate` and the submit path all take fresh `form.getValues()`
+   * from the caller for exactly that reason.
+   */
   answers: PreApprovalFormData;
   consent: FunnelConsent;
   /** Result of the last blocked NEXT, stamped so effects can toast once. */

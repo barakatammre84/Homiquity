@@ -508,6 +508,41 @@ export const departingResidenceSchema = z.object({
 });
 export type DepartingResidence = z.infer<typeof departingResidenceSchema>;
 
+/**
+ * URLA Section 4a vocabulary — loan type and amortization type as the
+ * borrower states them (Form 1003 "Loan and Property Information").
+ *
+ * The value sets are pinned to the MISMO seam and must move in lockstep:
+ *   - `preferredLoanType` keys server/mismo.ts mapMortgageType() → ULDD
+ *     MortgageType {Conventional, FHA, VA, USDA}, and the VA branches in
+ *     server/services/mismoValidation.ts compare the lowercased value "va";
+ *   - `amortizationType` is read lowercased by mismoValidation.validateArm
+ *     ("adjustable" ⇒ the ARM term fields become required) and mapped to ULDD
+ *     LoanAmortizationType {Fixed, AdjustableRate} by
+ *     server/services/loanDeliveryReadiness.ts.
+ * Never add a value here without extending those mappers first — an unmapped
+ * value would fall through to a wrong MISMO enumeration.
+ */
+export const PREFERRED_LOAN_TYPES = ["conventional", "fha", "va", "usda"] as const;
+export type PreferredLoanType = (typeof PREFERRED_LOAN_TYPES)[number];
+
+export const AMORTIZATION_TYPES = ["fixed", "adjustable"] as const;
+export type AmortizationType = (typeof AMORTIZATION_TYPES)[number];
+
+/**
+ * URLA Section 4a save body (WF2-F4). Both fields are required together: no
+ * HTTP surface wrote either loan_applications column, so section-4 gating
+ * (server/services/mismoValidation.ts) was unsatisfiable for every
+ * product-created file — and accepting one field alone would recreate that
+ * half-set state. The borrower states section 4; the server validates it —
+ * never silently defaults it.
+ */
+export const urlaLoanDetailsSchema = z.object({
+  preferredLoanType: z.enum(PREFERRED_LOAN_TYPES),
+  amortizationType: z.enum(AMORTIZATION_TYPES),
+});
+export type UrlaLoanDetails = z.infer<typeof urlaLoanDetailsSchema>;
+
 export const insertLoanApplicationSchema = createInsertSchema(loanApplications)
   .omit({
     id: true,

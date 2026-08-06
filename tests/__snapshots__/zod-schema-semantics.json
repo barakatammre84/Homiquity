@@ -16,6 +16,22 @@
     "missing-monthlyPitia": "reject:estimatedMarketRent,monthlyPitia",
     "wrongtype-address": "reject:address,estimatedMarketRent,monthlyPitia"
   },
+  "schema.urlaLoanDetailsSchema": {
+    "undefined": "reject:",
+    "null": "reject:",
+    "empty-object": "reject:amortizationType,preferredLoanType",
+    "empty-array": "reject:",
+    "empty-string": "reject:",
+    "zero": "reject:",
+    "false": "reject:",
+    "string": "reject:",
+    "number": "reject:",
+    "true": "reject:",
+    "all-keys-typed": "reject:amortizationType,preferredLoanType",
+    "missing-preferredLoanType": "reject:amortizationType,preferredLoanType",
+    "missing-amortizationType": "reject:amortizationType,preferredLoanType",
+    "wrongtype-preferredLoanType": "reject:amortizationType,preferredLoanType"
+  },
   "schema.insertLoanApplicationSchema": {
     "undefined": "reject:",
     "null": "reject:",
@@ -2041,14 +2057,14 @@
     "string": "reject:",
     "number": "reject:",
     "true": "reject:",
-    "all-keys-typed": "reject:creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
-    "missing-applicationId": "reject:applicationId,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
-    "missing-creditPullId": "reject:creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
-    "missing-userId": "reject:creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons,userId",
-    "missing-actionType": "reject:actionType,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
-    "missing-primaryReason": "reject:creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,primaryReason,reviewedAt,secondaryReasons",
-    "missing-secondaryReasons": "reject:creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt",
-    "wrongtype-applicationId": "reject:applicationId,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons"
+    "all-keys-typed": "reject:basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
+    "missing-applicationId": "reject:applicationId,basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
+    "missing-creditPullId": "reject:basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
+    "missing-userId": "reject:basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons,userId",
+    "missing-actionType": "reject:actionType,basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
+    "missing-primaryReason": "reject:basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,primaryReason,reviewedAt,secondaryReasons",
+    "missing-secondaryReasons": "reject:basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt",
+    "wrongtype-applicationId": "reject:applicationId,basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons"
   },
   "schema.insertCreditAuditLogSchema": {
     "undefined": "reject:",
@@ -2061,14 +2077,14 @@
     "string": "reject:",
     "number": "reject:",
     "true": "reject:",
-    "all-keys-typed": "reject:timestamp",
-    "missing-applicationId": "reject:timestamp",
-    "missing-userId": "reject:timestamp",
-    "missing-consentId": "reject:timestamp",
-    "missing-creditPullId": "reject:timestamp",
-    "missing-adverseActionId": "reject:timestamp",
-    "missing-action": "reject:action,timestamp",
-    "wrongtype-applicationId": "reject:applicationId,timestamp"
+    "all-keys-typed": "reject:hashVersion,timestamp",
+    "missing-applicationId": "reject:hashVersion,timestamp",
+    "missing-userId": "reject:hashVersion,timestamp",
+    "missing-consentId": "reject:hashVersion,timestamp",
+    "missing-creditPullId": "reject:hashVersion,timestamp",
+    "missing-adverseActionId": "reject:hashVersion,timestamp",
+    "missing-action": "reject:action,hashVersion,timestamp",
+    "wrongtype-applicationId": "reject:applicationId,hashVersion,timestamp"
   },
   "schema.insertHomeownershipGoalSchema": {
     "undefined": "reject:",

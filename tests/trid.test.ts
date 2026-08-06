@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addBusinessDays, subtractBusinessDays } from "../server/services/businessDays";
-import type { LoanApplication, UrlaPersonalInfo } from "@shared/schema";
+import type { LoanApplication, UrlaPersonalInfo, UrlaPropertyInfo } from "@shared/schema";
 
 // In-memory double for evaluateTridTrigger's storage calls — evaluateTridTrigger
 // (unlike the pure functions above) is I/O-bearing, so it needs a real exercise
@@ -18,6 +18,7 @@ vi.mock("../server/storage", () => ({
   storage: {
     getLoanApplication: async (_id: string) => h.application,
     getUrlaPersonalInfo: async (_id: string) => h.personalInfo,
+    getUrlaPropertyInfo: async (_id: string) => undefined,
     updateLoanApplication: async (_id: string, patch: any) => {
       h.application = { ...(h.application as any), ...patch };
       return h.application;
@@ -92,6 +93,37 @@ describe("Six pieces of information (§1026.2(a)(3))", () => {
       withSsn,
     );
     expect(result.complete).toBe(true);
+  });
+
+  // 2026-08-05 pre-flight blind spot: an address or value supplied only on
+  // the URLA property record must count — under-counting starts the LE clock
+  // late (the violation direction), over-counting is merely conservative.
+  it("counts an address that exists only on the URLA property record", () => {
+    const result = assessSixPieces(
+      app({ propertyAddress: null }),
+      withSsn,
+      { propertyStreet: "456 Ordering Probe Ave" } as UrlaPropertyInfo,
+    );
+    expect(result.complete).toBe(true);
+  });
+
+  it("counts an estimated value that exists only on the URLA property record", () => {
+    const result = assessSixPieces(
+      app({ propertyValue: null, purchasePrice: null, downPayment: null, preApprovalAmount: "320000" }),
+      withSsn,
+      { propertyValue: "410000" } as UrlaPropertyInfo,
+    );
+    expect(result.complete).toBe(true);
+  });
+
+  it("still reports the address missing when neither source has one", () => {
+    const result = assessSixPieces(
+      app({ propertyAddress: null }),
+      withSsn,
+      { propertyStreet: null } as UrlaPropertyInfo,
+    );
+    expect(result.complete).toBe(false);
+    expect(result.missing).toEqual(["property_address"]);
   });
 });
 

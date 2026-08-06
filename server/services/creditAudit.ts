@@ -1,10 +1,14 @@
 // Audit read/verify surface, disclosure getters, AG-1 agent-tool audit + audited external soft-pull persistence (AG-2 seam), audit export package + CSV.
 // Split from the old server/services/creditService.ts — which re-exports all of it.
 import { db } from "../db";
-import { creditPulls, creditAuditLog, type CreditConsent, type CreditPull, type AdverseAction } from "@shared/schema";
-import { eq, desc, isNull } from "drizzle-orm";
-import { verifyHashChain } from "./encryptionService";
-import { logCreditAction } from "./creditAuditChain";
+import { creditPulls, creditAuditLog, creditAuditChainTips, type CreditConsent, type CreditPull, type AdverseAction } from "@shared/schema";
+import { eq, desc, isNull, sql } from "drizzle-orm";
+import { verifyHashChain, type HashChainCoverage } from "./encryptionService";
+import {
+  logCreditAction,
+  auditChainScopeKey,
+  NULL_APPLICATION_SCOPE_KEY,
+} from "./creditAuditChain";
 import { ADVERSE_ACTION_REASONS, CURRENT_DISCLOSURE_VERSION, FCRA_DISCLOSURE_TEXT } from "./creditCatalogs";
 import { getActiveConsent, getConsentById } from "./creditConsents";
 import { getCreditPullsByApplication } from "./creditPulls";
@@ -49,20 +53,53 @@ export function getReasonBureauCodes(
   return reason.bureauReasonCodes[bureau] || [];
 }
 
-export async function verifyAuditLogIntegrity(
-  applicationId: string
-): Promise<{ valid: boolean; brokenAt?: number; reason?: string; totalEntries: number }> {
-  const entries = await db
-    .select()
-    .from(creditAuditLog)
-    .where(eq(creditAuditLog.applicationId, applicationId))
-    .orderBy(creditAuditLog.timestamp, creditAuditLog.sequenceNumber);
+/**
+ * Result of a full-scope integrity check (F-038).
+ *
+ * `coverage` exists so a caller cannot mistake "the entries present link to each
+ * other" for "nothing has been removed". Those were the same `{valid: true}`
+ * before, and the difference between them was the finding.
+ */
+export interface AuditIntegrityResult {
+  valid: boolean;
+  brokenAt?: number;
+  reason?: string;
+  totalEntries: number;
+  coverage: HashChainCoverage & {
+    /**
+     * The chain's END was checked against the externally-recorded tip.
+     * `false` means tail truncation could NOT be ruled out for this scope —
+     * either the chain predates tip tracking, or its tip row is gone.
+     */
+    tailAnchored: boolean;
+    /**
+     * When tail-anchored: entries below this sequence number predate tip
+     * tracking and are covered only by the in-chain checks.
+     */
+    tailAnchoredFromSequence?: number;
+  };
+}
 
-  if (entries.length === 0) {
-    return { valid: true, totalEntries: 0 };
-  }
-  
-  const result = verifyHashChain(
+/**
+ * Verify one audit chain end to end.
+ *
+ * Two independent mechanisms, because neither alone is sufficient:
+ *  - `verifyHashChain` proves the entries present are unmodified, start at
+ *    genesis, and have no sequence gaps;
+ *  - the persisted tip proves the chain still ends where it last ended, which
+ *    nothing inside the chain can establish about itself.
+ */
+async function verifyScopeIntegrity(
+  entries: Array<typeof creditAuditLog.$inferSelect>,
+  scopeKey: string
+): Promise<AuditIntegrityResult> {
+  const [tip] = await db
+    .select()
+    .from(creditAuditChainTips)
+    .where(eq(creditAuditChainTips.scopeKey, scopeKey))
+    .limit(1);
+
+  const chain = verifyHashChain(
     entries.map(e => ({
       entryHash: e.entryHash,
       previousEntryHash: e.previousEntryHash,
@@ -71,10 +108,67 @@ export async function verifyAuditLogIntegrity(
       action: e.action,
       actionDetails: e.actionDetails as Record<string, any> | null,
       timestamp: e.timestamp,
+      sequenceNumber: e.sequenceNumber,
+      hashVersion: e.hashVersion,
     }))
   );
-  
-  return { ...result, totalEntries: entries.length };
+
+  const coverage = {
+    ...chain.coverage,
+    tailAnchored: Boolean(tip),
+    ...(tip ? { tailAnchoredFromSequence: tip.trackingStartedAtSequence } : {}),
+  };
+
+  if (!chain.valid) {
+    return { ...chain, coverage, totalEntries: entries.length };
+  }
+
+  // The in-chain checks passed. Now the one thing they structurally cannot see:
+  // whether the chain still ends where the external record says it ended.
+  if (tip) {
+    const last = entries[entries.length - 1];
+    if (!last) {
+      return {
+        valid: false,
+        reason:
+          `Chain tip recorded (sequence ${tip.tipSequenceNumber}) but this scope ` +
+          `now has NO entries. The entire log has been deleted.`,
+        totalEntries: 0,
+        coverage,
+      };
+    }
+    if (last.entryHash !== tip.tipEntryHash) {
+      return {
+        valid: false,
+        brokenAt: entries.length - 1,
+        reason:
+          `Chain tail truncated: last entry is sequence ${last.sequenceNumber} ` +
+          `(${last.entryHash}) but the recorded tip is sequence ` +
+          `${tip.tipSequenceNumber} (${tip.tipEntryHash}). ` +
+          `${Math.max(0, tip.tipSequenceNumber - (last.sequenceNumber ?? 0))} ` +
+          `entries are missing from the end of this chain.`,
+        totalEntries: entries.length,
+        coverage,
+      };
+    }
+  }
+
+  return { valid: true, totalEntries: entries.length, coverage };
+}
+
+export async function verifyAuditLogIntegrity(
+  applicationId: string
+): Promise<AuditIntegrityResult> {
+  const entries = await db
+    .select()
+    .from(creditAuditLog)
+    .where(eq(creditAuditLog.applicationId, applicationId))
+    .orderBy(creditAuditLog.timestamp, creditAuditLog.sequenceNumber);
+
+  // NOTE: an empty result is NOT short-circuited to valid any more. A scope with
+  // a recorded tip and zero entries means the whole log was deleted, which is
+  // the most severe case and used to be the one that reported clean.
+  return verifyScopeIntegrity(entries, auditChainScopeKey(applicationId));
 }
 
 // ---------------------------------------------------------------------------
@@ -253,35 +347,101 @@ export async function logAgentToolInvocation(params: {
 
 /** Integrity check for the null-application chain (agent invocations that
  * never resolved to a loan application). */
-export async function verifyAgentAuditLogIntegrity(): Promise<{
-  valid: boolean;
-  brokenAt?: number;
-  reason?: string;
-  totalEntries: number;
-}> {
+/**
+ * How many chains one platform-wide sweep will verify (F-039).
+ *
+ * Verification loads every entry of a scope, so an unbounded sweep grows with
+ * the whole audit table. The cap keeps a dashboard tile from turning into a
+ * full-table scan; what matters is that the result REPORTS the bound rather
+ * than presenting a partial sweep as a complete one.
+ */
+export const AUDIT_CHAIN_SWEEP_LIMIT = 50;
+
+export interface AuditChainSweepResult {
+  scopesTotal: number;
+  scopesChecked: number;
+  scopesValid: number;
+  /** Every chain that failed, so the tile can name one instead of just going red. */
+  invalid: Array<{ scopeKey: string; reason: string; totalEntries: number }>;
+  /** Chains checked whose END is externally anchored (F-038). */
+  tailAnchored: number;
+  /** Chains checked whose sequence numbers are all inside the hash (F-046). */
+  sequenceHashed: number;
+  /** True when every existing chain was checked, i.e. the cap did not bite. */
+  complete: boolean;
+}
+
+/**
+ * Verify every audit chain on the platform, most recently active first (F-039).
+ *
+ * Exists because the staff Compliance tab asserted "Hash Chain Verified — all
+ * audit entries are cryptographically linked" as literal markup: no query, no
+ * props, no reference to any verify endpoint. It could not turn red, so it said
+ * the same thing whether the log was intact or destroyed. The per-application
+ * endpoint could not back that claim either, since the claim is platform-wide.
+ *
+ * Bounded by AUDIT_CHAIN_SWEEP_LIMIT and reports `complete` so a partial sweep
+ * is never displayed as a full one.
+ */
+export async function verifyAllAuditChains(
+  limit: number = AUDIT_CHAIN_SWEEP_LIMIT
+): Promise<AuditChainSweepResult> {
+  // One grouped query for the scope list: counting chains must not itself cost
+  // a scan of every entry.
+  const scopeRows = await db
+    .select({
+      applicationId: creditAuditLog.applicationId,
+      lastAt: sql<Date>`max(${creditAuditLog.timestamp})`,
+    })
+    .from(creditAuditLog)
+    .groupBy(creditAuditLog.applicationId);
+
+  const ordered = [...scopeRows].sort(
+    (a, b) => new Date(b.lastAt as unknown as string).getTime() -
+              new Date(a.lastAt as unknown as string).getTime()
+  );
+  const selected = ordered.slice(0, limit);
+
+  const result: AuditChainSweepResult = {
+    scopesTotal: ordered.length,
+    scopesChecked: selected.length,
+    scopesValid: 0,
+    invalid: [],
+    tailAnchored: 0,
+    sequenceHashed: 0,
+    complete: selected.length === ordered.length,
+  };
+
+  for (const scope of selected) {
+    const verified = scope.applicationId
+      ? await verifyAuditLogIntegrity(scope.applicationId)
+      : await verifyAgentAuditLogIntegrity();
+    const scopeKey = scope.applicationId ?? NULL_APPLICATION_SCOPE_KEY;
+
+    if (verified.valid) {
+      result.scopesValid++;
+    } else {
+      result.invalid.push({
+        scopeKey,
+        reason: verified.reason ?? "chain verification failed",
+        totalEntries: verified.totalEntries,
+      });
+    }
+    if (verified.coverage.tailAnchored) result.tailAnchored++;
+    if (verified.coverage.sequenceIntegrity === "hashed") result.sequenceHashed++;
+  }
+
+  return result;
+}
+
+export async function verifyAgentAuditLogIntegrity(): Promise<AuditIntegrityResult> {
   const entries = await db
     .select()
     .from(creditAuditLog)
     .where(isNull(creditAuditLog.applicationId))
     .orderBy(creditAuditLog.timestamp, creditAuditLog.sequenceNumber);
 
-  if (entries.length === 0) {
-    return { valid: true, totalEntries: 0 };
-  }
-
-  const result = verifyHashChain(
-    entries.map(e => ({
-      entryHash: e.entryHash,
-      previousEntryHash: e.previousEntryHash,
-      applicationId: e.applicationId,
-      userId: e.userId,
-      action: e.action,
-      actionDetails: e.actionDetails as Record<string, any> | null,
-      timestamp: e.timestamp,
-    }))
-  );
-
-  return { ...result, totalEntries: entries.length };
+  return verifyScopeIntegrity(entries, NULL_APPLICATION_SCOPE_KEY);
 }
 
 export interface AuditExportPackage {

@@ -2,7 +2,7 @@ import { storage } from "../storage";
 import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
-import { computeClosingCosts, calculatePMI } from "./loanCosts";
+import { computeClosingCosts, calculatePMI, estimateMonthlyEscrow } from "./loanCosts";
 import { activeFeeSchedule } from "./platformFeeSchedule";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import { toActualFeeMap, type ActualFeeMap } from "@shared/compliance/feeProvenance";
@@ -219,7 +219,44 @@ async function resolveActualFeesFor(applicationId: string): Promise<ActualFeeMap
   }
 }
 
-export async function generateLoanEstimate(applicationId: string): Promise<LoanEstimateData> {
+/**
+ * The pricing derivation SHARED by the disclosable Loan Estimate and the
+ * internal payment projection: input guards, note-rate derivation (base rate
+ * by product, credit-score adjustments, LLPA), P&I and MI. Extracted verbatim
+ * from generateLoanEstimate — one derivation, two consumers, no drift.
+ *
+ * Deliberately compensation-free: nothing in here reads the §1026.36(d)(2)
+ * election, because no monthly-payment input depends on how the originator is
+ * paid. The election guard stays on the DISCLOSABLE path below.
+ *
+ * THAT IS AN INVARIANT, NOT A COINCIDENCE (F-047). computePaymentProjection's
+ * whole right to skip the election guard rests on it. If you are about to price
+ * lender-paid compensation into `baseRate` here — the industry-standard thing to
+ * do, and the reason this needs saying — understand that it silently makes the
+ * instant-decision engine compensation-dependent and bypasses the fail-closed
+ * guard for a number that now depends on the election.
+ *
+ * Enforced by tests/paymentProjection.test.ts ("is byte-identical with no
+ * election, lender-paid, and borrower-paid"). Note the parity tests in that file
+ * CANNOT enforce it: they compare this function's two consumers, which both call
+ * it, so a change here moves both sides equally and parity still passes. Verified
+ * by mutation — a comp-bearing rate bump left all six pre-existing tests green.
+ */
+interface PricingDerivation {
+  application: LoanApplication;
+  purchasePrice: number;
+  downPayment: number;
+  loanAmount: number;
+  ltv: number;
+  isVaLoan: boolean;
+  llpaResult: Awaited<ReturnType<typeof calculateLLPA>>;
+  interestRate: number;
+  termMonths: number;
+  monthlyPandI: number;
+  monthlyPMI: number;
+}
+
+async function derivePricing(applicationId: string): Promise<PricingDerivation> {
   const application = await storage.getLoanApplication(applicationId);
   if (!application) {
     throw new Error("Application not found");
@@ -245,19 +282,7 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   if (!propertyState) {
     throw new Error("Property state is required to generate a loan estimate");
   }
-  // §1026.36(d)(2): the fee schedule cannot be built without knowing who pays
-  // the originator — a guessed model produces either an unlawful borrower
-  // charge or an understated disclosure. Fail closed.
-  const compensation = resolveCompensation(
-    application.loCompensationModel,
-    application.loCompensationBps,
-  );
-  if (!compensation) {
-    throw new Error(
-      "Loan originator compensation model and rate are required to generate a loan estimate (12 CFR 1026.36(d)(2))",
-    );
-  }
-  
+
   const ltv = (loanAmount / purchasePrice) * 100;
   const isVeteran = application.isVeteran || false;
   const loanType = application.preferredLoanType || "conventional";
@@ -303,6 +328,93 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   const termMonths = 360;
   const monthlyPandI = calculateMonthlyPayment(loanAmount, interestRate, termMonths);
   const monthlyPMI = isVaLoan ? 0 : calculatePMI(loanAmount, purchasePrice, creditScore);
+
+  return {
+    application,
+    purchasePrice,
+    downPayment,
+    loanAmount,
+    ltv,
+    isVaLoan,
+    llpaResult,
+    interestRate,
+    termMonths,
+    monthlyPandI,
+    monthlyPMI,
+  };
+}
+
+/**
+ * INTERNAL PRICING PROJECTION — not a disclosure.
+ *
+ * The instant-decision engine consumes exactly one pricing number: the
+ * proposed monthly PITI (P&I + MI + escrow). Every input of that number is
+ * independent of the §1026.36(d)(2) compensation election — no origination
+ * fee rides in a monthly payment, and the rate derivation never reads the
+ * election — so this path omits the election guard that generateLoanEstimate
+ * applies to the DISCLOSABLE Loan Estimate. (WF1-002: routing the engine
+ * through the disclosable generator made every fresh intake undecidable,
+ * because no intake path elects compensation.)
+ *
+ * Equally deliberately, the return shape carries ONLY the payment projection:
+ * no fee lines, no closing costs, no APR — nothing disclosable that could
+ * ever reach a borrower as a Loan Estimate. The numbers are byte-identical to
+ * the LE's projectedPayments.years1Through5 for the same inputs (same
+ * derivation, same escrow model, same rounding).
+ */
+export interface PaymentProjection {
+  loanAmount: number;
+  /** Note rate, % — the same derivation the Loan Estimate prices. */
+  interestRate: number;
+  monthlyPrincipalAndInterest: number;
+  monthlyMortgageInsurance: number;
+  monthlyEscrow: number;
+  /** P&I + MI + escrow — the engine's proposed PITI. */
+  estimatedMonthlyTotal: number;
+}
+
+export async function computePaymentProjection(applicationId: string): Promise<PaymentProjection> {
+  const { purchasePrice, loanAmount, interestRate, monthlyPandI, monthlyPMI } =
+    await derivePricing(applicationId);
+  const { monthlyEscrow } = estimateMonthlyEscrow({ purchasePrice });
+  return {
+    loanAmount,
+    interestRate,
+    monthlyPrincipalAndInterest: Math.round(monthlyPandI * 100) / 100,
+    monthlyMortgageInsurance: Math.round(monthlyPMI * 100) / 100,
+    monthlyEscrow: Math.round(monthlyEscrow * 100) / 100,
+    estimatedMonthlyTotal: Math.round((monthlyPandI + monthlyPMI + monthlyEscrow) * 100) / 100,
+  };
+}
+
+export async function generateLoanEstimate(applicationId: string): Promise<LoanEstimateData> {
+  const {
+    application,
+    purchasePrice,
+    downPayment,
+    loanAmount,
+    ltv,
+    llpaResult,
+    interestRate,
+    termMonths,
+    monthlyPandI,
+    monthlyPMI,
+  } = await derivePricing(applicationId);
+
+  // §1026.36(d)(2): the fee schedule cannot be built without knowing who pays
+  // the originator — a guessed model produces either an unlawful borrower
+  // charge or an understated disclosure. Fail closed. This guard binds the
+  // DISCLOSABLE Loan Estimate only; the engine's payment projection above is
+  // compensation-independent by construction.
+  const compensation = resolveCompensation(
+    application.loCompensationModel,
+    application.loCompensationBps,
+  );
+  if (!compensation) {
+    throw new Error(
+      "Loan originator compensation model and rate are required to generate a loan estimate (12 CFR 1026.36(d)(2))",
+    );
+  }
 
   // Fee schedule + cost structure from the shared platform model
   // (services/loanCosts.ts) — the LO-2 scenario simulator reads the same

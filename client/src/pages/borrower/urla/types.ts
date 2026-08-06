@@ -1,12 +1,18 @@
-import type {
-  BorrowerDeclarations,
-  EmploymentHistory,
-  HmdaDemographics,
-  OtherIncomeSource,
-  UrlaAsset,
-  UrlaLiability,
-  UrlaPersonalInfo,
-  UrlaPropertyInfo,
+import {
+  AMORTIZATION_TYPES,
+  PREFERRED_LOAN_TYPES,
+  type AmortizationType,
+  type BorrowerDeclarations,
+  type EmploymentHistory,
+  type HmdaDemographics,
+  type LoanApplication,
+  type OtherIncomeSource,
+  type PreferredLoanType,
+  type UrlaAsset,
+  type UrlaLiability,
+  type UrlaLoanDetails,
+  type UrlaPersonalInfo,
+  type UrlaPropertyInfo,
 } from "@shared/schema";
 
 // SSN and account numbers are WRITE-ONLY virtual fields: the server encrypts
@@ -56,8 +62,41 @@ export interface SectionsPayload {
 export interface UrlaSavePayload extends SectionsPayload {
   otherIncomeSources: Partial<OtherIncomeSource>[];
   propertyInfo: Partial<UrlaPropertyInfo>;
+  /** Section 4a — loan type + amortization type (loan_applications columns). */
+  loanDetails: UrlaLoanDetails;
   coApplicants?: SectionsPayload[];
 }
+
+/** Section 4a select options — labels over the shared MISMO-pinned vocabulary. */
+export const LOAN_TYPE_OPTIONS: { value: PreferredLoanType; label: string }[] = [
+  { value: "conventional", label: "Conventional" },
+  { value: "fha", label: "FHA" },
+  { value: "va", label: "VA" },
+  { value: "usda", label: "USDA" },
+];
+
+export const AMORTIZATION_TYPE_OPTIONS: { value: AmortizationType; label: string }[] = [
+  { value: "fixed", label: "Fixed Rate" },
+  { value: "adjustable", label: "Adjustable Rate (ARM)" },
+];
+
+/**
+ * Section 4a state from the application row, narrowed to the shared
+ * vocabulary. The columns are free varchars historically written only by the
+ * demo seed, so an out-of-vocabulary value falls back to the borrower-safe
+ * defaults (conventional / fixed) — visible and editable in the form, never
+ * silently submitted by the server.
+ */
+export const toLoanDetailsState = (
+  app: Pick<LoanApplication, "preferredLoanType" | "amortizationType">,
+): UrlaLoanDetails => ({
+  preferredLoanType: (PREFERRED_LOAN_TYPES as readonly string[]).includes(app.preferredLoanType ?? "")
+    ? (app.preferredLoanType as PreferredLoanType)
+    : "conventional",
+  amortizationType: (AMORTIZATION_TYPES as readonly string[]).includes(app.amortizationType ?? "")
+    ? (app.amortizationType as AmortizationType)
+    : "fixed",
+});
 
 export const emptyDemographics = (): DemographicsState => ({
   ethnicityHispanicLatino: false,

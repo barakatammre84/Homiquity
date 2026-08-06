@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
-import { useParams, useSearch, Link } from "wouter";
+import { useParams, useSearchParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, ApiError, loanApplicationKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
@@ -53,6 +53,7 @@ import { TimelineTab } from "./borrowerFile/TimelineTab";
 // bundle and off this page's own initial render.
 const DocumentViewer = lazy(() => import("@/components/staff/DocumentViewer"));
 
+const TAB_PARAM = "tab";
 const TAB_VALUES = ["overview", "documents", "conditions", "timeline", "credit", "financials", "tax-intel", "team"];
 
 export default function BorrowerFile() {
@@ -62,12 +63,26 @@ export default function BorrowerFile() {
   const { toast } = useToast();
 
   // ?tab= deep-link (e.g. the staff docs-ready signal links straight to the
-  // Documents tab). Tabs are controlled so the link works after hydration too.
-  const search = useSearch();
-  const requestedTab = new URLSearchParams(search).get("tab");
-  const [activeTab, setActiveTab] = useState(
-    requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "overview",
-  );
+  // Documents tab). The URL is the state, not just a seed for it: reading it
+  // once into useState meant the tab a processor was on could not be shared or
+  // reloaded, and a second ?tab= link clicked from within the page did nothing
+  // at all (the component was already mounted, so the initializer never re-ran).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get(TAB_PARAM);
+  const activeTab =
+    requestedTab && TAB_VALUES.includes(requestedTab) ? requestedTab : "overview";
+  const setActiveTab = (tab: string) => {
+    setSearchParams(
+      (prev) => {
+        // Copy so sibling params survive a tab switch.
+        const next = new URLSearchParams(prev);
+        next.set(TAB_PARAM, tab);
+        return next;
+      },
+      // Replace: switching tabs is a view change, not a place to go Back to.
+      { replace: true },
+    );
+  };
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
 
   const { data: appData, isLoading: appLoading } = useQuery<ApplicationData>({

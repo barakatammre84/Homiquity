@@ -15,6 +15,7 @@ export default defineConfig({
       "tests/zodSchemaSemantics.test.ts",
       "tests/routeGates.test.ts",
       "tests/queryErrorHandling.test.ts",
+      "tests/activeApplicationListParity.test.ts",
       "tests/apiRequestConvergence.test.ts",
       "tests/queryKeyConvergence.test.ts",
       "tests/borrowerTaskView.test.ts",
@@ -41,6 +42,11 @@ export default defineConfig({
       "tests/complaintEscalation.test.ts",
       "tests/cycleTimeReport.test.ts",
       "tests/ruleEngine.test.ts",
+      "tests/decisionEngineGaps.test.ts",
+      // WF1-002: the engine's compensation-independent pricing projection.
+      "tests/paymentProjection.test.ts",
+      // WF2-F4: the URLA section-4a loanDetails write path.
+      "tests/urlaLoanDetailsSave.test.ts",
       "tests/pipelineEngineStageTransitions.test.ts",
       "tests/activeBuyerPromotion.test.ts",
       "tests/docRequestDraft.test.ts",
@@ -56,6 +62,8 @@ export default defineConfig({
       "tests/adverseActionNotice.test.ts",
       "tests/adverseActionDelivery.test.ts",
       "tests/adverseActionPdf.test.ts",
+      "tests/adverseActionFcraChokepoint.test.ts",
+      "tests/adverseActionPregenerateHardening.test.ts",
       "tests/apr.test.ts",
       "tests/aprValidation.test.ts",
       "tests/structureTranslation.test.ts",
@@ -66,6 +74,7 @@ export default defineConfig({
       "tests/creditConsentScope.test.ts",
       "tests/creditSimulationGuards.test.ts",
       "tests/kycClearanceWorkflow.test.ts",
+      "tests/onboardingProfileAttestation.test.ts",
       // Revised-LE deadline math (Reg Z §1026.19(e)(4)(i)) — sibling of trid.test.ts.
       // Was in NEITHER config since it landed, so its 10 assertions had never run
       // (same class as F-013's maintenanceMode.test.ts). Pure unit test: no HTTP, no DB.
@@ -109,6 +118,7 @@ export default defineConfig({
       "tests/smsCompliance.test.ts",
       "tests/errorMonitoring.test.ts",
       "tests/auditReanchor.test.ts",
+      "tests/auditChainTruncation.test.ts",
       "tests/qmThresholds.test.ts",
       "tests/specialFeatureCodes.test.ts",
       "tests/loanDeliveryEdits.test.ts",
@@ -122,6 +132,7 @@ export default defineConfig({
       "tests/rateLimitRelaxed.test.ts",
       "tests/betaGate.test.ts",
       "tests/prelaunchGate.test.ts",
+      "tests/prelaunchPublicSurface.test.ts",
       "tests/taxInsight.test.ts",
       "tests/extractionService.test.ts",
       "tests/taxDocumentIntelligence.test.ts",
@@ -142,6 +153,7 @@ export default defineConfig({
       "tests/queryParams.test.ts",
       "tests/vercelEntryHelpers.test.ts",
       "tests/spaCatchAll.test.ts",
+      "tests/seoPrerender.test.ts",
       "tests/coachProfileSync.test.ts",
       "tests/coachTools.test.ts",
       "tests/coachLintFilter.test.ts",

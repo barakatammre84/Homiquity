@@ -3,6 +3,8 @@ import session from "express-session";
 import type { Express } from "express";
 import connectPg from "connect-pg-simple";
 
+import { trustProxyHops } from "../../trustProxy";
+
 export function getSession() {
   // Lending sessions handle sensitive PII/credit data, so a 7-day fixed window is
   // too long. Use a 12-hour idle timeout (rolling: the cookie's maxAge is refreshed
@@ -52,7 +54,10 @@ export function getSession() {
 // environment before any auth route or isAuthenticated check — it is what
 // makes req.isAuthenticated / req.login / req.logout / req.user exist.
 export function setupSessionAuth(app: Express) {
-  app.set("trust proxy", 1);
+  // Defensive re-set of server/app.ts's value — same source function, so the
+  // two call sites cannot disagree on the hop count (secure cookies + req.ip
+  // both resolve through it).
+  app.set("trust proxy", trustProxyHops());
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());

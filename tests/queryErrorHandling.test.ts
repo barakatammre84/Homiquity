@@ -31,8 +31,37 @@ const PAGES = join(REPO_ROOT, "client", "src", "pages");
 /**
  * Pages that both (a) render an empty/zero state derived from query data and
  * (b) have no error branch. Lower this as pages are converted — never raise it.
+ *
+ * 12 → 11: PreApproval.tsx left the set when the income-step mirror state was
+ * deleted (IncomeSourcesStep now derives its UI from form.incomeSources). Be
+ * precise about what that means — it was a HEURISTIC false positive, matched on
+ * the `= []` / `= {}` initializers inside the old `applyIncomeSources`, not on
+ * any empty state the page shows a user. PreApproval did not gain a
+ * QueryBoundary and does not need one; it simply no longer trips the detector.
+ * The ten genuinely-unguarded surfaces below are unchanged.
+ *
+ * 11 → 10: RentToOwnReadiness.tsx left the set, and unlike the 12 → 11 drop this
+ * one is a REAL conversion — the page now imports QueryErrorState, reads
+ * `isError` off its tiers query, and renders an error branch. Verified rather
+ * than assumed, because a page split is exactly the change that CAN fake a gain
+ * here: the detector needs `useQuery`, the empty default and the "No … yet"
+ * claim in ONE file, so moving an empty state into a child component would drop
+ * a page out of the set while leaving it just as unguarded. Re-check that
+ * distinction on every future split.
+ *
+ * 10 → 8: AcceleratorProgram.tsx and HomeownerDashboard.tsx left together, and
+ * these are REAL conversions with a wrinkle worth spelling out — grepping either
+ * PAGE for QueryErrorState finds nothing, because the guards live in the child
+ * modules that own the failing queries: acceleratorProgram/{Milestones,
+ * CoachingSessions}Section.tsx and homeownerDashboard/{RefiAlerts,Equity}
+ * Section.tsx. Each of those fetches its own data, reads `isError`, and renders
+ * QueryErrorState with a refetch. The page containers kept only a top-level
+ * enrollment/profile query and no longer make an emptiness claim, so the
+ * detector stops seeing them. Confirmed by reading the children, not by trusting
+ * the commit subjects — which said "guard its query errors" while the page files
+ * themselves gained no error branch at all.
  */
-const BASELINE_UNGUARDED = 12;
+const BASELINE_UNGUARDED = 8;
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];

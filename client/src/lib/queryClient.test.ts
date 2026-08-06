@@ -171,6 +171,47 @@ describe("buildQueryUrl", () => {
   });
 });
 
+/**
+ * The authenticated default and the public queryFn must build URLs the SAME way.
+ *
+ * They did not. `getQueryFn` used a bare `queryKey.join("/")`, so the trailing
+ * params-object form that buildQueryUrl documents worked only on public
+ * surfaces; behind the session it produced "/api/x/[object Object]".
+ * ConsentGateCard hit that and papered over it with a hand-written queryFn whose
+ * URL was a second spelling of its own key — exactly the fetch/invalidate drift
+ * the key factories in this module exist to prevent.
+ */
+describe("getQueryFn (authenticated) URL building", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+  });
+
+  async function captureUrl(queryKey: readonly unknown[]) {
+    stubLocation("/dashboard");
+    const { getQueryFn } = await import("./queryClient");
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await getQueryFn({ on401: "throw" })({ queryKey } as never);
+    return fetchMock.mock.calls[0] as [string, RequestInit];
+  }
+
+  it("turns a trailing params object into a query string, not '[object Object]'", async () => {
+    const [url] = await captureUrl(["/api/consent-templates", { type: "credit_report" }]);
+    expect(url).toBe("/api/consent-templates?type=credit_report");
+  });
+
+  it("still joins segmented keys into a path (the loanApplicationKeys shape)", async () => {
+    const [url] = await captureUrl(["/api/loan-applications", "abc-123", "credit", "summary"]);
+    expect(url).toBe("/api/loan-applications/abc-123/credit/summary");
+  });
+
+  it("keeps sending the session cookie", async () => {
+    const [, init] = await captureUrl(["/api/auth/user"]);
+    expect(init.credentials).toBe("include");
+  });
+});
+
 describe("getPublicQueryFn", () => {
   beforeEach(() => {
     vi.resetModules();

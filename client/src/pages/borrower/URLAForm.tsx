@@ -41,6 +41,7 @@ import {
   emptyDemographics,
   emptySlice,
   hmdaToState,
+  toLoanDetailsState,
   type AssetForm,
   type BorrowerSlice,
   type LiabilityForm,
@@ -48,6 +49,7 @@ import {
   type SectionsPayload,
   type UrlaSavePayload,
 } from "./urla/types";
+import type { UrlaLoanDetails } from "@shared/schema";
 import { PersonalInfoSection } from "./urla/PersonalInfoSection";
 import { EmploymentSection } from "./urla/EmploymentSection";
 import { AssetsSection } from "./urla/AssetsSection";
@@ -196,6 +198,14 @@ export default function URLAForm() {
   // Shared (primary-only) data
   const [otherIncomes, setOtherIncomes] = useState<Partial<OtherIncomeSource>[]>([]);
   const [propertyInfo, setPropertyInfo] = useState<Partial<UrlaPropertyInfo>>({});
+  // Section 4a (WF2-F4): borrower-stated loan type + amortization type, with
+  // borrower-safe defaults preselected — visible and editable, never a silent
+  // server-side default. Saved to the loan_applications columns section-4
+  // gating requires.
+  const [loanDetails, setLoanDetails] = useState<UrlaLoanDetails>({
+    preferredLoanType: "conventional",
+    amortizationType: "fixed",
+  });
 
   const [activeStep, setActiveStep] = useState<string>(STEPS[0].id);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -235,6 +245,7 @@ export default function URLAForm() {
     setBorrowerData({ 1: buildSlice(1), 2: buildSlice(2) });
     setOtherIncomes(urlaData.otherIncomeSources?.length ? urlaData.otherIncomeSources : []);
     setPropertyInfo(urlaData.propertyInfo || {});
+    setLoanDetails(toLoanDetailsState(urlaData.application));
 
     const hasCo =
       (urlaData.allPersonalInfo || []).some((p) => seqOf(p) > 1) ||
@@ -293,6 +304,7 @@ export default function URLAForm() {
       ...primary,
       otherIncomeSources: cleanedOtherIncomes,
       propertyInfo,
+      loanDetails,
     };
 
     if (hasCoBorrower) {
@@ -554,7 +566,13 @@ export default function URLAForm() {
               </TabsContent>
 
               <TabsContent value="property" className="mt-0 space-y-6">
-                <PropertySection propertyInfo={propertyInfo} onChange={setPropertyInfo} app={app} />
+                <PropertySection
+                  propertyInfo={propertyInfo}
+                  onChange={setPropertyInfo}
+                  loanDetails={loanDetails}
+                  onLoanDetailsChange={setLoanDetails}
+                  app={app}
+                />
               </TabsContent>
 
               <TabsContent value="declarations" className="mt-0 space-y-6">

@@ -39,12 +39,11 @@ export function ConsentGateCard({
   const queryClient = useQueryClient();
   const [acknowledged, setAcknowledged] = useState(false);
 
+  // No queryFn: the key IS the request. The default transport builds the URL
+  // from it via buildQueryUrl, so the trailing object becomes `?type=...` and
+  // the cache key and the fetched URL cannot drift apart.
   const { data: templates, isLoading } = useQuery<ConsentTemplate[]>({
     queryKey: ["/api/consent-templates", { type: consentType }],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/consent-templates?type=${encodeURIComponent(consentType)}`);
-      return res.json();
-    },
   });
 
   const template = templates?.[0];

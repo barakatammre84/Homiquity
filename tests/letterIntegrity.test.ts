@@ -20,7 +20,7 @@ import {
   STANDARD_PRE_APPROVAL_CONDITIONS,
   type StoredPreApprovalLetter,
 } from "../server/services/pdfLetterGenerator";
-import { effectiveLetterStatus } from "../shared/letters";
+import { effectiveLetterStatus, resolveLetterAmount } from "../shared/letters";
 
 const storedRow: StoredPreApprovalLetter = {
   letterNumber: "BN-TEST123-ABCD",
@@ -295,9 +295,52 @@ describe("letter expiry sweep", () => {
     const vercelConfig = JSON.parse(
       await readFile(join(__dirname, "../vercel.json"), "utf8"),
     ) as { crons?: { path: string; schedule: string }[] };
+    const vercelCron = (vercelConfig.crons || []).find((c) => c.path === "/api/jobs/letter-expiry");
     expect(
-      (vercelConfig.crons || []).some((c) => c.path === "/api/jobs/letter-expiry"),
+      vercelCron,
       "expected a vercel.json cron entry for /api/jobs/letter-expiry — a sweep nobody schedules never runs",
+    ).toBeDefined();
+
+    // Vercel→Railway transition: the GitHub Actions scheduler must carry the
+    // same sweep on the same expression until the cutover PR deletes
+    // vercel.json (and the assertion above with it). Both halves pinned: the
+    // schedule trigger exists, and the resolve step maps that expression to
+    // this job's path — an unmapped expression never curls anything.
+    const cronWorkflow = await readFile(
+      join(__dirname, "../.github/workflows/cron-jobs.yml"),
+      "utf8",
+    );
+    expect(
+      cronWorkflow.includes(`- cron: "${vercelCron!.schedule}"`),
+      `expected cron-jobs.yml to register a schedule trigger for "${vercelCron!.schedule}"`,
     ).toBe(true);
+    const escaped = vercelCron!.schedule.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    expect(
+      new RegExp(`"${escaped}"\\)\\s+job="letter-expiry"`).test(cronWorkflow),
+      `expected cron-jobs.yml to map "${vercelCron!.schedule}" to the letter-expiry job path`,
+    ).toBe(true);
+  });
+});
+
+// 2026-08-05 pre-flight (WF1-003): the intake cascade persists
+// preApprovalAmount "0.00" on undecidable files, and the route's old
+// truthy-string fallback printed "PRE-APPROVED AMOUNT $0" on an outward
+// creditworthiness document. The resolver is the guard.
+describe("resolveLetterAmount (the $0-letter guard)", () => {
+  it("ignores the persisted '0.00' and derives from price minus down payment", () => {
+    expect(resolveLetterAmount("0.00", "400000", "80000")).toBe(320000);
+  });
+
+  it("prefers a real persisted pre-approval amount", () => {
+    expect(resolveLetterAmount("315000.00", "400000", "80000")).toBe(315000);
+  });
+
+  it("returns null when no positive amount exists — the route must refuse, never print $0", () => {
+    expect(resolveLetterAmount("0.00", null, null)).toBeNull();
+    expect(resolveLetterAmount(null, "80000", "80000")).toBeNull();
+  });
+
+  it("derives from price alone when the down payment is absent", () => {
+    expect(resolveLetterAmount(null, "400000", null)).toBe(400000);
   });
 });

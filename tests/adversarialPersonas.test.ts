@@ -192,11 +192,14 @@ const mocks = vi.hoisted(() => ({
   getUrlaPropertyInfo: vi.fn(),
   getLatestBankStatementAnalysis: vi.fn(),
   generateLoanEstimate: vi.fn(),
+  computePaymentProjection: vi.fn(),
 }));
 
 vi.mock("../server/storage", () => ({ storage: mocks }));
 vi.mock("../server/services/loanEstimate", () => ({
   generateLoanEstimate: mocks.generateLoanEstimate,
+  // The engine prices via the compensation-independent projection (WF1-002).
+  computePaymentProjection: mocks.computePaymentProjection,
 }));
 
 import { runInstantDecision } from "../server/services/decisionEngine";
@@ -235,6 +238,9 @@ function primeOrchestrator(app: Record<string, unknown>, data: {
   mocks.getLatestBankStatementAnalysis.mockResolvedValue(undefined);
   mocks.generateLoanEstimate.mockResolvedValue({
     projectedPayments: { years1Through5: { estimatedTotal: data.piti ?? 3000 } },
+  });
+  mocks.computePaymentProjection.mockResolvedValue({
+    estimatedMonthlyTotal: data.piti ?? 3000,
   });
 }
 

@@ -1,9 +1,27 @@
 // The tamper-evident audit hash chain writer. LEAF MODULE: imports no credit sibling, because every domain writes through it.
 // Split from the old server/services/creditService.ts — which re-exports all of it.
 import { db } from "../db";
-import { creditAuditLog, type InsertCreditAuditLog } from "@shared/schema";
+import {
+  creditAuditLog,
+  creditAuditChainTips,
+  type InsertCreditAuditLog,
+} from "@shared/schema";
 import { eq, desc, isNull } from "drizzle-orm";
-import { computeAuditEntryHash } from "./encryptionService";
+import {
+  computeAuditEntryHash,
+  AUDIT_HASH_VERSION_CURRENT,
+} from "./encryptionService";
+
+/**
+ * Scope key for the chain-tip table (F-038). Entries with no application share
+ * one chain, so they share one sentinel key. Exported because the verifier has
+ * to derive the identical key to look the tip up.
+ */
+export const NULL_APPLICATION_SCOPE_KEY = "__null_application__";
+
+export function auditChainScopeKey(applicationId: string | null | undefined): string {
+  return applicationId ?? NULL_APPLICATION_SCOPE_KEY;
+}
 
 export interface CreditAuditEntryInput {
   applicationId?: string;
@@ -61,6 +79,9 @@ async function appendCreditAuditEntry(data: CreditAuditEntryInput): Promise<void
     sequenceNumber = (lastEntry.sequenceNumber || 0) + 1;
   }
   
+  // v2: sequenceNumber and the version marker are inside the digest, so the
+  // sequence cannot be rewritten to hide a deletion, and the row cannot be
+  // downgraded to the algorithm that ignored it (F-046).
   const entryHash = computeAuditEntryHash({
     applicationId: data.applicationId || null,
     userId: data.userId || null,
@@ -68,6 +89,8 @@ async function appendCreditAuditEntry(data: CreditAuditEntryInput): Promise<void
     actionDetails: data.actionDetails || null,
     timestamp,
     previousEntryHash,
+    sequenceNumber,
+    hashVersion: AUDIT_HASH_VERSION_CURRENT,
   });
   
   const log: InsertCreditAuditLog = {
@@ -85,8 +108,38 @@ async function appendCreditAuditEntry(data: CreditAuditEntryInput): Promise<void
     entryHash,
     previousEntryHash,
     sequenceNumber,
+    hashVersion: AUDIT_HASH_VERSION_CURRENT,
     timestamp,
   };
 
-  await db.insert(creditAuditLog).values(log);
+  // The entry and the chain tip move together or not at all (F-038). If the
+  // insert succeeded but the tip write did not, the tip would name an earlier
+  // entry and every subsequent verification would report a truncation that
+  // never happened — a false alarm on an audit log is its own kind of damage.
+  const scopeKey = auditChainScopeKey(data.applicationId);
+  await db.transaction(async (tx) => {
+    await tx.insert(creditAuditLog).values(log);
+    await tx
+      .insert(creditAuditChainTips)
+      .values({
+        scopeKey,
+        tipEntryHash: entryHash,
+        tipSequenceNumber: sequenceNumber,
+        // Only meaningful on the first write for this scope; the upsert below
+        // deliberately leaves it alone thereafter, because it records where
+        // tracking BEGAN and that never changes. Pre-existing chains therefore
+        // record the sequence they had reached when this shipped, rather than
+        // claiming coverage back to genesis they do not have.
+        trackingStartedAtSequence: sequenceNumber,
+        updatedAt: timestamp,
+      })
+      .onConflictDoUpdate({
+        target: creditAuditChainTips.scopeKey,
+        set: {
+          tipEntryHash: entryHash,
+          tipSequenceNumber: sequenceNumber,
+          updatedAt: timestamp,
+        },
+      });
+  });
 }

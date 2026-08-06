@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Express, Request, Response } from "express";
 
+import { makePrerenderMiddleware } from "../prerender";
 import { storage } from "../storage";
 import {
   articleSchema,
@@ -27,6 +28,7 @@ import {
   buildSitemapXml,
   DEFAULT_DESCRIPTION,
   DEFAULT_TITLE,
+  gatedPrerenderMeta,
   injectSeo,
   normalizePath,
   renderJsonLdScript,
@@ -36,6 +38,7 @@ import {
   type ResolvedMeta,
   type SitemapArticle,
 } from "@shared/seo/routeMeta";
+import { isPrelaunchGated } from "../services/prelaunchGate";
 
 let cachedTemplate: string | null = null;
 
@@ -86,7 +89,7 @@ async function loadTemplate(origin?: string): Promise<string | null> {
 export async function renderSeoDocument(
   pathname: string,
   origin?: string,
-): Promise<{ html: string | null; status: number }> {
+): Promise<{ html: string | null; status: number; noindex?: boolean }> {
   const p = normalizePath(pathname);
   const template = await loadTemplate(origin);
   if (!template) return { html: null, status: 502 };
@@ -127,6 +130,21 @@ export async function renderSeoDocument(
     return { html: injectSeo(template, renderSeoHeadTags(meta), ""), status: 404 };
   }
 
+  // While the prelaunch gate is up, gated routes must not advertise their real
+  // metadata to bots — humans are redirected to "/" (the Waitlist), so the
+  // prerender serves the same launch-safe copy (+ noindex everywhere but "/").
+  // Ungated public routes (education, calculators, legal) fall through.
+  if (isPrelaunchGated()) {
+    const gated = gatedPrerenderMeta(p);
+    if (gated) {
+      return {
+        html: injectSeo(template, renderSeoHeadTags(gated.meta), ""),
+        status: 200,
+        noindex: gated.noindex,
+      };
+    }
+  }
+
   // Static registry route.
   const staticMeta = resolveStaticMeta(p);
   if (staticMeta) {
@@ -159,6 +177,16 @@ export async function renderSeoDocument(
   return { html: injectSeo(template, renderSeoHeadTags(meta), ""), status: 200 };
 }
 
+/**
+ * The one production prerender middleware (GET + non-/api + undotted path +
+ * bot UA → renderSeoDocument; see server/prerender.ts for why each guard is
+ * load-bearing). Mount ordering is the caller's contract: serveStatic
+ * (server/index-prod.ts) and setupVite (server/index-dev.ts) mount it
+ * directly ahead of their static layer so it can never shadow an asset,
+ * and the Vercel function mounts it below for the migration window.
+ */
+export const prerenderMiddleware = makePrerenderMiddleware(renderSeoDocument);
+
 /** Serve the DB-driven sitemap: static registry routes + published article slugs. */
 async function handleSitemap(_req: Request, res: Response) {
   try {
@@ -185,11 +213,12 @@ export function registerSeoRoutes(app: Express) {
     try {
       const rawPath = typeof req.query.path === "string" && req.query.path ? req.query.path : "/";
       const origin = `${req.protocol}://${req.get("host")}`;
-      const { html, status } = await renderSeoDocument(rawPath, origin);
+      const { html, status, noindex } = await renderSeoDocument(rawPath, origin);
       if (!html) {
         res.status(502).send("SEO render unavailable");
         return;
       }
+      if (noindex) res.set("X-Robots-Tag", "noindex");
       res
         .status(status)
         .set("Content-Type", "text/html; charset=utf-8")
@@ -207,35 +236,15 @@ export function registerSeoRoutes(app: Express) {
   app.get("/sitemap.xml", handleSitemap);
   app.get("/api/sitemap.xml", handleSitemap);
 
-  // On Vercel the single serverless function is reached only via /api/* plus the
-  // paths the vercel.json rewrites forward here with the original path preserved
-  // (the bot-user-agent document rewrite). Render per-URL SEO for any such
-  // non-API document GET. Gated to Vercel so it never shadows the dev/self-host
-  // SPA catch-all (setupVite / serveStatic), which serve the real app to humans.
+  // On Vercel the single serverless function is reached only via /api/* plus
+  // the paths the vercel.json rewrites forward here with the original path
+  // preserved (the bot-user-agent document rewrite), so the prerender must
+  // mount HERE — the function serves no static assets (the CDN does). The
+  // gate stays because registerSeoRoutes runs upstream of express.static /
+  // Vite for every deployment target: self-host instead mounts the same
+  // prerenderMiddleware inside serveStatic/setupVite, directly ahead of its
+  // static layer. Deleted with vercel.json at cutover.
   if (process.env.VERCEL) {
-    app.use((req, res, next) => {
-      if (req.method !== "GET" || req.path.startsWith("/api/")) {
-        next();
-        return;
-      }
-      void (async () => {
-        try {
-          const origin = `${req.protocol}://${req.get("host")}`;
-          const { html, status } = await renderSeoDocument(req.path, origin);
-          if (!html) {
-            res.status(502).send("SEO render unavailable");
-            return;
-          }
-          res
-            .status(status)
-            .set("Content-Type", "text/html; charset=utf-8")
-            .set("Cache-Control", "public, max-age=300")
-            .send(html);
-        } catch (err) {
-          console.error("SEO document render error:", err);
-          res.status(500).send("SEO render error");
-        }
-      })();
-    });
+    app.use(prerenderMiddleware);
   }
 }

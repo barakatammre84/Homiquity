@@ -47,6 +47,29 @@ export const letterRevocationSchema = z.object({
  * time and win over expiry — a revoked letter stays revoked. Expiry is
  * strict: the letter remains issued through its stored expiration instant.
  */
+/**
+ * The amount a pre-approval letter asserts. The persisted preApprovalAmount
+ * wins only when it is a real positive figure — the intake cascade persists
+ * "0.00" on undecidable files, and a bare `||` fallback treats that truthy
+ * string as an amount, printing "$0" on an outward creditworthiness document.
+ * Falls back to purchasePrice − downPayment; returns null when no positive
+ * amount exists — callers must refuse to render a letter rather than assert
+ * a zero.
+ */
+export function resolveLetterAmount(
+  preApprovalAmount: string | null | undefined,
+  purchasePrice: string | null | undefined,
+  downPayment: string | null | undefined,
+): number | null {
+  const persisted = parseFloat(String(preApprovalAmount ?? ""));
+  if (!isNaN(persisted) && persisted > 0) return persisted;
+  const price = parseFloat(String(purchasePrice ?? ""));
+  const down = parseFloat(String(downPayment ?? ""));
+  if (isNaN(price)) return null;
+  const derived = price - (isNaN(down) ? 0 : down);
+  return derived > 0 ? derived : null;
+}
+
 export function effectiveLetterStatus<S extends string>(
   letter: { status: S; expirationDate: Date | string },
   now: Date = new Date(),

@@ -2,7 +2,7 @@ import { eq, desc } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
 import { consolidatedUnderwritingEngine, UnderwritingError, type UnderwritingInput, type AssetProfile, type ResolvedPolicy } from "../underwritingEngine";
-import { generateLoanEstimate } from "./loanEstimate";
+import { computePaymentProjection } from "./loanEstimate";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
 import { decisionSnapshots, incomePathEvaluations, type LoanApplication, type IncomeSourceEntry } from "@shared/schema";
 import {
@@ -23,7 +23,8 @@ import type { IncomeOrchestrationResult } from "@shared/incomePaths";
 // Composes existing deterministic pieces into a single "instant decision":
 //   1. Fact-based, multi-borrower financial aggregation from URLA line items.
 //   2. Completeness check  -> NEEDS_MORE_INFO with the exact missing items.
-//   3. Loan pricing (reuses generateLoanEstimate) -> proposed PITI.
+//   3. Loan pricing (reuses the loan-estimate service's compensation-
+//      independent payment projection) -> proposed PITI.
 //   4. Deterministic underwriting (ConsolidatedUnderwritingEngine, matrix-driven,
 //      AI-free for Fair Lending) -> APPROVED / REJECTED / MANUAL_REVIEW + reasons.
 //   5. Provenance tag: self-reported data yields a PRELIMINARY decision; only
@@ -108,17 +109,38 @@ function safe(v: unknown): number {
 }
 
 /**
- * Translate a PRICING exception (generateLoanEstimate) into borrower/staff-facing
- * "missing info" labels — surfacing raw messages verbatim would leak internal
- * jargon into the decision UI. Order matters — the specific loan-amount case is
- * checked before the generic VALUE INPUT case.
+ * True for infrastructure errors — anything carrying a SQLSTATE-shaped pg
+ * error code — which must surface as real faults, never be translated into
+ * borrower "missing info". Exported for tests.
+ */
+export function isSystemFault(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null)?.code;
+  return typeof code === "string" && /^[0-9A-Z]{5}$/.test(code);
+}
+
+/**
+ * Translate a PRICING exception (computePaymentProjection) into borrower/staff-
+ * facing "missing info" labels — surfacing raw messages verbatim would leak
+ * internal jargon into the decision UI. Order matters — the specific
+ * loan-amount case is checked before the generic VALUE INPUT case.
+ *
+ * The compensation-election mapping stays even though the engine's projection
+ * path no longer reads the election (WF1-002 fix): any residual caller that
+ * reaches the DISCLOSABLE generator early still deserves the honest staff-side
+ * label instead of the generic gap.
  *
  * NOTE: the underwriting engine itself no longer needs this — every engine
  * throw is a typed UnderwritingError carrying its own borrower-safe
  * publicMessage; this mapper only serves the pricing catch below.
  */
-function describeEngineGap(err: unknown): string[] {
+export function describeEngineGap(err: unknown): string[] {
   const msg = err instanceof Error ? err.message : String(err);
+  // §1026.36(d)(2): the LO compensation election is a STAFF task — name it
+  // honestly instead of the generic gap, or every un-elected file reads as
+  // the borrower's fault with nothing actionable anywhere.
+  if (/compensation model and rate are required/i.test(msg)) {
+    return ["Loan pricing setup by our team — no action needed from you"];
+  }
   if (/VA PROTOCOL/i.test(msg)) return ["Household size", "Home square footage"];
   if (/INCOME INPUT/i.test(msg)) return ["Qualifying income"];
   if (/Loan amount must be greater than zero/i.test(msg)) {
@@ -313,12 +335,25 @@ export async function runInstantDecision(applicationId: string): Promise<Instant
     return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: missing, metrics: null, resolvedPolicy: null, ...base };
   }
 
-  // Price the loan to get a proposed PITI (reuses the loan-estimate service).
+  // Price the loan to get a proposed PITI — the loan-estimate service's
+  // INTERNAL payment projection: the same rate/P&I/MI/escrow derivation the
+  // disclosable Loan Estimate prices, minus the §1026.36(d)(2) compensation
+  // guard and every disclosable fee/closing-cost/APR section. PITI is
+  // compensation-independent (no origination fee rides in a monthly payment),
+  // and routing the engine through the disclosable generator made every fresh
+  // intake undecidable (WF1-002) because no intake path elects compensation.
+  // The disclosable generator keeps its guard; files missing a genuine pricing
+  // input (price, down payment, credit score, state) still gap honestly here.
   let monthlyPiti: number;
   try {
-    const le = await generateLoanEstimate(applicationId);
-    monthlyPiti = le.projectedPayments.years1Through5.estimatedTotal;
+    const projection = await computePaymentProjection(applicationId);
+    monthlyPiti = projection.estimatedMonthlyTotal;
   } catch (err) {
+    // A database/system fault must never masquerade as a borrower-info gap —
+    // the underwriting catch below already rethrows faults; this catch must
+    // match (a missing table once surfaced as "additional information
+    // required" and blocked files with an unactionable message).
+    if (isSystemFault(err)) throw err;
     return { status: "NEEDS_MORE_INFO", decision: null, reasons: [], missingItems: describeEngineGap(err), metrics: null, resolvedPolicy: null, ...base };
   }
 

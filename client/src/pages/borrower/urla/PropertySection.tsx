@@ -5,16 +5,32 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddressInput } from "@/components/AddressInput";
 import { US_STATES } from "@/lib/us-states";
-import type { LoanApplication, UrlaPropertyInfo } from "@shared/schema";
+import type {
+  AmortizationType,
+  LoanApplication,
+  PreferredLoanType,
+  UrlaLoanDetails,
+  UrlaPropertyInfo,
+} from "@shared/schema";
 import { MoneyInput } from "./MoneyInput";
+import { AMORTIZATION_TYPE_OPTIONS, LOAN_TYPE_OPTIONS } from "./types";
 
 interface PropertySectionProps {
   propertyInfo: Partial<UrlaPropertyInfo>;
   onChange: (value: Partial<UrlaPropertyInfo>) => void;
+  /** Section 4a — borrower-stated loan type + amortization type (WF2-F4). */
+  loanDetails: UrlaLoanDetails;
+  onLoanDetailsChange: (value: UrlaLoanDetails) => void;
   app: LoanApplication;
 }
 
-export function PropertySection({ propertyInfo, onChange, app }: PropertySectionProps) {
+export function PropertySection({
+  propertyInfo,
+  onChange,
+  loanDetails,
+  onLoanDetailsChange,
+  app,
+}: PropertySectionProps) {
   return (
     <Card>
       <CardHeader>
@@ -160,20 +176,51 @@ export function PropertySection({ propertyInfo, onChange, app }: PropertySection
           </div>
           <div className="space-y-2">
             <Label htmlFor="loan-type">Loan Type</Label>
-            <Select defaultValue={app.preferredLoanType || "conventional"} disabled>
+            <Select
+              value={loanDetails.preferredLoanType}
+              onValueChange={(value) =>
+                onLoanDetailsChange({ ...loanDetails, preferredLoanType: value as PreferredLoanType })
+              }
+            >
               <SelectTrigger id="loan-type" data-testid="select-loan-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="conventional">Conventional</SelectItem>
-                <SelectItem value="fha">FHA</SelectItem>
-                <SelectItem value="va">VA</SelectItem>
-                <SelectItem value="usda">USDA</SelectItem>
+                {LOAN_TYPE_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    data-testid={`option-loan-type-${option.value}`}
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Set during pre-approval — message your loan team if this should change.
-            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="amortization-type">Amortization Type</Label>
+            <Select
+              value={loanDetails.amortizationType}
+              onValueChange={(value) =>
+                onLoanDetailsChange({ ...loanDetails, amortizationType: value as AmortizationType })
+              }
+            >
+              <SelectTrigger id="amortization-type" data-testid="select-amortization-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AMORTIZATION_TYPE_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    data-testid={`option-amortization-type-${option.value}`}
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

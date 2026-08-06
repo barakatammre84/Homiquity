@@ -904,15 +904,50 @@ export function registerComplianceRoutes(
         return res.status(400).json({ error: errorMessages });
       }
       
-      const { 
-        actionType, 
-        primaryReason, 
-        secondaryReasons, 
+      const {
+        actionType,
+        primaryReason,
+        secondaryReasons,
         creditPullId,
         creditScoreUsed,
         creditScoreSource,
       } = parseResult.data;
-      
+
+      // FCRA §615(a)(3) hardening (WF5-F2): a bureau attribution on a notice
+      // must trace to a real furnished report on THIS application. Refuse
+      // (422, the same refusal shape the deny seams surface) rather than
+      // record a fabricated attribution:
+      //  - creditPullId must reference a pull belonging to this application;
+      //  - a real-bureau creditScoreSource requires a completed,
+      //    NON-simulated pull (the referenced one, else the latest completed)
+      //    — staff must not be able to hand-attribute a bureau to simulated
+      //    data any more than the auto-deny path may.
+      let referencedPull: Awaited<ReturnType<typeof creditService.getCreditPullById>> = null;
+      if (creditPullId) {
+        referencedPull = await creditService.getCreditPullById(creditPullId);
+        if (!referencedPull || referencedPull.applicationId !== routeParam(req, "id")) {
+          return res.status(422).json({
+            error: "creditPullId does not reference a credit pull on this application",
+          });
+        }
+      }
+      if (creditScoreSource) {
+        const basisPull =
+          referencedPull ?? (await creditService.getLatestCreditPull(routeParam(req, "id")));
+        if (!basisPull || basisPull.status !== "completed") {
+          return res.status(422).json({
+            error:
+              "A completed credit pull is required before attributing a credit score to a bureau (FCRA §615(a)). Omit creditScoreSource if the decision was not based on a consumer report.",
+          });
+        }
+        if (basisPull.isSimulated) {
+          return res.status(422).json({
+            error:
+              "This application's credit pull contains simulated bureau data; no consumer reporting agency furnished a report, so a bureau cannot be truthfully identified on an FCRA §615(a) notice. Omit creditScoreSource, or wait for a live-vendor credit pull (roadmap F3).",
+          });
+        }
+      }
+
       const adverseAction = await creditService.generateAdverseAction({
         applicationId: routeParam(req, "id"),
         creditPullId,
@@ -922,6 +957,9 @@ export function registerComplianceRoutes(
         secondaryReasons,
         creditScoreUsed,
         creditScoreSource,
+        // When a source is present, the basis pull was verified non-simulated
+        // just above; computeFcraCompliant must not take that on faith.
+        basisPullVerifiedReal: !!creditScoreSource,
         generatedBy: user.id,
       });
 
@@ -1130,6 +1168,33 @@ export function registerComplianceRoutes(
     } catch (error) {
       console.error("Get credit audit log error:", error);
       res.status(500).json({ error: "Failed to get credit audit log" });
+    }
+  });
+
+  /**
+   * Platform-wide audit-chain verification (finding F-039).
+   *
+   * The staff Compliance tab asserted "Hash Chain Verified — all audit entries
+   * are cryptographically linked" as literal markup: no query, no props, no
+   * reference to any verify endpoint. It said the same thing whether the log was
+   * intact or destroyed. The per-application endpoint below could not back that
+   * claim either, because the claim is platform-wide and that endpoint needs an
+   * application id.
+   *
+   * Bounded by AUDIT_CHAIN_SWEEP_LIMIT; the response carries `complete` so a
+   * partial sweep is never rendered as a full one.
+   */
+  app.get("/api/compliance/audit-chain/verify", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!isStaffRole(user.role)) {
+        return res.status(403).json({ error: "Staff access required" });
+      }
+      const result = await creditService.verifyAllAuditChains();
+      res.json(result);
+    } catch (error) {
+      console.error("Verify audit chains error:", error);
+      res.status(500).json({ error: "Failed to verify audit chains" });
     }
   });
 
