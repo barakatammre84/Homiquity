@@ -3,7 +3,6 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { loanApplicationKeys } from "@/lib/queryClient";
 
-import { Footer } from "@/components/Footer";
 import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -536,8 +535,6 @@ export default function PropertyDetail() {
           </div>
         </div>
       </PageShell>
-
-      <Footer />
     </div>
   );
 }

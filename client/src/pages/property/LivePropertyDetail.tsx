@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -125,8 +124,6 @@ export default function LivePropertyDetailPage() {
       </PageShell>
 
       <SimilarHomes propertyId={propertyId} />
-
-      <Footer />
     </div>
   );
 }

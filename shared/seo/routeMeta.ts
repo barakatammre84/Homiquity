@@ -146,6 +146,52 @@ export const STATIC_ROUTE_META: Record<string, RouteMetaEntry> = {
     title: "Disclosures & Licensing",
     description: "Homiquity's mortgage disclosures, licensing, and Equal Housing Opportunity information.",
   },
+
+  // ---------------------------------------------------------------------------
+  // Persona conversion pages and the two self-serve intent tools.
+  //
+  // These render <SEOHead> client-side, which only ever reaches a browser that
+  // has run our JS. A crawler or social scraper sees the injected head and
+  // nothing else, so without an entry here the pages built to rank for the
+  // highest-intent queries ("VA loan pre-approval", "self-employed mortgage")
+  // index with the generic homepage title and description.
+  //
+  // Deliberately NOT added to SITEMAP_STATIC_PATHS: while the prelaunch gate is
+  // up these routes redirect humans to the waitlist, so gatedPrerenderMeta()
+  // keeps them noindex and these entries stay dormant. They switch on with the
+  // PRELAUNCH_GATED flip. Sitemap inclusion is a launch-day step, not this one —
+  // sitemapping a URL that redirects is a crawl-budget and consistency problem.
+  // ---------------------------------------------------------------------------
+  "/refinance": {
+    title: "Refinance Your Mortgage - See What You Could Save | Homiquity",
+    description:
+      "Run your own refinance numbers in under a minute. No sign-up, no hard credit check. Compare your current payment against a new rate and term, then see your real options.",
+  },
+  "/va-loans": {
+    title: "VA Home Loans - No Down Payment Required | Homiquity",
+    description:
+      "Use the VA home loan benefit you earned: no down payment required, no monthly mortgage insurance, and underwriting built around the VA's residual-income standard. Built by a fellow veteran.",
+  },
+  "/self-employed": {
+    title: "Self-Employed Mortgages - Built for 1099 & Business Income | Homiquity",
+    description:
+      "Self-employed, 1099, or juggling multiple income streams? Our application is built for complex income and a human reviews your file. No W-2 needed — check your options with a soft credit pull.",
+  },
+  "/first-time-buyer": {
+    title: "First-Time Home Buyer? Start Here | Homiquity",
+    description:
+      "See what your rent could buy instead. Plain-language guidance for first-time buyers: low down payment programs, a 3-minute check with no hard credit pull, and a step-by-step path to your first home.",
+  },
+  "/approval-strength": {
+    title: "Approval Strength Check - See Where You Stand | Homiquity",
+    description:
+      "Answer a few questions and see which parts of your profile are working for you and which need attention. An educational readout of your file's strengths, not a credit decision. Nothing collected, nothing stored.",
+  },
+  "/afford": {
+    title: "How Much House Can I Afford? | Homiquity",
+    description:
+      "Estimate the home price range your income, debts, and down payment support, and see the assumptions behind the number. An estimate for planning — not an approval or a commitment to lend.",
+  },
 };
 
 /** Normalize a pathname (drop a trailing slash except root, strip query/hash). */

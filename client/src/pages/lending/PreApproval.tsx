@@ -29,6 +29,7 @@ import {
   Check,
   AlertCircle,
   Info,
+  ShieldCheck,
 } from "lucide-react";
 
 import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
@@ -657,6 +658,27 @@ function PreApprovalFunnel() {
                 {FUNNEL_SOFT_PULL_CONSENT_TEXT.split("soft inquiry")[1]}
               </span>
             </label>
+            {/*
+              Data-handling reassurance at the funnel's most sensitive moment.
+              This copy already existed but only in the auth-gate overlay and the
+              FunnelFooter, both of which sit below the fold of the centred
+              question card — so the visitor deciding whether to authorise a
+              credit pull never saw it.
+
+              Deliberately OUTSIDE the <label> above: everything inside that
+              element is the verbatim disclosure persisted as
+              `credit_consents.disclosure_text`, and rendered text that is not in
+              FUNNEL_SOFT_PULL_CONSENT_TEXT must never appear to be part of it
+              (F-034). This is page chrome, not disclosure — it makes no claim
+              about the inquiry itself, which the consent copy already covers.
+            */}
+            <p
+              className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground"
+              data-testid="text-consent-security-note"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+              Your information is encrypted and never sold.
+            </p>
           </div>
         );
       }
