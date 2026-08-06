@@ -377,6 +377,25 @@ export function registerDocumentRoutes(
         }
       }
 
+      // Persist the VALUES the model read, not just the field names (F-028).
+      // Without this the numbers are discarded after extraction and the file
+      // keeps asking the borrower for figures it has already been shown.
+      // Non-fatal: a lost signal must not fail the extraction.
+      if (extractedData.confidence !== "low") {
+        try {
+          const { persistDocumentFacts } = await import("../services/documentFacts");
+          await persistDocumentFacts(
+            id,
+            document.documentType,
+            extractedData as unknown as Record<string, any>,
+            extractedData.confidence,
+            extractedData.modelId,
+          );
+        } catch (factErr) {
+          console.warn("[DocumentFacts] persist failed (non-fatal):", factErr);
+        }
+      }
+
       if (extractedData.confidence !== "low") {
         try {
           const { wireExtractionToReadiness } = await import("../services/optimizationEngine");

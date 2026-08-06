@@ -1901,9 +1901,9 @@
     "missing-logicalDocumentId": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-pageId": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-pageNumber": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
+    "missing-documentId": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-fieldName": "reject:extractedAt,fieldName,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-fieldCategory": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
-    "missing-valueString": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueType,verifiedAt",
     "wrongtype-logicalDocumentId": "reject:extractedAt,humanCorrectedValue,humanVerified,logicalDocumentId,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt"
   },
   "schema.insertCompletenessCheckSchema": {

@@ -410,6 +410,60 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     }
   }
 
+  // Pay-stub income and bank-statement assets (F-028). These are the values a
+  // model actually read off the borrower's own documents, persisted to
+  // extracted_fields by the extraction route — a SERVER-written table, which is
+  // the whole difference from the notes-parsing branches F-027 deleted. Those
+  // read a column the borrower could write; nothing here is borrower-reachable.
+  //
+  // Tier 1 on extraction alone, matching the tax_insights path directly above:
+  // a machine read the document. A staff verify is recorded on the row
+  // (humanVerified) and strengthens it further, but is not required for the
+  // graph, which is advisory — it feeds coaching, prediction, lender matching
+  // and scenarios, never the binding decision path.
+  try {
+    const { getFactsForDocuments } = await import("./documentFacts");
+    const facts = await getFactsForDocuments(docs.map(d => d.id));
+
+    const employerByDoc = new Map<string, string>();
+    for (const f of facts) {
+      if (f.fieldName === "employer_name" && f.valueString) {
+        employerByDoc.set(f.documentId, f.valueString);
+      }
+    }
+    const accountTypeByDoc = new Map<string, string>();
+    for (const f of facts) {
+      if (f.fieldName === "account_type" && f.valueString) {
+        accountTypeByDoc.set(f.documentId, f.valueString);
+      }
+    }
+
+    for (const f of facts) {
+      if (f.fieldName === "monthly_income_ytd_avg" && f.valueNumeric && f.valueNumeric > 0) {
+        incomeSources.push({
+          source: "document",
+          trust: "tier1",
+          type: "pay_stub_ytd_average",
+          amount: f.valueNumeric,
+          period: "monthly",
+          employerName: employerByDoc.get(f.documentId) ?? null,
+          confidence: f.humanVerified ? "verified" : "high",
+        });
+      }
+      if (f.fieldName === "closing_balance" && f.valueNumeric && f.valueNumeric > 0) {
+        assetRecords.push({
+          source: "document",
+          trust: "tier1",
+          type: "bank_statement_balance",
+          balance: f.valueNumeric,
+          accountType: accountTypeByDoc.get(f.documentId) ?? null,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("[BorrowerGraph] Failed to fetch document facts:", err);
+  }
+
   if (activeApp) {
     const hasLineItemIncome = activeApp.incomeSources && Array.isArray(activeApp.incomeSources) && (activeApp.incomeSources as any[]).length > 0;
 
