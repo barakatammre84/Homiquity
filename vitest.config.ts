@@ -12,6 +12,7 @@ export default defineConfig({
     // vitest.integration.config.ts instead.
     include: [
       "tests/accessControl.test.ts",
+      "tests/uploadsUnavailableCopy.test.ts",
       "tests/liveCreditPullImport.test.ts",
       "tests/creditVendorInterlock.test.ts",
       "tests/clientIp.test.ts",
