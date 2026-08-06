@@ -105,6 +105,16 @@ export default function TaskDetail() {
       });
       setVerificationNotes("");
     },
+    // Silent before. The server rejects this for a staff member who is not on
+    // the deal team (403), and a verdict that never landed looked identical to
+    // one that did — on the action that completes or reopens the task.
+    onError: (error: Error) => {
+      toast({
+        title: "Verification Failed",
+        description: error.message || "The verification status could not be updated.",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

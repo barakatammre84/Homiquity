@@ -153,6 +153,15 @@ export default function GapCalculator() {
         description: "Your financial information has been updated.",
       });
     },
+    // Silent before: an edit to income, debts, savings or the target price
+    // simply vanished, with the stale figures still on screen.
+    onError: (error: Error) => {
+      toast({
+        title: "Changes Not Saved",
+        description: error.message || "We couldn't update your goal. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const onSubmitGoal = (data: GoalFormValues) => {

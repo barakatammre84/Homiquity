@@ -127,6 +127,15 @@ export default function AICoach() {
         });
       }
     },
+    // Silent before: the checkbox reverted on failure with no explanation, so
+    // an action item could look un-tickable for no visible reason.
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't update that item",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const messages = activeData?.messages ?? [];

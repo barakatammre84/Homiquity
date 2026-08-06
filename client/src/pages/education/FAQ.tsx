@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,6 +29,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { faqPageSchema, breadcrumbSchema } from "@/lib/structuredData";
 
 export default function FAQ() {
+  const { toast } = useToast();
   usePageView("/faq");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -55,6 +57,15 @@ export default function FAQ() {
     onSuccess: (_, { faqId }) => {
       setFeedbackGiven((prev) => ({ ...prev, [faqId]: true }));
       queryClient.invalidateQueries({ queryKey: ["/api/faqs"] });
+    },
+    // Silent before: a failed vote left the thumbs live with no signal, so the
+    // reader would click again and again with nothing ever registering.
+    onError: () => {
+      toast({
+        title: "Feedback Not Recorded",
+        description: "We couldn't save that just now. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
