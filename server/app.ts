@@ -95,7 +95,17 @@ const cspDirectives = {
   reportUri: ["/api/csp-report"],
 };
 
-app.use(helmet({
+/**
+ * Baseline security headers. Exported so a test can assert that the REAL config
+ * produces the REAL headers, rather than restating the config back to itself.
+ *
+ * That indirection is the point: X-Frame-Options was served from two places
+ * with two different values — the old CDN layer sent DENY while helmet's
+ * in-app default sent SAMEORIGIN. Whichever landed depended on the platform,
+ * nothing tested it, and when the CDN went away the weaker value became the
+ * only one. Nobody would have noticed.
+ */
+export const HELMET_OPTIONS = {
   contentSecurityPolicy:
     process.env.NODE_ENV === "production"
       ? {
@@ -103,8 +113,19 @@ app.use(helmet({
           reportOnly: process.env.CSP_ENFORCE !== "true",
         }
       : false,
-  crossOriginEmbedderPolicy: false, // Google Maps tiles are not CORP-tagged
-}));
+  crossOriginEmbedderPolicy: false as const, // Google Maps tiles are not CORP-tagged
+  // DENY, not helmet's SAMEORIGIN default. Nothing legitimately frames this
+  // app, and there is no CDN layer left to supply a stronger value — the app
+  // response IS the response.
+  //
+  // The modern equivalent (CSP `frame-ancestors 'none'`, in cspDirectives
+  // above) does NOT close this on its own: CSP ships Report-Only until
+  // CSP_ENFORCE is set, so frame-ancestors is currently observed, not
+  // enforced. X-Frame-Options is the header actually blocking a frame today.
+  frameguard: { action: "deny" as const },
+};
+
+app.use(helmet(HELMET_OPTIONS));
 
 // Private-beta gate (server/middleware/betaGate.ts). Total no-op unless
 // BETA_ACCESS_CODE is set. Must mount ahead of the whole route surface:
