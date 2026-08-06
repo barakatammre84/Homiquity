@@ -68,14 +68,15 @@ For anything touching loan-originator compensation, the QM points-and-fees cap, 
 finance-charge definition, or TRID fee tolerances — consult [`docs/reg-z/`](docs/reg-z/).
 Do not answer Reg Z questions from memory.
 
-⚠️ **That directory is currently EMPTY**, and it is the reason five ledger entries sit
-unverified: every authoritative source (`ecfr.gov`, `consumerfinance.gov`, `govinfo.gov`,
-`law.cornell.edu`) is blocked from this environment, so the text cannot be fetched from inside
-a session. Until a copy lands there, a Reg Z reading is **flagged in
+⚠️ **That directory holds no authoritative source text** — only
+[`docs/reg-z/README.md`](docs/reg-z/README.md), which is the shopping list and the procedure for
+when a document arrives. That absence is the reason five ledger entries sit unverified: every
+authoritative source (`ecfr.gov`, `consumerfinance.gov`, `govinfo.gov`, `law.cornell.edu`) is
+blocked from this environment, so the text cannot be fetched from inside a session. Until a real
+copy lands there, a Reg Z reading is **flagged in
 [`data/regulatory/regulatory-ledger.json`](data/regulatory/regulatory-ledger.json), never
 asserted** — and it must be conservative in one direction only (it may remove a borrower charge
-or tighten a gate; it may never create the violation it guards against). The README there
-carries the shopping list and what to do once the document arrives.
+or tighten a gate; it may never create the violation it guards against).
 
 ## Architecture ground rules
 
