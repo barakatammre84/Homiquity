@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Search, MoreHorizontal, UserCog, Users, AlertCircle, Filter } from "lucide-react";
+import { Search, MoreHorizontal, UserCog, Users, Filter } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
 import {
@@ -56,7 +56,7 @@ const ROLES = ALL_ROLES;
 const INVITABLE_STAFF_ROLES = STAFF_ROLES.filter((r) => r !== "admin");
 
 export default function AdminUsers() {
-  const { user: currentUser, isLoading: authLoading } = useAuth();
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -134,31 +134,11 @@ export default function AdminUsers() {
 
   const { filteredUsers, userStats } = useAdminUserStats(users, searchTerm, roleFilter);
 
-  if (authLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    );
-  }
-
-  if (currentUser?.role !== "admin") {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[60vh]">
-        <Card className="max-w-md" data-testid="card-access-denied">
-          <CardContent className="pt-6 text-center">
-            <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
-            <h2 className="text-xl font-semibold" data-testid="text-access-denied">Access Denied</h2>
-            <p className="text-muted-foreground mt-2">
-              You don't have permission to access this page.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // No role check here on purpose. /admin/users routes through <AdminPage>,
+  // which is PrivateLayout gated on ROUTE_GATES.adminOnly — children mount only
+  // once useAuthGuard has returned "authorized". Re-deriving the decision here
+  // is the split-brain useAuthGuard exists to prevent, and it is enforced by
+  // tests/routeGateDrift.test.ts.
   return (
     <PageShell
       width="full"

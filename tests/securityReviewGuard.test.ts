@@ -75,6 +75,7 @@ describe("detectTriggers — §9 path triggers", () => {
     ["shared/uploads.ts", "uploads / object storage"],
     ["server/services/emailService.ts", "outbound messaging"],
     ["server/services/smsCompliance.ts", "outbound messaging"],
+    ["client/src/lib/routeGates.ts", "client route gates (ROUTE_GATES)"],
   ];
 
   it.each(cases)("flags %s as %s", (file, label) => {
@@ -130,6 +131,13 @@ describe("detectTriggers — content triggers", () => {
 
   it("ignores a role-gate lookalike outside server/ (client gating is not the §9 trigger)", () => {
     const lines = [{ file: "client/src/hooks/useAuthGuard.ts", line: "  const ok = isAdmin(user);" }];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  it("still ignores an isAdmin() call inside a component — a UI affordance is not a gate", () => {
+    // The ROUTE_GATES path trigger is exactly one file; it must not become a
+    // blanket "any client role mention" rule, or every nav-item edit fires §9.
+    const lines = [{ file: "client/src/pages/staff/TaskOperations.tsx", line: "  {isAdmin && (" }];
     expect(detectTriggers([], lines)).toEqual([]);
   });
 

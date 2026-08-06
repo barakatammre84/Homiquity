@@ -5,7 +5,6 @@ import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import {
@@ -17,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAdminCrudMutations } from "@/hooks/useAdminCrudMutations";
-import { Plus, ArrowLeft, TrendingUp, MapPin, Percent, Shield } from "lucide-react";
+import { Plus, ArrowLeft, TrendingUp, MapPin, Percent } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { RateDialog } from "./adminRates/RateDialog";
 import { ProgramDialog } from "./adminRates/ProgramDialog";
@@ -31,7 +30,7 @@ import type {
 
 
 export default function AdminRates() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("rates");
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
   const [programDialogOpen, setProgramDialogOpen] = useState(false);
@@ -72,32 +71,8 @@ export default function AdminRates() {
     },
   });
 
-  if (authLoading) {
-    return (
-      <PageShell width="wide">
-        <Skeleton className="h-10 w-48 mb-8" />
-        <Skeleton className="h-96 w-full" />
-      </PageShell>
-    );
-  }
-
-  if (!user || user.role !== "admin") {
-    return (
-      <PageShell width="wide" className="py-16 text-center">
-        <div>
-          <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Admin Access Required</h1>
-          <p className="text-muted-foreground mb-6">
-            You need admin privileges to access this page.
-          </p>
-          <Button asChild>
-            <Link href="/">Go Home</Link>
-          </Button>
-        </div>
-      </PageShell>
-    );
-  }
-
+  // No role check here on purpose — /admin/rates routes through <AdminPage>.
+  // See the note in AdminUsers.tsx; enforced by tests/routeGateDrift.test.ts.
   return (
     <PageShell width="wide">
         <div className="flex items-center justify-between mb-8">

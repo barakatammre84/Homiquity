@@ -3,12 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminCrudMutations } from "@/hooks/useAdminCrudMutations";
 import { AdminEntityDialog } from "./AdminEntityDialog";
-import { FileText, HelpCircle, FolderOpen, AlertCircle } from "lucide-react";
+import { FileText, HelpCircle, FolderOpen } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import {
   articleFormSchema,
@@ -29,7 +27,7 @@ import { FaqFormFields } from "./adminContent/FaqFormFields";
 import { CategoryFormFields } from "./adminContent/CategoryFormFields";
 
 export default function AdminContent() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("articles");
   const [articleDialogOpen, setArticleDialogOpen] = useState(false);
   const [faqDialogOpen, setFaqDialogOpen] = useState(false);
@@ -219,31 +217,8 @@ export default function AdminContent() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    );
-  }
-
-  if (user?.role !== "admin") {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-[60vh]">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
-            <h2 className="text-xl font-semibold">Access Denied</h2>
-            <p className="text-muted-foreground mt-2">
-              You don't have permission to access this page.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // No role check here on purpose — /admin/content routes through <AdminPage>.
+  // See the note in AdminUsers.tsx; enforced by tests/routeGateDrift.test.ts.
   return (
     <PageShell
       width="full"

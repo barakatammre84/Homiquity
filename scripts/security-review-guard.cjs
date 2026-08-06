@@ -46,6 +46,17 @@ const PATH_TRIGGERS = [
   { label: "uploads / object storage", match: (f) => f.startsWith("server/integrations/object_storage/") || f === "shared/uploads.ts" },
   { label: "outbound messaging", match: (f) => /^server\/services\/(emailService|smsCompliance)\.ts$/.test(f) },
   { label: "webhook receivers", match: (f) => /^server\/routes\/.*webhook/i.test(f) },
+  {
+    // THE client route gates — who may reach each private surface. Deliberately
+    // this one exact file, not client/ generally: the LINE_TRIGGERS below stay
+    // server-only on purpose, because an `isAdmin(user)` in a component is a UI
+    // affordance, not an authorization decision. ROUTE_GATES is different — it
+    // is the definition each gate mirrors its server API from, and letting one
+    // drift wider than its API is how a CPA ended up on a PartnersHub whose
+    // every call 403'd (fixed 2026-08-06). Editing it is a §9 role-gate change.
+    label: "client route gates (ROUTE_GATES)",
+    match: (f) => f === "client/src/lib/routeGates.ts",
+  },
 ];
 
 /** Triggers that live in the diff's content rather than its file list. */

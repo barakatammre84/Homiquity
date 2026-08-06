@@ -22,7 +22,6 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
-  AlertCircle,
   Shield,
 } from "lucide-react";
 
@@ -60,20 +59,11 @@ export default function AdminDashboard() {
     enabled: user?.role === "admin",
   });
 
-  if (user?.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-7xl px-4 py-16 text-center sm:px-6 lg:px-8">
-          <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
-          <h2 className="mt-4 text-xl font-semibold">Access Denied</h2>
-          <p className="mt-2 text-muted-foreground">
-            You don't have permission to access this page.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
+  // No role check here on purpose — /admin routes through <AdminPage>. See the
+  // note in AdminUsers.tsx; enforced by tests/routeGateDrift.test.ts. (The
+  // check that used to sit here also ran BEFORE the isLoading branch below, so
+  // had this page ever been mounted outside AdminPage it would have shown a
+  // signed-in admin "Access Denied" while their session was still loading.)
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">

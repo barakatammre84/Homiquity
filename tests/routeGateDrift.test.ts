@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { FINANCIAL_VERIFICATION_ROLES } from "@shared/schema";
 import { INTERNAL_STAFF_ROLES, STAFF_ROLES } from "@shared/roles";
+import { ROUTE_GATES } from "../client/src/lib/routeGates";
 
 // ---------------------------------------------------------------------------
 // Client/server role-gate drift regression suite.
@@ -179,5 +180,131 @@ describe("engine-calculation routes are staff-gated", () => {
         "isAuthenticated",
       );
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Admin-surface structural guards (2026-08-06 role-gate deep dive).
+//
+// tests/roleSeparation.test.ts drives real HTTP against a hand-picked list of
+// admin endpoints. That proves those six are gated; it cannot prove the NEXT
+// one will be. These guards are exhaustive instead of exemplary: they walk
+// every registration and every route, so an admin surface added without a gate
+// fails the build rather than waiting for someone to sign in as the wrong role.
+// ---------------------------------------------------------------------------
+
+/** Every `app.get|post|put|patch|delete("<path>", ...)` in server/routes. */
+function serverRouteRegistrations(): { file: string; verb: string; path: string; middleware: string }[] {
+  const out: { file: string; verb: string; path: string; middleware: string }[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(resolve(repoRoot, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) walk(rel);
+      else if (entry.name.endsWith(".ts")) {
+        const source = read(rel);
+        const re = /\b(?:app|router)\.(get|post|put|patch|delete)\(\s*("[^"]*"|'[^']*'|`[^`]*`)\s*,([\s\S]{0,240})/g;
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(source))) {
+          // Middleware is everything before the handler function begins.
+          const middleware = m[3].split(/async\s*\(|\(req/)[0];
+          out.push({ file: rel, verb: m[1].toUpperCase(), path: m[2].slice(1, -1), middleware });
+        }
+      }
+    }
+  };
+  walk("server/routes");
+  return out;
+}
+
+describe("every /api/admin/* endpoint carries an explicit role gate", () => {
+  const adminRoutes = serverRouteRegistrations().filter((r) => r.path.startsWith("/api/admin/"));
+
+  it("finds the admin surface at all (guards against a regex that silently matches nothing)", () => {
+    expect(adminRoutes.length).toBeGreaterThan(30);
+  });
+
+  it("gates every one — never bare isAuthenticated, never nothing", () => {
+    const ungated = adminRoutes
+      .filter((r) => !/requireRole\(|isAdmin/.test(r.middleware))
+      .map((r) => `${r.verb} ${r.path}  (${r.file})`);
+    expect(ungated, `ungated admin endpoints:\n${ungated.join("\n")}`).toEqual([]);
+  });
+
+  it("admits a non-admin role on exactly the two reviewed read/refresh endpoints", () => {
+    // Widening an admin endpoint to other staff is a deliberate act, not a
+    // default. These two were reviewed: the lender-product catalog is internal
+    // staff reference data, and the rate refresh is an operational action any
+    // internal role may trigger. A third entry appearing here means someone
+    // widened the admin surface — re-review it rather than updating this list.
+    const widened = adminRoutes
+      .filter((r) => {
+        const call = r.middleware.match(/requireRole\(([^)]*)\)/)?.[1] ?? "";
+        return call.split(",").map((s) => s.trim().replace(/"/g, "")).filter((s) => s && s !== "admin").length > 0;
+      })
+      .map((r) => `${r.verb} ${r.path}`)
+      .sort();
+    expect(widened).toEqual([
+      "GET /api/admin/lender-products",
+      "POST /api/admin/mortgage-rates/refresh",
+    ]);
+  });
+});
+
+describe("every /admin/* client route is wrapped in AdminPage", () => {
+  const app = read("client/src/App.tsx");
+  const routes = [...app.matchAll(/<Route path="(\/admin(?:\/[^"]*)?)">([\s\S]*?)<\/Route>/g)];
+
+  it("finds the admin routes at all", () => {
+    expect(routes.length).toBeGreaterThan(5);
+  });
+
+  it("uses AdminPage — the only wrapper that gates on ROUTE_GATES.adminOnly", () => {
+    for (const [, path, body] of routes) {
+      expect(body, `${path} must be wrapped in <AdminPage>`).toContain("<AdminPage>");
+    }
+  });
+
+  it("AdminPage really is the admin gate", () => {
+    expect(app).toMatch(
+      /function AdminPage\(\{[^}]*\}[^)]*\)\s*\{\s*return <PrivateLayout requiredRoles=\{ROUTE_GATES\.adminOnly\}>/,
+    );
+  });
+});
+
+describe("admin pages do not re-derive the role gate the route already applied", () => {
+  // PrivateLayout renders children ONLY when useAuthGuard returns "authorized",
+  // so an in-page `user.role !== "admin"` branch inside an AdminPage route is
+  // unreachable. Four pages carried one anyway — three different "Access
+  // Denied" designs for a state that cannot occur — while six other admin pages
+  // correctly relied on the route gate. That is the split-brain useAuthGuard
+  // was created to end (see its header), so it stays ended.
+  it("no admin page hand-rolls its own role check", () => {
+    const offenders: string[] = [];
+    for (const entry of readdirSync(resolve(repoRoot, "client/src/pages/admin"))) {
+      if (!entry.endsWith(".tsx") || entry.includes(".test.")) continue;
+      const source = read(`client/src/pages/admin/${entry}`);
+      if (/role\s*!==\s*"admin"/.test(source)) offenders.push(entry);
+    }
+    expect(offenders, `these re-derive the gate: ${offenders.join(", ")}`).toEqual([]);
+  });
+});
+
+describe("PartnersHub's client gate mirrors its server API", () => {
+  // ROUTE_GATES.partnerHub admitted "cpa" while GET /api/partners/me and
+  // /api/partners/me/referrals are requireRole("realtor","admin"). A CPA who
+  // reached /partners/hub rendered a page whose every data call 403s. The gate
+  // now matches the server, so a CPA is redirected to /cpa-portal instead.
+  it("admits exactly the roles the server accepts", () => {
+    const server = read("server/routes/partners.ts");
+    const at = server.indexOf('app.get("/api/partners/me"');
+    expect(at).toBeGreaterThan(-1);
+    const serverRoles = (server.slice(at, at + 200).match(/requireRole\(([^)]*)\)/)?.[1] ?? "")
+      .split(",")
+      .map((s) => s.trim().replace(/"/g, ""))
+      .filter(Boolean)
+      .sort();
+
+    expect(serverRoles).toEqual(["admin", "realtor"]);
+    expect([...ROUTE_GATES.partnerHub].sort()).toEqual(serverRoles);
   });
 });

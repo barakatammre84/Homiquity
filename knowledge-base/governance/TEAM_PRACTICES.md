@@ -225,7 +225,10 @@ PR body (part of the §5.8 contract).
   `shared/schema/` column holding PII.
 - **Auth & sessions:** `server/auth.ts`, `server/socialAuth.ts`, `server/integrations/auth/`.
 - **Role/permission gates** (`isAdmin`, `requireRole`, staff scoping) and per-resource
-  ownership checks on borrower data.
+  ownership checks on borrower data. This includes `client/src/lib/routeGates.ts` — the
+  client gates are not the security boundary, but each one mirrors a server API, and a gate
+  left wider than its API ships a page that 403s for the roles it admits. An `isAdmin(user)`
+  inside a component is a UI affordance and is *not* a trigger; `ROUTE_GATES` is.
 - **Uploads / object storage:** `server/integrations/object_storage/`, `shared/uploads.ts`.
 - **Outbound messaging:** `server/services/emailService.ts`,
   `server/services/smsCompliance.ts`, webhook receivers under `/api/webhooks/*`.
