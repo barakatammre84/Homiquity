@@ -27,7 +27,14 @@ export default defineConfig({
         // motion is deliberately NOT pinned here — it stays in the async page
         // chunks that use it, off the initial load path.
         manualChunks: {
-          "react-vendor": ["react", "react-dom", "wouter"],
+          // "react-dom/client" must be listed EXPLICITLY. Rollup matches these
+          // by resolved module id, and client/src/main.tsx imports
+          // `react-dom/client` — a different module from `react-dom`, which
+          // nothing imports directly. Listing only "react-dom" left the whole
+          // renderer (~180 kB raw) in the entry chunk while react-vendor
+          // emitted just 17 kB, so the caching win above was not actually
+          // being collected. Verified by rebuilding and diffing chunk sizes.
+          "react-vendor": ["react", "react-dom", "react-dom/client", "wouter"],
           "query-vendor": ["@tanstack/react-query"],
         },
       },
