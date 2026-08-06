@@ -9,14 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -40,24 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Search,
-  MoreHorizontal,
-  UserCog,
-  Users,
-  Briefcase,
-  Building2,
-  Home,
-  AlertCircle,
-  Filter,
-  UserCheck,
-  Wrench,
-  Star,
-  Plus,
-  Copy,
-  Check,
-  Ticket,
-} from "lucide-react";
+import { Search, MoreHorizontal, UserCog, Users, AlertCircle, Filter } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
 import {
@@ -68,21 +43,17 @@ import {
 import type { StaffInvite } from "@shared/schema";
 import { getRoleConfig, getInitials, getDisplayName } from "@/lib/adminUserDisplay";
 import { useAdminUserStats } from "@/hooks/useAdminUserStats";
-
-interface User {
-  id: string;
-  email: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  profileImageUrl: string | null;
-  role: string;
-  isPartner?: boolean;
-  partnerCompanyName?: string | null;
-  nmlsId?: string | null;
-  createdAt: string | null;
-}
+import { UserHeadlineStats, UserRoleBreakdown } from "./adminUsers/UserStatsCards";
+import { StaffInvitesCard } from "./adminUsers/StaffInvitesCard";
+import { CreateInviteDialog } from "./adminUsers/CreateInviteDialog";
+import { ChangeRoleDialog } from "./adminUsers/ChangeRoleDialog";
+import type { User } from "./adminUsers/types";
 
 const ROLES = ALL_ROLES;
+
+// "admin" is deliberately not invitable: the tech/ops lead role is granted by
+// an existing admin through Change Role, never handed out as a redeemable code.
+const INVITABLE_STAFF_ROLES = STAFF_ROLES.filter((r) => r !== "admin");
 
 export default function AdminUsers() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
@@ -197,121 +168,8 @@ export default function AdminUsers() {
       contentClassName="space-y-6"
     >
 
-      {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <Users className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="text-total-users">{userStats.total}</p>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card data-testid="card-stat-admins">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-destructive-subtle">
-                <Wrench className="h-5 w-5 text-destructive" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="text-admin-count">{userStats.admins}</p>
-                <p className="text-sm text-muted-foreground">Tech/Ops Leads</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card data-testid="card-stat-staff">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-info-subtle">
-                <UserCheck className="h-5 w-5 text-info" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="text-staff-count">{userStats.totalStaff}</p>
-                <p className="text-sm text-muted-foreground">Staff Members</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card data-testid="card-stat-clients">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-success-subtle">
-                <Home className="h-5 w-5 text-success-subtle-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold" data-testid="text-client-count">{userStats.totalClients}</p>
-                <p className="text-sm text-muted-foreground">Clients</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Detailed Role Breakdown */}
-      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-lo-count">{userStats.loanOfficers}</p>
-              <p className="text-xs text-muted-foreground">Loan Officers</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-loa-count">{userStats.loas}</p>
-              <p className="text-xs text-muted-foreground">LOAs</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-processor-count">{userStats.processors}</p>
-              <p className="text-xs text-muted-foreground">Processors</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-underwriter-count">{userStats.underwriters}</p>
-              <p className="text-xs text-muted-foreground">Underwriters</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-closer-count">{userStats.closers}</p>
-              <p className="text-xs text-muted-foreground">Closers</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center border-l-2 border-muted pl-2">
-              <p className="text-xl font-bold" data-testid="text-aspiring-count">{userStats.aspiringOwners}</p>
-              <p className="text-xs text-muted-foreground">Aspiring</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1">
-          <CardContent className="pt-3 pb-3">
-            <div className="text-center">
-              <p className="text-xl font-bold" data-testid="text-active-buyer-count">{userStats.activeBuyers}</p>
-              <p className="text-xs text-muted-foreground">Active Buyers</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <UserHeadlineStats stats={userStats} />
+      <UserRoleBreakdown stats={userStats} />
 
       <Card>
         <CardHeader>
@@ -445,226 +303,43 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
 
-      <Card data-testid="card-staff-invites">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Ticket className="h-5 w-5" />
-                Staff Invites
-              </CardTitle>
-              <CardDescription>Generate invite codes for new staff members</CardDescription>
-            </div>
-            <Button onClick={() => { setInviteDialogOpen(true); setInviteRole(""); setInviteEmail(""); setCopiedCode(""); }} data-testid="button-create-invite">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Invite
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {invitesLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : invitesData?.invites && invitesData.invites.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Expires</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invitesData.invites.map((invite: StaffInvite) => {
-                  const isUsed = !!invite.usedAt;
-                  const isExpired = invite.expiresAt && new Date(invite.expiresAt) < new Date();
-                  return (
-                    <TableRow key={invite.id} data-testid={`row-invite-${invite.id}`}>
-                      <TableCell>
-                        <code className="px-2 py-1 rounded bg-muted text-sm font-mono" data-testid={`text-invite-code-${invite.id}`}>
-                          {invite.code}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {getRoleConfig(invite.role).label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {invite.email || "Any"}
-                      </TableCell>
-                      <TableCell>
-                        {isUsed ? (
-                          <Badge variant="success">Used</Badge>
-                        ) : isExpired ? (
-                          <Badge variant="destructive">Expired</Badge>
-                        ) : (
-                          <Badge variant="info">Active</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {invite.expiresAt ? format(new Date(invite.expiresAt), "MMM d, yyyy") : "Never"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {!isUsed && !isExpired && (
-                          <Button
-                            variant="ghost"
-                            size="icon" aria-label="Copy"
-                            onClick={() => copyToClipboard(invite.code)}
-                            data-testid={`button-copy-invite-${invite.id}`}
-                          >
-                            {copiedCode === invite.code ? <Check className="h-4 w-4 text-success-subtle-foreground" /> : <Copy className="h-4 w-4" />}
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8">
-              <Ticket className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No invites created yet</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <StaffInvitesCard
+        invites={invitesData?.invites}
+        isLoading={invitesLoading}
+        copiedCode={copiedCode}
+        onCopyCode={copyToClipboard}
+        onCreateInvite={() => {
+          setInviteDialogOpen(true);
+          setInviteRole("");
+          setInviteEmail("");
+          setCopiedCode("");
+        }}
+      />
 
-      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Staff Invite</DialogTitle>
-            <DialogDescription>
-              Generate an invite code that a user can redeem to get a staff role
-            </DialogDescription>
-          </DialogHeader>
-          {copiedCode ? (
-            <div className="py-4 text-center">
-              <p className="text-sm text-muted-foreground mb-3">Share this invite code:</p>
-              <div className="flex items-center justify-center gap-2">
-                <code className="px-4 py-2 rounded-lg bg-muted text-lg font-mono font-bold tracking-widest" data-testid="text-new-invite-code">
-                  {copiedCode}
-                </code>
-                <Button variant="ghost" size="icon" aria-label="Copy" onClick={() => copyToClipboard(copiedCode)} data-testid="button-copy-new-code">
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                The recipient can enter this code in their account settings to activate their staff role.
-              </p>
-            </div>
-          ) : (
-            <div className="py-4 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Staff Role</label>
-                <Select value={inviteRole} onValueChange={setInviteRole}>
-                  <SelectTrigger data-testid="select-invite-role">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STAFF_ROLES.filter(r => r !== "admin").map((role) => {
-                      const config = getRoleConfig(role);
-                      const Icon = config.icon;
-                      return (
-                        <SelectItem key={role} value={role}>
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4" />
-                            {config.label}
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Email (optional)</label>
-                <Input
-                  placeholder="Restrict to specific email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  data-testid="input-invite-email"
-                />
-                <p className="text-xs text-muted-foreground">Leave blank to allow anyone with the code to redeem it</p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteDialogOpen(false)} data-testid="button-cancel-invite">
-              {copiedCode ? "Done" : "Cancel"}
-            </Button>
-            {!copiedCode && (
-              <Button onClick={handleCreateInvite} disabled={!inviteRole || createInviteMutation.isPending} data-testid="button-generate-invite">
-                {createInviteMutation.isPending ? "Creating..." : "Generate Code"}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateInviteDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        invitableRoles={INVITABLE_STAFF_ROLES}
+        role={inviteRole}
+        onRoleChange={setInviteRole}
+        email={inviteEmail}
+        onEmailChange={setInviteEmail}
+        generatedCode={copiedCode}
+        onCopyCode={copyToClipboard}
+        onGenerate={handleCreateInvite}
+        isGenerating={createInviteMutation.isPending}
+      />
 
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Change User Role</DialogTitle>
-            <DialogDescription>
-              Update the role for {selectedUser ? getDisplayName(selectedUser) : "this user"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="flex items-center gap-4 mb-6 p-4 rounded-lg bg-muted">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={selectedUser?.profileImageUrl || undefined} />
-                <AvatarFallback>{selectedUser ? getInitials(selectedUser) : "U"}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">{selectedUser ? getDisplayName(selectedUser) : ""}</p>
-                <p className="text-sm text-muted-foreground">{selectedUser?.email}</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Select New Role</label>
-              <Select value={newRole} onValueChange={setNewRole}>
-                <SelectTrigger data-testid="select-new-role">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLES.map((role) => {
-                    const config = getRoleConfig(role);
-                    const Icon = config.icon;
-                    return (
-                      <SelectItem key={role} value={role}>
-                        <div className="flex items-center gap-2">
-                          <Icon className="h-4 w-4" />
-                          {config.label}
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)} data-testid="button-cancel-role">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateRole}
-              disabled={updateRoleMutation.isPending || newRole === selectedUser?.role}
-              data-testid="button-save-role"
-            >
-              {updateRoleMutation.isPending ? "Saving..." : "Update Role"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ChangeRoleDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        user={selectedUser}
+        roles={ROLES}
+        newRole={newRole}
+        onNewRoleChange={setNewRole}
+        onSave={handleUpdateRole}
+        isSaving={updateRoleMutation.isPending}
+      />
     </PageShell>
   );
 }
