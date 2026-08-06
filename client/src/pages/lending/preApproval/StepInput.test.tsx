@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { StepInput } from "./StepInput";
 import { QUESTIONS_BY_ID } from "./questions";
 import type { PreApprovalFormData } from "@shared/schema";
+import { FUNNEL_SOFT_PULL_CONSENT_TEXT } from "@shared/creditConsentCopy";
 
 // StepInput is PreApproval.tsx's renderInput() switch, extracted verbatim
 // into its own component. These pin the field-wiring contract per question
@@ -88,9 +89,20 @@ describe("StepInput — final (soft-pull consent)", () => {
     expect(onConsentChange).toHaveBeenCalledWith(true);
   });
 
-  it("shows the shared disclosure text and the security note", () => {
+  // F-034: the words on screen and the words persisted as
+  // credit_consents.disclosure_text cannot drift. The disclosure is rendered by
+  // splitting the shared constant on "soft inquiry" to bold that phrase, so this
+  // asserts the REJOINED text is byte-identical to the constant — which is the
+  // actual invariant. (A `toContain("soft inquiry")` would still pass if the
+  // constant ever gained a second occurrence and split/rejoin silently dropped
+  // the middle segment; this will not.) The source-scan in
+  // tests/creditConsentScope.test.ts proves the constant is *referenced*; only
+  // this proves what the borrower actually reads.
+  it("renders the shared disclosure verbatim, plus the security note", () => {
     render(<Harness stepId="final" />);
-    expect(screen.getByTestId("text-soft-pull-consent").textContent).toContain("soft inquiry");
+    expect(screen.getByTestId("text-soft-pull-consent").textContent).toBe(
+      FUNNEL_SOFT_PULL_CONSENT_TEXT,
+    );
     expect(screen.getByTestId("text-consent-security-note")).toBeTruthy();
   });
 });

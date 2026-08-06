@@ -33,10 +33,14 @@ import { ScenarioResults } from "./scenarioSimulator/ScenarioResults";
 // payment, cash-to-close, and APR from POST /api/scenarios/simulate, which
 // composes the deterministic engines server-side and persists every run.
 //
-// Honesty rails rendered here, not just returned:
-//  - simulated-rate provenance banner (I10) on every result;
-//  - the §1026.36(e)(2)-(3) anti-steering option set is always shown first;
-//  - the FICO what-if is labeled hypothetical — it never triggers a pull (I6).
+// Honesty rails are rendered, not just returned. They live in the child
+// modules this file composes — keep them there when editing:
+//  - simulated-rate provenance banner (I10) — scenarioSimulator/ScenarioResults.tsx,
+//    shown on a status === "OK" result whenever the response is `simulated`;
+//  - the §1026.36(e)(2)-(3) anti-steering option set — ScenarioResults.tsx,
+//    always rendered above the full offer table;
+//  - the FICO what-if is labeled hypothetical, it never triggers a pull (I6) —
+//    scenarioSimulator/ScenarioInputsForm.tsx.
 // -----------------------------------------------------------------------------
 
 interface ScenarioSimulatorDialogProps {
