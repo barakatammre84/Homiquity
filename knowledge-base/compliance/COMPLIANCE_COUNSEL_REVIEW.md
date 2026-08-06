@@ -11,6 +11,11 @@
 > [CTO_ROADMAP.md](../../CTO_ROADMAP.md) (#26, #34) and [ASSUMPTIONS.md](../governance/ASSUMPTIONS.md).
 > What remains genuinely open is the **legal ratification** of the questions below (a
 > counsel/founder action), not the code.
+>
+> **2026-08-06 re-check:** two of the open questions below — the creditor mailing address (§2)
+> and the NMLS number (§3) — are **closed in code** and struck through. What remains genuinely
+> open for counsel: the **ECOA administering agency** (§1), and **FCRA §615(a) score-disclosure
+> completeness** (§4, blocked on the live bureau integration — roadmap F3).
 
 This package exists because several items in the hardening work are legal
 determinations or fixed regulatory text that engineering can draft but **cannot
@@ -83,12 +88,13 @@ now **conditional on whether the action was based on a consumer report**:
 1. **Administering agency.** Defaulted to the CFPB
    (`ECOA_ADMINISTERING_AGENCY` in `creditService.ts`). Confirm CFPB vs. FTC and
    the exact address per **Reg B Appendix A** for this entity.
-2. **Creditor mailing address.** `COMPANY_CONFIG` has no postal address; the
-   notice currently shows name + NMLS + email/phone only. ECOA requires the
-   creditor's **name and address** — a mailing address must be added to
-   `server/config/company.ts` before production.
-3. **NMLS # is `"PENDING"`** in `COMPANY_CONFIG` — must be the real number before
-   any notice is issued.
+2. ~~**Creditor mailing address.**~~ ✅ **CLOSED 2026-08-06.** `shared/companyIdentity.ts`
+   carries a structured `mailingAddress` (7372 W. 87th St, Bridgeview, IL 60455), rendered
+   into the Reg B §1002.9(b)(1) creditor block. **No counsel action required.**
+3. ~~**NMLS # is `"PENDING"`**~~ ✅ **CLOSED 2026-07-13.** `shared/companyIdentity.ts`
+   carries **NMLS #427468** (PR #154), rendered site-wide by `companyNmlsDisplay()`, which
+   deliberately returns null (and renders nothing) rather than a placeholder. Illinois license
+   **#3423789** is in `LICENSED_STATE_DETAILS`. **No counsel action required.**
 4. **FCRA §615(a) score-disclosure completeness — BLOCKED on the live bureau
    integration.** When a report *is* used, §615(a) also requires the **date the
    score was created**, the **name of the score provider**, and the model-derived
