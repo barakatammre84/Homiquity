@@ -40,6 +40,7 @@ doc-drift bug to fix):
 - [SCENARIO_ARCHITECT.md](compliance/SCENARIO_ARCHITECT.md) · [REGULATORY_MONITORING.md](compliance/REGULATORY_MONITORING.md)
   · [SAFE_MLO_COMPLIANCE_MAP.md](compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [COMPLIANCE_COUNSEL_REVIEW.md](compliance/COMPLIANCE_COUNSEL_REVIEW.md)
 - [LAUNCH_COUNSEL_PACKET.md](compliance/LAUNCH_COUNSEL_PACKET.md) — the four counsel asks that gate the go-live flip (sendable as-is)
+- [NTHLA_609G_SPEC.md](compliance/NTHLA_609G_SPEC.md) — FCRA §609(g) Notice to Home Loan Applicant: absent today, hard-blocking for F3, and the per-bureau data the credit-vendor contract must deliver
 - [security/threat_model.md](compliance/security/threat_model.md)
 
 ### Governance — policies & session rules · [`governance/`](governance/)

@@ -145,6 +145,45 @@ describe("branch 2 — completed SIMULATED pull: the denial is refused", () => {
     expect(result.ok).toBe(false);
     expect(result.adverseActionId).toBeUndefined();
   });
+
+  // The refusal IS the compliance event. Returning only a 422 to the caller
+  // left "show me every time you refused to act on simulated credit data"
+  // with no answer in the tamper-evident chain.
+  it("writes the refusal to the tamper-evident credit audit chain", async () => {
+    h.latestPull = realTriMergePull({ isSimulated: true });
+
+    await ensureAdverseActionForDenial(denyParams);
+
+    const refusals = h.auditEntries.filter((e) => e.action === "adverse_action_refused");
+    expect(refusals).toHaveLength(1);
+    expect(refusals[0].applicationId).toBe(denyParams.applicationId);
+    expect(refusals[0].actionDetails.reason).toBe("simulated_pull");
+    expect(refusals[0].actionDetails.isSimulated).toBe(true);
+  });
+
+  // computeAuditEntryHash digests actionDetails but NOT the FK columns, so a
+  // linkage recorded only in creditPullId would sit outside the hash and would
+  // not be tamper-evident. It must appear in both places.
+  it("carries the pull linkage inside the hashed actionDetails, not only the FK column", async () => {
+    h.latestPull = realTriMergePull({ isSimulated: true });
+
+    await ensureAdverseActionForDenial(denyParams);
+
+    const [refusal] = h.auditEntries.filter((e) => e.action === "adverse_action_refused");
+    expect(refusal.creditPullId).toBe("pull-real-1");
+    expect(refusal.actionDetails.creditPullId).toBe("pull-real-1");
+  });
+
+  it("chains the refusal for an unattributable real pull too, with its own reason", async () => {
+    h.latestPull = realTriMergePull({ bureaus: [], experianScore: null, equifaxScore: null, transunionScore: null });
+
+    const result = await ensureAdverseActionForDenial(denyParams);
+
+    expect(result.ok).toBe(false);
+    const [refusal] = h.auditEntries.filter((e) => e.action === "adverse_action_refused");
+    expect(refusal).toBeDefined();
+    expect(refusal.actionDetails.reason).toBe("unattributable_score");
+  });
 });
 
 describe("branch 3 — completed REAL pull: §615(a) content threaded from the pull record", () => {
