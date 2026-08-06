@@ -36,7 +36,13 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    # PROBE BRANCH ONLY — `probe/**` is added here because the integration token
+    # this ran under lacks `actions: write`, so workflow_dispatch returns 403.
+    # A `push` event uses the workflow file FROM THE PUSHED REF, so scoping a
+    # push trigger to this throwaway branch runs this ref's version — the one
+    # whose apply step has been replaced by the read-only probe. Deleted with
+    # the branch. DO NOT MERGE.
+    branches: [main, "probe/**"]
   workflow_dispatch:
     inputs:
       dry_run:
