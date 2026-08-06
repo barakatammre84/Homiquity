@@ -28,15 +28,36 @@
 --     not have been called from the app.
 -- Therefore the expected production count is 0 rows and 0 duplicate pairs.
 --
--- NOT verified from here: a live count. NEON_API_KEY is write-only in GitHub,
--- so the read-only probe runs through CI, not from a workstation. If any rows
--- were created out of band, this migration fails loudly in the migrate-prod
--- job rather than silently permitting duplicate versions — which is the
--- correct failure for this constraint. To confirm before merging, run the
--- probe from DB_MIGRATIONS.md:
+-- VERIFIED AGAINST PROD — read-only probe, CI run 31067324031 (2026-08-06),
+-- branch probe/0046-policy-profile-duplicates (deleted after the run, per
+-- DB_MIGRATIONS.md §Contract migrations). The probe replaced the migrate-prod
+-- apply step rather than adding to it, so no dispatch input could reach a
+-- write. What it reported:
+--
+--   policy_profiles present            : true
+--   total_rows                         : 0
+--   distinct (profile_id, version)     : 0
+--   rows with NULL profile_id          : 0
+--   rows with NULL version             : 0
+--   duplicate (profile_id, version)    : 0
+--   idx_policy_profiles_id_version     : not present
+--   existing indexes                   : idx_policy_profiles_authority,
+--                                        idx_policy_profiles_effective,
+--                                        idx_policy_profiles_product,
+--                                        idx_policy_profiles_status,
+--                                        policy_profiles_pkey
+--
+-- Prod holds the four non-unique indexes the schema declares and nothing else,
+-- exactly as the repository evidence above predicted, and the table is empty.
+-- CREATE UNIQUE INDEX has nothing to abort on. Probe query, verbatim:
 --   SELECT profile_id, version, COUNT(*) FROM policy_profiles
 --   GROUP BY profile_id, version HAVING COUNT(*) > 1;
--- Expected: 0 rows.
+-- Returned 0 rows.
+--
+-- The zero count is what licenses this migration; it is not a promise about
+-- the future. If rows are created between this probe and the merge, the
+-- migration fails loudly in migrate-prod rather than silently permitting
+-- duplicate versions — which is the correct failure for this constraint.
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_policy_profiles_id_version
   ON policy_profiles (profile_id, version);
