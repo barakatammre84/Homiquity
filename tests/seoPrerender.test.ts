@@ -4,6 +4,12 @@ import express, { type Express } from "express";
 
 import { BOT_UA_REGEX } from "../shared/seo/botUserAgents";
 import { makePrerenderMiddleware } from "../server/prerender";
+import {
+  DEFAULT_TITLE,
+  GATED_SITEMAP_PATHS,
+  buildSitemapXml,
+  resolveStaticMeta,
+} from "../shared/seo/routeMeta";
 
 // The self-host bot prerender replaces vercel.json's rewrite
 // `/((?!api/|.*\.).*)` + user-agent matcher, and the failure modes are
@@ -211,5 +217,49 @@ describe("prerender middleware", () => {
   it("lets UA-less requests straight through", async () => {
     const got = await run(buildApp(), "/rates");
     expect(got.body).toContain("SPA");
+  });
+});
+
+describe("sitemap — gate-aware inclusion", () => {
+  // The six highest-intent routes must be OUT of the sitemap while the funnel
+  // redirects to the waitlist (we simultaneously send them noindex), and IN the
+  // moment it opens. Deriving this from the live gate rather than a hand-edited
+  // list removes a launch-day checklist item that would otherwise be missed on
+  // the day and cost weeks of indexing latency.
+  const locs = (xml: string) => [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1]);
+
+  it("omits the gated routes while the gate is up", () => {
+    const xml = buildSitemapXml([], { prelaunchGated: true });
+    const paths = locs(xml).map((u) => u.replace(/^https?:\/\/[^/]+/, ""));
+    for (const p of GATED_SITEMAP_PATHS) {
+      expect(paths, `${p} must not be sitemapped while gated`).not.toContain(p);
+    }
+    // The ungated public surface is unaffected.
+    expect(paths).toContain("/calculators");
+    expect(paths).toContain("/learn");
+  });
+
+  it("includes them once the gate is open", () => {
+    const xml = buildSitemapXml([], { prelaunchGated: false });
+    const paths = locs(xml).map((u) => u.replace(/^https?:\/\/[^/]+/, ""));
+    for (const p of GATED_SITEMAP_PATHS) {
+      expect(paths, `${p} must be sitemapped once open`).toContain(p);
+    }
+    expect(paths).toContain("/calculators");
+  });
+
+  it("defaults to the safe (gated) posture when the caller says nothing", () => {
+    const paths = locs(buildSitemapXml([])).map((u) => u.replace(/^https?:\/\/[^/]+/, ""));
+    expect(paths).not.toContain("/va-loans");
+  });
+
+  it("every gated sitemap path has resolvable metadata", () => {
+    // A sitemapped URL that resolves to the default homepage head would be
+    // worse than not listing it at all.
+    for (const p of GATED_SITEMAP_PATHS) {
+      const meta = resolveStaticMeta(p);
+      expect(meta, `${p} has no STATIC_ROUTE_META entry`).not.toBeNull();
+      expect(meta!.title).not.toBe(DEFAULT_TITLE);
+    }
   });
 });

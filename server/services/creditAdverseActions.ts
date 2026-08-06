@@ -4,6 +4,7 @@ import { db } from "../db";
 import { adverseActions, type InsertAdverseAction, type AdverseAction, type CreditPull } from "@shared/schema";
 import { eq, desc, isNull } from "drizzle-orm";
 import { COMPANY_CONFIG } from "../config/company";
+import { companyAddressLines } from "@shared/companyIdentity";
 import { logCreditAction } from "./creditAuditChain";
 import { getLatestCreditPull } from "./creditPulls";
 import { ADVERSE_ACTION_REASONS, BUREAU_CONTACT_INFO, ECOA_ADMINISTERING_AGENCY } from "./creditCatalogs";
@@ -344,6 +345,7 @@ ${ECOA_ADMINISTERING_AGENCY}
 
 CREDITOR:
 ${COMPANY_CONFIG.legalName}
+${companyAddressLines("\n")}
 NMLS #${COMPANY_CONFIG.nmlsId}
 ${COMPANY_CONFIG.contactEmail} | ${COMPANY_CONFIG.contactPhone}
 

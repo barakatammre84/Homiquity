@@ -2,7 +2,7 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { COMPANY_IDENTITY, isCompanyNmlsPending, LICENSED_STATE_DETAILS } from "@shared/companyIdentity";
+import { COMPANY_IDENTITY, companyAddressLines, isCompanyNmlsPending, LICENSED_STATE_DETAILS } from "@shared/companyIdentity";
 import {
   Shield,
   Building,
@@ -61,7 +61,12 @@ export default function Disclosures() {
               </div>
               <div>
                 <p className="text-sm font-medium">Mailing Address</p>
-                <p className="text-sm text-muted-foreground">Available on request — contact us at the email below.</p>
+                {/* ECOA/Reg B §1002.9 requires the creditor's address on an
+                    adverse-action notice; publishing it here keeps the public
+                    disclosure and the notice consistent. */}
+                <p className="text-sm text-muted-foreground whitespace-pre-line" data-testid="text-mailing-address">
+                  {companyAddressLines("\n")}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium">Contact</p>

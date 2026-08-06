@@ -201,7 +201,7 @@ async function handleSitemap(_req: Request, res: Response) {
     res
       .set("Content-Type", "application/xml; charset=utf-8")
       .set("Cache-Control", "public, max-age=3600")
-      .send(buildSitemapXml(items));
+      .send(buildSitemapXml(items, { prelaunchGated: isPrelaunchGated() }));
   } catch (err) {
     console.error("sitemap render error:", err);
     res.status(500).type("text/plain").send("sitemap error");
