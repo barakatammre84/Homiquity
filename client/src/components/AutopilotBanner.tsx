@@ -1,13 +1,27 @@
 import { Link } from "wouter";
-import { Loader2, CheckCircle2, AlertTriangle, Send } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Send, WifiOff } from "lucide-react";
+import type { AutopilotLiveState } from "@/hooks/useAutopilotStatus";
 import type { AutopilotStatus } from "@shared/autopilotStatus";
 
 /**
  * Borrower-facing Autopilot banner (Phase 4) — the three real-time states plus a
  * "package readiness" meter driving toward lender-ready. Broker packaging state,
  * never a credit decision; no approval language (Reg N).
+ *
+ * Takes `live` as well as `status` because the two are not the same claim. A
+ * status the SSE stream is still feeding is current; the same status after the
+ * stream has failed for good is only the last thing we heard. This banner used
+ * to receive the value alone and could not tell those apart, so a stream killed
+ * by a 401 or a 502 left it asserting "we're reviewing your file" forever. When
+ * the channel is lost it says so — it never silently vouches for a frozen value.
  */
-export function AutopilotBanner({ status }: { status: AutopilotStatus | null }) {
+export function AutopilotBanner({
+  status,
+  live = "live",
+}: {
+  status: AutopilotStatus | null;
+  live?: AutopilotLiveState;
+}) {
   if (!status) return null;
 
   const { phase, readiness, readyToSubmitToLender, outstandingConditions } = status;
@@ -56,6 +70,20 @@ export function AutopilotBanner({ status }: { status: AutopilotStatus | null }) 
           </Link>
         )}
       </div>
+
+      {/* The live channel is gone for good (see useAutopilotStatus). Say so
+          rather than let the value above read as current — a frozen packaging
+          status presented as live is the failure this banner is guarding. The
+          hook's fallback poll is already trying to reconnect. */}
+      {live === "lost" && (
+        <p
+          className="mt-2 flex items-center gap-1.5 text-[11px] opacity-80"
+          data-testid="autopilot-banner-stale"
+        >
+          <WifiOff className="h-3 w-3 shrink-0" aria-hidden="true" />
+          Live updates paused — this is the last status we confirmed. Reconnecting…
+        </p>
+      )}
 
       {/* Package-readiness meter — how close the file is to lender-ready. */}
       {readiness.total > 0 && (

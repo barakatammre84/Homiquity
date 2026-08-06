@@ -48,8 +48,12 @@ const ALLOWED_RAW_FETCH: Record<string, string> = {
   "client/src/pages/public/PartnerWaitlist.tsx": "public POST /api/partner-waitlist",
   "client/src/pages/public/RedeemInvite.tsx":
     "public /api/staff-invites/validate/:code, fetched in a submit handler (the authenticated redeem call uses apiRequest)",
-  "client/src/pages/agent-broker/ApplyInvite.tsx":
-    "public /api/application-invites/validate/:token — renders the server's error text verbatim (expired vs invalid copy), which ApiError's '<status>: <body>' shape would change",
+  // ApplyInvite was listed here to keep the server's expired-vs-invalid copy
+  // verbatim, on the assumption that ApiError's "<status>: <body>" shape would
+  // change it. It does not: `friendlyApiError` parses exactly that shape and
+  // extracts the {"error":...} envelope, so the page now uses
+  // `getPublicQueryFn` and reads identically — plus it gains the 5xx
+  // suppression that keeps internal detail off a public page.
   "client/src/pages/calculators/rentToOwnReadiness/RentCard.tsx": "public POST /api/calculators/extract-lease",
 };
 

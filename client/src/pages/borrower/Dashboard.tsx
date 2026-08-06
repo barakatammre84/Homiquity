@@ -131,7 +131,7 @@ export default function Dashboard() {
   // the selection is resolved once here (tolerant of not-yet-loaded data) and
   // reused after the guards; the Autopilot hook re-subscribes when the id changes.
   const { activeApplication, selectApplication } = useActiveApplication(data?.applications ?? []);
-  const autopilotStatus = useAutopilotStatus(activeApplication?.id);
+  const autopilot = useAutopilotStatus(activeApplication?.id);
 
   // Journey detail lines: milestone dates + doc/condition counters from the
   // pipeline payload, plus the closing-prep transparency task. Both queries
@@ -450,7 +450,9 @@ export default function Dashboard() {
 
         {/* Autopilot live status banner (Phase 4) — three real-time states +
             package-readiness meter. Renders only when a status exists. */}
-        {activeApplication && <AutopilotBanner status={autopilotStatus} />}
+        {activeApplication && (
+          <AutopilotBanner status={autopilot.status} live={autopilot.live} />
+        )}
 
         {/* SECONDARY — full-width detail stack below the grid (collapsed by default) */}
         <div className="mt-6 space-y-4">
