@@ -148,6 +148,16 @@ discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR
   ([ci.yml](../../.github/workflows/ci.yml) carries the rename/recovery procedure).
 - **The integration suite trips the auth rate limiter** — boot the test server with
   `RATE_LIMIT_RELAXED=true` (point 3 above).
+- **`URLAForm.tsx`'s "obviously pure" helpers must not be extracted** — `buildPayload()`
+  takes no arguments *on purpose*: that scope is what enforces "primary borrower = slot 1".
+  `slice`, `borrowerData[1]` and `borrowerData[2]` are all typed `BorrowerSlice`, so any
+  extracted signature lets the **active** slice be passed where slot 1 belongs, with no type
+  error — and `server/routes/borrower/urla.ts:485` rewrites `borrowerSequenceNumber` on
+  id-keyed updates, writing a co-applicant's PII permanently into the primary borrower's
+  rows. Two more invariants there are equally invisible to `tsc` and to the whole suite
+  ([.agents/memory/urla-form-refactor-trap.md](../../.agents/memory/urla-form-refactor-trap.md)).
+  *(Found 2026-08-06 by adversarial review of a refactor that had already passed tsc,
+  guard:tokens and all 2,576 tests — a green gate is not evidence here.)*
 
 ## 6. Push and merge policy *(rewritten 2026-07-19: platform enforcement follows plan/visibility — verify it, don't assume it)*
 
