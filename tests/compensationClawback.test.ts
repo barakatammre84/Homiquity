@@ -19,13 +19,14 @@ const daysAgo = (n: number) => new Date(NOW.getTime() - n * 24 * 3600 * 1000);
 describe("F-8 — clawback window resolution", () => {
   it("falls back to the platform assumption when no agreement carries a term", () => {
     // No lender has an executed agreement yet, so every window is assumed.
-    const window = clawbackWindowFor("uwm");
+    const window = clawbackWindowFor(undefined);
     expect(window.days).toBe(DEFAULT_EPO_CLAWBACK_DAYS);
     expect(window.source).toBe("assumed");
   });
 
   it("falls back for an unknown lender id rather than throwing", () => {
-    expect(clawbackWindowFor("no-such-lender").source).toBe("assumed");
+    expect(clawbackWindowFor(null).source).toBe("assumed");
+    expect(clawbackWindowFor(90)).toEqual({ days: 90, source: "contracted" });
   });
 });
 

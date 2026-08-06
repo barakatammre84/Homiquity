@@ -5,7 +5,6 @@ import { isAdmin } from "@shared/roles";
 import { type IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { EXTENSION_FEE_PAYERS, isInternalStaffRole, OPEN_RATE_LOCK_STATUSES, type User } from "@shared/schema";
-import { getWholesaleLender } from "@shared/wholesaleLenders";
 import {
   isLenderConfirmed,
   rateLockDescription,
@@ -61,7 +60,7 @@ export function registerRateLockRoutes(
 
       // The lender must be one we actually have a relationship with. An
       // unknown id means the confirmation came from somewhere unaccountable.
-      const lender = getWholesaleLender(lenderId);
+      const lender = await storage.getWholesaleLenderByLenderId(lenderId);
       if (!lender) {
         return res.status(400).json({
           error: `Unknown wholesale lender "${lenderId}"`,
@@ -336,7 +335,9 @@ export function registerRateLockRoutes(
           await storage.createLoanCostEntry({
             applicationId: lock.applicationId,
             category: "rate_lock_extension",
-            vendor: getWholesaleLender(lock.lenderId ?? "")?.name ?? lock.lenderId ?? null,
+            vendor: lock.lenderId
+              ? (await storage.getWholesaleLenderByLenderId(lock.lenderId))?.lenderName ?? lock.lenderId
+              : null,
             amount: extensionFee.toFixed(2),
             incurredAt: new Date(),
             automatic: true,

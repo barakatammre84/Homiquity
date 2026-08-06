@@ -14,27 +14,36 @@
  * identifiers on the way out.
  */
 import { scrubLenderIdentity } from "./borrowerOfferView";
-import { WHOLESALE_LENDERS } from "./wholesaleLenders";
+
 
 /**
- * Names + ids of every cataloged wholesale lender, PLUS derived shorthand
+ * Names + ids of the wholesale lenders to scrub, PLUS derived shorthand
  * aliases — staff transcribe conditions from lender portals in the industry
  * register ("Angel Oak", "Rocket Pro", "United Wholesale"), which neither the
  * full legal name nor the hyphenated id matches. Derived per lender: the id
  * with hyphens as spaces ("angel oak", "rocket pro tpo") and the first two
  * words of the display name ("Angel Oak", "United Wholesale"). §9 review
- * F-1 (2026-08-04) probed exactly these bypasses. Exported for reuse by other
- * borrower-view mappers (borrowerActivityView scrubs feed text with it).
+ * F-1 (2026-08-04) probed exactly these bypasses.
+ *
+ * Built from `wholesale_lenders` rows by the caller rather than from a
+ * module-level constant: the lender catalog is a table now. The mappers below
+ * take the resulting list as a REQUIRED argument specifically so that adding a
+ * new caller cannot silently produce an empty scrub list — an omission is a
+ * compile error, not a leak.
  */
-export const LENDER_IDENTIFIERS: readonly string[] = WHOLESALE_LENDERS.flatMap((l) => {
-  const nameWords = l.name.split(/\s+/);
-  return [
-    l.name,
-    l.id,
-    l.id.replace(/-/g, " "),
-    ...(nameWords.length > 2 ? [nameWords.slice(0, 2).join(" ")] : []),
-  ];
-});
+export function buildLenderIdentifiers(
+  lenders: readonly { lenderId: string; lenderName: string }[],
+): string[] {
+  return lenders.flatMap((l) => {
+    const nameWords = l.lenderName.split(/\s+/);
+    return [
+      l.lenderName,
+      l.lenderId,
+      l.lenderId.replace(/-/g, " "),
+      ...(nameWords.length > 2 ? [nameWords.slice(0, 2).join(" ")] : []),
+    ];
+  });
+}
 
 /**
  * Structural subset of the LoanCondition row the mapper reads. Declared here
@@ -69,8 +78,11 @@ export interface BorrowerConditionView {
   updatedAt?: Date | string;
 }
 
-export function toBorrowerConditionView(condition: MaskableLoanCondition): BorrowerConditionView {
-  const scrub = (text: string) => scrubLenderIdentity(text, LENDER_IDENTIFIERS);
+export function toBorrowerConditionView(
+  condition: MaskableLoanCondition,
+  lenderIdentifiers: readonly string[],
+): BorrowerConditionView {
+  const scrub = (text: string) => scrubLenderIdentity(text, lenderIdentifiers);
   const description = condition.description ? scrub(condition.description) : undefined;
   return {
     id: condition.id,
@@ -89,6 +101,7 @@ export function toBorrowerConditionView(condition: MaskableLoanCondition): Borro
 
 export function toBorrowerConditionViews(
   conditions: MaskableLoanCondition[],
+  lenderIdentifiers: readonly string[],
 ): BorrowerConditionView[] {
-  return conditions.map(toBorrowerConditionView);
+  return conditions.map((c) => toBorrowerConditionView(c, lenderIdentifiers));
 }

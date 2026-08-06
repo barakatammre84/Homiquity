@@ -23,7 +23,6 @@
 //      refinance. `isWithinClawbackWindow` is the guard.
 // ---------------------------------------------------------------------------
 
-import { getWholesaleLender } from "./wholesaleLenders";
 
 /**
  * PLATFORM ASSUMPTION — not a regulatory value and not a contracted one.
@@ -48,18 +47,33 @@ export interface ClawbackWindow {
   source: ClawbackWindowSource;
 }
 
-/** The EPO window for a lender, and whether it came from an agreement. */
-export function clawbackWindowFor(lenderId: string): ClawbackWindow {
-  const lender = getWholesaleLender(lenderId);
-  const contracted = lender?.epoClawbackDays;
-  if (typeof contracted === "number" && Number.isFinite(contracted) && contracted > 0) {
-    return { days: contracted, source: "contracted" };
+/**
+ * The EPO window for a lender, and whether it came from an agreement.
+ *
+ * Takes the contracted days directly (from `wholesale_lenders.epo_clawback_days`)
+ * rather than looking the lender up: the catalog is a database table and this
+ * module is shared/, which does no IO.
+ *
+ * NULL/undefined means NO AGREEMENT EXISTS YET, not "no clawback" — so it
+ * resolves to the platform assumption and is reported as `source: "assumed"`.
+ * A caller that cannot supply the value therefore degrades LOUDLY (the register
+ * raises `usesAssumedWindow`), never silently to zero exposure.
+ */
+export function clawbackWindowFor(contractedDays?: number | null): ClawbackWindow {
+  if (typeof contractedDays === "number" && Number.isFinite(contractedDays) && contractedDays > 0) {
+    return { days: contractedDays, source: "contracted" };
   }
   return { days: DEFAULT_EPO_CLAWBACK_DAYS, source: "assumed" };
 }
 
 export interface ClawbackExposureInput {
   lenderId: string;
+  /**
+   * Contracted EPO window from this lender's executed broker agreement
+   * (`wholesale_lenders.epo_clawback_days`). Omit when unknown — the exposure
+   * then rests on DEFAULT_EPO_CLAWBACK_DAYS and is flagged as assumed.
+   */
+  epoClawbackDays?: number | null;
   fundedAt: Date | string | null | undefined;
   /** Compensation actually received — the amount a lender would reclaim. */
   compensationReceivedAmount: number | string | null | undefined;
@@ -102,7 +116,7 @@ export function evaluateClawbackExposure(
   input: ClawbackExposureInput,
   now: Date = new Date(),
 ): ClawbackExposure {
-  const window = clawbackWindowFor(input.lenderId);
+  const window = clawbackWindowFor(input.epoClawbackDays);
   const fundedAt = toDate(input.fundedAt);
 
   if (!fundedAt) {

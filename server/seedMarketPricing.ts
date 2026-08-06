@@ -55,6 +55,9 @@ export async function seedMarketPricing(): Promise<void> {
 
   // --- Lenders: one per integration tier to demo the vendor-onboarding story.
   const [summit] = await db.insert(wholesaleLenders).values({
+    // Fictional counterparty: isDemo hard-blocks lender submission in every
+    // environment, independent of status/approvalStatus (migration 0051).
+    isDemo: true,
     lenderId: "SAMPLE-SUMMIT-001",
     lenderName: "Summit Wholesale Lending",
     lenderCode: "SWL",
@@ -80,6 +83,9 @@ export async function seedMarketPricing(): Promise<void> {
   }).returning();
 
   const [blueriver] = await db.insert(wholesaleLenders).values({
+    // Fictional counterparty: isDemo hard-blocks lender submission in every
+    // environment, independent of status/approvalStatus (migration 0051).
+    isDemo: true,
     lenderId: "SAMPLE-BLUERIVER-001",
     lenderName: "BlueRiver Capital Markets",
     lenderCode: "BRC",
@@ -100,6 +106,9 @@ export async function seedMarketPricing(): Promise<void> {
   }).returning();
 
   const [atlas] = await db.insert(wholesaleLenders).values({
+    // Fictional counterparty: isDemo hard-blocks lender submission in every
+    // environment, independent of status/approvalStatus (migration 0051).
+    isDemo: true,
     lenderId: "SAMPLE-ATLAS-001",
     lenderName: "Atlas Home Funding",
     lenderCode: "AHF",

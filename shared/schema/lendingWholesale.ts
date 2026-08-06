@@ -61,13 +61,46 @@ export const wholesaleLenders = pgTable("wholesale_lenders", {
   
   status: varchar("status", { length: 20 }).default("ACTIVE"),
   isPreferred: boolean("is_preferred").default(false),
-  
+
+  // --- Counterparty fields (migration 0051) -------------------------------
+  // `status` answers "is this row live?"; it does NOT answer "do we have a
+  // signed broker agreement?". Only `approvalStatus` does, and it is the gate
+  // on transmitting a borrower's file to a third party. Defaults to "target"
+  // so every existing and future row is fail-closed until someone states
+  // otherwise. See evaluateLenderSubmissionEligibility in
+  // shared/wholesaleLenders.ts.
+  approvalStatus: varchar("approval_status", { length: 30 }).default("target").notNull(),
+
+  // Seeded demo/sample counterparties (Summit Wholesale Lending et al.) exist
+  // so pricing and the beta walkthrough have something to quote. They are not
+  // real companies and must never receive a borrower file, regardless of
+  // status or approvalStatus — the submission gate hard-blocks on this flag.
+  isDemo: boolean("is_demo").default(false).notNull(),
+
+  /** Runs non-QM programs (DSCR / bank-statement); drives income-package sections. */
+  nonQm: boolean("non_qm").default(false).notNull(),
+
+  /** Supported AUS engines on this lender's wholesale channel ("DU" | "LPA"). */
+  ausSupport: text("aus_support").array(),
+
+  /**
+   * Early-payoff clawback window in days, from the executed broker agreement.
+   * NULL means NO AGREEMENT EXISTS YET, not "no clawback" — every wholesale
+   * broker agreement contains an EPO clause. Exposure for a NULL lender is
+   * computed against DEFAULT_EPO_CLAWBACK_DAYS and flagged as an assumption.
+   */
+  epoClawbackDays: integer("epo_clawback_days"),
+
+  /** Where this lender fits in the product box (business-development note). */
+  specialty: varchar("specialty", { length: 255 }),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
 }, (table) => [
   index("idx_wholesale_lenders_code").on(table.lenderCode),
   index("idx_wholesale_lenders_tier").on(table.integrationTier),
   index("idx_wholesale_lenders_status").on(table.status),
+  index("idx_wholesale_lenders_approval").on(table.approvalStatus),
 ]);
 
 export const insertWholesaleLenderSchema = createInsertSchema(wholesaleLenders).omit({

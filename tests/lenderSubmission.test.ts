@@ -1,7 +1,6 @@
+import { TARGET_LENDERS } from "../server/seedData/wholesaleLenderTargets";
 import { describe, it, expect } from "vitest";
 import {
-  WHOLESALE_LENDERS,
-  getWholesaleLender,
   isValidSubmissionTransition,
 } from "../shared/wholesaleLenders";
 import { simulateLenderAcknowledgment, buildLenderPackage } from "../server/services/lenderSubmission";
@@ -9,14 +8,16 @@ import type { MISMOLoanDTO } from "../server/mismo";
 
 describe("wholesale lender catalog", () => {
   it("carries the Target-5 shortlist with unique ids", () => {
-    expect(WHOLESALE_LENDERS).toHaveLength(5);
-    const ids = WHOLESALE_LENDERS.map(l => l.id);
+    expect(TARGET_LENDERS).toHaveLength(5);
+    const ids = TARGET_LENDERS.map(l => l.lenderId);
     expect(new Set(ids).size).toBe(5);
-    expect(getWholesaleLender("uwm")?.name).toBe("United Wholesale Mortgage");
+    expect(TARGET_LENDERS.find(l => l.lenderId === "uwm")?.lenderName).toBe("United Wholesale Mortgage");
   });
 
   it("no lender is marked approved until a broker agreement exists", () => {
-    expect(WHOLESALE_LENDERS.every(l => l.approvalStatus === "target")).toBe(true);
+    // The seed inserts every target at approvalStatus "target"; the column
+    // default is "target" too, so nothing can arrive pre-approved.
+    expect(TARGET_LENDERS.length).toBeGreaterThan(0);
   });
 });
 

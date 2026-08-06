@@ -5,6 +5,7 @@ import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertBorrowerDeclarationsSchema, isStaffRole, loanApplicationIntakeSchema, type User } from "@shared/schema";
 import { toBorrowerActivityViews } from "@shared/borrowerActivityView";
+import { getLenderIdentifiers } from "../../services/lenderIdentifiers";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { finalizeIntake } from "../../services/loanAnalysis";
@@ -352,7 +353,7 @@ export function registerApplicationRoutes(
         // shared/borrowerActivityView.ts). Staff keep full rows.
         activities: isStaffRole(req.user!.role)
           ? activities
-          : toBorrowerActivityViews(activities, req.user!.id),
+          : toBorrowerActivityViews(activities, await getLenderIdentifiers(), req.user!.id),
       });
     } catch (error) {
       console.error("Get application error:", error);

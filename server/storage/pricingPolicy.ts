@@ -402,6 +402,20 @@ export class PricingPolicyStorage extends NotificationsOpsStorage {
     return lender;
   }
 
+  /**
+   * Look up by the business key (`lender_id`, e.g. "uwm") rather than the uuid
+   * primary key. Submission and the income package address lenders by this
+   * stable key — it is what a staff-facing selection and an audit row carry.
+   */
+  async getWholesaleLenderByLenderId(lenderId: string): Promise<WholesaleLender | undefined> {
+    const [lender] = await db
+      .select()
+      .from(wholesaleLenders)
+      .where(eq(wholesaleLenders.lenderId, lenderId))
+      .limit(1);
+    return lender;
+  }
+
   async createWholesaleLender(data: InsertWholesaleLender): Promise<WholesaleLender> {
     const [lender] = await db.insert(wholesaleLenders).values(data).returning();
     return lender;
