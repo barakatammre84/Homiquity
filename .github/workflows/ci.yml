@@ -35,6 +35,27 @@ name: CI
 on:
   pull_request:
     branches: [main]
+    # `types` is explicit because the DEFAULT set (opened, synchronize, reopened)
+    # silently skips two events this repo actually relies on:
+    #
+    #   edited      — fires when a PR's BASE BRANCH is retargeted. A stacked PR
+    #                 opened against another feature branch does not match
+    #                 `branches: [main]`, so it gets no run; retargeting it to
+    #                 main then produces `edited`, which the default set ignores.
+    #                 Result: a PR sitting on main with ZERO checks and
+    #                 auto-merge armed — nothing is stopping it. Observed on
+    #                 PR #425 (2026-08-06): 0 check-runs until it was manually
+    #                 closed and reopened.
+    #
+    #                 `edited` also fires on title/body edits, which is not
+    #                 waste here: `guard:security` reads the PR BODY from the
+    #                 event payload (`github.event.pull_request.body`), so a
+    #                 re-run replays the OLD body and can never see a security
+    #                 review added after the fact. Also observed on PR #424.
+    #
+    #   ready_for_review — a draft PR marked ready otherwise keeps whatever
+    #                 (possibly no) checks it had as a draft.
+    types: [opened, synchronize, reopened, edited, ready_for_review]
   push:
     branches: [main]
   workflow_dispatch:
