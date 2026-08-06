@@ -295,3 +295,53 @@ jobs:
           # command substitution: never echoed, never written to GITHUB_ENV, and
           # neither script ever prints it.
           DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" node scripts/migrate-prod.cjs $ARGS
+
+  # ---------------------------------------------------------------------------
+  # The gap that let production sit eight commits stale with every check green.
+  #
+  # On 2026-08-06 nine consecutive Railway deploys failed in the Setup step
+  # (`engines.node: "24.x"` is npm range syntax, which mise cannot resolve). A
+  # failed Railway deploy does NOT take the site down — it leaves the PREVIOUS
+  # container serving. So `gate` was green, `migrate-prod` was green,
+  # /api/health answered 200, and nothing anywhere said "the code you merged is
+  # not running". It was found by hand, hours later, and only because it had
+  # started masking a second fault.
+  #
+  # This job closes that: after every push to main it asks production which
+  # commit it is actually serving, and fails loudly if that is not this one.
+  #
+  # Deliberately NOT a step inside `gate` (that job is `if: pull_request`, so it
+  # never runs on the push that deploys), and deliberately NOT added to branch
+  # protection's required contexts — it runs AFTER the merge, so requiring it
+  # would deadlock every PR.
+  # ---------------------------------------------------------------------------
+  verify-deploy:
+    name: verify-deploy (prod is serving this commit)
+    if: github.event_name == 'push'
+    # Ordered after the migrator so a schema failure is reported as itself
+    # rather than as a mysterious stale deployment.
+    needs: migrate-prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Poll /api/health until it reports this commit
+        env:
+          EXPECTED: ${{ github.sha }}
+        run: |
+          # Railway builds + boots in ~90s; 60 x 20s = 20 min of headroom for a
+          # queued build. `curl -f` keeps a 5xx from being parsed as a payload.
+          for i in $(seq 1 60); do
+            got="$(curl -sf --max-time 10 https://www.homiquity.com/api/health \
+                   | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit") or "")' \
+                   2>/dev/null || true)"
+            if [ "$got" = "$EXPECTED" ]; then
+              echo "prod is serving $EXPECTED"
+              exit 0
+            fi
+            echo "attempt $i/60 — serving '${got:-<none>}', want '$EXPECTED'"
+            sleep 20
+          done
+          echo "::error::prod is NOT serving $EXPECTED after 20 minutes. The merge did not ship."
+          echo "Check Railway → project Homiquity → service Homiquity → Deployments for a FAILED build."
+          echo "A failed deploy leaves the previous one serving, so the site being UP is not evidence it shipped."
+          exit 1
