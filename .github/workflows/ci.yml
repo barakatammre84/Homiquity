@@ -318,6 +318,22 @@ jobs:
   verify-deploy:
     name: verify-deploy (prod is serving this commit)
     if: github.event_name == 'push'
+    # 🚨 MUST NOT BLOCK THE WORKFLOW. This job and Railway's "Wait for CI"
+    # setting are mutually recursive: Wait for CI holds the deploy until every
+    # GitHub workflow for the commit succeeds, while this job waits for that
+    # same deploy to reach production. Each waits for the other, this job times
+    # out after 20 minutes, the workflow fails, and Railway marks the
+    # deployment SKIPPED — which is TERMINAL, with no retry. Every subsequent
+    # merge repeats it, so the result is a permanent, silent deploy freeze.
+    #
+    # Observed live on 2026-08-06: deployments b80afca2 (#425) and ed553cf8
+    # (#428) both sat in WAITING behind this job minutes after it first merged.
+    #
+    # `continue-on-error` breaks the cycle without giving up the signal: the job
+    # still turns red and still names the stuck commit, but the WORKFLOW
+    # concludes success, so Wait for CI releases the deploy. The hard alarm is
+    # Railway's own deployment notifications; this is the in-repo tripwire.
+    continue-on-error: true
     # Ordered after the migrator so a schema failure is reported as itself
     # rather than as a mysterious stale deployment.
     needs: migrate-prod
