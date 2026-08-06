@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { homeownershipGoalKeys } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -81,7 +82,7 @@ export function RenterHome({
   // it lands regardless of whether they first hit the incubator or went straight
   // to /apply — no per-surface consumption needed here anymore.
   const { data: goalData } = useQuery<GoalResponse>({
-    queryKey: ["/api/homeownership-goal"],
+    queryKey: homeownershipGoalKeys.all(),
   });
 
   // Single source of truth for readiness: the server-side /100 score (the same

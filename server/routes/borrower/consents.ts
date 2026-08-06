@@ -9,6 +9,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { firstQueryValue } from "../queryParams";
 import { routeParams } from "../../http/routeParams";
+import { clientIpForRecord } from "../../clientIp";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -106,7 +107,7 @@ export function registerConsentRoutes(
       const consent = await storage.createBorrowerConsent({
         userId: user.id,
         ...result.data,
-        ipAddress: req.ip || req.socket.remoteAddress,
+        ipAddress: clientIpForRecord(req) ?? undefined,
         userAgent: req.headers["user-agent"],
         contentHash,
         consentedAt: new Date(),

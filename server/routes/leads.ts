@@ -7,6 +7,7 @@ import type { InsertLead } from "@shared/schema";
 import { intakePausedGate } from "../services/maintenanceMode";
 import { notifyNewLead } from "../services/leadNotifications";
 import { routeParam } from "../http/routeParams";
+import { clientIpForRecord } from "../clientIp";
 
 // Which staff work leads: the sales funnel (admin + loan officers + assistants).
 // Processors/underwriters/closers act post-application, so they're excluded here.
@@ -83,7 +84,6 @@ export function registerLeadRoutes(app: Express, storage: IStorage) {
         }
       }
 
-      const forwardedFor = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
       const insert: InsertLead = {
         source: data.source,
         sourceCampaign: data.sourceCampaign ?? null,
@@ -97,7 +97,7 @@ export function registerLeadRoutes(app: Express, storage: IStorage) {
         consentTcpaText: data.consentTcpaText ?? null,
         // Default the consent timestamp to now when the caller doesn't supply one.
         consentCapturedAt: data.consentCapturedAt ?? new Date(),
-        consentIp: (req.ip || forwardedFor || null)?.slice(0, 64) ?? null,
+        consentIp: clientIpForRecord(req),
         consentUserAgent: req.headers["user-agent"] ?? null,
 
         firstName: data.firstName ?? null,

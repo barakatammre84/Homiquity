@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys, consentKeys } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication, LoanOption } from "@shared/schema";
 import { AlertCircle, CheckCircle2, Clock, Shield } from "lucide-react";
@@ -17,6 +17,7 @@ import { MarketPricingSection, type MarketOffersResponse } from "./loanOptions/M
 import { LoanOptionCard } from "./loanOptions/LoanOptionCard";
 import { LoanLetterButton } from "./loanOptions/LoanLetterButton";
 import { NextStepsSection } from "./loanOptions/NextStepsSection";
+import { WhatIfPanel } from "./loanOptions/WhatIfPanel";
 
 interface LoanOptionsData {
   application: LoanApplication;
@@ -46,7 +47,7 @@ export default function LoanOptions() {
   // before a rate can be locked. The server enforces this on the lock
   // endpoint; this query drives the disclosure card and button state.
   const { data: steeringConsent } = useQuery<{ hasConsent: boolean }>({
-    queryKey: ['/api/consents/check', id, 'anti_steering'],
+    queryKey: consentKeys.check(id, 'anti_steering'),
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/consents/check/${id}/anti_steering`);
       return res.json();
@@ -181,12 +182,23 @@ export default function LoanOptions() {
               applicationId={id!}
               consentType="anti_steering"
               onConsented={() =>
-                queryClient.invalidateQueries({ queryKey: ['/api/consents/check', id, 'anti_steering'] })
+                queryClient.invalidateQueries({ queryKey: consentKeys.check(id, 'anti_steering') })
               }
             />
           </div>
         )}
         {market && <MarketPricingSection market={market} />}
+        {id && (
+          <WhatIfPanel
+            applicationId={id}
+            currentPurchasePrice={
+              application?.purchasePrice != null ? Number(application.purchasePrice) : null
+            }
+            currentDownPayment={
+              application?.downPayment != null ? Number(application.downPayment) : null
+            }
+          />
+        )}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">{marketPriced ? "Payment Scenarios" : "Your Loan Options"}</h2>

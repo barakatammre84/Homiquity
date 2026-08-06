@@ -4,18 +4,25 @@ import express, { type Express } from "express";
 
 import { BOT_UA_REGEX } from "../shared/seo/botUserAgents";
 import { makePrerenderMiddleware } from "../server/prerender";
+import {
+  DEFAULT_TITLE,
+  GATED_SITEMAP_PATHS,
+  buildSitemapXml,
+  resolveStaticMeta,
+} from "../shared/seo/routeMeta";
 
-// The self-host bot prerender replaces vercel.json's rewrite
+// The bot prerender is the sole implementation of what was once an
+// edge rewrite,
 // `/((?!api/|.*\.).*)` + user-agent matcher, and the failure modes are
 // asymmetric: an over-broad match swallows static assets as injected HTML
-// (the ordering trap that kept the old catch-all gated to process.env.VERCEL),
+// (the ordering trap that once kept the catch-all behind a platform env var),
 // while an under-broad one silently turns SEO prerendering off with humans
 // noticing nothing. These tests pin both edges — the ported regex against
 // representative real UA strings, and the middleware's four guards
 // (GET + non-/api + undotted path + bot UA) over a live Express dispatch.
 
 // --- minimal in-process request driver (no sockets, no listening server) ---
-// Mirrors tests/spaCatchAll.test.ts / tests/vercelEntryHelpers.test.ts, plus
+// Mirrors tests/spaCatchAll.test.ts, plus
 // method/headers control and a stub socket (req.protocol reads socket.encrypted).
 
 function makeReqRes(url: string, opts: { method?: string; headers?: Record<string, string> } = {}) {
@@ -73,7 +80,7 @@ const GOOGLEBOT =
 const CHROME_MAC =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
-describe("BOT_UA_REGEX (verbatim port of the vercel.json user-agent matcher)", () => {
+describe("BOT_UA_REGEX (the single bot user-agent matcher)", () => {
   it.each([
     ["Googlebot", GOOGLEBOT],
     ["bingbot", "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"],
@@ -211,5 +218,49 @@ describe("prerender middleware", () => {
   it("lets UA-less requests straight through", async () => {
     const got = await run(buildApp(), "/rates");
     expect(got.body).toContain("SPA");
+  });
+});
+
+describe("sitemap — gate-aware inclusion", () => {
+  // The six highest-intent routes must be OUT of the sitemap while the funnel
+  // redirects to the waitlist (we simultaneously send them noindex), and IN the
+  // moment it opens. Deriving this from the live gate rather than a hand-edited
+  // list removes a launch-day checklist item that would otherwise be missed on
+  // the day and cost weeks of indexing latency.
+  const locs = (xml: string) => [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1]);
+
+  it("omits the gated routes while the gate is up", () => {
+    const xml = buildSitemapXml([], { prelaunchGated: true });
+    const paths = locs(xml).map((u) => u.replace(/^https?:\/\/[^/]+/, ""));
+    for (const p of GATED_SITEMAP_PATHS) {
+      expect(paths, `${p} must not be sitemapped while gated`).not.toContain(p);
+    }
+    // The ungated public surface is unaffected.
+    expect(paths).toContain("/calculators");
+    expect(paths).toContain("/learn");
+  });
+
+  it("includes them once the gate is open", () => {
+    const xml = buildSitemapXml([], { prelaunchGated: false });
+    const paths = locs(xml).map((u) => u.replace(/^https?:\/\/[^/]+/, ""));
+    for (const p of GATED_SITEMAP_PATHS) {
+      expect(paths, `${p} must be sitemapped once open`).toContain(p);
+    }
+    expect(paths).toContain("/calculators");
+  });
+
+  it("defaults to the safe (gated) posture when the caller says nothing", () => {
+    const paths = locs(buildSitemapXml([])).map((u) => u.replace(/^https?:\/\/[^/]+/, ""));
+    expect(paths).not.toContain("/va-loans");
+  });
+
+  it("every gated sitemap path has resolvable metadata", () => {
+    // A sitemapped URL that resolves to the default homepage head would be
+    // worse than not listing it at all.
+    for (const p of GATED_SITEMAP_PATHS) {
+      const meta = resolveStaticMeta(p);
+      expect(meta, `${p} has no STATIC_ROUTE_META entry`).not.toBeNull();
+      expect(meta!.title).not.toBe(DEFAULT_TITLE);
+    }
   });
 });

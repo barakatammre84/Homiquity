@@ -5,6 +5,7 @@ import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { insertBorrowerDeclarationsSchema, isStaffRole, loanApplicationIntakeSchema, type User } from "@shared/schema";
 import { toBorrowerActivityViews } from "@shared/borrowerActivityView";
+import { getLenderIdentifiers } from "../../services/lenderIdentifiers";
 import { unlicensedStateRejection } from "@shared/companyIdentity";
 import { toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { finalizeIntake } from "../../services/loanAnalysis";
@@ -18,6 +19,7 @@ import { intakePausedGate } from "../../services/maintenanceMode";
 import { prelaunchGate } from "../../services/prelaunchGate";
 import { updatePipelineStage } from "../../pipelineEngine";
 import { routeParam } from "../../http/routeParams";
+import { clientIpForRecord } from "../../clientIp";
 
 const declarationsValidationSchema = insertBorrowerDeclarationsSchema.partial().extend({
   applicationId: z.string().optional(),
@@ -190,7 +192,7 @@ export function registerApplicationRoutes(
             // attestations) that the funnel never displayed (F-034).
             disclosureText: FUNNEL_SOFT_PULL_CONSENT_TEXT,
             disclosureVersion: FUNNEL_SOFT_PULL_CONSENT_VERSION,
-            ipAddress: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip,
+            ipAddress: clientIpForRecord(req) ?? undefined,
             userAgent: req.get("User-Agent"),
           });
           logAudit(req, "credit_consent.created", "loan_application", application.id, {
@@ -366,7 +368,7 @@ export function registerApplicationRoutes(
         // shared/borrowerActivityView.ts). Staff keep full rows.
         activities: isStaffRole(req.user!.role)
           ? activities
-          : toBorrowerActivityViews(activities, req.user!.id),
+          : toBorrowerActivityViews(activities, await getLenderIdentifiers(), req.user!.id),
       });
     } catch (error) {
       console.error("Get application error:", error);

@@ -17,7 +17,11 @@ Use an authenticator app or passkey (not SMS where avoidable). Check off and upd
 - [ ] **GitHub** — Settings → Password and authentication → Two-factor authentication. If the
       repo lives in an organization, also: Org Settings → Authentication security → Require
       two-factor authentication.
-- [ ] **Vercel** — Account Settings → Authentication → Two-factor authentication (both members).
+- [ ] **Railway** (the application host since the 2026-08 migration off Vercel; the Vercel
+      project has been deleted, so there is no Vercel account left to secure) — Account
+      Settings → enable two-factor authentication for both members. If sign-in is via GitHub or
+      Google, 2FA on that identity provider covers the login — record which in the register,
+      and confirm both people are project members with the narrowest workable role.
 - [ ] **Neon** — Account Settings → Security → Two-factor authentication. (If sign-in is
       "Continue with Google/GitHub", 2FA on that identity provider covers it — note which in
       the register.)
@@ -45,10 +49,27 @@ Use an authenticator app or passkey (not SMS where avoidable). Check off and upd
 - [ ] Merge the PR carrying the pack + the CI dependency-audit step — the merge commit is
       the adoption record. (Q2 and Q4 answers are valid only after this merge.)
 
-### 1d. Final consistency pass
+### 1d. Verify the hosting provider's certification status *(added 2026-08-06 — blocking)*
+
+Hosting moved from Vercel to **Railway** in August 2026. Nobody has verified Railway's security
+attestations, and the Q4 comment previously folded the host into a sentence about providers'
+"SOC 2 programs".
+
+- [ ] Founder checks Railway's trust/compliance page for a current SOC 2 Type II (or other)
+      attestation, records what was found **with the date** in
+      [INFORMATION_SECURITY_POLICY.md](INFORMATION_SECURITY_POLICY.md) §4, and updates the Q4
+      comment below to match.
+- **Until that is done, do not restore Railway into any certification claim.** The Q4 wording
+  below deliberately states only what we control (containers rebuilt from source each deploy,
+  provider-managed patching) without asserting a certification we have not seen. An unverified
+  attestation claimed to Plaid's compliance team is materially worse than an acknowledged gap.
+
+### 1e. Final consistency pass
 
 - [ ] Register has no remaining ⬜ in the 2FA column (or a dated exception note).
 - [ ] Export the three attachment PDFs (§3) from the merged versions.
+- [ ] Every attachment says **Railway**, not Vercel, and none of them claims a Railway
+      certification that §1d did not verify.
 
 ## 2. The eight answers
 
@@ -60,9 +81,10 @@ Use an authenticator app or passkey (not SMS where avoidable). Check off and upd
 
 **Select:** Cloud hosting (already selected — keep).
 **Comment:**
-> All server-side components run on managed cloud infrastructure: Vercel (serverless
-> application hosting) and Neon (managed PostgreSQL), with Google Cloud Storage for
-> borrower-document storage. We operate no on-premise or self-managed servers.
+> All server-side components run on managed cloud infrastructure: Railway (managed container
+> hosting) and Neon (managed PostgreSQL), with Google Cloud Storage for borrower-document
+> storage. The application is a single Node.js process in one managed container, serving both
+> the API and the static front end. We operate no on-premise or self-managed servers.
 
 ### Q2 — Documented information security policy
 
@@ -82,8 +104,9 @@ policy, operationalized).
 
 **Select:** Yes (the option closest to a maintained inventory).
 **Comment:**
-> Production consists entirely of managed cloud services — serverless, with no self-managed
-> server instances to discover — and our corporate footprint is two laptops. Both are
+> Production consists entirely of managed cloud services — one managed application container
+> plus managed PostgreSQL and object storage, with no self-managed server instances to
+> discover — and our corporate footprint is two laptops. Both are
 > enumerated in a maintained Asset & Endpoint Register (attached), reviewed quarterly. There
 > is no corporate LAN or VPN: every asset is an independently authenticated cloud endpoint,
 > so unmanaged endpoints cannot join a corporate or production network.
@@ -97,12 +120,19 @@ policy, operationalized).
 **Comment:**
 > Application dependencies are scanned on every pull request via `pnpm audit` as a required,
 > blocking CI check (high/critical severities), plus weekly automated Dependabot update PRs.
-> Production infrastructure is fully managed (Vercel, Neon, Google Cloud) — OS and platform
-> patching is performed by those providers under their SOC 2 programs; there are no mutable
-> server instances for us to scan or patch. Employee laptops enforce automatic OS and
-> security updates under our BYOD standard; given a two-device footprint with no local
-> storage of borrower data, we do not currently run a dedicated endpoint vulnerability
-> scanner.
+> Production infrastructure is fully managed (Railway for application hosting, Neon for
+> PostgreSQL, Google Cloud for object storage) — OS and platform patching is performed by
+> those providers, and our application container is rebuilt from source on every deploy and
+> replaced rather than patched in place, so there are no mutable server instances for us to
+> scan or patch. Employee laptops enforce automatic OS and security updates under our BYOD
+> standard; given a two-device footprint with no local storage of borrower data, we do not
+> currently run a dedicated endpoint vulnerability scanner.
+
+⚠️ *Wording note (2026-08-06): this comment previously read "under their SOC 2 programs" while
+naming the host. Neon and Google Cloud maintain SOC 2 Type II programs; **Railway's attestation
+has not been verified by us**, so the host is deliberately excluded from any certification
+claim here. Do not re-add it until checklist §1d is done — see
+[INFORMATION_SECURITY_POLICY](INFORMATION_SECURITY_POLICY.md) §4.*
 
 ### Q5 — Endpoint security tools against malicious code
 
@@ -111,8 +141,9 @@ policy, operationalized).
 > Work devices are Apple Macs protected by macOS's built-in, automatically updated
 > anti-malware stack (Gatekeeper + XProtect) with FileVault full-disk encryption and
 > immediate screen lock; compliance is verified per-device and recorded in our Asset &
-> Endpoint Register. Production runs on serverless managed infrastructure — there are no
-> mutable server instances on which endpoint agents would run.
+> Endpoint Register. Production runs on managed container infrastructure whose image is
+> rebuilt from source on every deploy — there are no mutable server instances on which
+> endpoint agents would run.
 
 ### Q6 — BYOD
 
@@ -157,7 +188,7 @@ then, the honest answer is "partially deployed"; do not submit early.
 **Comment:**
 > Yes — two-factor authentication (authenticator app or passkey) is required by our Access
 > Control Policy and enabled on every console with access to source code, production
-> infrastructure, or borrower data: GitHub, Vercel, Neon, Google Workspace/Cloud, Anthropic,
+> infrastructure, or borrower data: GitHub, Railway, Neon, Google Workspace/Cloud, Anthropic,
 > and ancillary vendor consoles, for both team members.
 
 ## 3. Attachments to export (after merge)

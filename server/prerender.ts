@@ -8,10 +8,8 @@ type RenderSeoDocument = (
 ) => Promise<{ html: string | null; status: number; noindex?: boolean }>;
 
 /**
- * Bot-prerender trigger for Express-served deployments — the in-process
- * replacement for the vercel.json rewrite `/((?!api/|.*\.).*)` + user-agent
- * match, which on Vercel decided at the edge which document requests reached
- * the SEO renderer. Every guard is load-bearing:
+ * Bot-prerender trigger — decides which document requests reach the SEO
+ * renderer. Every guard is load-bearing:
  *
  *   - GET only — the renderer serves documents, never accepts state.
  *   - not /api/ — API routes answer for themselves (and register earlier).
@@ -19,13 +17,13 @@ type RenderSeoDocument = (
  *     dotted is a file request and must fall through to express.static /
  *     Vite; without this guard the middleware swallows /assets/*.js,
  *     /favicon.png and robots.txt as injected HTML (the documented ordering
- *     trap that kept the old catch-all gated to process.env.VERCEL).
+ *     trap that once kept the catch-all gated behind a platform env var).
  *   - bot UA only — humans keep the fast static SPA path (dynamic rendering
  *     of equivalent content, not cloaking).
  *
  * Mount ordering is the other half of the contract: directly ahead of
- * express.static (prod) / vite.middlewares (dev), and on the Vercel function
- * during the migration window (see registerSeoRoutes). The response shape
+ * express.static (prod) / vite.middlewares (dev) — see registerSeoRoutes,
+ * which deliberately does NOT mount it. The response shape
  * (status passthrough, X-Robots-Tag on noindex, 502 on a missing template,
  * 500 on a render throw) is identical to the /api/seo/render endpoint's.
  *

@@ -137,7 +137,7 @@ export interface ProvidersResponse {
  * borrowers, but it is indistinguishable from a broken build while developing, so
  * in development this also names the env vars each hidden provider is waiting on.
  * Names only, never values — and never off localhost: the route is public and
- * unauthenticated, and Vercel builds (preview included) run as "production", so
+ * unauthenticated, and every deployed build runs as "production", so
  * keying on "development" fails closed everywhere it matters.
  */
 export function buildProvidersResponse(): ProvidersResponse {

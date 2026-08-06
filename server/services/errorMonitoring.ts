@@ -39,7 +39,7 @@ function parseDsn(dsn: string | undefined): ParsedDsn | null {
 
 const dsn = parseDsn(process.env.SENTRY_DSN);
 const environment = process.env.NODE_ENV || "development";
-const release = process.env.VERCEL_GIT_COMMIT_SHA || process.env.SENTRY_RELEASE || undefined;
+const release = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.SENTRY_RELEASE || undefined;
 
 export function isErrorMonitoringEnabled(): boolean {
   return dsn !== null;
@@ -73,7 +73,7 @@ async function send(event: Record<string, unknown>): Promise<void> {
         platform: "node",
         environment,
         release,
-        server_name: process.env.VERCEL_REGION || undefined,
+        server_name: process.env.RAILWAY_REPLICA_REGION || undefined,
         ...event,
       }),
       signal: controller.signal,

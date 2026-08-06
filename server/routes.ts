@@ -48,10 +48,24 @@ import { assertEncryptionConfig, initEncryption } from "./services/encryptionSer
 
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // `commit` is what makes this endpoint diagnostic rather than decorative.
+  // A green /api/health proved almost nothing on 2026-08-06: nine consecutive
+  // Railway deploys failed while the PREVIOUS container kept serving and
+  // answering 200 here, so prod sat eight commits stale with every check green.
+  // Reporting the SHA turns "is it up?" into "WHICH BUILD is up?", which is the
+  // question that was actually unanswerable — and it is what the verify-deploy
+  // CI job polls after each merge.
+  //
+  // RAILWAY_GIT_COMMIT_SHA is injected for GitHub-sourced deploys; it is absent
+  // locally and in any non-Railway run, hence `?? null` rather than a fake value.
   app.get("/api/health", async (_req, res) => {
     try {
       await pool.query("SELECT 1");
-      res.json({ status: "ok", timestamp: new Date().toISOString() });
+      res.json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        commit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
+      });
     } catch (err) {
       console.error("[health] Database connectivity check failed:", err);
       res.status(503).json({

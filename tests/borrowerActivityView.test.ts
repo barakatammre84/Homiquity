@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getTableColumns } from "drizzle-orm";
 import { dealActivities } from "@shared/schema";
-import { WHOLESALE_LENDERS } from "@shared/wholesaleLenders";
+import { buildLenderIdentifiers } from "@shared/borrowerConditionView";
+import { TARGET_LENDERS } from "../server/seedData/wholesaleLenderTargets";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -44,6 +45,8 @@ const activity = (over: Partial<MaskableDealActivity> = {}): MaskableDealActivit
   ...over,
 });
 
+const LENDER_IDS = buildLenderIdentifiers(TARGET_LENDERS);
+
 describe("column classification stays total over the live table", () => {
   it("VIEW ∪ EMBARGOED covers every deal_activities column exactly once", () => {
     const live = Object.keys(getTableColumns(dealActivities)).sort();
@@ -76,9 +79,8 @@ describe("condition events — staff clearance notes never travel", () => {
         description: `"Verify 2023 bonus income" has been waived. Reason: ${clearanceNotes}`,
         metadata: { conditionId: "cond-9", notes: clearanceNotes },
         performedBy: "staff-user-42",
-      }),
-      "borrower-user-1",
-    );
+      }), LENDER_IDS,
+      "borrower-user-1");
     expect(view).not.toBeNull();
     expect(view!.title).toBe(expectedTitle);
     const serialized = JSON.stringify(view);
@@ -92,22 +94,21 @@ describe("condition events — staff clearance notes never travel", () => {
 
 describe("lender_conditions_logged — wholesale identity never travels", () => {
   it("scrubs every cataloged lender's name and id out of the rebuilt copy", () => {
-    expect(WHOLESALE_LENDERS.length).toBeGreaterThan(0);
-    for (const lender of WHOLESALE_LENDERS) {
+    expect(TARGET_LENDERS.length).toBeGreaterThan(0);
+    for (const lender of TARGET_LENDERS) {
       const view = toBorrowerActivityView(
         activity({
           activityType: "lender_conditions_logged",
           title: "Lender conditions logged",
-          description: `3 condition(s) from ${lender.name} logged for clearing.`,
+          description: `3 condition(s) from ${lender.lenderName} logged for clearing.`,
           metadata: { submissionId: "sub-77", count: 3 },
           performedBy: "staff-user-42",
-        }),
-        "borrower-user-1",
-      );
+        }), LENDER_IDS,
+        "borrower-user-1");
       expect(view).not.toBeNull();
       const serialized = JSON.stringify(view).toLowerCase();
-      expect(serialized, `${lender.id} name leaked`).not.toContain(lender.name.toLowerCase());
-      expect(serialized, `${lender.id} id leaked`).not.toContain(lender.id.toLowerCase());
+      expect(serialized, `${lender.lenderId} name leaked`).not.toContain(lender.lenderName.toLowerCase());
+      expect(serialized, `${lender.lenderId} id leaked`).not.toContain(lender.lenderId.toLowerCase());
       expect(serialized).not.toContain("sub-77");
       expect(view!.description).toBe("3 new condition(s) were added to your file for clearing.");
     }
@@ -119,8 +120,7 @@ describe("lender_conditions_logged — wholesale identity never travels", () => 
         activityType: "lender_conditions_logged",
         description: "2 condition(s) from Angel Oak Mortgage Solutions logged for clearing.",
         metadata: { submissionId: "sub-77" },
-      }),
-    );
+      }), LENDER_IDS);
     expect(view!.description).toBe("New conditions were added to your file for clearing.");
   });
 });
@@ -135,9 +135,8 @@ describe("application_withdrawn — free-text reason/details never travel", () =
           "Application withdrawn by staff. Reason: borrower unresponsive. Details: suspected straw-buyer pattern, see fraud queue",
         metadata: { reason: "borrower unresponsive", details: "suspected straw-buyer pattern" },
         performedBy: "staff-user-42",
-      }),
-      "borrower-user-1",
-    );
+      }), LENDER_IDS,
+      "borrower-user-1");
     expect(view!.title).toBe("Application Withdrawn");
     expect(view!.description).toBe("The application was withdrawn.");
     const serialized = JSON.stringify(view);
@@ -153,7 +152,7 @@ describe("internal and unknown types are dropped (default-deny)", () => {
     ["compliance_event"],
     ["some_future_type"],
   ])("%s never reaches a client-role payload", (type) => {
-    expect(toBorrowerActivityView(activity({ activityType: type }))).toBeNull();
+    expect(toBorrowerActivityView(activity({ activityType: type }), LENDER_IDS)).toBeNull();
   });
 
   it("toBorrowerActivityViews filters dropped rows out of the array", () => {
@@ -161,14 +160,14 @@ describe("internal and unknown types are dropped (default-deny)", () => {
       activity(),
       activity({ id: "act-2", activityType: "autopilot_review" }),
       activity({ id: "act-3", activityType: "document_uploaded", title: "Document Uploaded" }),
-    ]);
+    ], LENDER_IDS);
     expect(views.map((v) => v.id)).toEqual(["act-1", "act-3"]);
   });
 });
 
 describe("verbatim types pass through scrubbed", () => {
   it("keeps derived borrower copy intact", () => {
-    const view = toBorrowerActivityView(activity(), "borrower-user-1");
+    const view = toBorrowerActivityView(activity(), LENDER_IDS, "borrower-user-1");
     expect(view!.title).toBe("Application Submitted");
     expect(view!.description).toBe("Your loan application has been received and is being analyzed.");
     expect(view!.performedBy).toBe("borrower-user-1");
@@ -176,36 +175,33 @@ describe("verbatim types pass through scrubbed", () => {
   });
 
   it("scrubs wholesale-lender identity out of verbatim text", () => {
-    const lender = WHOLESALE_LENDERS[0];
+    const lender = TARGET_LENDERS[0];
     const view = toBorrowerActivityView(
       activity({
         activityType: "status_change",
-        title: `Status Updated after ${lender.name} response`,
-        description: `Application status changed from submitted to conditional (${lender.name})`,
-      }),
-    );
+        title: `Status Updated after ${lender.lenderName} response`,
+        description: `Application status changed from submitted to conditional (${lender.lenderName})`,
+      }), LENDER_IDS);
     const serialized = JSON.stringify(view).toLowerCase();
-    expect(serialized).not.toContain(lender.name.toLowerCase());
+    expect(serialized).not.toContain(lender.lenderName.toLowerCase());
     expect(serialized).toContain("lender");
   });
 
   it("viewer-scopes performedBy — another user's id is dropped", () => {
     const staffPerformed = toBorrowerActivityView(
-      activity({ performedBy: "staff-user-42" }),
-      "borrower-user-1",
-    );
+      activity({ performedBy: "staff-user-42" }), LENDER_IDS,
+      "borrower-user-1");
     expect(staffPerformed!.performedBy).toBeUndefined();
     expect(JSON.stringify(staffPerformed)).not.toContain("staff-user-42");
 
-    const unscoped = toBorrowerActivityView(activity({ performedBy: "staff-user-42" }));
+    const unscoped = toBorrowerActivityView(activity({ performedBy: "staff-user-42" }), LENDER_IDS);
     expect(unscoped!.performedBy).toBeUndefined();
   });
 
   it("never emits metadata even on verbatim types", () => {
     const view = toBorrowerActivityView(
-      activity({ metadata: { notes: "internal: suspend pending fraud review" } }),
-      "borrower-user-1",
-    );
+      activity({ metadata: { notes: "internal: suspend pending fraud review" } }), LENDER_IDS,
+      "borrower-user-1");
     const serialized = JSON.stringify(view);
     expect(serialized).not.toContain("fraud");
     expect(serialized).not.toContain("metadata");
@@ -223,9 +219,8 @@ describe("pre-contract legacy rows — historical staff free text never travels 
         title: "Status Updated to SUSPENDED",
         description: staffNote,
         performedBy: "staff-user-42",
-      }),
-      "borrower-user-1",
-    );
+      }), LENDER_IDS,
+      "borrower-user-1");
     expect(view!.title).toBe("Status Updated to SUSPENDED");
     expect(view!.description).toBeUndefined();
     expect(JSON.stringify(view)).not.toContain("MCA");
@@ -237,16 +232,14 @@ describe("pre-contract legacy rows — historical staff free text never travels 
         activityType: "document_uploaded",
         title: "Document Uploaded for Task",
         description: "Document uploaded for task: internal fraud-queue recheck of bank statements",
-      }),
-    );
+      }), LENDER_IDS);
     expect(view!.title).toBe("Document Uploaded for Task");
     expect(view!.description).toBeUndefined();
   });
 
   it("masks a legacy row that carries staff metadata but no marker", () => {
     const view = toBorrowerActivityView(
-      legacy({ description: staffNote, metadata: { notes: staffNote } }),
-    );
+      legacy({ description: staffNote, metadata: { notes: staffNote } }), LENDER_IDS);
     expect(view!.description).toBeUndefined();
     expect(JSON.stringify(view)).not.toContain("MCA");
   });
@@ -262,7 +255,7 @@ describe("pre-contract legacy rows — historical staff free text never travels 
       undefined,
     ]) {
       expect(hasWriterContract(metadata), JSON.stringify(metadata)).toBe(false);
-      expect(toBorrowerActivityView(activity({ description: staffNote, metadata }))!.description)
+      expect(toBorrowerActivityView(activity({ description: staffNote, metadata }), LENDER_IDS)!.description)
         .toBeUndefined();
     }
     expect(hasWriterContract(CONTRACT_META)).toBe(true);
@@ -274,10 +267,10 @@ describe("pre-contract legacy rows — historical staff free text never travels 
     // timezone. A marked row shows its description regardless of its date; an
     // unmarked one is masked regardless of how recent it looks.
     for (const createdAt of ["2020-01-01T00:00:00.000Z", "2099-01-01T00:00:00.000Z", null]) {
-      expect(toBorrowerActivityView(activity({ createdAt }))!.description).toBe(
+      expect(toBorrowerActivityView(activity({ createdAt }), LENDER_IDS)!.description).toBe(
         "Your loan application has been received and is being analyzed.",
       );
-      expect(toBorrowerActivityView(legacy({ createdAt }))!.description).toBeUndefined();
+      expect(toBorrowerActivityView(legacy({ createdAt }), LENDER_IDS)!.description).toBeUndefined();
     }
   });
 
@@ -287,8 +280,7 @@ describe("pre-contract legacy rows — historical staff free text never travels 
         activityType: "rate_locked",
         title: "Rate Locked",
         description: "Rate locked at 6.375% for 30 days",
-      }),
-    );
+      }), LENDER_IDS);
     expect(view!.description).toBe("Rate locked at 6.375% for 30 days");
   });
 });
@@ -317,7 +309,7 @@ describe("template copy stays inside the Reg N lexicon", () => {
       "lender_conditions_logged",
       "application_withdrawn",
     ]
-      .map((type) => toBorrowerActivityView(activity({ activityType: type, metadata: { count: 2 } })))
+      .map((type) => toBorrowerActivityView(activity({ activityType: type, metadata: { count: 2 } }), LENDER_IDS))
       .flatMap((view) => [view!.title, view!.description!]);
     for (const text of templates) {
       const result = lintOutboundText(text);

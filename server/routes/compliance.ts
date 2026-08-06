@@ -9,6 +9,7 @@ import { encryptToken } from "../services/piiVault";
 import { sendNotificationEmail } from "../services/emailService";
 import { firstQueryValue } from "./queryParams";
 import { routeParam, routeParams } from "../http/routeParams";
+import { clientIpForRecord } from "../clientIp";
 
 export function registerComplianceRoutes(
   app: Express,
@@ -462,7 +463,7 @@ export function registerComplianceRoutes(
         borrowerDOB,
         consentGiven,
         disclosureText: creditService.getCombinedDisclosure(disclosureStateCode),
-        ipAddress: req.ip,
+        ipAddress: clientIpForRecord(req) ?? undefined,
         userAgent: req.get("User-Agent"),
       });
 
@@ -517,7 +518,7 @@ export function registerComplianceRoutes(
         routeParam(req, "consentId"),
         reason || "Borrower requested revocation",
         user.id,
-        req.ip
+        clientIpForRecord(req) ?? undefined,
       );
 
       // FCRA audit trail: record consent revocation.
@@ -652,7 +653,7 @@ export function registerComplianceRoutes(
           requestedBy: user.id,
           pullType,
           bureaus: bureaus || ["experian", "equifax", "transunion"],
-          ipAddress: req.ip,
+          ipAddress: clientIpForRecord(req) ?? undefined,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Credit pull refused";

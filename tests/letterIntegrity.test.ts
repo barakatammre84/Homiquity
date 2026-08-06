@@ -10,7 +10,7 @@
 //     failing loudly when the row cannot be recorded.
 //  3. The §3.2 lifecycle follow-ups: effectiveLetterStatus (computed-at-read
 //     expiry), the staff revocation route, and the persisting expiry sweep
-//     (source guards + the vercel.json cron entry that actually runs it).
+//     (source guards + the scheduled sweep that actually runs it).
 
 import { describe, it, expect } from "vitest";
 import { readFile } from "node:fs/promises";
@@ -292,32 +292,24 @@ describe("letter expiry sweep", () => {
       "expected /api/jobs/letter-expiry registered in jobs.ts with the dual-trigger shape",
     ).toBe(true);
 
-    const vercelConfig = JSON.parse(
-      await readFile(join(__dirname, "../vercel.json"), "utf8"),
-    ) as { crons?: { path: string; schedule: string }[] };
-    const vercelCron = (vercelConfig.crons || []).find((c) => c.path === "/api/jobs/letter-expiry");
-    expect(
-      vercelCron,
-      "expected a vercel.json cron entry for /api/jobs/letter-expiry — a sweep nobody schedules never runs",
-    ).toBeDefined();
-
-    // Vercel→Railway transition: the GitHub Actions scheduler must carry the
-    // same sweep on the same expression until the cutover PR deletes
-    // vercel.json (and the assertion above with it). Both halves pinned: the
-    // schedule trigger exists, and the resolve step maps that expression to
-    // this job's path — an unmapped expression never curls anything.
+    // .github/workflows/cron-jobs.yml is the ONLY scheduler for this sweep.
+    // Both halves are pinned together or it silently never fires: the schedule
+    // trigger exists, AND the resolve step maps that expression to this job's
+    // path — an unmapped expression never curls anything. This is the
+    // "a sweep nobody schedules never runs" invariant.
+    const SCHEDULE = "30 12 * * *";
     const cronWorkflow = await readFile(
       join(__dirname, "../.github/workflows/cron-jobs.yml"),
       "utf8",
     );
     expect(
-      cronWorkflow.includes(`- cron: "${vercelCron!.schedule}"`),
-      `expected cron-jobs.yml to register a schedule trigger for "${vercelCron!.schedule}"`,
+      cronWorkflow.includes(`- cron: "${SCHEDULE}"`),
+      `expected cron-jobs.yml to register a schedule trigger for "${SCHEDULE}"`,
     ).toBe(true);
-    const escaped = vercelCron!.schedule.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escaped = SCHEDULE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     expect(
       new RegExp(`"${escaped}"\\)\\s+job="letter-expiry"`).test(cronWorkflow),
-      `expected cron-jobs.yml to map "${vercelCron!.schedule}" to the letter-expiry job path`,
+      `expected cron-jobs.yml to map "${SCHEDULE}" to the letter-expiry job path`,
     ).toBe(true);
   });
 });

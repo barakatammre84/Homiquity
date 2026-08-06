@@ -16,11 +16,22 @@ the code lives.
 | **CFPB HMDA + Fannie Mae (public data)** | Competitor rate benchmarks + historical default/prepay rates | none (public APIs / bulk files) | `server/services/hmdaIngestService.ts`, `services/competitorRateService.ts`, `pnpm data:hmda` / `data:fannie` — see [kb/FREE_DATA_MOAT.md](../../specs/FREE_DATA_MOAT.md) | Market-data endpoints return 404 until ingested |
 | **Email (SMTP / SendGrid)** | Notifications, invites | `SMTP_*` or `SENDGRID_API_KEY`, `FROM_EMAIL`, `FROM_NAME` | `services/emailService.ts` | Emails print to server console (current state) |
 | **Social OAuth** | Google / LinkedIn / Apple sign-in | provider client ids/secrets, `APPLE_*` | `server/socialAuth.ts` | Email/password login only |
-| **Vercel** | Hosting: CDN for client, serverless for API | (dashboard env vars) | `vercel.json`, `api/index.ts` | See [10-deploy-ops.md](./10-deploy-ops.md) |
+| **Railway** | Hosting: one persistent Node process serving both the API and the static client (no CDN, no serverless function) | Railway **service variables**; `RAILWAY_GIT_COMMIT_SHA` is injected and surfaces as `/api/health`'s `commit` | `railway.json`, `server/index-prod.ts` | See [10-deploy-ops.md](./10-deploy-ops.md) |
+| **GitHub Actions** | The **only** scheduler: curls `/api/jobs/*` with `Authorization: Bearer $CRON_SECRET` (the platform cron block it mirrored was deleted at the Railway cutover) | `CRON_SECRET` — same value in the GitHub repository secret *and* the Railway service variable | `.github/workflows/cron-jobs.yml`, `server/routes/jobs.ts` | Every scheduled sweep silently stops running |
 | **MCP server** (ours) | Exposes platform engines as AI-agent tools over stdio: `run_soft_credit_pull` (FCRA-gated, cached), `get_best_execution_rates` (rate sheets + LLPA + layered margins), `retrieve_property_valuation` (AVM → properties) | `CRS_API_KEY`, `HOUSECANARY_API_KEY` (simulated until set), `PRICING_MARGIN_BASE_BPS`, `MCP_VENDOR_TIMEOUT_MS` | `server/mcp/`, `.mcp.json`, `pnpm mcp` | n/a — it's an entry point, not a dependency |
 
-> Replit (the app's former host) was fully removed on 2026-07-02 — no Replit
+> Replit (the app's first host) was fully removed on 2026-07-02 — no Replit
 > code, config, or env vars remain.
+>
+> Vercel (the host after Replit) is likewise gone: `vercel.json`, the `api/`
+> serverless entry, and the root `middleware.ts` edge middleware were deleted at
+> the Railway cutover, **and the Vercel project itself has been deleted** — there
+> is no Vercel account surface left to log into. The two features it used to
+> provide are now in-process Express middleware:
+> [`server/prerender.ts`](../../../server/prerender.ts) (bot prerender) and
+> [`server/middleware/betaGate.ts`](../../../server/middleware/betaGate.ts)
+> (private-beta gate). If you find a doc telling you to click something in Vercel,
+> it is stale — fix it.
 
 ## Wholesale market pricing (vendor-ready, sample-fed today)
 
@@ -80,4 +91,8 @@ can execute.
    golden samples (`docs/fannie-mae/schemas/` — ULDD Phase 5 extension XSD,
    UCD v2 + samples).
 4. New env vars for an integration land in `.env.example` **and** CICD.md's
-   Vercel list in the same PR ([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §5.7).
+   production-variable list in the same PR, and get set as **Railway service
+   variables** before the code that reads them ships
+   ([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §5.7). If the var is
+   `VITE_*` it is build-time — it must exist before the build, and changing it
+   later needs a redeploy.

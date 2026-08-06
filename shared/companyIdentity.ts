@@ -17,14 +17,44 @@ export const COMPANY_IDENTITY = {
   contactEmail: "support@homiquity.com",
   contactPhone: "(224) 400-0531",
   /**
-   * Canonical public web address — the single source for absolute canonical
-   * tags, OG/Twitter URLs, and the sitemap host. Matches client/public/
-   * sitemap.xml and robots.txt. This is the customer-facing marketing domain;
-   * the server request base (baseUrl, env-resolved) lives in
-   * server/config/company.ts and is reconciled at the domain cutover (roadmap
-   * Phase 3). Keep this in sync with the sitemap/robots host.
+   * Business mailing address. Founder-supplied 2026-08-06.
+   *
+   * Not cosmetic: ECOA / Reg B §1002.9(b)(1) requires an adverse-action notice
+   * to carry the creditor's name AND address, and the notice generator renders
+   * this into the CREDITOR block. It is also the "Mailing Address" on the
+   * public Disclosures page, which previously said "available on request" —
+   * the state counsel flagged as resolve-before-un-gating.
+   *
+   * Structured rather than a single string so the letter, the PDF, and the
+   * disclosures card cannot drift on formatting.
    */
-  siteUrl: "https://homiquity.com",
+  mailingAddress: {
+    street: "7372 W. 87th St",
+    city: "Bridgeview",
+    state: "IL",
+    postalCode: "60455",
+  },
+  /**
+   * Canonical public web address — the single source for absolute canonical
+   * tags, OG/Twitter URLs, and the sitemap host. Keep in sync with the
+   * og:/JSON-LD literals in client/index.html and the Sitemap line in
+   * client/public/robots.txt.
+   *
+   * This is the WWW host, and that is load-bearing, not stylistic: the apex
+   * (homiquity.com) has no DNS record at all. Railway serves this site through
+   * `CNAME www -> *.up.railway.app`, and Railway accepts an apex domain only
+   * via CNAME flattening or a dynamic ALIAS record — neither of which the
+   * zone's DNS provider (Squarespace) offers. So the apex cannot be pointed
+   * at the app without moving nameservers, and until it is, any absolute URL
+   * on the apex resolves to nothing.
+   *
+   * Reconciled 2026-08-06 with server/config/company.ts's `baseUrl`
+   * (APP_BASE_URL, same www host), which had drifted: this value said apex
+   * while baseUrl said www, so every canonical tag, og:url, JSON-LD node and
+   * sitemap entry advertised a host that did not resolve, while customer-facing
+   * links used one that did.
+   */
+  siteUrl: "https://www.homiquity.com",
 } as const;
 
 /**
@@ -35,6 +65,17 @@ export const COMPANY_IDENTITY = {
 export function contactPhoneTel(): string {
   const digits = COMPANY_IDENTITY.contactPhone.replace(/\D/g, "");
   return `tel:+${digits.length === 10 ? `1${digits}` : digits}`;
+}
+
+/**
+ * The business mailing address as a display block.
+ *
+ * @param separator "\n" for letters and PDFs (ECOA notices put the creditor
+ *   address on its own lines); ", " for inline UI.
+ */
+export function companyAddressLines(separator: "\n" | ", " = "\n"): string {
+  const a = COMPANY_IDENTITY.mailingAddress;
+  return [a.street, `${a.city}, ${a.state} ${a.postalCode}`].join(separator);
 }
 
 /**
@@ -87,7 +128,14 @@ export const LICENSED_STATE_DETAILS: Array<{
   license: string;
   licenseNumber?: string;
 }> = [
-  { code: "IL", name: "Illinois", license: "Illinois Residential Mortgage License" },
+  {
+    code: "IL",
+    name: "Illinois",
+    license: "Illinois Residential Mortgage License",
+    // Founder-supplied 2026-08-06 (IDFPR). NMLS Consumer Access remains the
+    // verification path — this renders the number, it does not prove it.
+    licenseNumber: "3423789",
+  },
 ];
 
 // Full-name lookup so isLicensedState accepts "Illinois" as well as "IL".

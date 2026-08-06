@@ -2,6 +2,7 @@ import { db } from "./db";
 import { contentCategories, articles, faqs, mortgageRatePrograms, mortgageRates, consentTemplates, partnerProviders, properties, dpaPrograms, slaClassConfigs, taskTypeSlaMapping } from "@shared/schema";
 import { refreshRates, syncBestExecutionRates } from "./services/rateService";
 import { seedMarketPricing } from "./seedMarketPricing";
+import { seedWholesaleLenderCounterparties } from "./seedWholesaleLenders";
 import { ILLINOIS_DPA_ARTICLES, ILLINOIS_DPA_PROGRAMS } from "./seedData/illinoisDpa";
 import { EDUCATION_ARTICLES } from "./seedData/educationContent";
 import { SLA_CLASS_CONFIG_SEED, TASK_TYPE_SLA_MAPPING_SEED } from "./seedData/taskEngineSla";
@@ -29,6 +30,10 @@ export async function seedDatabase() {
         {
           title: "First-Time Homebuyer's Complete Guide",
           slug: "first-time-homebuyer-guide",
+          // Low-down-payment first purchase: the two families a first-time
+          // buyer is actually choosing between.
+          loanProductFamilies: ["fha", "conventional"],
+          transactionPurposes: ["purchase"],
           excerpt: "Everything you need to know about buying your first home, from pre-approval to closing.",
           content: `Buying your first home is an exciting milestone. This comprehensive guide will walk you through every step of the process.
 
@@ -73,6 +78,8 @@ The closing process typically takes 30-45 days. During this time, you'll complet
         {
           title: "Understanding Mortgage Types: Fixed vs. Adjustable",
           slug: "fixed-vs-adjustable-rate-mortgages",
+          // Fixed-vs-ARM is an agency-conforming structure question.
+          loanProductFamilies: ["conventional"],
           excerpt: "Learn the differences between fixed-rate and adjustable-rate mortgages to make an informed decision.",
           content: `When choosing a mortgage, one of the most important decisions is whether to go with a fixed-rate or adjustable-rate mortgage (ARM).
 
@@ -115,6 +122,9 @@ Choose a fixed-rate mortgage if you plan to stay in your home long-term and want
           publishedAt: new Date(),
         },
         {
+          // Deliberately unclassified: credit repair applies to every family,
+          // so tagging it with one would surface it as "related" on a persona
+          // page it has nothing specific to say about.
           title: "How to Improve Your Credit Score for a Better Mortgage Rate",
           slug: "improve-credit-score-mortgage",
           excerpt: "Practical steps to improve your credit score before applying for a mortgage.",
@@ -817,6 +827,10 @@ For more information, visit www.consumerfinance.gov/learnmore`,
     await seedIllinoisDpaContent();
     await seedEducationContent();
     await seedTaskEngineSla();
+
+    // Real counterparties (Target-5) — all at "target", no agreements.
+    // Seeded before the pricing demo data so the table's real rows exist first.
+    await seedWholesaleLenderCounterparties();
 
     await seedMarketPricing();
 

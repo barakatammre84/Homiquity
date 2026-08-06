@@ -7,8 +7,8 @@
  * per-URL <head> (title/description/canonical/OG/Twitter + JSON-LD) built from the
  * same shared builders the client uses — so shares and non-JS indexing work.
  *
- * On Vercel, page HTML is served statically by the CDN (the function only sees
- * /api/*), so a vercel.json rewrite routes crawler/scraper user-agents to
+ * Page HTML is served by express.static / the SPA catch-all, so a bot-UA
+ * middleware (server/prerender.ts) routes crawler/scraper user-agents to
  * /api/seo/render?path=<original>. Human traffic keeps the fast static path. This
  * is dynamic rendering (equivalent content, just pre-rendered head) — not cloaking.
  */
@@ -44,7 +44,7 @@ let cachedTemplate: string | null = null;
 
 /**
  * Load the index.html shell to inject into. Disk first (client/index.html in dev,
- * dist/public/index.html when self-hosted); on Vercel the function can't reach the
+ * dist/public/index.html in production); a serverless function could not reach the
  * static asset on disk, so fall back to fetching the CDN-served /index.html.
  */
 async function loadTemplate(origin?: string): Promise<string | null> {
@@ -182,8 +182,7 @@ export async function renderSeoDocument(
  * bot UA → renderSeoDocument; see server/prerender.ts for why each guard is
  * load-bearing). Mount ordering is the caller's contract: serveStatic
  * (server/index-prod.ts) and setupVite (server/index-dev.ts) mount it
- * directly ahead of their static layer so it can never shadow an asset,
- * and the Vercel function mounts it below for the migration window.
+ * directly ahead of their static layer so it can never shadow an asset.
  */
 export const prerenderMiddleware = makePrerenderMiddleware(renderSeoDocument);
 
@@ -201,7 +200,7 @@ async function handleSitemap(_req: Request, res: Response) {
     res
       .set("Content-Type", "application/xml; charset=utf-8")
       .set("Cache-Control", "public, max-age=3600")
-      .send(buildSitemapXml(items));
+      .send(buildSitemapXml(items, { prelaunchGated: isPrelaunchGated() }));
   } catch (err) {
     console.error("sitemap render error:", err);
     res.status(500).type("text/plain").send("sitemap error");
@@ -230,21 +229,13 @@ export function registerSeoRoutes(app: Express) {
     }
   });
 
-  // Dynamic sitemap. Registered at the clean /sitemap.xml (served by Express in
-  // dev, and on Vercel via the vercel.json "/sitemap.xml -> /api" rewrite which
-  // preserves the path) and /api/sitemap.xml (the always-reachable /api form).
+  // Dynamic sitemap, on both the clean /sitemap.xml (what robots.txt
+  // advertises) and /api/sitemap.xml (the always-reachable /api form).
   app.get("/sitemap.xml", handleSitemap);
   app.get("/api/sitemap.xml", handleSitemap);
 
-  // On Vercel the single serverless function is reached only via /api/* plus
-  // the paths the vercel.json rewrites forward here with the original path
-  // preserved (the bot-user-agent document rewrite), so the prerender must
-  // mount HERE — the function serves no static assets (the CDN does). The
-  // gate stays because registerSeoRoutes runs upstream of express.static /
-  // Vite for every deployment target: self-host instead mounts the same
-  // prerenderMiddleware inside serveStatic/setupVite, directly ahead of its
-  // static layer. Deleted with vercel.json at cutover.
-  if (process.env.VERCEL) {
-    app.use(prerenderMiddleware);
-  }
+  // NOTE: prerenderMiddleware is deliberately NOT mounted here. It belongs
+  // directly ahead of the static layer, which is serveStatic
+  // (server/index-prod.ts) and setupVite (server/index-dev.ts) — mounted here
+  // instead it would shadow assets. The export above is the shared instance.
 }

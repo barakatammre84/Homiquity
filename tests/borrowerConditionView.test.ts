@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildLenderIdentifiers,
   toBorrowerConditionView,
   toBorrowerConditionViews,
   type MaskableLoanCondition,
 } from "@shared/borrowerConditionView";
+import { TARGET_LENDERS } from "../server/seedData/wholesaleLenderTargets";
 
 /**
  * Borrower Clarity PR 5 (kb log 2026-08-04 §4): the pipeline/conditions
@@ -11,6 +13,15 @@ import {
  * in the borrowerOfferView style so a future edit can't quietly re-expose
  * staff clearance notes or the wholesale-lender linkage.
  */
+
+/**
+ * The scrub vocabulary now comes from `wholesale_lenders` rows rather than a
+ * module constant, so these tests build it from the seed shortlist — the same
+ * companies that seed into the table. Passing it explicitly is the point: the
+ * mappers take it as a REQUIRED argument so a new caller cannot silently scrub
+ * against an empty list.
+ */
+const LENDER_IDS = buildLenderIdentifiers(TARGET_LENDERS);
 
 const condition = (over: Partial<MaskableLoanCondition> = {}): MaskableLoanCondition => ({
   id: "c-1",
@@ -39,7 +50,7 @@ const rawRowHazards = {
 
 describe("toBorrowerConditionView — whitelist", () => {
   it("keeps the borrower-facing fields", () => {
-    const view = toBorrowerConditionView(condition());
+    const view = toBorrowerConditionView(condition(), LENDER_IDS);
     expect(view.title).toBe("Year-to-date P&L");
     expect(view.description).toContain("profit-and-loss");
     expect(view.category).toBe("income");
@@ -53,7 +64,7 @@ describe("toBorrowerConditionView — whitelist", () => {
     const view = toBorrowerConditionView({
       ...condition(),
       ...(rawRowHazards as Partial<MaskableLoanCondition>),
-    });
+    }, LENDER_IDS);
     const serialized = JSON.stringify(view);
     for (const [key, value] of Object.entries(rawRowHazards)) {
       if (typeof value === "string") {
@@ -69,6 +80,7 @@ describe("toBorrowerConditionView — whitelist", () => {
         title: "Angel Oak Mortgage Solutions: 12 months business bank statements",
         description: "Newrez Wholesale requires the most recent two statements.",
       }),
+      LENDER_IDS,
     );
     expect(view.title).not.toContain("Angel Oak");
     expect(view.title).toContain("Lender");
@@ -77,7 +89,7 @@ describe("toBorrowerConditionView — whitelist", () => {
   });
 
   it("maps arrays and defaults requiredDocumentTypes to empty", () => {
-    const views = toBorrowerConditionViews([condition({ requiredDocumentTypes: null })]);
+    const views = toBorrowerConditionViews([condition({ requiredDocumentTypes: null })], LENDER_IDS);
     expect(views[0].requiredDocumentTypes).toEqual([]);
   });
 
@@ -93,7 +105,7 @@ describe("toBorrowerConditionView — whitelist", () => {
       ["rocket pro tpo overlay applies", "rocket pro tpo"],
     ];
     for (const [title, leak] of cases) {
-      const view = toBorrowerConditionView(condition({ title }));
+      const view = toBorrowerConditionView(condition({ title }), LENDER_IDS);
       expect(view.title.toLowerCase(), title).not.toContain(leak.toLowerCase());
       expect(view.title, title).toContain("Lender");
     }

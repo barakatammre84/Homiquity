@@ -43,13 +43,25 @@ FCRA timelines; encrypted PII is disposed of by row deletion plus encryption-key
 
 ## 4. Hosting & infrastructure
 
-All server-side components run on **managed cloud infrastructure**: Vercel (serverless
-application hosting), Neon (managed PostgreSQL, TLS enforced), and Google Cloud Storage
-(borrower documents). There are **no on-premise or self-managed servers** and no corporate
-office network — all access is remote, per-user, authenticated, and over TLS. The production
-database provides continuous point-in-time recovery (Neon); the restore procedure is
-documented in [ROLLBACK.md](../../runbooks/ROLLBACK.md). Our infrastructure subprocessors
-maintain SOC 2 Type II programs (Vercel, Neon, GitHub, Google Cloud, Anthropic).
+All server-side components run on **managed cloud infrastructure**: Railway (managed container
+hosting — hosting provider since 2026-08, replacing Vercel), Neon (managed PostgreSQL, TLS
+enforced), and Google Cloud Storage (borrower documents). The application is a **single
+persistent Node.js process** in one Railway service; that process serves both the JSON API and
+the static client, so there is no separate CDN, serverless function, or edge tier in the
+request path. Build and runtime configuration is version-controlled as code in `railway.json`.
+There are **no on-premise or self-managed servers** and no corporate office network — all
+access is remote, per-user, authenticated, and over TLS. The production database provides
+continuous point-in-time recovery (Neon); the restore procedure, and the deployment-rollback
+procedure, are documented in [ROLLBACK.md](../../runbooks/ROLLBACK.md).
+
+**Subprocessor certification status.** Neon, GitHub, Google Cloud, and Anthropic maintain
+SOC 2 Type II programs. **Railway's certification status is UNVERIFIED by us** — it was added
+as the hosting provider in the 2026-08 platform migration and no one has yet checked a report
+or trust page. 🔴 **Founder action before this document is shared with any third party
+(including as a questionnaire attachment): confirm Railway's current attestation against its
+trust page, then either name it in the sentence above or record the gap here with a date.**
+Until that is done, do not represent our hosting provider as SOC 2 certified anywhere —
+an unverified certification claim to a counterparty is worse than an acknowledged gap.
 
 ## 5. Access control
 
@@ -82,8 +94,9 @@ revocation).
 
 Third-party services are inventoried in the [Asset & Endpoint Register](ASSET_REGISTER.md)
 with the data each touches. A new vendor requires Security Owner approval against this
-policy **before** any borrower data flows to it. Vendor credentials exist only in Vercel
-environment variables, scoped per environment — never in the repository. AI usage is
+policy **before** any borrower data flows to it. Vendor credentials exist only as **Railway
+service variables**, scoped to the service and environment that needs them — never in the
+repository. AI usage is
 additionally governed by the [AI Governance Policy](../AI_GOVERNANCE_POLICY.md).
 
 ## 8. Vulnerability & patch management
@@ -94,8 +107,11 @@ additionally governed by the [AI Governance Policy](../AI_GOVERNANCE_POLICY.md).
   weekly dependency-update PRs; the repo health script (`pnpm checkup`) additionally
   audits at moderate level.
 - **Platform:** operating systems, runtimes, and network infrastructure are patched by the
-  managed providers (Vercel, Neon, Google Cloud) under their SOC 2 programs — there are no
-  mutable server instances for us to patch.
+  managed providers (Railway, Neon, Google Cloud) — there are no mutable server instances for
+  us to patch. Our application container is **rebuilt from source on every deploy** (Railpack
+  builder, per `railway.json`) and the running container is replaced rather than patched in
+  place, so the runtime does not drift between deploys. *(Neon and Google Cloud perform this
+  under SOC 2 Type II programs; Railway's certification status is unverified — §4.)*
 - **Endpoints:** automatic OS/security updates are required by §6 and verified in the register.
 - **Remediation:** a high/critical dependency finding blocks merge until fixed or expressly
   excepted by the Security Owner with a documented mitigation (§11).
@@ -112,7 +128,11 @@ helmet security headers with a Content-Security-Policy, and Postgres-backed sess
 (`httpOnly`/`secure` cookies, 12-hour rolling idle timeout). Database schema changes are
 migration-gated and applied by CI with **no standing production database credential** — a
 scoped connection string is minted at run time from the Neon API
-(`scripts/neon-connection-uri.cjs`).
+(`scripts/neon-connection-uri.cjs`). Merges to `main` are built and deployed by Railway from
+GitHub, and a post-deploy CI job (`verify-deploy`) polls `GET /api/health` and fails when the
+`commit` it reports is not the commit that was merged — so a build failure cannot silently
+leave production running stale code while every dashboard reads healthy (the failure mode
+observed on 2026-08-06, which this control was added to close).
 
 ## 10. Incident response
 

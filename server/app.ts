@@ -14,6 +14,7 @@ import { registerRoutes } from "./routes";
 import { pool } from "./db";
 import { betaGateMiddleware } from "./middleware/betaGate";
 import { trustProxyHops } from "./trustProxy";
+import { rateLimitKey } from "./clientIp";
 import { isRateLimitRelaxed } from "./services/rateLimitPolicy";
 import { captureException, initErrorMonitoring } from "./services/errorMonitoring";
 
@@ -37,14 +38,14 @@ app.set("trust proxy", trustProxyHops());
 // Express 5 changed the default `query parser` from "extended" (qs) to "simple"
 // (Node's querystring), which stops nesting brackets: `?arr[]=a&obj[k]=v` parses
 // to the literal keys "arr[]" and "obj[k]" instead of an array and an object.
-// This app was built against qs semantics and tests/vercelEntryHelpers.test.ts
-// pins them — that assertion came from a live prod probe where a scalar cast
+// This app was built against qs semantics — the requirement came from a live
+// prod probe where a scalar cast
 // meeting an array surfaced as a handler error rather than a silent empty
 // result. Keep the Express 4 behaviour explicit rather than inheriting a
 // default that just changed underneath us.
 app.set("query parser", "extended");
 
-// Response compression, self-host replacement for Vercel's edge br/gzip.
+// Response compression, done in-process (no CDN edge does it for us).
 // First in the chain so every later writer (API JSON, static assets, SPA
 // shell, prerendered documents) is covered. SSE must NOT be compressed:
 // buffering would hold frames past their flush (server/sse.ts already sets
@@ -95,7 +96,17 @@ const cspDirectives = {
   reportUri: ["/api/csp-report"],
 };
 
-app.use(helmet({
+/**
+ * Baseline security headers. Exported so a test can assert that the REAL config
+ * produces the REAL headers, rather than restating the config back to itself.
+ *
+ * That indirection is the point: X-Frame-Options was served from two places
+ * with two different values — the old CDN layer sent DENY while helmet's
+ * in-app default sent SAMEORIGIN. Whichever landed depended on the platform,
+ * nothing tested it, and when the CDN went away the weaker value became the
+ * only one. Nobody would have noticed.
+ */
+export const HELMET_OPTIONS = {
   contentSecurityPolicy:
     process.env.NODE_ENV === "production"
       ? {
@@ -103,11 +114,21 @@ app.use(helmet({
           reportOnly: process.env.CSP_ENFORCE !== "true",
         }
       : false,
-  crossOriginEmbedderPolicy: false, // Google Maps tiles are not CORP-tagged
-}));
+  crossOriginEmbedderPolicy: false as const, // Google Maps tiles are not CORP-tagged
+  // DENY, not helmet's SAMEORIGIN default. Nothing legitimately frames this
+  // app, and there is no CDN layer left to supply a stronger value — the app
+  // response IS the response.
+  //
+  // The modern equivalent (CSP `frame-ancestors 'none'`, in cspDirectives
+  // above) does NOT close this on its own: CSP ships Report-Only until
+  // CSP_ENFORCE is set, so frame-ancestors is currently observed, not
+  // enforced. X-Frame-Options is the header actually blocking a frame today.
+  frameguard: { action: "deny" as const },
+};
 
-// Private-beta gate (Express port of root middleware.ts — the Vercel Edge
-// original keeps serving Vercel until cutover). Total no-op unless
+app.use(helmet(HELMET_OPTIONS));
+
+// Private-beta gate (server/middleware/betaGate.ts). Total no-op unless
 // BETA_ACCESS_CODE is set. Must mount ahead of the whole route surface:
 // /robots.txt's Disallow-all override has to win over the static file, and
 // non-API document routes registered later (e.g. /sitemap.xml) are gated
@@ -115,6 +136,7 @@ app.use(helmet({
 app.use(betaGateMiddleware);
 
 const generalLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 500,
   standardHeaders: true,
@@ -124,6 +146,7 @@ const generalLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
@@ -133,6 +156,7 @@ const authLimiter = rateLimit({
 });
 
 const uploadLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 50,
   standardHeaders: true,
@@ -141,6 +165,7 @@ const uploadLimiter = rateLimit({
 });
 
 const trackLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,
@@ -149,6 +174,7 @@ const trackLimiter = rateLimit({
 });
 
 const emailCaptureLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 5,
   standardHeaders: true,
@@ -160,6 +186,7 @@ const emailCaptureLimiter = rateLimit({
 // paid LLM per request, so they are a cost-DoS vector and need a tighter cap than
 // the general 500/15min limiter.
 const extractionLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 15,
   standardHeaders: true,
@@ -171,6 +198,7 @@ const extractionLimiter = rateLimit({
 // every message invokes a paid model. The per-user 30/day cap in the route is
 // the primary ceiling; this per-IP limiter blunts bursts and scripted abuse.
 const aiCoachLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
@@ -183,6 +211,7 @@ const aiCoachLimiter = rateLimit({
 // property/listing data vendors). Tighter than the general limiter because
 // each request is billable and requires no login — a cheap cost-DoS vector.
 const vendorProxyLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,
@@ -193,6 +222,7 @@ const vendorProxyLimiter = rateLimit({
 // Public, unauthenticated lead intake. Aggregators post server-to-server so a
 // modest per-IP ceiling still admits legitimate bursts while blunting spam.
 const leadsLimiter = rateLimit({
+  keyGenerator: rateLimitKey,
   windowMs: 60 * 1000,
   max: 30,
   standardHeaders: true,
@@ -407,9 +437,8 @@ app.use((req, res, next) => {
 });
 
 // Builds the fully-wired Express app (routes, error handler, and the provided
-// setup step) WITHOUT binding a port. Persistent hosts call runApp() below,
-// which listens; serverless targets (e.g. Vercel) import createApp() and hand
-// the returned app to the platform's request handler instead of listening.
+// setup step) WITHOUT binding a port. runApp() below listens; createApp() is
+// exported separately so tests can drive the app without a socket.
 export async function createApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ): Promise<{ app: Express; server: Server }> {

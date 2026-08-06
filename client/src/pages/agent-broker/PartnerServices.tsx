@@ -99,7 +99,10 @@ export default function PartnerServices() {
       return await apiRequest("POST", "/api/partner-orders", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/partner-orders"] });
+      // No ["/api/partner-orders"] invalidation: orders are read per-application
+      // (GET /api/partner-orders/application/:id) and this page has no such
+      // query, so the key matched nothing. Re-add a scoped invalidation here if
+      // an orders list is added to this page.
       setIsOrderDialogOpen(false);
       resetForm();
       toast({

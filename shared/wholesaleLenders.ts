@@ -1,52 +1,51 @@
 /**
- * Wholesale lender catalog — the Target-5 shortlist from the lender-liquidity
- * work. Business development data, not regulatory data: entries move to
- * "approved" only when a signed broker agreement exists, and the submission
- * adapter stays a deterministic simulation until then (architecture rule:
- * no vendor calls outside adapters, simulations until contracts exist).
+ * Wholesale lender counterparty rules.
+ *
+ * The lenders themselves — and their products, capabilities and requirements —
+ * live in the `wholesale_lenders` table (shared/schema/lendingWholesale.ts),
+ * with rate sheets and products hanging off it. This module holds only the
+ * RULES that operate on a lender row: may we submit to it, and what does a
+ * given submission status transition mean.
+ *
+ * It used to also hold a hardcoded Target-5 array. That array was a second
+ * source of truth: the pricing engine read the table while submission read the
+ * array, so the two disagreed about who our lenders were. The array is gone —
+ * add or change a lender in the database (admin surface), not here.
+ *
+ * These functions stay PURE and take a plain row-shaped object, so they remain
+ * unit-testable without a database and can be called from either side.
  */
 
 export type LenderApprovalStatus = "target" | "application_in_progress" | "approved" | "inactive";
 
-export interface WholesaleLender {
-  id: string;
-  name: string;
-  /** Where this lender fits in the product box. */
-  specialty: string;
-  approvalStatus: LenderApprovalStatus;
-  /** Supported AUS engines on their wholesale channel. */
-  ausSupport: ("DU" | "LPA")[];
-  /**
-   * Runs non-QM programs (DSCR / bank-statement). The income analysis package
-   * (UAL P6) includes the non-QM path sections only for these lenders.
-   */
-  nonQm?: boolean;
-  /**
-   * Early-payoff (EPO) clawback window in days, from the executed broker
-   * agreement: if the loan pays off inside it, the lender reclaims the
-   * compensation it paid us.
-   *
-   * Undefined means NO AGREEMENT EXISTS YET, not "no clawback" — every
-   * wholesale broker agreement contains an EPO clause. Exposure for these
-   * lenders is computed against `DEFAULT_EPO_CLAWBACK_DAYS` and flagged as an
-   * assumption (shared/compensationClawback.ts). Fill this in from the signed
-   * agreement, alongside flipping `approvalStatus`.
-   */
-  epoClawbackDays?: number;
-}
-
-export const WHOLESALE_LENDERS: WholesaleLender[] = [
-  { id: "uwm", name: "United Wholesale Mortgage", specialty: "Conventional/FHA/VA volume leader, fast turn times", approvalStatus: "target", ausSupport: ["DU", "LPA"] },
-  { id: "rocket-pro-tpo", name: "Rocket Pro TPO", specialty: "Conventional/FHA/VA, strong tech + pricing tools", approvalStatus: "target", ausSupport: ["DU", "LPA"] },
-  { id: "plaza", name: "Plaza Home Mortgage", specialty: "Broad product menu incl. renovation + manufactured", approvalStatus: "target", ausSupport: ["DU", "LPA"] },
-  { id: "angel-oak", name: "Angel Oak Mortgage Solutions", specialty: "Non-QM / bank statement / investor DSCR", approvalStatus: "target", ausSupport: ["DU"], nonQm: true },
-  { id: "newrez", name: "Newrez Wholesale", specialty: "Conventional/government + non-QM overlay programs", approvalStatus: "target", ausSupport: ["DU", "LPA"], nonQm: true },
+export const LENDER_APPROVAL_STATUSES: LenderApprovalStatus[] = [
+  "target",
+  "application_in_progress",
+  "approved",
+  "inactive",
 ];
 
-const BY_ID = new Map(WHOLESALE_LENDERS.map(l => [l.id, l]));
+export function isLenderApprovalStatus(value: unknown): value is LenderApprovalStatus {
+  return typeof value === "string" && (LENDER_APPROVAL_STATUSES as string[]).includes(value);
+}
 
-export function getWholesaleLender(id: string): WholesaleLender | undefined {
-  return BY_ID.get(id);
+/**
+ * The subset of a `wholesale_lenders` row these rules need. Declared
+ * structurally rather than importing the Drizzle row type so `shared/` stays
+ * free of schema/driver coupling and the tests can build one inline.
+ */
+export interface LenderCounterparty {
+  /** Business key on the row (`lender_id`), not the uuid primary key. */
+  lenderId: string;
+  lenderName: string;
+  approvalStatus: LenderApprovalStatus;
+  /** Seeded sample counterparty — a fictional company, never submittable. */
+  isDemo?: boolean | null;
+  /** Row liveness. Distinct from approvalStatus; never an agreement. */
+  status?: string | null;
+  nonQm?: boolean | null;
+  /** NULL = no agreement yet, NOT "no clawback". See the column comment. */
+  epoClawbackDays?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,20 +59,22 @@ export function getWholesaleLender(id: string): WholesaleLender | undefined {
 //
 // The count of approved lenders is the binding constraint on the business —
 // more so than any engineering item — which is why it is surfaced as a metric
-// (server/storage/stats.ts) rather than left implicit in this array.
+// (server/storage/stats.ts), counted off the table.
 // ---------------------------------------------------------------------------
 
-export function isApprovedLender(lender: WholesaleLender): boolean {
-  return lender.approvalStatus === "approved";
+export function isApprovedLender(lender: LenderCounterparty): boolean {
+  // A demo row is fictional; it can never be an approved counterparty however
+  // its columns are set.
+  return lender.approvalStatus === "approved" && !lender.isDemo;
 }
 
-export function approvedWholesaleLenders(): WholesaleLender[] {
-  return WHOLESALE_LENDERS.filter(isApprovedLender);
+export function approvedWholesaleLenders<T extends LenderCounterparty>(lenders: T[]): T[] {
+  return lenders.filter(isApprovedLender);
 }
 
 /** Launch KPI: how many counterparties can we actually deliver a loan to? */
-export function approvedLenderCount(): number {
-  return approvedWholesaleLenders().length;
+export function approvedLenderCount(lenders: LenderCounterparty[]): number {
+  return approvedWholesaleLenders(lenders).length;
 }
 
 export interface LenderSubmissionEligibility {
@@ -98,9 +99,30 @@ export interface LenderSubmissionEligibility {
  * to "approved" when the agreement is signed is what unblocks production.
  */
 export function evaluateLenderSubmissionEligibility(
-  lender: WholesaleLender,
+  lender: LenderCounterparty,
   opts: { isProduction: boolean },
 ): LenderSubmissionEligibility {
+  // Demo rows first, and in EVERY environment. These are fictional companies
+  // seeded so pricing/best-execution has something to quote; the contact
+  // addresses are @*.example. Blocking them only in production would mean a
+  // dev/staging run could still address a package to a company that does not
+  // exist. This check deliberately precedes the approval check so that no
+  // combination of column values can open the path.
+  if (lender.isDemo) {
+    return {
+      allowed: false,
+      simulated: true,
+      reason:
+        `${lender.lenderName} is a seeded demo counterparty, not a real company. ` +
+        `Files can never be submitted to it.`,
+      remediation: [
+        `Pick a real wholesale lender with an executed broker agreement.`,
+        `Demo rows exist for pricing and walkthroughs only; set status to INACTIVE ` +
+          `on the admin lender screen to retire them at go-live.`,
+      ],
+    };
+  }
+
   if (isApprovedLender(lender)) {
     return { allowed: true, simulated: false, reason: "Approved wholesale lender", remediation: [] };
   }
@@ -110,11 +132,11 @@ export function evaluateLenderSubmissionEligibility(
       allowed: false,
       simulated: true,
       reason:
-        `${lender.name} is not an approved wholesale lender (status: ${lender.approvalStatus}). ` +
+        `${lender.lenderName} is not an approved wholesale lender (status: ${lender.approvalStatus}). ` +
         `Submitting would transmit a borrower's file to a company with no broker agreement in place.`,
       remediation: [
-        `Execute a broker agreement with ${lender.name} and obtain wholesale credentials.`,
-        `Set approvalStatus to "approved" for "${lender.id}" in shared/wholesaleLenders.ts.`,
+        `Execute a broker agreement with ${lender.lenderName} and obtain wholesale credentials.`,
+        `Set the lender's approval status to "approved" on the admin lender screen.`,
       ],
     };
   }
@@ -123,7 +145,7 @@ export function evaluateLenderSubmissionEligibility(
     allowed: true,
     simulated: true,
     reason:
-      `${lender.name} is not approved (status: ${lender.approvalStatus}) — recording a SIMULATED ` +
+      `${lender.lenderName} is not approved (status: ${lender.approvalStatus}) — recording a SIMULATED ` +
       `submission. This path is blocked in production.`,
     remediation: [],
   };
@@ -175,4 +197,22 @@ export function isValidSubmissionTransition(
   if (TERMINAL.includes(from)) return false;
   if (to === "denied" || to === "withdrawn" || to === "suspended") return true;
   return FORWARD[from]?.includes(to) ?? false;
+}
+
+/** A terminal submission accepts no further transitions — the machine is done. */
+export function isTerminalSubmissionStatus(status: LenderSubmissionStatus): boolean {
+  return TERMINAL.includes(status);
+}
+
+/**
+ * Every status the machine will accept from `from` — the set a staff UI may
+ * offer. DERIVED from `isValidSubmissionTransition`, never a second table: the
+ * client must not be able to offer a transition the server would reject, and
+ * the only way to guarantee that is to ask the same predicate the service asks.
+ * Terminal statuses yield [] , which is how a UI knows to offer nothing.
+ */
+export function nextSubmissionStatuses(
+  from: LenderSubmissionStatus,
+): LenderSubmissionStatus[] {
+  return LENDER_SUBMISSION_STATUSES.filter(to => isValidSubmissionTransition(from, to));
 }

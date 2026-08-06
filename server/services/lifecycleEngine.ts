@@ -26,7 +26,7 @@ import { evaluateClawbackExposure } from "@shared/compensationClawback";
  * Lifecycle engine — the "evergreen client" automation (CTO_ROADMAP #9).
  *
  * Two entry points:
- * - runLifecycleSweep(): the daily job (Vercel cron → /api/jobs/lifecycle).
+ * - runLifecycleSweep(): the daily job (cron scheduler → /api/jobs/lifecycle).
  *   For every homeowner profile: AVM-refresh the value, record an equity
  *   snapshot (one per day, idempotent), raise the 80%-LTV PMI-removal alert
  *   when the threshold is crossed, and raise a refi alert when the market

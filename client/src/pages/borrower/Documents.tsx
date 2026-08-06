@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
+import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
 import { useActiveApplication } from "@/hooks/useActiveApplication";
 import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
 import { canonicalDocumentType } from "@shared/documentTypes";
@@ -94,7 +94,7 @@ export default function Documents() {
   // see P&L/business items). Falls back to the static catalog below when the
   // application has no document-bearing conditions or there's no application.
   const { data: checklistData } = useQuery<{ documents: ChecklistItemView[] }>({
-    queryKey: ["/api/applications", focusAppId, "document-checklist"],
+    queryKey: applicationResourceKeys.documentChecklist(focusAppId),
     enabled: !!focusAppId && !authLoading,
   });
   const personalizedItems = (checklistData?.documents ?? []).filter(
@@ -194,7 +194,7 @@ export default function Documents() {
       queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
       if (focusAppId) {
         queryClient.invalidateQueries({
-          queryKey: ["/api/applications", focusAppId, "document-checklist"],
+          queryKey: applicationResourceKeys.documentChecklist(focusAppId),
         });
       }
       toast({ title: "Document uploaded", description: getUploadNextStep(docType) });

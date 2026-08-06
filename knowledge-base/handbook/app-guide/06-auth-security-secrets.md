@@ -15,8 +15,9 @@ Session + Passport middleware is installed **unconditionally** in
 makes `req.isAuthenticated` / `req.login` / `req.user` exist on every host.
 Sessions are stored **in Postgres** (`sessions` table, `connect-pg-simple`) and
 identified by the `connect.sid` cookie (12h rolling idle timeout; `secure` in
-production only, so local http logins work). Serverless-safe — no in-memory
-session state.
+production only, so local http logins work). No in-memory session state — which
+is why a deploy, restart, or rollback never logs everyone out, and why adding a
+second replica would not break auth.
 
 > History note: Replit OIDC login was removed 2026-07-02 along with all other
 > Replit coupling. Before that, session/Passport only initialized on Replit,
@@ -165,6 +166,10 @@ app won't boot or a core feature dies without it.
 | `CREDIT_VENDOR_MODE` | Bureau vendors are simulated until contracts land. Production **refuses** to fabricate credit scores unless this is `simulation` (staging only). |
 | `CREDIT_ENCRYPTION_KEY_V2…V9`, `ENCRYPTION_ACTIVE_KEY_ID` | App-level PII key rotation (add a new key, then pin it active). |
 | `PII_KMS_KEY_NAME`, `PII_KMS_WRAPPED_DEKS` | Cloud KMS envelope encryption — the KEK resource name and the wrapped Data Encryption Keys (JSON). Needs `npm i @google-cloud/kms` (optional dep, not in package.json) + GCP creds. |
+| `CRON_SECRET` | Shared bearer secret for `/api/jobs/*` (`server/routes/jobs.ts`). **It must be identical in two places** — the Railway service variable *and* the GitHub **repository secret** used by `.github/workflows/cron-jobs.yml`, which is the only scheduler. Unset ⇒ the job routes degrade to admin-session-only and every scheduled run fails loudly (the wanted posture). |
+| `BETA_ACCESS_CODE` | Arms the private-beta gate (`server/middleware/betaGate.ts`, an Express middleware — it replaced a platform edge middleware). Comma-separated list; blank/unset is a total no-op. Read **per request**, so arming/disarming is a runtime change, not a rebuild. |
+| `VITE_PRELAUNCH_GATED` | ⚠️ **Build-time.** Vite bakes `VITE_*` values into the client bundle, so this must be set *before* the build and changing it needs a **redeploy**, not a restart. |
+| `RAILWAY_GIT_COMMIT_SHA`, `RAILWAY_REPLICA_REGION` | Injected by Railway (not set by us). The first is what `/api/health` reports as `commit` and what Sentry uses as the release; the second tags the Sentry `server_name`. |
 
 ### Where secrets live
 - **Local**: `.env` (gitignored; template in `.env.example`). **No production
@@ -172,6 +177,19 @@ app won't boot or a core feature dies without it.
   `NEON_API_KEY`, and prod data checks run through CI
   ([DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md)); the old
   `PROD_DATABASE_URL` stash is retired.
-- **Production**: Vercel → Project → Settings → Environment Variables.
+- **Production**: **Railway service variables** — Railway → project `Homiquity`
+  → service `Homiquity` → **Variables**. There is no separate per-environment
+  matrix to reason about the way the old host had: this service *is* production.
+  Two consequences worth internalising:
+  - Runtime variables take effect on restart; **`VITE_*` variables are baked into
+    the client bundle at build time and need a redeploy.**
+  - A Railway **Rollback** restores the previous image *together with the
+    variables it was deployed with* — so rolling back can also silently roll back
+    a secret you just rotated. Re-apply it after
+    ([ROLLBACK.md](../../runbooks/ROLLBACK.md) §1).
+- **Duplicated in GitHub, deliberately**: `CRON_SECRET` (repository secret, for
+  the cron workflow) and `NEON_API_KEY` (write-only, for `migrate-prod`). Rotating
+  `CRON_SECRET` in one place and not the other silently kills every scheduled
+  sweep — change both in the same sitting.
 - **Never in git.** `.gitignore` covers `.env*`; keep it that way. If a secret
   ever lands in a commit or a chat transcript, rotate it.

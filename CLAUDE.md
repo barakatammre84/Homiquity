@@ -62,11 +62,33 @@ Consumer Access — consult the **NMLS Policy Guidebook** in [`docs/nmls/`](docs
 Hierarchy: state statutes/rules and direct regulator guidance control over the guidebook;
 escalate discrepancies to the user instead of picking an interpretation.
 
+## Regulation Z: source of truth
+
+For anything touching loan-originator compensation, the QM points-and-fees cap, the
+finance-charge definition, or TRID fee tolerances — consult [`docs/reg-z/`](docs/reg-z/).
+Do not answer Reg Z questions from memory.
+
+⚠️ **That directory is currently EMPTY**, and it is the reason five ledger entries sit
+unverified: every authoritative source (`ecfr.gov`, `consumerfinance.gov`, `govinfo.gov`,
+`law.cornell.edu`) is blocked from this environment, so the text cannot be fetched from inside
+a session. Until a copy lands there, a Reg Z reading is **flagged in
+[`data/regulatory/regulatory-ledger.json`](data/regulatory/regulatory-ledger.json), never
+asserted** — and it must be conservative in one direction only (it may remove a borrower charge
+or tighten a gate; it may never create the violation it guards against). The README there
+carries the shopping list and what to do once the document arrives.
+
 ## Architecture ground rules
 
 Full rules in [DEVELOPER_PLAYBOOK.md](knowledge-base/handbook/DEVELOPER_PLAYBOOK.md); the non-negotiables:
 
-- `main` is production — every push deploys to Vercel. No long-lived branches; land work via PRs.
+- `main` is production — every merge to `main` triggers a **Railway** build + deploy from GitHub
+  (config as code in [`railway.json`](railway.json); one persistent Node process, `dist/index.js`,
+  serving both the API and the static client). No long-lived branches; land work via PRs.
+- **A green check is not a shipped deploy.** A failed Railway build leaves the *previous* container
+  serving, so the site stays up and every check stays green while prod goes stale (2026-08-06: nine
+  consecutive failed deploys, ~8 commits behind, undetected). The only proof is the `commit` field
+  of `GET /api/health` — the CI `verify-deploy` job polls it after every push to `main`. A 200 from
+  `/api/health` proves the process is alive, nothing more.
 - `client/` never imports from `server/`; `server/` never imports from `client/`; both import
   from `shared/`.
 - All vendor integrations (credit, AVM, GSE) are **deterministic simulations** behind adapter

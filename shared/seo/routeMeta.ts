@@ -156,10 +156,10 @@ export const STATIC_ROUTE_META: Record<string, RouteMetaEntry> = {
   // highest-intent queries ("VA loan pre-approval", "self-employed mortgage")
   // index with the generic homepage title and description.
   //
-  // Deliberately NOT added to SITEMAP_STATIC_PATHS: while the prelaunch gate is
-  // up these routes redirect humans to the waitlist, so gatedPrerenderMeta()
-  // keeps them noindex and these entries stay dormant. They switch on with the
-  // PRELAUNCH_GATED flip. Sitemap inclusion is a launch-day step, not this one —
+  // Sitemap membership for these lives in GATED_SITEMAP_PATHS, not
+  // SITEMAP_STATIC_PATHS: while the prelaunch gate is up they redirect humans to
+  // the waitlist, so gatedPrerenderMeta() keeps them noindex and buildSitemapXml
+  // leaves them out. Both switch on automatically with the PRELAUNCH_GATED flip —
   // sitemapping a URL that redirects is a crawl-budget and consistency problem.
   // ---------------------------------------------------------------------------
   "/refinance": {
@@ -338,6 +338,30 @@ export const SITEMAP_STATIC_PATHS: string[] = [
   "/disclosures",
 ];
 
+/**
+ * Routes that belong in the sitemap ONLY once the prelaunch gate is open.
+ *
+ * While `PRELAUNCH_GATED` is up these paths redirect humans to the waitlist and
+ * `gatedPrerenderMeta()` serves bots launch-safe copy plus `noindex`.
+ * Sitemapping a URL that redirects wastes crawl budget and contradicts the
+ * noindex we are simultaneously sending, so they stay out — but they are the
+ * highest-intent pages on the site, so they must go IN the moment the funnel
+ * opens.
+ *
+ * Kept as a separate list, consumed by `buildSitemapXml`, so the transition is
+ * automatic. It used to be a manual line item on the go-live checklist, which
+ * is the kind of step that gets missed on the day and then costs weeks of
+ * indexing latency before anyone notices.
+ */
+export const GATED_SITEMAP_PATHS: string[] = [
+  "/refinance",
+  "/va-loans",
+  "/self-employed",
+  "/first-time-buyer",
+  "/approval-strength",
+  "/afford",
+];
+
 export interface SitemapArticle {
   slug: string;
   /** ISO date (YYYY-MM-DD) for <lastmod>; omitted if unknown. */
@@ -349,9 +373,20 @@ function xmlEscape(value: string): string {
 }
 
 /** Build the sitemap XML from the static route list + DB-sourced article slugs. */
-export function buildSitemapXml(articles: SitemapArticle[]): string {
+/**
+ * @param opts.prelaunchGated pass the live gate state. Gated routes are omitted
+ *   while it is true and included the moment it flips — no redeploy of a
+ *   hand-edited list, no launch-day checklist item.
+ */
+export function buildSitemapXml(
+  articles: SitemapArticle[],
+  opts: { prelaunchGated: boolean } = { prelaunchGated: true },
+): string {
   const entries: string[] = [];
-  for (const routePath of SITEMAP_STATIC_PATHS) {
+  const paths = opts.prelaunchGated
+    ? SITEMAP_STATIC_PATHS
+    : [...SITEMAP_STATIC_PATHS, ...GATED_SITEMAP_PATHS];
+  for (const routePath of paths) {
     entries.push(`  <url><loc>${xmlEscape(absoluteUrl(routePath))}</loc></url>`);
   }
   for (const article of articles) {

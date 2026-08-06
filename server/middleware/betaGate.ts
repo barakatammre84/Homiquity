@@ -1,11 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 
 /**
- * Express port of the private beta gate (root middleware.ts, Vercel Edge).
+ * The private beta gate — the ONE implementation (it began as an Express port
+ * of a platform edge middleware, which is gone).
  *
- * The two implementations MUST keep identical semantics until the Vercel
- * cutover PR deletes middleware.ts — during the transition both platforms can
- * serve production, and a code that admits on one but not the other is an
+ * Semantics are load-bearing and must not drift: a code that admits here but
+ * not there, or a cookie whose digest changes, is an
  * incident-containment control (INCIDENT_RESPONSE_PLAN.md) failing open.
  * tests/betaGate.test.ts drives both against the same cases. Deliberately
  * self-contained (no import from ../../middleware) so the cutover deletion

@@ -80,7 +80,7 @@ describe("buildProvidersResponse", () => {
   });
 
   // The route is public and unauthenticated. Env var NAMES are a development
-  // affordance and must never be served off localhost — Vercel builds, preview
+  // affordance and must never be served off localhost — deployed builds, preview
   // included, run as "production", and an unset NODE_ENV must not leak either.
   it.each(["production", "test", undefined])("withholds missing when NODE_ENV is %s", (nodeEnv) => {
     if (nodeEnv === undefined) delete process.env.NODE_ENV;

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation} from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { AlertTriangle, ArrowRight, CheckCircle2, Home, Mail, Save, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, calculatorResultKeys } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,6 @@ export function ResultsSidebar({ inputs, debts, results }: ResultsSidebarProps) 
   const { user } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const queryClient = useQueryClient();
 
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [saveEmail, setSaveEmail] = useState("");
@@ -43,7 +42,10 @@ export function ResultsSidebar({ inputs, debts, results }: ResultsSidebarProps) 
     },
     onSuccess: () => {
       toast({ title: "Results Saved", description: "Your affordability analysis has been saved." });
-      queryClient.invalidateQueries({ queryKey: calculatorResultKeys.all() });
+      // No calculatorResultKeys.all() invalidation: POST /api/calculator-results
+      // saves the result, but no client surface QUERIES the saved-results list, so
+      // the invalidation matched nothing (guard:querykeys reachability). Re-add it
+      // here when a "my saved calculations" view lands.
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to save results.", variant: "destructive" });

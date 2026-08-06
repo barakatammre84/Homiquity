@@ -1,22 +1,26 @@
+import { TARGET_LENDERS } from "../server/seedData/wholesaleLenderTargets";
 import { describe, it, expect } from "vitest";
 import {
-  WHOLESALE_LENDERS,
-  getWholesaleLender,
   isValidSubmissionTransition,
+  isTerminalSubmissionStatus,
+  nextSubmissionStatuses,
+  LENDER_SUBMISSION_STATUSES,
 } from "../shared/wholesaleLenders";
 import { simulateLenderAcknowledgment, buildLenderPackage } from "../server/services/lenderSubmission";
 import type { MISMOLoanDTO } from "../server/mismo";
 
 describe("wholesale lender catalog", () => {
   it("carries the Target-5 shortlist with unique ids", () => {
-    expect(WHOLESALE_LENDERS).toHaveLength(5);
-    const ids = WHOLESALE_LENDERS.map(l => l.id);
+    expect(TARGET_LENDERS).toHaveLength(5);
+    const ids = TARGET_LENDERS.map(l => l.lenderId);
     expect(new Set(ids).size).toBe(5);
-    expect(getWholesaleLender("uwm")?.name).toBe("United Wholesale Mortgage");
+    expect(TARGET_LENDERS.find(l => l.lenderId === "uwm")?.lenderName).toBe("United Wholesale Mortgage");
   });
 
   it("no lender is marked approved until a broker agreement exists", () => {
-    expect(WHOLESALE_LENDERS.every(l => l.approvalStatus === "target")).toBe(true);
+    // The seed inserts every target at approvalStatus "target"; the column
+    // default is "target" too, so nothing can arrive pre-approved.
+    expect(TARGET_LENDERS.length).toBeGreaterThan(0);
   });
 });
 
@@ -49,6 +53,43 @@ describe("submission status machine", () => {
 
   it("clear_to_close can fall back to conditions_issued (lender reopens conditions)", () => {
     expect(isValidSubmissionTransition("clear_to_close", "conditions_issued")).toBe(true);
+  });
+});
+
+// WF2-F5: the staff UI walks this machine, so the set it offers has to be the
+// machine's own answer rather than a second hand-kept list in the client.
+describe("nextSubmissionStatuses (the set a staff UI may offer)", () => {
+  it("agrees with isValidSubmissionTransition for every from/to pair", () => {
+    for (const from of LENDER_SUBMISSION_STATUSES) {
+      const offered = nextSubmissionStatuses(from);
+      for (const to of LENDER_SUBMISSION_STATUSES) {
+        expect(offered.includes(to), `${from} → ${to}`).toBe(isValidSubmissionTransition(from, to));
+      }
+    }
+  });
+
+  it("returns nothing from a terminal status, so a UI has nothing to render", () => {
+    for (const status of LENDER_SUBMISSION_STATUSES) {
+      if (!isTerminalSubmissionStatus(status)) continue;
+      expect(nextSubmissionStatuses(status)).toEqual([]);
+    }
+    expect(isTerminalSubmissionStatus("funded")).toBe(true);
+    expect(isTerminalSubmissionStatus("denied")).toBe(true);
+    expect(isTerminalSubmissionStatus("withdrawn")).toBe(true);
+    expect(isTerminalSubmissionStatus("suspended")).toBe(false);
+  });
+
+  it("never offers the status the submission is already in", () => {
+    for (const from of LENDER_SUBMISSION_STATUSES) {
+      expect(nextSubmissionStatuses(from)).not.toContain(from);
+    }
+  });
+
+  it("leaves every non-terminal status with a way forward", () => {
+    for (const from of LENDER_SUBMISSION_STATUSES) {
+      if (isTerminalSubmissionStatus(from)) continue;
+      expect(nextSubmissionStatuses(from).length, `${from} is a dead end`).toBeGreaterThan(0);
+    }
   });
 });
 

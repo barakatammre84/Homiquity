@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { SkipLink } from "@/components/SkipLink";
 import { Footer } from "@/components/Footer";
+import { RelatedGuides } from "@/components/RelatedGuides";
 import { SEOHead } from "@/components/SEOHead";
 import { FramedPhoto } from "@/components/FramedPhoto";
 import { ImageTextSection } from "@/components/ImageTextSection";
@@ -522,6 +523,8 @@ export default function Refinance() {
           </div>
         </section>
       </main>
+
+      <RelatedGuides purposes={["rate_term_refi", "cash_out_refi"]} heading="Refinancing guides" />
 
       <Footer />
     </div>

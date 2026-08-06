@@ -12,6 +12,13 @@ export default defineConfig({
     // vitest.integration.config.ts instead.
     include: [
       "tests/accessControl.test.ts",
+      "tests/commitmentLetterProvenance.test.ts",
+      "tests/uploadsUnavailableCopy.test.ts",
+      "tests/liveCreditPullImport.test.ts",
+      "tests/creditVendorInterlock.test.ts",
+      "tests/clientIp.test.ts",
+      "tests/securityHeaders.test.ts",
+      "tests/canonicalHost.test.ts",
       "tests/zodSchemaSemantics.test.ts",
       "tests/routeGates.test.ts",
       "tests/queryErrorHandling.test.ts",
@@ -22,12 +29,12 @@ export default defineConfig({
       "tests/borrowerDocumentView.test.ts",
       "tests/borrowerActivityView.test.ts",
       "tests/rateProductHeadings.test.ts",
-      "tests/vercelDeploymentGuard.test.ts",
       "tests/migrationLedgerGuard.test.ts",
       "tests/securityReviewGuard.test.ts",
       "tests/dependabotReactGrouping.test.ts",
       "tests/loCommsLint.test.ts",
       "tests/borrowerConditionView.test.ts",
+      "tests/loanProducts.test.ts",
       "tests/loCompensation.test.ts",
       "tests/compensationElectionQmGate.test.ts",
       "tests/platformFeeSchedule.test.ts",
@@ -45,6 +52,8 @@ export default defineConfig({
       "tests/decisionEngineGaps.test.ts",
       // WF1-002: the engine's compensation-independent pricing projection.
       "tests/paymentProjection.test.ts",
+      // ARC-3: the borrower-facing what-if, on the SAME derivation as the LE.
+      "tests/borrowerWhatIf.test.ts",
       // WF2-F4: the URLA section-4a loanDetails write path.
       "tests/urlaLoanDetailsSave.test.ts",
       "tests/pipelineEngineStageTransitions.test.ts",
@@ -116,6 +125,13 @@ export default defineConfig({
       "tests/mcpAudit.test.ts",
       "tests/mcpAgentIdentity.test.ts",
       "tests/smsCompliance.test.ts",
+      // X-Twilio-Signature verification on the inbound SMS webhook — pins the
+      // algorithm against Twilio's published test vector and the route's
+      // fail-closed posture.
+      "tests/twilioWebhookSignature.test.ts",
+      // Outbound delivery receipts: that ONLY error 21610 converges the opt-out
+      // ledger, and that the status callback authenticates against its OWN URL.
+      "tests/twilioMessageStatus.test.ts",
       "tests/errorMonitoring.test.ts",
       "tests/auditReanchor.test.ts",
       "tests/auditChainTruncation.test.ts",
@@ -155,7 +171,6 @@ export default defineConfig({
       "tests/postAuthRoute.test.ts",
       "tests/borrowerOfferView.test.ts",
       "tests/queryParams.test.ts",
-      "tests/vercelEntryHelpers.test.ts",
       "tests/spaCatchAll.test.ts",
       "tests/seoPrerender.test.ts",
       "tests/coachProfileSync.test.ts",

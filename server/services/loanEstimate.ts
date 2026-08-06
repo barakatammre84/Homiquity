@@ -264,17 +264,40 @@ interface PricingDerivation {
   monthlyPMI: number;
 }
 
-async function derivePricing(applicationId: string): Promise<PricingDerivation> {
+/**
+ * Non-persisted what-if inputs (ARC-3).
+ *
+ * These shadow the application's own values for ONE derivation and are never
+ * written back — the borrower asking "what if I put more down?" must not mutate
+ * their file. Deliberately limited to the three levers a borrower actually
+ * controls; loan PROGRAM is not overridable because it interacts with veteran
+ * status and underwriting routing (`isVaLoan` below), which is an LO
+ * conversation, not a self-serve toggle.
+ *
+ * The disclosable Loan Estimate path never passes these, so the byte-identical
+ * parity with computePaymentProjection (F-047) is preserved by construction:
+ * with no overrides this function is exactly what it was.
+ */
+export interface PricingOverrides {
+  purchasePrice?: number;
+  downPayment?: number;
+  creditScore?: number;
+}
+
+async function derivePricing(
+  applicationId: string,
+  overrides?: PricingOverrides,
+): Promise<PricingDerivation> {
   const application = await storage.getLoanApplication(applicationId);
   if (!application) {
     throw new Error("Application not found");
   }
 
-  const purchasePrice = Number(application.purchasePrice);
+  const purchasePrice = Number(overrides?.purchasePrice ?? application.purchasePrice);
   if (!purchasePrice || purchasePrice <= 0) {
     throw new Error("Purchase price is required to generate a loan estimate");
   }
-  const downPayment = Number(application.downPayment);
+  const downPayment = Number(overrides?.downPayment ?? application.downPayment);
   if (isNaN(downPayment) || downPayment < 0) {
     throw new Error("Down payment is required to generate a loan estimate");
   }
@@ -282,7 +305,7 @@ async function derivePricing(applicationId: string): Promise<PricingDerivation> 
   if (loanAmount <= 0) {
     throw new Error("Loan amount must be positive (purchase price must exceed down payment)");
   }
-  const creditScore = application.creditScore;
+  const creditScore = overrides?.creditScore ?? application.creditScore;
   if (!creditScore) {
     throw new Error("Credit score is required to generate a loan estimate");
   }
@@ -381,9 +404,13 @@ export interface PaymentProjection {
   estimatedMonthlyTotal: number;
 }
 
-export async function computePaymentProjection(applicationId: string): Promise<PaymentProjection> {
+export async function computePaymentProjection(
+  applicationId: string,
+  /** ARC-3 what-if inputs. Omitted by the engine and the LE — see PricingOverrides. */
+  overrides?: PricingOverrides,
+): Promise<PaymentProjection> {
   const { purchasePrice, loanAmount, interestRate, monthlyPandI, monthlyPMI } =
-    await derivePricing(applicationId);
+    await derivePricing(applicationId, overrides);
   const { monthlyEscrow } = estimateMonthlyEscrow({ purchasePrice });
   return {
     loanAmount,

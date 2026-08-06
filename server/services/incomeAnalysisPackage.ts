@@ -10,7 +10,6 @@ import {
   type IncomePathEvaluation,
   type SituationProfileRow,
 } from "@shared/schema";
-import { getWholesaleLender } from "@shared/wholesaleLenders";
 import type { IncomePathResult } from "@shared/incomePaths";
 import type { SituationProfile } from "@shared/situationProfile";
 import {
@@ -35,6 +34,19 @@ import {
 export interface IncomePackageInputs {
   applicationId: string;
   lenderId: string;
+  /**
+   * The lender's display name and non-QM capability, read from the
+   * `wholesale_lenders` row by the caller.
+   *
+   * Passed in rather than looked up so this function stays PURE — the lender
+   * catalog is a database table now, and a lookup here would make package
+   * assembly async and untestable without a DB. Omit when the row could not be
+   * resolved; the package then falls back to the raw lenderId and to
+   * agency-only sections, which is the conservative default (a non-QM section
+   * sent to a lender that cannot underwrite it is worse than an omission, and
+   * the omission is recorded).
+   */
+  lender?: { lenderName: string; nonQm?: boolean | null } | null;
   submittedBy: string;
   submittedAt: Date;
   simulated: boolean;
@@ -86,9 +98,8 @@ function documentEntry(doc: Document): IncomePackageDocumentEntry {
 
 /** Pure: assemble the package object (no IO). */
 export function assembleIncomePackage(inputs: IncomePackageInputs): IncomeAnalysisPackage {
-  const lender = getWholesaleLender(inputs.lenderId);
-  const lenderName = lender?.name ?? inputs.lenderId;
-  const isNonQmLender = !!lender?.nonQm;
+  const lenderName = inputs.lender?.lenderName ?? inputs.lenderId;
+  const isNonQmLender = !!inputs.lender?.nonQm;
 
   const allPaths = (inputs.evaluation?.paths as IncomePathResult[] | undefined) ?? [];
   // Agency-only lenders get the agency/full-doc sections; non-QM path sections
@@ -182,6 +193,9 @@ export async function buildIncomeAnalysisPackage(
 ): Promise<IncomePackageResult> {
   // situation_profiles is keyed by userId, so the application resolves the owner.
   const app = await storage.getLoanApplication(applicationId);
+  // The lender row drives the display name and whether non-QM sections ship.
+  // Read here (IO) and handed to the pure assembler, which stays synchronous.
+  const lenderRow = await storage.getWholesaleLenderByLenderId(lenderId);
   const [[evaluation], employment, documents, situationRow] = await Promise.all([
     db
       .select()
@@ -205,6 +219,9 @@ export async function buildIncomeAnalysisPackage(
   const pkg = assembleIncomePackage({
     applicationId,
     lenderId,
+    lender: lenderRow
+      ? { lenderName: lenderRow.lenderName, nonQm: lenderRow.nonQm }
+      : null,
     submittedBy,
     submittedAt,
     simulated,

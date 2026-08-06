@@ -18,12 +18,13 @@ import { createHash } from "node:crypto";
 import { storage } from "../storage";
 import {
   evaluateLenderSubmissionEligibility,
-  getWholesaleLender,
   isValidSubmissionTransition,
   LENDER_SUBMISSION_STATUSES,
+  type LenderApprovalStatus,
+  type LenderCounterparty,
   type LenderSubmissionStatus,
-  type WholesaleLender,
 } from "@shared/wholesaleLenders";
+import type { WholesaleLender } from "@shared/schema";
 import {
   compensationAmount,
   resolveCompensation,
@@ -78,8 +79,31 @@ async function submitToLenderPortal(
   applicationId: string,
 ): Promise<LenderAcknowledgment> {
   // e.g. process.env.UWM_EASE_CLIENT_ID — no broker agreements are signed, so
-  // every lender resolves to the simulation today.
-  return simulateLenderAcknowledgment(lender.id, applicationId);
+  // every lender resolves to the simulation today. Keyed on the business
+  // `lenderId`, not the uuid, so a reseed cannot change a confirmation id.
+  return simulateLenderAcknowledgment(lender.lenderId, applicationId);
+}
+
+/**
+ * Narrow a `wholesale_lenders` row to the counterparty shape the pure
+ * eligibility rules take. `approvalStatus` is validated rather than cast: the
+ * column is a varchar, and an unrecognised value must fail CLOSED (treated as
+ * "target") rather than accidentally satisfying an equality check for
+ * "approved".
+ */
+export function toCounterparty(lender: WholesaleLender): LenderCounterparty {
+  const raw = lender.approvalStatus;
+  const approvalStatus: LenderApprovalStatus =
+    raw === "approved" || raw === "application_in_progress" || raw === "inactive" ? raw : "target";
+  return {
+    lenderId: lender.lenderId,
+    lenderName: lender.lenderName,
+    approvalStatus,
+    isDemo: lender.isDemo,
+    status: lender.status,
+    nonQm: lender.nonQm,
+    epoClawbackDays: lender.epoClawbackDays,
+  };
 }
 
 export interface LenderPackage {
@@ -115,7 +139,7 @@ export async function submitToWholesaleLender(
   lenderId: string,
   submittedBy: string,
 ): Promise<SubmitResult> {
-  const lender = getWholesaleLender(lenderId);
+  const lender = await storage.getWholesaleLenderByLenderId(lenderId);
   if (!lender) {
     throw new SubmissionBlockedError(`Unknown wholesale lender "${lenderId}"`, []);
   }
@@ -124,8 +148,8 @@ export async function submitToWholesaleLender(
   // relationship with this lender, so the system would record a "submitted"
   // status — and transmit a borrower's file — to a company that has never
   // heard of us. Production requires a signed agreement; dev/demo may exercise
-  // the path as an explicit simulation.
-  const eligibility = evaluateLenderSubmissionEligibility(lender, {
+  // the path as an explicit simulation. Seeded demo rows are refused outright.
+  const eligibility = evaluateLenderSubmissionEligibility(toCounterparty(lender), {
     isProduction: process.env.NODE_ENV === "production",
   });
   if (!eligibility.allowed) {
@@ -143,7 +167,7 @@ export async function submitToWholesaleLender(
   );
   if (active) {
     throw new SubmissionBlockedError(
-      `An active submission to ${lender.name} already exists (status: ${active.status})`,
+      `An active submission to ${lender.lenderName} already exists (status: ${active.status})`,
       [],
     );
   }
@@ -186,9 +210,19 @@ export async function submitToWholesaleLender(
   // / F-025) whose remaining element fixes are pending MISMO data-dictionary
   // confirmation, and xmllint is absent in serverless (→ skipped). The
   // structural validateMISMOXML gate above stays the hard gate. A violation here
-  // is captured (auditable, shown to staff), not silently swallowed.
-  const { validateAgainstXsd, MISMO_BASE_XSD, extractOffendingElements } = await import("./mismoXsdValidation");
-  const xsd = validateAgainstXsd(pkg.xml, MISMO_BASE_XSD);
+  // is captured (auditable, shown to staff), not silently swallowed — surfaced by
+  // client/src/components/PackageConformanceBadge.tsx, which reads this recorded
+  // snapshot value. That "shown to staff" claim was false for as long as it stood
+  // here: nothing in the client read the field, so a non-conformant package was
+  // recorded and no human was ever told. Keep a reader wired to it.
+  //
+  // The validator checks BOTH the base model and the ULDD extension. Against the
+  // base model alone, everything inside an EXTENSION was skipped in silence
+  // (`xsd:any processContents="lax"` with no resolvable declaration), so a
+  // fabricated ULDD name recorded as conformant — the badge above would have
+  // shown staff a green result over an unvalidated subtree.
+  const { validateMismoExport, extractOffendingElements } = await import("./mismoXsdValidation");
+  const xsd = validateMismoExport(pkg.xml);
   const xsdConformance = {
     valid: xsd.valid,
     skipped: xsd.skipped,
@@ -253,7 +287,7 @@ export async function submitToWholesaleLender(
   await storage.createDealActivity({
     applicationId,
     activityType: "note",
-    title: `Submitted to ${lender.name}`,
+    title: `Submitted to ${lender.lenderName}`,
     description: `Wholesale submission ${ack.confirmationId}${ack.simulated ? " (simulated — no broker agreement live)" : ""} — MISMO package ${pkg.hash.slice(0, 12)}, income package ${incomePkg.hash.slice(0, 12)}`,
     performedBy: submittedBy,
   });
@@ -297,6 +331,11 @@ export async function updateSubmissionStatus(
     throw new SubmissionBlockedError(`Cannot move a submission from "${from}" to "${toStatus}"`, []);
   }
 
+  // Display name for the audit activity below. Read from the lender table; a
+  // missing row falls back to the raw id rather than failing the transition —
+  // a status update must not be blocked by a catalog lookup.
+  const lenderRow = await storage.getWholesaleLenderByLenderId(submission.lenderId);
+
   // Funding is where revenue is realized, so it is where revenue gets
   // captured. Marking a loan funded without recording what the lender actually
   // paid is exactly how the platform ended up unable to state its own revenue
@@ -339,7 +378,7 @@ export async function updateSubmissionStatus(
     activityType: "note",
     title: `Lender submission ${toStatus.replace(/_/g, " ")}`,
     description:
-      `${getWholesaleLender(submission.lenderId)?.name ?? submission.lenderId}: ${from} → ${toStatus}` +
+      `${lenderRow?.lenderName ?? submission.lenderId}: ${from} → ${toStatus}` +
       (notes ? ` — ${notes}` : "") +
       (variance ? ` — ${variance.message}` : ""),
     metadata: variance

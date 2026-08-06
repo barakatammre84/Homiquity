@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, dashboardKeys } from "@/lib/queryClient";
+import { queryClient, apiRequest, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -91,7 +91,7 @@ interface ChecklistResponse {
 
 function useDocumentChecklist(applicationId: string | null | undefined, enabled = true) {
   return useQuery<ChecklistResponse>({
-    queryKey: ["/api/applications", applicationId, "document-checklist"],
+    queryKey: applicationResourceKeys.documentChecklist(applicationId),
     enabled: !!applicationId && enabled,
     staleTime: 15_000,
   });
@@ -188,9 +188,8 @@ export function UploadDocumentDialog({
       return document;
     },
     onSuccess: (document) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applications", applicationId, "document-checklist"] });
+      queryClient.invalidateQueries({ queryKey: applicationResourceKeys.documentChecklist(applicationId) });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       if (confirmToRecipientId) {
         queryClient.invalidateQueries({ queryKey: ["/api/messages", confirmToRecipientId] });
         queryClient.invalidateQueries({ queryKey: ["/api/messages/conversations"] });

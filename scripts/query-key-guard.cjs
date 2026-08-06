@@ -36,8 +36,21 @@ const ROOT = path.resolve(__dirname, "..");
 const CLIENT_SRC = path.join(ROOT, "client", "src");
 const FACTORY_FILE = path.join(CLIENT_SRC, "lib", "queryClient.ts");
 
-/** `queryKey: [` whose first element is a backtick template literal. */
-const TEMPLATE_KEY = /queryKey:\s*\[\s*`([^`]*)`/;
+/**
+ * An array literal whose first element is a backtick template literal.
+ *
+ * Deliberately NOT anchored to `queryKey:`. It was — and hoisting the key into a
+ * variable walked straight past it:
+ *
+ *     const locksKey = [`/api/rate-locks/application/${applicationId}`];
+ *     useQuery({ queryKey: locksKey, ... })
+ *
+ * Same hazard, same fix, invisible to a `queryKey:`-anchored regex. Matching any
+ * `[` + interpolated `/api/...` template catches both spellings. In this
+ * codebase an array literal starting with an interpolated /api path IS a query
+ * key; if a genuine non-key use ever appears, segmenting it is harmless anyway.
+ */
+const TEMPLATE_KEY = /\[\s*`([^`]*)`/;
 
 function sourceFiles(dir) {
   const out = [];
@@ -58,7 +71,11 @@ function findOffenders() {
     if (file === FACTORY_FILE) continue; // the factory is the sanctioned home
     const lines = fs.readFileSync(file, "utf8").split("\n");
     lines.forEach((line, i) => {
-      const match = TEMPLATE_KEY.exec(line);
+      // Skip comments. Now that the pattern is no longer anchored to `queryKey:`
+      // it happily matches a violation QUOTED in a doc comment explaining the
+      // rule — including the ones in this repo that document past fixes.
+      const code = line.replace(/^\s*(\/\/|\*|\/\*).*$/, "");
+      const match = TEMPLATE_KEY.exec(code);
       if (!match) return;
       const url = match[1];
       if (!url.includes("${")) return; // a constant template is just a plain key

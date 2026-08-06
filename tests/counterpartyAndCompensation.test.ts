@@ -10,21 +10,21 @@ import {
   approvedWholesaleLenders,
   evaluateLenderSubmissionEligibility,
   isApprovedLender,
-  WHOLESALE_LENDERS,
-  type WholesaleLender,
+  type LenderCounterparty,
 } from "../shared/wholesaleLenders";
+import { TARGET_LENDERS } from "../server/seedData/wholesaleLenderTargets";
 import {
   COMPENSATION_MATCH_TOLERANCE,
   evaluateCompensationVariance,
   summarizeCompensation,
 } from "../shared/compensationLedger";
 
-const lender = (over: Partial<WholesaleLender> = {}): WholesaleLender => ({
-  id: "test-lender",
-  name: "Test Wholesale",
-  specialty: "Conventional",
+// Shaped like a `wholesale_lenders` row, which is where lenders live now.
+const lender = (over: Partial<LenderCounterparty> = {}): LenderCounterparty => ({
+  lenderId: "test-lender",
+  lenderName: "Test Wholesale",
   approvalStatus: "target",
-  ausSupport: ["DU"],
+  isDemo: false,
   ...over,
 });
 
@@ -33,7 +33,7 @@ describe("F-5 — counterparty approval gate", () => {
     const result = evaluateLenderSubmissionEligibility(lender(), { isProduction: true });
     expect(result.allowed).toBe(false);
     expect(result.reason).toMatch(/no broker agreement/i);
-    expect(result.remediation.join(" ")).toMatch(/approvalStatus/);
+    expect(result.remediation.join(" ")).toMatch(/approval status/i);
   });
 
   it("blocks every approval status short of approved", () => {
@@ -60,12 +60,44 @@ describe("F-5 — counterparty approval gate", () => {
     expect(result.reason).toMatch(/SIMULATED/);
   });
 
+  it("refuses a seeded demo counterparty in EVERY environment", () => {
+    // Demo rows are fictional companies (contact addresses @*.example) seeded
+    // so pricing has something to quote. Blocking them only in production
+    // would let a dev/staging run address a borrower package to a company
+    // that does not exist.
+    for (const isProduction of [true, false]) {
+      const result = evaluateLenderSubmissionEligibility(
+        lender({ isDemo: true, approvalStatus: "approved" }),
+        { isProduction },
+      );
+      expect(`prod=${isProduction}:${result.allowed}`).toBe(`prod=${isProduction}:false`);
+      expect(result.reason).toMatch(/demo counterparty/i);
+    }
+  });
+
+  it("a demo row can never be counted as an approved counterparty", () => {
+    // Belt and braces: even with approval_status flipped to "approved" by hand,
+    // isDemo disqualifies the row from capacity and from submission.
+    const demoApproved = lender({ isDemo: true, approvalStatus: "approved" });
+    expect(isApprovedLender(demoApproved)).toBe(false);
+    expect(approvedLenderCount([demoApproved])).toBe(0);
+  });
+
   it("reports the real counterparty capacity — currently zero", () => {
     // This is the finding, asserted rather than described: no wholesale lender
     // has credentialed us, so the platform cannot deliver a loan to anyone.
     // When the first agreement is signed this test changes with the catalog.
-    expect(approvedLenderCount()).toBe(approvedWholesaleLenders().length);
-    expect(WHOLESALE_LENDERS.every(l => !isApprovedLender(l) || l.approvalStatus === "approved")).toBe(true);
+    // The seed inserts every Target-5 counterparty at "target", and the column
+    // default is "target" too, so a fresh table has zero approved lenders.
+    const seeded: LenderCounterparty[] = TARGET_LENDERS.map(t => ({
+      lenderId: t.lenderId,
+      lenderName: t.lenderName,
+      approvalStatus: "target" as const,
+      isDemo: false,
+    }));
+    expect(approvedLenderCount(seeded)).toBe(0);
+    expect(approvedWholesaleLenders(seeded)).toHaveLength(0);
+    expect(seeded.every(l => !isApprovedLender(l) || l.approvalStatus === "approved")).toBe(true);
   });
 });
 

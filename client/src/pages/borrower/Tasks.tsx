@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, taskKeys, dashboardKeys } from "@/lib/queryClient";
+import { queryClient, apiRequest, taskKeys, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { titleCaseFromSnake } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -173,7 +173,9 @@ export default function Tasks() {
       await linkResponse.json();
 
       queryClient.invalidateQueries({ queryKey: taskKeys.all() });
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      // Was ["/api/documents"] — a key no client query reads. The upload also
+      // satisfies a checklist item, so refresh the checklist root.
+      queryClient.invalidateQueries({ queryKey: applicationResourceKeys.all() });
 
       toast({
         title: "Document Uploaded",

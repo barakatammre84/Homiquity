@@ -23,6 +23,7 @@ import {
   type PlatformFeeSchedule,
 } from "../../services/loanCosts";
 import { activeFeeSchedule } from "../../services/platformFeeSchedule";
+import { computePaymentProjection, type PaymentProjection } from "../../services/loanEstimate";
 import { hasBorrowerConsent } from "../../consentGate";
 import * as creditService from "../../services/creditService";
 import { isDecisionGrade, type DataProvenance } from "@shared/dataProvenance";
@@ -332,6 +333,122 @@ export function registerPricingRoutes(
     } catch (error) {
       console.error("Compensation QM picture error:", error);
       res.status(500).json({ error: "Failed to evaluate the QM points-and-fees picture" });
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // Borrower-facing what-if (roadmap ARC-3).
+  //
+  // WHY THIS DOES NOT USE /api/scenario-calculator, which ARC-3 named. That
+  // endpoint carries its own hardcoded rate table (6.875 / 6.5 / 6.25 / 6.375),
+  // its own PMI factors and its own tax/insurance assumptions, and is blind to
+  // credit score, property state and LLPA. Wiring it to a borrower surface
+  // would put a number in front of a borrower that disagrees with their OWN
+  // Loan Estimate — a second pricing path, drifting by construction.
+  //
+  // So this runs the same derivation the Loan Estimate does
+  // (computePaymentProjection, byte-identical per F-047), with the borrower's
+  // what-if values passed as NON-PERSISTED overrides. Same engine, same escrow
+  // model, same rounding — a scenario and the disclosure cannot disagree.
+  //
+  // Payment projection ONLY: no fees, no closing costs, no APR. Nothing
+  // disclosable can leave here, so a scenario can never be mistaken for a Loan
+  // Estimate. Read-only and non-persisting — asking a question never edits the
+  // file.
+  // -------------------------------------------------------------------------
+  const whatIfSchema = z.object({
+    scenarios: z
+      .array(
+        z.object({
+          label: z.string().trim().min(1).max(60),
+          purchasePrice: z.number().positive().max(100_000_000).optional(),
+          downPayment: z.number().min(0).max(100_000_000).optional(),
+          creditScore: z.number().int().min(300).max(850).optional(),
+        }),
+      )
+      .min(1)
+      .max(4),
+  });
+
+  app.post("/api/loan-applications/:id/what-if", isAuthenticated, async (req, res) => {
+    try {
+      const application = await storage.getLoanApplicationWithAccess(
+        routeParam(req, "id"),
+        req.user!.id,
+        req.user!.role,
+      );
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const parsed = whatIfSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid input",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      // The file as it stands, so the borrower always sees what they are
+      // comparing AGAINST rather than a bare list of hypotheticals.
+      let baseline: PaymentProjection | null = null;
+      let unavailable: string | null = null;
+      try {
+        baseline = await computePaymentProjection(application.id);
+      } catch (error) {
+        // derivePricing throws named, honest errors for genuinely missing
+        // inputs (no purchase price, no credit score). That is not a 500 — the
+        // file simply is not priceable yet, and saying so is the right answer.
+        //
+        // The specific message is LOGGED, not returned. derivePricing's own
+        // errors are safe, but an unexpected failure underneath it (storage, the
+        // LLPA lookup) would otherwise put an internal message in a
+        // borrower-reachable response body. The client renders its own copy
+        // regardless, so nothing is lost by keeping this generic.
+        console.warn("[what-if] baseline not priceable:", error);
+        unavailable = "Pricing is not available for this file yet";
+      }
+
+      if (!baseline) {
+        return res.json({ baseline: null, scenarios: [], unavailable });
+      }
+
+      const scenarios = await Promise.all(
+        parsed.data.scenarios.map(async scenario => {
+          try {
+            const projection = await computePaymentProjection(application.id, {
+              purchasePrice: scenario.purchasePrice,
+              downPayment: scenario.downPayment,
+              creditScore: scenario.creditScore,
+            });
+            return {
+              label: scenario.label,
+              projection,
+              monthlyDeltaFromBaseline:
+                Math.round(
+                  (projection.estimatedMonthlyTotal - baseline!.estimatedMonthlyTotal) * 100,
+                ) / 100,
+              unavailable: null as string | null,
+            };
+          } catch (error) {
+            // One impossible scenario (down payment above price) must not fail
+            // the others. Same reasoning as the baseline: log the specific
+            // cause, return a generic one.
+            console.warn("[what-if] scenario not priceable:", error);
+            return {
+              label: scenario.label,
+              projection: null,
+              monthlyDeltaFromBaseline: null,
+              unavailable: "Could not price this scenario",
+            };
+          }
+        }),
+      );
+
+      res.json({ baseline, scenarios, unavailable: null });
+    } catch (error) {
+      console.error("What-if projection error:", error);
+      res.status(500).json({ error: "Failed to compute the what-if projection" });
     }
   });
 

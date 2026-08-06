@@ -32,7 +32,7 @@
  */
 
 import { scrubLenderIdentity } from "./borrowerOfferView";
-import { LENDER_IDENTIFIERS } from "./borrowerConditionView";
+
 import type { DealActivity } from "./schema";
 
 /**
@@ -164,6 +164,7 @@ function metadataCount(metadata: unknown): number | null {
  */
 export function toBorrowerActivityView(
   activity: MaskableDealActivity,
+  lenderIdentifiers: readonly string[],
   viewerUserId?: string,
 ): BorrowerActivityView | null {
   const base = {
@@ -179,7 +180,7 @@ export function toBorrowerActivityView(
   };
 
   if (VERBATIM_ACTIVITY_TYPES.has(activity.activityType)) {
-    const scrub = (text: string) => scrubLenderIdentity(text, LENDER_IDENTIFIERS);
+    const scrub = (text: string) => scrubLenderIdentity(text, lenderIdentifiers);
     const descriptionMasked =
       LEGACY_FREETEXT_TYPES.has(activity.activityType) &&
       !hasWriterContract(activity.metadata);
@@ -244,9 +245,10 @@ export function toBorrowerActivityView(
 
 export function toBorrowerActivityViews(
   activities: MaskableDealActivity[],
+  lenderIdentifiers: readonly string[],
   viewerUserId?: string,
 ): BorrowerActivityView[] {
   return activities
-    .map((activity) => toBorrowerActivityView(activity, viewerUserId))
+    .map((activity) => toBorrowerActivityView(activity, lenderIdentifiers, viewerUserId))
     .filter((view): view is BorrowerActivityView => view !== null);
 }

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { applicationResourceKeys } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +39,7 @@ interface DealTeamMember {
  */
 export function LoanTeamCard({ applicationId }: { applicationId: string }) {
   const { data: teamMembers } = useQuery<DealTeamMember[]>({
-    queryKey: ["/api/applications", applicationId, "team"],
+    queryKey: applicationResourceKeys.team(applicationId),
     enabled: !!applicationId,
   });
 

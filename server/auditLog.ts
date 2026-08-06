@@ -1,5 +1,6 @@
 import type { Request } from "express";
 import { storage } from "./storage";
+import { clientIpForRecord } from "./clientIp";
 
 export async function logAudit(
   req: Request,
@@ -16,7 +17,7 @@ export async function logAudit(
       targetType: targetType || null,
       targetId: targetId || null,
       metadata: metadata || null,
-      ipAddress: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null,
+      ipAddress: clientIpForRecord(req),
       userAgent: req.headers["user-agent"] || null,
     });
   } catch (err) {

@@ -201,7 +201,7 @@ invented — see "What is deliberately NOT fixed" below.
 
 The file is now **pinned** to the fee schedule it was disclosed under.
 
-- `loan_estimate_disclosures.fee_schedule_version` (migration `0051`) records the pin at first
+- `loan_estimate_disclosures.fee_schedule_version` (migration `0053`) records the pin at first
   issuance. Tri-state and documented on the column: `NULL` = issued before pinning existed
   (an honest gap, never backfilled with a guess), `0` = the compiled-in baseline, `N` = published
   version N.
@@ -235,7 +235,7 @@ borrower on the issued figures regardless.
   much needs no interpretation. `origination_fee` is deliberately **excluded** from that set — it
   is a rate on the loan amount, so a borrower-requested increase in loan size raises it
   legitimately.
-- `change_of_circumstances.affected_charge_ids` (migration `0051`) carries the scope when it is
+- `change_of_circumstances.affected_charge_ids` (migration `0053`) carries the scope when it is
   known.
 
 ## What is deliberately NOT fixed

@@ -5,21 +5,33 @@
 > 2026-08-04 are left exactly as written — they were accurate at the time, and the
 > GitHub URLs still resolve because GitHub redirects renamed repositories. Read
 > `MortgageStream` / `mortgage-stream.vercel.app` in historical rows as the former
-> names of Homiquity / the `homiquity` Vercel project.
+> names of Homiquity / the hosting project it was then deployed on.
+
+> **Platform note (Railway cutover, 2026-08-06).** Hosting moved from Vercel to
+> **Railway**, and the Vercel project was deleted — there is no Vercel account
+> surface left to open. Everything above the ledger describes Railway. Ledger
+> rows, postmortems, and the `dpl_…` deployment IDs they cite as evidence are
+> left exactly as written: they record what was true on their date, when the
+> platform *was* Vercel.
 
 Homiquity ships with a deliberately simple flow: **branch → PR → the required
-`gate` check goes green → merge, and Vercel deploys `main`. If it breaks,
-revert.** No human review required — the machine gate is the only approval.
+`gate` check goes green → merge, and Railway builds and deploys `main`. If it
+breaks, revert.** No human review required — the machine gate is the only
+approval. One caveat that cost eight commits of silent staleness on 2026-08-06:
+**a merge is not a deploy until `/api/health` reports the merged commit** — see
+the post-deploy check below.
 
 ```
-  PR ──▶ gate green ──▶ merge to main ──▶ Vercel builds & deploys
+  PR ──▶ gate green ──▶ merge to main ──▶ Railway builds & deploys
           │                  │                       │
-          ▼                  ▼              broken?  ▼
-  typecheck · unit +   migrate-prod applies    Vercel → Deployments →
-  client tests ·       pending migrations      previous one → Promote
-  prod-dep audit ·     to the prod DB          (instant)
-  schema guard ·
-  token ratchet
+          ▼                  ▼                       ▼
+  typecheck · unit +   migrate-prod applies    verify-deploy polls /api/health
+  client tests ·       pending migrations      until `commit` == the merged SHA
+  prod-dep audit ·     to the prod DB                 │
+  schema guard ·                               stale or broken?
+  token ratchet ·                                     ▼
+  prod build + boot                            Railway → service → Deployments
+                                               → last good one → Rollback
 ```
 
 **CI status (corrected 2026-07-17; token ratchet gated 2026-07-19): the gate is
@@ -27,8 +39,10 @@ live and blocking.** [`ci.yml`](../../.github/workflows/ci.yml) runs a required
 **`gate`** job on every PR to `main` — `pnpm check`, `pnpm test` (node unit +
 client component suites), a **blocking** `pnpm audit --prod --audit-level=high`,
 `pnpm guard:schema` (a schema change without a same-PR migration goes RED and
-cannot merge), and `pnpm guard:tokens` (the design-token ratchet — a raw palette
-class or bare white/black literal over baseline goes RED). Branch protection
+cannot merge), `pnpm guard:tokens` (the design-token ratchet — a raw palette
+class or bare white/black literal over baseline goes RED), and a production
+build whose artifact is then **booted** against a disposable Postgres until
+`/api/health` answers 200 (the full step list lives in the workflow). Branch protection
 requires that check with `enforce_admins` ON — nobody direct-pushes `main`,
 founder included; force-push and deletion of `main` are blocked. No required
 reviews: the author merges their own PR once the gate is green
@@ -48,7 +62,12 @@ same workflow's **`migrate-prod`** job auto-applies any pending `migrations/` to
 the production DB over a Neon DIRECT URL minted at run time from `NEON_API_KEY`
 — no prod DB password is stored in GitHub; full flow and its limits (a manual
 `dry_run` reconciles the journal only, it never executes migration SQL) in
-[DB_MIGRATIONS.md](./DB_MIGRATIONS.md). ⚠️ The required-check string is matched
+[DB_MIGRATIONS.md](./DB_MIGRATIONS.md). A third job, **`verify-deploy`**, then
+polls `https://www.homiquity.com/api/health` until its `commit` field equals the
+pushed SHA and **fails the run** if it never does — the automated form of the
+post-deploy check below, added after the 2026-08-06 stale-prod incident. It is
+not a required check (it runs on push, after the merge), so a red `verify-deploy`
+is a page-the-founder signal, not a merge blocker. ⚠️ The required-check string is matched
 **verbatim** (`gate (typecheck · tests · schema guard)`, U+00B7 middle dots) —
 never rename the job without re-pointing branch protection in the same change
 (procedure in the workflow's comments).
@@ -66,9 +85,12 @@ gh pr merge --squash --delete-branch   # …then merge your own PR (no reviews r
 # gate still running — the 2026-07-19 #252–#259 gap. Watch-then-merge is always safe.
 ```
 
-Every merge to `main` triggers a production deploy on Vercel (then run the
-post-deploy health check below — READY is not healthy). Every PR branch gets
-its own preview deployment automatically. One branch per isolated worktree,
+Every merge to `main` triggers a production build + deploy on Railway (then run
+the post-deploy health check below — a green build is not a shipped deploy, and
+a 200 is not the right commit). **PR branches are not deployed**: the Railway
+service is wired to the `main` branch of `barakatammre84/Homiquity` only, so
+there are no preview URLs — verify a branch against a local worktree server
+([LOCAL_DEV.md](./LOCAL_DEV.md)). One branch per isolated worktree,
 merged = deleted same day ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md)
 §4). The old `npm run save` / `npm run sync` scripts direct-pushed `main` and
 were removed in PR #251 — direct pushes are blocked by branch protection while
@@ -78,8 +100,14 @@ it is live, and barred by doctrine always ([TEAM_PRACTICES](../governance/TEAM_P
 
 Full detail in [ROLLBACK.md](./ROLLBACK.md). Short version:
 
-- **Prod is broken right now** → Vercel dashboard → Deployments → pick the last
-  good one → **Promote to Production**. Instant, no rebuild.
+- **Prod is broken right now** → Railway dashboard → project **Homiquity** →
+  service **Homiquity** → **Deployments** → the last good deployment → `⋯` →
+  **Rollback**. That restores the built image *and the variables it was
+  deployed with*, with no rebuild. Two things it is not: `railway redeploy`
+  rebuilds the latest (i.e. broken) commit, and `railway restart` just restarts
+  the current image. Image retention is limited (72h on Hobby) — an old-enough
+  deployment has no image to roll back to, and the fallback is a `git revert`
+  through the PR lane.
 - **Undo the bad code** → `git revert <sha>` on a branch, landed through the
   normal PR lane — direct pushes to `main` are blocked and barred, and the PR
   lane runs the gate (never `reset --hard` + force-push; break-glass per
@@ -90,113 +118,203 @@ Full detail in [ROLLBACK.md](./ROLLBACK.md). Short version:
   [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)). Still snapshot/branch
   in Neon before destructive schema changes; migrations have no automatic "down".
 
-## How the Vercel deploy works
+## How the Railway deploy works
 
-- `vercel.json` — install is `pnpm install --frozen-lockfile --prod=false`,
-  build is `npm run vercel-build` (= `vite build` **plus** an esbuild bundle of
-  the server into `api/_app.mjs`) → static client from `dist/public`; rewrites
-  send `/api/*` to the serverless function `api/index.ts`, everything else
-  falls back to the SPA `index.html`.
-- **The function imports the pre-bundled `api/_app.mjs`, never the raw TS
-  server graph.** Server code uses the `@shared/*` tsconfig alias, which
-  Vercel's file tracer/Node runtime can't resolve (this produced opaque
-  `FUNCTION_INVOCATION_FAILED` crashes); esbuild resolves the alias at build
-  time. The handler imports the bundle *dynamically* so any bootstrap failure
-  returns a readable `bootError` JSON instead of an opaque crash. Two more
-  serverless rules learned the hard way: never construct SDK clients at module
-  load (learned when the since-removed OpenAI client threw without a key —
-  build them lazily), and never
-  write to the filesystem at module load (only the OS temp dir is writable).
-- **Why pnpm on Vercel (do not switch back to npm casually):** npm crashed
-  mid-install on Vercel's build image with "Exit handler never called" on
-  Node 20, 22 AND 24 (reproduced four deploys in a row), while the identical
-  install works locally. pnpm sidesteps npm entirely. `--prod=false` is
-  required because Vercel sets `NODE_ENV=production`, which makes pnpm skip
-  devDependencies — and vite (a devDependency) is needed to build.
+- **One persistent Node process — no CDN, no serverless function, no edge
+  middleware.** `pnpm build` = `vite build` (static client → `dist/public`)
+  **plus** an esbuild bundle of `server/index-prod.ts` → `dist/index.js`;
+  `pnpm start` runs that single file. The same Express app answers `/api/*`,
+  serves `dist/public` through `express.static`, and falls back to the SPA
+  `index.html` — in one process, listening on `$PORT`. Everything that used to
+  be a platform feature is now in-process: bot prerender is
+  `server/prerender.ts`, the private beta gate is
+  `server/middleware/betaGate.ts` (both mounted ahead of the static layer), and
+  scheduled work is a GitHub Actions workflow (see below).
+- **`railway.json` is the config as code** — it lives in the repo, is reviewed
+  in the PR, and the fields it sets take precedence over the dashboard's:
+  builder **Railpack**, build `pnpm install --frozen-lockfile && pnpm build`,
+  start `pnpm start`, healthcheck `/api/health` (300s), restart policy
+  `ON_FAILURE` (max 10 retries). The service builds from GitHub — branch `main`
+  of `barakatammre84/Homiquity` — and answers on the generated
+  `*.up.railway.app` host plus the custom domain `www.homiquity.com`.
+- **`www.homiquity.com` is the canonical host; the apex is not on Railway.** DNS
+  is at Squarespace: `CNAME www → <service>.up.railway.app`. The apex
+  `homiquity.com` cannot point at Railway because that needs CNAME flattening /
+  ALIAS records, which Squarespace does not offer — it currently serves a
+  Squarespace parked page. So use the `www.` URL everywhere (probes, canonical
+  tags, invite links); an apex URL is not the app.
+- **`engines.node` must be an exact version, never an npm range** *(2026-08-06,
+  nine failed deploys)*. `"24.x"` is npm range syntax; Railpack resolves the
+  Node version through `mise`, which cannot parse it, so every build failed at
+  the version-resolution step. Nothing went red where anyone was looking — a
+  failed Railway build leaves the **previous container serving**, so the site
+  stayed up and prod sat ~8 commits stale. `package.json` now pins
+  `"engines": { "node": "24" }`; the same trap applies to `^24` and `>=24`.
+  `.npmrc` disables audit/fund noise.
+- **The server ships as a bundle, not as the raw TS graph.** Server code uses
+  the `@shared/*` tsconfig alias, which a plain Node runtime cannot resolve;
+  esbuild resolves it at build time into `dist/index.js`. Two rules learned the
+  hard way still bind, and bite harder on a persistent host: never construct
+  SDK clients at module load (learned when the since-removed OpenAI client threw
+  without a key — build them lazily), and never rely on writing to the
+  filesystem (the container filesystem is ephemeral — it is discarded on every
+  deploy and restart; documents go through the object-storage layer). A throw at
+  import time is no longer one dead request: the process never becomes healthy,
+  the healthcheck fails, the deploy is rejected, and the stale container keeps
+  serving — which is why the gate **boots** `dist/index.js` against a real
+  Postgres and requires a 200 from `/api/health`, not just a green build.
+- **Why pnpm (do not switch back to npm casually):** npm crashed mid-install on
+  the old build image with "Exit handler never called" on Node 20, 22 AND 24
+  (reproduced four deploys in a row) while the identical install worked locally;
+  pnpm sidesteps npm entirely. The Vercel-era install also needed `--prod=false`
+  because that platform set `NODE_ENV=production` at build time, which makes
+  pnpm skip devDependencies — and `vite` is a devDependency. Railway's build
+  command does not need the flag today, so if a build ever dies with
+  `vite: not found`, that is the failure mode to check first.
 - **One lockfile: pnpm-only** *(updated 2026-07-08, CH-1 `1661c95` — supersedes
   the old "two lockfiles" note)*. `package-lock.json` was deleted (it resolved 53
   packages against the dead `package-firewall.replit.local` proxy); `pnpm-lock.yaml`
-  is the single lockfile for local dev AND Vercel. Local dev uses pnpm via corepack
-  (`corepack enable`; version pinned by `packageManager` in `package.json`).
+  is the single lockfile for local dev AND the production build. Local dev uses
+  pnpm via corepack (`corepack enable`; version pinned by `packageManager` in
+  `package.json`).
   **After any dependency change, run `pnpm install` and commit `pnpm-lock.yaml`.**
-- `engines.node: 24.x`; `.npmrc` disables audit/fund noise.
 - **`pnpm.overrides` rules (2026-07-17 outage,
   [postmortem](../logs/2026-07-17-prod-api-outage-uuid-esm-postmortem.md)):** never write a
   version **floor** (`>=`) — floors auto-upgrade across majors as the registry moves and can pull
-  an ESM-only major onto a CJS `require` path (both build scripts use `--packages=external`, so
-  externals load from `node_modules` at runtime, and Vercel's function loader does not support
-  `require(esm)` even on Node 24). Pin exactly or cap within a major (`^`), record next to the
+  an ESM-only major onto a CJS `require` path (the build uses `--packages=external`, so externals
+  load from `node_modules` at runtime and a `require(esm)` mismatch is a real crash on Node too).
+  Pin exactly or cap within a major (`^`), record next to the
   override why it exists, and when an override *activates* (as in #219), diff the lockfile for
   major-version jumps — then boot the built server, not just the build.
-- Env vars (Vercel → Settings → Environment Variables): `DATABASE_URL` (Neon,
+- Env vars live in **Railway service variables** (Railway → project *Homiquity*
+  → service *Homiquity* → **Variables**): `DATABASE_URL` (Neon,
   non-localhost), `SESSION_SECRET`, `CREDIT_ENCRYPTION_KEY`, `PII_HASH_SALT`,
-  `NODE_ENV=production`, plus optional `ANTHROPIC_API_KEY` (all AI surfaces —
+  `NODE_ENV=production`, `CRON_SECRET` (must match the GitHub **repository
+  secret** of the same name — see the scheduler below), plus optional
+  `ANTHROPIC_API_KEY` (all AI surfaces —
   coach, extraction; `AI_INTEGRATIONS_ANTHROPIC_API_KEY` overrides it for
   extraction — the Gemini/OpenAI keys are retired), `GOOGLE_MAPS_API_KEY`,
   `RAPIDAPI_KEY` (property data), and for document storage
   `GCS_SERVICE_ACCOUNT_KEY`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS`.
   The full contract is `.env.example` — a var that isn't there doesn't exist.
+  - **`VITE_*` vars are BUILD-time, everything else is run-time.** A `VITE_*`
+    value is baked into the client bundle by `vite build`, so changing one takes
+    a **redeploy** (rebuild), not a restart. Server-side vars are read by the
+    running process, so a change there takes effect when the service restarts
+    with the new variables.
+  - **Point `DATABASE_URL` at the right Neon branch and verify it.** On
+    2026-08-06 it held a stale branch (28 of 53 migrations, no writes since
+    07-15): `/api/articles` and `/sitemap.xml` 500'd while `/api/health` stayed
+    **200**, because its `SELECT 1` succeeded — against the wrong database. A
+    health probe proves reachability, not identity; after any DB var change,
+    hit a route that reads real rows.
 
-Persistent hosts (Fly, a VPS) still work unchanged: `npm run build` +
-`npm start`.
+## Post-deploy health check (binding) — a green deploy is not a shipped deploy
 
-## Post-deploy health check (binding) — READY is not healthy
+Two independent failures taught this, and the check has to survive both:
 
-Vercel's **READY** attests that the *build* succeeded. The serverless function can still be 100%
-dead at runtime behind a READY, aliased deployment — proven on 2026-07-17, when a READY deploy
-served a working front end while every `/api/*` route returned a boot error for ~16 minutes
-([postmortem](../logs/2026-07-17-prod-api-outage-uuid-esm-postmortem.md)). Therefore, after
-**every** production deploy (yours or one you're verifying):
+- **2026-07-17 — the build succeeded and the server was dead** *(Vercel era, but
+  the rule survives the platform)*. A READY, aliased deployment served a working
+  front end while every `/api/*` route returned a boot error for ~16 minutes
+  ([postmortem](../logs/2026-07-17-prod-api-outage-uuid-esm-postmortem.md)).
+  Build state says nothing about runtime state.
+- **2026-08-06 — the deploy failed and nothing noticed.** Nine consecutive
+  Railway builds failed (`engines.node: "24.x"`); a failed deploy leaves the
+  **previous container serving**, so the site stayed up, `/api/health` kept
+  answering 200, every check stayed green — and prod sat ~8 commits stale.
+  "SUCCESS" in a dashboard and a 200 from the health endpoint are **not**
+  evidence that your merge shipped. Only the `commit` field is.
+
+Therefore, after **every** production deploy (yours or one you're verifying),
+compare the commit prod is serving against the commit you merged:
 
 ```bash
-curl -sL https://www.homiquity.com/api/health   # must return {"status":"ok",...}
+curl -s https://www.homiquity.com/api/health          # {"status":"ok","timestamp":…,"commit":…}
+git rev-parse origin/main                             # must equal that `commit`
 ```
 
+- `commit` is `RAILWAY_GIT_COMMIT_SHA`, injected by Railway for GitHub-sourced
+  deploys (it is `null` locally — that is honest, not a fault). CI does this for
+  you: the `verify-deploy` job polls the endpoint after every push to `main` and
+  fails the run if prod never reports that SHA.
 - A ledger row's validation column is **incomplete** without this probe (or an equivalent live API
   hit) for any change that can affect the server at runtime — which includes *dependency-only*
   changes (lockfile, overrides): the dependency graph IS runtime behavior under
   `--packages=external`.
-- Do **not** read deploy state off the GitHub "Vercel" commit status — it can stall "pending"
-  forever after the deployment is READY, and it isn't a required check. Use the Vercel
-  API/dashboard for build state and the health probe for runtime state.
-- If the probe fails: the error body is designed to be readable (`bootError` names the failing
-  module — see "How the Vercel deploy works" above). Fix forward or promote the last good
-  deployment per [ROLLBACK.md](./ROLLBACK.md); do not wait for a monitoring system that does not
-  exist yet.
+- `status: "ok"` alone only proves the process is alive and *some* database
+  answered `SELECT 1`. For anything data-shaped, also hit a route that reads
+  real rows (`/api/articles`, `/sitemap.xml`) — the 2026-08-06 wrong-branch
+  lesson above.
+- If the commit is stale or the probe fails: Railway → project **Homiquity** →
+  service **Homiquity** → **Deployments**, and read the **build logs of the
+  failed deploy** — that is where the real error is; the serving container's
+  logs look perfectly healthy because it is the old one. Then fix forward or
+  roll back per [ROLLBACK.md](./ROLLBACK.md); do not wait for a monitoring
+  system that does not exist yet.
+
+## Scheduled jobs (GitHub Actions, not the platform)
+
+[`.github/workflows/cron-jobs.yml`](../../.github/workflows/cron-jobs.yml) is
+**the** scheduler — the platform cron block it once mirrored was deleted at the
+Railway cutover, so there is no twin and nothing else will notice a sweep that
+stops running. It curls `/api/jobs/<name>` with
+`Authorization: Bearer $CRON_SECRET`.
+
+- The secret has two halves that must match: the GitHub **repository secret**
+  `CRON_SECRET` (Settings → Secrets and variables → Actions) and the **Railway
+  service variable** `CRON_SECRET`. Mismatch = every run fails loudly, which is
+  the wanted posture.
+- GitHub reports only *which* cron expression fired, so one workflow carries all
+  the expressions and a `case` maps each back to its job path. **Editing a
+  schedule without its case arm fails the run** rather than silently curling
+  nothing; `tests/letterIntegrity.test.ts` and `tests/taskEngineSlaSeed.test.ts`
+  pin both halves for letter-expiry and task-escalation.
+- `workflow_dispatch` (choose the job) is the manual lever: it proves
+  `CRON_SECRET` end-to-end without waiting for a schedule and re-fires a sweep
+  missed during an outage. Scheduled workflows run against the default branch
+  only.
 
 ## Private beta gate (invite-link access)
 
-Root-level `middleware.ts` is a Vercel **Edge Middleware** that locks the whole
-site (every route except `/api/*`) behind invite links while the
-`BETA_ACCESS_CODE` env var is set in Vercel. Tests live in
-`tests/betaGate.test.ts`.
+`server/middleware/betaGate.ts` is an **Express middleware**, mounted in
+`server/app.ts` ahead of the whole route surface, that locks the whole site
+(every route except `/api/*`) behind invite links while the `BETA_ACCESS_CODE`
+variable is set. It is the Express port of the Edge Middleware this used to be —
+the semantics are deliberately identical (same codes, same cookie digest), since
+a gate that admits here but not there is an incident-containment control failing
+open. Tests live in `tests/betaGate.test.ts`.
 
-- **Turn on:** Vercel → Settings → Environment Variables → add
-  `BETA_ACCESS_CODE` (Production) with one or more comma-separated codes, e.g.
-  `hq-beta-7f3k2m` — then redeploy. Generate codes with `openssl rand -hex 4`
+- **Turn on:** Railway → project *Homiquity* → service *Homiquity* →
+  **Variables** → add `BETA_ACCESS_CODE` with one or more comma-separated codes,
+  e.g. `hq-beta-7f3k2m`. The value is read **per request**, so it takes effect
+  as soon as the service is running with the new variable — no rebuild and no
+  code change. Generate codes with `openssl rand -hex 4`
   or pick memorable phrases; avoid guessable words.
 - **Invite testers:** send `https://<host>/?beta=<code>`. Opening it sets a
   90-day HttpOnly cookie (the SHA-256 of the code, so the raw code never sits
   in the browser) and redirects to a clean URL. Visitors without a code get a
   401 lock screen with a code-entry form.
-- **Revoke a group:** remove that group's code from the env var and redeploy —
-  its cookies stop validating immediately.
-- **Turn off (public launch):** delete `BETA_ACCESS_CODE` and redeploy. The
-  middleware becomes a no-op; nothing else to remove.
+- **Revoke a group:** remove that group's code from the variable — its cookies
+  stop validating as soon as the service is running with the new value.
+- **Turn off (public launch):** delete `BETA_ACCESS_CODE`. Unset or blank is a
+  total no-op; nothing else to remove.
 - **SEO while gated:** `/robots.txt` answers `Disallow: /` and every gate
   response carries `X-Robots-Tag: noindex`, so the beta never gets indexed.
   When the gate is off, the static `client/public/robots.txt` (allow-all)
   serves instead.
-- **Why `/api/*` is exempt:** Vercel cron invocations and webhooks carry no
-  browser cookie (they authenticate via `CRON_SECRET` / webhook secrets), and
-  API routes already sit behind app auth. The gate is a privacy screen for the
-  beta, not a security boundary — real access control stays in the app.
-- Edge Middleware only runs on Vercel; `npm run dev` and local prod builds
-  never execute it.
+- **Why `/api/*` is exempt:** the GitHub Actions cron invocations and inbound
+  webhooks carry no browser cookie (they authenticate via `CRON_SECRET` /
+  webhook secrets), and API routes already sit behind app auth. The gate is a
+  privacy screen for the beta, not a security boundary — real access control
+  stays in the app.
+- Because it is ordinary Express middleware in `server/app.ts`, it now runs
+  **everywhere the app runs** — `pnpm dev` and a local prod build included, if
+  `BETA_ACCESS_CODE` is set in that environment. That is a feature: the gate is
+  testable locally instead of only in production.
 
 ## Checks — what the gate enforces, and what stays manual
 
-The required `gate` check runs these five on every PR (same commands locally):
+The required `gate` check runs these on every PR (same commands locally):
 
 ```bash
 pnpm check                             # typecheck
@@ -209,6 +327,14 @@ pnpm guard:tokens                      # design-token ratchet (raw palette / bar
                                        #   counts vs scripts/design-token-baseline.json;
                                        #   gated 2026-07-19 — counts may only go down)
 ```
+
+(Plus the repo's other `guard:*` steps, and — since the Railway cutover — a
+**production build** followed by a **boot** of `dist/index.js` against a
+disposable Postgres, requiring a 200 from `/api/health`. That last step exists
+because the artifact Railway runs is a long-lived process: a bundle that builds
+but dies at import would otherwise only be discovered by a failed deploy, and a
+failed deploy is invisible from the outside. Read
+[`ci.yml`](../../.github/workflows/ci.yml) for the authoritative step list.)
 
 The token ratchet's residual is the `strict: false` racing-merge window
 (TEAM_PRACTICES §5 traps): two individually-green PRs can still combine into a
@@ -224,9 +350,11 @@ pnpm checkup                          # daily umbrella: the gate's checks + buil
                                       # token/kb guards, prod health — deliberately no integration
 ```
 
-The gate has no server and no database, so the integration suite
-(`vitest.integration.config.ts`) **never runs in CI**: a green gate proves the
-change typechecks and breaks no unit or component test — nothing more. If a
+The integration suite (`vitest.integration.config.ts`) **never runs in CI**: a
+green gate proves the change typechecks, breaks no unit or component test, and
+produces a bundle that boots and answers `/api/health` — nothing more. (The
+gate's disposable Postgres exists for that boot probe only; it is not an
+integration environment, and no integration test is pointed at it.) If a
 change is only exercised by an integration test, run it by hand against a live
 worktree server and record that in the PR
 ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §5). A **server/logic** test
@@ -240,10 +368,17 @@ Every push to `main` (it deploys) and every action against the production databa
 env vars gets a row here **in the same session** — newest first
 ([TEAM_PRACTICES](../governance/TEAM_PRACTICES.md) §6). Never rewrite or delete rows; corrections get a
 new row. Each row: what shipped · prod DB/env actions (and how) · validation evidence ·
-rollback pointer.
+rollback pointer. Two reading notes for rows written before 2026-08-06: they describe the
+Vercel era (deployment IDs, preview URLs, `vercel.json`), and any cross-reference to the
+section *"How the Vercel deploy works"* now resolves to **"How the Railway deploy works"**
+above — the rules it carries (pnpm-only lockfile, `pnpm.overrides` floor) survived the
+platform change unaltered. From 2026-08-06 on, the validation column's live-prod evidence is the
+**`commit` comparison** described above — a 200 from `/api/health` no longer counts on its own.
+Rows below that date describe the Vercel era and are left exactly as written.
 
 | Date | Change | Prod DB / env | Validation | Rollback |
 |---|---|---|---|---|
+| 2026-08-06 | **Platform cutover to Railway — the docs made true, plus a deploy-verification loop; this ledger row rides in the same PR.** Hosting moved off Vercel over the preceding days: `railway.json` as config-as-code (#411); the platform features reimplemented in-process — bot prerender `server/prerender.ts`, Express private-beta gate `server/middleware/betaGate.ts`, and the GitHub Actions cron scheduler `.github/workflows/cron-jobs.yml` replacing the platform cron block (#412); the `gate` taught to build **and boot** the self-host artifact against a real Postgres (#409); `engines.node` unbroken (#422 — `"24.x"` is npm range syntax `mise` cannot resolve, which had failed **nine consecutive deploys**); canonical host pinned to `www` (#423); and the Vercel surface (`vercel.json`, `api/index.ts`, root `middleware.ts`) deleted along with the Vercel project itself (#424 — the API now 404s it; there is no account surface left). Riding in **this** PR: `/api/health` reports `RAILWAY_GIT_COMMIT_SHA` as `commit`, a new `verify-deploy` CI job polls it after every push to `main` and fails when prod is not serving that SHA, and this runbook's Vercel prose (deploy mechanics, rollback, post-deploy check, beta gate, env vars, scheduler) is rewritten to Railway. **The lesson that motivated all of it: a failed Railway deploy leaves the PREVIOUS container serving, so the site stays up and every check stays green while prod goes stale — on 2026-08-06 prod sat ~8 commits behind, including go-live prep. "SUCCESS" in a dashboard and a 200 from `/api/health` are not evidence a merge shipped; only the `commit` field is.** | Production env vars now live as **Railway service variables** (Railway → project *Homiquity* → service *Homiquity* → Variables), not a Vercel project: `CRON_SECRET` must match the GitHub repository secret of the same name, and `VITE_*` vars are **build-time** (a change needs a redeploy, not a restart). Same incident window, recorded because it is a prod-env action class: the service's `DATABASE_URL` was found pointing at a **stale Neon branch** (28 of 53 migrations, no writes since 07-15) — `/api/health` stayed **200** because its `SELECT 1` succeeded *against the wrong database*, while `/api/articles` and `/sitemap.xml` 500'd. No `migrations/` or `shared/schema/` change in this PR; Neon is still the database and the `migrate-prod` job is unchanged. | `https://www.homiquity.com/api/health` → 200 `{"status":"ok"}`, and the data-reading probes `/api/articles` and `/sitemap.xml` → **200** (those are the ones that expose a wrong-branch `DATABASE_URL`; health alone does not). At the time this row was written prod was still serving a build predating the `commit` field, so the SHA comparison is proven by the `verify-deploy` job on this merge rather than retroactively. | [ROLLBACK.md](./ROLLBACK.md) §1 — now **Railway → project Homiquity → service Homiquity → Deployments → the last good one → Rollback** (restores that image *and* the variables it deployed with, no rebuild; image retention is limited — 72h on Hobby). `railway redeploy` rebuilds the latest (broken) commit and `railway restart` reuses the current image — neither is a rollback. The docs/CI half of this PR is `git revert`-safe; the platform move is not (there is no Vercel project to return to). |
 | 2026-08-05 | **PR #385 — financial re-audit F-17/F-18/F-19: the non-QM dead band resolved, and pricing policy made admin-editable; this ledger row rides in the same PR.** **F-17 (High):** the platform's FIXED $2,100 of fees met a QM points-and-fees cap that is 5% in one tier, a flat $4,139 in the next and 3% above — producing a **non-QM dead band** ($101,951–$216,299 at the default 200 bps plan; $90,623–$288,399 at 225 bps) with originable loans on BOTH sides, sitting over the DPA/first-time-buyer segment, and non-monotonic (a $100k borrower originable, the same borrower at $150k not, at $400k again). An over-cap file hard-blocks at the AUS gate AND lender-package assembly, so it was fully costed and yielded zero revenue. Resolved by removing the FIXEDNESS, not by re-pricing: platform fees are now a **ceiling** — the standard schedule when it fits, the reducible part trimmed (rounding DOWN) when it does not, via a binary search over the existing tier tables so they are never duplicated. **Only what is ours is reducible** — the tax service fee is a vendor pass-through, `reducible: false`. Swept at $1 granularity $20k–$500k: every seeded comp plan clears at every loan size, incl. 275 bps which previously failed even at $400k; no file that works today prices differently. Honest residual: comp ALONE above ~300 bps still cannot be rescued (a comp-plan problem) and the gates still refuse. **F-18 (High):** `evaluatePointsAndFeesFloor` had ONE consumer (submission), but the compensation election decides the QM outcome and freezes at LE issuance — the check ran after its own remedy expired. The election now scores before writing (422 `qm_points_and_fees_exceeded` with the ceiling + remedy, audited as `compensation_election_refused`), and `GET .../compensation/qm` feeds the staff card the ceiling BEFORE a rate is attempted; the card disables Save above it, mirroring the 422 as it already mirrors the post-LE 409. **F-19 (Low):** the tax service fee was a prepaid finance charge in `knownPrepaidFinanceCharges` + `apr.ts` but ABSENT from the points-and-fees floor — the same $100 shrank the cap without counting against it. Fixed structurally: ONE `PLATFORM_FINANCE_CHARGES` list feeds numerator and denominator, so the CLASS is closed, not the instance. No new regulatory reading — it propagates the assertion the code already made in two places to the third. **Admin surface:** `/admin/pricing-policy` — the fee schedule and the wholesale comp bands (already DB-backed, previously no surface) are now editable without a deploy. Publishing is **append-only** (supersede + insert in one transaction; a partial unique index makes a concurrent double-publish fail loudly), requires a reason, and is audited. `services/loanCosts.ts` stays **pure** — the schedule is a PARAMETER everywhere; `services/platformFeeSchedule.ts` is the single impure edge, cache invalidated on publish, falling back to the compiled-in baseline if the read fails so pricing never hard-fails on a config table. **§9 security review** (role/permission-gate trigger) run before merge, **no HIGH/MEDIUM findings** — recorded in the PR body and in the audit log. | **Migration `0047_platform_fee_schedules` applies on merge** via `migrate-prod` — **prod migration HEAD 0046 → 0047**. NEW TABLE ONLY: expand-only, idempotent (`CREATE TABLE IF NOT EXISTS`), **no backfill and no seed row** (an empty table means "use the compiled-in baseline", so seeding the constants would fork the baseline in two places). Every column NOT NULL, safe precisely because a new table has no existing rows — **not a contract migration**, so the §Contract-migrations prod probe does not apply. Renumbered from `0046` during the merge: `main` landed `0046_document_borrower_description` while this branch was in flight and two migrations claiming idx 46 would have broken the ledger. No env-var change; no new dependencies. | `pnpm check` clean; **2,215 tests green** (1,954 node + 261 client), incl. 53 new tests across `platformFeeSchedule.test.ts` + `compensationElectionQmGate.test.ts` and 14 component tests on the admin panel; all seven repo guards at baseline plus `migration-ledger-guard` (48 migrations, contiguous idx 0..47); **gate green on the PR** (run 31031315350, all 17 steps incl. production build + Vercel deployability). Post-merge `/api/health` probe recorded below. **Vercel preview was rate-limited** (`api-deployments-free-per-day`, >100/day on the free plan) — a non-required check, unrelated to this branch. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>` restores the fixed fee schedule AND the non-QM dead band, and re-opens F-18/F-19 (don't revert without a replacement). The `platform_fee_schedules` table is additive and unread after a revert, so it can be left in place. |
 | 2026-08-05 | **PR #374 — fix(mismo): roadmap L6-fix — every structural XSD violation except escalation U-1 cleared; baseline 9→2 on both legs; this ledger row rides in the same PR.** Compliance-first method, per CLAUDE.md: every corrected element name/path was **verified by extracting the content model from `docs/fannie-mae/schemas/uldd-phase5-extension/MISMO_3_0.xsd` and re-running xmllint locally** — never taken from the error message alone, never from memory. Fixed in `server/mismo.ts`: **(1)** `SUBJECT_PROPERTY` → `COLLATERAL/PROPERTIES/PROPERTY`, with estimated value + sales contract relocated to `PROPERTY_VALUATIONS/PROPERTY_VALUATION/{PROPERTY_VALUATION_DETAIL, SALES_CONTRACT}` (the schema has no SUBJECT_PROPERTY and no SALES_CONTRACT_DETAIL); **(2)** typed loan identifiers — `LenderLoanIdentifier` / `MERS_MINIdentifier` (no generic LoanIdentifier+Type pair exists); **(3)** `NAME` names + sequence (`FirstName`/`LastName`/`MiddleName`/`SuffixName`; LastName before MiddleName); **(4)** `CONTACT_POINTS` before `NAME` in `INDIVIDUAL`; **(5)** `BorrowerSSNIdentifier` **dropped** — the element does not exist in BORROWER_DETAIL; the SSN's one schema-valid home is `TAXPAYER_IDENTIFIERS`, already emitted, so this also narrows the PII surface; **(6)** employer name/phone into `LEGAL_ENTITY/{CONTACTS, LEGAL_ENTITY_DETAIL/FullName}`; **(7)** `DEAL` child sequence (ASSETS, COLLATERALS, LIABILITIES, LOANS, PARTIES); plus three violations previously **masked** by invalid parents: `ADDRESS` order (CountryCode/PostalCode before StateCode), `EMPLOYMENT` order (EndDate before MonthlyIncomeAmount), `PropertyUnitCount` → `FinancedUnitCount`. **U-1 deliberately untouched** (`AUTOMATED_UNDERWRITINGS`/`UnderwritingDecisionType` — AUS names pend ULDD data-dictionary confirmation). | **None** — no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0045`**); no env-var change. The MISMO package is generated at submission time and hashed per submission — previously-generated stored packages keep their recorded hashes; new generations produce the corrected structure. | `pnpm check` clean; **xmllint re-run on BOTH purposes locally: only the two U-1 elements remain**; baseline arrays shrunk 9→2 with the fix inventory recorded in the test; full suites **1,831 node + 240 client green** (mismoExport/mersMin/xsdValidation all pass); gate green on the PR. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>` restores the schema-invalid structure AND the SSN duplication (don't). |
 | 2026-08-05 | **PR #373 — refactor(auth): roadmap CH-4, fifty hand-rolled admin checks behind ONE predicate; this ledger row rides in the same PR.** The object-level `role === "admin"` string comparisons had grown 37→**50 across 19 server files** since filing. New `shared/roles.isAdmin(user)` (null-safe — no user is never an admin); every occurrence replaced **behavior-identically**: `x.role === "admin"` → `isAdmin(x)`, `!==` → `!isAdmin(x)`. The single semantic delta is strictly fail-closed — `req.user!.role` sites that would have THROWN on a missing user now deny 403. `server/auth.ts`'s pre-existing `isAdmin` Express **middleware** keeps its exported name (the predicate is imported aliased there); route-level `requireRole("admin")` gating is untouched everywhere. **§9 (role-gates trigger) reviewed in-session, no findings:** zero checks added, removed, widened, or narrowed — comparison expressions only, verified hunk-by-hunk. `tests/adminPredicate.test.ts` pins the predicate's truth table and walks all of `server/` failing on any new raw comparison, so the drift can't restart; two existing source-guard pins updated to the predicate form. | **None** — no `migrations/` or `shared/schema/` change (prod migration HEAD stays **`0045`**); no env-var change; no new dependencies. | `pnpm check` clean; **1,831 node + 240 client green** (incl. the new truth-table + server-walk guards); gate green on the PR. | [ROLLBACK.md](./ROLLBACK.md) §1; single **squash** commit — `git revert <sha>`, safe (pure expression-level refactor; reverting restores the fifty string compares). |

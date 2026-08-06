@@ -55,13 +55,20 @@ export function registerSubmissionRoutes(
     },
   );
 
-  // Wholesale lender catalog (Target-5 shortlist + approval status).
+  // Wholesale lender catalog — read from the wholesale_lenders table, the one
+  // source of truth shared with pricing. `apiConfig` is withheld: it carries
+  // integration endpoints/auth shape that no staff picker needs.
   app.get(
     "/api/wholesale-lenders",
     requireRole("admin", "lo", "loa", "processor", "underwriter", "closer"),
     async (_req, res) => {
-      const { WHOLESALE_LENDERS } = await import("@shared/wholesaleLenders");
-      res.json(WHOLESALE_LENDERS);
+      try {
+        const lenders = await storage.getWholesaleLenders();
+        res.json(lenders.map(({ apiConfig, ...lender }) => lender));
+      } catch (error) {
+        console.error("List wholesale lenders error:", error);
+        res.status(500).json({ error: "Failed to list wholesale lenders" });
+      }
     },
   );
 
@@ -224,8 +231,8 @@ export function registerSubmissionRoutes(
           })),
         );
 
-        const { WHOLESALE_LENDERS } = await import("@shared/wholesaleLenders");
-        const lenderName = WHOLESALE_LENDERS.find(l => l.id === submission.lenderId)?.name ?? submission.lenderId;
+        const lenderRow = await storage.getWholesaleLenderByLenderId(submission.lenderId);
+        const lenderName = lenderRow?.lenderName ?? submission.lenderId;
         await storage.createDealActivity({
           applicationId: id,
           activityType: "lender_conditions_logged",
@@ -339,7 +346,14 @@ export function registerSubmissionRoutes(
       const { summarizeCompensation, evaluateCompensationVariance } = await import(
         "@shared/compensationLedger"
       );
-      const { approvedLenderCount, getWholesaleLender } = await import("@shared/wholesaleLenders");
+      const { approvedLenderCount } = await import("@shared/wholesaleLenders");
+      const { toCounterparty } = await import("../../services/lenderSubmission");
+
+      // Lenders come from the wholesale_lenders table (one source of truth with
+      // pricing). One read, then an in-memory index — the discrepancy list below
+      // is per-submission and must not turn into a query per row.
+      const lenderRows = await storage.getWholesaleLenders();
+      const lenderByKey = new Map(lenderRows.map(l => [l.lenderId, l]));
 
       const summary = summarizeCompensation(submissions);
 
@@ -350,7 +364,7 @@ export function registerSubmissionRoutes(
         .map(s => ({
           submissionId: s.id,
           applicationId: s.applicationId,
-          lender: getWholesaleLender(s.lenderId)?.name ?? s.lenderId,
+          lender: lenderByKey.get(s.lenderId)?.lenderName ?? s.lenderId,
           fundedAt: s.fundedAt,
           ...evaluateCompensationVariance({
             expectedAmount: s.compensationExpectedAmount,
@@ -369,6 +383,9 @@ export function registerSubmissionRoutes(
           applicationId: s.applicationId,
           status: s.status,
           lenderId: s.lenderId,
+          // Contracted EPO window from the lender row; undefined when no
+          // agreement exists yet, which the register flags as assumed.
+          epoClawbackDays: lenderByKey.get(s.lenderId)?.epoClawbackDays,
           fundedAt: s.fundedAt,
           compensationReceivedAmount: s.compensationReceivedAmount,
         })),
@@ -390,7 +407,7 @@ export function registerSubmissionRoutes(
         ...summary,
         // The binding constraint on all of the above: with no approved
         // counterparty there is no revenue capacity at all (F-5).
-        approvedLenderCount: approvedLenderCount(),
+        approvedLenderCount: approvedLenderCount(lenderRows.map(toCounterparty)),
         discrepancies,
         clawbackExposure: clawback,
         costs,

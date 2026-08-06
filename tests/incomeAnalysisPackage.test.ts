@@ -80,6 +80,9 @@ function baseInputs(over: Partial<IncomePackageInputs> = {}): IncomePackageInput
   return {
     applicationId: "app-1",
     lenderId: "angel-oak",
+    // The lender's facts now come from the wholesale_lenders row, read by the
+    // IO wrapper and handed to this pure assembler.
+    lender: { lenderName: "Angel Oak Mortgage Solutions", nonQm: true },
     submittedBy: "user-lo",
     submittedAt: new Date("2026-07-11T12:00:00.000Z"),
     simulated: true,
@@ -103,7 +106,10 @@ describe("assembleIncomePackage", () => {
   });
 
   it("includes non-QM path sections for a non-QM lender (Angel Oak)", () => {
-    const pkg = assembleIncomePackage(baseInputs({ lenderId: "angel-oak" }));
+    const pkg = assembleIncomePackage(baseInputs({
+      lenderId: "angel-oak",
+      lender: { lenderName: "Angel Oak Mortgage Solutions", nonQm: true },
+    }));
     const ids = pkg.paths.map((p) => p.pathId);
     expect(ids).toContain("bank_statement");
     expect(ids).toContain("dscr");
@@ -111,7 +117,10 @@ describe("assembleIncomePackage", () => {
   });
 
   it("omits non-QM sections for an agency-only lender and records the omission", () => {
-    const pkg = assembleIncomePackage(baseInputs({ lenderId: "uwm" }));
+    const pkg = assembleIncomePackage(baseInputs({
+      lenderId: "uwm",
+      lender: { lenderName: "United Wholesale Mortgage", nonQm: false },
+    }));
     const ids = pkg.paths.map((p) => p.pathId);
     expect(ids).not.toContain("bank_statement");
     expect(ids).not.toContain("dscr");

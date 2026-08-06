@@ -9,7 +9,9 @@ import {
   or,
   ilike,
   asc,
+  arrayOverlaps,
 } from "drizzle-orm";
+import { parseProductFamilies, parseTransactionPurposes } from "@shared/loanProducts";
 // SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
 // branch — main leaves account numbers plaintext).
 
@@ -116,6 +118,55 @@ export class ContentStorage extends VerificationsStorage {
       .from(articles)
       .where(eq(articles.status, "published"))
       .orderBy(desc(articles.publishedAt));
+  }
+
+  /**
+   * Published articles related to a persona page, matched on the taxonomy.
+   *
+   * This is what wires a persona page (/va-loans, /refinance, /self-employed)
+   * back to the education content that answers the objection a visitor arrives
+   * with — the direction that was missing entirely.
+   *
+   * Both axes matter and they are ANDed. Family alone is too coarse for some
+   * pages: nearly all purchase content is `conventional`, so a /refinance page
+   * filtering on family would surface a first-time-buyer guide, which is worse
+   * than showing nothing. Filtering on purpose instead (rate_term_refi,
+   * cash_out_refi) targets it properly.
+   *
+   * Array OVERLAP (&&) within each axis: an article tagged
+   * [conventional, fha] is relevant to an FHA page.
+   *
+   * Uses drizzle's `arrayOverlaps` rather than a hand-written sql`&&` template.
+   * The template form binds the JS array as a SINGLE parameter, which
+   * node-postgres serializes to the bare string "fha" and Postgres then rejects
+   * with `malformed array literal` — visible only against a real database, not
+   * in unit tests.
+   */
+  async getRelatedArticles(opts: {
+    families?: readonly string[];
+    purposes?: readonly string[];
+    limit?: number;
+  }): Promise<Article[]> {
+    const families = parseProductFamilies(opts.families);
+    const purposes = parseTransactionPurposes(opts.purposes);
+    // No recognised filter means "everything", which is not what a related-
+    // content module wants — return nothing rather than the whole library.
+    if (families.length === 0 && purposes.length === 0) return [];
+
+    const conditions = [eq(articles.status, "published")];
+    if (families.length > 0) {
+      conditions.push(arrayOverlaps(articles.loanProductFamilies, families));
+    }
+    if (purposes.length > 0) {
+      conditions.push(arrayOverlaps(articles.transactionPurposes, purposes));
+    }
+
+    return await db
+      .select()
+      .from(articles)
+      .where(and(...conditions))
+      .orderBy(desc(articles.publishedAt))
+      .limit(opts.limit ?? 3);
   }
 
   async getArticlesByCategory(categoryId: string): Promise<Article[]> {

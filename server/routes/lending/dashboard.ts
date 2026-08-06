@@ -13,6 +13,7 @@ import {
   type User,
 } from "@shared/schema";
 import { toBorrowerActivityViews } from "@shared/borrowerActivityView";
+import { getLenderIdentifiers } from "../../services/lenderIdentifiers";
 import { computeNextAction } from "../../services/nextAction";
 import { toDocumentViewsForRole } from "@shared/borrowerDocumentView";
 import { getUserActivitySummary } from "../../services/activitySummary";
@@ -150,7 +151,7 @@ export function registerDashboardRoutes(
       // doctrine — shared/borrowerActivityView.ts). Staff keep full rows.
       const visibleActivityRows = isStaffRole((req.user as User).role)
         ? activityRows
-        : toBorrowerActivityViews(activityRows, userId);
+        : toBorrowerActivityViews(activityRows, await getLenderIdentifiers(), userId);
 
       const activitiesMap: Record<string, any[]> = {};
       for (const appId of topAppIds) {

@@ -4,6 +4,7 @@ import { db } from "../db";
 import { adverseActions, type InsertAdverseAction, type AdverseAction, type CreditPull } from "@shared/schema";
 import { eq, desc, isNull } from "drizzle-orm";
 import { COMPANY_CONFIG } from "../config/company";
+import { companyAddressLines } from "@shared/companyIdentity";
 import { logCreditAction } from "./creditAuditChain";
 import { getLatestCreditPull } from "./creditPulls";
 import { ADVERSE_ACTION_REASONS, BUREAU_CONTACT_INFO, ECOA_ADMINISTERING_AGENCY } from "./creditCatalogs";
@@ -344,6 +345,7 @@ ${ECOA_ADMINISTERING_AGENCY}
 
 CREDITOR:
 ${COMPANY_CONFIG.legalName}
+${companyAddressLines("\n")}
 NMLS #${COMPANY_CONFIG.nmlsId}
 ${COMPANY_CONFIG.contactEmail} | ${COMPANY_CONFIG.contactPhone}
 
@@ -528,6 +530,27 @@ export async function ensureAdverseActionForDenial(params: {
   const latestPull = await getLatestCreditPull(params.applicationId);
   const posture = resolveDenialFcraPosture(latestPull);
   if (posture.kind === "refuse") {
+    // A refusal is the compliance-relevant event — it is the moment the system
+    // declined to act on credit data — so it belongs in the tamper-evident
+    // chain, not only in the caller's 422. Without this, "show me every time
+    // you refused to deny on simulated data" has no answer.
+    //
+    // The pull id rides in actionDetails as well as the FK column because
+    // computeAuditEntryHash digests actionDetails but NOT the FK columns
+    // (creditAuditChain.ts) — linkage recorded only in the column would sit
+    // outside the hash and would not be tamper-evident.
+    await logCreditAction({
+      applicationId: params.applicationId,
+      userId: params.userId,
+      creditPullId: latestPull?.id,
+      action: "adverse_action_refused",
+      actionDetails: {
+        reason: posture.reason,
+        creditPullId: latestPull?.id ?? null,
+        isSimulated: latestPull?.isSimulated ?? null,
+        attemptedBy: params.generatedBy,
+      },
+    });
     return { ok: false, error: posture.error };
   }
 

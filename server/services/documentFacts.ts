@@ -17,7 +17,7 @@
 // WHERE THE VALUES LIVE. `extracted_fields` already models exactly this —
 // polymorphic value columns, mandatory confidence, MISMO path, human-review
 // columns — and its logicalDocumentId/pageId are already nullable. Migration
-// 0052 adds `document_id` so the simple-upload pipeline can attribute rows to a
+// 0054 adds `document_id` so the simple-upload pipeline can attribute rows to a
 // `documents` row instead of a UAL logical document. Reusing it beats standing
 // up a parallel table that would drift.
 // ---------------------------------------------------------------------------

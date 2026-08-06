@@ -21,11 +21,11 @@ pipeline), **Rates**, **Calculators**, **Education**, **Realtor Engine**
 |-------|-----------|-------|
 | Frontend | React 18 + TypeScript + Vite, Wouter (routing), TanStack Query, Shadcn/Radix UI, Tailwind | `client/` |
 | Backend | Node.js + Express + TypeScript (run with `tsx` in dev, esbuild bundle in prod) | `server/` |
-| Database | PostgreSQL — Neon serverless in prod, local Postgres in dev — via Drizzle ORM | `shared/schema/`, `server/db.ts` |
+| Database | PostgreSQL — Neon in prod, local Postgres in dev — via Drizzle ORM | `shared/schema/`, `server/db.ts` |
 | Shared types | Zod + drizzle-zod schemas shared by client and server | `shared/` |
 | AI | Anthropic Claude only — document extraction (never in the decision path) + the borrower coach | `server/extraction*.ts` family, `server/services/coaching*.ts` family (the old `extractionService.ts`/`coachingService.ts` are re-export shims) |
 | File storage | Google Cloud Storage (signed URLs) | `server/integrations/object_storage/` |
-| Deploy | Vercel (static client + serverless Express) | `vercel.json`, `api/index.ts` |
+| Deploy | Railway — one persistent Node process (`dist/index.js`) serving the API **and** the static client. No CDN, no serverless function | `railway.json`, `server/index-prod.ts` |
 
 ## Run it locally (5 minutes)
 
@@ -53,16 +53,23 @@ pnpm dev                # dev server with Vite middleware (hot reload for client
 pnpm check              # TypeScript typecheck (see "known issues" below)
 pnpm test:unit          # fast pure-logic tests
 TEST_BASE_URL=http://127.0.0.1:5001 pnpm test:integration   # API tests against a running server
-pnpm build && pnpm start # production build + run
+pnpm build && pnpm start # production build + run — exactly what Railway runs in prod
 pnpm db:migrate         # apply versioned migrations (hand-authored SQL in migrations/)
 ```
 
-Landing work: branch → PR → `gate` check green → squash merge
-([CICD.md](../../runbooks/CICD.md) §Shipping). Direct pushes to `main` are
-blocked by branch protection and barred by doctrine — and verify protection is
-live before trusting `--auto`
+Landing work: branch → PR → `gate` check green → squash merge → Railway builds
+and deploys `main` ([CICD.md](../../runbooks/CICD.md) §Shipping). Direct pushes
+to `main` are blocked by branch protection and barred by doctrine — and verify
+protection is live before trusting `--auto`
 ([TEAM_PRACTICES](../../governance/TEAM_PRACTICES.md) §6); the old
 `pnpm save`/`pnpm sync` scripts were removed.
+
+⚠️ **A merged, green PR is not a shipped deploy.** A failed Railway build leaves
+the *previous* container serving, so the site stays up and every check stays
+green while prod goes stale — that is exactly what happened on 2026-08-06 (nine
+consecutive failed deploys, ~8 commits behind, unnoticed). The only proof is the
+`commit` field of `GET /api/health`, which the CI `verify-deploy` job polls after
+every push to `main`. See [10-deploy-ops.md](./10-deploy-ops.md).
 
 ⚠️ Do **not** use `pnpm db:push` — the shared dev DB serves multiple branches and
 push drops other branches' columns; migrations are hand-authored (drizzle-kit generate

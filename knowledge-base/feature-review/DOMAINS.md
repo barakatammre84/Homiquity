@@ -199,8 +199,9 @@ Status ledger (updated by the orchestrator after each run):
 - **Launch-critical:** ~~F-004 — adverse-action generation has no UI trigger~~ **closed
   2026-07-12** — generation is a blocking chokepoint on the deny seam
   (`ensureAdverseActionForDenial`; a denial cannot proceed without a compliant notice) plus the
-  #123 staff delivery card. **F-008\*** stays open: SMS webhook has no signature verification
-  (blocker only if SMS is live — TCPA).
+  #123 staff delivery card. **F-008 closed** 2026-08-06 — the SMS webhook verifies
+  `X-Twilio-Signature` and fails closed in production; **F-050\*** carries the residual
+  (no replay protection — blocker only if SMS is live, TCPA).
 - **Source docs**: `docs/nmls/`, `knowledge-base/governance/TEAM_PRACTICES.md` §9, FCRA/ECOA/TCPA references.
 - **Owned tests**: `tests/adverseAction*`, `tests/fairLendingAnalysis*`, `tests/smsCompliance*`,
   `tests/quietHours*`.

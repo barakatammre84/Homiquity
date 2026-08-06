@@ -1,11 +1,13 @@
-# Production sweep scheduler — the platform-independent replacement for
-# vercel.json's "crons" block (Vercel Cron only fires while Vercel hosts the
-# app). Each schedule below MUST stay identical to its vercel.json twin until
-# the Vercel cutover PR deletes that file: during the transition BOTH
-# schedulers exist, and the app's sweeps are idempotent per day, so a double
-# fire is safe while a silent zero fire is not (the "a sweep nobody schedules
-# never runs" invariant — pinned for letter-expiry and task-escalation by
-# tests/letterIntegrity.test.ts and tests/taskEngineSlaSeed.test.ts).
+# Production sweep scheduler — THE scheduler. There is no twin: the platform
+# cron block it once mirrored was deleted at the Railway cutover.
+#
+# Consequence: a schedule removed or mistyped here is a sweep that silently
+# never runs again, and nothing else will notice. That is the "a sweep nobody
+# schedules never runs" invariant, pinned for letter-expiry and task-escalation
+# by tests/letterIntegrity.test.ts and tests/taskEngineSlaSeed.test.ts — those
+# tests assert BOTH that the cron expression is registered below AND that the
+# resolve step maps it to a job path, because an unmapped expression fires a
+# run that curls nothing.
 #
 # Auth: /api/jobs/* accepts `Authorization: Bearer <CRON_SECRET>`
 # (server/routes/jobs.ts) and degrades to admin-session-only when unset.
