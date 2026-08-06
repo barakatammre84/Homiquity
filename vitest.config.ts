@@ -46,6 +46,8 @@ export default defineConfig({
       "tests/decisionEngineGaps.test.ts",
       // WF1-002: the engine's compensation-independent pricing projection.
       "tests/paymentProjection.test.ts",
+      // ARC-3: the borrower-facing what-if, on the SAME derivation as the LE.
+      "tests/borrowerWhatIf.test.ts",
       // WF2-F4: the URLA section-4a loanDetails write path.
       "tests/urlaLoanDetailsSave.test.ts",
       "tests/pipelineEngineStageTransitions.test.ts",

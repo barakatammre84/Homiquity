@@ -17,6 +17,7 @@ import { MarketPricingSection, type MarketOffersResponse } from "./loanOptions/M
 import { LoanOptionCard } from "./loanOptions/LoanOptionCard";
 import { LoanLetterButton } from "./loanOptions/LoanLetterButton";
 import { NextStepsSection } from "./loanOptions/NextStepsSection";
+import { WhatIfPanel } from "./loanOptions/WhatIfPanel";
 
 interface LoanOptionsData {
   application: LoanApplication;
@@ -187,6 +188,17 @@ export default function LoanOptions() {
           </div>
         )}
         {market && <MarketPricingSection market={market} />}
+        {id && (
+          <WhatIfPanel
+            applicationId={id}
+            currentPurchasePrice={
+              application?.purchasePrice != null ? Number(application.purchasePrice) : null
+            }
+            currentDownPayment={
+              application?.downPayment != null ? Number(application.downPayment) : null
+            }
+          />
+        )}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">{marketPriced ? "Payment Scenarios" : "Your Loan Options"}</h2>
