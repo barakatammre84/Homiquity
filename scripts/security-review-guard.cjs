@@ -21,14 +21,17 @@
  *   down what they checked", not as sign-off.
  *
  * COVERAGE. §9's triggers split into ones a diff can see and ones it cannot:
- *   detected   — the named file paths, and added/removed role-gate lines
- *                (`requireRole(` / `isAdmin(`) anywhere in server/, and any edit to
- *                RESPONSE_BODY_LOG_ALLOWLIST.
- *   NOT detected — "any shared/schema/ column holding PII" (needs to know which
- *                columns are PII) and "new PII sub-processor" (needs to know a new
- *                vendor is a processor). Both stay human judgement; §9 still binds
- *                whether or not this script fires. A green gate is not evidence that
- *                neither applies.
+ *   detected   — the named file paths; added/removed role-gate lines
+ *                (`requireRole(` / `isAdmin(`) anywhere in server/; any edit to
+ *                RESPONSE_BODY_LOG_ALLOWLIST; and a NEWLY ADDED shared/schema/
+ *                column or table whose name carries identity/contact/consent
+ *                vocabulary (see PII_SEGMENTS / PII_PHRASES).
+ *   NOT detected — "new PII sub-processor" (needs to know a new vendor is a
+ *                processor). Stays human judgement; §9 still binds whether or not
+ *                this script fires. A green gate is not evidence that it does not
+ *                apply. The schema trigger is likewise a FLOOR, not a ceiling: it
+ *                matches a vocabulary, so a PII column named outside that vocabulary
+ *                (`applicant_identifier`, `contact_detail`) still passes silently.
  *
  * Env (all supplied by ci.yml):
  *   CHANGED_FILES  newline-separated paths changed by the PR
@@ -65,11 +68,142 @@ const LINE_TRIGGERS = [
   },
 ];
 
+// -----------------------------------------------------------------------------
+// §9's "any `shared/schema/` column holding PII".
+//
+// This was a documented blind spot: no PATH_TRIGGER covered shared/schema/**, so a
+// PR adding a PII-bearing column produced ZERO triggers and passed. The case that
+// exposed it: a `user_phones` table carrying a phone number plus TCPA consent
+// provenance (`consent_at`, `consent_source`, `consent_ip`) — the exact shape §9
+// exists to catch — returned "no §9 triggers detected".
+//
+// WHY A CONTENT TRIGGER AND NOT A PATH TRIGGER. `shared/schema/**` as a path would
+// fire on every rename, index, comment and column-comment edit in a 3,146-column
+// corpus. §9's own doctrine (and the RESPONSE_BODY_LOG_ALLOWLIST false positive
+// above) is that a guard which over-fires is worse than none, because the next
+// author learns to route around it. So this fires only on an ADDED column/table
+// declaration whose NAME carries the vocabulary.
+//
+// CALIBRATED AGAINST THE WHOLE CORPUS, not invented: running the rule over every
+// shared/schema/*.ts file flags 120 of 3,146 existing columns (3.8%), and the
+// flagged set is genuinely PII — ssn*, date_of_birth, *_phone, *email*, ip_address,
+// consent_*, account_number_*, borrower/first/last/middle/full_name, *address*.
+// Two candidate phrases were DROPPED after that run because in this domain they are
+// not personal data: `license_number` (NMLS/real-estate licence numbers are public
+// via Consumer Access, and a mortgage schema is full of them) and `legal_name` (the
+// corpus' only uses are `company_legal_name`). Person names stay covered by the
+// first/last/middle/full/maiden/borrower phrases.
+//
+// DELIBERATELY OUT OF VOCABULARY: income, credit score, balances. They are GLBA
+// non-public information and worth a review, but they are the bulk of an
+// underwriting schema — including them would fire on most lending PRs and burn the
+// signal. Their §9 case stays human judgement.
+// -----------------------------------------------------------------------------
+
+/** Not columns, even though they share the `name: builder("sql_name")` shape. */
+const NON_COLUMN_BUILDERS = new Set([
+  "index", "uniqueIndex", "primaryKey", "foreignKey", "unique", "check",
+  "pgTable", "pgEnum", "relations", "sql", "pgSchema", "pgView", "customType",
+]);
+
+/**
+ * A Drizzle column declaration: `consentIp: varchar("consent_ip", { length: 45 }),`.
+ * A DENYLIST of builders rather than an allowlist of column types, so the repo's own
+ * custom helpers (`positiveCurrencyString`, `currencyString`, `lifecycleStatusEnum`
+ * — all real, all in use) count as columns without having to be enumerated. The
+ * denylist is what keeps the legacy object-form index out:
+ * `phoneIdx: index("user_phones_phone_idx").on(table.phone)` matches the shape and
+ * carries the vocabulary, and there are 11 such lines in the corpus today.
+ */
+const COLUMN_DECL = /^\s*([A-Za-z_$][\w$]*)\s*:\s*([A-Za-z_$][\w$]*)\s*(?:<[^>]*>)?\s*\(\s*["']([^"']+)["']/;
+const TABLE_DECL = /\bpgTable\s*\(\s*["']([^"']+)["']/;
+
+/** Matched against individual snake_case segments, so `zip_code` is not an `ip`. */
+const PII_SEGMENTS = new Set([
+  "ssn", "ssns", "dob", "phone", "phones", "email", "emails", "ip", "address",
+  "addresses", "consent", "itin", "tin", "passport", "birthdate", "birthday",
+]);
+/** Matched against the whole snake_case name. */
+const PII_PHRASES = [
+  /date_of_birth/, /birth_date/, /tax_id/, /account_number/, /routing_number/,
+  /card_number/, /(first|last|middle|full|maiden|borrower)_name/,
+  /drivers?_licen[cs]e/, /national_id/, /government_id/,
+];
+
+const toSnake = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+
+/** Does this column/table name carry identity, contact or consent vocabulary? */
+function isPiiName(name) {
+  const n = toSnake(String(name));
+  if (PII_PHRASES.some((r) => r.test(n))) return true;
+  return n.split(/[^a-z0-9]+/).some((seg) => PII_SEGMENTS.has(seg));
+}
+
+const isSchemaFile = (f) => /^shared\/schema\/.+\.ts$/.test(f);
+
+/**
+ * The declaration a diff line introduces, or null if it is not one.
+ * Returns both names: the SQL name is authoritative, but the JS identifier is
+ * checked too, so `phoneNumber: varchar("pn")` cannot hide behind a terse SQL name.
+ * (Over the current corpus the identifier check adds zero extra hits — pure
+ * coverage, no noise.)
+ */
+function parseDeclaration(line) {
+  const table = TABLE_DECL.exec(line);
+  if (table) return { kind: "table", names: [table[1]] };
+  const col = COLUMN_DECL.exec(line);
+  if (!col) return null;
+  const [, jsName, builder, sqlName] = col;
+  if (NON_COLUMN_BUILDERS.has(builder)) return null;
+  return { kind: "column", names: [sqlName, jsName], sqlName };
+}
+
+/**
+ * Triggers that need the whole diff rather than one line at a time.
+ * @type {{label:string, detect:(changedLines:{file:string,line:string,added:boolean}[])=>string|null}[]}
+ */
+const DIFF_TRIGGERS = [
+  {
+    label: "PII / consent column in shared/schema",
+    detect(changedLines) {
+      // SUPPRESSION. A column whose SQL name also appears on a REMOVED line
+      // somewhere in the diff already existed — the PR is editing or relocating it,
+      // not introducing PII. Keeping this off ordinary schema maintenance is what
+      // stops the guard being routed around.
+      //
+      // Diff-wide rather than per-file, and that was measured, not assumed:
+      // replaying the rule over the last 40 commits touching shared/schema/ fired
+      // on exactly two, both file-split refactors (63004f0 splitting
+      // underwriting.ts into five files, 00b83e4 splitting lending.ts into six).
+      // A split MOVES a PII column between files with no migration at all, so no
+      // new PII reaches the database and the removed counterpart sits in the old
+      // file. Per-file keying could not see that; diff-wide takes those two false
+      // positives to zero. What it concedes: a PR that drops a PII column from one
+      // table while adding a same-named one to another escapes the trigger.
+      const removed = new Set();
+      for (const { file, line, added } of changedLines) {
+        if (added || !isSchemaFile(file)) continue;
+        const decl = parseDeclaration(line);
+        if (decl?.kind === "column") removed.add(decl.sqlName);
+      }
+
+      for (const { file, line, added } of changedLines) {
+        if (!added || !isSchemaFile(file)) continue;
+        const decl = parseDeclaration(line);
+        if (!decl || !decl.names.some(isPiiName)) continue;
+        if (decl.kind === "column" && removed.has(decl.sqlName)) continue;
+        return `${file}: ${line.trim().slice(0, 80)}`;
+      }
+      return null;
+    },
+  },
+];
+
 /**
  * Which §9 areas this PR touches.
  *
  * @param {string[]} files          changed paths
- * @param {{file:string, line:string}[]} changedLines  added/removed diff lines
+ * @param {{file:string, line:string, added?:boolean}[]} changedLines  added/removed diff lines
  * @returns {{label:string, evidence:string}[]} deduped, one per triggered area
  */
 function detectTriggers(files, changedLines) {
@@ -84,6 +218,10 @@ function detectTriggers(files, changedLines) {
     for (const t of LINE_TRIGGERS) {
       if (t.match(line, file) && !hits.has(t.label)) hits.set(t.label, `${file}: ${line.trim().slice(0, 80)}`);
     }
+  }
+  for (const t of DIFF_TRIGGERS) {
+    const evidence = t.detect(changedLines);
+    if (evidence && !hits.has(t.label)) hits.set(t.label, evidence);
   }
 
   return [...hits].map(([label, evidence]) => ({ label, evidence }));
@@ -125,7 +263,15 @@ function hasReviewEvidence(body) {
   return { ok: true, reason: "" };
 }
 
-/** `git diff -U0` output -> the added/removed lines, tagged with their file. */
+/**
+ * `git diff -U0` output -> the added/removed lines, tagged with their file.
+ *
+ * `added` records the direction. The role-gate trigger deliberately ignores it —
+ * deleting a check is the dangerous direction — but the schema PII trigger needs it:
+ * a column being REMOVED is not new PII, and pairing the two directions is what lets
+ * it tell "introduced a phone column" from "edited the phone column that was
+ * already there".
+ */
 function parseChangedLines(diff) {
   const out = [];
   let file = "";
@@ -136,7 +282,7 @@ function parseChangedLines(diff) {
       continue;
     }
     if (/^(\+\+\+|---)/.test(line)) continue;
-    if (/^[+-]/.test(line) && file) out.push({ file, line: line.slice(1) });
+    if (/^[+-]/.test(line) && file) out.push({ file, line: line.slice(1), added: line[0] === "+" });
   }
   return out;
 }
@@ -204,8 +350,9 @@ function main() {
       "the outcome in the PR body under a `## Security review` heading — what you checked and\n" +
       "what you found, including 'no findings'. Unresolved CRITICAL findings block the merge.\n" +
       "\nThis check verifies the review was WRITTEN DOWN, not that it was correct. It also does\n" +
-      "not detect two §9 triggers at all — a shared/schema/ column holding PII, and a new PII\n" +
-      "sub-processor — so a green gate never means §9 is satisfied on those.\n" +
+      "not detect a new PII sub-processor at all, and its shared/schema/ PII detection matches a\n" +
+      "NAME VOCABULARY — a PII column named outside it still passes. A green gate never means\n" +
+      "§9 is satisfied on those.\n" +
       "See knowledge-base/governance/TEAM_PRACTICES.md §9.",
   );
   process.exit(1);

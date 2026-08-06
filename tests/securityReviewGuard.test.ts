@@ -139,6 +139,175 @@ describe("detectTriggers — content triggers", () => {
   });
 });
 
+// -----------------------------------------------------------------------------
+// §9's "any `shared/schema/` column holding PII" — previously a documented blind
+// spot: nothing covered shared/schema/**, so a PII column passed with ZERO triggers.
+//
+// The negatives here matter as much as the positives. A path trigger on
+// shared/schema/** would have been trivial to write and would have fired on every
+// rename, index and comment in a 3,146-column corpus — and §9's doctrine, learned
+// from the RESPONSE_BODY_LOG_ALLOWLIST false positive, is that a guard which
+// over-fires trains people to route around it.
+// -----------------------------------------------------------------------------
+type Line = { file: string; line: string; added: boolean };
+const added = (file: string, line: string): Line => ({ file, line, added: true });
+const removed = (file: string, line: string): Line => ({ file, line, added: false });
+const labels = (lines: Line[]) => detectTriggers([], lines).map((t: { label: string }) => t.label);
+const SCHEMA_PII = "PII / consent column in shared/schema";
+
+describe("detectTriggers — shared/schema PII columns", () => {
+  it("flags the case that exposed the blind spot: a user_phones table with TCPA consent provenance", () => {
+    // Verbatim shape of the branch that ran detectTriggers() and got "no §9
+    // triggers detected" — a phone number plus its consent provenance columns.
+    const lines = [
+      added("shared/schema/core.ts", 'export const userPhones = pgTable("user_phones", {'),
+      added("shared/schema/core.ts", '  phone: varchar("phone", { length: 40 }).notNull(),'),
+      added("shared/schema/core.ts", '  consentAt: timestamp("consent_at").notNull(),'),
+      added("shared/schema/core.ts", '  consentSource: varchar("consent_source", { length: 30 }),'),
+      added("shared/schema/core.ts", '  consentIp: varchar("consent_ip", { length: 45 }),'),
+    ];
+    expect(labels(lines)).toContain(SCHEMA_PII);
+  });
+
+  const piiColumns = [
+    '  ssnLast4: varchar("ssn_last4", { length: 4 }),',
+    '  dateOfBirth: date("date_of_birth"),',
+    '  emailAddress: varchar("email_address"),',
+    '  homePhone: varchar("home_phone", { length: 20 }),',
+    '  consentIp: varchar("consent_ip", { length: 45 }),',
+    '  ipAddress: varchar("ip_address", { length: 45 }),',
+    '  mailingAddress: text("mailing_address"),',
+    '  accountNumberLast4: varchar("account_number_last4", { length: 4 }),',
+    '  firstName: varchar("first_name"),',
+    '  routingNumber: varchar("routing_number"),',
+    '  taxId: varchar("tax_id"),',
+  ];
+  it.each(piiColumns)("flags a newly added PII column: %s", (line) => {
+    expect(labels([added("shared/schema/lending.ts", line)])).toContain(SCHEMA_PII);
+  });
+
+  it("flags a PII column declared with a repo-custom builder, not just varchar/text", () => {
+    // The rule denylists non-column builders rather than allowlisting column types,
+    // so `positiveCurrencyString` / `lifecycleStatusEnum` — real helpers in this
+    // schema — are still columns. An allowlist would have missed these silently.
+    const lines = [added("shared/schema/lending.ts", '  borrowerDob: lifecycleStatusEnum("borrower_dob"),')];
+    expect(labels(lines)).toContain(SCHEMA_PII);
+  });
+
+  it("flags via the JS identifier when the SQL name is terse", () => {
+    const lines = [added("shared/schema/leads.ts", '  consentIp: varchar("cip", { length: 45 }),')];
+    expect(labels(lines)).toContain(SCHEMA_PII);
+  });
+
+  // --- the negatives: what must NOT fire -------------------------------------
+
+  it("does NOT flag a non-PII column", () => {
+    const lines = [
+      added("shared/schema/lending.ts", '  sortOrder: integer("sort_order").notNull().default(0),'),
+      added("shared/schema/lending.ts", '  isArchived: boolean("is_archived").notNull().default(false),'),
+      added("shared/schema/lending.ts", '  zipCode: varchar("zip_code", { length: 10 }),'),
+    ];
+    // zip_code is the segment-matching proof: a substring rule would read the `ip`
+    // in "zip" and fire. Segments are split on `_`, so it does not.
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  it("does NOT flag a pure index or comment edit, even one naming a PII column", () => {
+    const lines = [
+      // Legacy object-form index — matches the `name: builder("...")` shape and
+      // carries the vocabulary. 11 such lines exist in the schema today.
+      added("shared/schema/core.ts", '    phoneIdx: index("user_phones_phone_idx").on(table.phone),'),
+      // Array-form index.
+      added("shared/schema/core.ts", '  (table) => [index("sms_opt_outs_phone_idx").on(table.phone)],'),
+      added("shared/schema/core.ts", "// Null until the user confirms ownership of their email."),
+      added("shared/schema/core.ts", "  /** consent_ip is the TCPA provenance for this row. */"),
+      added("shared/schema/core.ts", '  uniqueIndex("leads_email_unique").on(table.email),'),
+    ];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  it("does NOT flag editing a PII column that already existed", () => {
+    // Adding `.notNull()` to an existing phone column: the same SQL name appears on
+    // both sides of the diff, so nothing was introduced.
+    const lines = [
+      removed("shared/schema/core.ts", '  phone: varchar("phone", { length: 40 }),'),
+      added("shared/schema/core.ts", '  phone: varchar("phone", { length: 40 }).notNull(),'),
+    ];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  it("does NOT flag a file-split refactor that relocates PII columns between schema files", () => {
+    // Calibrated from real history: replaying this rule over the last 40 commits
+    // touching shared/schema/ fired on exactly two — 63004f0 (underwriting.ts ->
+    // five files) and 00b83e4 (lending.ts -> six). A split ships no migration, so
+    // no new PII reaches the database; the removed counterpart just sits in the
+    // other file. This is why the suppression is diff-wide, not per-file.
+    const lines = [
+      removed("shared/schema/lending.ts", '  ssnLast4: varchar("ssn_last4", { length: 4 }),'),
+      removed("shared/schema/lending.ts", '  homePhone: varchar("home_phone", { length: 20 }),'),
+      added("shared/schema/lendingUrla.ts", '  ssnLast4: varchar("ssn_last4", { length: 4 }),'),
+      added("shared/schema/lendingUrla.ts", '  homePhone: varchar("home_phone", { length: 20 }),'),
+    ];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  it("still fires when a split ALSO introduces a genuinely new PII column", () => {
+    const lines = [
+      removed("shared/schema/lending.ts", '  homePhone: varchar("home_phone", { length: 20 }),'),
+      added("shared/schema/lendingUrla.ts", '  homePhone: varchar("home_phone", { length: 20 }),'),
+      added("shared/schema/lendingUrla.ts", '  consentIp: varchar("consent_ip", { length: 45 }),'),
+    ];
+    expect(labels(lines)).toContain(SCHEMA_PII);
+  });
+
+  it("does NOT flag a REMOVED PII column — dropping one is not new PII", () => {
+    const lines = [removed("shared/schema/core.ts", '  phone: varchar("phone", { length: 40 }),')];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  it("does NOT flag a PII-shaped line outside shared/schema/", () => {
+    const lines = [
+      added("server/services/leadService.ts", '  const consentIp = req.ip;'),
+      added("migrations/0042_user_phones.sql", '  consent_ip varchar(45),'),
+      added("tests/leads.test.ts", '  phone: varchar("phone"),'),
+    ];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  it("reports the schema trigger once even when many PII columns land together", () => {
+    const lines = [
+      added("shared/schema/core.ts", '  phone: varchar("phone"),'),
+      added("shared/schema/core.ts", '  email: varchar("email"),'),
+      added("shared/schema/leads.ts", '  consentIp: varchar("consent_ip"),'),
+    ];
+    expect(detectTriggers([], lines).filter((t: { label: string }) => t.label === SCHEMA_PII)).toHaveLength(1);
+  });
+
+  it("cites the offending line as evidence, so the failure names the column", () => {
+    const lines = [
+      added("shared/schema/lending.ts", '  sortOrder: integer("sort_order"),'),
+      added("shared/schema/lending.ts", '  borrowerSsn: text("borrower_ssn_encrypted"),'),
+    ];
+    const hit = detectTriggers([], lines).find((t: { label: string }) => t.label === SCHEMA_PII);
+    expect(hit.evidence).toContain("borrower_ssn_encrypted");
+  });
+
+  it("fires end-to-end from a real `git diff -U0` payload, not just hand-built lines", () => {
+    // The parseChangedLines -> detectTriggers seam is where an added/removed mixup
+    // would hide, so exercise it with the diff text CI actually pipes in.
+    const diff = [
+      "diff --git a/shared/schema/core.ts b/shared/schema/core.ts",
+      "--- a/shared/schema/core.ts",
+      "+++ b/shared/schema/core.ts",
+      "@@ -110,0 +111,3 @@",
+      '+  consentIp: varchar("consent_ip", { length: 45 }),',
+      '+  consentSource: varchar("consent_source", { length: 30 }),',
+      "-  legacyFlag: boolean(\"legacy_flag\"),",
+    ].join("\n");
+    expect(labels(parseChangedLines(diff))).toContain(SCHEMA_PII);
+  });
+});
+
 describe("parseChangedLines", () => {
   it("tags added/removed lines with their file and drops headers", () => {
     const diff = [
@@ -150,8 +319,8 @@ describe("parseChangedLines", () => {
       "-const old = 1;",
     ].join("\n");
     expect(parseChangedLines(diff)).toEqual([
-      { file: "server/auth.ts", line: 'import { requireRole } from "./roles";' },
-      { file: "server/auth.ts", line: "const old = 1;" },
+      { file: "server/auth.ts", line: 'import { requireRole } from "./roles";', added: true },
+      { file: "server/auth.ts", line: "const old = 1;", added: false },
     ]);
   });
 
