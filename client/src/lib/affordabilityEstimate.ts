@@ -1,3 +1,4 @@
+import { annuityFactor, monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 /**
  * Pure "what could I afford" estimate math — front/back-end DTI against
  * income and debts, back-solved to a max home price. Estimate-only (see
@@ -74,15 +75,8 @@ export function calculateAffordabilityEstimate(
 
   const availableForPI = maxMonthlyPayment - hoaMonthly;
 
-  let maxLoanAmount = 0;
-  if (monthlyRate > 0) {
-    const factor =
-      (Math.pow(1 + monthlyRate, numPayments) - 1) /
-      (monthlyRate * Math.pow(1 + monthlyRate, numPayments));
-    maxLoanAmount = (availableForPI / (1 + monthlyTaxInsuranceRate * factor)) * factor;
-  } else {
-    maxLoanAmount = (availableForPI * numPayments) / (1 + monthlyTaxInsuranceRate * numPayments);
-  }
+  const factor = annuityFactor(interestRate, numPayments);
+  const maxLoanAmount = (availableForPI / (1 + monthlyTaxInsuranceRate * factor)) * factor;
 
   const minDownPaymentPercent = creditScore >= 740 ? 0.03 : creditScore >= 680 ? 0.05 : 0.1;
 
@@ -95,11 +89,7 @@ export function calculateAffordabilityEstimate(
   const requiredDownPayment = maxHomePrice * minDownPaymentPercent;
 
   const loanAmount = maxHomePrice - requiredDownPayment;
-  const monthlyPI =
-    monthlyRate > 0
-      ? (loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments))) /
-        (Math.pow(1 + monthlyRate, numPayments) - 1)
-      : loanAmount / numPayments;
+  const monthlyPI = monthlyPrincipalAndInterest(loanAmount, interestRate, numPayments);
 
   const monthlyTax = (maxHomePrice * propertyTaxRate) / 100 / 12;
   const monthlyInsurance = (maxHomePrice * insuranceRate) / 100 / 12;

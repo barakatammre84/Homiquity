@@ -1,3 +1,4 @@
+import { annuityFactor } from "@shared/lib/amortization";
 export interface CreditTier {
   id: string;
   label: string;
@@ -63,10 +64,7 @@ export function computeTierResult(
   const n = loanTermYears * 12;
   const d = tier.minDownPaymentPct;
 
-  const factor =
-    monthlyRate > 0
-      ? (Math.pow(1 + monthlyRate, n) - 1) / (monthlyRate * Math.pow(1 + monthlyRate, n))
-      : n;
+  const factor = annuityFactor(tier.interestRate, n);
 
   const tiRate = (propertyTaxRate + insuranceRate) / 100 / 12;
   const pmiMonthly = d < 0.2 ? tier.pmiAnnualRate / 100 / 12 : 0;
