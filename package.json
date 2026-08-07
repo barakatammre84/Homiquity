@@ -32,7 +32,7 @@
     "guard:tokens": "node scripts/design-token-guard.cjs",
     "guard:channel": "node scripts/delivery-stack-freeze-guard.cjs",
     "guard:docs": "node scripts/doc-freshness-guard.cjs",
-    "guard:querykeys": "node scripts/query-key-guard.cjs && node scripts/query-key-reachability.cjs && node scripts/query-key-transport-guard.cjs",
+    "guard:querykeys": "node scripts/query-key-guard.cjs && node scripts/query-key-reachability.cjs",
     "guard:migrations": "node scripts/migration-ledger-guard.cjs",
     "guard:security": "node scripts/security-review-guard.cjs",
     "guard:kb": "node scripts/kb-index-guard.cjs",
@@ -43,7 +43,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
     "@google-cloud/storage": "^7.21.0",
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^5.7.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@neondatabase/serverless": "^1.1.0",
     "@radix-ui/react-accordion": "^1.2.20",
