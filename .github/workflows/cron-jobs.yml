@@ -83,6 +83,22 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           JOB: ${{ steps.resolve.outputs.job }}
+          # The RAILWAY service domain, deliberately NOT www.homiquity.com.
+          #
+          # This call is machine-to-machine — no human ever sees it — so there is
+          # nothing to gain from the vanity hostname and one thing to lose:
+          # www.homiquity.com is a CNAME in a Squarespace-hosted zone
+          # (nsd1..nsd4.squarespacedns.com) that is neither Railway-managed nor
+          # in this repo. On 2026-08-06, while that zone was being edited, three
+          # sweeps died on `curl` exit 6 — could not resolve host — and because
+          # this job has no failure alarm, nothing said so.
+          #
+          # *.up.railway.app is served and certificated by the platform the app
+          # actually runs on, so the scheduler no longer depends on a third
+          # party's DNS to reach a service in the same provider. Keep
+          # www.homiquity.com for user-facing traffic and for the CI
+          # verify-deploy probe, which is SUPPOSED to prove the public path.
+          SWEEP_HOST: https://homiquity-production.up.railway.app
         run: |
           if [ -z "$CRON_SECRET" ]; then
             echo "::error::CRON_SECRET repository secret is not set — sweep NOT triggered (founder: create it with the same value as the app env var)"
@@ -91,6 +107,13 @@ jobs:
           # -f fails the step on any HTTP >= 400; --retry re-attempts curl's
           # transient set (timeouts, 429, 5xx) so a deploy-window blip does
           # not surface as a missed sweep.
-          curl -sf --retry 3 --max-time 120 \
+          #
+          # `--retry-all-errors` is what covers DNS. curl's default retry set is
+          # transient HTTP + timeouts; a resolution failure exits 6 IMMEDIATELY
+          # with no retry, which is exactly how three sweeps were lost on
+          # 2026-08-06 (runs 31109129025 rate-lock-alerts, 31113006591
+          # letter-expiry, 31115455014 lifecycle — all `exit code 6`, all in
+          # ~15s). Belt and braces alongside the host change below.
+          curl -sf --retry 3 --retry-all-errors --max-time 120 \
             -H "Authorization: Bearer ${CRON_SECRET}" \
-            "https://www.homiquity.com/api/jobs/${JOB}"
+            "${SWEEP_HOST}/api/jobs/${JOB}"

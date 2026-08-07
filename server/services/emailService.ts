@@ -12,6 +12,7 @@ const FROM_NAME = process.env.FROM_NAME || "Homiquity Mortgage";
 
 const isSendGridConfigured = !!SENDGRID_API_KEY;
 const isSmtpConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
+const isProduction = process.env.NODE_ENV === "production";
 
 let transporter: Transporter | null = null;
 
@@ -35,7 +36,52 @@ if (isSmtpConfigured) {
 }
 
 if (!isSendGridConfigured && !isSmtpConfigured) {
-  console.log("[Email] No email provider configured — emails will be logged to console");
+  if (isProduction) {
+    // Deliberately console.error, not console.log. Until 2026-08-06 this was an
+    // informational line and the console fallback below returned `true`, so an
+    // unprovisioned production host looked identical to a healthy one: password
+    // resets, verification links, waitlist invites and application notifications
+    // were all constructed, dropped, and reported as sent. That was harmless
+    // while the site was gated; opening the funnel to the public made it a
+    // silent data-loss path with no caller and no log able to detect it.
+    console.error(
+      "[Email] NO EMAIL PROVIDER CONFIGURED — outbound email is DISABLED in production. " +
+        "Password resets, email verification, waitlist invites and application notifications " +
+        "will NOT be delivered. Set SENDGRID_API_KEY (or SMTP_HOST/SMTP_USER/SMTP_PASS) on the host. " +
+        "Probe from outside with GET /api/health → email.configured.",
+    );
+  } else {
+    console.log("[Email] No email provider configured — emails will be logged to console");
+  }
+}
+
+/**
+ * Which providers this process can actually send through, for `GET /api/health`.
+ *
+ * Booleans and provider names only — never key material, and never the
+ * from-address. The health response body is on `RESPONSE_BODY_LOG_ALLOWLIST`
+ * in server/app.ts, so everything returned here is written to the request log
+ * on every probe; it has to stay safe to log and safe to serve unauthenticated.
+ */
+export function emailProviderStatus(): { configured: boolean; providers: string[] } {
+  const providers: string[] = [];
+  if (isSendGridConfigured) providers.push("sendgrid");
+  if (isSmtpConfigured) providers.push("smtp");
+  return { configured: providers.length > 0, providers };
+}
+
+/**
+ * `a****z@example.com` — enough to correlate a dropped send with a support
+ * report, not enough to make the production log a borrower-contact dump. The
+ * dev-only console fallback prints the address in full; production never does.
+ */
+function maskEmail(address: string): string {
+  const at = address.lastIndexOf("@");
+  if (at <= 0) return "[redacted]";
+  const local = address.slice(0, at);
+  const domain = address.slice(at);
+  if (local.length <= 2) return `${local[0]}*${domain}`;
+  return `${local[0]}${"*".repeat(local.length - 2)}${local[local.length - 1]}${domain}`;
 }
 
 interface EmailOptions {
@@ -113,7 +159,19 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     }
   }
 
-  // No provider configured — log to console (development).
+  // No provider configured. In development that's the expected state and the
+  // console IS the mailbox, so report success. In production nothing was sent
+  // and nothing will retry — returning `true` there is the lie that kept this
+  // invisible, so tell the caller the truth and leave a loud, greppable line.
+  // The body is never logged in production (it carries borrower names, amounts
+  // and single-use reset tokens); the address is masked for the same reason.
+  if (isProduction) {
+    console.error(
+      `[Email] DISCARDED — no provider configured. to=${maskEmail(message.to)} subject="${message.subject}"`,
+    );
+    return false;
+  }
+
   console.log(`[Email][DEV] To: ${message.to}`);
   console.log(`[Email][DEV] Subject: ${message.subject}`);
   console.log(`[Email][DEV] Body preview: ${(message.text || "").substring(0, 200)}...`);
@@ -719,8 +777,17 @@ export function sendNotificationEmail(mapping: NotificationEmailMapping): void {
 
   if (email) {
     email.to = recipientEmail;
-    sendEmail(email).catch((err) => {
-      console.error(`[Email] Fire-and-forget error for ${type}:`, err);
-    });
+    // Fire-and-forget by design: a notification must never fail the operation
+    // that triggered it. That makes this the one call path where a `false` has
+    // no caller to react to it, so the failure is recorded here — with the
+    // notification type, which sendEmail() cannot know — or it is recorded
+    // nowhere at all.
+    sendEmail(email)
+      .then((sent) => {
+        if (!sent) console.error(`[Email] Notification not delivered: type=${type}`);
+      })
+      .catch((err) => {
+        console.error(`[Email] Fire-and-forget error for ${type}:`, err);
+      });
   }
 }

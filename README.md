@@ -5,8 +5,8 @@ collection, deterministic underwriting, MISMO 3.4 packaging, and delivery of com
 loan files to wholesale lenders. Deployed at <https://www.homiquity.com> (Railway — one persistent
 Node process serving both the API and the static client; `www` is the canonical host).
 
-**Current status (2026-07-19): company NMLS licensure is real — NMLS #427468, Illinois
-(`shared/companyIdentity.ts`, #154/#201) — and the site remains in pre-launch gated mode
+**Current status (2026-08-06): company NMLS licensure is real — NMLS #427468, Illinois
+(IL Residential Mortgage License #3423789 — `shared/companyIdentity.ts`, #154/#201/#419) — and the site remains in pre-launch gated mode
 pending the founder go-live flips.** The public site is live in production behind the
 **pre-launch gate** (`server/services/prelaunchGate.ts` — flag-driven, with a fail-safe
 that re-gates production if the NMLS id ever reads `PENDING`), so a stranger reaches

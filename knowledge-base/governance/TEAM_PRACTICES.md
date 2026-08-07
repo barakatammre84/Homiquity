@@ -92,11 +92,12 @@ Practically:
    same commit** — no citation, no code change. Never invent MISMO names (see
    [CLAUDE.md](../../CLAUDE.md) compliance-first rules).
 6. Schema changes are **hand-authored** SQL in `migrations/` (drizzle-kit generate has
-   snapshot drift). Never `npm run db:push` from a worktree — the shared dev DB serves
-   multiple branches and push drops other branches' columns. Full gotcha doctrine:
-   [.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md) — note that
-   `.agents/memory/` is in-repo agent memory, visible to every session; check it before
-   fighting a known battle.
+   snapshot drift). Never `pnpm db:push` from a worktree — the shared dev DB serves
+   multiple branches and push drops other branches' columns. Since #251 `db:push` and
+   `db:generate` are exit-1 stubs that print this doctrine, and `--force` would additionally
+   drop the `sessions` table (created by the session store, not `shared/schema/`), logging out
+   every user. Use targeted `ALTER TABLE … ADD COLUMN IF NOT EXISTS`. Full doctrine:
+   [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md) and CLAUDE.md.
 7. New or changed environment variables land in `.env.example` **and** the env-var list in
    [CICD.md](../runbooks/CICD.md) in the same PR — production values live as **Railway service
    variables** (Railway → project *Homiquity* → service *Homiquity* → Variables).
@@ -116,10 +117,11 @@ Practically:
 ### Known traps index (check before fighting a known battle)
 
 The trap doctrine lives where it lives — this is the one-stop pointer list. A newly
-discovered trap gets a line here (or a file in `.agents/memory/`) in the same PR.
+discovered trap gets a line here in the same PR.
 
-- **`npm run db:push` from a worktree** drops other branches' columns on the shared dev DB;
-  never `--force` — [.agents/memory/db-push-blocker.md](../../.agents/memory/db-push-blocker.md).
+- **`pnpm db:push` from a worktree** drops other branches' columns on the shared dev DB, and
+  `--force` also drops `sessions` (logging out every user); it is an exit-1 stub for that reason
+  — [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md).
 - **`drizzle-kit generate` has snapshot drift** in this repo — hand-author migration SQL
   (point 6 above; [CLAUDE.md](../../CLAUDE.md) database rules).
 - **Prod migrations are auto-applied by CI — never hand-apply.** The `migrate-prod` job
@@ -246,12 +248,28 @@ PR body (part of the §5.8 contract).
 - **PII vault / field encryption:** `server/services/ssnVault.ts`,
   `server/services/piiVault.ts`, `server/services/encryptionService.ts`, or any
   `shared/schema/` column holding PII.
-- **Auth & sessions:** `server/auth.ts`, `server/socialAuth.ts`, `server/integrations/auth/`.
+- **Auth & sessions:** `server/auth.ts`, `server/socialAuth.ts`, `server/integrations/auth/`,
+  `server/services/accountRecovery.ts` (mints password-reset tokens).
 - **Role/permission gates** (`isAdmin`, `requireRole`, staff scoping) and per-resource
   ownership checks on borrower data.
 - **Uploads / object storage:** `server/integrations/object_storage/`, `shared/uploads.ts`.
 - **Outbound messaging:** `server/services/emailService.ts`,
-  `server/services/smsCompliance.ts`, webhook receivers under `/api/webhooks/*`.
+  `server/services/smsCompliance.ts`.
+- **Webhook receivers and the code that authenticates them:** receivers under
+  `/api/webhooks/*`, **and** `server/services/twilioSignature.ts` /
+  `server/services/twilioMessageStatus.ts`. *(Added 2026-08-06: coverage was inverted —
+  the route was a trigger but the service it delegates to was not, so the signature check
+  that IS the auth boundary could be weakened without tripping the gate. #433 was that bug:
+  the inbound SMS webhook trusted anyone who found the URL. **A path trigger must cover the
+  delegate, not just the caller.**)*
+- **Request identity & trust boundary:** `server/clientIp.ts`, `server/trustProxy.ts`.
+  *(Added 2026-08-06. These exist only because Railway's edge sends `X-Real-IP`, not
+  `X-Forwarded-For`, leaving `req.ip` as a shared internal address (#436). They are §9 not
+  for what they are but for what consumes them: `rateLimitKey` (abuse control) and
+  `clientIpForRecord`, which is written to every audit row **and** to `consentIp` in
+  `server/routes/leads.ts` — the TCPA consent provenance. A wrong change here bypasses rate
+  limiting and falsifies legal consent evidence.)*
+- **Rate-limit policy:** `server/services/rateLimitPolicy.ts`.
 - **Logging near PII:** any widening of `RESPONSE_BODY_LOG_ALLOWLIST` in `server/app.ts`.
 **Partly enforced by the gate.** `pnpm guard:security`
 ([`scripts/security-review-guard.cjs`](../../scripts/security-review-guard.cjs)) fails the PR
@@ -263,6 +281,14 @@ requiring code-owner review would deadlock every §9 PR). And it cannot see the 
 triggers below — a `shared/schema/` PII column and a new PII sub-processor need someone to
 know which columns are PII and which vendors are processors. **A green gate is not evidence
 that §9 is satisfied on those two.** The rule binds whether or not the script fires.
+
+**Keep the triggers narrow.** Every path above is named because a wrong change to *that
+file* has a specific, statable cost. Do not widen them into globs (`server/services/*`):
+the gate proves a review was written down, so a trigger that fires on everything converts
+the review section into pasted boilerplate and makes the artifact worth less than it is
+now. **Audit coverage by running `detectTriggers()` against the security-critical files
+that actually exist — not by re-reading this list**, which is how the two 2026-08-06 gaps
+were found after the Railway cutover created them.
 
 - **New PII sub-processor:** any PR that introduces or activates an external service
   receiving borrower PII (storage, OCR/extraction, income/asset verification, transcript

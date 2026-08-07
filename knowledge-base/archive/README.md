@@ -21,6 +21,7 @@ runs cite earlier ones), which is why they moved as one unit rather than pieceme
 
 | File | Archived | Why |
 |---|---|---|
+| [roadmap/CTO_ROADMAP_2026-08-06.md](./roadmap/CTO_ROADMAP_2026-08-06.md) | 2026-08-06 | The pre-rewrite roadmap, whole: 79 closed items with their closure reasoning, plus the two frozen status boxes. The live file was rewritten as a lean launch queue (96 KB → 17 KB) because ~71% of its bytes were narratives about finished work and the open items had become unfindable. Four corrections are recorded in its banner rather than applied to the text |
 | [ux-audit/](./ux-audit/) | 2026-08-06 | The UX daily-loop routine is dead (last run 2026-07-16). It also sat under `logs/`, declared immutable, while describing a routine that rewrote its own artifacts daily. Its own exec-summary names the successor: `feature-review/FINDINGS.md` |
 | [LAUNCH_READINESS_CHECKLIST.md](./LAUNCH_READINESS_CHECKLIST.md) | 2026-07-04 | Feb-2026 Replit-era checklist; superseded by the CTO_ROADMAP.md launch sprint |
 | [INFRASTRUCTURE_RISKS.md](./INFRASTRUCTURE_RISKS.md) | 2026-07-04 | Feb-2026 findings since fixed (fail-closed encryption, versioned migrations) |

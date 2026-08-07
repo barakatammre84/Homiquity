@@ -112,8 +112,9 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 ### Archive — obsolete, quarantined · [`archive/`](./archive/)
 Superseded docs kept for provenance. Never act on these. Includes the launch-era
 operational logs quarantined 2026-07-08: [archive/founder-routines/](archive/founder-routines/),
-[archive/lo-audit/](archive/lo-audit/), [archive/assessments/](archive/assessments/); and the dead
-UX-audit routine archived 2026-08-06: [archive/ux-audit/](archive/ux-audit/).
+[archive/lo-audit/](archive/lo-audit/), [archive/assessments/](archive/assessments/); the dead
+UX-audit routine archived 2026-08-06: [archive/ux-audit/](archive/ux-audit/); and the
+pre-rewrite roadmap: [archive/roadmap/](archive/roadmap/).
 
 ## The rule (continuous update)
 

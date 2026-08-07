@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiRequest } from "@/lib/queryClient";
 
 interface PricingBreakdown {
   finalRate: number;
@@ -32,10 +31,6 @@ export function RateBreakdown({ optionId }: { optionId: string }) {
   const [open, setOpen] = useState(false);
   const { data, isLoading } = useQuery<PricingBreakdown>({
     queryKey: ["/api/loan-options", optionId, "pricing-breakdown"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/loan-options/${optionId}/pricing-breakdown`);
-      return res.json();
-    },
     enabled: open,
     staleTime: 60_000,
   });

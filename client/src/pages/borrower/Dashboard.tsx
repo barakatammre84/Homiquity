@@ -131,7 +131,7 @@ export default function Dashboard() {
   // the selection is resolved once here (tolerant of not-yet-loaded data) and
   // reused after the guards; the Autopilot hook re-subscribes when the id changes.
   const { activeApplication, selectApplication } = useActiveApplication(data?.applications ?? []);
-  const autopilotStatus = useAutopilotStatus(activeApplication?.id);
+  const autopilot = useAutopilotStatus(activeApplication?.id);
 
   // Journey detail lines: milestone dates + doc/condition counters from the
   // pipeline payload, plus the closing-prep transparency task. Both queries
@@ -295,7 +295,11 @@ export default function Dashboard() {
                 {fileHealth === "action" && (
                   <span
                     className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2 py-0.5 text-[11px] font-medium text-warning-subtle-foreground"
-                    title={activePreUw?.flags?.map((f) => f.reason).join(" ")}
+                    // Never the raw flag reasons: they carry staff-side signal prose
+                    // (creditor names, balances, what-if DTI figures) computed over
+                    // unverified data — the C2 class barred from borrower surfaces.
+                    // Staff see the full flags on the BorrowerFile panels.
+                    title="Automated review found items to address — your loan team will guide you through them"
                     data-testid="chip-file-action-needed"
                   >
                     <AlertTriangle className="h-3 w-3" />
@@ -450,7 +454,9 @@ export default function Dashboard() {
 
         {/* Autopilot live status banner (Phase 4) — three real-time states +
             package-readiness meter. Renders only when a status exists. */}
-        {activeApplication && <AutopilotBanner status={autopilotStatus} />}
+        {activeApplication && (
+          <AutopilotBanner status={autopilot.status} live={autopilot.live} />
+        )}
 
         {/* SECONDARY — full-width detail stack below the grid (collapsed by default) */}
         <div className="mt-6 space-y-4">

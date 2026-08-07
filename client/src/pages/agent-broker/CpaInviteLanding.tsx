@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getPublicQueryFn } from "@/lib/queryClient";
 import { Building2, ShieldCheck, ArrowRight, Home, ReceiptText, Lock } from "lucide-react";
 
 /**
@@ -35,12 +35,13 @@ export default function CpaInviteLanding() {
   const { toast } = useToast();
   const [applied, setApplied] = useState(false);
 
+  // `getPublicQueryFn`: the route is unauthenticated
+  // (server/routes/cpaPartners.ts:134) and this page is the first thing a
+  // signed-out visitor sees, so a 401 must never bounce them to /login. The
+  // key already resolves to this exact URL, so no second spelling is needed.
   const { data, isLoading, error } = useQuery<CpaValidation>({
     queryKey: ["/api/cpa/validate", code],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/cpa/validate/${code}`);
-      return res.json();
-    },
+    queryFn: getPublicQueryFn<CpaValidation>(),
     enabled: !!code,
   });
 
