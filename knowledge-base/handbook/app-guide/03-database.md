@@ -81,7 +81,7 @@
    `pnpm db:migrate` and test.
 3. From a **worktree**, never `pnpm db:push` against the shared dev DB — it
    drops other branches' columns; use targeted `ALTER TABLE` statements instead
-   ([.agents/memory/db-push-blocker.md](../../../.agents/memory/db-push-blocker.md)).
+   ([DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md)).
 4. Ship the migration **and its `migrations/meta/_journal.json` entry in the same
    PR** as the schema change — `pnpm guard:schema` runs in the required CI gate
    and goes RED otherwise. On merge, the **`migrate-prod` CI job auto-applies it

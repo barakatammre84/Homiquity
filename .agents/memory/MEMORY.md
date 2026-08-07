@@ -1,5 +1,0 @@
-- [db:push interactive blocker](db-push-blocker.md) — drizzle-kit push can hang on a pre-existing unrelated destructive prompt; apply your own columns via idempotent ALTER instead of --force.
-- [MISMO co-applicant model](mismo-coapplicant-model.md) — URLA tables are single-row-per-application; borrowerSequenceNumber discriminates co-applicants, hmdaDemographics keyed by borrowerId.
-- [Lookup matrix engine](lookup-matrix-engine.md) — underwriting/pricing reads all policy numbers from Postgres matrices; resolveMatrixValue throws loud for decisioning, tryResolveMatrixValue→null only for display.
-- [Integration test auth](integration-test-auth.md) — session cookie is secure:true; HTTP tests must send `X-Forwarded-Proto: https` on login + every authed request to get/send connect.sid.
-- [Social OAuth gotchas](social-oauth.md) — custom flow in server/socialAuth.ts; Apple needs ES256 JWT secret + SameSite=None state cookie + CSRF exempt on /api/auth/*/callback; per-env redirect URIs.

@@ -12,7 +12,7 @@
 **Server & environment**
 - Run the app locally: `pnpm dev` → http://localhost:5001 (worktree test servers use 5002).
   - *Gotcha:* if `pnpm` isn't on PATH, temporarily set `.claude/launch.json` to `npm run dev`, then revert before committing.
-- Record on **dev**, where the full marketing site and authed surfaces render. In production the site is in **pre-license gated mode** (a stranger sees only education + waitlist until NMLS licensing lands), so don't record prod for the funnel.
+- Record on **dev**, where the full marketing site and authed surfaces render. In production the site is in **pre-license gated mode** (a stranger sees only education + waitlist until the founder flips the pre-launch gate; licensing already landed), so don't record prod for the funnel.
 - Sign in to authed surfaces via **`/test-login`** (dev only; 404s in prod). Use the role picker:
   - **Borrower** → the buyer demo account (`active_buyer`) for intake, pre-approval, documents.
   - **Loan Officer / Underwriter** → for the pipeline, the MISMO package, and lender submission.
@@ -25,7 +25,7 @@
 - 1920×1080 capture, browser at 100% zoom, clean tab bar, notifications off.
 
 **Narration honesty rails (say these accurately)**
-- Licensing is **in progress** — frame the platform as *credential-ready*, not licensed.
+- The company **is licensed** — NMLS #427468, Illinois. Frame it as *licensed and credential-ready*. Do not claim a multi-state footprint: Illinois only.
 - Credit, DU/LPA, AVM, and lender submission run as **deterministic simulations behind production adapters** today; they **switch to live the day we're credentialed** — the seam is already built. Present this as a *strength* (fast onboarding), never claim a live vendor call.
 - The engine **validates**, it does not **approve**; **AI extracts and structures, it never decides.** Don't say "approved" or "qualified."
 
@@ -129,7 +129,7 @@
 | **Screen / route** | Return to `/` (or cut to the deck's closing "ask" slide) |
 | **Role** | — |
 | **On-screen** | Clean brand frame. |
-| **Narration (VO)** | "The platform is built and validated end to end. We're completing NMLS licensing now, and the integration seams are already in place — going live is configuration, not a rebuild. Credential us on your TPO channel, and let's run a live pilot the day it clears." |
+| **Narration (VO)** | "The platform is built and validated end to end. We're licensed — NMLS 427468, Illinois — and the integration seams are already in place — going live is configuration, not a rebuild. Credential us on your TPO channel, and let's run a live pilot the day it clears." |
 | **Capture** | End card: *Homiquity Mortgage Corporation · Credential us on your TPO channel · support@homiquity.com · [contact — TODO].* Veteran-founded mark. |
 
 ---
@@ -140,7 +140,7 @@
 - **Pace:** 1.0–1.1× on the click-throughs; pause on Scene 5 (the read) and Scene 8 (the MISMO XML) — those are the "aha" beats.
 - **Music:** low, neutral, corporate — under the VO.
 - **Export:** 1080p, MP4/H.264. Keep a captioned and a clean cut.
-- **Honesty check before publishing:** scrub the VO for the words "approved," "qualified," or any live-vendor claim — replace with "validated / pre-approval read / behind a production adapter." Confirm no NMLS number is shown (it prints only once issued).
+- **Honesty check before publishing:** scrub the VO for the words "approved," "qualified," or any live-vendor claim — replace with "validated / pre-approval read / behind a production adapter." Confirm the NMLS number shown is 427468.
 
 ## One-page shot checklist
 1. `/` hero — 2. `/first-time-buyer`, `/va-loans`, `/calculators`, `/approval-strength` — 3. `/test-login`→Borrower, `/dashboard`, `/onboarding`, `/urla-form` — 4. `/documents`, `/verification`, `/identity-verification` — 5. `/apply`, `/application-summary` — 6. `/loan-options/<id>`, `/compare-offers/<id>`, `/loan-estimate/<id>` — 7. `/test-login`→LO, `/staff-dashboard`, `/pipeline-queue`, `/lo-command-center` — 8. `/borrower-file/<id>` → **Export MISMO** → open XML — 9. `/lo-command-center` → Submission Readiness dialog → **Run DU / LPA** → submit → status — 10. `/compliance` — 11. `/` end card.

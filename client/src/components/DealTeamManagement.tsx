@@ -115,20 +115,15 @@ export function DealTeamManagement({ applicationId }: DealTeamManagementProps) {
   const [externalPhone, setExternalPhone] = useState("");
   const [externalCompany, setExternalCompany] = useState("");
 
+  // No queryFn on either: the key IS the request. Both hand-written ones
+  // restated the exact URL `buildQueryUrl` already derives from the key — a
+  // second spelling that can only ever drift from the first.
   const { data: team, isLoading: teamLoading } = useQuery<DealTeamMember[]>({
     queryKey: applicationResourceKeys.team(applicationId),
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/applications/${applicationId}/team`);
-      return res.json();
-    },
   });
 
   const { data: availableStaff } = useQuery<StaffMember[]>({
     queryKey: ["/api/available-staff"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/available-staff");
-      return res.json();
-    },
   });
 
   const addMemberMutation = useMutation({
