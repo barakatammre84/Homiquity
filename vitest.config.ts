@@ -33,6 +33,7 @@ export default defineConfig({
       "tests/rateProductHeadings.test.ts",
       "tests/migrationLedgerGuard.test.ts",
       "tests/securityReviewGuard.test.ts",
+      "tests/userPhones.test.ts",
       "tests/dependabotReactGrouping.test.ts",
       "tests/loCommsLint.test.ts",
       "tests/borrowerConditionView.test.ts",
