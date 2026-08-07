@@ -413,6 +413,14 @@ export function registerPartnerRoutes(app: Express, storage: IStorage) {
       const persona = WAITLIST_PERSONA[row.partnerType];
       const joinUrl = `${baseUrlOf(req)}/partners/join${persona ? `?persona=${persona}` : ""}`;
       const template = emailTemplates.partnerWaitlistInvite(row.name, joinUrl);
+      // `emailSent` is now the real delivery result — sendEmail returned `true`
+      // unconditionally when no provider was configured until 2026-08-06, which
+      // is how this audit entry came to record delivery for mail that reached
+      // nobody. NOTE the ordering above: markPartnerWaitlistInvited has already
+      // stamped `invitedAt`, so a failed send leaves the row marked invited and
+      // this audit metadata is the only honest record of what happened.
+      // Reordering the write is a separate change with its own double-send
+      // tradeoff, so it is deliberately not made here.
       const emailSent = await sendEmail({ ...template, to: row.email });
       logAudit(req, "partner_waitlist.invited", "partner_waitlist", row.id, {
         partnerType: row.partnerType,

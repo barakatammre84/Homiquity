@@ -193,6 +193,13 @@ export default defineConfig({
       "tests/documentChecklist.test.ts",
       "tests/documentUploadTerminalGuard.test.ts",
       "tests/complianceScore.test.ts",
+      // Appended at the END, not at the top anchor. #440 and #443 both went
+      // stale without merging because every concurrent PR inserted its entry
+      // just after "tests/accessControl.test.ts", so each one conflicted with
+      // whichever sibling merged first. The list is an explicit allowlist by
+      // design — an unlisted test file is silently never run — so the fix is
+      // to stop contending for one line, not to replace it with a glob.
+      "tests/emailProviderObservability.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
