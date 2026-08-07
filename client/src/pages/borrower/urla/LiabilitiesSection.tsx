@@ -25,6 +25,9 @@ export function LiabilitiesSection({ liabilities, onChange }: LiabilitiesSection
               thorough here prevents surprises during underwriting; nothing on this list
               disqualifies you.
             </CardDescription>
+            {liabilities.some((l) => l.__isDraft) && (
+              <p className="text-xs text-muted-foreground mt-1">Draft = saved but not counted until completed.</p>
+            )}
           </div>
           <Button
             variant="outline"

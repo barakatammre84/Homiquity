@@ -27,6 +27,9 @@ export function AssetsSection({ assets, onChange }: AssetsSectionProps) {
               <Lock aria-hidden="true" className="mt-0.5 h-3 w-3 shrink-0" />
               Account numbers are encrypted — we only ever display the last four digits back to you.
             </p>
+            {assets.some((a) => a.__isDraft) && (
+              <p className="text-xs text-muted-foreground mt-1">Draft = saved but not counted until completed.</p>
+            )}
           </div>
           <Button
             variant="outline"

@@ -39,6 +39,9 @@ export function EmploymentSection({
                 Walk us through the last two years of work — it lets underwriting verify your
                 income without extra back-and-forth later.
               </CardDescription>
+              {employmentRecords.some((e) => e.__isDraft) && (
+                <p className="text-xs text-muted-foreground mt-1">Draft = saved but not counted until completed.</p>
+              )}
             </div>
             <Button
               variant="outline"
@@ -313,6 +316,9 @@ export function EmploymentSection({
                 Retirement, Social Security, disability, and similar income all count toward
                 qualifying — include anything you'd like considered.
               </CardDescription>
+              {otherIncomes.some((i) => i.__isDraft) && (
+                <p className="text-xs text-muted-foreground mt-1">Draft = saved but not counted until completed.</p>
+              )}
             </div>
             <Button
               variant="outline"
