@@ -324,8 +324,8 @@ export default function URLAForm() {
       if (!variables.silent) {
         if (last && last.dropped) {
           toast({
-            title: "Application saved (partial)",
-            description: "Some partially-filled rows were not saved. Please review any incomplete rows before leaving.",
+            title: "Draft saved",
+            description: "We saved your partially-filled rows as drafts so nothing is lost. You can continue editing them here.",
           });
         } else {
           toast({
