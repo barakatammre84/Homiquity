@@ -101,17 +101,22 @@ No step prints a connection string or password.
 exists (the Vercel project was deleted), so there is nothing to turn off and no Preview-scoped
 `DATABASE_URL` to repoint. Kept verbatim as the recipe for a future preview environment.*
 
-1. **Neon Console → Integrations → Vercel → Manage**: turn **off** automatic
-   preview-branch creation.
-2. **Vercel → Project → Settings → Environment Variables**: set the
-   **Preview**-scoped `DATABASE_URL` to `preview-seed`'s **pooled** connection
-   string (Neon Console → Branches → preview-seed → Connection string;
-   serverless = pooled, per the 2026-07-16 outage lesson). Check the
-   Environments column — Preview only; do not touch Production.
-3. Delete any lingering `preview/*` branches in Neon by deleting their **git**
-   branches (the integration reaps the clone; never issue a Neon DELETE).
-   Squash-merge caveat: `gh pr list --head <branch> --state all` is the
-   authority on whether a git branch is safe to delete — never git ancestry.
+> **Historical recipe — do not follow. Nothing here is clickable any more:** the Neon↔Vercel
+> integration was deleted with the platform, so there is no toggle to turn off and no
+> Preview-scoped `DATABASE_URL` to repoint. Kept only as the shape of the work if a preview
+> environment is ever rebuilt.
+>
+> 1. **Neon Console → Integrations → Vercel → Manage**: turn **off** automatic
+>    preview-branch creation.
+> 2. **Vercel → Project → Settings → Environment Variables**: set the
+>    **Preview**-scoped `DATABASE_URL` to `preview-seed`'s **pooled** connection
+>    string (Neon Console → Branches → preview-seed → Connection string;
+>    serverless = pooled, per the 2026-07-16 outage lesson). Check the
+>    Environments column — Preview only; do not touch Production.
+> 3. Delete any lingering `preview/*` branches in Neon by deleting their **git**
+>    branches (the integration reaps the clone; never issue a Neon DELETE).
+>    Squash-merge caveat: `gh pr list --head <branch> --state all` is the
+>    authority on whether a git branch is safe to delete — never git ancestry.
 
 ## 4. Trade-offs accepted (decide with eyes open)
 
