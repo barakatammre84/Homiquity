@@ -516,7 +516,7 @@ export class UrlaStorage extends TasksStorage {
 
   // Get Complete URLA Data
   async getCompleteUrlaData(applicationId: string) {
-    const [personalInfo, allPersonalInfo, employment, income, assets, liabilities, propertyInfo, declarations, allDeclarations, reo, hmda] = await Promise.all([
+    const [personalInfo, allPersonalInfo, employment, income, assets, liabilities, propertyInfo, declarations, allDeclarations, reo, hmda, partialRows] = await Promise.all([
       this.getUrlaPersonalInfo(applicationId),
       this.getAllUrlaPersonalInfo(applicationId),
       this.getEmploymentHistory(applicationId),
@@ -528,6 +528,7 @@ export class UrlaStorage extends TasksStorage {
       this.getAllBorrowerDeclarations(applicationId),
       this.getRealEstateOwnedByApplication(applicationId),
       this.getHmdaDemographicsByApplication(applicationId),
+      this.getUrlaPartialRows(applicationId),
     ]);
 
     return {
@@ -542,6 +543,7 @@ export class UrlaStorage extends TasksStorage {
       allDeclarations,
       realEstateOwned: reo,
       hmdaDemographics: hmda,
+      partialRows,
     };
   }
 

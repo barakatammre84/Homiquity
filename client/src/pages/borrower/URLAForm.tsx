@@ -233,18 +233,65 @@ export default function URLAForm() {
       const lia = (urlaData.liabilities || []).filter((l) => seqOf(l) === seq);
       const decl = (urlaData.allDeclarations || []).find((d) => seqOf(d) === seq);
       const hmda = (urlaData.hmdaDemographics || []).find((h) => seqOf(h) === seq);
+
+      // Merge any partial draft rows for this borrower/section
+      const partialsForSeq = (urlaData.partialRows || []).filter((p: any) => (p.borrowerSequenceNumber ?? 1) === seq);
+      const draftEmployment = partialsForSeq.find((p: any) => p.section === "employmentHistory");
+      const draftAssets = partialsForSeq.find((p: any) => p.section === "assets");
+      const draftLiabilities = partialsForSeq.find((p: any) => p.section === "liabilities");
+
+      const employmentRecords = (emp.length ? emp : []).slice();
+      if (draftEmployment && Array.isArray(draftEmployment.data) && draftEmployment.data.length) {
+        // append drafts that don't have an id (new unfinished rows) or merge where id matches
+        for (const d of draftEmployment.data) {
+          if (!d.id) {
+            employmentRecords.push(d as any);
+          } else if (!employmentRecords.some((e) => e.id === d.id)) {
+            employmentRecords.push(d as any);
+          }
+        }
+      }
+
+      const assetsRecords = (ast.length ? ast : []).slice();
+      if (draftAssets && Array.isArray(draftAssets.data) && draftAssets.data.length) {
+        for (const d of draftAssets.data) {
+          if (!d.id) assetsRecords.push(d as any);
+          else if (!assetsRecords.some((a) => a.id === d.id)) assetsRecords.push(d as any);
+        }
+      }
+
+      const liabilitiesRecords = (lia.length ? lia : []).slice();
+      if (draftLiabilities && Array.isArray(draftLiabilities.data) && draftLiabilities.data.length) {
+        for (const d of draftLiabilities.data) {
+          if (!d.id) liabilitiesRecords.push(d as any);
+          else if (!liabilitiesRecords.some((l) => l.id === d.id)) liabilitiesRecords.push(d as any);
+        }
+      }
+
       return {
         personalInfo: pi || {},
-        employmentRecords: emp.length ? emp : [{}],
-        assets: ast.length ? ast : [{}],
-        liabilities: lia.length ? lia : [{}],
+        employmentRecords: employmentRecords.length ? employmentRecords : [{}],
+        assets: assetsRecords.length ? assetsRecords : [{}],
+        liabilities: liabilitiesRecords.length ? liabilitiesRecords : [{}],
         declarations: decl || {},
         demographics: hmda ? hmdaToState(hmda) : emptyDemographics(),
       };
     };
 
     setBorrowerData({ 1: buildSlice(1), 2: buildSlice(2) });
-    setOtherIncomes(urlaData.otherIncomeSources?.length ? urlaData.otherIncomeSources : []);
+
+    // Merge partial other-income drafts (primary only)
+    const draftOther = (urlaData.partialRows || []).find((p: any) => p.section === "otherIncomeSources");
+    const existingOther = urlaData.otherIncomeSources?.length ? urlaData.otherIncomeSources : [];
+    const mergedOther = existingOther.slice();
+    if (draftOther && Array.isArray(draftOther.data) && draftOther.data.length) {
+      for (const d of draftOther.data) {
+        if (!d.id) mergedOther.push(d as any);
+        else if (!mergedOther.some((o) => o.id === d.id)) mergedOther.push(d as any);
+      }
+    }
+    setOtherIncomes(mergedOther);
+
     setPropertyInfo(urlaData.propertyInfo || {});
     setLoanDetails(toLoanDetailsState(urlaData.application));
 
