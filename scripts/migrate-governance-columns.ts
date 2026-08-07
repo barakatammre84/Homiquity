@@ -4,7 +4,7 @@
  *
  * Uses ADD COLUMN IF NOT EXISTS (nullable / defaulted, non-destructive) rather
  * than drizzle-kit push, which stalls on unrelated interactive prompts in this
- * repo (see .agents/memory/db-push-blocker.md). Safe to re-run.
+ * repo (see knowledge-base/runbooks/DB_MIGRATIONS.md). Safe to re-run.
  *
  * Columns added:
  *   credit_pulls.is_simulated            — flag fabricated (non-bureau) pulls
