@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ConversionCTA } from "@/components/ConversionCTA";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 import {
   DollarSign,
   Calculator,
@@ -72,12 +73,7 @@ const defaultInputs: AmortizationInputs = {
 };
 
 /** Standard fully-amortizing monthly principal-and-interest payment. */
-function monthlyPI(loan: number, annualRatePct: number, months: number): number {
-  if (loan <= 0 || months <= 0) return 0;
-  const r = annualRatePct / 100 / 12;
-  if (r === 0) return loan / months;
-  return (loan * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
-}
+const monthlyPI = monthlyPrincipalAndInterest;
 
 /** Simulate a loan to payoff, returning total interest and the number of months taken. */
 function simulate(

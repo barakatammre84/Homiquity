@@ -21,6 +21,7 @@ import { toNum } from "@shared/lib/number";
 import { documentTypesMatch } from "@shared/documentTypes";
 import { sendNotificationEmail } from "./emailService";
 import { evaluateClawbackExposure } from "@shared/compensationClawback";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 /**
  * Lifecycle engine — the "evergreen client" automation (CTO_ROADMAP #9).
@@ -84,12 +85,9 @@ async function resolveClawbackForHomeowner(profile: {
   return { atRisk: exposure.atRisk, daysRemaining: exposure.daysRemaining };
 }
 
-/** Standard amortized monthly P&I payment. */
+/** Standard amortized monthly P&I payment. @see @shared/lib/amortization */
 export function monthlyPayment(principal: number, annualRatePct: number, termMonths = 360): number {
-  if (principal <= 0) return 0;
-  const r = annualRatePct / 100 / 12;
-  if (r === 0) return principal / termMonths;
-  return (principal * r * Math.pow(1 + r, termMonths)) / (Math.pow(1 + r, termMonths) - 1);
+  return monthlyPrincipalAndInterest(principal, annualRatePct, termMonths);
 }
 
 /**

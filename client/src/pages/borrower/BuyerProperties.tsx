@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication } from "@shared/schema";
 import { selectPreApprovalContext } from "@shared/schema";
+import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
 import {
   Search,
   MapPin,
@@ -75,10 +76,9 @@ function calculateAffordability(
   // Estimate monthly payment (P&I at rate-adjusted for 30 years + taxes + insurance)
   const downPaymentPercent = 5; // Standard minimum
   const loanAmount = price * (1 - downPaymentPercent / 100);
-  const monthlyRate = baseRate / 12;
   const numPayments = 360;
-  const monthlyPI = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
-    (Math.pow(1 + monthlyRate, numPayments) - 1);
+  // baseRate is a FRACTION (0.065-style), not a percent.
+  const monthlyPI = monthlyPrincipalAndInterestFromFraction(loanAmount, baseRate, numPayments);
   
   const monthlyTax = (price * 0.0125) / 12; // 1.25% annual property tax
   const monthlyInsurance = Math.max(100, price * 0.003 / 12); // ~0.3% of home value annually
