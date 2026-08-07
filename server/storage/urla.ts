@@ -15,6 +15,7 @@ import {
   urlaLiabilities,
   urlaPropertyInfo,
   borrowerDeclarations,
+  urlaPartialRows,
   type UrlaPersonalInfo,
   type InsertUrlaPersonalInfo,
   type EmploymentHistory,
@@ -29,6 +30,8 @@ import {
   type InsertUrlaPropertyInfo,
   type BorrowerDeclarations,
   type InsertBorrowerDeclarations,
+  type UrlaPartialRow,
+  type InsertUrlaPartialRow,
   loanDeliveryData,
   type LoanDeliveryData,
   type InsertLoanDeliveryData,
@@ -341,6 +344,34 @@ export class UrlaStorage extends TasksStorage {
       .where(eq(urlaPropertyInfo.applicationId, applicationId))
       .limit(1);
     return info;
+  }
+
+  // ----- Partial draft rows persistence -----
+  async getUrlaPartialRows(applicationId: string): Promise<UrlaPartialRow[]> {
+    return await db
+      .select()
+      .from(urlaPartialRows)
+      .where(eq(urlaPartialRows.applicationId, applicationId))
+      .orderBy(desc(urlaPartialRows.updatedAt));
+  }
+
+  async upsertUrlaPartialRows(applicationId: string, borrowerSequenceNumber: number, section: string, data: unknown): Promise<UrlaPartialRow> {
+    // Try to find an existing row
+    const [existing] = await db
+      .select()
+      .from(urlaPartialRows)
+      .where(and(eq(urlaPartialRows.applicationId, applicationId), eq(urlaPartialRows.borrowerSequenceNumber, borrowerSequenceNumber), eq(urlaPartialRows.section, section)))
+      .limit(1);
+    if (existing) {
+      const [updated] = await db
+        .update(urlaPartialRows)
+        .set({ data: data as any, updatedAt: new Date() })
+        .where(eq(urlaPartialRows.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(urlaPartialRows).values({ applicationId, borrowerSequenceNumber, section, data } as any).returning();
+    return created;
   }
 
   async upsertUrlaPropertyInfo(data: InsertUrlaPropertyInfo): Promise<UrlaPropertyInfo> {

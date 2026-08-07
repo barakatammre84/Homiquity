@@ -441,6 +441,21 @@ export const insertUrlaPropertyInfoSchema = createInsertSchema(urlaPropertyInfo)
 export type InsertUrlaPropertyInfo = z.infer<typeof insertUrlaPropertyInfoSchema>;
 export type UrlaPropertyInfo = typeof urlaPropertyInfo.$inferSelect;
 
+// ----- Partial rows draft table (stores borrower-in-progress rows as JSON) -----
+export const urlaPartialRows = pgTable("urla_partial_rows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id"),
+  borrowerSequenceNumber: integer("borrower_sequence_number").default(1),
+  section: varchar("section", { length: 100 }),
+  data: jsonb("data").$type<Record<string, unknown>[]>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
+});
+
+export const insertUrlaPartialRowsSchema = createInsertSchema(urlaPartialRows).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertUrlaPartialRow = z.infer<typeof insertUrlaPartialRowsSchema>;
+export type UrlaPartialRow = typeof urlaPartialRows.$inferSelect;
+
 // Borrower Declarations (URLA Section 5 / MISMO 3.4 Declarations)
 export const borrowerDeclarations = pgTable("borrower_declarations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

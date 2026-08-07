@@ -464,8 +464,13 @@ export function registerUrlaRoutes(
 
         if (Array.isArray(opts.employmentHistory) && opts.employmentHistory.length > 0) {
           results.employmentHistory = [];
+          const skippedEmployment: any[] = [];
           for (const emp of opts.employmentHistory) {
-            if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
+            if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) {
+              // Persist partial/touched rows as drafts so the borrower doesn't lose intermediate work
+              skippedEmployment.push(emp);
+              continue;
+            }
             const cleanEmp = pickTableFields(URLA_TABLES.employment, emp);
             // The self-employment worksheet is a structured JSON object, so
             // pickTableFields drops it (URLA tables are scalar-only by design).
@@ -494,12 +499,20 @@ export function registerUrlaRoutes(
               results.employmentHistory.push(created);
             }
           }
+          if (skippedEmployment.length > 0) {
+            // write drafts to the draft table so they survive and can be surfaced later
+            await storage.upsertUrlaPartialRows(applicationId, seq, "employmentHistory", skippedEmployment);
+          }
         }
 
         if (Array.isArray(opts.assets) && opts.assets.length > 0) {
           results.assets = [];
+          const skippedAssets: any[] = [];
           for (const asset of opts.assets) {
-            if (!asset.accountType && !asset.financialInstitution) continue;
+            if (!asset.accountType && !asset.financialInstitution) {
+              skippedAssets.push(asset);
+              continue;
+            }
             const cleanAsset = pickTableFields(URLA_TABLES.asset, asset, ["accountNumber"]);
             if (asset.id) {
               const existing = await storage.getUrlaAssetById(asset.id);
@@ -511,12 +524,19 @@ export function registerUrlaRoutes(
               results.assets.push(created);
             }
           }
+          if (skippedAssets.length > 0) {
+            await storage.upsertUrlaPartialRows(applicationId, seq, "assets", skippedAssets);
+          }
         }
 
         if (Array.isArray(opts.liabilities) && opts.liabilities.length > 0) {
           results.liabilities = [];
+          const skippedLiabilities: any[] = [];
           for (const liability of opts.liabilities) {
-            if (!liability.liabilityType && !liability.creditorName) continue;
+            if (!liability.liabilityType && !liability.creditorName) {
+              skippedLiabilities.push(liability);
+              continue;
+            }
             const cleanLiability = pickTableFields(URLA_TABLES.liability, liability, ["accountNumber"]);
             if (liability.id) {
               const existing = await storage.getUrlaLiabilityById(liability.id);
@@ -527,6 +547,9 @@ export function registerUrlaRoutes(
               const created = await storage.createUrlaLiability({ ...cleanLiability, applicationId, borrowerSequenceNumber: seq } as any);
               results.liabilities.push(created);
             }
+          }
+          if (skippedLiabilities.length > 0) {
+            await storage.upsertUrlaPartialRows(applicationId, seq, "liabilities", skippedLiabilities);
           }
         }
 
@@ -617,8 +640,12 @@ export function registerUrlaRoutes(
       // Other income sources (primary only)
       if (otherIncomeSources && Array.isArray(otherIncomeSources) && otherIncomeSources.length > 0) {
         results.otherIncomeSources = [];
+        const skippedOtherIncome: any[] = [];
         for (const income of otherIncomeSources) {
-          if (!income.incomeSource || !income.monthlyAmount) continue;
+          if (!income.incomeSource || !income.monthlyAmount) {
+            skippedOtherIncome.push(income);
+            continue;
+          }
           const cleanIncome = pickTableFields(URLA_TABLES.otherIncome, income);
           if (income.id) {
             const existing = await storage.getOtherIncomeSourceById(income.id);
@@ -634,6 +661,9 @@ export function registerUrlaRoutes(
             } as any);
             results.otherIncomeSources.push(created);
           }
+        }
+        if (skippedOtherIncome.length > 0) {
+          await storage.upsertUrlaPartialRows(applicationId, 1, "otherIncomeSources", skippedOtherIncome);
         }
       }
 
