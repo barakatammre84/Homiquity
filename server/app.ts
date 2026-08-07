@@ -128,6 +128,32 @@ export const HELMET_OPTIONS = {
 
 app.use(helmet(HELMET_OPTIONS));
 
+// Liveness probe. The mount position is the whole point: it sits ahead of the
+// beta gate, the rate limiters, the body parsers and every route, because each
+// of those would otherwise answer it.
+//
+//   - betaGateMiddleware carves out only `/api/` (server/middleware/betaGate.ts),
+//     so a bare `/health` mounted BELOW it gets the 401 lock screen the moment
+//     BETA_ACCESS_CODE is armed — a health check that fails exactly when the
+//     private beta is switched on.
+//   - With no route of its own, `/health` falls through to the SPA catch-all and
+//     returns the HTML shell with a 200. That is worse than a 404: it reads as
+//     healthy while proving nothing about the process.
+//
+// It answers from the event loop alone — no database, no I/O — so a 200 here
+// means exactly one thing: this process is up and scheduling work. That is the
+// correct semantics for a liveness probe, whose only remedy is a restart.
+//
+// READINESS is a different question and lives at GET /api/health
+// (server/routes.ts), which pings Postgres and carries the deployed commit.
+// railway.json points `healthcheckPath` at THAT one on purpose: a deploy that
+// cannot reach the database must not replace a container that can. Keep the two
+// separate — collapsing them either blinds the deploy gate to a dead database,
+// or fails liveness for a reason no restart can fix.
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // Private-beta gate (server/middleware/betaGate.ts). Total no-op unless
 // BETA_ACCESS_CODE is set. Must mount ahead of the whole route surface:
 // /robots.txt's Disallow-all override has to win over the static file, and
