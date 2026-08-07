@@ -9,9 +9,14 @@ import {
   coachConversationKeys,
   onboardingStatusKeys,
   consentKeys,
+  consentTemplateKeys,
   taskEngineKeys,
   applicationResourceKeys,
   homeownershipGoalKeys,
+  autopilotKeys,
+  borrowerGraphKeys,
+  predictionKeys,
+  buildQueryUrl,
 } from "../client/src/lib/queryClient";
 
 // -----------------------------------------------------------------------------
@@ -303,6 +308,70 @@ describe("re-segmented families keep their URLs", () => {
   });
 });
 
+// -----------------------------------------------------------------------------
+// Query-string params ride in the key as a trailing OBJECT.
+//
+// The block above asserts `key.join("/")`, which only describes all-scalar keys.
+// These four families address endpoints that read `?params`, and each of them
+// SHIPPED with a bare scalar segment plus a hand-written queryFn that fetched a
+// different URL — so the key was decorative and the queryFn was the only thing
+// making the request work. `scripts/query-key-transport-guard.cjs` now bans the
+// hand-written queryFn; this pins that the keys resolve to the real endpoints
+// without one.
+// -----------------------------------------------------------------------------
+describe("params-object keys resolve to the endpoint they name", () => {
+  const RANGE = { from: "2026-07-07T00:00:00.000Z", to: "2026-08-06T00:00:00.000Z" };
+
+  it.each([
+    [borrowerGraphKeys.all(), "/api/borrower-graph"],
+    [borrowerGraphKeys.affordability(450000), "/api/borrower-graph/affordability?price=450000"],
+    [predictionKeys.me("app-1"), "/api/predictions/me?applicationId=app-1"],
+    [predictionKeys.benchmark(), "/api/predictions/benchmark"],
+    [consentTemplateKeys.byType("tax_document_use"), "/api/consent-templates?type=tax_document_use"],
+    [autopilotKeys.config(), "/api/autopilot/config"],
+    [autopilotKeys.status("app-1"), "/api/autopilot/status/app-1"],
+    [
+      autopilotKeys.metrics(RANGE),
+      `/api/autopilot/metrics?from=${encodeURIComponent(RANGE.from)}&to=${encodeURIComponent(RANGE.to)}`,
+    ],
+    [
+      autopilotKeys.metricsTrend(RANGE),
+      `/api/autopilot/metrics/trend?from=${encodeURIComponent(RANGE.from)}&to=${encodeURIComponent(RANGE.to)}`,
+    ],
+  ])("builds %s", (key, url) => {
+    expect(buildQueryUrl(key)).toBe(url);
+  });
+
+  it("omits an absent optional param rather than sending an empty one", () => {
+    // PredictionInsights renders without an application id on a fresh file.
+    expect(buildQueryUrl(predictionKeys.me(undefined))).toBe("/api/predictions/me");
+  });
+
+  it("documents the shapes these replaced — every one named a path that 404s", () => {
+    // Not asserting on live code: this is the defect the params-object form
+    // exists to prevent. Each of these was a real shipped key whose URL the
+    // server does not serve, masked by a queryFn that fetched something else.
+    expect(buildQueryUrl(["/api/borrower-graph/affordability", 450000])).toBe(
+      "/api/borrower-graph/affordability/450000",
+    );
+    expect(buildQueryUrl(["/api/predictions/me", "app-1"])).toBe("/api/predictions/me/app-1");
+    expect(buildQueryUrl(["/api/consent-templates", "tax_document_use"])).toBe(
+      "/api/consent-templates/tax_document_use",
+    );
+    expect(buildQueryUrl(["/api/autopilot/metrics", 30])).toBe("/api/autopilot/metrics/30");
+  });
+
+  it("gives one endpoint ONE identity across call sites", () => {
+    // ConsentGateCard and TaxReturnInsightCard read the same endpoint two
+    // different ways, so identical data occupied two entries and no single
+    // invalidation could reach both. Both now build from this factory.
+    expect(consentTemplateKeys.byType("tax_document_use")).toEqual(
+      consentTemplateKeys.byType("tax_document_use"),
+    );
+    expect(partialMatchKey(consentTemplateKeys.byType("x"), consentTemplateKeys.all())).toBe(true);
+  });
+});
+
 describe("every family root reaches its own children", () => {
   const ID = "app-1";
 
@@ -328,6 +397,18 @@ describe("every family root reaches its own children", () => {
       "homeownership-goal",
       homeownershipGoalKeys.all(),
       [homeownershipGoalKeys.gapAnalysis(), homeownershipGoalKeys.creditRecommendations()],
+    ],
+    [
+      // The status entry is written by the SSE stream via setQueryData, so it is
+      // a normal cache entry a mutation can invalidate — not a parallel store.
+      "autopilot",
+      autopilotKeys.all(),
+      [
+        autopilotKeys.config(),
+        autopilotKeys.status(ID),
+        autopilotKeys.metrics({ from: "a", to: "b" }),
+        autopilotKeys.metricsTrend({ from: "a", to: "b" }),
+      ],
     ],
   ])("%s: all() matches every child", (_name, root, children) => {
     for (const child of children) {
