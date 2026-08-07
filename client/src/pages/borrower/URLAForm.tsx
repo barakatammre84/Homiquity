@@ -294,13 +294,24 @@ export default function URLAForm() {
     },
   });
 
+  const isTouched = (obj: Record<string, any> | undefined | null) => {
+    if (!obj || typeof obj !== "object") return false;
+    return Object.keys(obj).some((k) => {
+      const v = (obj as any)[k];
+      if (v === null || v === undefined) return false;
+      if (typeof v === "string") return v.trim() !== "";
+      if (Array.isArray(v)) return v.length > 0 && v.some((el) => el !== null && el !== undefined && (typeof el !== "string" || el.trim() !== ""));
+      return true; // numbers, booleans, objects considered touched
+    });
+  };
+
   const buildSectionsPayload = (s: BorrowerSlice): SectionsPayload => ({
     personalInfo: s.personalInfo,
     employmentHistory: s.employmentRecords
-      .filter(emp => emp.employerName || emp.positionTitle)
+      .filter(emp => isTouched(emp))
       .map(emp => ({ ...emp, employmentType: emp.employmentType || "current" })),
-    assets: s.assets.filter(asset => asset.accountType || asset.financialInstitution),
-    liabilities: s.liabilities.filter(liability => liability.liabilityType || liability.creditorName),
+    assets: s.assets.filter(asset => isTouched(asset)),
+    liabilities: s.liabilities.filter(liability => isTouched(liability)),
     declarations: s.declarations,
     demographics: demographicsToPayload(s.demographics),
   });
