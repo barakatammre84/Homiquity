@@ -57,6 +57,9 @@ export function EmploymentSection({
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold">
                   {index === 0 ? "Current Employment" : `Additional Employment ${index}`}
+                  {emp.__isDraft && (
+                    <span className="ml-3 inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5">Draft</span>
+                  )}
                 </h4>
                 {index > 0 && (
                   <Button
@@ -333,7 +336,12 @@ export function EmploymentSection({
               {otherIncomes.map((income, index) => (
                 <div key={index} className="flex gap-4 items-end">
                   <div className="flex-1 space-y-2">
-                    <Label>Income Source</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Income Source</Label>
+                      {income.__isDraft && (
+                        <span className="ml-3 inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5">Draft</span>
+                      )}
+                    </div>
                     <Select
                       value={income.incomeSource || ""}
                       onValueChange={(value) => {

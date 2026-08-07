@@ -41,7 +41,11 @@ export function LiabilitiesSection({ liabilities, onChange }: LiabilitiesSection
         {liabilities.map((liability, index) => (
           <div key={index} className="border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-medium">Liability {index + 1}</h4>
+              <h4 className="font-medium">Liability {index + 1}
+                {liability.__isDraft && (
+                  <span className="ml-3 inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5">Draft</span>
+                )}
+              </h4>
               {index > 0 && (
                 <Button
                   variant="ghost"

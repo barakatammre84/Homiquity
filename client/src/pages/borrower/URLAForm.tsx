@@ -382,19 +382,27 @@ export default function URLAForm() {
   };
 
   const computeSaveDrops = (payload: UrlaSavePayload) => {
+    // A "draft" is any touched row that the server would not persist to canonical tables
     const primary = borrowerData[1] ?? emptySlice();
-    const empDropped = (primary.employmentRecords?.length || 0) > (primary.employmentRecords?.filter(emp => emp.employerName || emp.positionTitle).length || 0);
-    const assetsDropped = (primary.assets?.length || 0) > (primary.assets?.filter(a => a.accountType || a.financialInstitution).length || 0);
-    const liabilitiesDropped = (primary.liabilities?.length || 0) > (primary.liabilities?.filter(l => l.liabilityType || l.creditorName).length || 0);
-    const otherIncomesDropped = (otherIncomes?.length || 0) > (payload.otherIncomeSources?.length || 0);
-    let coDropped = false;
+
+    const isSavableEmployment = (emp: any) => emp.employerName || emp.positionTitle || emp.baseIncome;
+    const isSavableAsset = (a: any) => a.accountType || a.financialInstitution;
+    const isSavableLiability = (l: any) => l.liabilityType || l.creditorName;
+    const isSavableOtherIncome = (o: any) => o.incomeSource && o.monthlyAmount;
+
+    const empDrafts = (primary.employmentRecords || []).some((emp) => isTouched(emp) && !isSavableEmployment(emp));
+    const assetsDrafts = (primary.assets || []).some((a) => isTouched(a) && !isSavableAsset(a));
+    const liabilitiesDrafts = (primary.liabilities || []).some((l) => isTouched(l) && !isSavableLiability(l));
+    const otherDrafts = (otherIncomes || []).some((o) => isTouched(o) && !isSavableOtherIncome(o));
+
+    let coDrafts = false;
     if (hasCoBorrower) {
       const co = borrowerData[2] ?? emptySlice();
-      coDropped = (co.employmentRecords?.length || 0) > (co.employmentRecords?.filter(emp => emp.employerName || emp.positionTitle).length || 0)
-        || (co.assets?.length || 0) > (co.assets?.filter(a => a.accountType || a.financialInstitution).length || 0)
-        || (co.liabilities?.length || 0) > (co.liabilities?.filter(l => l.liabilityType || l.creditorName).length || 0);
+      coDrafts = (co.employmentRecords || []).some((emp) => isTouched(emp) && !isSavableEmployment(emp))
+        || (co.assets || []).some((a) => isTouched(a) && !isSavableAsset(a))
+        || (co.liabilities || []).some((l) => isTouched(l) && !isSavableLiability(l));
     }
-    return empDropped || assetsDropped || liabilitiesDropped || otherIncomesDropped || coDropped;
+    return empDrafts || assetsDrafts || liabilitiesDrafts || otherDrafts || coDrafts;
   };
 
   const handleSave = () => {

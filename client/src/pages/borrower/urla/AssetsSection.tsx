@@ -43,7 +43,11 @@ export function AssetsSection({ assets, onChange }: AssetsSectionProps) {
         {assets.map((asset, index) => (
           <div key={index} className="border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-medium">Asset {index + 1}</h4>
+              <h4 className="font-medium">Asset {index + 1}
+                {asset.__isDraft && (
+                  <span className="ml-3 inline-flex items-center rounded-full bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5">Draft</span>
+                )}
+              </h4>
               {index > 0 && (
                 <Button
                   variant="ghost"

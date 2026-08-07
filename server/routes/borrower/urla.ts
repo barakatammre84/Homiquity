@@ -502,6 +502,16 @@ export function registerUrlaRoutes(
           if (skippedEmployment.length > 0) {
             // write drafts to the draft table so they survive and can be surfaced later
             await storage.upsertUrlaPartialRows(applicationId, seq, "employmentHistory", skippedEmployment);
+            // Audit the draft save
+            try {
+              await logAudit(req, "urla.partial_row_saved", "loan_application", applicationId, {
+                borrowerSequenceNumber: seq,
+                section: "employmentHistory",
+                count: skippedEmployment.length,
+              });
+            } catch (auditErr) {
+              console.warn("Failed to write audit for urla.partial_row_saved:", auditErr?.message || auditErr);
+            }
           }
         }
 
@@ -526,6 +536,15 @@ export function registerUrlaRoutes(
           }
           if (skippedAssets.length > 0) {
             await storage.upsertUrlaPartialRows(applicationId, seq, "assets", skippedAssets);
+            try {
+              await logAudit(req, "urla.partial_row_saved", "loan_application", applicationId, {
+                borrowerSequenceNumber: seq,
+                section: "assets",
+                count: skippedAssets.length,
+              });
+            } catch (auditErr) {
+              console.warn("Failed to write audit for urla.partial_row_saved:", auditErr?.message || auditErr);
+            }
           }
         }
 
@@ -550,6 +569,15 @@ export function registerUrlaRoutes(
           }
           if (skippedLiabilities.length > 0) {
             await storage.upsertUrlaPartialRows(applicationId, seq, "liabilities", skippedLiabilities);
+            try {
+              await logAudit(req, "urla.partial_row_saved", "loan_application", applicationId, {
+                borrowerSequenceNumber: seq,
+                section: "liabilities",
+                count: skippedLiabilities.length,
+              });
+            } catch (auditErr) {
+              console.warn("Failed to write audit for urla.partial_row_saved:", auditErr?.message || auditErr);
+            }
           }
         }
 
@@ -664,6 +692,15 @@ export function registerUrlaRoutes(
         }
         if (skippedOtherIncome.length > 0) {
           await storage.upsertUrlaPartialRows(applicationId, 1, "otherIncomeSources", skippedOtherIncome);
+          try {
+            await logAudit(req, "urla.partial_row_saved", "loan_application", applicationId, {
+              borrowerSequenceNumber: 1,
+              section: "otherIncomeSources",
+              count: skippedOtherIncome.length,
+            });
+          } catch (auditErr) {
+            console.warn("Failed to write audit for urla.partial_row_saved:", auditErr?.message || auditErr);
+          }
         }
       }
 
