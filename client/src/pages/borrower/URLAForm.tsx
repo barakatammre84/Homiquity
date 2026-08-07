@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -209,6 +209,7 @@ export default function URLAForm() {
 
   const [activeStep, setActiveStep] = useState<string>(STEPS[0].id);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const lastSaveInfoRef = useRef<{ dropped: boolean; details?: string } | null>(null);
 
   const slice = borrowerData[activeSeq] ?? emptySlice();
   const updateSlice = (patch: Partial<BorrowerSlice>) =>
@@ -268,11 +269,19 @@ export default function URLAForm() {
     },
     onSuccess: (_result, variables) => {
       setLastSavedAt(new Date());
+      const last = lastSaveInfoRef.current;
       if (!variables.silent) {
-        toast({
-          title: "Application saved",
-          description: "Everything is safely stored — you can pick this up anytime.",
-        });
+        if (last && last.dropped) {
+          toast({
+            title: "Application saved (partial)",
+            description: "Some partially-filled rows were not saved. Please review any incomplete rows before leaving.",
+          });
+        } else {
+          toast({
+            title: "Application saved",
+            description: "Everything is safely stored — you can pick this up anytime.",
+          });
+        }
       }
       queryClient.invalidateQueries({ queryKey: ['/api/urla', activeApplication?.id] });
     },
@@ -314,8 +323,27 @@ export default function URLAForm() {
     return payload;
   };
 
+  const computeSaveDrops = (payload: UrlaSavePayload) => {
+    const primary = borrowerData[1] ?? emptySlice();
+    const empDropped = (primary.employmentRecords?.length || 0) > (primary.employmentRecords?.filter(emp => emp.employerName || emp.positionTitle).length || 0);
+    const assetsDropped = (primary.assets?.length || 0) > (primary.assets?.filter(a => a.accountType || a.financialInstitution).length || 0);
+    const liabilitiesDropped = (primary.liabilities?.length || 0) > (primary.liabilities?.filter(l => l.liabilityType || l.creditorName).length || 0);
+    const otherIncomesDropped = (otherIncomes?.length || 0) > (payload.otherIncomeSources?.length || 0);
+    let coDropped = false;
+    if (hasCoBorrower) {
+      const co = borrowerData[2] ?? emptySlice();
+      coDropped = (co.employmentRecords?.length || 0) > (co.employmentRecords?.filter(emp => emp.employerName || emp.positionTitle).length || 0)
+        || (co.assets?.length || 0) > (co.assets?.filter(a => a.accountType || a.financialInstitution).length || 0)
+        || (co.liabilities?.length || 0) > (co.liabilities?.filter(l => l.liabilityType || l.creditorName).length || 0);
+    }
+    return empDropped || assetsDropped || liabilitiesDropped || otherIncomesDropped || coDropped;
+  };
+
   const handleSave = () => {
-    saveMutation.mutate({ data: buildPayload() });
+    const payload = buildPayload();
+    const dropped = computeSaveDrops(payload);
+    lastSaveInfoRef.current = { dropped };
+    saveMutation.mutate({ data: payload });
   };
 
   const stepIndex = STEPS.findIndex((s) => s.id === activeStep);
@@ -323,7 +351,10 @@ export default function URLAForm() {
 
   const handleContinue = () => {
     // Final step saves loudly (toast); intermediate steps save quietly and advance.
-    saveMutation.mutate({ data: buildPayload(), silent: !isLastStep });
+    const payload = buildPayload();
+    const dropped = computeSaveDrops(payload);
+    lastSaveInfoRef.current = { dropped };
+    saveMutation.mutate({ data: payload, silent: !isLastStep });
     track("urla_section_complete", "/urla-form", {
       form: "urla",
       step_id: activeStep,
