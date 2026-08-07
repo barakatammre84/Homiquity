@@ -244,10 +244,11 @@ export default function URLAForm() {
       if (draftEmployment && Array.isArray(draftEmployment.data) && draftEmployment.data.length) {
         // append drafts that don't have an id (new unfinished rows) or merge where id matches
         for (const d of draftEmployment.data) {
+          const copy = { ...(d as any), __isDraft: true };
           if (!d.id) {
-            employmentRecords.push(d as any);
+            employmentRecords.push(copy as any);
           } else if (!employmentRecords.some((e) => e.id === d.id)) {
-            employmentRecords.push(d as any);
+            employmentRecords.push(copy as any);
           }
         }
       }
@@ -255,16 +256,18 @@ export default function URLAForm() {
       const assetsRecords = (ast.length ? ast : []).slice();
       if (draftAssets && Array.isArray(draftAssets.data) && draftAssets.data.length) {
         for (const d of draftAssets.data) {
-          if (!d.id) assetsRecords.push(d as any);
-          else if (!assetsRecords.some((a) => a.id === d.id)) assetsRecords.push(d as any);
+          const copy = { ...(d as any), __isDraft: true };
+          if (!d.id) assetsRecords.push(copy as any);
+          else if (!assetsRecords.some((a) => a.id === d.id)) assetsRecords.push(copy as any);
         }
       }
 
       const liabilitiesRecords = (lia.length ? lia : []).slice();
       if (draftLiabilities && Array.isArray(draftLiabilities.data) && draftLiabilities.data.length) {
         for (const d of draftLiabilities.data) {
-          if (!d.id) liabilitiesRecords.push(d as any);
-          else if (!liabilitiesRecords.some((l) => l.id === d.id)) liabilitiesRecords.push(d as any);
+          const copy = { ...(d as any), __isDraft: true };
+          if (!d.id) liabilitiesRecords.push(copy as any);
+          else if (!liabilitiesRecords.some((l) => l.id === d.id)) liabilitiesRecords.push(copy as any);
         }
       }
 
@@ -286,9 +289,10 @@ export default function URLAForm() {
     const mergedOther = existingOther.slice();
     if (draftOther && Array.isArray(draftOther.data) && draftOther.data.length) {
       for (const d of draftOther.data) {
-        if (!d.id) mergedOther.push(d as any);
-        else if (!mergedOther.some((o) => o.id === d.id)) mergedOther.push(d as any);
-      }
+      const copy = { ...(d as any), __isDraft: true };
+      if (!d.id) mergedOther.push(copy as any);
+      else if (!mergedOther.some((o) => o.id === d.id)) mergedOther.push(copy as any);
+    }
     }
     setOtherIncomes(mergedOther);
 
