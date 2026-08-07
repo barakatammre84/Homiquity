@@ -19,7 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest, homeownershipGoalKeys } from "@/lib/queryClient";
 import type { SavingsTransaction } from "@shared/schema";
-import { savingsFormSchema, type GapAnalysis, type SavingsFormValues } from "./types";
+import { savingsFormSchema, type GapAnalysis, type SavingsFormInput, type SavingsFormValues } from "./types";
 
 export interface SavingsVaultTabProps {
   analysis: GapAnalysis["analysis"];
@@ -30,10 +30,12 @@ export function SavingsVaultTab({ analysis, savingsTransactions }: SavingsVaultT
   const { toast } = useToast();
   const [showSavingsDialog, setShowSavingsDialog] = useState(false);
 
-  const savingsForm = useForm<SavingsFormValues>({
+  // <input, context, output>: the resolver coerces, so `handleSubmit` hands
+  // `onSubmitSavings` the parsed number while the field itself stays a string.
+  const savingsForm = useForm<SavingsFormInput, unknown, SavingsFormValues>({
     resolver: zodResolver(savingsFormSchema),
     defaultValues: {
-      amount: 0,
+      amount: "",
       description: "",
     },
   });
