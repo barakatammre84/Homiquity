@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
+import { getPublicQueryFn } from "@/lib/queryClient";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,16 +63,15 @@ export default function ApplyInvite() {
   const [, setLocation] = useLocation();
   const [, setInviteId] = useState<string | null>(null);
 
+  // `getPublicQueryFn`, not a hand-rolled fetch: this endpoint serves signed-out
+  // visitors (server/routes/agent-broker/invites.ts:121 has no auth), so a 401
+  // must not bounce them to /login — and the shared transport throws `ApiError`
+  // with the server's envelope intact, which is exactly what friendlyApiError
+  // below parses. The hand-rolled version reproduced the happy path and dropped
+  // the 5xx-suppression that keeps internal detail off a public page.
   const { data, isLoading, error } = useQuery<InviteValidation>({
     queryKey: ["/api/application-invites/validate", token],
-    queryFn: async () => {
-      const response = await fetch(`/api/application-invites/validate/${token}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Invalid invite link");
-      }
-      return response.json();
-    },
+    queryFn: getPublicQueryFn<InviteValidation>(),
     enabled: !!token,
     retry: false,
   });
@@ -114,7 +115,10 @@ export default function ApplyInvite() {
   }
 
   if (error) {
-    const errorMessage = (error as Error).message || "This invite link is invalid or has expired.";
+    const errorMessage = friendlyApiError(
+      error,
+      "This invite link is invalid or has expired.",
+    );
     const isExpired = errorMessage.toLowerCase().includes("expired");
 
     return (

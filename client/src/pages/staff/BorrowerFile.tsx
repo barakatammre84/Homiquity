@@ -56,6 +56,24 @@ const DocumentViewer = lazy(() => import("@/components/staff/DocumentViewer"));
 const TAB_PARAM = "tab";
 const TAB_VALUES = ["overview", "documents", "conditions", "timeline", "credit", "financials", "tax-intel", "team"];
 
+// DATA FLOW — this page currently runs BOTH directions, and that is the known
+// debt, not a design.
+//
+//   props-down:      DocumentReviewPanel, ConditionsTab, TimelineTab receive
+//                    server data from the three queries below.
+//   fetch-your-own:  CreditTab, FinancialsTab, CompensationCard take only an
+//                    applicationId and query for themselves.
+//
+// The props-down children still invalidate this page's OWN keys after a write
+// (e.g. DocumentReviewPanel → loanApplicationKeys.detail), which is correct but
+// invisible: the child's refresh silently depends on the parent having fetched
+// with exactly that key.
+//
+// A NEW TAB USES fetch-your-own. It is independently testable, it carries no
+// hidden coupling to a parent's key, and its loading state is its own instead of
+// blocking behind this page's combined `isLoading`. The three props-down tabs
+// migrate child-by-child; do not add a fourth. (kb rule: .claude/skills/ui-components)
+
 export default function BorrowerFile() {
   const params = useParams();
   const applicationId = params.id as string;

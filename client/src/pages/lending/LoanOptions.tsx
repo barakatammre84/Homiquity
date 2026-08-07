@@ -48,10 +48,6 @@ export default function LoanOptions() {
   // endpoint; this query drives the disclosure card and button state.
   const { data: steeringConsent } = useQuery<{ hasConsent: boolean }>({
     queryKey: consentKeys.check(id, 'anti_steering'),
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/consents/check/${id}/anti_steering`);
-      return res.json();
-    },
     enabled: !!id,
   });
   const steeringAcknowledged = steeringConsent?.hasConsent === true;

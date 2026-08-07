@@ -89,7 +89,7 @@ describe("lintOutboundText — Tier 2 (Reg N §1014.3 promise phrases → WARN)"
   });
 });
 
-describe("lintOutboundText — Reg N §1014.3(i) approval guarantee → HARD BLOCK (no override)", () => {
+describe("lintOutboundText — Reg N §1014.3(q) approval guarantee → HARD BLOCK (no override)", () => {
   const HARD_BLOCKS: string[] = [
     "Your approval is guaranteed once you apply",
     "You're guaranteed to qualify for this",
