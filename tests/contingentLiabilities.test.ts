@@ -20,6 +20,14 @@ const EMPTY: RegisterInputs = {
   clawback: { totalAtRisk: 0, atRiskCount: 0, indeterminateCount: 0, usesAssumedWindow: false },
   locks: { unconfirmedCount: 0, unconfirmedLoanVolume: 0, expiringSoonCount: 0, expiringSoonLoanVolume: 0 },
   regZExposedLoanCount: 0,
+  commissions: {
+    approvedAmount: 0,
+    approvedCount: 0,
+    pendingAmount: 0,
+    pendingCount: 0,
+    paidInsideClawbackWindowAmount: 0,
+    paidInsideClawbackWindowCount: 0,
+  },
 };
 
 const LOADED: RegisterInputs = {
@@ -32,6 +40,14 @@ const LOADED: RegisterInputs = {
     expiringSoonLoanVolume: 1_600_000,
   },
   regZExposedLoanCount: 2,
+  commissions: {
+    approvedAmount: 4_200,
+    approvedCount: 2,
+    pendingAmount: 1_500,
+    pendingCount: 1,
+    paidInsideClawbackWindowAmount: 2_800,
+    paidInsideClawbackWindowCount: 1,
+  },
 };
 
 describe("F-13 — the register never claims to be complete", () => {
@@ -111,7 +127,8 @@ describe("F-13 — exposure arithmetic", () => {
   it("totals the floor across every computed exposure", () => {
     const r = buildContingentLiabilityRegister(LOADED);
     // 1,650 cure + 19,000 clawback + 16,000 honor + 3,600 extension
-    expect(r.quantifiedFloor).toBe(1_650 + 19_000 + 16_000 + 3_600);
+    // + 4,200 approved-but-unpaid commission
+    expect(r.quantifiedFloor).toBe(1_650 + 19_000 + 16_000 + 3_600 + 4_200);
   });
 
   it("reports a zero floor on an empty book without inventing exposure", () => {
@@ -120,6 +137,45 @@ describe("F-13 — exposure arithmetic", () => {
     expect(r.actions).toEqual(
       expect.arrayContaining([expect.stringMatching(/surety|net worth|statute/i)]),
     );
+  });
+});
+
+describe("F-20 — commission payouts appear on the balance sheet", () => {
+  it("counts the approved-but-unpaid commission as a computed payable", () => {
+    const r = buildContingentLiabilityRegister(LOADED);
+    const entry = r.entries.find(e => e.category === "commission_payable")!;
+    expect(entry.basis).toBe("computed");
+    expect(entry.amount).toBe(4_200);
+    expect(entry.count).toBe(2);
+  });
+
+  it("does NOT count pending commissions — they can still be rejected", () => {
+    const r = buildContingentLiabilityRegister(LOADED);
+    const entry = r.entries.find(e => e.category === "commission_payable")!;
+    // 1,500 pending is deliberately excluded from the amount...
+    expect(entry.amount).toBe(4_200);
+    // ...but it must not vanish: it becomes an action, because a commission
+    // that is neither owed nor not-owed is an unresolved decision.
+    expect(entry.action).toMatch(/1 pending commission/);
+    expect(entry.action).toMatch(/1500\.00|1,500/);
+  });
+
+  it("surfaces disbursed commission sitting inside a live EPO window", () => {
+    const r = buildContingentLiabilityRegister(LOADED);
+    const entry = r.entries.find(e => e.category === "commission_payable")!;
+    // The clawback entry sizes the loss at the comp we return; this money is
+    // gone on top of it, and netting the two would understate the real loss.
+    expect(entry.note).toMatch(/2800\.00|2,800/);
+    expect(entry.note).toMatch(/unrecoverable/);
+    expect(entry.note).toMatch(/exceeds the EPO figure above/);
+  });
+
+  it("says so plainly when no disbursed commission is at clawback risk", () => {
+    const r = buildContingentLiabilityRegister(EMPTY);
+    const entry = r.entries.find(e => e.category === "commission_payable")!;
+    expect(entry.amount).toBe(0);
+    expect(entry.action).toBeNull();
+    expect(entry.note).toMatch(/No disbursed commission/);
   });
 });
 

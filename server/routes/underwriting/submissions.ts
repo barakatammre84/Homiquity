@@ -394,13 +394,23 @@ export function registerSubmissionRoutes(
       // Cost side + margin (F-11). Revenue alone is not unit economics: costs
       // are incurred on every file and revenue arrives only on the ones that
       // close, so the meaningful denominator is the funded count.
-      const { summarizeCosts, computeUnitEconomics } = await import("@shared/costLedger");
-      const costEntries = await storage.getAllLoanCostEntries();
+      const { summarizeCosts, summarizeCommissionCosts, computeUnitEconomics } = await import(
+        "@shared/costLedger"
+      );
+      const [costEntries, commissionRows] = await Promise.all([
+        storage.getAllLoanCostEntries(),
+        storage.getAllBrokerCommissions(),
+      ]);
       const costs = summarizeCosts(costEntries);
+      // Commission payouts are the other half of the cost side: money that
+      // leaves the company per funded loan, previously sitting in a table no
+      // financial view read.
+      const commissions = summarizeCommissionCosts(commissionRows);
       const unitEconomics = computeUnitEconomics({
         receivedCompensation: summary.receivedCompensation,
         fundedCount: summary.fundedCount,
         costs,
+        commissions,
       });
 
       res.json({
@@ -411,6 +421,7 @@ export function registerSubmissionRoutes(
         discrepancies,
         clawbackExposure: clawback,
         costs,
+        commissions,
         unitEconomics,
       });
     } catch (error) {

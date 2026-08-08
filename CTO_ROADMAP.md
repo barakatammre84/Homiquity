@@ -100,6 +100,17 @@ anything else in this file being true.
   business-partner APIs unlock with F6). See
   [REGULATORY_MONITORING.md](knowledge-base/compliance/REGULATORY_MONITORING.md).
 - [ ] **1.9 Delete the dead `GEMINI_API_KEY`** — all AI is Anthropic; the key is verified unused.
+- [ ] **1.10 Counsel: is the referral-commission payout permitted?** Two questions, both opened by
+  the [2026-08-08 financial re-audit](knowledge-base/logs/2026-08-08-financial-architecture-reaudit-commission-payouts.md)
+  (F-21) and recorded in the regulatory ledger under `regz-1026-36d1-referral-commission-payout` on a
+  **14-day** interval so `pnpm checkup` goes loud. (a) **Reg Z §1026.36(d)(1)** — a *fixed* percentage
+  of the amount of credit extended is permitted; `POST /api/broker/commissions` takes a percentage
+  chosen **per file** by an admin, and `calculateAgentCommission` would pay 25% of a lender comp
+  figure that varies by lender and product. (b) **RESPA §8** — the partner tables were built with no
+  fee/commission columns *by design* (charter §5-C1), and `broker_commissions` is that column set on
+  the same referral edge. Today only the staff `broker` role can reach it (the `agent` role in the
+  gate does not exist), so nothing is exposed — but §3.7 schedules wiring it up. **No commission may
+  be paid on a live file until this is answered.**
 
 ---
 
@@ -152,7 +163,32 @@ anything else in this file being true.
   — verifying `checkPipelineProgress` actually enforces it.
 - [ ] **3.7 Optimization-engine dispositions:** wire `matchAndPriceBorrower` / `getCoachPreFillData`
   to a surface **or delete them**; fire `calculateAgentCommission` from the funded-loan transition
-  (near `graduateClosedLoan`) rather than a schedule.
+  (near `graduateClosedLoan`) rather than a schedule. **Blocked on §1.10** — wiring this fires a
+  payout whose Reg Z / RESPA posture is unanswered. Two defects to fix in the same pass (audit F-21):
+  its referrer gate tests for a role `"agent"` that is not in `ALL_ROLES`, and its fallback when the
+  comp plan is unknown is **275 bps — the top of the seeded range**, so it overpays by 37% rather
+  than erring low.
+- [ ] **3.14 Bound the commission payout by the revenue it shares** (audit F-21, engineering half —
+  independent of §1.10 and worth doing regardless). `POST /api/broker/commissions` computes
+  `loanAmount × rate` with `rate ≤ 0.1` as the only check: it never reads the file's
+  `compensationExpectedAmount`, and never checks the application funded. At the seeded 200 bps plan
+  on a $250k loan that permits a **$25,000 payable against $5,000 of revenue**, on a file that may
+  still be in processing. Refuse a payout exceeding the file's expected compensation; gate on
+  `funded`; derive the basis from `fundedLoanAmount`.
+- [ ] **3.15 Compute the cash-conversion cycle** (audit F-23). Every operand is already recorded and
+  none is joined: `loan_cost_entries.incurred_at`, `computeCycleTimeReport`'s median/p90 days to
+  funding, `lender_submissions.funded_at`, and `compensation_received_at` — that last column holds
+  the funding→remittance lag, the pure cash-drag window for a broker, and is read by nothing. Add the
+  second interval to `buildCycleTimeReport` and a working-capital roll-up beside the unit-economics
+  block. No schema change; a join and a subtraction. This is the figure that determines how fast
+  origination volume can grow without an outside facility.
+- [ ] **3.16 Recognize platform fee income** (audit F-22) — needs an accounting-policy call first.
+  The revenue line counts only the lender remittance; the $500 application + $1,500 underwriting fees
+  are our own charges, are levied under **both** compensation models, and are recognized nowhere.
+  Combined with F-20 that meant both sides of the margin were wrong in opposite directions. Mirror
+  the compensation lifecycle: snapshot the schedule charged at LE issuance, record collection at
+  settlement. Decide first whether the basis is the trimmed (post-F-17) amount or the standard
+  schedule, and whether recognition is at closing or on receipt.
 - [ ] **3.8 Tag agent-sourced inbound leads.** `leads.source` has no value for an agent-referred
   borrower, so the playbook's 30%-agent-sourced gate is **structurally unmeasurable**. Needs a
   business decision on the intake mechanism (referral link / agent portal / manual code) before any

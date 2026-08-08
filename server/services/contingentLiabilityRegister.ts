@@ -19,6 +19,7 @@ import {
   type ContingentLiabilityRegister,
 } from "@shared/contingentLiabilities";
 import { buildClawbackRegister } from "@shared/compensationClawback";
+import { summarizeCommissionCosts } from "@shared/costLedger";
 import { isLenderConfirmed } from "@shared/rateLockConfirmation";
 import type { ToleranceEvaluation } from "@shared/compliance/feeTolerance";
 import type { LoanEstimateDisclosure } from "@shared/schema";
@@ -45,11 +46,14 @@ function latestPerApplication(rows: LoanEstimateDisclosure[]): LoanEstimateDiscl
 export async function buildLiveContingentLiabilityRegister(
   now: Date = new Date(),
 ): Promise<ContingentLiabilityRegister> {
-  const [submissions, disclosures, openLocks] = await Promise.all([
+  const [submissions, disclosures, openLocks, commissionRows, lenderRows] = await Promise.all([
     storage.getAllLenderSubmissions(),
     storage.getAllLoanEstimateDisclosures(),
     storage.getOpenRateLocks(),
+    storage.getAllBrokerCommissions(),
+    storage.getWholesaleLenders(),
   ]);
+  const lenderByKey = new Map(lenderRows.map(l => [l.lenderId, l]));
 
   // --- TRID cures: only files whose CURRENT baseline evaluated to a cure ---
   // A superseded version's evaluation is history, not exposure, which is why
@@ -71,11 +75,34 @@ export async function buildLiveContingentLiabilityRegister(
       applicationId: s.applicationId,
       status: s.status,
       lenderId: s.lenderId,
+      // The contracted window when an executed agreement supplies one. This
+      // register previously omitted it and always fell back to the platform
+      // default, so it and the compensation report disagreed about the same
+      // loans' exposure.
+      epoClawbackDays: lenderByKey.get(s.lenderId)?.epoClawbackDays,
       fundedAt: s.fundedAt,
       compensationReceivedAmount: s.compensationReceivedAmount,
     })),
     now,
   );
+
+  // --- Commission payouts -------------------------------------------------
+  // The payable, plus the part of it that has already left the building on a
+  // loan the lender could still reclaim compensation from. Keyed on the
+  // clawback register's own at-risk set so the two entries cannot disagree
+  // about which loans are inside a window.
+  const atRiskApplicationIds = new Set(
+    clawback.entries.map(e => e.applicationId).filter((id): id is string => !!id),
+  );
+  const commissionSummary = summarizeCommissionCosts(commissionRows);
+  let paidInsideClawbackWindowAmount = 0;
+  let paidInsideClawbackWindowCount = 0;
+  for (const row of commissionRows) {
+    if (row.status !== "paid") continue;
+    if (!atRiskApplicationIds.has(row.applicationId)) continue;
+    paidInsideClawbackWindowAmount += Number(row.commissionAmount) || 0;
+    paidInsideClawbackWindowCount += 1;
+  }
 
   // --- Rate locks ---------------------------------------------------------
   // Split by whether a lender is actually on the hook. A confirmed lock is the
@@ -126,5 +153,13 @@ export async function buildLiveContingentLiabilityRegister(
       expiringSoonLoanVolume,
     },
     regZExposedLoanCount,
+    commissions: {
+      approvedAmount: commissionSummary.approvedAmount,
+      approvedCount: commissionSummary.approvedCount,
+      pendingAmount: commissionSummary.pendingAmount,
+      pendingCount: commissionSummary.pendingCount,
+      paidInsideClawbackWindowAmount: Math.round(paidInsideClawbackWindowAmount * 100) / 100,
+      paidInsideClawbackWindowCount,
+    },
   });
 }

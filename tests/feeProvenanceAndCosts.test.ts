@@ -18,6 +18,7 @@ import {
 import {
   computeUnitEconomics,
   costForApplication,
+  summarizeCommissionCosts,
   summarizeCosts,
 } from "../shared/costLedger";
 import { computeClosingCosts } from "../server/services/loanCosts";
@@ -163,7 +164,7 @@ describe("F-11 — unit economics", () => {
     const u = computeUnitEconomics({ receivedCompensation: 8_000, fundedCount: 1, costs });
     expect(u.grossMargin).toBe(7_290);
     expect(u.grossMarginPct).toBeCloseTo(91.13, 2);
-    // Labour and commissions are captured nowhere, so this must never be
+    // Labour and overhead are captured nowhere, so this must never be
     // presented as the real margin.
     expect(u.costSideIncomplete).toBe(true);
     expect(u.notes.join(" ")).toMatch(/upper bound/i);
@@ -184,5 +185,96 @@ describe("F-11 — unit economics", () => {
     const u = computeUnitEconomics({ receivedCompensation: 8_000, fundedCount: 1, costs: withSim });
     expect(u.directCost).toBe(0);
     expect(u.notes.join(" ")).toMatch(/still-simulated vendor adapters/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-20 — commission payouts are a cost, and were counted as none.
+//
+// `broker_commissions` recorded real money leaving the company per funded
+// loan; nothing financial read the table, so the margin figure omitted the
+// largest variable cost a brokerage carries while asserting commissions were
+// "not captured anywhere".
+// ---------------------------------------------------------------------------
+describe("F-20 — commission payouts on the cost side", () => {
+  const rows = [
+    { status: "paid", commissionAmount: "1200.00" },
+    { status: "approved", commissionAmount: "800.00" },
+    { status: "pending", commissionAmount: "500.00" },
+    { status: "rejected", commissionAmount: "9999.00" },
+  ];
+
+  it("splits the payout by lifecycle state rather than summing it flat", () => {
+    const c = summarizeCommissionCosts(rows);
+    expect(c.paidAmount).toBe(1_200);
+    expect(c.approvedAmount).toBe(800);
+    expect(c.pendingAmount).toBe(500);
+    // committed = approved + paid. Pending is not yet owed; rejected never is.
+    expect(c.committedAmount).toBe(2_000);
+  });
+
+  it("never lets a rejected commission reach any total", () => {
+    const c = summarizeCommissionCosts(rows);
+    const everyTotal = c.paidAmount + c.approvedAmount + c.pendingAmount;
+    expect(everyTotal).toBe(2_500);
+    expect(c.committedAmount).toBeLessThan(9_999);
+  });
+
+  it("charges committed commission against gross margin", () => {
+    const costs = summarizeCosts([{ applicationId: "a1", category: "appraisal", amount: "650" }]);
+    const withoutCommissions = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs,
+    });
+    const withCommissions = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs,
+      commissions: summarizeCommissionCosts(rows),
+    });
+
+    expect(withoutCommissions.grossMargin).toBe(7_350);
+    // 2,000 of committed payout is 25% of revenue on this file. Omitting it
+    // overstated margin by exactly that.
+    expect(withCommissions.grossMargin).toBe(5_350);
+    expect(withCommissions.commissionCost).toBe(2_000);
+    expect(withCommissions.vendorCost).toBe(650);
+    expect(withCommissions.directCost).toBe(2_650);
+  });
+
+  it("says how much pending commission would move the number if approved", () => {
+    const u = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs: summarizeCosts([]),
+      commissions: summarizeCommissionCosts(rows),
+    });
+    expect(u.notes.join(" ")).toMatch(/500\.00 of commission/);
+    expect(u.notes.join(" ")).toMatch(/pending admin sign-off/);
+  });
+
+  it("keeps the margin an upper bound even with commissions counted", () => {
+    // Labour and overhead remain unmodeled — counting one more cost line must
+    // not be mistaken for completing the cost side.
+    const u = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs: summarizeCosts([]),
+      commissions: summarizeCommissionCosts(rows),
+    });
+    expect(u.costSideIncomplete).toBe(true);
+    expect(u.notes.join(" ")).toMatch(/upper bound/i);
+    expect(u.notes.join(" ")).toMatch(/processing labour/i);
+  });
+
+  it("omitting commissions entirely is equivalent to zero, not a crash", () => {
+    const u = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs: summarizeCosts([]),
+    });
+    expect(u.commissionCost).toBe(0);
+    expect(u.grossMargin).toBe(8_000);
   });
 });

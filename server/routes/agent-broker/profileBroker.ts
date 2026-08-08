@@ -176,6 +176,19 @@ export function registerProfileBrokerRoutes(
         status: "pending",
       });
 
+      // Money out of the company leaves a trail. A $60 credit-pull cost entry
+      // is audited (`loan_cost.recorded`); creating a payout obligation worth
+      // up to 10% of the loan amount was not, which left the only cash-
+      // disbursement path on the platform with no record of who opened it.
+      const { logAudit } = await import("../../auditLog");
+      logAudit(req, "broker_commission.created", "loan_application", applicationId, {
+        commissionId: commission.id,
+        brokerId,
+        loanAmount,
+        commissionRate: rate,
+        commissionAmount,
+      });
+
       res.status(201).json(commission);
     } catch (error) {
       console.error("Create broker commission error:", error);
@@ -239,6 +252,20 @@ export function registerProfileBrokerRoutes(
       const updated = await storage.updateBrokerCommission(id, updateData);
       if (!updated) {
         return res.status(404).json({ error: "Commission not found" });
+      }
+
+      // Only status transitions are audited — a notes edit is not a financial
+      // event. "paid" is the disbursement, and it is the same admin who could
+      // have created the payable, so the trail is the only separation there is.
+      if (updateData.status !== undefined) {
+        const { logAudit } = await import("../../auditLog");
+        logAudit(req, "broker_commission.status_changed", "loan_application", existing.applicationId, {
+          commissionId: existing.id,
+          brokerId: existing.brokerId,
+          previousStatus: existing.status,
+          newStatus: updateData.status,
+          commissionAmount: existing.commissionAmount,
+        });
       }
 
       res.json(updated);
