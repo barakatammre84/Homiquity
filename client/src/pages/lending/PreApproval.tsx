@@ -39,6 +39,7 @@ import { VerificationPulse } from "@/funnel/VerificationPulse";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QUESTIONS_BY_ID } from "./preApproval/questions";
 import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
+import { useDeferredSubmit } from "./preApproval/useDeferredSubmit";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
 import { useServerDraftAutosave } from "./preApproval/useServerDraftAutosave";
 import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
@@ -174,32 +175,68 @@ function PreApprovalFunnel() {
     } catch {}
   }, []);
 
-  // The pending key is consumed synchronously below, but the restore offer
-  // must stay suppressed for the rest of this mount while the deferred
-  // auto-submit runs — the ref outlives the key.
-  const pendingSubmitRef = useRef(false);
+  // Create/update application mutation. Declared HERE, above its consumers,
+  // rather than 130 lines down: the post-auth replay effect used to reference
+  // it from a closure created long before the binding was initialised, which
+  // works only by accident of when effects run and reads as a TDZ bug.
+  const submitMutation = useMutation({
+    mutationFn: async (data: PreApprovalFormData) => {
+      const payload: Record<string, unknown> = {
+        ...data,
+        annualIncome: data.annualIncome.replace(/,/g, ""),
+        purchasePrice: data.purchasePrice.replace(/,/g, ""),
+        downPayment: data.downPayment.replace(/,/g, ""),
+        monthlyDebts: data.monthlyDebts.replace(/,/g, ""),
+        // FCRA soft-pull authorization from the final step — persisted
+        // server-side as a credit_consents evidence row (IP, UA, disclosure).
+        softPullConsentAccepted: funnelState.consent.softPullAcknowledged,
+      };
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    try {
-      const pending = localStorage.getItem(PENDING_SUBMIT_KEY);
-      if (!pending) return;
-      pendingSubmitRef.current = true;
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
-      if (!saved) { localStorage.removeItem(PENDING_SUBMIT_KEY); return; }
-      const formData = JSON.parse(saved) as PreApprovalFormData;
-      form.reset(formData);
-      localStorage.removeItem(PENDING_SUBMIT_KEY);
-      // The pending marker is only ever written after the final-step consent
-      // gate passed, so restore the acknowledgment for the deferred submit.
-      setConsent(true);
-      setTimeout(() => {
-        submitMutation.mutate(formData);
-      }, 500);
-    } catch {
-      localStorage.removeItem(PENDING_SUBMIT_KEY);
-    }
-  }, [isAuthenticated]);
+      if (inviteId.current) {
+        payload.inviteId = inviteId.current;
+      }
+
+      // Always POST — the intake route consumes the user's existing draft
+      // container server-side (updating it and flipping draft → submitted
+      // through the pipeline engine with the full intake side effects). The
+      // old client-side PATCH branch skipped the status flip, analysis, and
+      // notifications entirely, leaving the "submitted" application in draft.
+      const response = await apiRequest("POST", "/api/loan-applications", payload);
+      return response.json();
+    },
+    onSuccess: async (result) => {
+      clearAutosave();
+      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
+
+      if (inviteId.current) {
+        sessionStorage.removeItem("inviteId");
+      }
+
+      toast({
+        title: "Application submitted",
+        description: "Your numbers were run against underwriting guidelines — no AI, just math.",
+      });
+      navigate(`/loan-options/${result.id}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: friendlyApiError(error, "Failed to submit application. Please try again."),
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Finishes a pre-approval the visitor completed before they had an account.
+  // Owns the PENDING_SUBMIT marker, the exactly-once claim, and the replay
+  // timer's cleanup (see preApproval/useDeferredSubmit.ts).
+  const { hasPendingSubmit } = useDeferredSubmit({
+    form,
+    isAuthenticated,
+    setConsent,
+    submit: submitMutation.mutate,
+  });
 
   const currentQ = QUESTIONS_BY_ID[stepId];
 
@@ -279,15 +316,6 @@ function PreApprovalFunnel() {
   // its whole UI from form.incomeSources, so form.reset() is the entire
   // restore — no second store to reseed, and no way to forget to.)
 
-  const hasPendingSubmit = useCallback(() => {
-    if (pendingSubmitRef.current) return true;
-    try {
-      return !!localStorage.getItem(PENDING_SUBMIT_KEY);
-    } catch {
-      return false;
-    }
-  }, []);
-
   // A1: the server-draft container id — adopted from useDraftRestore when a
   // prior draft exists, or minted by the server autosave's find-or-create.
   const [adoptedDraftId, setAdoptedDraftId] = useState<string | null>(null);
@@ -335,56 +363,6 @@ function PreApprovalFunnel() {
   // deliberately NOT applied here — adopting a draft (data + PATCH target) is
   // consent-gated through useDraftRestore's banner.
   useCoachPrefill(form, coachIntake?.intake);
-
-  // Create/update application mutation
-  const submitMutation = useMutation({
-    mutationFn: async (data: PreApprovalFormData) => {
-      const payload: Record<string, unknown> = {
-        ...data,
-        annualIncome: data.annualIncome.replace(/,/g, ""),
-        purchasePrice: data.purchasePrice.replace(/,/g, ""),
-        downPayment: data.downPayment.replace(/,/g, ""),
-        monthlyDebts: data.monthlyDebts.replace(/,/g, ""),
-        // FCRA soft-pull authorization from the final step — persisted
-        // server-side as a credit_consents evidence row (IP, UA, disclosure).
-        softPullConsentAccepted: funnelState.consent.softPullAcknowledged,
-      };
-
-      if (inviteId.current) {
-        payload.inviteId = inviteId.current;
-      }
-
-      // Always POST — the intake route consumes the user's existing draft
-      // container server-side (updating it and flipping draft → submitted
-      // through the pipeline engine with the full intake side effects). The
-      // old client-side PATCH branch skipped the status flip, analysis, and
-      // notifications entirely, leaving the "submitted" application in draft.
-      const response = await apiRequest("POST", "/api/loan-applications", payload);
-      return response.json();
-    },
-    onSuccess: async (result) => {
-      clearAutosave();
-      queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
-      queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
-
-      if (inviteId.current) {
-        sessionStorage.removeItem("inviteId");
-      }
-
-      toast({
-        title: "Application submitted",
-        description: "Your numbers were run against underwriting guidelines — no AI, just math.",
-      });
-      navigate(`/loan-options/${result.id}`);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: friendlyApiError(error, "Failed to submit application. Please try again."),
-        variant: "destructive",
-      });
-    },
-  });
 
   // A1: authenticated progress also persists to the ONE server draft row, so
   // a device switch doesn't lose the application. Disabled once a submit is
