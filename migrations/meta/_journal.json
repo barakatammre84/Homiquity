@@ -372,6 +372,13 @@
       "when": 1785962400000,
       "tag": "0052_article_loan_product_taxonomy",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1786046400000,
+      "tag": "0053_user_phones",
+      "breakpoints": true
     }
   ]
 }

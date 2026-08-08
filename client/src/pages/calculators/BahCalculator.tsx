@@ -17,6 +17,7 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ConversionCTA } from "@/components/ConversionCTA";
+import { paymentFactor } from "@shared/lib/amortization";
 import {
   DollarSign,
   Calculator,
@@ -73,7 +74,7 @@ function calculate(inputs: BahInputs): BahResults {
   const ff = fundingFeePercent / 100;
 
   // Monthly P&I per $1 of loan.
-  const payFactor = r === 0 ? 1 / n : (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  const payFactor = paymentFactor(interestRate, n);
   const taxMonthlyPerDollar = propertyTaxRate / 100 / 12;
   const insMonthlyPerDollar = insuranceRate / 100 / 12;
 

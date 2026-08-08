@@ -73,7 +73,7 @@ every push to `main`. See [10-deploy-ops.md](./10-deploy-ops.md).
 
 ⚠️ Do **not** use `pnpm db:push` — the shared dev DB serves multiple branches and
 push drops other branches' columns; migrations are hand-authored (drizzle-kit generate
-has snapshot drift). See `.agents/memory/db-push-blocker.md` and CLAUDE.md.
+has snapshot drift). See [DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md) and CLAUDE.md.
 
 ## Health of the codebase (as of 2026-07-08)
 

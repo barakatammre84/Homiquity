@@ -15,6 +15,7 @@ import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { formatCurrency } from "@/lib/formatters";
 import { usePageView } from "@/hooks/useActivityTracker";
+import { loanSupportedByPayment } from "@shared/lib/amortization";
 import {
   ArrowRight,
   CheckCircle2,
@@ -36,12 +37,7 @@ const PI_SHARE = 0.75;
 const TERM_MONTHS = 360;
 
 /** Loan amount a given monthly P&I payment supports (present value of annuity). */
-function supportableLoan(monthlyPI: number, annualRatePct: number, months: number): number {
-  if (monthlyPI <= 0 || months <= 0) return 0;
-  const r = annualRatePct / 100 / 12;
-  if (r === 0) return monthlyPI * months;
-  return (monthlyPI * (1 - Math.pow(1 + r, -months))) / r;
-}
+const supportableLoan = loanSupportedByPayment;
 
 /** Currency field: displays formatted digits, stores a plain number. */
 function CurrencyInput({

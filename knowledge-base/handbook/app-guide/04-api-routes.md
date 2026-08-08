@@ -32,7 +32,7 @@ grep a file to confirm):
 | `admin.ts` | 36 | Admin panel: users/roles, config, audit, automation |
 | `admin/pricingPolicy.ts` | 5 | Platform fee schedule (append-only, versioned) + wholesale comp bands — the two halves of one Reg Z points-and-fees budget, editable without a deploy |
 | `compliance.ts` | 33 | Consents, credit pulls, adverse action, data retention, disclosures |
-| `lending/` (7 groups) | 27 | Loan pipeline operations, letters, MISMO export, intake + status machine |
+| `lending/` (8 groups) | 33 | Loan pipeline operations, letters, MISMO export, intake + status machine |
 | `task-engine.ts` | 23 | Staff task engine: rules-driven task creation/assignment |
 | `intelligence.ts` | 23 | Borrower graph, state machine, lender matching, readiness |
 | `rate-sheets.ts` | 20 | Wholesale rate sheets & pricing adjustments |
@@ -40,7 +40,6 @@ grep a file to confirm):
 | `underwriting/` (7 groups) | 35 | Run underwriting, decisions, pipeline/conditions, lender submissions, LE delivery |
 | `data-intelligence.ts` | 16 | Analytics events, funnels, outcomes, predictions, benchmarks |
 | `property.ts` | 12 | Properties CRUD, affordability analysis |
-| `optimizations.ts` | 12 | Optimization engine (recommendations) |
 | `underwriting-rules.ts` | 10 | Rules DSL CRUD/testing |
 | `partners.ts` | 10 | PartnerHub (PH-1/PH-2): realtor registration + admin approval queue, unified attribution, masked partner pipeline behind borrower consent |
 | `coach.ts` | 8 | AI coach conversations |

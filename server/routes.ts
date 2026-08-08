@@ -45,6 +45,7 @@ import { registerAutopilotAdminRoutes } from "./routes/autopilotAdmin";
 import { seedDatabase } from "./seed";
 import { pool } from "./db";
 import { assertEncryptionConfig, initEncryption } from "./services/encryptionService";
+import { emailProviderStatus } from "./services/emailService";
 
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -58,6 +59,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   //
   // RAILWAY_GIT_COMMIT_SHA is injected for GitHub-sourced deploys; it is absent
   // locally and in any non-Railway run, hence `?? null` rather than a fake value.
+  //
+  // `email` reports the same thing for outbound mail. Same failure shape as the
+  // stale-deploy one: with no SENDGRID_API_KEY or SMTP_* set, emailService falls
+  // through to a console log and every send is discarded — invisible while the
+  // site was gated, a silent drop of password resets and waitlist confirmations
+  // once the funnel opened on 2026-08-06. Booleans and provider names only: this
+  // endpoint is unauthenticated AND its body is on RESPONSE_BODY_LOG_ALLOWLIST,
+  // so no key material or address may appear here.
+  //
+  // A missing provider deliberately does NOT make this 503. `status` answers
+  // "can this process serve requests", which it can; the CI self-host boot step
+  // and the verify-deploy poll both require a 200 here and neither provisions
+  // email, so degrading the status code would red the pipeline instead of
+  // surfacing the gap. `email.configured` is the field to alert on.
   app.get("/api/health", async (_req, res) => {
     try {
       await pool.query("SELECT 1");
@@ -65,6 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "ok",
         timestamp: new Date().toISOString(),
         commit: process.env.RAILWAY_GIT_COMMIT_SHA ?? null,
+        email: emailProviderStatus(),
       });
     } catch (err) {
       console.error("[health] Database connectivity check failed:", err);

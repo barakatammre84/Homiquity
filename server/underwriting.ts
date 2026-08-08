@@ -17,6 +17,7 @@ import type {
 import { lookupResolver } from "./services/lookupResolver";
 import { computeAgencyWageIncome } from "./services/income/paths/agencyWage";
 import { computeSelfEmploymentPath } from "./services/income/paths/selfEmployment";
+import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
 
 export interface IncomeQualificationResult {
   baseMonthlyIncome: number;
@@ -446,10 +447,12 @@ export async function checkPropertyEligibility(
   }
 
   // 3. Estimate PITI
-  const principalAndInterestRate = 0.06; // 6% base rate assumption
-  const monthlyPI = maxLoanAmount * (principalAndInterestRate / 12) * 
-    Math.pow(1 + principalAndInterestRate / 12, 360) / 
-    (Math.pow(1 + principalAndInterestRate / 12, 360) - 1);
+  const principalAndInterestRate = 0.06; // 6% base rate assumption (FRACTION)
+  const monthlyPI = monthlyPrincipalAndInterestFromFraction(
+    maxLoanAmount,
+    principalAndInterestRate,
+    360,
+  );
 
   const taxMonthly = (propertyTaxAnnual || propertyPrice * 0.0125) / 12;
   const hoaFees = hoaMonthly || 0;

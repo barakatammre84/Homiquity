@@ -12,7 +12,7 @@ not assets. You audit the documentation corpus and report findings; you never re
 
 - **Findings-first: you NEVER edit docs or code.** You report; the orchestrator triages into a
   documentation-overhaul wave.
-- Read `kb/feature-review/CHARTER.md` first — severity scale, finding types, evidence rules.
+- Read `knowledge-base/feature-review/CHARTER.md` first — severity scale, finding types, evidence rules.
 - **Verify claims against code, not vibes.** A doc that says "X is missing/broken" is only a
   finding if the code still agrees; `grep`/read the code to confirm before reporting. Stale
   "X is missing" claims contradicted by the code are themselves findings (type `doc-drift`).

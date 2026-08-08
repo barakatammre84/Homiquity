@@ -1,5 +1,10 @@
 # Competitive Brief — 2026-07-06
 
+> **⚠️ DATED SNAPSHOT (2026-07-06), last touched 2026-07-08.** Market positioning research, not a
+> live tracker. Re-verify any competitor claim before repeating it externally. Kept in `kb/` rather
+> than archived because it still describes this market and [TAX_SERIES_01_DRAFT.md](TAX_SERIES_01_DRAFT.md)
+> builds on its positioning — see the archival rule in [archive/README.md](../../archive/README.md).
+
 **Research date:** July 6, 2026 (live web research; no Ahrefs/Similarweb quantitative data —
 connectors unauthorized). Competitor set: Rocket Mortgage, Better, Tomo, Beeline, plus NEXA
 Mortgage on the LO-recruiting flank. Source session: marketing competitive-brief skill run.
