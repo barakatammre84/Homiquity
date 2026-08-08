@@ -51,7 +51,7 @@ The industry terms this codebase assumes you know, decoded.
 | **Trigger leads** | The lead-poaching mechanism above; the Homeowners Privacy Protection Act (2026) restricts it — why a soft-pull-first strategy matters |
 | **TCPA** | Telephone Consumer Protection Act — consent rules for automated calls/SMS ($500–$1,500 per violation) |
 | **HMDA** | Home Mortgage Disclosure Act — demographic data reporting on lending decisions |
-| **NMLS** | Nationwide Multistate Licensing System — loan officers must hold licenses; the footer's "NMLS #PENDING" must be resolved before real lending |
+| **NMLS** | Nationwide Multistate Licensing System — companies and loan officers must hold licenses. Homiquity is **NMLS #427468** (`shared/companyIdentity.ts`), licensed in Illinois only (`LICENSED_STATES`, IL license #3423789); the footer renders it via `companyNmlsDisplay()`. Per-LO NMLS ids bind as LOs join |
 | **TRID / LE / CD** | TILA-RESPA disclosure rules; Loan Estimate & Closing Disclosure documents with strict timing requirements |
 
 ## Data standards

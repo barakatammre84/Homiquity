@@ -75,6 +75,15 @@ describe("detectTriggers — §9 path triggers", () => {
     ["shared/uploads.ts", "uploads / object storage"],
     ["server/services/emailService.ts", "outbound messaging"],
     ["server/services/smsCompliance.ts", "outbound messaging"],
+    ["server/routes/webhooks.ts", "webhook receivers & signature verification"],
+    // Added 2026-08-06. Each of these was UNCOVERED until the post-Railway audit; the
+    // cases exist so a future edit to PATH_TRIGGERS cannot silently drop them again.
+    ["server/services/accountRecovery.ts", "auth & sessions"],
+    ["server/services/twilioSignature.ts", "webhook receivers & signature verification"],
+    ["server/services/twilioMessageStatus.ts", "webhook receivers & signature verification"],
+    ["server/clientIp.ts", "request identity & trust boundary"],
+    ["server/trustProxy.ts", "request identity & trust boundary"],
+    ["server/services/rateLimitPolicy.ts", "rate-limit policy"],
   ];
 
   it.each(cases)("flags %s as %s", (file, label) => {
@@ -82,13 +91,31 @@ describe("detectTriggers — §9 path triggers", () => {
     expect(got.map((t: { label: string }) => t.label)).toContain(label);
   });
 
+  // The bug this trigger was widened to catch: routes/webhooks.ts only CALLS
+  // evaluateTwilioWebhookAuth. With the route covered but the delegate not, a PR could
+  // weaken the signature check — the actual auth boundary — and pass the gate. #433 was
+  // that class of bug (the inbound SMS webhook trusted anyone who found the URL).
+  it("flags the signature-verification delegate on its own, not just the route that calls it", () => {
+    expect(detectTriggers(["server/services/twilioSignature.ts"], [])).toHaveLength(1);
+  });
+
+  // clientIp.ts is §9 because of its consumers: rateLimitKey (abuse control) and
+  // clientIpForRecord, which lands in every audit row and in leads.ts's `consentIp` —
+  // the TCPA consent provenance. Changing it alone must still demand a review.
+  it("flags request-identity resolution even when nothing else in the PR is a trigger", () => {
+    const got = detectTriggers(["server/clientIp.ts", "README.md", "client/src/pages/borrower/Tasks.tsx"], []);
+    expect(got.map((t: { label: string }) => t.label)).toEqual(["request identity & trust boundary"]);
+  });
+
   it("does not flag ordinary files", () => {
     expect(detectTriggers(["client/src/pages/borrower/Documents.tsx", "README.md"], [])).toEqual([]);
   });
 
   it("does not flag a lookalike outside the named path", () => {
-    // tests/ssnVault.test.ts is not server/services/ssnVault.ts.
-    expect(detectTriggers(["tests/ssnVault.test.ts"], [])).toEqual([]);
+    // tests/ssnVault.test.ts is not server/services/ssnVault.ts. tests/clientIp.test.ts
+    // is a real file in this repo, so the new trigger's anchoring is load-bearing: an
+    // unanchored /clientIp/ would red every PR that merely touches its test.
+    expect(detectTriggers(["tests/ssnVault.test.ts", "tests/clientIp.test.ts"], [])).toEqual([]);
   });
 
   it("reports each triggered area once, not once per file", () => {

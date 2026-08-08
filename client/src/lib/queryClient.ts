@@ -359,6 +359,92 @@ export const taskEngineKeys = {
 };
 
 /**
+ * Autopilot reads — the borrower's live packaging status and the admin metrics.
+ *
+ * `status` exists because that entry is fed by an SSE stream, NOT only by a
+ * fetch. The stream used to write into a `useState` inside useAutopilotStatus,
+ * which put live server state in a parallel store: nothing could invalidate it,
+ * two mounts opened two connections, and it had no error state at all. The
+ * server closes every stream on a 300s timer and relies on the browser's
+ * transparent reconnect (server/routes/autopilot.ts) — but a reconnect that
+ * meets a 401 or a 502 FAILS THE CONNECTION PERMANENTLY per the EventSource
+ * spec, and with no `onerror` the hook never learned. The banner then rendered
+ * a confident, frozen "we're reviewing your file" to a borrower forever.
+ *
+ * Keeping the status in the cache and having the stream `setQueryData` into it
+ * makes the stream one more writer to a normal entry: invalidatable, shared
+ * across mounts, and backed by the snapshot endpoint when the stream is down.
+ *
+ * `metrics` / `metricsTrend` take the window as a params OBJECT, so the key
+ * describes the request. They used to be `["/api/autopilot/metrics", rangeDays]`
+ * with a queryFn that computed `new Date()` at fetch time — the time window was
+ * a request input that did not appear in the key, so one cache entry silently
+ * meant different things at different times.
+ */
+export interface AutopilotMetricsRange {
+  from: string;
+  to: string;
+}
+
+export const autopilotKeys = {
+  all: () => ["/api/autopilot"] as const,
+  config: () => ["/api/autopilot", "config"] as const,
+  status: (applicationId: string) =>
+    ["/api/autopilot", "status", applicationId] as const,
+  /** Every metrics read (both the summary and the trend) — an invalidation prefix. */
+  metricsAll: () => ["/api/autopilot", "metrics"] as const,
+  metrics: (range: AutopilotMetricsRange) =>
+    ["/api/autopilot", "metrics", range] as const,
+  metricsTrend: (range: AutopilotMetricsRange) =>
+    ["/api/autopilot", "metrics", "trend", range] as const,
+};
+
+/**
+ * Borrower-graph reads. `affordability` takes the price as a params object, not
+ * a bare scalar: the endpoint is `GET /api/borrower-graph/affordability?price=`
+ * (server/routes/borrower/scenariosWaitlist.ts), so the old
+ * `["/api/borrower-graph/affordability", price]` key resolved to
+ * `/api/borrower-graph/affordability/450000` — a path that does not exist. The
+ * key was decorative and the hand-written queryFn was the only thing making the
+ * request work.
+ */
+export const borrowerGraphKeys = {
+  all: () => ["/api/borrower-graph"] as const,
+  affordability: (price: number | null) =>
+    ["/api/borrower-graph/affordability", { price }] as const,
+};
+
+/**
+ * Prediction reads. `me` takes the application as a params object for the same
+ * reason as `borrowerGraphKeys.affordability` — the route is a bare
+ * `GET /api/predictions/me` reading `?applicationId=`
+ * (server/routes/data-intelligence.ts:235), not `/api/predictions/me/:id`.
+ */
+export const predictionKeys = {
+  all: () => ["/api/predictions"] as const,
+  me: (applicationId?: string) =>
+    ["/api/predictions/me", { applicationId }] as const,
+  benchmark: () => ["/api/predictions/benchmark"] as const,
+};
+
+/**
+ * Consent TEMPLATES — a different top-level path from `consentKeys`
+ * (`/api/consents`), so deliberately its own factory rather than a branch of
+ * that one: nesting it would rewrite its URL.
+ *
+ * One identity for one endpoint. `GET /api/consent-templates?type=` was being
+ * read two ways — ConsentGateCard used the params-object form while
+ * TaxReturnInsightCard used `["/api/consent-templates", "tax_document_use"]`
+ * plus a hand-written queryFn — so the same server data occupied two cache
+ * entries, double-fetched, and no single invalidation could reach both.
+ */
+export const consentTemplateKeys = {
+  all: () => ["/api/consent-templates"] as const,
+  byType: (consentType: string) =>
+    ["/api/consent-templates", { type: consentType }] as const,
+};
+
+/**
  * Document-checklist / deal-team resource. NOTE: `/api/applications` is a
  * DIFFERENT endpoint from `/api/loan-applications` — see the note on
  * `loanApplicationKeys`. Kept separate so nobody conflates the two.

@@ -8,6 +8,7 @@ import type { MortgageRateWithProgram } from "@/types/rates";
 import { TrendingUp, Info } from "lucide-react";
 
 import { type Question } from "./questions";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 export interface AdvisoryPanelProps {
   formValues: PreApprovalFormData;
@@ -61,8 +62,7 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
     let estMortgage = 0;
     let pmiMonthly = 0;
     if (loanAmount > 0 && monthlyRate > 0) {
-      estMortgage = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
-                    (Math.pow(1 + monthlyRate, numPayments) - 1);
+      estMortgage = monthlyPrincipalAndInterest(loanAmount, estRatePct, numPayments);
       // 1.25%/yr of price is the platform-standard taxes+insurance estimate
       // (preUnderwriting.TAX_INSURANCE_ANNUAL_PCT) — it never included PMI.
       estMortgage += (price * 0.0125) / 12;

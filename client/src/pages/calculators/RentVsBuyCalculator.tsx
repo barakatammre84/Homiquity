@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 import {
   Home,
   DollarSign,
@@ -86,11 +87,7 @@ function calculateResults(inputs: CalculatorInputs): CalculatorResults {
   const monthlyRate = interestRate / 100 / 12;
   const numPayments = 30 * 12;
 
-  const monthlyMortgage =
-    monthlyRate > 0
-      ? (loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments))) /
-        (Math.pow(1 + monthlyRate, numPayments) - 1)
-      : loanAmount / numPayments;
+  const monthlyMortgage = monthlyPrincipalAndInterest(loanAmount, interestRate, numPayments);
 
   const monthlyPropertyTax = (homePrice * (propertyTaxRate / 100)) / 12;
   const monthlyInsurance = (homePrice * (insuranceRate / 100)) / 12;

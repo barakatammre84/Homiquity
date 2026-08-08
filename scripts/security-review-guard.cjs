@@ -45,10 +45,34 @@
 /** §9's file-path triggers, verbatim from TEAM_PRACTICES.md §9. */
 const PATH_TRIGGERS = [
   { label: "PII vault / field encryption", match: (f) => /^server\/services\/(ssnVault|piiVault|encryptionService)\.ts$/.test(f) },
-  { label: "auth & sessions", match: (f) => /^server\/(auth|socialAuth)\.ts$/.test(f) || f.startsWith("server/integrations/auth/") },
+  // accountRecovery.ts mints and validates password-reset tokens (RESET_TTL_MINUTES,
+  // SHA-256 of the raw token). It is auth-critical but lives in services/, so the three
+  // paths §9 originally named all missed it.
+  {
+    label: "auth & sessions",
+    match: (f) =>
+      /^server\/(auth|socialAuth)\.ts$/.test(f) ||
+      f.startsWith("server/integrations/auth/") ||
+      f === "server/services/accountRecovery.ts",
+  },
   { label: "uploads / object storage", match: (f) => f.startsWith("server/integrations/object_storage/") || f === "shared/uploads.ts" },
   { label: "outbound messaging", match: (f) => /^server\/services\/(emailService|smsCompliance)\.ts$/.test(f) },
-  { label: "webhook receivers", match: (f) => /^server\/routes\/.*webhook/i.test(f) },
+  // The route was covered; the service it delegates to was not. twilioSignature.ts IS the
+  // authentication boundary (evaluateTwilioWebhookAuth) — routes/webhooks.ts only calls it,
+  // so the signature check could be weakened without tripping this guard. #433 was exactly
+  // that class of bug: the inbound SMS webhook trusted anyone who found the URL.
+  // twilioMessageStatus.ts writes the opt-out ledger from an external POST.
+  {
+    label: "webhook receivers & signature verification",
+    match: (f) => /^server\/routes\/.*webhook/i.test(f) || /^server\/services\/twilio(Signature|MessageStatus)\.ts$/.test(f),
+  },
+  // Railway's edge sends X-Real-IP, not X-Forwarded-For, so req.ip degraded to a shared
+  // internal address and these files exist to repair it (#436). They are a §9 area because
+  // of what consumes them: rateLimitKey (abuse control) and clientIpForRecord — which is
+  // written to every audit row AND to leads.ts's `consentIp`, the TCPA consent provenance.
+  // A wrong change here bypasses rate limiting and falsifies legal consent evidence.
+  { label: "request identity & trust boundary", match: (f) => /^server\/(clientIp|trustProxy)\.ts$/.test(f) },
+  { label: "rate-limit policy", match: (f) => f === "server/services/rateLimitPolicy.ts" },
 ];
 
 /** Triggers that live in the diff's content rather than its file list. */
