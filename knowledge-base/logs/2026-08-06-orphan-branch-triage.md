@@ -17,7 +17,7 @@ recovering.
 | `claude/determined-mccarthy-xyq4f8` | 73 | `archive/claude-determined-mccarthy-xyq4f8` | **Cherry-pick ~10 fixes; abandon the rest** |
 | `claude/determined-mccarthy-we8h69` | 6 | `archive/claude-determined-mccarthy-we8h69` | **Keep — land after rebase** |
 | `claude/determined-mccarthy-7ga80s` | 6 | `archive/claude-determined-mccarthy-7ga80s` | **Abandon; salvage 2 files** |
-| `claude/determined-mccarthy-ykguyg` | 1 | `archive/claude-determined-mccarthy-ykguyg` | **Land as-is** (lowest risk) |
+| `claude/determined-mccarthy-ykguyg` | 1 | `archive/claude-determined-mccarthy-ykguyg` | ~~Land as-is~~ → **DO NOT LAND — superseded, would regress** |
 
 ---
 
@@ -164,16 +164,38 @@ Two files are unique to it and unrelated to the conflicting refactors:
 
 ---
 
-## 3. `ykguyg` — 1 commit, land as-is
+## 3. `ykguyg` — DO NOT LAND. Superseded, and it would regress.
 
-`refactor(staff): separate TaskOperations UI from data/business logic`. Single
-clean commit, 7 files, +471/−411, splitting `TaskOperations.tsx` into a
-`taskOperations/` module (`MetricsCard`, `SlaHeatmap`, `SlaStatusBadge`,
-`TaskTable`, `model.ts`, `useTaskOperations.ts`). No overlap with `we8h69` or
-`7ga80s`. Lowest-risk of the four — open it as a PR, let the gate judge it.
+> **Corrected after first publication.** This section originally read "1 commit,
+> land as-is — lowest-risk of the four". That was wrong, and it is a useful kind
+> of wrong: the recommendation was made from commit shape (one clean commit, no
+> overlap with the sibling branches) without applying this document's *own* rule —
+> measure how much already landed — to a branch small enough to look obviously
+> safe. **Apply that rule to the small branches too.**
 
-Caveat: `xyq4f8` contains its own `82eac7a Refactor TaskOperations.tsx` doing the
-same job differently. Land one, not both.
+`refactor(staff): separate TaskOperations UI from data/business logic`, splitting
+`TaskOperations.tsx` into a `taskOperations/` module. **All six of its module
+files are already on `main`** — five byte-identical. The work landed by another
+route.
+
+The sixth, `useTaskOperations.ts`, is **newer on `main`**, and that is what makes
+landing the branch actively harmful rather than merely redundant. `main` uses the
+`taskEngineKeys` factory; the branch hardcodes query-key strings:
+
+| | `main` (current) | `ykguyg` (would overwrite) |
+|---|---|---|
+| fetch key | `taskEngineKeys.metrics()` | `["/api/task-engine/metrics"]` |
+| invalidation | `taskEngineKeys.all()` | `["/api/task-engine"]` |
+
+That invalidation is not just stylistically worse — it is **dead**.
+`partialMatchKey` is element-wise, not string-prefix, so `["/api/task-engine"]`
+**never matches** `["/api/task-engine/metrics"]`. Landing this would silently
+reintroduce exactly the class of bug the query-key factory and its guards exist to
+prevent: mutations appear to succeed, the cache never clears, and the stale UI
+looks like a backend fault.
+
+**Branch deleted.** Tag `archive/claude-determined-mccarthy-ykguyg` (`b01f2c2`)
+retains it. Nothing needs salvaging from it.
 
 ---
 
@@ -185,6 +207,26 @@ Every branch is tagged and the tags are pushed:
 git fetch origin --tags
 git checkout -b recover archive/claude-determined-mccarthy-xyq4f8
 ```
+
+### 🚨 A tag is only as current as the moment it was cut
+
+`archive/claude-determined-mccarthy-7ga80s` points at `69474cf`, but by the time the
+branch was reviewed its head was `5c3011f` — **a live session pushed a commit after
+the tag was cut.** Deleting the branch on the strength of that tag would have
+orphaned the one genuinely-unmerged fix on it. Hence the second tag,
+`archive/claude-determined-mccarthy-7ga80s-head` (`5c3011f`).
+
+**Before deleting any branch, assert `tag == branch head`** — a tag proves what was
+preserved, not that nothing arrived afterwards. In a repo where several sessions push
+concurrently, that gap is the normal case, not the exception.
+
+The salvaged fix is PR #455: `react-dom` was never actually in the `react-vendor`
+chunk, because the object form of Rollup's `manualChunks` matches by **resolved module
+id** and only `react-dom/client` is ever imported. Measured over two builds — index
+984.20 → 801.22 kB (−57 kB gzipped), cold total unchanged. So it is **cache
+partitioning, not a payload reduction**; the win is that app-code deploys stop
+invalidating the React vendor chunk. Still open at the time of writing, and `main`
+still carries the `["react", "react-dom", "wouter"]` grouping.
 
 The branches themselves may be deleted once their recommended salvage is done;
 the tags are the durable record.
