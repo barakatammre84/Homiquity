@@ -1,3 +1,4 @@
+import { paymentFactor } from "@shared/lib/amortization";
 // Seed contract between the landing-page Buying Power Estimator and the
 // affordability tool (/afford): answers given to the hero widget are never
 // asked again. sessionStorage (not localStorage) on purpose — this is an
@@ -38,9 +39,7 @@ export function estimateBuyingPower(
   );
   if (budget <= 0) return null;
 
-  const m = ASSUMED_RATE / 100 / 12;
-  const growth = Math.pow(1 + m, 360);
-  const kPI = (m * growth) / (growth - 1); // monthly P&I per $ of loan
+  const kPI = paymentFactor(ASSUMED_RATE, 360); // monthly P&I per $ of loan
   const kTI = TAX_INS_ANNUAL / 12; // monthly tax+insurance per $ of price
 
   // budget = (price - down) * (kPI + kPMI) + price * kTI, solved for price.

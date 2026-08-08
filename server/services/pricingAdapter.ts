@@ -1,6 +1,7 @@
 import type { IStorage } from "../storage";
 import { calculateLLPA } from "../pricing";
 import type { RateSheetProduct, LenderPricingAdjustment, WholesaleLender } from "@shared/schema";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 export interface BorrowerPricingProfile {
   creditScore: number;
@@ -46,12 +47,8 @@ export interface ComputedOffer {
   labels: string[];
 }
 
-function calculateMonthlyPayment(principal: number, annualRate: number, termMonths: number): number {
-  if (annualRate <= 0) return principal / termMonths;
-  const monthlyRate = annualRate / 100 / 12;
-  return (principal * monthlyRate * Math.pow(1 + monthlyRate, termMonths)) /
-    (Math.pow(1 + monthlyRate, termMonths) - 1);
-}
+/** @see {@link monthlyPrincipalAndInterest} — annualRate is a PERCENT here. */
+const calculateMonthlyPayment = monthlyPrincipalAndInterest;
 
 function checkEligibility(product: RateSheetProduct, profile: BorrowerPricingProfile): boolean {
   const constraints = product.eligibilityConstraints as any;

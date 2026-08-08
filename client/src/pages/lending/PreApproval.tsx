@@ -39,6 +39,7 @@ import { VerificationPulse } from "@/funnel/VerificationPulse";
 import { Checkbox } from "@/components/ui/checkbox";
 import { QUESTIONS_BY_ID } from "./preApproval/questions";
 import { AdvisoryPanel, getDynamicTitle, ADVISORY_HIDDEN_STEPS } from "./preApproval/AdvisoryPanel";
+import { useDeferredSubmit } from "./preApproval/useDeferredSubmit";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
 import { useServerDraftAutosave } from "./preApproval/useServerDraftAutosave";
 import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
@@ -174,138 +175,10 @@ function PreApprovalFunnel() {
     } catch {}
   }, []);
 
-  // The pending key is consumed synchronously below, but the restore offer
-  // must stay suppressed for the rest of this mount while the deferred
-  // auto-submit runs — the ref outlives the key.
-  const pendingSubmitRef = useRef(false);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    try {
-      const pending = localStorage.getItem(PENDING_SUBMIT_KEY);
-      if (!pending) return;
-      pendingSubmitRef.current = true;
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
-      if (!saved) { localStorage.removeItem(PENDING_SUBMIT_KEY); return; }
-      const formData = JSON.parse(saved) as PreApprovalFormData;
-      form.reset(formData);
-      localStorage.removeItem(PENDING_SUBMIT_KEY);
-      // The pending marker is only ever written after the final-step consent
-      // gate passed, so restore the acknowledgment for the deferred submit.
-      setConsent(true);
-      setTimeout(() => {
-        submitMutation.mutate(formData);
-      }, 500);
-    } catch {
-      localStorage.removeItem(PENDING_SUBMIT_KEY);
-    }
-  }, [isAuthenticated]);
-
-  const currentQ = QUESTIONS_BY_ID[stepId];
-
-  const watchedValues = form.watch();
-  const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
-
-  // Mirror form values into the machine so routing always sees the latest
-  // answers — but ONLY when a routing-relevant answer moved.
-  //
-  // This used to key on JSON.stringify(watchedValues), i.e. on every keystroke.
-  // Each dispatch replaces FunnelState, which rebuilds FunnelContext's memo
-  // (computeRoute + computeFlags + routeProgress) and re-renders this whole
-  // 900-line component a SECOND time — for a character typed into a field the
-  // route does not depend on. `routingSignature` covers exactly the answers
-  // computeFlags/computeRoute read (preApprovalMachine.ts), and
-  // preApprovalMachine.test.ts proves that list is complete, so skipping the
-  // rest cannot change what the machine decides. Everything else already reads
-  // fresh values: next/back/checkGate/submit all pass form.getValues().
-  const routingKey = routingSignature(watchedValues);
-  useEffect(() => {
-    syncAnswers(form.getValues());
-  }, [routingKey, syncAnswers, form]);
-
-  // A blocked NEXT (validation gate) surfaces as a toast.
-  useEffect(() => {
-    if (funnelState.blockedGate) {
-      toast({
-        title: "One more thing",
-        description: funnelState.blockedGate.errors[0],
-        variant: "destructive",
-      });
-    }
-  }, [funnelState.blockedGate, toast]);
-
-  const { readSaved } = useFunnelAutosave<PreApprovalFormData>({
-    storageKey: AUTOSAVE_KEY,
-    stepStorageKey: AUTOSAVE_STEP_KEY,
-    values: watchedValues,
-    stepId,
-    enabled: stepId !== "intro",
-    shouldPersist: hasMeaningfulData,
-  });
-
-  // (There used to be an applyIncomeSources here, rebuilding the income step's
-  // three mirror stores from restored entries. IncomeSourcesStep now derives
-  // its whole UI from form.incomeSources, so form.reset() is the entire
-  // restore — no second store to reseed, and no way to forget to.)
-
-  const hasPendingSubmit = useCallback(() => {
-    if (pendingSubmitRef.current) return true;
-    try {
-      return !!localStorage.getItem(PENDING_SUBMIT_KEY);
-    } catch {
-      return false;
-    }
-  }, []);
-
-  // A1: the server-draft container id — adopted from useDraftRestore when a
-  // prior draft exists, or minted by the server autosave's find-or-create.
-  const [adoptedDraftId, setAdoptedDraftId] = useState<string | null>(null);
-
-  const {
-    applicationId,
-    showRestoreBanner,
-    restore: handleRestoreDraft,
-    dismiss: handleDismissRestore,
-  } = useDraftRestore({
-    form,
-    isAuthenticated,
-    hasPendingSubmit,
-    readSaved,
-    clearAutosave,
-    goTo,
-    hydrate,
-    toast,
-  });
-
-  useEffect(() => {
-    if (progress.index !== prevStepRef.current && progress.index > 0) {
-      track("preapproval_step", "/apply", {
-        step: progress.index,
-        step_id: stepId,
-        total: progress.total,
-      });
-      prevStepRef.current = progress.index;
-    }
-  }, [progress.index, progress.total, stepId, track]);
-
-  // Load coach intake data to gap-fill fields the borrower has left blank.
-  const { data: coachIntake } = useQuery<{
-    intake: CoachIntake | null;
-    readinessTier?: string;
-    completionPercentage?: number;
-  } | null>({
-    queryKey: ["/api/coach/intake/latest"],
-    enabled: isAuthenticated,
-  });
-
-  // Gap-fill from the coach conversation's intake: blank fields only, never an
-  // answer the borrower already gave (see preApproval/coachPrefill.ts for the
-  // rule and the overwrite bug it replaces). Saved-draft answers are
-  // deliberately NOT applied here — adopting a draft (data + PATCH target) is
-  // consent-gated through useDraftRestore's banner.
-  useCoachPrefill(form, coachIntake?.intake);
-
-  // Create/update application mutation
+  // Create/update application mutation. Declared HERE, above its consumers,
+  // rather than 130 lines down: the post-auth replay effect used to reference
+  // it from a closure created long before the binding was initialised, which
+  // works only by accident of when effects run and reads as a TDZ bug.
   const submitMutation = useMutation({
     mutationFn: async (data: PreApprovalFormData) => {
       const payload: Record<string, unknown> = {
@@ -354,6 +227,111 @@ function PreApprovalFunnel() {
       });
     },
   });
+
+  // Finishes a pre-approval the visitor completed before they had an account.
+  // Owns the PENDING_SUBMIT marker, the exactly-once claim, and the replay
+  // timer's cleanup (see preApproval/useDeferredSubmit.ts).
+  const { hasPendingSubmit } = useDeferredSubmit({
+    form,
+    isAuthenticated,
+    setConsent,
+    submit: submitMutation.mutate,
+  });
+
+  const currentQ = QUESTIONS_BY_ID[stepId];
+
+  const watchedValues = form.watch();
+  const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
+
+  // Mirror form values into the machine so routing always sees the latest
+  // answers — but ONLY when a routing-relevant answer moved.
+  //
+  // This used to key on JSON.stringify(watchedValues), i.e. on every keystroke.
+  // Each dispatch replaces FunnelState, which rebuilds FunnelContext's memo
+  // (computeRoute + computeFlags + routeProgress) and re-renders this whole
+  // 900-line component a SECOND time — for a character typed into a field the
+  // route does not depend on. `routingSignature` covers exactly the answers
+  // computeFlags/computeRoute read (preApprovalMachine.ts), and
+  // preApprovalMachine.test.ts proves that list is complete, so skipping the
+  // rest cannot change what the machine decides. Everything else already reads
+  // fresh values: next/back/checkGate/submit all pass form.getValues().
+  const routingKey = routingSignature(watchedValues);
+  useEffect(() => {
+    syncAnswers(form.getValues());
+  }, [routingKey, syncAnswers, form]);
+
+  // A blocked NEXT (validation gate) surfaces as a toast.
+  useEffect(() => {
+    if (funnelState.blockedGate) {
+      toast({
+        title: "One more thing",
+        description: funnelState.blockedGate.errors[0],
+        variant: "destructive",
+      });
+    }
+  }, [funnelState.blockedGate, toast]);
+
+  const { readSaved } = useFunnelAutosave<PreApprovalFormData>({
+    storageKey: AUTOSAVE_KEY,
+    stepStorageKey: AUTOSAVE_STEP_KEY,
+    values: watchedValues,
+    stepId,
+    enabled: stepId !== "intro",
+    shouldPersist: hasMeaningfulData,
+  });
+
+  // (There used to be an applyIncomeSources here, rebuilding the income step's
+  // three mirror stores from restored entries. IncomeSourcesStep now derives
+  // its whole UI from form.incomeSources, so form.reset() is the entire
+  // restore — no second store to reseed, and no way to forget to.)
+
+  // A1: the server-draft container id — adopted from useDraftRestore when a
+  // prior draft exists, or minted by the server autosave's find-or-create.
+  const [adoptedDraftId, setAdoptedDraftId] = useState<string | null>(null);
+
+  const {
+    applicationId,
+    showRestoreBanner,
+    restore: handleRestoreDraft,
+    dismiss: handleDismissRestore,
+  } = useDraftRestore({
+    form,
+    isAuthenticated,
+    hasPendingSubmit,
+    readSaved,
+    clearAutosave,
+    goTo,
+    hydrate,
+    toast,
+  });
+
+  useEffect(() => {
+    if (progress.index !== prevStepRef.current && progress.index > 0) {
+      track("preapproval_step", "/apply", {
+        step: progress.index,
+        step_id: stepId,
+        total: progress.total,
+      });
+      prevStepRef.current = progress.index;
+    }
+  }, [progress.index, progress.total, stepId, track]);
+
+  // Load coach intake data to gap-fill fields the borrower has left blank.
+  const { data: coachIntake } = useQuery<{
+    intake: CoachIntake | null;
+    readinessTier?: string;
+    completionPercentage?: number;
+  } | null>({
+    queryKey: ["/api/coach/intake/latest"],
+    enabled: isAuthenticated,
+  });
+
+  // Gap-fill from the coach conversation's intake: blank fields only, never an
+  // answer the borrower already gave (see preApproval/coachPrefill.ts for the
+  // rule and the overwrite bug it replaces). Saved-draft answers are
+  // deliberately NOT applied here — adopting a draft (data + PATCH target) is
+  // consent-gated through useDraftRestore's banner.
+  useCoachPrefill(form, coachIntake?.intake);
 
   // A1: authenticated progress also persists to the ONE server draft row, so
   // a device switch doesn't lose the application. Disabled once a submit is

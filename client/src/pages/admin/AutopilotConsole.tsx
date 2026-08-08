@@ -1,6 +1,11 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  apiRequest,
+  autopilotKeys,
+  queryClient,
+  type AutopilotMetricsRange,
+} from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -150,27 +155,31 @@ export default function AutopilotConsole() {
   const [trendView, setTrendView] = useState<"chart" | "table">("chart");
 
   const { data: config, isLoading: configLoading } = useQuery<AutopilotConfigResp>({
-    queryKey: ["/api/autopilot/config"],
+    queryKey: autopilotKeys.config(),
   });
-  const rangeParams = () => {
+
+  // The window is resolved HERE, in render, and travels in the key.
+  //
+  // It used to be computed inside each queryFn (`new Date()` at fetch time)
+  // while the key carried only `rangeDays`. That made the time window a request
+  // input that did not appear in the cache key: one entry silently meant a
+  // different 30 days on every refetch, and with refetchOnWindowFocus on, an
+  // admin comparing two numbers could be reading two different windows.
+  //
+  // Pinned per range selection (not per render) so the key is stable — a
+  // re-derived `to` on every render would mint a new key each time and refetch
+  // forever. Choosing a range, or reloading, is what advances the window.
+  const range = useMemo<AutopilotMetricsRange>(() => {
     const to = new Date();
     const from = new Date(to.getTime() - rangeDays * 24 * 60 * 60 * 1000);
-    return `from=${from.toISOString()}&to=${to.toISOString()}`;
-  };
+    return { from: from.toISOString(), to: to.toISOString() };
+  }, [rangeDays]);
+
   const { data: metrics, isLoading: metricsLoading } = useQuery<AutopilotMetricsResp>({
-    // Re-fetches when the range changes (rangeDays is part of the key).
-    queryKey: ["/api/autopilot/metrics", rangeDays],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/autopilot/metrics?${rangeParams()}`);
-      return res.json();
-    },
+    queryKey: autopilotKeys.metrics(range),
   });
   const { data: trend, isLoading: trendLoading } = useQuery<AutopilotTrendResp>({
-    queryKey: ["/api/autopilot/metrics/trend", rangeDays],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/autopilot/metrics/trend?${rangeParams()}`);
-      return res.json();
-    },
+    queryKey: autopilotKeys.metricsTrend(range),
   });
 
   const [enabled, setEnabled] = useState(false);
@@ -202,7 +211,7 @@ export default function AutopilotConsole() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/autopilot/config"] });
+      queryClient.invalidateQueries({ queryKey: autopilotKeys.config() });
       toast({ title: "Autopilot settings saved" });
     },
     onError: () => toast({ title: "Failed to save settings", variant: "destructive" }),
