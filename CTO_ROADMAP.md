@@ -164,31 +164,11 @@ anything else in this file being true.
 - [ ] **3.7 Optimization-engine dispositions:** wire `matchAndPriceBorrower` / `getCoachPreFillData`
   to a surface **or delete them**; fire `calculateAgentCommission` from the funded-loan transition
   (near `graduateClosedLoan`) rather than a schedule. **Blocked on §1.10** — wiring this fires a
-  payout whose Reg Z / RESPA posture is unanswered. Two defects to fix in the same pass (audit F-21):
-  its referrer gate tests for a role `"agent"` that is not in `ALL_ROLES`, and its fallback when the
-  comp plan is unknown is **275 bps — the top of the seeded range**, so it overpays by 37% rather
-  than erring low.
-- [ ] **3.14 Bound the commission payout by the revenue it shares** (audit F-21, engineering half —
-  independent of §1.10 and worth doing regardless). `POST /api/broker/commissions` computes
-  `loanAmount × rate` with `rate ≤ 0.1` as the only check: it never reads the file's
-  `compensationExpectedAmount`, and never checks the application funded. At the seeded 200 bps plan
-  on a $250k loan that permits a **$25,000 payable against $5,000 of revenue**, on a file that may
-  still be in processing. Refuse a payout exceeding the file's expected compensation; gate on
-  `funded`; derive the basis from `fundedLoanAmount`.
-- [ ] **3.15 Compute the cash-conversion cycle** (audit F-23). Every operand is already recorded and
-  none is joined: `loan_cost_entries.incurred_at`, `computeCycleTimeReport`'s median/p90 days to
-  funding, `lender_submissions.funded_at`, and `compensation_received_at` — that last column holds
-  the funding→remittance lag, the pure cash-drag window for a broker, and is read by nothing. Add the
-  second interval to `buildCycleTimeReport` and a working-capital roll-up beside the unit-economics
-  block. No schema change; a join and a subtraction. This is the figure that determines how fast
-  origination volume can grow without an outside facility.
-- [ ] **3.16 Recognize platform fee income** (audit F-22) — needs an accounting-policy call first.
-  The revenue line counts only the lender remittance; the $500 application + $1,500 underwriting fees
-  are our own charges, are levied under **both** compensation models, and are recognized nowhere.
-  Combined with F-20 that meant both sides of the margin were wrong in opposite directions. Mirror
-  the compensation lifecycle: snapshot the schedule charged at LE issuance, record collection at
-  settlement. Decide first whether the basis is the trimmed (post-F-17) amount or the standard
-  schedule, and whether recognition is at closing or on receipt.
+  payout whose Reg Z / RESPA posture is unanswered. When it is unblocked, the wiring must write
+  through `evaluateCommissionPayout` (`shared/commissionPayout.ts`) the way
+  `POST /api/broker/commissions` does: this path inserts straight into `broker_commissions` and so
+  is bounded by nothing and audited nowhere. Its own two defects — the dead `"agent"` role check and
+  the 275 bps fallback that assumed the top of the seeded range — are already fixed (audit F-21).
 - [ ] **3.8 Tag agent-sourced inbound leads.** `leads.source` has no value for an agent-referred
   borrower, so the playbook's 30%-agent-sourced gate is **structurally unmeasurable**. Needs a
   business decision on the intake mechanism (referral link / agent portal / manual code) before any
@@ -206,6 +186,17 @@ anything else in this file being true.
 - [ ] **3.13 A client component-test lane.** There are **zero `client/src` entries** in either vitest
   `include` and no jsdom dependency — so a `.test.tsx` under `client/src` is a file that never runs,
   in CI or locally. This was measured as the real constraint on UI velocity.
+
+- [ ] **3.14 Recognize platform fee income** (audit F-22) — **unblocked 2026-08-08: recognize ON
+  RECEIPT.** That settles the basis with it — you recognize what arrived, and the amount *charged*
+  becomes the expected side for variance, mirroring the compensation lifecycle F-6 built. The charged
+  snapshot is therefore the **actually charged** figure (the trimmed post-F-17 amount the LE
+  disclosed), not the standard schedule. The revenue line today counts only the lender remittance,
+  while the $500 application + $1,500 underwriting fees are our own charges levied under **both**
+  compensation models and recognized nowhere — combined with F-20 that meant both sides of the margin
+  were wrong in opposite directions. Build: snapshot the schedule charged at LE issuance, record
+  collection at settlement beside `compensation_received_at`, and surface the charged-vs-collected
+  variance the same way lender short-pay is surfaced.
 
 ---
 

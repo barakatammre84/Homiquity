@@ -47,6 +47,7 @@ export default defineConfig({
       "tests/leDisclosureBaseline.test.ts",
       "tests/counterpartyAndCompensation.test.ts",
       "tests/compensationClawback.test.ts",
+      "tests/commissionPayout.test.ts",
       "tests/feeProvenanceAndCosts.test.ts",
       "tests/leDisclosedFeeProvenance.test.ts",
       "tests/nPlusOneBatching.test.ts",

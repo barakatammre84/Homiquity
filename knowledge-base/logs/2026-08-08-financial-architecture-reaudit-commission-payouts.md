@@ -29,9 +29,9 @@ not captured anywhere". They were captured — in a table nothing joined.
 | # | Finding | Area | Severity |
 |---|---|---|---|
 | F-20 | Commission payouts are a per-loan cost that no margin figure counted | Unit economics / Balance sheet | **High** — ✅ fixed |
-| F-21 | The commission payout has no relationship to the revenue it is a share of, and no funded gate | Risk / Margin leakage | **High** — ⚠️ flagged; needs counsel + a founder decision |
-| F-22 | Revenue recognition covers one of the platform's two revenue streams | Unit economics | Medium — ⚠️ open, founder decision |
-| F-23 | Every operand of the cash-conversion cycle is recorded; the figure is never computed | Capital flow / Liquidity | Medium — ⚠️ open |
+| F-21 | The commission payout has no relationship to the revenue it is a share of, and no funded gate | Risk / Margin leakage | **High** — ✅ bounded in code; regulatory posture still needs counsel |
+| F-22 | Revenue recognition covers one of the platform's two revenue streams | Unit economics | Medium — ⚠️ open; **policy decided: recognize on receipt** |
+| F-23 | Every operand of the cash-conversion cycle is recorded; the figure is never computed | Capital flow / Liquidity | Medium — ✅ fixed |
 | F-24 | The only cash-disbursement path on the platform had no audit trail | Operational integrity | Medium — ✅ fixed (trail); SoD remains a policy call |
 | — | The live liability register ignored contracted EPO windows | Balance sheet | Low — ✅ fixed |
 | — | F-1…F-19 remediation holds at HEAD | all | ✅ verified |
@@ -164,17 +164,36 @@ to fit under the QM cap, so revenue per file varies downward with loan size whil
 struck as a flat percentage of loan amount does not move with it. The two compress margin from
 opposite ends on exactly the small-loan segment the product targets.
 
-#### Structural fix — recommended, not shipped
+#### Structural fix — engineering half shipped, regulatory half open
 
-The engineering half is small and unambiguous:
+**Shipped.** The rules moved out of the route into `shared/commissionPayout.ts`, pure, for the same
+reason the QM floor moved into `loanCosts.ts` under F-18: a constraint living inside one endpoint is
+a constraint no other surface can consult, and a staff UI that cannot ask *"what is the most I may
+pay on this file?"* will discover the answer by tripping a 422.
 
-1. **Bound the payout by the revenue it shares.** Reject a commission whose amount exceeds the
-   file's `compensationExpectedAmount` (or a stated fraction of it). A payout larger than the
-   revenue it is drawn from is an arithmetic error, whatever the business rule.
-2. **Gate on funding.** A payable belongs to a funded file. Refuse creation against any other
-   status, and derive the basis from `fundedLoanAmount`, not `purchasePrice − downPayment`.
-3. **Fix the fallback direction.** `calculateAgentCommission` should refuse to pay on an unknown
-   comp plan rather than assume the richest one.
+1. **The payout is bounded by the revenue it shares.** `evaluateCommissionPayout` refuses any amount
+   exceeding the file's compensation, preferring the **recorded remittance** over the snapshotted
+   expectation — if the lender short-paid, the payout is bounded by what actually arrived, not by
+   what we hoped for. Neither figure present is a **refusal** (`no_revenue_basis`), not a pass: an
+   unknown must never be treated as "no limit", which is the whole hole this closes.
+2. **A payout belongs to a funded file.** The gate is the *funded lender submission*, not the
+   application status, and the basis is `fundedLoanAmount` — the amount compensation is actually paid
+   on — rather than `purchasePrice − downPayment`. An application marked funded whose submissions are
+   not gets its own message, because that is a data problem and reporting it as an ordinary refusal
+   would bury it.
+3. **The suggested ceiling is rounded down.** `maxRate` floors to the column's 4-decimal precision:
+   rounding up would hand back a rate the very next evaluation refuses.
+4. **`calculateAgentCommission`'s two defects are fixed.** The 275 bps fallback — the *top* of the
+   seeded range — is now a `null` sentinel that refuses rather than a default that overpays. And the
+   dead `"agent"` role check was **removed rather than repaired by adding a role**: widening that
+   gate to the realtor/CPA personas is the answer to the open RESPA §8 question, not a typo fix.
+5. **Refusals are audited**, not only successes (`broker_commission.refused`). A blocked payout is
+   the interesting event — an admin trying to pay more than the file earned, or paying on a file
+   that has not funded — and the accepted path records the revenue basis it was bounded against, so
+   the trail shows what the ceiling was at the moment the payable was opened.
+6. **A read side exists so the ceiling is learnable before the refusal:**
+   `GET /api/broker/commissions/quote/:applicationId`, scoring off the same evaluator the POST
+   refuses with, so the two cannot disagree about a file.
 
 **The other half is not an engineering decision and must not be made in a session.** Two questions
 go to counsel before either path carries a live file, and both are recorded in ledger entry
@@ -238,10 +257,16 @@ reproducible), and record collection at settlement alongside `compensationReceiv
 is `lender comp + platform fees collected`, and the variance between charged and collected becomes
 visible the same way lender short-pay became visible under F-6.
 
-**Left open deliberately.** Whether the trimmed-fee amount (post-F-17) or the standard schedule is
-the right basis, and whether fee income should be recognized at closing or on receipt, are
-accounting-policy decisions, not engineering ones. Recognizing it wrongly is worse than not yet
-recognizing it.
+**Policy decided 2026-08-08: recognize on receipt.** That settles the basis question with it — you
+recognize what actually arrived, and the amount *charged* becomes the expected side for variance,
+exactly mirroring the compensation lifecycle F-6 built (`expected` snapshotted, `received` recorded,
+the difference the only thing that can surface a short-pay). The charged snapshot is therefore the
+**actually charged** figure — the trimmed post-F-17 amount, which is what the Loan Estimate disclosed
+and what the borrower will pay — not the standard schedule.
+
+Implementation is roadmap 3.14 and is now unblocked. Recognition on receipt also keeps this
+consistent with how the platform already treats lender compensation, so the revenue line will have
+one rule rather than two.
 
 ---
 
@@ -277,24 +302,45 @@ timestamp.
 
 With no funded loans yet the figure is currently undefined, and it should be reported as undefined
 rather than as zero (the same discipline `computeUnitEconomics` already applies to per-funded
-figures). The arithmetic once files flow:
+figures).
+
+> **Correction (2026-08-08, same day).** This section originally gave the projection as
+> `in-flight file count × cost per file × days / 365`. That is **circular**: an in-flight count is
+> *already* the product of an arrival rate and the time in system, so multiplying by the days again
+> counts them twice. The correct statement uses an arrival rate **or** an in-flight count, never
+> both. `tests/feeProvenanceAndCosts.test.ts` now pins the identity that catches it.
+
+There are two figures here and they are different kinds of thing — conflating them is what produced
+the error above:
 
 ```
-peak working capital ≈ in-flight file count × cost per file × (p90 days to funding + remittance lag)
-                                                              ────────────────────────────────────
-                                                                              365
+committed  (MEASURED)   = Σ cost booked against files with no funded submission
+projected  (Little's Law) = files started per month × cost per file × days to cash / 30
 ```
 
-At the repository's own cost figures and a 40-file pipeline, this is a low-five-figure number — and
-it is the number that determines whether the company can grow origination volume without an outside
-facility. It is also the one financial figure on this platform that gets *worse* as the business
-succeeds, which is why it should exist before volume does rather than after.
+At the repository's own cost figures — $710 of vendor spend on a file that took an appraisal — 20
+files a month at a 45-day cash cycle ties up **$21,300**. That is the number that determines whether
+origination volume can grow without an outside facility, and it is the one financial figure on this
+platform that gets *worse* as the business succeeds, which is why it should exist before volume does
+rather than after.
 
-#### Structural fix
+#### Structural fix — shipped
 
-Extend `buildCycleTimeReport` with a second interval — `funded → compensation_received` — computed
-from the column that already holds it, and add a working-capital roll-up beside the unit-economics
-block on `GET /api/reports/compensation`. No schema change; it is a join and a subtraction.
+- **`buildCycleTimeReport` gained the second interval.** `remittanceLag` is measured from
+  `funded_at → compensation_received_at` on the submission row — read off a recorded fact rather than
+  inferred from a status change, unlike the funding transition — and `daysToCash` sums the two.
+- **Null propagates, deliberately.** With the lag unmeasured, `daysToCash` is **null**, not the
+  funding cycle alone. Reporting the half we have as though it were the whole would understate
+  exactly the window this exists to surface, so the report says so in a note: *"the lender's wire lag
+  is not zero, it is unmeasured."*
+- **A remittance dated before funding is corrupt data, not a same-day wire** — excluded and counted,
+  the same rule cycle time already applied to a funding transition earlier than creation.
+- **The lag is scoped to the window's cohort**, so both intervals describe the same files.
+- **`computeWorkingCapitalPosition`** reports `committed` off the ledger (simulated spend excluded —
+  a cash requirement must never be sized by money nobody paid), and **`projectWorkingCapital`**
+  refuses to return a partial number when any operand is missing.
+- `GET /api/reports/compensation` carries the position, calling `buildCycleTimeReport` rather than
+  reimplementing the interval, so the two surfaces cannot disagree about a definition only one owns.
 
 ---
 
@@ -377,17 +423,68 @@ Re-checked directly, not taken from the log:
 
 ## Recommended sequence
 
-1. **F-21's engineering half** — bound the payout by the file's expected compensation, gate it on
-   funded status, and fix the 275 bps fallback. Small, unambiguous, and it removes the ability to
-   create a payable five times the revenue on a file.
-2. **F-21's counsel half, before any commission is paid on a live file.** The ledger entry will go
-   loud in 14 days. Roadmap item 3.7 must not ship until it is answered.
-3. **F-23** — a join and a subtraction over columns that already exist, and the answer determines
-   how fast the company can grow volume.
-4. **F-22** — needs an accounting-policy decision first; recognizing fee income wrongly is worse than
-   not yet recognizing it.
+1. ~~**F-21's engineering half**~~ — ✅ done. The payout is bounded by the file's compensation, gated
+   on a funded submission, and the 275 bps fallback refuses instead of overpaying.
+2. **F-21's counsel half, before any commission is paid on a live file.** ⚠️ **Still the top open
+   item.** The ledger entry goes loud in 14 days; roadmap 3.7 must not ship until it is answered.
+   Bounding the arithmetic was correct whatever counsel says — it is not a substitute for asking.
+3. ~~**F-23**~~ — ✅ done. `daysToCash` and the working-capital position now exist.
+4. **F-22** — ✅ policy decided (on receipt); implementation is roadmap 3.14 and now unblocked.
 5. **The surety bond and net worth figures.** Now that the license is live these are real, ongoing
-   capital requirements and they are the largest unpriced items on the register.
+   capital requirements and they are the largest unpriced items on the register. **With F-21's
+   arithmetic bounded and F-23 computed, this is the largest remaining gap in this audit's scope.**
+
+---
+
+## Security review — TEAM_PRACTICES §9 (2026-08-08)
+
+The F-21 remediation adds `GET /api/broker/commissions/quote/:applicationId` behind
+`requireRole("admin")`, which is a §9 **role/permission gate** trigger. `pnpm guard:security` fired
+on it (run against the diff *content*, per the 2026-08-05 correction). Structured pass run before
+merge; outcome recorded here and in the PR body per §9. **No CRITICAL or HIGH findings.**
+
+**Authorization.** The new endpoint carries the same gate as the sibling `POST` it quotes for —
+`requireRole("admin")`, no wider. Commission figures are company financial data, not borrower data,
+and admin is the role that already reads the compensation report. Both routes resolve the
+application with `storage.getLoanApplication` rather than the assignment-scoped
+`getLoanApplicationWithAccess`; that is the pre-existing convention for admin-only routes in this
+file (8 `requireRole` gates, unchanged in count and scope by this diff) and the new endpoint neither
+widens nor narrows it. No new route is unauthenticated.
+
+**Injection.** Every new query is Drizzle-parameterized: `getAllBrokerCommissions`,
+`getLenderSubmissionsByApplication`, and the `lenderSubmissions.status = 'funded'` select in the
+cycle-time service. No raw SQL fragment was added.
+
+**Input validation.** The path param is coerced with `String()`; `?rate` goes through
+`firstQueryValue` then `Number()`, and a non-finite result is refused by
+`evaluateCommissionPayout`'s first branch — which runs *before* anything touches the file, so a bad
+rate can never surface as a data-shaped error. The POST reads exactly three named body fields and
+derives every persisted value server-side; after this change the amount and the loan basis come from
+the evaluation rather than from the request or the application, which is strictly less client
+influence than before.
+
+**Mass assignment / privilege.** No new column is writable from a body. `status` is still
+server-set to `pending` at creation, and `paidAt`/`paidBy` remain server-derived on the transition.
+
+**CSRF.** Unchanged posture: session cookies are `sameSite: "lax"`
+(`server/integrations/auth/session.ts:47`), which blocks cross-site mutating requests. The one route
+added here is a **GET with no side effects** — no audit write, no persistence — so it is safe under
+`lax` and does not need to be, and must not become, a mutating endpoint.
+
+**Data exposure.** The new audit metadata (`broker_commission.created` / `.refused`) carries
+`brokerId`, `loanAmount`, `commissionAmount`, `revenueBasis` and an opaque application uuid — company
+financial figures, **no borrower PII**. `RESPONSE_BODY_LOG_ALLOWLIST` is untouched (verified by grep
+over the staged diff).
+
+**The two triggers the guard cannot see, confirmed absent by inspection:** no `shared/schema/` column
+holding PII — this diff contains **no schema file and no migration at all** — and no new PII
+sub-processor.
+
+**One observation, not a finding.** `POST /api/broker/commissions` does not verify that `brokerId`
+names a user with the `broker` role; a malformed id fails on the foreign key rather than on a check.
+This is pre-existing, is reachable only by an admin (who is already the highest privilege in the
+system), and is therefore not a privilege-escalation path — but a role check would make the failure
+legible instead of a 500, and belongs with roadmap 3.7's pass over this surface.
 
 ---
 

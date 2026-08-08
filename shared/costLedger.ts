@@ -187,6 +187,103 @@ export function summarizeCommissionCosts(rows: CommissionRowLike[]): CommissionC
 }
 
 // ---------------------------------------------------------------------------
+// Working capital — the only liquidity risk an asset-light broker carries
+//
+// F-16 established that there is no duration mismatch on assets because there
+// are no assets. That disposes of the balance-sheet liquidity question and
+// leaves the cash-flow one: costs are incurred at application, and revenue
+// arrives after funding — later still, once the lender's wire lands. The
+// company funds that gap out of its own cash, and nothing said how much.
+//
+// TWO FIGURES, AND THEY ARE NOT THE SAME KIND OF THING.
+//
+//   `committed`  MEASURED. Cost already booked against files that have not
+//                reached cash. Read straight off the ledger; no model, no
+//                assumption. This is money that is already gone.
+//
+//   `project…()` A PROJECTION at a chosen origination rate, by Little's Law:
+//                average work-in-progress = arrival rate × time in system. At
+//                F files started per month each tying up C dollars for D days,
+//                the steady-state capital tied up is F × C × (D / 30).
+//
+// The audit doc that opened this finding stated the projection as
+// `in-flight count × cost × days/365`, which is circular: the in-flight count
+// is ALREADY the product of the arrival rate and the days in system, so
+// multiplying by the days again double-counts them. Use an arrival rate, or use
+// an in-flight count — never both.
+// ---------------------------------------------------------------------------
+
+export interface WorkingCapitalInput {
+  /** Cost entries, already filtered to files that have not reached cash. */
+  unrecoveredCost: number;
+  unrecoveredFileCount: number;
+  /** From the cycle-time report's daysToCash. Null when either half is unmeasured. */
+  daysToCashMedian: number | null;
+  daysToCashP90: number | null;
+}
+
+export interface WorkingCapitalPosition {
+  /** Dollars spent on files that have not yet produced cash. Measured. */
+  committed: number;
+  /** How many files carry that spend. */
+  committedFileCount: number;
+  /** Average spend per unrecovered file — the C in the projection below. */
+  costPerUnrecoveredFile: number | null;
+  daysToCashMedian: number | null;
+  daysToCashP90: number | null;
+  notes: string[];
+}
+
+export function computeWorkingCapitalPosition(
+  input: WorkingCapitalInput,
+): WorkingCapitalPosition {
+  const notes: string[] = [
+    "Committed working capital is measured, not modeled: cost already booked against files that have not reached cash.",
+  ];
+  if (input.daysToCashP90 === null) {
+    notes.push(
+      "Days-to-cash is unmeasured — either no file has funded or no remittance has been timed — so the projection below cannot be run yet.",
+    );
+  }
+  return {
+    committed: round2(input.unrecoveredCost),
+    committedFileCount: input.unrecoveredFileCount,
+    costPerUnrecoveredFile:
+      input.unrecoveredFileCount === 0
+        ? null
+        : round2(input.unrecoveredCost / input.unrecoveredFileCount),
+    daysToCashMedian: input.daysToCashMedian,
+    daysToCashP90: input.daysToCashP90,
+    notes,
+  };
+}
+
+/**
+ * Steady-state capital tied up at a chosen origination rate — Little's Law.
+ *
+ * A PROJECTION, and the only figure here that rests on an input the platform
+ * does not hold: how many files a month the business intends to start. Returns
+ * null rather than a number when any operand is missing, because the whole
+ * point of this figure is to be trusted when planning headroom.
+ */
+export function projectWorkingCapital(input: {
+  filesStartedPerMonth: number;
+  costPerFile: number | null;
+  daysToCash: number | null;
+}): number | null {
+  const { filesStartedPerMonth, costPerFile, daysToCash } = input;
+  if (
+    !Number.isFinite(filesStartedPerMonth) ||
+    filesStartedPerMonth <= 0 ||
+    costPerFile === null ||
+    daysToCash === null
+  ) {
+    return null;
+  }
+  return round2(filesStartedPerMonth * costPerFile * (daysToCash / 30));
+}
+
+// ---------------------------------------------------------------------------
 // Unit economics
 // ---------------------------------------------------------------------------
 

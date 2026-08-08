@@ -32,6 +32,28 @@ export interface FundedEventRow {
   fundedAt: Date | string;
 }
 
+/**
+ * The second half of the cash cycle, from `lender_submissions` (audit F-23).
+ *
+ * A broker's only liquidity risk is working capital: costs are incurred at
+ * application and revenue arrives after funding. Funding is not the moment cash
+ * arrives — the lender wires compensation some days later, and THAT lag is the
+ * pure cash-drag window. `compensation_received_at` has always recorded it and
+ * was read by nothing; `summarizeCompensation` reads the amount beside it and
+ * ignores the timestamp.
+ */
+export interface RemittanceEventRow {
+  applicationId: string;
+  fundedAt: Date | string | null | undefined;
+  compensationReceivedAt: Date | string | null | undefined;
+}
+
+export interface IntervalStats {
+  measuredCount: number;
+  medianDays: number | null;
+  p90Days: number | null;
+}
+
 export interface CycleTimeReport {
   windowDays: number;
   totalCreated: number;
@@ -51,6 +73,25 @@ export interface CycleTimeReport {
     measuredCount: number;
     /** Funded files with no usable funding transition — excluded from the stats. */
     unmeasuredFundedCount: number;
+    medianDays: number | null;
+    p90Days: number | null;
+  };
+  /**
+   * funded → compensation received. The days the company carries the file
+   * after closing, before the money it earned arrives.
+   */
+  remittanceLag: IntervalStats & {
+    /** Funded files with no remittance timestamp — excluded from the stats. */
+    unmeasuredFundedCount: number;
+  };
+  /**
+   * application → cash: the full outflow-to-inflow window. Summed from the two
+   * medians and the two p90s rather than measured per file, because a file that
+   * has a funding transition may not yet have a remittance and vice versa —
+   * intersecting them would shrink the cohort to whichever is scarcer. Stated
+   * as a sum of statistics so nobody reads it as a measured distribution.
+   */
+  daysToCash: {
     medianDays: number | null;
     p90Days: number | null;
   };
@@ -76,6 +117,7 @@ export function computeCycleTimeReport(
   windowDays: number,
   applications: CycleTimeAppRow[],
   fundedEvents: FundedEventRow[],
+  remittanceEvents: RemittanceEventRow[] = [],
 ): CycleTimeReport {
   const fundedAtById = new Map<string, number>();
   for (const e of fundedEvents) {
@@ -116,9 +158,41 @@ export function computeCycleTimeReport(
     }
   }
 
+  // --- funded → remittance (F-23) -----------------------------------------
+  // Scoped to the window's applications so both intervals describe the same
+  // cohort; a remittance on a file created before the window would otherwise
+  // pull the lag toward a population the rest of the report excludes.
+  const inWindow = new Set(applications.map(a => a.id));
+  const lagDays: number[] = [];
+  let unmeasuredRemittance = 0;
+  for (const e of remittanceEvents) {
+    if (!inWindow.has(e.applicationId)) continue;
+    const fundedAt = e.fundedAt == null ? NaN : toTime(e.fundedAt);
+    const receivedAt =
+      e.compensationReceivedAt == null ? NaN : toTime(e.compensationReceivedAt);
+    // Same rule as cycle time: a remittance dated before funding is corrupt
+    // data, not a same-day wire, and must not shorten the median.
+    if (!Number.isNaN(fundedAt) && !Number.isNaN(receivedAt) && receivedAt >= fundedAt) {
+      lagDays.push((receivedAt - fundedAt) / MS_PER_DAY);
+    } else {
+      unmeasuredRemittance += 1;
+    }
+  }
+
   const resolved = outcomes.funded + outcomes.denied + outcomes.withdrawn + outcomes.expired;
   const totalCreated = applications.length;
   cycleDays.sort((a, b) => a - b);
+  lagDays.sort((a, b) => a - b);
+
+  const cycleMedian = cycleDays.length > 0 ? median(cycleDays) : null;
+  const cycleP90 = cycleDays.length > 0 ? percentile90(cycleDays) : null;
+  const lagMedian = lagDays.length > 0 ? median(lagDays) : null;
+  const lagP90 = lagDays.length > 0 ? percentile90(lagDays) : null;
+
+  // Null propagates: with either half unmeasured the full window is unknown,
+  // and reporting the half we have as though it were the whole would understate
+  // exactly the number this exists to surface.
+  const sumOrNull = (a: number | null, b: number | null) => (a === null || b === null ? null : a + b);
 
   const notes: string[] = [
     'Resolved pull-through divides funded by files that reached any terminal state — the number the >70% gate means. Overall divides by everything created in the window; in-flight files drag it down.',
@@ -126,6 +200,16 @@ export function computeCycleTimeReport(
   if (unmeasuredFunded > 0) {
     notes.push(
       `${unmeasuredFunded} funded file(s) have no usable funding transition in the audit trail — counted in pull-through, excluded from cycle time.`,
+    );
+  }
+  if (unmeasuredRemittance > 0) {
+    notes.push(
+      `${unmeasuredRemittance} funded file(s) have no usable remittance timestamp — excluded from the remittance lag, so days-to-cash rests on the files that do.`,
+    );
+  }
+  if (lagMedian === null) {
+    notes.push(
+      "No remittance has been timed yet, so days-to-cash is unknown rather than equal to the funding cycle — the lender's wire lag is not zero, it is unmeasured.",
     );
   }
 
@@ -138,8 +222,18 @@ export function computeCycleTimeReport(
     cycleTime: {
       measuredCount: cycleDays.length,
       unmeasuredFundedCount: unmeasuredFunded,
-      medianDays: cycleDays.length > 0 ? median(cycleDays) : null,
-      p90Days: cycleDays.length > 0 ? percentile90(cycleDays) : null,
+      medianDays: cycleMedian,
+      p90Days: cycleP90,
+    },
+    remittanceLag: {
+      measuredCount: lagDays.length,
+      unmeasuredFundedCount: unmeasuredRemittance,
+      medianDays: lagMedian,
+      p90Days: lagP90,
+    },
+    daysToCash: {
+      medianDays: sumOrNull(cycleMedian, lagMedian),
+      p90Days: sumOrNull(cycleP90, lagP90),
     },
     notes,
   };

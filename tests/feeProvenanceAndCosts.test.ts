@@ -17,7 +17,9 @@ import {
 } from "../shared/compliance/feeProvenance";
 import {
   computeUnitEconomics,
+  computeWorkingCapitalPosition,
   costForApplication,
+  projectWorkingCapital,
   summarizeCommissionCosts,
   summarizeCosts,
 } from "../shared/costLedger";
@@ -276,5 +278,71 @@ describe("F-20 — commission payouts on the cost side", () => {
     });
     expect(u.commissionCost).toBe(0);
     expect(u.grossMargin).toBe(8_000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-23 — working capital.
+//
+// F-16 established there is no duration mismatch on assets because there are no
+// assets. What remains is the cash-flow question: spend goes out at application
+// and comes back after the lender's wire. Two figures, and they are different
+// kinds of thing — one measured off the ledger, one projected from an arrival
+// rate the platform does not hold.
+// ---------------------------------------------------------------------------
+describe("F-23 — working capital", () => {
+  it("reports committed capital as a measurement, not a model", () => {
+    const w = computeWorkingCapitalPosition({
+      unrecoveredCost: 4_260,
+      unrecoveredFileCount: 6,
+      daysToCashMedian: 32,
+      daysToCashP90: 48,
+    });
+    expect(w.committed).toBe(4_260);
+    expect(w.costPerUnrecoveredFile).toBe(710);
+    expect(w.notes.join(" ")).toMatch(/measured, not modeled/);
+  });
+
+  it("returns null per-file spend on an empty book rather than dividing by zero", () => {
+    const w = computeWorkingCapitalPosition({
+      unrecoveredCost: 0,
+      unrecoveredFileCount: 0,
+      daysToCashMedian: null,
+      daysToCashP90: null,
+    });
+    expect(w.costPerUnrecoveredFile).toBeNull();
+    expect(w.notes.join(" ")).toMatch(/projection below cannot be run yet/);
+  });
+
+  it("projects steady-state capital by Little's Law", () => {
+    // 20 files/month × $710 each, tied up 45 days = 1.5 months of arrivals.
+    expect(
+      projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: 710, daysToCash: 45 }),
+    ).toBe(21_300);
+  });
+
+  it("scales linearly in each operand — the property that makes it a planning number", () => {
+    const base = projectWorkingCapital({ filesStartedPerMonth: 10, costPerFile: 500, daysToCash: 30 })!;
+    expect(projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: 500, daysToCash: 30 })).toBe(base * 2);
+    expect(projectWorkingCapital({ filesStartedPerMonth: 10, costPerFile: 1_000, daysToCash: 30 })).toBe(base * 2);
+    expect(projectWorkingCapital({ filesStartedPerMonth: 10, costPerFile: 500, daysToCash: 60 })).toBe(base * 2);
+  });
+
+  it("refuses to project on a missing operand rather than returning a partial number", () => {
+    expect(projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: null, daysToCash: 45 })).toBeNull();
+    expect(projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: 710, daysToCash: null })).toBeNull();
+    expect(projectWorkingCapital({ filesStartedPerMonth: 0, costPerFile: 710, daysToCash: 45 })).toBeNull();
+  });
+
+  it("does NOT double-count the days — the formula the audit doc first stated was circular", () => {
+    // The original write-up said `in-flight count × cost × days/365`. An
+    // in-flight count is ALREADY arrival rate × time in system, so multiplying
+    // by the days again counts them twice. Use an arrival rate OR an in-flight
+    // count, never both: at 20 files/month over 45 days there are ~30 files in
+    // flight, each tying up $710 — $21,300, which is what the projection gives.
+    const inFlight = 20 * (45 / 30);
+    expect(
+      projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: 710, daysToCash: 45 }),
+    ).toBe(inFlight * 710);
   });
 });
