@@ -87,15 +87,18 @@ describe("public rate pages request their own product", () => {
     expect(pages.length).toBeGreaterThan(1);
   });
 
-  // Two ways a page can send its product, both of which put it on the wire:
-  //   params.append("loanType", X)   — a hand-built query string, and
+  // Three ways a page can send its product, all of which put it on the wire:
+  //   params.append("loanType", X)   — a hand-built query string,
   //   queryKey: [..., { loanType: X, ... }]  — getPublicQueryFn builds the URL
   //     from the key (client/src/lib/queryClient.ts buildQueryUrl), so a
-  //     loanType in the key IS a loanType in the request.
-  // The second form is stronger for this invariant: the cache key and the
+  //     loanType in the key IS a loanType in the request, and
+  //   useRateSearch(X)               — the shared hook, which puts X in exactly
+  //     that key (asserted below, so this form is not taken on trust).
+  // The key-based forms are stronger for this invariant: the cache key and the
   // request are the same object, so a page cannot claim a product it did not
   // ask the server for — which is exactly how /rates/heloc drifted.
-  const SENDS_LOAN_TYPE = /params\.append\(\s*["']loanType["']|loanType:\s*(?:RATE_LOAN_TYPE\b|["'])/;
+  const SENDS_LOAN_TYPE =
+    /params\.append\(\s*["']loanType["']|loanType:\s*(?:RATE_LOAN_TYPE\b|["'])|useRateSearch\(\s*(?:RATE_LOAN_TYPE\b|["'])/;
 
   it("sends a loanType from every single-product page", () => {
     const offenders = pages.filter((page) => {
@@ -121,8 +124,9 @@ describe("public rate pages request their own product", () => {
       // RATE_LOAN_TYPE constant (which either form may reference).
       const inline = source.match(/params\.append\(\s*["']loanType["']\s*,\s*["']([^"']+)["']/);
       const inKey = source.match(/loanType:\s*["']([^"']+)["']/);
+      const viaHook = source.match(/useRateSearch\(\s*["']([^"']+)["']/);
       const viaConst = source.match(/const RATE_LOAN_TYPE\s*=\s*["']([^"']+)["']/);
-      const requested = inline?.[1] ?? inKey?.[1] ?? viaConst?.[1];
+      const requested = inline?.[1] ?? inKey?.[1] ?? viaHook?.[1] ?? viaConst?.[1];
       if (!requested || !isRateLoanType(requested)) {
         bad.push(`${page} → ${requested ?? "(not found)"}`);
       }
@@ -155,5 +159,46 @@ describe("public rate pages request their own product", () => {
       "Filtering belongs in SQL now (shared/rateLoanTypes.ts). A second filter " +
         "here means two places can disagree about what the heading promises.",
     ).toEqual([]);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// The pages above now say their product by calling `useRateSearch(loanType)`.
+// That makes the page-level assertions only as good as what the hook does with
+// the argument — a hook that accepted `loanType` and dropped it would leave
+// every page "sending" a product it never sent, and every test above green.
+// This is the other half.
+// -----------------------------------------------------------------------------
+describe("useRateSearch carries the product to the wire", () => {
+  const HOOK = readFileSync(
+    join(__dirname, "..", "client", "src", "hooks", "useRateSearch.ts"),
+    "utf8",
+  );
+
+  it("puts loanType in the query key", () => {
+    // buildQueryUrl derives the URL from the key, so loanType in the key is
+    // loanType in the request — the same property the page tests rely on.
+    const key = HOOK.match(/queryKey:\s*\[([\s\S]*?)\],/);
+    expect(key, "no queryKey found in useRateSearch").not.toBeNull();
+    expect(key![1]).toContain("/api/mortgage-rates");
+    expect(key![1]).toMatch(/\bloanType\b/);
+  });
+
+  it("routes through the shared transport rather than a hand-written queryFn", () => {
+    // Same rule guard:transport enforces surface-wide: a hand-rolled queryFn
+    // would be a second spelling of the URL that the key could not vouch for.
+    expect(HOOK).toContain("getPublicQueryFn");
+    // The lookahead must sit INSIDE the optional whitespace, not after it:
+    // `queryFn:\s*(?!x)` backtracks `\s*` to zero width and then happily
+    // matches the space, so it flags the sanctioned form too.
+    expect(HOOK).not.toMatch(/queryFn:(?!\s*(?:getPublicQueryFn|getQueryFn))/);
+  });
+
+  it("derives ?state= from the one shared ZIP table", () => {
+    // The defect this hook was extracted to fix: six pages each carried a
+    // ten-state stub feeding ?state=, while the page header resolved the SAME
+    // ZIP against a 908-prefix table for display. Two answers, one question.
+    expect(HOOK).toContain("stateFromZip");
+    expect(HOOK).toContain("@/lib/zipGeography");
   });
 });

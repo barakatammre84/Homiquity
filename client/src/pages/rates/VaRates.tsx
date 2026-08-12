@@ -1,6 +1,3 @@
-import { useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getPublicQueryFn } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,26 +8,17 @@ import {
   Shield,
   Star
 } from "lucide-react";
-import RatePageHeader, { RateRow } from "@/components/RatePageHeader";
+import RatePageHeader, {
+  AssumptionField,
+  QuotedAssumptions,
+  RateRow,
+  hasQuotedAssumptions,
+} from "@/components/RatePageHeader";
 import { SEOHead } from "@/components/SEOHead";
 import { usePageView } from "@/hooks/useActivityTracker";
+import { useRateSearch } from "@/hooks/useRateSearch";
 import { formatRateTerm, formatRatePoints } from "@/lib/formatters";
 import type { MortgageRateWithProgram } from "@/types/rates";
-
-function getStateFromZip(zip: string): string | undefined {
-  const zipNum = parseInt(zip.substring(0, 3));
-  if (zipNum >= 900 && zipNum <= 961) return "CA";
-  if (zipNum >= 100 && zipNum <= 149) return "NY";
-  if (zipNum >= 750 && zipNum <= 799) return "TX";
-  if (zipNum >= 330 && zipNum <= 349) return "FL";
-  if (zipNum >= 600 && zipNum <= 629) return "IL";
-  if (zipNum >= 150 && zipNum <= 196) return "PA";
-  if (zipNum >= 430 && zipNum <= 459) return "OH";
-  if (zipNum >= 300 && zipNum <= 319) return "GA";
-  if (zipNum >= 270 && zipNum <= 289) return "NC";
-  if (zipNum >= 480 && zipNum <= 499) return "MI";
-  return undefined;
-}
 
 // The one constant feeds both the request and the query key, so the cache can
 // never describe a request that wasn't made.
@@ -38,29 +26,12 @@ const RATE_LOAN_TYPE = "va";
 
 export default function VaRates() {
   usePageView("/rates/va");
-  const [zipcode, setZipcode] = useState("");
-  const [searchZipcode, setSearchZipcode] = useState("");
+  // ZIP, the ZIP→state derivation, the debounce and the request all live in the
+  // hook now — this page only says which product it advertises.
+  const { zipcode, setZipcode, assumptions, setAssumptions, rates, isLoading, isFetching } =
+    useRateSearch(RATE_LOAN_TYPE);
 
-  const { data: rates, isLoading, isFetching } = useQuery<MortgageRateWithProgram[]>({
-    // Their loanType (the Reg Z product-heading fix, now enforced in SQL)
-    // rides in the key, and getPublicQueryFn builds the URL from the key —
-    // so the cache can never describe a request that was not made.
-    queryKey: [
-      "/api/mortgage-rates",
-      {
-        loanType: RATE_LOAN_TYPE,
-        zipcode: searchZipcode,
-        state: getStateFromZip(searchZipcode),
-      },
-    ],
-    queryFn: getPublicQueryFn<MortgageRateWithProgram[]>(),
-  });
-
-  const handleSearch = useCallback(() => {
-    if (zipcode.length === 5) {
-      setSearchZipcode(zipcode);
-    }
-  }, [zipcode]);
+  const quoted = rates?.find(hasQuotedAssumptions);
 
   // Narrowed server-side by RATE_LOAN_TYPE — no render-path filter to forget.
   const vaRates = rates;
@@ -80,9 +51,16 @@ export default function VaRates() {
         title="VA loan rates today"
         zipcode={zipcode}
         onZipcodeChange={setZipcode}
-        onSearch={handleSearch}
         isLoading={isFetching}
-        showPropertyValue={true}
+        assumptions={
+          <AssumptionField
+            label="Property Value"
+            value={assumptions.propertyValue}
+            onChange={(propertyValue) => setAssumptions({ propertyValue })}
+            data-testid="input-property-value"
+          />
+        }
+        advanced={quoted && <QuotedAssumptions rate={quoted} />}
       />
 
       <div className="max-w-6xl mx-auto px-4 py-8">

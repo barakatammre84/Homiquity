@@ -142,7 +142,7 @@ describe("buildQueryUrl", () => {
   it("drops empty, null and undefined params so an unset filter isn't sent", async () => {
     const { buildQueryUrl } = await import("./queryClient");
     // This is what an untouched rates page sends: no zipcode typed yet, so
-    // getStateFromZip returns undefined.
+    // stateFromZip (lib/zipGeography.ts) returns undefined.
     expect(
       buildQueryUrl([
         "/api/mortgage-rates",

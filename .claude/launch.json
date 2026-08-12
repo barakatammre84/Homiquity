@@ -12,6 +12,18 @@
       "autoPort": true
     },
     {
+      "name": "strange-kilby-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "/Users/ammrebarakat/Developer/Homiquity/.claude/worktrees/strange-kilby-c389c0",
+        "run",
+        "dev"
+      ],
+      "port": 5002,
+      "autoPort": true
+    },
+    {
       "name": "renter-ramp-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getPublicQueryFn } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { usePageView } from "@/hooks/useActivityTracker";
+import { useRateSearch } from "@/hooks/useRateSearch";
 import type { MortgageRateWithProgram } from "@/types/rates";
 import { SEOHead } from "@/components/SEOHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,29 +26,22 @@ import {
 } from "@/components/ui/tooltip";
 
 export default function MortgageRates() {
-  const [zipcode, setZipcode] = useState("");
-  const [searchZipcode, setSearchZipcode] = useState("");
-
   usePageView("/rates");
 
-  const { data: rates, isLoading } = useQuery<MortgageRateWithProgram[]>({
-    // The key carries the exact request params — getPublicQueryFn builds the URL
-    // from it, so the cache identity and the request can't drift apart.
-    queryKey: [
-      "/api/mortgage-rates",
-      {
-        zipcode: searchZipcode,
-        state: getStateFromZip(searchZipcode),
-      },
-    ],
-    queryFn: getPublicQueryFn<MortgageRateWithProgram[]>(),
-  });
-
-  const handleSearch = () => {
-    if (zipcode.length === 5) {
-      setSearchZipcode(zipcode);
-    }
-  };
+  // The hub advertises EVERY product, so it passes no loan type — the hook
+  // omits the param and the server returns all of them. ZIP handling and the
+  // ZIP→state derivation are shared with the five product pages.
+  // `searchedZipcode` — NOT `zipcode` — is what the copy below names, because it
+  // is the ZIP the displayed rates are actually for. Naming the half-typed one
+  // would claim "today's rates in 902" over results for the previous ZIP.
+  const {
+    zipcode,
+    setZipcode,
+    searchedZipcode,
+    search: handleSearch,
+    rates,
+    isLoading,
+  } = useRateSearch();
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -84,7 +75,7 @@ export default function MortgageRates() {
               Mortgage Rates Today
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Here are today's mortgage rates{searchZipcode ? ` in ${searchZipcode}` : ""}. 
+              Here are today's mortgage rates{searchedZipcode ? ` in ${searchedZipcode}` : ""}. 
               Get a personalized quote in as little as 3 minutes. No hard credit check.
             </p>
           </div>
@@ -96,7 +87,7 @@ export default function MortgageRates() {
                 type="text"
                 placeholder="Enter ZIP code"
                 value={zipcode}
-                onChange={(e) => setZipcode(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                onChange={(e) => setZipcode(e.target.value)}
                 onKeyPress={handleKeyPress}
                 className="pl-10 h-12"
                 maxLength={5}
@@ -353,21 +344,4 @@ function RateCard({ rate }: { rate: MortgageRateWithProgram }) {
       </CardContent>
     </Card>
   );
-}
-
-function getStateFromZip(zip: string): string | undefined {
-  const zipNum = parseInt(zip.substring(0, 3));
-  
-  if (zipNum >= 900 && zipNum <= 961) return "CA";
-  if (zipNum >= 100 && zipNum <= 149) return "NY";
-  if (zipNum >= 750 && zipNum <= 799) return "TX";
-  if (zipNum >= 330 && zipNum <= 349) return "FL";
-  if (zipNum >= 600 && zipNum <= 629) return "IL";
-  if (zipNum >= 150 && zipNum <= 196) return "PA";
-  if (zipNum >= 430 && zipNum <= 459) return "OH";
-  if (zipNum >= 300 && zipNum <= 319) return "GA";
-  if (zipNum >= 270 && zipNum <= 289) return "NC";
-  if (zipNum >= 480 && zipNum <= 499) return "MI";
-  
-  return undefined;
 }
