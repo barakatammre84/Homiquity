@@ -195,6 +195,19 @@ capacity is the blocker" only when the queue is genuinely healthy and there is n
 commits *and* the session unreachable) or its owner asked. Never force-push another session's
 branch, never close its PR, never silently rewrite its approach — say what you changed and why.
 
+### Ids must not need a register to stay unique
+
+**Finding ids are date-qualified — `F-<MMDD>-<NN>`, using your own run's date (`F-0812-01`).
+Never a bare next-free integer.**
+
+Between 2026-08-04 and 2026-08-12 the finances were audited nine times by sessions that could not
+see each other, and **six of them minted findings starting at `F-20`** from "the next free number",
+so `F-20` came to mean six different things. Date qualification is unique **by construction, with
+zero coordination** — which is exactly why it survives the case a central allocator cannot: you
+must be able to *see* `main` before you can ask it for the next number, and not seeing each other
+was the whole problem. Ids predating the scheme (`F-1`…`F-19`) keep their original form: single
+origin, no ambiguity. The same rule holds for any new id space a routine invents.
+
 **A routine that skips the register does not get to write code.** If the register is unreachable or
 the repo is dirty in a way you did not cause, report and stop.
 
@@ -214,6 +227,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
 | Vendor & Procurement | nothing | `.env`, Railway config, anything outbound |
 | Refactor Radar | `client/src/**` minus `components/ui/**` | its own R4 off-limits list — unchanged |
+| Financial Audit | money paths + the financial registers; **audit-first, reports rather than fixes** — fixes only owner-authorized ledger rows, one per tick | `client/src/**` decomposition (radar's lane), `shared/schema/**` without a migration, company identity |
 
 **Off limits to every routine, always:** `shared/schema/**` and `migrations/**` without a same-PR
 hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session code;
