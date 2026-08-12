@@ -14,6 +14,7 @@ export default defineConfig({
       "tests/amortization.test.ts",
       "tests/inviteValidateAudit.test.ts",
       "tests/vaResidualEngineParity.test.ts",
+      "tests/fcraConsentGateBehavior.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
       "tests/accessControl.test.ts",
