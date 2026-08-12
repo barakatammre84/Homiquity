@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { SEOHead } from "@/components/SEOHead";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Home, CheckCircle2, Info, Building2, Landmark, FileText } from "lucide-react";
@@ -52,19 +54,23 @@ export default function RentReporting() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/email-capture", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          source: "rent_reporting_waitlist",
-          website,
-        }),
+      // `throw new Error("request failed")` discarded the server's own envelope,
+      // so a 400 naming the problem and a 429 telling the visitor to come back
+      // later both rendered as "Something went wrong". apiRequest throws
+      // ApiError in the "<status>: <body>" shape friendlyApiError parses, and
+      // adds 5xx suppression so internal detail stays off a public page.
+      await apiRequest("POST", "/api/email-capture", {
+        email: email.trim(),
+        source: "rent_reporting_waitlist",
+        website,
       });
-      if (!res.ok) throw new Error("request failed");
       setDone(true);
-    } catch {
-      toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: "We couldn't add you just yet",
+        description: friendlyApiError(error, "Please check your email address and try again."),
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }

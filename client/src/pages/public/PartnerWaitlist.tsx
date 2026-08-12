@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { SEOHead } from "@/components/SEOHead";
 import { COMPANY_IDENTITY, companyNmlsDisplay } from "@shared/companyIdentity";
 import { Handshake, CheckCircle2, ArrowRight } from "lucide-react";
@@ -58,22 +60,26 @@ export default function PartnerWaitlist() {
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/partner-waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          company: company.trim() || undefined,
-          partnerType,
-          message: message.trim() || undefined,
-          website,
-        }),
+      // This one DID check res.ok, but `throw new Error("request failed")`
+      // discards the server's own envelope, so a 400 naming the bad field and a
+      // 429 telling the partner to come back later both rendered as the same
+      // "Something went wrong". apiRequest throws ApiError carrying the
+      // "<status>: <body>" shape friendlyApiError knows how to read.
+      await apiRequest("POST", "/api/partner-waitlist", {
+        name: name.trim(),
+        email: email.trim(),
+        company: company.trim() || undefined,
+        partnerType,
+        message: message.trim() || undefined,
+        website,
       });
-      if (!res.ok) throw new Error("request failed");
       setDone(true);
-    } catch {
-      toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: "We couldn't add you just yet",
+        description: friendlyApiError(error, "Please check your details and try again."),
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
