@@ -91,6 +91,12 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
 
+### Routines — the autonomous operating cadence · [`routines/`](routines/)
+The contract binding all eight scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, and the corrected escalation runbook. Their job descriptions live in `~/.claude/scheduled-tasks/`; **this directory wins wherever they disagree.**
+- [CHARTER.md](routines/CHARTER.md) — the contract: two acceptance questions, the clock, the hand-off chain, write territory, the `RELEASABLE` verdict, escalation, honesty rails.
+- [REGISTER.md](routines/REGISTER.md) — the claim lock: who is writing which file right now (humans claim here too).
+- [reports/](routines/reports/) — dated run reports; the proof-of-life record.
+
 ### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
 The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): one behavior-preserving, PR-only extraction per run, spreading the house decomposition patterns.
 - [LEDGER.md](refactor-radar/LEDGER.md) — ranked candidates + run log (the routine's cross-run memory).
