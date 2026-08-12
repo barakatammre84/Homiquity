@@ -114,7 +114,14 @@ The one node-lane skip is the intentional inverse case from Evidence 2.
 
 ### 7. Upstream reports — WARN
 
-CHARTER §4 makes reading peers mandatory. Present for today: `2026-08-12-wiring-audit.md` (read; its WF2-F4 closure is consistent with this run's ledger). **Absent: `launch-gate` (07:48) and `sprint-blitz` (09:53).** Not treated as "nothing happened" — the reports directory was created today (`README.md`, 15:48), so the likely cause is the suite being newly rebuilt rather than a failure, but Evening Triage owns that determination.
+CHARTER §4 makes reading peers mandatory. Present for today: `2026-08-12-wiring-audit.md` (read; its WF2-F4 closure is consistent with this run's ledger). **Absent: `launch-gate` (07:48) and `sprint-blitz` (09:53).**
+
+Not treated as "nothing happened", and the two are **not** the same case:
+
+- **Sprint Blitz ran and is still in flight.** Branch `routine/sprint-blitz-2026-08-12` exists with its own commit `24dbb36` *"chore(register): sprint-blitz claims CTO_ROADMAP §3.2 (the last N+1 loop)"*, in worktree `.claude/worktrees/blitz-0812`. `git rev-list --count main..` → 4 (one its own, three already merged). The branch is **local-only** — `git ls-remote --heads origin routine/sprint-blitz-2026-08-12` returns nothing — and has no PR (`gh pr list`), so it is invisible to every peer that checks the usual way. No missing-report escalation is warranted; a **claim recorded only on an unpushed branch is not a lock**, which is worth Evening Triage's attention on its own.
+- **Launch Gate** has no branch, no worktree and no report. The reports directory itself was created today (`README.md`, 15:48), so a newly-rebuilt suite is the plausible cause rather than a failure — but that determination is Evening Triage's under §4, not this routine's.
+
+Side note from the same sweep: the **primary checkout** is currently on `routine/qa-sweep-2026-08-12`, not `main` — it was on `main` when this run started. Concurrent peers move it mid-session; this run wrote only inside its own worktree, so nothing crossed.
 
 ## Proposed tickets
 
@@ -122,5 +129,6 @@ CHARTER §4 makes reading peers mandatory. Present for today: `2026-08-12-wiring
 2. **Promote the H8 MISMO-export role gate into the node lane.** `tests/mismoExportAccess.test.ts` guards a route that emits full SSN + DOB to whoever passes the gate, and it lives only in the integration lane, which never runs in CI. A static role-gate assertion (the `routeGates.test.ts` shape) would cover the regression without needing a server.
 3. **Re-verify the Target-5 shortlist before any outreach** (§1.3 item 1). At 39 days, "still broker-friendly and NMLS-active" is an assumption, and the other four actions are wasted if it is wrong.
 4. **Rotate the next organic-field check to `e_disclosure`**, then `occupancy_type`. Ledger in Evidence 3.
+5. **A register claim on an unpushed branch is not a lock.** Sprint Blitz's §3.2 claim (`24dbb36`) exists only on a local branch with no PR, so no peer can see it by the documented means — CHARTER §5.4 says "commit the claim on your branch so peers can see it", which is only true once the branch is pushed. Either require a push, or move the register to a shared location that does not depend on one.
 
 STATUS: WARN
