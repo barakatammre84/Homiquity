@@ -228,6 +228,7 @@ export default defineConfig({
       "tests/leaseCapture.test.ts",
       "tests/urlaRowContent.test.ts",
       "tests/urlaCoApplicantRemoval.test.ts",
+      "tests/mutationErrorHandling.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

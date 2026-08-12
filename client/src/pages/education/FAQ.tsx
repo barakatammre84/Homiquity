@@ -23,6 +23,7 @@ import {
 import { apiRequest, queryClient, getPublicQueryFn } from "@/lib/queryClient";
 import type { Faq, ContentCategory } from "@shared/schema";
 import { usePageView } from "@/hooks/useActivityTracker";
+import { useToast } from "@/hooks/use-toast";
 import { SEOHead } from "@/components/SEOHead";
 import { faqPageSchema, breadcrumbSchema } from "@/lib/structuredData";
 
@@ -47,6 +48,8 @@ export default function FAQ() {
     enabled: !searchQuery && !selectedCategory,
   });
 
+  const { toast } = useToast();
+
   const feedbackMutation = useMutation({
     mutationFn: async ({ faqId, helpful }: { faqId: string; helpful: boolean }) => {
       await apiRequest("POST", `/api/faqs/${faqId}/feedback`, { helpful });
@@ -54,6 +57,15 @@ export default function FAQ() {
     onSuccess: (_, { faqId }) => {
       setFeedbackGiven((prev) => ({ ...prev, [faqId]: true }));
       queryClient.invalidateQueries({ queryKey: ["/api/faqs"] });
+    },
+    // Silent before: the thumbs control simply never latched, so the reader
+    // clicked again and again with no indication anything had happened.
+    onError: () => {
+      toast({
+        title: "Couldn't record that",
+        description: "Your feedback didn't reach us. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 

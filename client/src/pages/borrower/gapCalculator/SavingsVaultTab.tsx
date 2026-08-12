@@ -60,6 +60,17 @@ export function SavingsVaultTab({ analysis, savingsTransactions }: SavingsVaultT
         description: "Your savings have been updated.",
       });
     },
+    // Without this a failed deposit closed nothing and said nothing. The
+    // borrower is recording money toward their down payment; leaving the dialog
+    // open with no explanation is indistinguishable from a slow save, so they
+    // either give up or record it twice.
+    onError: (error: Error) => {
+      toast({
+        title: "Deposit not saved",
+        description: error.message || "We couldn't record that deposit. Your figures are unchanged — please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const onSubmitSavings = (data: SavingsFormValues) => {

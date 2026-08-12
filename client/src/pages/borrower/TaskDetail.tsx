@@ -140,6 +140,18 @@ export default function TaskDetail() {
       });
       setVerificationNotes("");
     },
+    // Silent before, and this is the worst place for it: the server rejects
+    // this for a staff member who is not on the deal team (403), and a verdict
+    // that never landed looked identical to one that did — on the action that
+    // completes or reopens the task. The notes are deliberately NOT cleared, so
+    // the reviewer does not have to retype them.
+    onError: (error: Error) => {
+      toast({
+        title: "Verification not saved",
+        description: error.message || "The document's status is unchanged. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
