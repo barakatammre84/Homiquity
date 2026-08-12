@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/formatters";
 
 /**
  * Borrower-facing what-if panel (roadmap ARC-3).
@@ -45,9 +46,6 @@ interface WhatIfResponse {
   unavailable: string | null;
 }
 
-const money = (value: number) =>
-  value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-
 export function WhatIfPanel({
   applicationId,
   currentPurchasePrice,
@@ -67,7 +65,7 @@ export function WhatIfPanel({
       const dp = Number(downPayment);
       const cs = Number(creditScore);
       if (downPayment.trim() !== "" && Number.isFinite(dp)) {
-        scenarios.push({ label: `${money(dp)} down`, downPayment: dp });
+        scenarios.push({ label: `${formatCurrency(dp)} down`, downPayment: dp });
       }
       if (creditScore.trim() !== "" && Number.isFinite(cs)) {
         scenarios.push({ label: `${cs} credit score`, creditScore: cs });
@@ -178,11 +176,11 @@ export function WhatIfPanel({
               <div>
                 <span className="text-sm font-medium">Your file today</span>
                 <span className="block text-xs text-muted-foreground">
-                  {result.baseline.interestRate}% · {money(result.baseline.loanAmount)} loan
+                  {result.baseline.interestRate}% · {formatCurrency(result.baseline.loanAmount)} loan
                 </span>
               </div>
               <span className="text-lg font-semibold" data-testid="text-what-if-baseline">
-                {money(result.baseline.estimatedMonthlyTotal)}/mo
+                {formatCurrency(result.baseline.estimatedMonthlyTotal)}/mo
               </span>
             </div>
 
@@ -197,14 +195,14 @@ export function WhatIfPanel({
                   {scenario.projection && (
                     <span className="block text-xs text-muted-foreground">
                       {scenario.projection.interestRate}% ·{" "}
-                      {money(scenario.projection.loanAmount)} loan
+                      {formatCurrency(scenario.projection.loanAmount)} loan
                     </span>
                   )}
                 </div>
                 {scenario.projection ? (
                   <div className="text-right">
                     <span className="text-lg font-semibold">
-                      {money(scenario.projection.estimatedMonthlyTotal)}/mo
+                      {formatCurrency(scenario.projection.estimatedMonthlyTotal)}/mo
                     </span>
                     {scenario.monthlyDeltaFromBaseline !== null && (
                       <Badge
@@ -218,7 +216,7 @@ export function WhatIfPanel({
                             increase, the same honesty rule the staff
                             pricing-intelligence panel follows. */}
                         {scenario.monthlyDeltaFromBaseline > 0 ? "+" : ""}
-                        {money(scenario.monthlyDeltaFromBaseline)}/mo
+                        {formatCurrency(scenario.monthlyDeltaFromBaseline)}/mo
                       </Badge>
                     )}
                   </div>
