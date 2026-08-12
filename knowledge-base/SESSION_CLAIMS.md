@@ -63,6 +63,20 @@ themselves, so the board must degrade toward "available", never toward "blocked 
 |-------|-------------------|------------------------|-------------|-------|
 | 2026-08-12 | `/financial-audit` (loop, hourly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids **F-30…F-37 reserved** | `claude/fervent-mayer-oqk0iv` | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Will not touch `client/**` UI decomposition — that is refactor-radar's lane. |
 
+## Observed in flight — not declared by their sessions
+
+Recorded by the `/financial-audit` tick on 2026-08-12 from open PRs and recent branches, because
+a board showing only the one session that bothered to write in it is worse than no board: it reads
+as "nobody else is working" when the opposite is true. **These sessions did not claim this work** —
+this is observation, and it may be stale. Verify against open PRs before relying on it.
+
+| observed | session / branch | scope | overlap with financial-audit |
+|---|---|---|---|
+| 2026-08-12 | [#489](https://github.com/barakatammre84/Homiquity/pull/489) `docs/financial-audit-chain` | Lands four stranded financial audit logs (08-07, 08-09, 08-10, 08-11) | **Direct — same domain and same id space.** Coordinated by comment on the PR rather than by editing it. Its 08-10 log near-duplicates the 08-12 audit. |
+| 2026-08-12 | [#490](https://github.com/barakatammre84/Homiquity/pull/490) `claude/pensive-noether-5232f2` | Borrower data-capture defects | None observed |
+| 2026-08-12 | [#488](https://github.com/barakatammre84/Homiquity/pull/488) `feat/lease-capture` | Rent-ledger lease capture, encrypted PII columns | Adjacent — touches `shared/schema/**`; watch for migration ordering |
+| 2026-08-12 | [#483](https://github.com/barakatammre84/Homiquity/pull/483) `fix/partnerhub-cpa-gate-drift` | CPA PartnerHub role gate | None observed |
+
 ## Standing lanes — who owns what by default
 
 Recorded so routines do not have to negotiate the common case every time.
