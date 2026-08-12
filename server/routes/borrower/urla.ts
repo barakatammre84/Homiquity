@@ -1,6 +1,7 @@
 // Borrower routes: URLA sections (personal info/SSN/employment/income/assets/liabilities/property) + bulk save.
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
+import { isUrlaRowSaveable } from "@shared/lib/urlaRowContent";
 import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { logAudit } from "../../auditLog";
@@ -284,6 +285,43 @@ export function registerUrlaRoutes(
     }
   });
 
+  // Remove a co-applicant from the application.
+  //
+  // The Remove Co-Borrower button used to be purely local state: the bulk save
+  // is upsert-only and simply omitted `coApplicants` when the flag was false,
+  // so nothing was ever deleted and the post-save refetch found the seq-2 rows
+  // still there and put the co-borrower straight back on screen — after a
+  // success toast. A co-applicant the borrower had deliberately removed stayed
+  // on the loan file and was still exported to MISMO (#450).
+  //
+  // Destructive and irreversible, so: ownership-checked like every other delete
+  // here, refuses the primary borrower, and writes an audit entry recording
+  // exactly what was removed. The audit log is where the evidence of the
+  // removal lives once the rows are gone.
+  app.delete("/api/urla/:applicationId/co-applicant/:seq", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId, seq } = routeParams(req);
+      const sequence = Number(seq);
+      if (!Number.isInteger(sequence) || sequence <= 1) {
+        return res.status(400).json({ error: "Only a co-applicant (borrower sequence 2 or higher) can be removed" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const removed = await storage.deleteCoApplicantRecords(applicationId, sequence);
+      await logAudit(req, "urla.co_applicant.removed", "loan_application", applicationId, {
+        borrowerSequenceNumber: sequence,
+        removed,
+      });
+      res.json({ removed });
+    } catch (error) {
+      console.error("Remove co-applicant error:", error);
+      res.status(500).json({ error: "Failed to remove co-applicant" });
+    }
+  });
+
   app.delete("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;
@@ -465,7 +503,7 @@ export function registerUrlaRoutes(
         if (Array.isArray(opts.employmentHistory) && opts.employmentHistory.length > 0) {
           results.employmentHistory = [];
           for (const emp of opts.employmentHistory) {
-            if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
+            if (!isUrlaRowSaveable("employment", emp)) continue;
             const cleanEmp = pickTableFields(URLA_TABLES.employment, emp);
             // The self-employment worksheet is a structured JSON object, so
             // pickTableFields drops it (URLA tables are scalar-only by design).
@@ -499,7 +537,7 @@ export function registerUrlaRoutes(
         if (Array.isArray(opts.assets) && opts.assets.length > 0) {
           results.assets = [];
           for (const asset of opts.assets) {
-            if (!asset.accountType && !asset.financialInstitution) continue;
+            if (!isUrlaRowSaveable("asset", asset)) continue;
             const cleanAsset = pickTableFields(URLA_TABLES.asset, asset, ["accountNumber"]);
             if (asset.id) {
               const existing = await storage.getUrlaAssetById(asset.id);
@@ -516,7 +554,7 @@ export function registerUrlaRoutes(
         if (Array.isArray(opts.liabilities) && opts.liabilities.length > 0) {
           results.liabilities = [];
           for (const liability of opts.liabilities) {
-            if (!liability.liabilityType && !liability.creditorName) continue;
+            if (!isUrlaRowSaveable("liability", liability)) continue;
             const cleanLiability = pickTableFields(URLA_TABLES.liability, liability, ["accountNumber"]);
             if (liability.id) {
               const existing = await storage.getUrlaLiabilityById(liability.id);
@@ -618,7 +656,7 @@ export function registerUrlaRoutes(
       if (otherIncomeSources && Array.isArray(otherIncomeSources) && otherIncomeSources.length > 0) {
         results.otherIncomeSources = [];
         for (const income of otherIncomeSources) {
-          if (!income.incomeSource || !income.monthlyAmount) continue;
+          if (!isUrlaRowSaveable("otherIncome", income)) continue;
           const cleanIncome = pickTableFields(URLA_TABLES.otherIncome, income);
           if (income.id) {
             const existing = await storage.getOtherIncomeSourceById(income.id);

@@ -12,6 +12,24 @@
 // so no surface can decide for itself. Rows created before the confirmation
 // columns existed have no confirmation and resolve to `unconfirmed_quote` —
 // they were never locks, and calling them locks now would repeat the mistake.
+//
+// CONFIRMATION IS A COUNTERPARTY TEST, NOT A PRESENCE TEST (F-20).
+//
+// Requiring the four confirmation columns to be filled in is necessary and not
+// sufficient. A confirmation number is a fact about a COUNTERPARTY, and a
+// counterparty we have no broker agreement with — or a seeded demo row, which
+// is not a company at all — owes us nothing however complete the paperwork
+// looks. `simulated` carries that fact: it is derived at lock time from
+// `isApprovedLender()` (routes/borrower/rateLocks.ts) and stored on the row, so
+// this test needs no lender lookup and cannot drift with the lender's later
+// state. That storage-time capture is deliberate and is the correct semantics
+// in both directions: a lock taken before an agreement existed does not become
+// a real commitment when the agreement is later signed, and a lock taken while
+// the lender was approved stays the lender's obligation if their status later
+// lapses.
+//
+// A missing `simulated` is treated as unconfirmed. Missing evidence is not
+// evidence of a commitment.
 // ---------------------------------------------------------------------------
 
 export type RateLockKind = "confirmed_lock" | "unconfirmed_quote";
@@ -32,6 +50,12 @@ export interface ConfirmableLock {
   lockConfirmationNumber?: string | null;
   confirmedRate?: string | number | null;
   confirmedExpiresAt?: Date | string | null;
+  /**
+   * False only when the counterparty was an APPROVED, non-demo wholesale
+   * lender at the moment the lock was recorded. Anything else — including a
+   * missing value — means no real lender is on the hook.
+   */
+  simulated?: boolean | null;
 }
 
 function present(value: unknown): boolean {
@@ -39,13 +63,18 @@ function present(value: unknown): boolean {
 }
 
 /**
- * A lock is confirmed only with a lender, that lender's confirmation number,
- * and the rate and expiration the lender confirmed. Partial evidence is not
- * evidence: a confirmation number with no confirmed expiration cannot tell a
- * borrower when their rate runs out.
+ * A lock is confirmed only with a REAL, APPROVED lender, that lender's
+ * confirmation number, and the rate and expiration the lender confirmed.
+ *
+ * Partial evidence is not evidence: a confirmation number with no confirmed
+ * expiration cannot tell a borrower when their rate runs out. Neither is
+ * evidence from a counterparty that owes us nothing — see the header note on
+ * why `simulated` is part of this test and not a separate concern callers may
+ * choose to apply.
  */
 export function isLenderConfirmed(lock: ConfirmableLock): boolean {
   return (
+    lock.simulated === false &&
     present(lock.lenderId) &&
     present(lock.lockConfirmationNumber) &&
     present(lock.confirmedRate) &&

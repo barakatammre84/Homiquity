@@ -1,20 +1,5 @@
-import {
-  AMORTIZATION_TYPES,
-  PREFERRED_LOAN_TYPES,
-  type AmortizationType,
-  type BorrowerDeclarations,
-  type EmploymentHistory,
-  type HmdaDemographics,
-  type LoanApplication,
-  type OtherIncomeSource,
-  type PreferredLoanType,
-  type UrlaAsset,
-  type UrlaLiability,
-  type UrlaLoanDetails,
-  type UrlaPersonalInfo,
-  type UrlaPropertyInfo,
-} from "@shared/schema";
-
+import { AMORTIZATION_TYPES, PREFERRED_LOAN_TYPES } from "@shared/statusVocabularies";
+import type { AmortizationType, BorrowerDeclarations, EmploymentHistory, HmdaDemographics, LoanApplication, OtherIncomeSource, PreferredLoanType, UrlaAsset, UrlaLiability, UrlaLoanDetails, UrlaPersonalInfo, UrlaPropertyInfo } from "@shared/schema";
 // SSN and account numbers are WRITE-ONLY virtual fields: the server encrypts
 // them at rest and never returns the value — responses carry only ssnLast4 /
 // accountNumberLast4, which the inputs surface via their placeholders.

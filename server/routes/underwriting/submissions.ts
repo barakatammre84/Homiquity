@@ -9,6 +9,12 @@ import * as creditService from "../../services/creditService";
 import { updateConditionMetrics } from "../../services/outcomeTracker";
 import { routeParams } from "../../http/routeParams";
 
+/**
+ * Window the working-capital days-to-cash figure is measured over. Matches the
+ * cycle-time endpoint's own default so the two reports describe the same cohort.
+ */
+const WORKING_CAPITAL_WINDOW_DAYS = 90;
+
 export function registerSubmissionRoutes(
   app: Express,
   storage: IStorage,
@@ -359,8 +365,11 @@ export function registerSubmissionRoutes(
 
       // Discrepancies worth a human: funded loans that were short-paid, or
       // funded with no remittance recorded at all.
+      // Simulated fundings are excluded: a "short-pay" on money nobody wired
+      // is not a discrepancy anyone can chase, and putting it on this list
+      // sends staff to reconcile a lender that was never billed (F-21).
       const discrepancies = submissions
-        .filter(s => s.status === "funded")
+        .filter(s => s.status === "funded" && !s.simulated)
         .map(s => ({
           submissionId: s.id,
           applicationId: s.applicationId,
@@ -388,19 +397,62 @@ export function registerSubmissionRoutes(
           epoClawbackDays: lenderByKey.get(s.lenderId)?.epoClawbackDays,
           fundedAt: s.fundedAt,
           compensationReceivedAmount: s.compensationReceivedAmount,
+          simulated: s.simulated,
         })),
       );
 
       // Cost side + margin (F-11). Revenue alone is not unit economics: costs
       // are incurred on every file and revenue arrives only on the ones that
       // close, so the meaningful denominator is the funded count.
-      const { summarizeCosts, computeUnitEconomics } = await import("@shared/costLedger");
-      const costEntries = await storage.getAllLoanCostEntries();
+      const {
+        summarizeCosts,
+        summarizeCommissionCosts,
+        computeUnitEconomics,
+        computeWorkingCapitalPosition,
+      } = await import("@shared/costLedger");
+      const [costEntries, commissionRows] = await Promise.all([
+        storage.getAllLoanCostEntries(),
+        storage.getAllBrokerCommissions(),
+      ]);
       const costs = summarizeCosts(costEntries);
+      // Commission payouts are the other half of the cost side: money that
+      // leaves the company per funded loan, previously sitting in a table no
+      // financial view read.
+      const commissions = summarizeCommissionCosts(commissionRows);
       const unitEconomics = computeUnitEconomics({
         receivedCompensation: summary.receivedCompensation,
         fundedCount: summary.fundedCount,
         costs,
+        simulatedRevenue: summary.simulated.receivedCompensation,
+        commissions,
+      });
+
+      // Working capital (F-23). The only liquidity risk this structure carries:
+      // spend goes out at application, cash comes back after the lender's wire.
+      //
+      // "Unrecovered" is cost booked against a file with no funded submission —
+      // measured off the ledger, not modeled. The days-to-cash window comes
+      // from buildCycleTimeReport, called rather than reimplemented so the two
+      // surfaces cannot disagree about an interval only one of them defines.
+      const { buildCycleTimeReport } = await import("../../services/cycleTimeReport");
+      const cycle = await buildCycleTimeReport(WORKING_CAPITAL_WINDOW_DAYS);
+
+      const fundedApplicationIds = new Set(
+        submissions.filter(s => s.status === "funded").map(s => s.applicationId),
+      );
+      const unrecoveredFiles = new Set<string>();
+      let unrecoveredCost = 0;
+      for (const entry of costEntries) {
+        if (entry.simulated) continue; // never let simulated spend size a cash need
+        if (fundedApplicationIds.has(entry.applicationId)) continue;
+        unrecoveredCost += Number(entry.amount) || 0;
+        unrecoveredFiles.add(entry.applicationId);
+      }
+      const workingCapital = computeWorkingCapitalPosition({
+        unrecoveredCost,
+        unrecoveredFileCount: unrecoveredFiles.size,
+        daysToCashMedian: cycle.daysToCash.medianDays,
+        daysToCashP90: cycle.daysToCash.p90Days,
       });
 
       res.json({
@@ -411,7 +463,9 @@ export function registerSubmissionRoutes(
         discrepancies,
         clawbackExposure: clawback,
         costs,
+        commissions,
         unitEconomics,
+        workingCapital,
       });
     } catch (error) {
       console.error("Compensation report error:", error);

@@ -181,3 +181,47 @@ describe("engine-calculation routes are staff-gated", () => {
     }
   });
 });
+
+describe("ROUTE_GATES.partnerHub mirrors the server gate on /api/partners/me", () => {
+  // Closes the drift the file itself had documented since 2026-08-03 and never
+  // fixed: the client gate admitted `cpa` while server/routes/partners.ts
+  // answered requireRole("realtor","admin"), so a CPA who reached /partners/hub
+  // rendered a page whose every data call 403'd. Fail-closed, so it was a broken
+  // page rather than a leak — but broken for six days and invisible unless you
+  // signed in as that exact role.
+  //
+  // It is fixed by NARROWING the client, never by widening the server: PartnerHub
+  // serves referral and commission data, and RESPA section 8(a) bars referral
+  // compensation to CPAs in any form. Widening would have built the thing the
+  // charter forbids. CPAs keep their own inviter-only surface (`cpaPortal`).
+  const gates = read("client/src/lib/routeGates.ts");
+  const partners = read("server/routes/partners.ts");
+
+  it("does not admit cpa", () => {
+    const at = gates.indexOf("partnerHub:");
+    expect(at, "partnerHub gate not found").toBeGreaterThan(-1);
+    const decl = gates.slice(at, gates.indexOf("]", at) + 1);
+    expect(decl).not.toContain('"cpa"');
+    expect(decl).toContain('"realtor"');
+    expect(decl).toContain('"admin"');
+  });
+
+  it("still matches what the server actually enforces", () => {
+    // If someone later widens the server, this fails and forces the client gate
+    // to be reconsidered deliberately rather than drifting again.
+    for (const route of ['"/api/partners/me"', '"/api/partners/me/referrals"']) {
+      const at = partners.indexOf(route);
+      expect(at, `${route} registration not found`).toBeGreaterThan(-1);
+      const registration = partners.slice(at, at + 120);
+      expect(registration, `${route} must stay realtor/admin`).toContain(
+        'requireRole("realtor", "admin")',
+      );
+    }
+  });
+
+  it("keeps cpa on its own portal, so the role is not left without a surface", () => {
+    const at = gates.indexOf("cpaPortal:");
+    expect(at, "cpaPortal gate not found").toBeGreaterThan(-1);
+    expect(gates.slice(at, gates.indexOf("]", at) + 1)).toContain('"cpa"');
+  });
+});

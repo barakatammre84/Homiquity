@@ -1,11 +1,12 @@
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { getRoleHomeRoute } from "@/lib/roleRoutes";
 import { 
   Wrench, 
@@ -41,6 +42,7 @@ const staffAccounts = testAccounts.filter(a => a.category === "staff");
 const clientAccounts = testAccounts.filter(a => a.category === "client");
 
 export default function TestLogin() {
+  const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [email, setEmail] = useState("");

@@ -27,7 +27,7 @@ reused. Sizes are re-measured at each audit; the seeded numbers are from
 | RR-001 | client/src/pages/lending/PreApproval.tsx | 882 | shell over `preApproval/` steps + hooks + `client/src/funnel/` machine + `lib/affordabilityEstimate` | — | — | rejected: already decomposed; poor ROI | seeded at install | 2026-08-08 |
 | RR-002 | client/src/components/ui/sidebar.tsx | 727 | vendored shadcn primitive | — | — | rejected: off-limits (R4) | seeded at install | 2026-08-08 |
 | RR-003 | client/src/pages/admin/AdminUsers.tsx | 670 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
-| RR-004 | client/src/components/ScenarioSimulatorDialog.tsx | 645 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
+| RR-004 | client/src/components/ScenarioSimulatorDialog.tsx | 645 | not yet audited (size re-measure due — PR #467 has since changed this file) | tbd | tbd | open | blocker cleared: PR #467 MERGED, so the conflict that set `blocked-human` is resolved | 2026-08-12 |
 | RR-005 | client/src/pages/borrower/URLAForm.tsx | 625 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
 | RR-006 | client/src/pages/staff/BorrowerFile.tsx | 619 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
 | RR-007 | client/src/pages/staff/StaffDashboard.tsx | 602 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
@@ -35,7 +35,7 @@ reused. Sizes are re-measured at each audit; the seeded numbers are from
 | RR-009 | client/src/components/BorrowerPackageView.tsx | 602 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
 | RR-010 | client/src/pages/borrower/Tasks.tsx | 595 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
 | RR-011 | client/src/pages/realtor-engine/StrategySessions.tsx | 580 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
-| RR-012 | client/src/pages/calculators/RentVsBuyCalculator.tsx | 579 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
+| RR-012 | client/src/pages/calculators/RentVsBuyCalculator.tsx | 579 | ~95-line pure `calculateResults` (rent-vs-buy math) plus its input/result types live inline in the page component, unlike sibling `AffordabilityCalculator.tsx` which already extracted to `lib/affordabilityEstimate.ts` + colocated `types.ts` | extract `calculateResults`/`CalculatorInputs`/`CalculatorResults`/`defaultInputs` to `client/src/lib/rentVsBuyEstimate.ts`, mirroring the `affordabilityEstimate.ts` shape; page keeps all JSX/state/mutation, just imports the pure module | low — pure function, no JSX/query-key/route changes, single `@shared/lib/amortization` call untouched | done | merged 2026-08-12 as https://github.com/barakatammre84/Homiquity/pull/481 | 2026-08-12 |
 | RR-013 | client/src/pages/realtor-engine/ScenarioDesk.tsx | 574 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
 | RR-014 | client/src/pages/borrower/BuyerProperties.tsx | 568 | not yet audited (seeded by size sweep) | tbd | tbd | open | — | 2026-08-08 |
 
@@ -43,3 +43,5 @@ reused. Sizes are re-measured at each audit; the seeded numbers are from
 
 | date | mode | target | outcome | PR | attempts | notes |
 |------|------|--------|---------|----|----------|-------|
+| 2026-08-12 | full | RR-012 client/src/pages/calculators/RentVsBuyCalculator.tsx | code PR opened | https://github.com/barakatammre84/Homiquity/pull/481 | 1/5 | First-ever run (user-triggered test of /refactor-radar). Research: all 5 sites blocked by sandbox network egress proxy, cache still empty. Also flagged RR-004 blocked-human (conflicts with open non-radar PR #467). |
+| 2026-08-12 | maintenance (human session, not a radar run) | — | unblocked the routine | — | — | The 2026-08-08 run crashed and left `.claude/worktrees/refactor-radar-2026-08-08` behind with uncommitted RR-004 work. Phase 0.4 aborts on exactly that and forbids self-deletion, so **every radar run since has been aborting on sight**. Work snapshotted to `wip/radar-2026-08-08-scenario-simulator-abandoned` (do not merge — superseded by merged #467), worktree removed, RR-004 → `open`, RR-012 → `done`. Radar also gained a real clock (Sun 20:00) — see [routines/CHARTER.md](../routines/CHARTER.md). |

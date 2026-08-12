@@ -110,6 +110,45 @@ export const insertWholesaleLenderSchema = createInsertSchema(wholesaleLenders).
 });
 
 export type InsertWholesaleLender = z.infer<typeof insertWholesaleLenderSchema>;
+
+/**
+ * The columns that decide whether a counterparty may be transacted with.
+ *
+ * These are NOT ordinary lender attributes. `approvalStatus` is the record of
+ * an executed broker agreement and the gate on transmitting a borrower's file
+ * to a third party; `isDemo` is what makes a fictional seeded row permanently
+ * untransactable. Together they are the highest-consequence control in the
+ * business, and they must move only through the audited approval endpoint —
+ * never as an incidental key in a generic update body (F-22).
+ */
+export const LENDER_AUTHORIZATION_COLUMNS = ["approvalStatus", "isDemo"] as const;
+
+/**
+ * Columns carrying a term of the executed broker agreement.
+ *
+ * `epoClawbackDays` is an input to the clawback reserve on the admin financial
+ * report and in the contingent-liability register, so a silent edit moves a
+ * balance-sheet figure. Like the authorization columns it is kept off the
+ * generic write path and moved only through an audited endpoint — captured at
+ * approval, corrected through `PATCH .../contract-terms` (F-23).
+ */
+export const LENDER_CONTRACT_TERM_COLUMNS = ["epoClawbackDays"] as const;
+
+/**
+ * Schema for the generic lender create/update routes.
+ *
+ * Deliberately omits the authorization columns above, so a caller cannot set
+ * them at all. Omitting rather than ignoring is the point: a body carrying
+ * `approvalStatus` is silently stripped by Zod instead of quietly taking
+ * effect. Seeds and storage still use `insertWholesaleLenderSchema`, which is
+ * why the DEFAULTs (`target` / `false`) remain the only way a new row acquires
+ * these values — fail-closed.
+ */
+export const writeWholesaleLenderSchema = insertWholesaleLenderSchema.omit({
+  approvalStatus: true,
+  isDemo: true,
+  epoClawbackDays: true,
+});
 export type WholesaleLender = typeof wholesaleLenders.$inferSelect;
 
 export const rateSheets = pgTable("rate_sheets", {

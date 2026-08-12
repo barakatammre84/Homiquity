@@ -191,12 +191,18 @@ export interface ClawbackRegisterEntry extends ClawbackExposureInput {
   submissionId?: string;
   applicationId?: string;
   status?: string;
+  /**
+   * True while the lender leg is the deterministic simulation. No lender paid
+   * us on a simulated funding, so no lender can reclaim anything — including
+   * it would inflate the reserve with money that never moved (F-21).
+   */
+  simulated?: boolean | null;
 }
 
 export interface ClawbackRegister {
   /** Funded loans still inside their EPO window. */
   atRiskCount: number;
-  /** Total reclaimable dollars — the reserve figure. */
+  /** Total reclaimable dollars — the reserve figure. Real fundings only. */
   totalAtRisk: number;
   /** At-risk loans whose amount is unknown (no remittance recorded). */
   indeterminateCount: number;
@@ -204,20 +210,30 @@ export interface ClawbackRegister {
   usesAssumedWindow: boolean;
   /** Soonest window expiry among at-risk loans. */
   nextExpiry: Date | null;
+  /**
+   * Simulated funded rows kept out of the figures above. Reported rather than
+   * silently dropped: this register's discipline is that a number is never
+   * allowed to look more complete than it is, in either direction.
+   */
+  simulatedExcludedCount: number;
   entries: (ClawbackExposure & { submissionId?: string; applicationId?: string })[];
 }
 
 /**
  * Roll funded submissions into the contingent-liability register the audit
  * found missing. Only `funded` rows can carry exposure — nothing is reclaimed
- * from a loan that never paid us.
+ * from a loan that never paid us, and nothing is reclaimable from a loan
+ * whose funding was simulated.
  */
 export function buildClawbackRegister(
   records: ClawbackRegisterEntry[],
   now: Date = new Date(),
 ): ClawbackRegister {
-  const entries = records
-    .filter(r => r.status === undefined || r.status === "funded")
+  const funded = records.filter(r => r.status === undefined || r.status === "funded");
+  const simulatedExcludedCount = funded.filter(r => r.simulated).length;
+
+  const entries = funded
+    .filter(r => !r.simulated)
     .map(r => ({
       ...evaluateClawbackExposure(r, now),
       submissionId: r.submissionId,
@@ -245,6 +261,7 @@ export function buildClawbackRegister(
     indeterminateCount,
     usesAssumedWindow,
     nextExpiry,
+    simulatedExcludedCount,
     entries,
   };
 }

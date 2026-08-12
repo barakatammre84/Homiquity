@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,6 +65,7 @@ export function SubmissionLifecycleControl({
   status: LenderSubmissionStatus;
   lenderName: string;
 }) {
+  const queryClient = useQueryClient();
   const [toStatus, setToStatus] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [fundedLoanAmount, setFundedLoanAmount] = useState("");

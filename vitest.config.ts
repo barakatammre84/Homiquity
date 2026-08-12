@@ -29,6 +29,7 @@ export default defineConfig({
       "tests/activeApplicationListParity.test.ts",
       "tests/apiRequestConvergence.test.ts",
       "tests/queryKeyConvergence.test.ts",
+      "tests/clientSchemaImports.test.ts",
       "tests/borrowerTaskView.test.ts",
       "tests/borrowerDocumentView.test.ts",
       "tests/borrowerActivityView.test.ts",
@@ -47,7 +48,9 @@ export default defineConfig({
       "tests/rateLockConfirmation.test.ts",
       "tests/leDisclosureBaseline.test.ts",
       "tests/counterpartyAndCompensation.test.ts",
+      "tests/lenderApprovalControl.test.ts",
       "tests/compensationClawback.test.ts",
+      "tests/commissionPayout.test.ts",
       "tests/feeProvenanceAndCosts.test.ts",
       "tests/leDisclosedFeeProvenance.test.ts",
       "tests/nPlusOneBatching.test.ts",
@@ -159,6 +162,10 @@ export default defineConfig({
       "tests/taxDocumentIntelligence.test.ts",
       "tests/taxReconciliation.test.ts",
       "tests/situationClassifier.test.ts",
+      "tests/readinessReconciliation.test.ts",
+      "tests/documentFacts.test.ts",
+      "tests/readinessSelfAttestation.test.ts",
+      "tests/extractionReadinessWiring.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/documentReview.test.ts",
       "tests/cpaPartners.test.ts",
@@ -217,6 +224,8 @@ export default defineConfig({
       // Lease capture: the encryption round-trip, the view's refusal to leak ciphertext,
       // UTC date semantics, and the validation boundary.
       "tests/leaseCapture.test.ts",
+      "tests/urlaRowContent.test.ts",
+      "tests/urlaCoApplicantRemoval.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

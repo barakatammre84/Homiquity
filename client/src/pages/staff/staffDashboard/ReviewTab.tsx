@@ -1,5 +1,5 @@
-import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, taskKeys } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, taskKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export function ReviewTab({
   getUserName: (userId: string) => string | null;
   onAddTask: (applicationId: string) => void;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const updateTaskMutation = useMutation({

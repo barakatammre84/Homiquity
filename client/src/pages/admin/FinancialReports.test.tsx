@@ -21,6 +21,15 @@ const compensationReport = {
   compensationVariance: -1000,
   shortPaidCount: 1,
   awaitingRemittanceCount: 0,
+  // Every figure above counts REAL submissions; simulated activity is
+  // segregated here and must never move one of them (F-21).
+  simulated: {
+    fundedCount: 0,
+    fundedVolume: 0,
+    receivedCompensation: 0,
+    inFlightCount: 0,
+    deadCount: 0,
+  },
   approvedLenderCount: 0,
   discrepancies: [
     {
@@ -42,6 +51,7 @@ const compensationReport = {
     indeterminateCount: 1,
     usesAssumedWindow: true,
     nextExpiry: "2027-01-28T00:00:00.000Z",
+    simulatedExcludedCount: 0,
     entries: [],
   },
   costs: { totalCost: 710, simulatedCost: 30, byCategory: [], entryCount: 3, filesWithCost: 2 },
@@ -211,4 +221,56 @@ describe("FinancialReports", () => {
     expect(screen.getByTestId("skeleton-compensation")).toBeTruthy();
     expect(screen.getByTestId("skeleton-liabilities")).toBeTruthy();
   });
+
+  it("does not shout about simulated activity when there is none (F-21)", () => {
+    renderPage();
+    expect(screen.queryByTestId("card-simulated-activity")).toBeNull();
+  });
+
+  it("explains an all-simulated book instead of leaving $0 looking broken (F-21)", () => {
+    // Today's real position: no approved lender, so every submission is
+    // simulated and every revenue figure is legitimately zero. Without this
+    // banner that reads as a broken dashboard, and the tempting "fix" is to
+    // count the simulated rows — which is the defect being closed.
+    renderPage({
+      comp: {
+        ...compensationReport,
+        fundedCount: 0,
+        fundedVolume: 0,
+        receivedCompensation: 0,
+        expectedCompensation: 0,
+        pullThroughPct: null,
+        discrepancies: [],
+        simulated: {
+          fundedCount: 2,
+          fundedVolume: 800000,
+          receivedCompensation: 16000,
+          inFlightCount: 1,
+          deadCount: 0,
+        },
+      },
+    });
+    // getByTestId throws when absent, which is the presence assertion here.
+    expect(screen.getByTestId("badge-simulated-activity").textContent).toMatch(
+      /simulated activity excluded/i,
+    );
+    const text = screen.getByTestId("text-simulated-activity").textContent ?? "";
+    expect(text).toMatch(/real lender submissions only/i);
+    expect(text).toContain("2 simulated funding(s)");
+    // The excluded compensation is named, not merely alluded to.
+    expect(text).toMatch(/16,000/);
+  });
+
+  it("names the simulated fundings kept out of the clawback reserve (F-21)", () => {
+    renderPage({
+      comp: {
+        ...compensationReport,
+        clawbackExposure: { ...compensationReport.clawbackExposure, simulatedExcludedCount: 3 },
+      },
+    });
+    expect(screen.getByTestId("badge-clawback-simulated-excluded").textContent).toMatch(
+      /3 simulated funding\(s\) excluded/i,
+    );
+  });
+
 });

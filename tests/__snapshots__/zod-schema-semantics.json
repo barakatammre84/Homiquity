@@ -791,6 +791,26 @@
     "missing-contactPhone": "reject:ausSupport,epoClawbackDays,nonQm",
     "wrongtype-lenderId": "reject:ausSupport,epoClawbackDays,lenderId,nonQm"
   },
+  "schema.writeWholesaleLenderSchema": {
+    "undefined": "reject:",
+    "null": "reject:",
+    "empty-object": "reject:lenderCode,lenderId,lenderName",
+    "empty-array": "reject:",
+    "empty-string": "reject:",
+    "zero": "reject:",
+    "false": "reject:",
+    "string": "reject:",
+    "number": "reject:",
+    "true": "reject:",
+    "all-keys-typed": "reject:ausSupport,nonQm",
+    "missing-lenderId": "reject:ausSupport,lenderId,nonQm",
+    "missing-lenderName": "reject:ausSupport,lenderName,nonQm",
+    "missing-lenderCode": "reject:ausSupport,lenderCode,nonQm",
+    "missing-primaryContact": "reject:ausSupport,nonQm",
+    "missing-contactEmail": "reject:ausSupport,nonQm",
+    "missing-contactPhone": "reject:ausSupport,nonQm",
+    "wrongtype-lenderId": "reject:ausSupport,lenderId,nonQm"
+  },
   "schema.insertRateSheetSchema": {
     "undefined": "reject:",
     "null": "reject:",
@@ -1901,9 +1921,9 @@
     "missing-logicalDocumentId": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-pageId": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-pageNumber": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
+    "missing-documentId": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-fieldName": "reject:extractedAt,fieldName,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-fieldCategory": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
-    "missing-valueString": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueType,verifiedAt",
     "wrongtype-logicalDocumentId": "reject:extractedAt,humanCorrectedValue,humanVerified,logicalDocumentId,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt"
   },
   "schema.insertCompletenessCheckSchema": {
@@ -2256,14 +2276,14 @@
     "string": "reject:",
     "number": "reject:",
     "true": "reject:",
-    "all-keys-typed": "reject:informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
-    "missing-applicationId": "reject:applicationId,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
-    "missing-reasonType": "reject:informationReceivedAt,reasonType,revisedLeDeliveredAt,revisedLeDueDate",
-    "missing-description": "reject:description,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
-    "missing-informationReceivedAt": "reject:informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
-    "missing-revisedLeDueDate": "reject:informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
-    "missing-revisedLeDeliveredAt": "reject:informationReceivedAt,revisedLeDueDate",
-    "wrongtype-applicationId": "reject:applicationId,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate"
+    "all-keys-typed": "reject:affectedChargeIds,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
+    "missing-applicationId": "reject:affectedChargeIds,applicationId,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
+    "missing-reasonType": "reject:affectedChargeIds,informationReceivedAt,reasonType,revisedLeDeliveredAt,revisedLeDueDate",
+    "missing-description": "reject:affectedChargeIds,description,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
+    "missing-informationReceivedAt": "reject:affectedChargeIds,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
+    "missing-revisedLeDueDate": "reject:affectedChargeIds,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
+    "missing-revisedLeDeliveredAt": "reject:affectedChargeIds,informationReceivedAt,revisedLeDueDate",
+    "wrongtype-applicationId": "reject:affectedChargeIds,applicationId,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate"
   },
   "schema.insertLoanEstimateDisclosureSchema": {
     "undefined": "reject:",
@@ -2276,14 +2296,14 @@
     "string": "reject:",
     "number": "reject:",
     "true": "reject:",
-    "all-keys-typed": "reject:issuedAt,version",
-    "missing-applicationId": "reject:applicationId,issuedAt,version",
-    "missing-version": "reject:issuedAt,version",
-    "missing-issuedAt": "reject:version",
-    "missing-snapshot": "reject:issuedAt,snapshot,version",
-    "missing-cocId": "reject:issuedAt,version",
-    "missing-toleranceEvaluation": "reject:issuedAt,version",
-    "wrongtype-applicationId": "reject:applicationId,issuedAt,version"
+    "all-keys-typed": "reject:feeScheduleVersion,issuedAt,version",
+    "missing-applicationId": "reject:applicationId,feeScheduleVersion,issuedAt,version",
+    "missing-version": "reject:feeScheduleVersion,issuedAt,version",
+    "missing-issuedAt": "reject:feeScheduleVersion,version",
+    "missing-snapshot": "reject:feeScheduleVersion,issuedAt,snapshot,version",
+    "missing-cocId": "reject:feeScheduleVersion,issuedAt,version",
+    "missing-toleranceEvaluation": "reject:feeScheduleVersion,issuedAt,version",
+    "wrongtype-applicationId": "reject:applicationId,feeScheduleVersion,issuedAt,version"
   },
   "schema.insertLoanCostEntrySchema": {
     "undefined": "reject:",

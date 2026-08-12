@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,6 +18,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Icons, iconSize } from "@/lib/icons";
+import { formatCurrency } from "@/lib/formatters";
 import {
   COMPENSATION_MODELS,
   type CompensationModel,
@@ -64,9 +65,6 @@ interface QmPicture {
   } | null;
 }
 
-const money = (value: number) =>
-  value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-
 // One entry per shared COMPENSATION_MODELS — Record keeps it exhaustive at
 // compile time; the colocated test pins it against the shared vocabulary.
 export const COMPENSATION_MODEL_LABELS: Record<
@@ -100,6 +98,7 @@ export function CompensationCard({
   /** True once leIssuedDate is set — a change then needs a CoC, not this card. */
   leIssued: boolean;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const elected = model !== null && isCompensationModel(model) && bps !== null;
@@ -178,10 +177,10 @@ export function CompensationCard({
               <>
                 <span className="text-muted-foreground">QM headroom:</span>
                 <span data-testid="text-qm-headroom">
-                  {money(qm.election.headroomAmount)} under the cap
+                  {formatCurrency(qm.election.headroomAmount)} under the cap
                   {qm.election.floorAmount !== null && qm.election.maxAllowableAmount !== null && (
                     <span className="block text-xs text-muted-foreground">
-                      {money(qm.election.floorAmount)} of {money(qm.election.maxAllowableAmount)} —
+                      {formatCurrency(qm.election.floorAmount)} of {formatCurrency(qm.election.maxAllowableAmount)} —
                       platform charges only, so the true figure is higher.
                     </span>
                   )}
