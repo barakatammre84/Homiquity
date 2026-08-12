@@ -35,14 +35,33 @@
  * fail CI; that would train everyone to bump the baseline reflexively, which is
  * how a ratchet dies. Their total is reported for trend only.
  *
- * gzip is measured at a fixed level so the number is deterministic across
- * machines. It is a faithful proxy for what is transferred, not a promise about
- * the exact bytes a given server emits at its own compression level.
+ * THE GATE IS ON RAW BYTES, NOT GZIP — and that is a correctness requirement,
+ * not a preference. The first version of this guard gated on gzip, because gzip
+ * is the number a user actually feels. It went red in CI on a bundle that had
+ * not changed. Two independent causes, both measured before the rewrite:
+ *
+ *   1. Vite embeds a content hash in every chunk filename, and chunks import
+ *      each other BY that filename. One hash changing cascades: the importer's
+ *      bytes change, so its own hash changes, and so on. Hashes are fixed-width,
+ *      so every chunk's SIZE is unchanged — but the byte SEQUENCE differs, and
+ *      gzip compresses a different sequence to a different length. Two builds of
+ *      identical source on one machine: raw 521,319 both times; gzip 162,019
+ *      then 162,013.
+ *   2. gzip output depends on the compressor. Node 22 and Node 24 ship different
+ *      zlib builds and CI runs 24.x; Python's zlib disagrees with Node's on the
+ *      same bytes at the same level (162,019 vs 162,576 here).
+ *
+ * So a gzip gate measures the compressor and the hash lottery at least as much
+ * as it measures the code. Raw bytes are invariant under both: the same source
+ * and dependency tree emit the same length on any machine.
+ *
+ * gzip is still REPORTED, because "kB over the wire" is the number worth
+ * knowing. It is indicative only; nothing is gated on it.
  *
  * RATCHET (the design-token-guard idiom, deliberately identical):
- *   • gzip > baseline -> FAIL, with the per-chunk breakdown
- *   • gzip < baseline -> tighten the baseline to the new low and PASS
- *   • gzip == baseline -> PASS
+ *   • raw > baseline -> FAIL, with the per-chunk breakdown
+ *   • raw < baseline -> tighten the baseline to the new low and PASS
+ *   • raw == baseline -> PASS
  *
  * A shrink rewrites the baseline, so an improvement is locked in and cannot
  * silently erode later.
@@ -56,7 +75,10 @@ const DIST = path.join(ROOT, "dist", "public");
 const INDEX_HTML = path.join(DIST, "index.html");
 const BASELINE_FILE = path.join(__dirname, "bundle-size-baseline.json");
 
-/** Fixed so two machines agree. Not a claim about any server's own level. */
+/**
+ * Only affects the REPORTED figure — nothing is gated on gzip (see header).
+ * Fixed anyway so one machine's runs are comparable to each other.
+ */
 const GZIP_LEVEL = 9;
 
 function gzipSize(buf) {
@@ -151,30 +173,30 @@ for (const f of allChunks) {
 const baseline = fs.existsSync(BASELINE_FILE)
   ? JSON.parse(fs.readFileSync(BASELINE_FILE, "utf8"))
   : {};
-const base = typeof baseline.eagerGzipBytes === "number" ? baseline.eagerGzipBytes : null;
+const base = typeof baseline.eagerRawBytes === "number" ? baseline.eagerRawBytes : null;
 
 const summary =
   `eager entry graph: ${eager.length} chunk(s), ` +
-  `${fmt(eagerRaw)} raw / ${fmt(eagerGzip)} gzip (${kb(eagerGzip)} over the wire)`;
-const lazyLine = `lazy chunks (not gated): ${allChunks.length - eager.length} file(s), ${fmt(lazyGzip)} gzip`;
+  `${fmt(eagerRaw)} raw (gated) · ~${kb(eagerGzip)} gzip (indicative, not gated)`;
+const lazyLine = `lazy chunks (not gated): ${allChunks.length - eager.length} file(s), ~${fmt(lazyGzip)} gzip`;
 
 if (base === null) {
   fs.writeFileSync(
     BASELINE_FILE,
-    JSON.stringify({ eagerGzipBytes: eagerGzip, gzipLevel: GZIP_LEVEL }, null, 2) + "\n"
+    JSON.stringify({ eagerRawBytes: eagerRaw }, null, 2) + "\n"
   );
-  console.log(`bundle-size-guard: bootstrapped baseline at ${fmt(eagerGzip)} gzip bytes.`);
+  console.log(`bundle-size-guard: bootstrapped baseline at ${fmt(eagerRaw)} raw bytes.`);
   console.log(`  ${summary}`);
   console.log(`  ${lazyLine}`);
   process.exit(0);
 }
 
-if (eagerGzip > base) {
-  const over = eagerGzip - base;
+if (eagerRaw > base) {
+  const over = eagerRaw - base;
   const pct = ((over / base) * 100).toFixed(1);
   console.error(
-    `bundle-size-guard: FAIL — the eager entry bundle grew ${fmt(over)} gzip bytes (+${pct}%).\n` +
-      `  baseline ${fmt(base)}  ->  now ${fmt(eagerGzip)}\n\n` +
+    `bundle-size-guard: FAIL — the eager entry bundle grew ${fmt(over)} raw bytes (+${pct}%).\n` +
+      `  baseline ${fmt(base)}  ->  now ${fmt(eagerRaw)}  (raw; gzip is reported, never gated)\n\n` +
       "  Every visitor downloads this before anything renders. Per-chunk:\n" +
       eager.map((c) => `    ${c.rel}  ${fmt(c.raw)} raw / ${fmt(c.gzip)} gzip`).join("\n") +
       "\n\n" +
@@ -185,24 +207,21 @@ if (eagerGzip > base) {
       "      import of one symbol drags the whole module in.\n" +
       "    • a route that stopped being lazily imported in client/src/App.tsx.\n" +
       "    • a dependency imported whole where a submodule would do.\n\n" +
-      "  If the growth is genuinely required, raise eagerGzipBytes in\n" +
+      "  If the growth is genuinely required, raise eagerRawBytes in\n" +
       "  scripts/bundle-size-baseline.json IN THE SAME PR and say in the PR body what\n" +
       "  the bytes bought. Never bump it to make a red build green without reading why."
   );
   process.exit(1);
 }
 
-if (eagerGzip < base) {
-  fs.writeFileSync(
-    BASELINE_FILE,
-    JSON.stringify({ eagerGzipBytes: eagerGzip, gzipLevel: GZIP_LEVEL }, null, 2) + "\n"
-  );
+if (eagerRaw < base) {
+  fs.writeFileSync(BASELINE_FILE, JSON.stringify({ eagerRawBytes: eagerRaw }, null, 2) + "\n");
   console.log(
-    `bundle-size-guard: improved by ${fmt(base - eagerGzip)} gzip bytes — ` +
-      `baseline tightened to ${fmt(eagerGzip)}. ✅`
+    `bundle-size-guard: improved by ${fmt(base - eagerRaw)} raw bytes — ` +
+      `baseline tightened to ${fmt(eagerRaw)}. ✅`
   );
 } else {
-  console.log(`bundle-size-guard: ${fmt(eagerGzip)} gzip bytes (at baseline, no regression). ✅`);
+  console.log(`bundle-size-guard: ${fmt(eagerRaw)} raw bytes (at baseline, no regression). ✅`);
 }
 console.log(`  ${summary}`);
 console.log(`  ${lazyLine}`);

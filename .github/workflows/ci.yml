@@ -251,6 +251,12 @@ jobs:
         # chunks are reported but never gated, so adding a page cannot fail CI; that
         # would train everyone to bump the baseline reflexively and kill the ratchet.
         #
+        # Gates RAW bytes, not gzip. The first version gated gzip and went red here on
+        # an unchanged bundle: Vite's content hashes churn between builds (fixed-width,
+        # so sizes hold but byte sequences shift, changing compressibility), and zlib
+        # differs between Node 22 and the 24.x this job runs. Raw is invariant under
+        # both. gzip is printed for humans and gated on by nothing.
+        #
         # Complements tests/clientSchemaImports.test.ts rather than repeating it: that
         # test forbids ONE source-level cause (a value import of the @shared/schema
         # barrel, which shipped 174 table definitions to every visitor in #482); this
