@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { canonicalDocumentType } from "@shared/documentTypes";
 import { storage } from "../storage";
 import { getCoachIntakeSnapshots } from "./coachIntake";
 import {
@@ -23,51 +24,156 @@ import { buildBorrowerGraph } from "./borrowerGraph";
 import { sendNotificationEmail } from "./emailService";
 import crypto from "crypto";
 
-const DOCUMENT_FIELD_MAP: Record<string, { fields: Array<{ fieldName: string; sourceField: string }> }> = {
-  tax_return: {
-    fields: [
-      { fieldName: "annual_income", sourceField: "totalIncome" },
-      { fieldName: "income_sources", sourceField: "incomeBreakdown" },
-      { fieldName: "tax_returns", sourceField: "documentPresence" },
-    ],
-  },
-  pay_stub: {
-    fields: [
-      { fieldName: "annual_income", sourceField: "grossPay" },
-      { fieldName: "employer_name", sourceField: "employerName" },
-      { fieldName: "employment_type", sourceField: "payFrequency" },
-      { fieldName: "pay_stubs", sourceField: "documentPresence" },
-    ],
-  },
-  bank_statement: {
-    fields: [
-      { fieldName: "total_assets", sourceField: "totalBalance" },
-      { fieldName: "bank_accounts", sourceField: "accounts" },
-      { fieldName: "bank_statements", sourceField: "documentPresence" },
-      { fieldName: "down_payment_source", sourceField: "accountType" },
-    ],
-  },
-  w2: {
-    fields: [
-      { fieldName: "annual_income", sourceField: "wagesTipsOtherCompensation" },
-      { fieldName: "employer_name", sourceField: "employerName" },
-      { fieldName: "w2_forms", sourceField: "documentPresence" },
-    ],
-  },
-  government_id: {
-    fields: [
-      { fieldName: "full_name", sourceField: "fullName" },
-      { fieldName: "date_of_birth", sourceField: "dateOfBirth" },
-      { fieldName: "government_id", sourceField: "documentPresence" },
-    ],
-  },
+// ---------------------------------------------------------------------------
+// Extraction → readiness wiring (finding F-030)
+//
+// WHAT WAS BROKEN. This map was indexed by VALUE name against the caller's
+// `extractedFields`, which every extractor emits as a `string[]` of field NAMES
+// plus lineage — never values. So `extractedFields[sourceField]` was `undefined`
+// for every value-bearing row and only the three `documentPresence` entries,
+// which short-circuit before the lookup, ever updated. A borrower could upload a
+// pay stub and the system learned only that a pay stub existed, never their
+// income — so it asked again. That is the wiring behind the busy work.
+//
+// It was not merely a type slip: the names were wrong too. The map looked for
+// `totalIncome`, `grossPay`(ok), `payFrequency`, `totalBalance` and `accounts`,
+// where the real interfaces in server/extractionCore.ts declare
+// `adjustedGrossIncome`/`grossIncome`, `closingBalance` and `accountNumber`.
+// `let extractedData: any` at the call site hid all of it from tsc.
+//
+// THE FIX. The caller now passes the extracted OBJECT, typed, and each readiness
+// field carries a resolver reading real interface fields. A resolver returning
+// undefined/null/"" means "this document did not yield that fact" and the field
+// is skipped honestly rather than being recorded as document-extracted.
+//
+// `w2` and `government_id` are not in THIS map because no W-2 or ID extractor
+// exists — the only caller (POST /api/documents/:id/extract) rejects those
+// types outright. They are not dropped, though: both are REQUIRED readiness
+// fields, and they are satisfied by DOCUMENT_PRESENCE_FIELD below, which
+// credits presence on upload without needing a model to read the page. An
+// earlier pass deleted them from here and stopped, which left two required
+// fields with no writer at all — see that block's header.
+//
+// `lease_agreement` has an extractor but no honest readiness target — rental
+// income is not a READINESS_FIELDS entry — so it is deliberately unmapped.
+// ---------------------------------------------------------------------------
+
+/** Reads one readiness fact out of an extraction result. */
+interface ReadinessMapping {
+  /** A fieldName from READINESS_FIELDS (services/intentTracker.ts). */
+  fieldName: string;
+  /** Recorded as lineage on the readiness row, so the source stays auditable. */
+  sourceField: string;
+  /**
+   * The value backing this field, or undefined when the document did not
+   * yield it. `null` marks a presence-only row: the document itself is the
+   * fact, so no value is required.
+   */
+  resolve: (data: Record<string, any>) => unknown;
+}
+
+/** The document exists and extracted cleanly — that IS the fact. */
+const PRESENT = () => null;
+
+const DOCUMENT_FIELD_MAP: Record<string, ReadinessMapping[]> = {
+  tax_return: [
+    {
+      fieldName: "annual_income",
+      sourceField: "adjustedGrossIncome|grossIncome",
+      // AGI is the underwriting-preferred figure; gross income is the fallback.
+      resolve: d => d.adjustedGrossIncome ?? d.grossIncome,
+    },
+    {
+      fieldName: "income_sources",
+      sourceField: "w2Wages|scheduleC|scheduleE",
+      // A breakdown exists only when the return actually shows components.
+      resolve: d => d.w2Wages ?? d.scheduleC?.netProfitLoss ?? d.scheduleE?.netRentalIncomeLoss,
+    },
+    { fieldName: "tax_returns", sourceField: "documentPresence", resolve: PRESENT },
+  ],
+  pay_stub: [
+    // Deliberately NOT annual_income: a pay stub states period gross, and
+    // annualizing it needs a pay frequency this extractor does not emit.
+    // YTD gross is the honest figure a stub carries.
+    { fieldName: "employer_name", sourceField: "employerName", resolve: d => d.employerName },
+    { fieldName: "pay_stubs", sourceField: "documentPresence", resolve: PRESENT },
+  ],
+  bank_statement: [
+    { fieldName: "total_assets", sourceField: "closingBalance", resolve: d => d.closingBalance },
+    { fieldName: "bank_accounts", sourceField: "accountNumber", resolve: d => d.accountNumber },
+    { fieldName: "down_payment_source", sourceField: "accountType", resolve: d => d.accountType },
+    { fieldName: "bank_statements", sourceField: "documentPresence", resolve: PRESENT },
+  ],
 };
+
+// ---------------------------------------------------------------------------
+// Document presence → readiness, INDEPENDENT of extraction.
+//
+// Why this exists separately from the map above: `w2_forms` and `government_id`
+// are seeded as REQUIRED readiness fields (weight 1.5 and 1.0), but there is no
+// W-2 or ID extractor and there never was, so no automated path could ever
+// satisfy them. The readiness score was permanently capped and the borrower was
+// asked again for documents they had already uploaded — the busy work the
+// extraction fix was meant to remove, arriving through a different door.
+//
+// Presence is its own fact and does not need a model to read the page. Handing
+// over your driver's licence IS the completion of "government-issued ID". So
+// this credits presence on upload for every canonical type with a readiness
+// row, whether or not an extractor exists for it.
+//
+// TRUST LADDER — deliberately honest, and it only ever climbs because
+// updateReadinessField upgrades by tier rank and never downgrades:
+//   upload → self_reported      (tier3) "the borrower says this is their W-2"
+//   extract → document_extracted (tier1) a model actually read it
+//   verify → manually_verified   (tier1) a human confirmed it
+// Upload does NOT claim tier 1: an unread, unverified file is the borrower's
+// assertion about what they attached, nothing stronger.
+// ---------------------------------------------------------------------------
+const DOCUMENT_PRESENCE_FIELD: Record<string, string> = {
+  pay_stub: "pay_stubs",
+  w2: "w2_forms",
+  tax_return: "tax_returns",
+  bank_statement: "bank_statements",
+  government_id: "government_id",
+};
+
+/** The readiness field a document type completes by simply existing, if any. */
+export function presenceFieldFor(documentType: string): string | null {
+  return DOCUMENT_PRESENCE_FIELD[canonicalDocumentType(documentType)] ?? null;
+}
+
+export async function creditDocumentPresence(
+  userId: string,
+  documentId: string,
+  documentType: string,
+  /** "uploaded" = the borrower's assertion; "verified" = a human confirmed it. */
+  strength: "uploaded" | "verified",
+): Promise<{ fieldUpdated: string | null }> {
+  // Aliases resolve first — drivers_license/passport/id all mean government_id.
+  const fieldName = presenceFieldFor(documentType);
+  if (!fieldName) return { fieldUpdated: null };
+
+  await initializeReadinessChecklist(userId);
+  try {
+    await updateReadinessField(userId, fieldName, {
+      verificationStatus: strength === "verified" ? "manually_verified" : "self_reported",
+      sourceTable: "documents",
+      sourceField: "documentPresence",
+      sourceRecordId: documentId,
+    });
+    return { fieldUpdated: fieldName };
+  } catch (err) {
+    console.warn(`[Readiness] presence credit failed for ${fieldName}:`, err);
+    return { fieldUpdated: null };
+  }
+}
 
 export async function wireExtractionToReadiness(
   userId: string,
   documentId: string,
   documentType: string,
-  extractedFields: Record<string, any>,
+  /** The extraction RESULT (values + lineage), not its list of field names. */
+  extracted: Record<string, any>,
   confidence: string
 ): Promise<{ fieldsUpdated: string[]; skipped: string[] }> {
   if (confidence === "low") {
@@ -76,32 +182,34 @@ export async function wireExtractionToReadiness(
 
   await initializeReadinessChecklist(userId);
 
-  const mapping = DOCUMENT_FIELD_MAP[documentType];
-  if (!mapping) {
-    return { fieldsUpdated: [], skipped: [`unknown document type: ${documentType}`] };
+  const mappings = DOCUMENT_FIELD_MAP[documentType];
+  if (!mappings) {
+    return { fieldsUpdated: [], skipped: [`no readiness mapping for document type: ${documentType}`] };
   }
 
   const fieldsUpdated: string[] = [];
   const skipped: string[] = [];
 
-  for (const { fieldName, sourceField } of mapping.fields) {
-    const hasData = sourceField === "documentPresence" || 
-      (extractedFields[sourceField] !== undefined && extractedFields[sourceField] !== null && extractedFields[sourceField] !== "");
+  for (const { fieldName, sourceField, resolve } of mappings) {
+    const value = resolve(extracted);
+    const isPresenceRow = value === null;
+    const hasData = isPresenceRow || (value !== undefined && value !== "");
 
-    if (hasData) {
-      try {
-        await updateReadinessField(userId, fieldName, {
-          verificationStatus: "document_extracted",
-          sourceTable: "documents",
-          sourceField: sourceField,
-          sourceRecordId: documentId,
-        });
-        fieldsUpdated.push(fieldName);
-      } catch (err) {
-        skipped.push(`${fieldName}: update failed`);
-      }
-    } else {
-      skipped.push(`${fieldName}: no data in extracted fields`);
+    if (!hasData) {
+      skipped.push(`${fieldName}: not present in the extracted ${documentType}`);
+      continue;
+    }
+
+    try {
+      await updateReadinessField(userId, fieldName, {
+        verificationStatus: "document_extracted",
+        sourceTable: "documents",
+        sourceField,
+        sourceRecordId: documentId,
+      });
+      fieldsUpdated.push(fieldName);
+    } catch (err) {
+      skipped.push(`${fieldName}: update failed`);
     }
   }
 

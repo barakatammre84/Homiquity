@@ -766,6 +766,19 @@ export const changeOfCircumstances = pgTable(
     revisedLeDueDate: timestamp("revised_le_due_date").notNull(),
     /** Stamped on the borrower's first LE retrieval after the record was opened. */
     revisedLeDeliveredAt: timestamp("revised_le_delivered_at"),
+    /**
+     * The disclosure charge ids this circumstance actually affects (audit
+     * FA-21). §1026.19(e)(3)(iv) resets good faith only for the charges the
+     * circumstance affected — not for every line on the file. Ids match
+     * DisclosureSnapshot fee ids (shared/compliance/feeTolerance.ts).
+     *
+     * NULL = unscoped, which preserves the historical behaviour (the record
+     * authorises any increase except the platform's own fixed fees, which no
+     * changed circumstance can move). Populating it per reason type is a
+     * regulatory reading and is a counsel item — see the module header in
+     * shared/compliance/changeOfCircumstance.ts.
+     */
+    affectedChargeIds: jsonb("affected_charge_ids").$type<string[] | null>(),
     /** open | redisclosed | voided (COC_STATUSES). */
     status: varchar("status", { length: 20 }).notNull().default("open"),
     createdByUserId: varchar("created_by_user_id").references(() => users.id).notNull(),
@@ -776,11 +789,16 @@ export const changeOfCircumstances = pgTable(
   (table) => [index("change_of_circumstances_app_idx").on(table.applicationId, table.status)],
 );
 
-export const insertChangeOfCircumstanceSchema = createInsertSchema(changeOfCircumstances).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
+export const insertChangeOfCircumstanceSchema = createInsertSchema(changeOfCircumstances)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  // createInsertSchema widens jsonb to Json; the column is a typed id list.
+  .extend({
+    affectedChargeIds: z.array(z.string()).nullable().optional(),
+  });
 export type InsertChangeOfCircumstance = z.infer<typeof insertChangeOfCircumstanceSchema>;
 export type ChangeOfCircumstance = typeof changeOfCircumstances.$inferSelect;
 
@@ -815,6 +833,29 @@ export const loanEstimateDisclosures = pgTable(
     cocId: varchar("coc_id").references(() => changeOfCircumstances.id),
     /** ToleranceEvaluation against the previous version; null on version 1. */
     toleranceEvaluation: jsonb("tolerance_evaluation"),
+    /**
+     * The platform fee schedule this file is PINNED to (audit FA-20).
+     *
+     * Fees are admin-editable at runtime (routes/admin/pricingPolicy.ts) and
+     * four of the lines they set are ZERO-tolerance. Resolving the schedule
+     * late — on every recompute — meant publishing raised those lines on every
+     * file already in flight; since a creditor re-pricing itself is not a
+     * §1026.19(e)(3)(iv) changed circumstance, each of those files became a
+     * dollar-for-dollar cure nobody had decided to incur.
+     *
+     * Pinning at first issuance makes a publish what an admin already believes
+     * it is: a change that affects NEW files only.
+     *
+     * Tri-state, deliberately:
+     *   NULL → not pinned. Rows issued before this column existed. An honest
+     *          gap: those files fall back to the active schedule, exactly as
+     *          they behaved before. Never backfilled with a guess.
+     *   0    → pinned to the compiled-in DEFAULT_PLATFORM_FEE_SCHEDULE, i.e.
+     *          issued while nothing was published. Published versions start at
+     *          1, so 0 can never collide with one.
+     *   N>0  → pinned to platform_fee_schedules.version = N.
+     */
+    feeScheduleVersion: integer("fee_schedule_version"),
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [
@@ -823,10 +864,16 @@ export const loanEstimateDisclosures = pgTable(
   ],
 );
 
-export const insertLoanEstimateDisclosureSchema = createInsertSchema(loanEstimateDisclosures).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertLoanEstimateDisclosureSchema = createInsertSchema(loanEstimateDisclosures)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  // Nullable and omittable: a disclosure written before pinning existed simply
+  // has no pin, and that gap is honest rather than backfilled with a guess.
+  .extend({
+    feeScheduleVersion: z.number().int().nullable().optional(),
+  });
 export type InsertLoanEstimateDisclosure = z.infer<typeof insertLoanEstimateDisclosureSchema>;
 export type LoanEstimateDisclosure = typeof loanEstimateDisclosures.$inferSelect;
 
