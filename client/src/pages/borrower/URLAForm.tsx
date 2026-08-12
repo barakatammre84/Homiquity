@@ -280,7 +280,7 @@ export default function URLAForm() {
       setBorrowerData((prev) => ({ ...prev, 2: emptySlice() }));
       setHasCoBorrower(false);
       setActiveSeq(1);
-      queryClient.invalidateQueries({ queryKey: ['/api/urla', activeApplication?.id] });
+      queryClient.invalidateQueries({ queryKey: urlaKeys.detail(activeApplication?.id) });
       toast({
         title: "Co-borrower removed",
         description: "Their information has been deleted from this application. Yours is unchanged.",
