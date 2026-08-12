@@ -21,7 +21,7 @@ Humans: claim too. A routine cannot see your editor.
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| _(none)_ | — | — | — | — | — |
+| sprint-blitz 2026-08-12 | `server/services/mismoValidation.ts`, `server/routes/underwriting/compliance.ts`, batch reads in `server/storage/{urla,applications,pipeline}.ts` | `.claude/worktrees/blitz-0812` | `routine/sprint-blitz-2026-08-12` | 2026-08-12T22:09Z | CTO_ROADMAP §3.2 — the last N+1 loop: split the URLA validator's loading from its scoring and give the compliance dashboard a batched (`inArray`) loader. No schema, no new deps, verdicts unchanged by construction. |
 
 ## Recently released
 
