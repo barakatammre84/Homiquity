@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { writeCalculatorPrefill } from "@/lib/calculatorPrefill";
 import { formatCurrency } from "@/lib/formatters";
 import type { RentInputs, TierResult } from "./types";
 
@@ -58,16 +59,11 @@ export function ResultsSidebar({ inputs, primary, loading }: ResultsSidebarProps
 
   const handleStartPreApproval = () => {
     if (!primary) return;
-    try {
-      sessionStorage.setItem(
-        "calculatorPrefill",
-        JSON.stringify({
-          downPayment: inputs.downPaymentSaved,
-          creditScore: inputs.creditScore,
-          purchasePrice: Math.round(primary.homePrice),
-        }),
-      );
-    } catch {}
+    writeCalculatorPrefill({
+      downPayment: inputs.downPaymentSaved,
+      creditScore: inputs.creditScore,
+      purchasePrice: Math.round(primary.homePrice),
+    });
     navigate(`/apply?price=${Math.round(primary.homePrice)}&source=calculator`);
   };
 

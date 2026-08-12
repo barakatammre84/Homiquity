@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Home, Mail, Save, Shield } fro
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { writeCalculatorPrefill } from "@/lib/calculatorPrefill";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -86,18 +87,21 @@ export function ResultsSidebar({ inputs, debts, results }: ResultsSidebarProps) 
     if (user) {
       saveResultsMutation.mutate({ inputs, results });
     }
-    try {
-      sessionStorage.setItem("calculatorPrefill", JSON.stringify({
-        annualIncome: inputs.annualIncome,
-        monthlyDebts: inputs.monthlyDebts,
-        downPayment: inputs.downPaymentSaved,
-        creditScore: inputs.creditScore,
-        purchasePrice: Math.round(results.maxHomePrice),
-      }));
-    } catch {}
-    navigate(
-      PRELAUNCH_GATED ? "/" : `/apply?price=${Math.round(results.maxHomePrice)}&source=calculator`
-    );
+    // Stash ONLY when we are actually sending them to the funnel. Writing it on
+    // the gated path left the payload sitting in the tab for whatever reached
+    // /apply next — see lib/calculatorPrefill.ts.
+    if (PRELAUNCH_GATED) {
+      navigate("/");
+      return;
+    }
+    writeCalculatorPrefill({
+      annualIncome: inputs.annualIncome,
+      monthlyDebts: inputs.monthlyDebts,
+      downPayment: inputs.downPaymentSaved,
+      creditScore: inputs.creditScore,
+      purchasePrice: Math.round(results.maxHomePrice),
+    });
+    navigate(`/apply?price=${Math.round(results.maxHomePrice)}&source=calculator`);
   };
 
   return (
