@@ -342,7 +342,22 @@ function scoreDeclarations(declarations: BorrowerDeclarations | null | undefined
     { name: "Conveyed Title", value: declarations?.hasConveyedTitleInLieuOfForeclosure, required: true },
     { name: "Pre-Foreclosure", value: declarations?.hasBeenForeclosed, required: true },
     { name: "Bankruptcy Declaration", value: declarations?.hasDeclaredBankruptcy, required: true },
-    { name: "US Citizen Status", value: declarations?.isUSCitizen, required: true },
+    // Citizenship is deliberately NOT scored here. On the URLA it is Section 1a
+    // ("Citizenship: U.S. Citizen / Permanent Resident Alien / Non-Permanent
+    // Resident Alien"), not a Section 5 declaration — Section 5 is exactly the
+    // eleven questions A–K above. server/mismo.ts says the same thing at its
+    // CitizenshipResidencyType mapping ("URLA §1, not §5").
+    //
+    // It used to require `declarations.isUSCitizen`, a second representation of
+    // a fact the borrower already gives in Section 1a — and nothing has ever
+    // written that column. Since section 5 is a GSE gating section, that single
+    // line blocked EVERY real application from delivery readiness, permanently.
+    // It went unnoticed because server/scripts/seedDemoFile.ts sets the field,
+    // so demo files passed the gate that no genuine file could.
+    //
+    // The fact is still required — scoreIdentity asserts `personalInfo.citizenship`
+    // in section 1a, which is also a gating section, and that IS the field the
+    // borrower fills in. Removing it here narrows a duplicate, not a control.
   ];
 
   return scoreSection("Borrower Declarations", "5", fields);
