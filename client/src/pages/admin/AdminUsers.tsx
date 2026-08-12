@@ -60,11 +60,8 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { format } from "date-fns";
-import {
-  ALL_ROLES,
-  STAFF_ROLES,
-  isStaffRole,
-} from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
+import { ALL_ROLES, STAFF_ROLES } from "@shared/roles";
 import type { StaffInvite } from "@shared/schema";
 import { getRoleConfig, getInitials, getDisplayName } from "@/lib/adminUserDisplay";
 import { useAdminUserStats } from "@/hooks/useAdminUserStats";

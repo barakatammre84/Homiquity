@@ -3,12 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusUpdateDialog } from "./StatusUpdateDialog";
-import {
-  STAFF_SETTABLE_STATUSES,
-  isProtectedCreditDecisionStatus,
-  isApprovalOutcomeStatus,
-} from "@shared/schema";
-
+import { STAFF_SETTABLE_STATUSES, isApprovalOutcomeStatus, isProtectedCreditDecisionStatus } from "@shared/loanApplicationStatus";
 // Characterization tests for the extracted "Update Application Status" dialog.
 // The #247 bug class: hand-listed SelectItems drifted from the server's
 // staffStatusSchema and staff picks 400'd forever. These tests pin the dialog

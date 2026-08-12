@@ -1,4 +1,5 @@
-import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
+import { preApprovalFormSchema } from "@shared/preApprovalForm";
+import type { PreApprovalFormData } from "@shared/schema";
 import { toNum as toNumber } from "@shared/lib/number";
 
 /**

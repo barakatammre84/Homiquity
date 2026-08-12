@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PreApprovalLetterCard, LETTER_STATUS_BADGE } from "./PreApprovalLetterCard";
 import { loanApplicationKeys } from "@/lib/queryClient";
-import { PRE_APPROVAL_LETTER_STATUS } from "@shared/schema";
+import { PRE_APPROVAL_LETTER_STATUS } from "@shared/statusVocabularies";
 import { letterRevocationSchema } from "@shared/letters";
 
 // Characterization tests for the staff pre-approval-letter card (#340's

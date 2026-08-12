@@ -7,9 +7,8 @@ import {
   showIncubatorHome,
   NEXT_ACTION_ICONS,
 } from "./model";
-import { LOAN_APP_STATUSES } from "@shared/schema";
+import { LOAN_APP_STATUSES } from "@shared/loanApplicationStatus";
 import type { LoanApplication } from "@shared/schema";
-
 // First-ever unit coverage for the dashboard's derivation helpers — pure
 // functions that previously lived inline in a 1,092-line page.
 

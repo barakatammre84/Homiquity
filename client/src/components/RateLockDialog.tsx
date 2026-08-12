@@ -21,8 +21,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, Lock, RefreshCw, XCircle } from "lucide-react";
-import { OPEN_RATE_LOCK_STATUSES, type LoanOption, type RateLock } from "@shared/schema";
-
+import { OPEN_RATE_LOCK_STATUSES } from "@shared/statusVocabularies";
+import type { LoanOption, RateLock } from "@shared/schema";
 // -----------------------------------------------------------------------------
 // Rate-lock desk — the loan officer's lock/extend/cancel control for one file.
 //
