@@ -49,10 +49,20 @@ not a lens on it.
 A finding that touches **neither** is LOW, however elegant the architecture argument. An elegant
 refactor is never the headline; a broken capture path always is.
 
-**Standing evidence that A is not yet true** (open since 2026-08-05,
-[`feature-review/WORKFLOWS.md`](../feature-review/WORKFLOWS.md) WF2-F4): `preferredLoanType` and
-`amortizationType` have **no product write path** — only the demo seed sets them, so organic files
-cannot submit. Any routine that finds this still open reports it as launch-blocking.
+**Date a standing claim before you act on it.** This section originally cited WF2-F4 —
+*"`preferredLoanType`/`amortizationType` have no product write path, so organic files cannot
+submit"* — as live evidence that A was failing. It was **already fixed when it was written**: the
+write path landed in `6407119` (#400) on **2026-08-05**, the same day the finding was recorded.
+The claim then sat asserted in three documents for a week, and this charter nearly shipped it to
+eight routines as their headline launch blocker.
+
+So the rule, not the instance: **a "standing" claim in any doc is a claim about the day it was
+written.** Date it with `git log -S '<symbol>' -- <path>` and trace the chain in the code before
+reporting it. A routine that burns its run re-reporting a fixed bug is worse than one that runs on
+an empty queue. This applies to every claim in §1 and §2, including the ones written here today.
+
+Question A is still the thing to keep testing — the seed-vs-organic gap is a *class* of defect, not
+a single closed row. Green delivery suites hide it because **the fixture is the seed**.
 
 ---
 
@@ -272,6 +282,10 @@ These are not style notes. Each one is a failure that already happened here.
   nothing. Assert your new test's filename appears in the run output.
 - **A guard only answers its own question.** Green guards are not a clean bill of health; the
   design-token guard matches inside comments, and fixtures can pin a bug in place.
+- **Date every standing claim before reporting it** — `git log -S '<symbol>' -- <path>`, then trace
+  the chain in the code. A finding register records what was true when it was written; one row in
+  this repo was recorded the same day its fix merged and stayed asserted for a week (§1). Re-reporting
+  a fixed defect as launch-blocking costs a whole run and erodes trust in every other row.
 - **Audit §9 security triggers by running `detectTriggers()`** on the changed files, not by reading
   the trigger list. The gate proves a review was *written down*, never that it was *correct*.
 - **Never fabricate.** No invented MISMO field names, enumerations, or edit codes — if it cannot be
