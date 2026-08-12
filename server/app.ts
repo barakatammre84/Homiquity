@@ -97,6 +97,77 @@ const cspDirectives = {
 };
 
 /**
+ * Strip the query string and fragment off a URL before it reaches a log line.
+ *
+ * Not cosmetic. A violation fired on `/reset-password?token=…` or
+ * `/verify-email?token=…` would otherwise write a live single-use credential
+ * into the application log, where it outlives the 30-minute token TTL and is
+ * readable by anyone with log access. `blocked-uri` is frequently a bare
+ * keyword ("eval", "inline") rather than a URL, so anything without a `?`/`#`
+ * passes through untouched.
+ */
+function scrubUrl(raw: unknown): string {
+  if (typeof raw !== "string" || raw === "") return "?";
+  const cut = raw.search(/[?#]/);
+  return cut === -1 ? raw : `${raw.slice(0, cut)}?<redacted>`;
+}
+
+function pick(...values: unknown[]): string {
+  for (const v of values) {
+    if (typeof v === "string" && v !== "") return v;
+    if (typeof v === "number") return String(v);
+  }
+  return "?";
+}
+
+/**
+ * Render browser CSP violation reports as log lines.
+ *
+ * Exported for tests, and separated from the route so the parsing can be
+ * exercised without an HTTP round trip.
+ *
+ * Two things this fixes, both of which made the existing log unactionable:
+ *
+ * 1. It logs `source-file`, `line-number`, `column-number` and `script-sample`.
+ *    Without them a report says only *that* something was blocked, never
+ *    *which script did it* — a `blocked=eval` line naming neither file nor
+ *    sample cannot be chased to a cause, which is why the recurring eval
+ *    violation on /signup and /dashboard sat in the logs unexplained.
+ * 2. It accepts the Reporting API shape as well as the legacy one. `report-uri`
+ *    posts a single `{"csp-report": {kebab-case}}` object, but the newer
+ *    `report-to` / `Reporting-Endpoints` transport posts an ARRAY of
+ *    `{type, body:{camelCase}}` envelopes. The previous code indexed
+ *    `body["csp-report"]` on that array, got undefined, and logged a line of
+ *    all-"?" values — present in the log, carrying nothing. The endpoint
+ *    already advertises `application/reports+json`, so it can receive these.
+ *
+ * `script-sample` is capped at 40 chars by the CSP spec; it is truncated again
+ * here so a non-conforming client cannot dump an arbitrary payload into logs.
+ * The envelope count is capped for the same reason: the 50kb body limit still
+ * admits thousands of tiny envelopes, and one line each would be a log-flood
+ * primitive reachable without authentication.
+ */
+const MAX_REPORTS_PER_REQUEST = 10;
+
+export function formatCspReports(body: unknown): string[] {
+  const envelopes: unknown[] = Array.isArray(body)
+    ? body.slice(0, MAX_REPORTS_PER_REQUEST).map((entry) => (entry as Record<string, unknown>)?.body ?? entry)
+    : [(body as Record<string, unknown>)?.["csp-report"] ?? body];
+
+  return envelopes.map((entry) => {
+    const r = (entry ?? {}) as Record<string, unknown>;
+    const sample = pick(r["script-sample"], r.sample);
+    return (
+      `CSP violation: directive=${pick(r["effective-directive"], r["violated-directive"], r.effectiveDirective, r.violatedDirective)} ` +
+      `blocked=${scrubUrl(pick(r["blocked-uri"], r.blockedURI, r.blockedURL))} ` +
+      `page=${scrubUrl(pick(r["document-uri"], r.documentURI, r.documentURL))} ` +
+      `source=${scrubUrl(pick(r["source-file"], r.sourceFile))}:${pick(r["line-number"], r.lineNumber)}:${pick(r["column-number"], r.columnNumber)} ` +
+      `sample=${sample === "?" ? "?" : JSON.stringify(sample.slice(0, 80))}`
+    );
+  });
+}
+
+/**
  * Baseline security headers. Exported so a test can assert that the REAL config
  * produces the REAL headers, rather than restating the config back to itself.
  *
@@ -325,12 +396,7 @@ app.post(
   "/api/csp-report",
   express.json({ type: ["application/json", "application/csp-report", "application/reports+json"], limit: "50kb" }),
   (req, res) => {
-    const report = (req.body && (req.body["csp-report"] || req.body)) || {};
-    log(
-      `CSP violation: directive=${report["violated-directive"] || report.violatedDirective || "?"} ` +
-        `blocked=${report["blocked-uri"] || report.blockedURI || "?"} page=${report["document-uri"] || report.documentURI || "?"}`,
-      "csp",
-    );
+    for (const line of formatCspReports(req.body)) log(line, "csp");
     res.status(204).end();
   },
 );
