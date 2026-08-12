@@ -21,6 +21,7 @@ export default defineConfig({
       "tests/creditVendorInterlock.test.ts",
       "tests/clientIp.test.ts",
       "tests/securityHeaders.test.ts",
+      "tests/cspViolationReport.test.ts",
       "tests/canonicalHost.test.ts",
       "tests/zodSchemaSemantics.test.ts",
       "tests/routeGates.test.ts",
