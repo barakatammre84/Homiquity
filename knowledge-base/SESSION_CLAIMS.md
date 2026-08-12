@@ -75,7 +75,7 @@ this is observation, and it may be stale. Verify against open PRs before relying
 
 | observed | session / branch | scope | overlap with financial-audit |
 |---|---|---|---|
-| 2026-08-12 | [#489](https://github.com/barakatammre84/Homiquity/pull/489) `docs/financial-audit-chain` | Lands four stranded financial audit logs (08-07, 08-09, 08-10, 08-11) | **Direct — same domain and same id space.** Coordinated by comment on the PR rather than by editing it. Its 08-10 log near-duplicates the 08-12 audit. |
+| 2026-08-12 | ~~[#489](https://github.com/barakatammre84/Homiquity/pull/489) `docs/financial-audit-chain`~~ **merged 19:57** | Landed four stranded financial audit logs (08-07, 08-09, 08-10, 08-11) | Resolved. Was direct overlap — same domain and same id space; coordinated by comment rather than by editing another session's branch. Its 08-10 log near-duplicates the 08-12 audit. |
 | 2026-08-12 | [#490](https://github.com/barakatammre84/Homiquity/pull/490) `claude/pensive-noether-5232f2` | Borrower data-capture defects | None observed |
 | 2026-08-12 | [#488](https://github.com/barakatammre84/Homiquity/pull/488) `feat/lease-capture` | Rent-ledger lease capture, encrypted PII columns | Adjacent — touches `shared/schema/**`; watch for migration ordering |
 | 2026-08-12 | [#483](https://github.com/barakatammre84/Homiquity/pull/483) `fix/partnerhub-cpa-gate-drift` | CPA PartnerHub role gate | None observed |

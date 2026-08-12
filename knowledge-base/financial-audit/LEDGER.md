@@ -17,17 +17,17 @@ they are the same ids the dated audit logs cite.
 > | 08-04 | F-1…F-16 | `main` | the founding audit — unambiguous, still canonical |
 > | 08-05 | F-17…F-19 | `main` | QM dead band, election-time gate, finance-charge symmetry |
 > | 08-06 | — | `main` | pricing-policy control plane |
-> | 08-07 | F-20…F-23 | PR [#489](https://github.com/barakatammre84/Homiquity/pull/489) | counterparty gate absent at price formation; no receivable; ungated TRID re-pricing; register has no denominator |
+> | 08-07 | F-20…F-23 | `main` ([#489](https://github.com/barakatammre84/Homiquity/pull/489)) | counterparty gate absent at price formation; no receivable; ungated TRID re-pricing; register has no denominator |
 > | 08-08 | F-20…F-24 | **`main` (merged)** | commission payouts as cost; payout unbounded by revenue; platform fees absent from revenue; cash-conversion; money-out audit |
-> | 08-09 | F-20…F-23 | PR #489 | dual-comp guard covers one fee of three; revenue single-channel; recorded vs charged comp; debit-only ledger |
-> | 08-10 | F-20…F-25 | PR #489 | **near-duplicate of 08-12 — see below** |
-> | 08-11 | F-20…F-26 | PR #489 | revenue pinned by the QM cap; fee trim as unrecorded concession; platform fees not revenue |
+> | 08-09 | F-20…F-23 | `main` (#489) | dual-comp guard covers one fee of three; revenue single-channel; recorded vs charged comp; debit-only ledger |
+> | 08-10 | F-20…F-25 | `main` (#489) | **near-duplicate of 08-12 — see below** |
+> | 08-11 | F-20…F-26 | `main` (#489) | revenue pinned by the QM cap; fee trim as unrecorded concession; platform fees not revenue |
 > | 08-12 | F-20…F-23 | this branch | confirmation is a presence test; revenue simulation-blind; authorization audit trail; no EPO write surface |
 >
 > ### The duplication this cost, stated plainly
 >
-> **The 08-10 audit found what the 08-12 audit found, two days earlier**, and has been sitting
-> unmerged on a docs branch the whole time:
+> **The 08-10 audit found what the 08-12 audit found, two days earlier**, and sat unmerged on a
+> branch with no PR for three days — invisible to `gh pr list` and to every other session:
 >
 > | 08-10 finding | 08-12 finding |
 > |---|---|
@@ -77,10 +77,11 @@ they are the same ids the dated audit logs cite.
 > lookup, no register, no coordination — which is the point.
 
 Seeded 2026-08-12; **corrected the same day** after tick 1 discovered six further audits. Not three —
-nine. Five are on `main` (08-04, 08-05, 08-06, 08-08, and the merged history), four are stranded
-on PR [#489](https://github.com/barakatammre84/Homiquity/pull/489) (08-07, 08-09, 08-10, 08-11),
-and 08-12 is on this branch. **A tick that reads only `main` sees barely half the audit history** —
-which is why Phase 0.4 reads open PRs, not just `main`.
+nine. **Eight are now on `main`** — 08-04 … 08-11, after [#489](https://github.com/barakatammre84/Homiquity/pull/489)
+landed the four that had been stranded on branches *with no pull request at all* (08-07, 08-09,
+08-10, 08-11 — invisible to `gh pr list`, one of them for six days). 08-12 is on this branch.
+**When those four were stranded, a tick reading only `main` saw barely half the audit history** —
+which is why Phase 0.4 reads open PRs *and* recent branches, not just `main`.
 
 ## Status vocabulary
 
@@ -180,3 +181,4 @@ rule. That agreement is evidence the rule is right, and it is why the two change
 | 2026-08-12 t0 | `2444950` | audit + fix | 08-12 findings found, verified by execution, fixed under owner authorization; `/admin/lenders` built; routine installed |
 | 2026-08-12 t1 | `3ba30c9` | refresh-only (R3) | **Branch was 15 commits behind** — refresh was the whole tick, exactly as R3 intends. Merged `origin/main`: 7 overlapping files, 3 conflicts (`costLedger.ts`, `submissions.ts`, KB README), all resolved additively — the two sessions' changes were complementary, not contradictory. `contingentLiabilityRegister.ts` auto-merged and was re-verified by hand (both `epoClawbackDays` and `simulated` present) because a silent auto-merge in a money path is not evidence. 3,079 tests green post-merge. **Found the id collision above** — the first thing the team-sync rail caught |
 | 2026-08-12 t1b | `10329fa` | coordination | Read open PRs, not just `main` — found **PR #489 carrying four further audits** (08-07, 08-09, 08-10, 08-11). The real chain is nine audits, one per day; this ledger had claimed three. Six had minted `F-20`. Coordinated by comment on #489 rather than editing another session's branch. **Date-qualified ids adopted**; cron moved hourly → weekly on the evidence that the queue is not draining |
+| 2026-08-12 t1c | `2bef0b2` | refresh-only (R3) | **#489 merged by the owner** minutes after the coordination comment, landing all four stranded audits. Eight of nine audits are now on `main` — the audit history is shared memory for the first time. Refreshed onto it: one conflict, `knowledge-base/README.md`, the exact serial-append pattern both this board and #489's own description had predicted; resolved by keeping both sides in date order. Ledger corrected from "stranded" to landed |
