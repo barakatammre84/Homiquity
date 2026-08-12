@@ -202,6 +202,11 @@ export default defineConfig({
       // design — an unlisted test file is silently never run — so the fix is
       // to stop contending for one line, not to replace it with a glob.
       "tests/emailProviderObservability.test.ts",
+      // The zod ↔ @hookform/resolvers pairing. A mismatch there turns every
+      // failed validation into an unhandled rejection instead of a form error,
+      // which deadens submit/continue buttons app-wide with no visible symptom.
+      // Pure unit test: no HTTP, no DB.
+      "tests/formResolverContract.test.ts",
       // Rent reporting, Phase 0. metro2Gate is the self-releasing citation gate on the
       // fixed-width compiler (sibling of nonQmProgramGate); rentFurnishing pins the
       // provenance gate, the queue state machine, and that billing stays off.
