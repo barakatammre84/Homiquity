@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { SEOHead } from "@/components/SEOHead";
 import { COMPANY_IDENTITY, companyNmlsDisplay } from "@shared/companyIdentity";
 import { Mail, CheckCircle2, ArrowRight } from "lucide-react";
@@ -35,14 +37,31 @@ export default function Waitlist() {
     const form = e.target as HTMLFormElement;
     const honeypot = (form.elements.namedItem("website") as HTMLInputElement)?.value || "";
     try {
-      await fetch("/api/email-capture", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), source: "waitlist", website: honeypot }),
+      // apiRequest, not a raw request. A bare `await` on the browser primitive
+      // only REJECTS on a network error, so with no `res.ok` check every server
+      // rejection rendered the success screen — on THE pre-launch conversion
+      // surface, since this page is "/" while PRELAUNCH_GATED.
+      //
+      // The capture endpoint answers 400 on a Zod-invalid address and 429 once
+      // the limiter trips at 5 per 15 min per IP (server/app.ts
+      // emailCaptureLimiter), which one shared office or mobile-carrier IP
+      // reaches easily — so the 6th person to sign up was told "You're on the
+      // list" and was not on the list.
+      //
+      // Public endpoint with no auth middleware, so it cannot answer 401 and the
+      // session-expiry redirect can never fire.
+      await apiRequest("POST", "/api/email-capture", {
+        email: email.trim(),
+        source: "waitlist",
+        website: honeypot,
       });
       setDone(true);
-    } catch {
-      toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: "We couldn't add you just yet",
+        description: friendlyApiError(error, "Please check your email address and try again."),
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
