@@ -50,6 +50,7 @@ export default defineConfig({
       "tests/counterpartyAndCompensation.test.ts",
       "tests/lenderApprovalControl.test.ts",
       "tests/compensationClawback.test.ts",
+      "tests/revenueRecognition.test.ts",
       "tests/commissionPayout.test.ts",
       "tests/feeProvenanceAndCosts.test.ts",
       "tests/leDisclosedFeeProvenance.test.ts",

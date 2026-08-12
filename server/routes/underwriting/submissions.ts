@@ -401,6 +401,50 @@ export function registerSubmissionRoutes(
         })),
       );
 
+      // Revenue recognition (F-0808-03 / F-0809-02 / F-0811-03). Revenue was
+      // lender compensation only, so the platform's own ~$2,000/file was
+      // income nowhere and a BORROWER-PAID file reported a negative margin.
+      // Recognized on the lender's remittance advice (owner decision), sourced
+      // from the file's ISSUED Loan Estimate rather than a recompute of
+      // today's fee schedule — which would re-price history.
+      const { recognizeRevenue } = await import("@shared/revenueRecognition");
+      const disclosures = await storage.getAllLoanEstimateDisclosures();
+      const latestDisclosure = new Map<string, any>();
+      for (const d of disclosures) {
+        // Rows come back version-descending, so the first per application is
+        // its current baseline.
+        if (!latestDisclosure.has(d.applicationId)) latestDisclosure.set(d.applicationId, d);
+      }
+      let platformFeeRevenueTotal = 0;
+      let unrecognizedPlatformFees = 0;
+      let platformFeesUnknownCount = 0;
+      for (const sub of submissions) {
+        const snapshot = latestDisclosure.get(sub.applicationId)?.snapshot as
+          | { fees?: { id: string; label: string; amount: number; bucket: string }[] }
+          | undefined;
+        const recognized = recognizeRevenue({
+          status: sub.status,
+          compensationModel: sub.compensationModel,
+          compensationReceivedAmount: sub.compensationReceivedAmount,
+          compensationReceivedAt: sub.compensationReceivedAt,
+          disclosedFees: (snapshot?.fees as never) ?? null,
+          simulated: sub.simulated,
+        });
+        platformFeeRevenueTotal += recognized.platformFees;
+        unrecognizedPlatformFees += recognized.unrecognizedPlatformFees;
+        if (recognized.platformFeesUnknown) platformFeesUnknownCount += 1;
+      }
+      const revenue = {
+        lenderCompensation: summary.receivedCompensation,
+        platformFees: Math.round((platformFeeRevenueTotal + Number.EPSILON) * 100) / 100,
+        total:
+          Math.round((summary.receivedCompensation + platformFeeRevenueTotal + Number.EPSILON) * 100) / 100,
+        unrecognizedPlatformFees:
+          Math.round((unrecognizedPlatformFees + Number.EPSILON) * 100) / 100,
+        /** Funded files with no issued LE — unknown, never summed as zero. */
+        platformFeesUnknownCount,
+      };
+
       // Cost side + margin (F-11). Revenue alone is not unit economics: costs
       // are incurred on every file and revenue arrives only on the ones that
       // close, so the meaningful denominator is the funded count.
@@ -420,7 +464,9 @@ export function registerSubmissionRoutes(
       // financial view read.
       const commissions = summarizeCommissionCosts(commissionRows);
       const unitEconomics = computeUnitEconomics({
-        receivedCompensation: summary.receivedCompensation,
+        // BOTH channels now — a margin built on lender compensation alone
+        // understates a lender-paid file and inverts a borrower-paid one.
+        receivedCompensation: revenue.total,
         fundedCount: summary.fundedCount,
         costs,
         simulatedRevenue: summary.simulated.receivedCompensation,
@@ -461,6 +507,7 @@ export function registerSubmissionRoutes(
         // counterparty there is no revenue capacity at all (F-5).
         approvedLenderCount: approvedLenderCount(lenderRows.map(toCounterparty)),
         discrepancies,
+        revenue,
         clawbackExposure: clawback,
         costs,
         commissions,
