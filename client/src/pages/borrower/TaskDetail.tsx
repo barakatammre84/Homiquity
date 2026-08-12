@@ -353,35 +353,59 @@ export default function TaskDetail() {
                           onChange={(e) => setVerificationNotes(e.target.value)}
                           data-testid="input-verification-notes"
                         />
+                        <p className="text-sm text-muted-foreground">
+                          Saved against whichever document you approve or reject next, then cleared.
+                        </p>
                       </div>
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            const lastDoc = task.documents?.[task.documents.length - 1];
-                            if (lastDoc) {
-                              verifyDocumentMutation.mutate({ docId: lastDoc.id, isVerified: false });
-                            }
-                          }}
-                          disabled={verifyDocumentMutation.isPending}
-                          data-testid="button-reject-document"
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Reject
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            const lastDoc = task.documents?.[task.documents.length - 1];
-                            if (lastDoc) {
-                              verifyDocumentMutation.mutate({ docId: lastDoc.id, isVerified: true });
-                            }
-                          }}
-                          disabled={verifyDocumentMutation.isPending}
-                          data-testid="button-approve-document"
-                        >
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
-                          Approve & Verify
-                        </Button>
+                      {/*
+                        One control pair PER DOCUMENT. Both buttons used to act on
+                        documents[documents.length - 1], so on a multi-upload task
+                        ("2 years of tax returns", "last 3 pay stubs") every earlier
+                        document was unreachable — a reviewer who believed they had
+                        approved "the tax returns" had approved exactly one file,
+                        and the rest stayed unverified forever. The API has always
+                        taken a docId; only this UI collapsed the choice (#484).
+                      */}
+                      <div className="space-y-3">
+                        {task.documents.map((taskDoc) => (
+                          <div
+                            key={taskDoc.id}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+                            data-testid={`verify-row-${taskDoc.id}`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium" title={taskDoc.document.fileName}>
+                                {taskDoc.document.fileName}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {taskDoc.isVerified ? "Verified" : "Not yet verified"}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => verifyDocumentMutation.mutate({ docId: taskDoc.id, isVerified: false })}
+                                disabled={verifyDocumentMutation.isPending}
+                                data-testid={`button-reject-document-${taskDoc.id}`}
+                                aria-label={`Reject ${taskDoc.document.fileName}`}
+                              >
+                                <X className="mr-2 h-4 w-4" />
+                                Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => verifyDocumentMutation.mutate({ docId: taskDoc.id, isVerified: true })}
+                                disabled={verifyDocumentMutation.isPending}
+                                data-testid={`button-approve-document-${taskDoc.id}`}
+                                aria-label={`Approve and verify ${taskDoc.document.fileName}`}
+                              >
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                Approve & Verify
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, dashboardKeys } from "@/lib/queryClient";
 import { usePlaidLink, type PlaidLinkOnSuccess } from "react-plaid-link";
@@ -78,7 +78,9 @@ function getStatusBadge(status: string) {
   return <Badge variant={c.variant}>{c.label}</Badge>;
 }
 
-function PlaidLinkButton({
+// Exported for tests. The auto-open behaviour below is the kind that only a
+// render can exercise — it was wrong for as long as it was unobservable.
+export function PlaidLinkButton({
   applicationId,
   verificationType,
   onSuccess,
@@ -93,6 +95,9 @@ function PlaidLinkButton({
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkTokenId, setLinkTokenId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Guards the auto-open below. A ref, not state, because the guard must be
+  // read and written in the same tick the effect runs.
+  const openedRef = useRef(false);
 
   const createLinkTokenMutation = useMutation({
     mutationFn: async () => {
@@ -157,12 +162,15 @@ function PlaidLinkButton({
     token: linkToken,
     onSuccess: handlePlaidSuccess,
     onExit: () => {
+      // Release the guard so a borrower who closes Plaid can reopen it.
+      openedRef.current = false;
       setIsLoading(false);
     },
   });
 
   const handleClick = async () => {
     if (linkToken && ready) {
+      openedRef.current = true;
       setIsLoading(true);
       open();
     } else {
@@ -170,11 +178,25 @@ function PlaidLinkButton({
     }
   };
 
-  // Auto-open when link token is ready
-  if (linkToken && ready && !isLoading) {
-    setIsLoading(true);
-    open();
-  }
+  // Open the modal once, as soon as the token is created and Plaid is ready.
+  //
+  // This ran in the RENDER BODY until 2026-08-12 (#485): `setIsLoading(true)`
+  // was a state update during render, and `open()` is an external side effect
+  // fired from a path React may execute more than once — twice under
+  // StrictMode in dev. `isLoading` was doing double duty as the once-guard,
+  // which cannot work from render because the state it reads is the value being
+  // replaced.
+  //
+  // A ref is the guard instead, mirroring PlaidConnectButton.tsx, which had the
+  // correct shape all along. It is reset on exit so a borrower who closes Plaid
+  // and clicks the button again gets the modal back.
+  useEffect(() => {
+    if (linkToken && ready && !openedRef.current) {
+      openedRef.current = true;
+      setIsLoading(true);
+      open();
+    }
+  }, [linkToken, ready, open]);
 
   return (
     <Button
