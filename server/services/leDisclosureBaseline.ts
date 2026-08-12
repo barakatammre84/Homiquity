@@ -29,6 +29,7 @@
 
 import { storage } from "../storage";
 import {
+  authorizationFrom,
   buildDisclosureSnapshot,
   evaluateTolerance,
   type DisclosureSnapshot,
@@ -228,6 +229,9 @@ export async function reconcileDisclosure(
       snapshot: revised,
       cocId: null,
       toleranceEvaluation: null,
+      // Pin the file to the schedule it was disclosed under. From here on, a
+      // platform re-price cannot move its zero-tolerance lines (audit FA-20).
+      feeScheduleVersion: le.feeScheduleVersion,
     });
     return { action: "issued_first", disclosure: created, evaluation: null, cocId: null };
   }
@@ -236,7 +240,9 @@ export async function reconcileDisclosure(
   const openCocs = await storage.getOpenChangeOfCircumstances(applicationId);
   const coc = openCocs[0] ?? null;
 
-  const evaluation = evaluateTolerance(baseline, revised, !!coc);
+  // §1026.19(e)(3)(iv) resets good faith only for the charges the circumstance
+  // affected — never for the platform's own fixed fees (audit FA-21).
+  const evaluation = evaluateTolerance(baseline, revised, authorizationFrom(coc));
 
   // Nothing moved beyond tolerance — the issued disclosure still stands. Note
   // that "within tolerance" still covers charges that went DOWN, which need no
@@ -255,6 +261,10 @@ export async function reconcileDisclosure(
       snapshot: revised,
       cocId: coc.id,
       toleranceEvaluation: evaluation,
+      // Carry the pin forward. A redisclosure is authorized by the borrower's
+      // circumstance, which is not a reason to adopt a fee schedule the file
+      // was never disclosed under.
+      feeScheduleVersion: baselineRow.feeScheduleVersion ?? le.feeScheduleVersion,
     });
     return { action: "redisclosed", disclosure: created, evaluation, cocId: coc.id };
   }
@@ -285,7 +295,7 @@ export async function getToleranceReview(
   const evaluation = evaluateTolerance(
     baselineRow.snapshot as DisclosureSnapshot,
     snapshotFromLoanEstimate(le),
-    openCocs.length > 0,
+    authorizationFrom(openCocs[0] ?? null),
   );
   return {
     hasBaseline: true,

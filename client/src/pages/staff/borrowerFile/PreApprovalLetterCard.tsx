@@ -18,7 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Icons, iconSize } from "@/lib/icons";
 import { format } from "date-fns";
-import { PRE_APPROVAL_LETTER_STATUS, type PreApprovalLetterStatus } from "@shared/schema";
+import { PRE_APPROVAL_LETTER_STATUS } from "@shared/statusVocabularies";
+import type { PreApprovalLetterStatus } from "@shared/schema";
 import { letterRevocationSchema } from "@shared/letters";
 
 /**

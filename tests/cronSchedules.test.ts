@@ -34,6 +34,9 @@ const SCHEDULES: ReadonlyArray<readonly [string, string]> = [
   ["0 14 * * *", "adverse-action-delivery"],
   ["45 13 * * *", "task-escalation"],
   ["17 11 * * 1", "aggregate-data"],
+  // Credit monitoring (2026-08-08). Runs after lifecycle so a score drop and the
+  // day's other borrower-state changes land in the same working window.
+  ["15 13 * * *", "credit-monitoring"],
 ];
 
 const workflow = await readFile(

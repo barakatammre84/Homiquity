@@ -5,7 +5,8 @@ import { useLocation, useSearchParams, Link } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
+import { preApprovalFormSchema } from "@shared/preApprovalForm";
+import type { PreApprovalFormData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -240,6 +241,37 @@ function PreApprovalFunnel() {
 
   const currentQ = QUESTIONS_BY_ID[stepId];
 
+  // Every step starts at the top of the page.
+  //
+  // Without this the funnel drifts: `AnimatePresence mode="wait"` keeps the
+  // OUTGOING step mounted until its exit animation finishes, so for those
+  // ~250ms the document is roughly twice as tall and the incoming step's input
+  // sits far down it. Focusing that input (below) makes the browser scroll it
+  // into view — a long way — and when the exit completes and the document
+  // shrinks back, the scroll offset stays where it was. Measured on the
+  // purchase-price step: scrollY 242 of a possible 265, which put the question
+  // heading 162px ABOVE the viewport and left the input pinned under the fixed
+  // "Step X of Y" header. The step looked blank.
+  //
+  // `focus({ preventScroll: true })` below stops the scroll being provoked;
+  // this resets anything the borrower scrolled themselves on the previous step.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [stepId]);
+
+  // Autofocus WITHOUT the browser's implicit scroll-into-view — see above. The
+  // `autoFocus` attribute gives no way to pass `preventScroll`, so focus is
+  // driven by hand.
+  //
+  // A ref CALLBACK rather than an effect on `stepId`: under
+  // `AnimatePresence mode="wait"` the incoming step does not mount until the
+  // outgoing one has finished animating out, so a `[stepId]` effect fires while
+  // the new input does not yet exist and would focus nothing. The callback runs
+  // when the element actually attaches, whenever that turns out to be.
+  const focusStepInput = useCallback((el: HTMLInputElement | null) => {
+    el?.focus({ preventScroll: true });
+  }, []);
+
   const watchedValues = form.watch();
   const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
 
@@ -434,7 +466,7 @@ function PreApprovalFunnel() {
               <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
               <Input
                 key={`currency-${fieldName}`}
-                autoFocus
+                ref={focusStepInput}
                 data-testid={`input-${currentQ.field}`}
                 value={displayValue}
                 onChange={(e) => {
@@ -467,7 +499,7 @@ function PreApprovalFunnel() {
               {IconComponent && <IconComponent className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />}
               <Input
                 key={`number-${fieldName}`}
-                autoFocus
+                ref={focusStepInput}
                 data-testid={`input-${currentQ.field}`}
                 type="text"
                 inputMode="numeric"

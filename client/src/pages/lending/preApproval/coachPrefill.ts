@@ -37,8 +37,8 @@
 // filling blanks needs no banner precisely because it cannot destroy anything.
 import { useEffect, useRef } from "react";
 import type { UseFormReturn } from "react-hook-form";
-import { CREDIT_SCORE_BAND_VALUES, type PreApprovalFormData } from "@shared/schema";
-
+import { CREDIT_SCORE_BAND_VALUES } from "@shared/preApprovalForm";
+import type { PreApprovalFormData } from "@shared/schema";
 /** The subset of `GET /api/coach/intake/latest` the funnel can consume. */
 export interface CoachIntake {
   annualIncome?: string;
