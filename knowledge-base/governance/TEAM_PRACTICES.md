@@ -270,6 +270,21 @@ PR body (part of the §5.8 contract).
   `server/routes/leads.ts` — the TCPA consent provenance. A wrong change here bypasses rate
   limiting and falsifies legal consent evidence.)*
 - **Rate-limit policy:** `server/services/rateLimitPolicy.ts`.
+- **Consumer-data furnishing (CRA):** `server/services/rentFurnishing.ts`,
+  `shared/lib/metro2/`. *(Added 2026-08-08 with the rent-reporting program. Every other
+  credit path in this repo makes us a consumer-report **user** — permissible purpose,
+  adverse action, retention. Furnishing inverts that: we **write** to a consumer's file at
+  a third party. A wrong change here does not surface as a failed request; it lands
+  inaccurate derogatory information on a real person's credit report, and the only remedy
+  is a dispute they must file. §9 named no CRA or furnisher trigger at all before this.)*
+- **Money movement / payment processing:** adding or activating a payment-processor
+  dependency (in `package.json` or anywhere under `server/`). *(Added 2026-08-08. This one
+  is a **content** trigger, not a path: the file that will carry it does not exist yet, and
+  a speculative path would be a trigger that can never fire. The dependency is the stable
+  signal — money cannot move without a processor SDK, so the review is owed the moment one
+  lands, before any route is written. The gap this closes is independent of rent: the repo
+  has no ledger and no trust/operating account separation, so the first funds-touching PR
+  would arrive with none of the invariants that make it reviewable after the fact.)*
 - **Logging near PII:** any widening of `RESPONSE_BODY_LOG_ALLOWLIST` in `server/app.ts`.
 **Partly enforced by the gate.** `pnpm guard:security`
 ([`scripts/security-review-guard.cjs`](../../scripts/security-review-guard.cjs)) fails the PR

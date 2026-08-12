@@ -211,6 +211,13 @@ export default defineConfig({
       // which deadens submit/continue buttons app-wide with no visible symptom.
       // Pure unit test: no HTTP, no DB.
       "tests/formResolverContract.test.ts",
+      // Rent reporting, Phase 0. metro2Gate is the self-releasing citation gate on the
+      // fixed-width compiler (sibling of nonQmProgramGate); rentFurnishing pins the
+      // provenance gate, the queue state machine, and that billing stays off.
+      "tests/metro2Gate.test.ts",
+      "tests/rentFurnishing.test.ts",
+      "tests/creditMonitoring.test.ts",
+      "tests/rentReportingSurface.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

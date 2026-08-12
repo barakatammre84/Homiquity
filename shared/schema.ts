@@ -20,3 +20,4 @@ export * from "./schema/cpaPartners";
 export * from "./schema/partners";
 export * from "./schema/scenarioRuns";
 export * from "./schema/autopilot";
+export * from "./schema/rent";

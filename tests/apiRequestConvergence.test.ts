@@ -46,6 +46,8 @@ const ALLOWED_RAW_FETCH: Record<string, string> = {
   "client/src/components/EmailCaptureModal.tsx": "public POST /api/email-capture",
   "client/src/pages/public/Waitlist.tsx": "public POST /api/email-capture",
   "client/src/pages/public/PartnerWaitlist.tsx": "public POST /api/partner-waitlist",
+  "client/src/pages/public/RentReporting.tsx":
+    "public POST /api/email-capture from a submit handler — same shape as Waitlist.tsx; the page is unauthenticated, so a 401 redirect would be wrong",
   "client/src/pages/public/RedeemInvite.tsx":
     "public /api/staff-invites/validate/:code, fetched in a submit handler (the authenticated redeem call uses apiRequest)",
   // ApplyInvite was listed here to keep the server's expired-vs-invalid copy
