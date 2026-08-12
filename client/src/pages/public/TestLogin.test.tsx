@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // The quick-login cards once sent hardcoded "<name>123" passwords that
 // POST /api/test-login (single DEV_TEST_PASSWORD gate) never accepted — every
@@ -21,6 +22,17 @@ vi.mock("wouter", () => ({
 }));
 
 import TestLogin from "./TestLogin";
+
+// The page renders inside App.tsx's QueryClientProvider, so the test must too.
+// It previously rendered bare and passed only because the component reached for
+// the module-singleton queryClient, which needs no provider — the very coupling
+// this migration removes. useQueryClient() throws without a provider, which is
+// the honest behaviour: it says the component was being rendered in a tree it
+// never actually runs in.
+function render(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
