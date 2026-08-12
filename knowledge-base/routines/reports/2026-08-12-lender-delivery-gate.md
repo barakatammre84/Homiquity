@@ -1,6 +1,6 @@
 # Lender Delivery Gate — 2026-08-12
 
-STATUS: WARN — the delivery gate passes and the organic write path for the **anti-steering acknowledgment** is proven end to end; but the XSD gate that certifies our MISMO 3.4 export was reporting PASS on machines without `xmllint`, and the §1.3 lender actions are now **30 days** old and unworked.
+STATUS: WARN — the delivery gate passes and the organic write path for the **anti-steering acknowledgment** is proven end to end; but the XSD gate that certifies our MISMO 3.4 export was reporting PASS on machines without `xmllint`, the §9 security guard fires on code the PR never touched, and the §1.3 lender actions are now **30 days** old and unworked.
 
 ## ⛔ Human actions
 
@@ -55,6 +55,40 @@ Demonstrated in both directions, running with a PATH sandbox that contains `node
 The single skip in the xmllint-present column is the inverse contract case ("returns skipped:true when xmllint is unavailable"), which now declares itself with `it.skipIf(xmllintInstalled)` instead of early-returning. Detection moved from `beforeAll` to module scope because `skipIf` is evaluated at collection time. No assertion was added, removed, or weakened; the baseline stays empty.
 
 `shared/mismo.ts`, `server/mismo.ts` and every product path are untouched — the change is confined to one test file.
+
+### 2b. ⚠️ The §9 security guard fires on code the PR never touched — found by being hit by it
+
+This PR's first CI run went RED on *"security-review-guard: FAIL … • PII encryption call site — `server/storage/index.ts`: `const e = encryptSensitiveData(value);`"*. This PR changes three files, none under `server/`:
+
+```
+git diff --name-only $(git merge-base origin/main HEAD)..HEAD
+  knowledge-base/routines/REGISTER.md
+  knowledge-base/routines/reports/2026-08-12-lender-delivery-gate.md
+  tests/mismoXsdValidation.test.ts
+```
+
+**Cause.** [`ci.yml:183,197-198`](../../../.github/workflows/ci.yml) sets `BASE_SHA: ${{ github.event.pull_request.base.sha }}` — the **tip of `main` at event time**, not the merge base — and diffs **two-dot**:
+
+```yaml
+git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed_files.txt
+git diff -U0        "$BASE_SHA" "$HEAD_SHA" > changed_lines.diff
+```
+
+A two-dot diff from main's *tip* to a branch that lags it renders everything merged to main in the meantime as **removed** lines in "the PR's" diff. Measured on this PR: the guard evaluated **102 files, 9 of them under `server/`**, against the 3 the PR actually changes. `#488` (lease capture — the encrypted-PII column writer) merged after this branch's start point, so *main's own* `encryptSensitiveData` call arrived in the diff as a deletion and matched the trigger.
+
+Reproduced exactly, offline, with main's current guard — the evidence string is byte-identical to CI's:
+
+```
+MAIN guard + TWO-DOT   (what CI ran)      -> [{"label":"PII encryption call site",
+                    "evidence":"server/storage/index.ts: const e = encryptSensitiveData(value);"}]
+MAIN guard + THREE-DOT (merge-base)       -> []
+```
+
+(Reproducing it required `git show origin/main:scripts/security-review-guard.cjs` — the PII-encryption trigger itself landed on main *after* this branch started, so the local copy did not have it. CHARTER §10's "audit §9 by **running** `detectTriggers()`" needs the version under which CI will run it, not the one in your tree.)
+
+**Why this is worse than a false red.** The failure message instructs the author to add a `## Security review` heading to the PR body. Doing so here would have meant attesting to a change in `server/storage/index.ts` that this PR did not make and this routine never reviewed. The gate would have gone green on a signed statement about someone else's code. That is a **training pressure toward false attestation**, and it fires on *any* PR whose branch point lags a §9-triggering merge — which is every long-running branch in a repo with eight routines committing daily.
+
+**Resolved here by rebasing onto `origin/main`**, which makes `base.sha` equal the merge base and the phantom diff vanish — **not** by writing a security-review heading. The guard itself is left untouched on purpose: changing a security control's diff scope can only make it *quieter*, and that is a founder/security-review decision, not a routine's. Proposed as ticket #5 with the exact one-character fix.
 
 ### 3. Organic-file question — **anti-steering acknowledgment CLEARS**
 
@@ -129,6 +163,7 @@ Side note from the same sweep: the **primary checkout** is currently on `routine
 2. **Promote the H8 MISMO-export role gate into the node lane.** `tests/mismoExportAccess.test.ts` guards a route that emits full SSN + DOB to whoever passes the gate, and it lives only in the integration lane, which never runs in CI. A static role-gate assertion (the `routeGates.test.ts` shape) would cover the regression without needing a server.
 3. **Re-verify the Target-5 shortlist before any outreach** (§1.3 item 1). At 39 days, "still broker-friendly and NMLS-active" is an assumption, and the other four actions are wasted if it is wrong.
 4. **Rotate the next organic-field check to `e_disclosure`**, then `occupancy_type`. Ledger in Evidence 3.
-5. **A register claim on an unpushed branch is not a lock.** Sprint Blitz's §3.2 claim (`24dbb36`) exists only on a local branch with no PR, so no peer can see it by the documented means — CHARTER §5.4 says "commit the claim on your branch so peers can see it", which is only true once the branch is pushed. Either require a push, or move the register to a shared location that does not depend on one.
+5. **Give the §9 guard a merge-base diff.** `.github/workflows/ci.yml:197-198` — change `git diff "$BASE_SHA" "$HEAD_SHA"` to `git diff "$BASE_SHA"..."$HEAD_SHA"` (three dots) on both lines, or compute `BASE_SHA` with `git merge-base`. Today any PR branched before a §9-triggering merge inherits that trigger and is told to attest to code it did not write (Evidence 2b). **This one wants a human**: the change makes a security gate strictly quieter, so it should land with the security review it is guarding, not from a routine. Worth pairing with a check that the guard's own trigger set is exercised — it grew a PII-encryption trigger today and the first PR it caught was a docs-and-tests change.
+6. **A register claim on an unpushed branch is not a lock.** Sprint Blitz's §3.2 claim (`24dbb36`) exists only on a local branch with no PR, so no peer can see it by the documented means — CHARTER §5.4 says "commit the claim on your branch so peers can see it", which is only true once the branch is pushed. Either require a push, or move the register to a shared location that does not depend on one.
 
 STATUS: WARN
