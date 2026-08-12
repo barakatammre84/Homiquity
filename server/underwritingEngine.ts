@@ -2,8 +2,11 @@ import crypto from "crypto";
 import { lookupResolver, type LookupQuery } from "./services/lookupResolver";
 import {
   RESIDUAL_TAX_RATE,
+  VA_CUSHION_MULTIPLIER,
+  VA_DTI_CUSHION_TRIGGER,
   VA_EXTRA_MEMBER_FAMILY_CAP,
   VA_RESIDUAL_REDUCTION_FACTOR,
+  VA_UTILITY_RATE_PER_SQFT,
 } from "./services/underwritingNuance";
 
 /**
@@ -436,8 +439,13 @@ export class ConsolidatedUnderwritingEngine {
       // Map subject property state to VA regional zone
       const vaRegion = this.resolveVaRegion(input.subjectPropertyState);
 
-      // VA Square-Foot Utility Rule
-      const estimatedUtilityCosts = input.homeSquareFootage * 0.14;
+      // VA Square-Foot Utility Rule. The rate is the SHARED constant, not a
+      // local literal — a forked 0.14 here survived the 2026-07-04 de-forking
+      // pass because the guard banned only the literals it already knew about
+      // (0.18 tax, 0.95 reduction). See the parity test in
+      // tests/vaResidualEngineParity.test.ts, which pins agreement by result
+      // rather than by which literals someone remembered to ban.
+      const estimatedUtilityCosts = input.homeSquareFootage * VA_UTILITY_RATE_PER_SQFT;
 
       // Deduct estimated taxes, shelter costs, and utilities to isolate residual take-home pay.
       // Platform estimation model shared with the cited reference module (26-7 Ch. 4 Items 32–34
@@ -485,9 +493,13 @@ export class ConsolidatedUnderwritingEngine {
         requiredResidualIncome = requiredResidualIncome * VA_RESIDUAL_REDUCTION_FACTOR;
       }
 
-      // Implement the 20% Cushion Rule for High DTI profiles
-      if (calculatedDti > 41.0) {
-        const highDtiTarget = requiredResidualIncome * 1.2;
+      // Implement the 20% Cushion Rule for High DTI profiles. Both the trigger
+      // and the multiplier are the shared constants; VA_DTI_CUSHION_TRIGGER is
+      // a FRACTION (0.41) while calculatedDti here is a PERCENTAGE, hence the
+      // ×100 — the unit mismatch is exactly why this one was left as a literal,
+      // and exactly why it needs to be stated once rather than remembered.
+      if (calculatedDti > VA_DTI_CUSHION_TRIGGER * 100) {
+        const highDtiTarget = requiredResidualIncome * VA_CUSHION_MULTIPLIER;
         if (actualResidualIncome < highDtiTarget) {
           reasons.push(
             `High DTI (${calculatedDti.toFixed(2)}% > 41.00%) requires residual income buffer of $${highDtiTarget.toFixed(2)}. Current residual is $${actualResidualIncome.toFixed(2)}`,

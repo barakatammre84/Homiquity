@@ -119,14 +119,33 @@ describe("Guideline traceability: underwriting rules cite their sources", () => 
   // that drifted from the cited reference module — and these citation checks only
   // read underwritingNuance.ts, so the drift was invisible. The engine must now
   // share the cited constants; duplicated regulated math is itself a violation.
+  //
+  // 2026-08-12 (F-014 / F-051): THIS ASSERTION IS NO LONGER THE REAL GUARD, and
+  // the reason is instructive. A ban-list only bans the literals someone already
+  // thought of — this one banned 0.18 and 0.95, and three other forked literals
+  // (`* 0.14`, `* 1.2`, `> 41.0`) sat in the engine underneath it, green, for
+  // five weeks. The behavioral guard is tests/vaResidualEngineParity.test.ts,
+  // which runs the engine and the cited reference over a scenario matrix and
+  // requires the RESULTS to agree; it catches all five, plus operator-order and
+  // clamp drift that no text search can see. Keep the checks below as a cheap
+  // early signal, but do not add literals to the ban-list and call it coverage —
+  // add a scenario to the parity test instead.
   it("the live engine shares the cited VA residual constants — no forked regulated math", () => {
     const engine = read("server/underwritingEngine.ts");
-    expect(engine).toContain("RESIDUAL_TAX_RATE");
-    expect(engine).toContain("VA_RESIDUAL_REDUCTION_FACTOR");
-    expect(engine).toContain("VA_EXTRA_MEMBER_FAMILY_CAP");
+    for (const constant of [
+      "RESIDUAL_TAX_RATE",
+      "VA_RESIDUAL_REDUCTION_FACTOR",
+      "VA_EXTRA_MEMBER_FAMILY_CAP",
+      "VA_UTILITY_RATE_PER_SQFT",
+      "VA_CUSHION_MULTIPLIER",
+      "VA_DTI_CUSHION_TRIGGER",
+    ]) {
+      expect(engine).toContain(constant);
+    }
     // The retired inline literals must not reappear:
     expect(engine).not.toMatch(/\*\s*0\.18\b/);
     expect(engine).not.toMatch(/\*\s*0\.95\b/);
+    expect(engine).not.toMatch(/\*\s*0\.14\b/);
   });
 
   it("the VA residual reduction stays 5% and DISJUNCTIVE (26-7 Ch. 4, Topic 9, Item 43)", () => {

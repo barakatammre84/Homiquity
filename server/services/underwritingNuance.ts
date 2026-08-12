@@ -187,7 +187,11 @@ export const VA_RESIDUAL_MATRIX: Record<VaRegion, Record<number, number>> = {
   west: { 1: 491, 2: 823, 3: 990, 4: 1117, 5: 1158 },
 };
 
-const VA_EXTRA_MEMBER_ADDITION = 80;
+// Exported so the engine-parity test can seed the policy grid from the same
+// figure the reference module uses (VA_RESIDUAL_EXTRA_MEMBER); otherwise the
+// two paths are compared against different per-member additions and the
+// comparison proves nothing.
+export const VA_EXTRA_MEMBER_ADDITION = 80;
 /**
  * The +$80/member addition applies only "up to a family of seven" — the
  * handbook's own example (family of 8, Georgia, $150k) yields $1,199 and

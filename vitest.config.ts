@@ -13,6 +13,7 @@ export default defineConfig({
     include: [
       "tests/amortization.test.ts",
       "tests/inviteValidateAudit.test.ts",
+      "tests/vaResidualEngineParity.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
       "tests/accessControl.test.ts",
