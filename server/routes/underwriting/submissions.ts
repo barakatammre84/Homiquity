@@ -365,8 +365,11 @@ export function registerSubmissionRoutes(
 
       // Discrepancies worth a human: funded loans that were short-paid, or
       // funded with no remittance recorded at all.
+      // Simulated fundings are excluded: a "short-pay" on money nobody wired
+      // is not a discrepancy anyone can chase, and putting it on this list
+      // sends staff to reconcile a lender that was never billed (F-21).
       const discrepancies = submissions
-        .filter(s => s.status === "funded")
+        .filter(s => s.status === "funded" && !s.simulated)
         .map(s => ({
           submissionId: s.id,
           applicationId: s.applicationId,
@@ -394,6 +397,7 @@ export function registerSubmissionRoutes(
           epoClawbackDays: lenderByKey.get(s.lenderId)?.epoClawbackDays,
           fundedAt: s.fundedAt,
           compensationReceivedAmount: s.compensationReceivedAmount,
+          simulated: s.simulated,
         })),
       );
 
@@ -419,6 +423,7 @@ export function registerSubmissionRoutes(
         receivedCompensation: summary.receivedCompensation,
         fundedCount: summary.fundedCount,
         costs,
+        simulatedRevenue: summary.simulated.receivedCompensation,
         commissions,
       });
 

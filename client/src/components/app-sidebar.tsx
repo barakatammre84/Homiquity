@@ -56,6 +56,7 @@ import {
   Palette,
   Gauge,
   Handshake,
+  Building2,
   Bot,
   CircleUser,
 } from "lucide-react";
@@ -208,6 +209,11 @@ const adminNavigation: NavSection[] = [
       { title: "Policy Operations", href: "/admin/policy-ops", icon: Scale, testId: "link-admin-policy-ops" },
       { title: "Pricing Matrices", href: "/admin/pricing-matrices", icon: Grid3x3, testId: "link-admin-pricing-matrices" },
       { title: "Autopilot", href: "/admin/autopilot", icon: Brain, testId: "link-admin-autopilot" },
+      { title: "Counterparties", href: "/admin/lenders", icon: Building2, testId: "link-admin-lenders" },
+      // Wholesale comp bands live here and are lender data too; the page
+      // shipped with the F-17 work but was never linked, so it was
+      // reachable only by typing the URL.
+      { title: "Pricing Policy", href: "/admin/pricing-policy", icon: Percent, testId: "link-admin-pricing-policy" },
       { title: "Financial Reports", href: "/admin/financial-reports", icon: Scale, testId: "link-admin-financial-reports" },
     ],
   },

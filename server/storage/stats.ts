@@ -94,6 +94,9 @@ export class StatsStorage extends PropertiesStorage {
         fundedLoanAmount: lenderSubmissions.fundedLoanAmount,
         compensationExpectedAmount: lenderSubmissions.compensationExpectedAmount,
         compensationReceivedAmount: lenderSubmissions.compensationReceivedAmount,
+        // Without this column both roll-ups below treat a walkthrough's
+        // simulated funding as revenue and as clawback reserve (F-21).
+        simulated: lenderSubmissions.simulated,
       })
       .from(lenderSubmissions);
     const compensation = summarizeCompensation(submissions);
