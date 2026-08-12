@@ -10,7 +10,7 @@ import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrackActivity, useTrackFormStart } from "@/hooks/useActivityTracker";
-import { apiRequest, queryClient, dashboardKeys } from "@/lib/queryClient";
+import { apiRequest, queryClient, dashboardKeys, urlaKeys, loanApplicationKeys } from "@/lib/queryClient";
 import type {
   LoanApplication,
   UrlaPersonalInfo,
@@ -187,7 +187,7 @@ export default function URLAForm() {
     error: urlaErrorObj,
     refetch: refetchUrla,
   } = useQuery<UrlaData>({
-    queryKey: ['/api/urla', activeApplication?.id],
+    queryKey: urlaKeys.detail(activeApplication?.id),
     enabled: !!activeApplication?.id,
   });
 
@@ -274,7 +274,36 @@ export default function URLAForm() {
           description: "Everything is safely stored — you can pick this up anytime.",
         });
       }
-      queryClient.invalidateQueries({ queryKey: ['/api/urla', activeApplication?.id] });
+      const savedApplicationId = activeApplication?.id;
+      if (!savedApplicationId) return;
+      queryClient.invalidateQueries({ queryKey: urlaKeys.detail(savedApplicationId) });
+      // The save is NOT confined to the URLA tables. `POST /api/urla/:id/save`
+      // runs evaluateTridTrigger (server/services/trid.ts), and once the six
+      // pieces of application information are on file that writes
+      // `tridTriggeredAt` onto the LOAN APPLICATION ROW and appends a
+      // compliance deal-activity — Reg Z §1026.2(a)(3), which starts the
+      // 3-business-day Loan Estimate clock.
+      //
+      // Both of those are served under loanApplicationKeys.detail (the detail
+      // response carries `activities`), and two borrower surfaces read it:
+      // LoanPipeline and CreditConsent. Invalidating only the URLA key left
+      // them rendering the pre-trigger file — the borrower completes the
+      // section that legally starts their LE clock and the app still shows the
+      // state from before it started.
+      //
+      // detail() is the family PREFIX, so this reaches the nested pipeline /
+      // conditions reads too; enumerating those by hand is the failure mode
+      // documented on homeownershipGoalKeys.
+      //
+      // Deliberately OUTSIDE the `!variables.silent` branch. The six pieces
+      // complete at an INTERMEDIATE step (personal info + property info), which
+      // saves silently — so gating this on the loud final save would skip the
+      // one save that actually trips the trigger. `silent` is per-step, not a
+      // debounced autosave (handleContinue), so this runs a handful of times
+      // per session, not per keystroke.
+      queryClient.invalidateQueries({
+        queryKey: loanApplicationKeys.detail(savedApplicationId),
+      });
     },
     onError: () => {
       toast({

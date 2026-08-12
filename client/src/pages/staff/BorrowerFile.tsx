@@ -2,7 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { useParams, useSearchParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, ApiError, loanApplicationKeys } from "@/lib/queryClient";
+import { queryClient, apiRequest, ApiError, loanApplicationKeys, urlaKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -114,7 +114,7 @@ export default function BorrowerFile() {
   });
 
   const { data: urlaData } = useQuery<{ personalInfo: UrlaPersonalInfo | null }>({
-    queryKey: ['/api/urla', applicationId],
+    queryKey: urlaKeys.detail(applicationId),
     enabled: !!applicationId && !authLoading,
   });
 
