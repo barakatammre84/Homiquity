@@ -82,6 +82,9 @@ export async function buildLiveContingentLiabilityRegister(
       epoClawbackDays: lenderByKey.get(s.lenderId)?.epoClawbackDays,
       fundedAt: s.fundedAt,
       compensationReceivedAmount: s.compensationReceivedAmount,
+      // A simulated funding paid us nothing, so nothing can be reclaimed —
+      // including it would inflate the reserve on this very page (F-21).
+      simulated: s.simulated,
     })),
     now,
   );

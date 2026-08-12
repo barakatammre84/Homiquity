@@ -791,6 +791,26 @@
     "missing-contactPhone": "reject:ausSupport,epoClawbackDays,nonQm",
     "wrongtype-lenderId": "reject:ausSupport,epoClawbackDays,lenderId,nonQm"
   },
+  "schema.writeWholesaleLenderSchema": {
+    "undefined": "reject:",
+    "null": "reject:",
+    "empty-object": "reject:lenderCode,lenderId,lenderName",
+    "empty-array": "reject:",
+    "empty-string": "reject:",
+    "zero": "reject:",
+    "false": "reject:",
+    "string": "reject:",
+    "number": "reject:",
+    "true": "reject:",
+    "all-keys-typed": "reject:ausSupport,nonQm",
+    "missing-lenderId": "reject:ausSupport,lenderId,nonQm",
+    "missing-lenderName": "reject:ausSupport,lenderName,nonQm",
+    "missing-lenderCode": "reject:ausSupport,lenderCode,nonQm",
+    "missing-primaryContact": "reject:ausSupport,nonQm",
+    "missing-contactEmail": "reject:ausSupport,nonQm",
+    "missing-contactPhone": "reject:ausSupport,nonQm",
+    "wrongtype-lenderId": "reject:ausSupport,lenderId,nonQm"
+  },
   "schema.insertRateSheetSchema": {
     "undefined": "reject:",
     "null": "reject:",

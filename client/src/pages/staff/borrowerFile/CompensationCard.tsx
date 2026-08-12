@@ -18,6 +18,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Icons, iconSize } from "@/lib/icons";
+import { formatCurrency } from "@/lib/formatters";
 import {
   COMPENSATION_MODELS,
   type CompensationModel,
@@ -63,9 +64,6 @@ interface QmPicture {
     tierDescription: string | null;
   } | null;
 }
-
-const money = (value: number) =>
-  value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 // One entry per shared COMPENSATION_MODELS — Record keeps it exhaustive at
 // compile time; the colocated test pins it against the shared vocabulary.
@@ -178,10 +176,10 @@ export function CompensationCard({
               <>
                 <span className="text-muted-foreground">QM headroom:</span>
                 <span data-testid="text-qm-headroom">
-                  {money(qm.election.headroomAmount)} under the cap
+                  {formatCurrency(qm.election.headroomAmount)} under the cap
                   {qm.election.floorAmount !== null && qm.election.maxAllowableAmount !== null && (
                     <span className="block text-xs text-muted-foreground">
-                      {money(qm.election.floorAmount)} of {money(qm.election.maxAllowableAmount)} —
+                      {formatCurrency(qm.election.floorAmount)} of {formatCurrency(qm.election.maxAllowableAmount)} —
                       platform charges only, so the true figure is higher.
                     </span>
                   )}

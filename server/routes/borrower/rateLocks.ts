@@ -11,6 +11,8 @@ import {
   rateLockKind,
   rateLockNoun,
 } from "@shared/rateLockConfirmation";
+import { evaluateLenderLockEligibility } from "@shared/wholesaleLenders";
+import { toCounterparty } from "../../services/lenderSubmission";
 import { z } from "zod";
 import { firstQueryValue } from "../queryParams";
 
@@ -58,6 +60,17 @@ export function registerRateLockRoutes(
         lenderId, lockConfirmationNumber, confirmedRate, confirmedExpiresAt,
       } = result.data;
 
+      // Assignment scoping runs BEFORE any lender lookup, so an unassigned
+      // caller learns nothing from the responses below. Until #472 this sat
+      // after the lender lookup, which let any internal-staff user probe
+      // whether a given lender id exists; the F-20 eligibility check would
+      // have widened that to leak each lender's approval and demo status.
+      // Authorize first, then answer.
+      const rateLockAllowed = await verifyInternalStaffApplicationAccess(storage, applicationId, user.id, user.role);
+      if (!rateLockAllowed) {
+        return res.status(403).json({ error: "Access denied to this application" });
+      }
+
       // The lender must be one we actually have a relationship with. An
       // unknown id means the confirmation came from somewhere unaccountable.
       const lender = await storage.getWholesaleLenderByLenderId(lenderId);
@@ -67,17 +80,28 @@ export function registerRateLockRoutes(
           code: "unknown_lender",
         });
       }
+
+      // Whether this is a real commitment is a COUNTERPARTY question, and it
+      // is answered by the shared rule rather than re-derived here (F-20). The
+      // route previously wrote `simulated: approvalStatus !== "approved"`,
+      // which dropped the !isDemo half of `isApprovedLender()` — so a lock
+      // against a fictional seeded lender was recorded as a real one.
+      const lockEligibility = evaluateLenderLockEligibility(
+        toCounterparty(lender),
+        { isProduction: process.env.NODE_ENV === "production" },
+      );
+      if (!lockEligibility.allowed) {
+        return res.status(422).json({
+          error: lockEligibility.reason,
+          code: "lender_not_lockable",
+          remediation: lockEligibility.remediation,
+        });
+      }
       if (confirmedExpiresAt.getTime() <= Date.now()) {
         return res.status(400).json({
           error: "The lender-confirmed expiration is already in the past",
           code: "confirmation_expired",
         });
-      }
-
-      // Verify caller is assigned to this application (assignment-scoped; not platform-wide)
-      const rateLockAllowed = await verifyInternalStaffApplicationAccess(storage, applicationId, user.id, user.role);
-      if (!rateLockAllowed) {
-        return res.status(403).json({ error: "Access denied to this application" });
       }
 
       // Check if there's already an active lock
@@ -122,10 +146,11 @@ export function registerRateLockRoutes(
         confirmedExpiresAt,
         confirmedBy: user.id,
         confirmedAt: new Date(),
-        // No lender is credentialed yet, so every confirmation today is keyed
-        // in by staff off a portal or a phone call rather than returned by an
-        // API. Mark it, the way lender_submissions does.
-        simulated: lender.approvalStatus !== "approved",
+        // Derived by the shared counterparty rule, never re-hand-rolled here.
+        // This is the fact `isLenderConfirmed()` reads, so getting it wrong
+        // mislabels the borrower's record AND zeroes the honor exposure the
+        // contingent-liability register is supposed to carry.
+        simulated: lockEligibility.simulated,
       });
 
       // Also update the loan option
