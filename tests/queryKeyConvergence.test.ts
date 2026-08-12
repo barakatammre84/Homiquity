@@ -12,6 +12,7 @@ import {
   consentTemplateKeys,
   taskEngineKeys,
   applicationResourceKeys,
+  urlaKeys,
   homeownershipGoalKeys,
   autopilotKeys,
   borrowerGraphKeys,
@@ -300,6 +301,9 @@ describe("re-segmented families keep their URLs", () => {
     [taskEngineKeys.borrowerTasks(ID), "/api/task-engine/applications/app-1/borrower-tasks"],
     [applicationResourceKeys.documentChecklist(ID), "/api/applications/app-1/document-checklist"],
     [applicationResourceKeys.team(ID), "/api/applications/app-1/team"],
+    // Byte-identical to the hand-typed `['/api/urla', id]` the borrower and
+    // staff surfaces each carried their own copy of.
+    [urlaKeys.detail(ID), "/api/urla/app-1"],
     [homeownershipGoalKeys.all(), "/api/homeownership-goal"],
     [homeownershipGoalKeys.gapAnalysis(), "/api/homeownership-goal/gap-analysis"],
     [homeownershipGoalKeys.creditRecommendations(), "/api/homeownership-goal/credit-recommendations"],
@@ -393,6 +397,7 @@ describe("every family root reaches its own children", () => {
       applicationResourceKeys.all(),
       [applicationResourceKeys.documentChecklist(ID), applicationResourceKeys.team(ID)],
     ],
+    ["urla", urlaKeys.all(), [urlaKeys.detail(ID)]],
     [
       "homeownership-goal",
       homeownershipGoalKeys.all(),
