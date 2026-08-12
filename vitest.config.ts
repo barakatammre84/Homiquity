@@ -202,6 +202,11 @@ export default defineConfig({
       // design — an unlisted test file is silently never run — so the fix is
       // to stop contending for one line, not to replace it with a glob.
       "tests/emailProviderObservability.test.ts",
+      // The zod ↔ @hookform/resolvers pairing. A mismatch there turns every
+      // failed validation into an unhandled rejection instead of a form error,
+      // which deadens submit/continue buttons app-wide with no visible symptom.
+      // Pure unit test: no HTTP, no DB.
+      "tests/formResolverContract.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
