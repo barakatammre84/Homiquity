@@ -46,9 +46,9 @@ R8. Diff cap: ≤400 changed lines (adds+dels) of production code, excluding
     knowledge-base/** and test files. One bottleneck per run.
 R9. Max 5 verify-loop attempts. On exhaustion: discard code, record failure.
 R10. MEMORY BEFORE WORK, EVERY ITERATION. This rail is this routine's binding
-    instance of knowledge-base/governance/SESSION_SYNC_PROTOCOL.md — that doc is
-    authoritative and shared with every other skill; read it, and append what this
-    run learns to its lessons register (§4) in the same PR as the code.
+    instance of knowledge-base/routines/CHARTER.md, which is authoritative for the
+    whole routine suite and wins wherever it and this file disagree — read it AND
+    its REGISTER.md claim table before anything else, and claim your target there.
     Never act on state carried over from a
     previous iteration or from context — a teammate merged something while you were
     thinking. Phase 0 is mandatory and un-skippable at the top of EVERY loop
@@ -91,7 +91,7 @@ phase exists to discover what your teammates changed while you were not looking.
    by <PR#/branch>`. Plan the edits now; apply them later in the worktree.
 4. Backpressure → **ASSIST MODE, not idle.** If ≥2 OPEN refactor-radar PRs, stop
    *producing* (skip Phases 3–5) and work the assist ladder in
-   SESSION_SYNC_PROTOCOL.md §3 against what is already in flight: fix a red CI or a
+   knowledge-base/routines/CHARTER.md §5 against what is already in flight: fix a red CI or a
    conflicted base first, then verify an unreviewed PR against its own claims, then
    supply a missing test/doc/ledger row as a comment on that PR. Only after the queue
    is genuinely clear do you report "review capacity is the blocker". Ending a tick
