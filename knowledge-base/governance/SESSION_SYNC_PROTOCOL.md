@@ -25,10 +25,15 @@ mechanism. This protocol makes that catch mechanical.
 your work updates. A loop iteration re-runs this even if the previous one ended seconds ago.
 Carried-over state is the thing this protocol exists to distrust.
 
-**O2 — Claim before edit.** Before committing to a target file, list what other sessions hold:
-open PRs of *any* label and their changed files, live branches, other worktrees, reachable
-agents. **A file in another session's open PR is claimed and is not eligible.** Record it as
-blocked and take the next candidate — do not "just rebase later."
+**O2 — Coordinate before you start.** Before committing to a target, list what other sessions
+hold: open PRs of *any* label and their changed files, live branches, other worktrees,
+reachable agents. Two things follow, and the second matters more than the first:
+
+- **A file in another session's open PR is claimed** and is not eligible. Record it as blocked
+  and take the next candidate — do not "just rebase later."
+- **Another session being active is not a reason to stand down.** It is a reason to *help*.
+  Never abort a tick just because someone else is working; work the assist ladder in §3
+  instead. A session that idles while a teammate's PR sits red has contributed nothing.
 
 **O3 — Write back what you learned.** A lesson that stays in one session's transcript is lost
 the moment that session ends. Append it to §4 below in the same PR as the work that produced
@@ -49,20 +54,42 @@ before opening it, because the base moves while you verify:
 stale base is reviewed against a world that no longer exists, and the reviewer pays for the
 drift. Two commits is the point where "merge it in" stops being cheaper than "start over."
 
-## 3. Loop pacing: review capacity is the constraint
+## 3. The assist ladder: help land what exists before adding to it
 
 Autonomous loops generate faster than a human reviews. On 2026-08-12 a full refactor-radar
 run produced a reviewable PR in ~20 minutes — the queue, not the generator, is the bottleneck.
-Therefore:
+So **opening another PR is the *lowest*-value thing a session can do when work is already in
+flight.** Every session, on every tick, works down this ladder and takes the first rung that
+applies:
+
+1. **Something in flight is broken** — a teammate's PR has failing CI, a merge conflict, or a
+   stale base. Fix it. This is the highest-value contribution available and it is never
+   "someone else's job": a red PR blocks the queue everyone shares.
+2. **Something in flight is unverified** — an open PR nobody has checked. Verify it against
+   its own claims (run its tests, check its evidence, probe the behavior it asserts) and post
+   what you found. Reviewing is contributing.
+3. **Something in flight is incomplete** — a PR that needs the test, the doc, the ledger row,
+   or the migration its author did not add. Offer it as a reviewed suggestion on that PR
+   rather than a competing PR of your own.
+4. **The queue is clear** — now do new work, one bottleneck, by the rules below.
+
+Applied to pacing:
 
 - **Never parallelize to go faster.** More concurrent sessions deepen a queue one person
   reviews. Parallelize only genuinely independent *verification*, never PR production.
-- **Back-pressure is a stop signal, not a speed bump.** At ≥2 open PRs from the same routine,
-  stop producing and say plainly that review capacity is the blocker.
+- **Back-pressure means switch rungs, not stop.** At ≥2 open PRs from the same routine, stop
+  *producing* and move to rungs 1–3. Report review capacity as the blocker only when the queue
+  is genuinely healthy and there is nothing to assist with — "I idled because others were
+  busy" is a failed tick.
 - **Optimize for cheap review, not more PRs.** Prefer a diff a reviewer can verify
   *mechanically* (a proof the moved code is byte-identical, a test that pins the old
   behavior) over one they must read and trust.
 - **Sleep between iterations.** Prefer an event trigger (PR webhook) over a clock tick.
+
+**Assist without hijacking.** Push to another session's branch only when it is stalled (no
+new commits and the session unreachable) or its owner asked; otherwise contribute by comment
+or by a follow-up PR that stacks cleanly. Never force-push another session's branch, never
+close its PR, and never silently rewrite its approach — say what you changed and why.
 
 ## 4. Lessons register (shared across all domains)
 

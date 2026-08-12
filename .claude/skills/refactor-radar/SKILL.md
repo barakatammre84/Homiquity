@@ -89,13 +89,20 @@ phase exists to discover what your teammates changed while you were not looking.
    `in-pr`→`done` (date + PR#), CLOSED-unmerged → `failed: PR closed unmerged — ask
    owner before retry`. Rows whose target a teammate now holds → `blocked-human: held
    by <PR#/branch>`. Plan the edits now; apply them later in the worktree.
-4. Backpressure: if ≥2 OPEN refactor-radar PRs → MAINTENANCE MODE: Phases 1–2 only
-   (docs edits), skip 3–5. Open a docs-only PR touching only
-   knowledge-base/refactor-radar/** IF material state changed; otherwise no PR.
-   Report ends by listing the open PRs awaiting review. (Rationale: review capacity
-   is the bottleneck — an unreviewed queue is worse than no work.)
+4. Backpressure → **ASSIST MODE, not idle.** If ≥2 OPEN refactor-radar PRs, stop
+   *producing* (skip Phases 3–5) and work the assist ladder in
+   SESSION_SYNC_PROTOCOL.md §3 against what is already in flight: fix a red CI or a
+   conflicted base first, then verify an unreviewed PR against its own claims, then
+   supply a missing test/doc/ledger row as a comment on that PR. Only after the queue
+   is genuinely clear do you report "review capacity is the blocker". Ending a tick
+   idle because teammates were busy is a FAILED tick, not a polite one. A docs-only PR
+   touching knowledge-base/refactor-radar/** is still fine IF material state changed.
 5. Stale-run check: if `ls .claude/worktrees/ | grep refactor-radar` matches, a prior
-   run is live or crashed — ABORT with a report. Never delete it yourself.
+   run is live or crashed. Do NOT delete it and do NOT silently abort: determine which
+   it is (is its branch pushed? is that session reachable?). Live → leave it alone and
+   drop to assist mode (step 4). Crashed and unreachable → report the orphan and what
+   it was mid-way through, so the owner can free it. Never remove another run's
+   worktree yourself.
 6. Worktree, always off the CURRENT tip (R10a): `RUN=$(date +%Y-%m-%d)`;
    `git worktree add .claude/worktrees/refactor-radar-$RUN origin/main`; cd there;
    `pnpm install --frozen-lockfile --prod=false`. All later commands run here.
@@ -254,9 +261,13 @@ what changed.
 2. **Pick the next iteration's trigger.** Prefer an event over a clock:
    - a PR in flight → its webhook events wake you; hold a long fallback heartbeat
      (`ScheduleWakeup`, 1200–1800s).
-   - MAINTENANCE MODE (≥2 open PRs) → the loop is review-blocked. Do NOT keep
-     re-running the audit; wait on PR events with a long heartbeat and say plainly in
-     the report that the queue, not the routine, is the bottleneck.
+   - ASSIST MODE (≥2 open PRs) → do NOT re-run the audit and do NOT go quiet. Subscribe
+     to the in-flight PRs and spend the tick on the assist ladder (fix red CI, verify
+     an unreviewed PR, supply a missing test/doc). Wake on their events, long fallback
+     heartbeat.
+   - a teammate's session is live on this repo → not a reason to skip. Check what they
+     hold, take work that does not collide, and prefer assisting their PR over opening
+     a third one.
    - nothing in flight → next iteration on the normal cadence.
 3. **Sleep between iterations by default.** Back-to-back iterations produce PRs faster
    than a human can review them, which trips R10's own backpressure within two rounds.
