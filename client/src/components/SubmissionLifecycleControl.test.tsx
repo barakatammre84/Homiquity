@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { describe, it, expect, beforeAll, vi } from "vitest";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SubmissionLifecycleControl } from "./SubmissionLifecycleControl";
@@ -25,10 +25,23 @@ beforeAll(() => {
 
 const SUBMISSION_ID = "sub-1";
 
+/**
+ * The client the component was rendered under.
+ *
+ * This assertion was IMPOSSIBLE before the useQueryClient migration. The
+ * component imported the module-singleton `queryClient` from @/lib/queryClient
+ * and invalidated on that, while the test rendered under its own
+ * `new QueryClient()` — so the refresh landed on a cache no test could see, and
+ * a test claiming to check "the pipeline refreshes after a status change" could
+ * only ever have checked that a mock was called.
+ */
+let lastClient: QueryClient;
+
 function renderControl(status: LenderSubmissionStatus) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  lastClient = client;
   return render(
     <QueryClientProvider client={client}>
       <SubmissionLifecycleControl
@@ -147,5 +160,38 @@ describe("SubmissionLifecycleControl", () => {
     expect(screen.getByTestId(`advance-submission-${SUBMISSION_ID}`).hasAttribute("disabled")).toBe(
       true,
     );
+  });
+});
+
+
+describe("cache refresh after a status change", () => {
+  it("invalidates through the client it was RENDERED under, not a module singleton", async () => {
+    // Stub the transport so the mutation actually reaches onSuccess.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      url: "/api/lender-submissions/sub-1/status",
+      statusText: "",
+      text: async () => JSON.stringify({ status: "acknowledged" }),
+      json: async () => ({ status: "acknowledged" }),
+    }));
+
+    const user = userEvent.setup();
+    renderControl("submitted");
+
+    const invalidate = vi.spyOn(lastClient, "invalidateQueries");
+
+    const listbox = await openStatusSelect(user);
+    await user.click(within(listbox).getByTestId("option-next-status-acknowledged"));
+    await user.click(screen.getByTestId(`advance-submission-${SUBMISSION_ID}`));
+
+    await waitFor(() => expect(invalidate).toHaveBeenCalled());
+
+    const keys = invalidate.mock.calls.map(([arg]) => JSON.stringify((arg as { queryKey: unknown }).queryKey));
+    // Both reads the status change affects: the submissions list, and the
+    // pipeline query that feeds the file's Timeline tab.
+    expect(keys.some(k => k.includes("lender-submissions"))).toBe(true);
+    expect(keys.some(k => k.includes("pipeline"))).toBe(true);
+    vi.unstubAllGlobals();
   });
 });

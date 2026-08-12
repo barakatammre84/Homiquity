@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ export function ConditionsTab({
   conditions: LoanCondition[];
   isStaff: boolean;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [conditionAction, setConditionAction] = useState<{
     condition: LoanCondition | null;

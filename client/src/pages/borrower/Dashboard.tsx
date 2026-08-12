@@ -57,6 +57,7 @@ import {
   Zap,
 } from "lucide-react";
 
+import { hasBrowsedProperties } from "@/lib/pendingAttribution";
 import {
   NEXT_ACTION_ICONS,
   getPreUwFlags,
@@ -123,7 +124,7 @@ export default function Dashboard() {
   const [browsedProperties, setBrowsedProperties] = useState(false);
   useEffect(() => {
     try {
-      setBrowsedProperties(localStorage.getItem("homiquity_browsed_properties") === "true");
+      setBrowsedProperties(hasBrowsedProperties());
     } catch {}
   }, []);
 

@@ -18,6 +18,8 @@ import {
   PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
   PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
   PREAPPROVAL_PENDING_SUBMIT_KEY as PENDING_SUBMIT_KEY,
+  readPendingInviteId,
+  clearPendingInviteId,
 } from "@/lib/pendingAttribution";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
@@ -44,6 +46,7 @@ import { useDeferredSubmit } from "./preApproval/useDeferredSubmit";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
 import { useServerDraftAutosave } from "./preApproval/useServerDraftAutosave";
 import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
+import { useCalculatorPrefill } from "./preApproval/calculatorPrefill";
 import { StateStep } from "./preApproval/StateStep";
 import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
 import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
@@ -97,7 +100,11 @@ function PreApprovalFunnel() {
   const urlSource = urlParams.get("source");
   const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
 
-  const inviteId = useRef(sessionStorage.getItem("inviteId"));
+  // Read once per mount, through the shared module so the legacy per-tab key is
+  // still honoured for an invite stashed by an older client. Captured in a ref
+  // rather than read at submit time because the deferred post-auth replay
+  // (useDeferredSubmit) fires from a closure created at mount.
+  const inviteId = useRef(readPendingInviteId());
 
   const form = useForm<PreApprovalFormData>({
     resolver: zodResolver(preApprovalFormSchema),
@@ -126,32 +133,11 @@ function PreApprovalFunnel() {
     },
   });
 
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("calculatorPrefill");
-      if (!raw) return;
-      const prefill = JSON.parse(raw);
-      sessionStorage.removeItem("calculatorPrefill");
-      const current = form.getValues();
-      if (prefill.annualIncome && !current.annualIncome) {
-        form.setValue("annualIncome", String(prefill.annualIncome));
-      }
-      if (prefill.monthlyDebts && !current.monthlyDebts) {
-        form.setValue("monthlyDebts", String(prefill.monthlyDebts));
-      }
-      if (prefill.downPayment && !current.downPayment) {
-        form.setValue("downPayment", String(prefill.downPayment));
-      }
-      if (prefill.creditScore && !current.creditScore) {
-        const score = prefill.creditScore;
-        const bucket = score >= 740 ? "excellent" : score >= 700 ? "good" : score >= 660 ? "fair" : "poor";
-        form.setValue("creditScore", bucket);
-      }
-      if (prefill.purchasePrice && !current.purchasePrice) {
-        form.setValue("purchasePrice", String(prefill.purchasePrice));
-      }
-    } catch {}
-  }, []);
+  // Figures handed over by the affordability / rent-to-own calculators. Gap-fill
+  // only, and deliberately BEFORE useCoachPrefill below — see
+  // preApproval/calculatorPrefill.ts for the contract and for the credit-band
+  // vocabulary bug the inline version of this shipped.
+  useCalculatorPrefill(form);
 
   // Draft/step/pending-submit keys now live in @/lib/pendingAttribution so the
   // post-auth router (getPostAuthRoute) can detect a deferred submit too.
@@ -210,8 +196,11 @@ function PreApprovalFunnel() {
       queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
 
+      // Consume only now, on a SUCCESSFUL submit — a borrower who abandons the
+      // funnel keeps their attribution for the next attempt. Clears both tiers
+      // so a legacy per-tab copy cannot re-attribute a later application.
       if (inviteId.current) {
-        sessionStorage.removeItem("inviteId");
+        clearPendingInviteId();
       }
 
       toast({

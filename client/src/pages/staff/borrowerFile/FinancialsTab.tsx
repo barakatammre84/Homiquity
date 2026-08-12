@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,7 @@ const CATEGORY_LABELS: Record<LoanCostCategory, string> = {
 };
 
 export function FinancialsTab({ applicationId }: { applicationId: string }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [category, setCategory] = useState<LoanCostCategory>("appraisal");
   const [amount, setAmount] = useState("");

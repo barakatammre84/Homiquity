@@ -10,7 +10,7 @@ import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrackActivity, useTrackFormStart } from "@/hooks/useActivityTracker";
-import { apiRequest, queryClient, dashboardKeys } from "@/lib/queryClient";
+import { apiRequest, queryClient, dashboardKeys, urlaKeys, loanApplicationKeys } from "@/lib/queryClient";
 import type {
   LoanApplication,
   UrlaPersonalInfo,
@@ -49,6 +49,7 @@ import {
   type SectionsPayload,
   type UrlaSavePayload,
 } from "./urla/types";
+import { isUrlaRowSaveable, urlaRowSaveState, type UrlaRowSection } from "@shared/lib/urlaRowContent";
 import type { UrlaLoanDetails } from "@shared/schema";
 import { PersonalInfoSection } from "./urla/PersonalInfoSection";
 import { EmploymentSection } from "./urla/EmploymentSection";
@@ -187,7 +188,7 @@ export default function URLAForm() {
     error: urlaErrorObj,
     refetch: refetchUrla,
   } = useQuery<UrlaData>({
-    queryKey: ['/api/urla', activeApplication?.id],
+    queryKey: urlaKeys.detail(activeApplication?.id),
     enabled: !!activeApplication?.id,
   });
 
@@ -261,6 +262,67 @@ export default function URLAForm() {
     if (activeApplication?.id) trackFormStart("urla");
   }, [activeApplication?.id, trackFormStart]);
 
+  // Removal has to be a real request. The bulk save is upsert-only and simply
+  // omits `coApplicants` when the flag is false, so clearing slot 2 locally
+  // deleted nothing and the next refetch put the co-borrower back (#450).
+  //
+  // Note what this does NOT do: it does not make `hasCoBorrower` two-way. That
+  // latch is monotonic on purpose — hydration only ever sets it TRUE, which is
+  // what lets ADD Co-Borrower survive the post-save refetch. Once the seq-2 rows
+  // are genuinely gone, the six-way `hasCo` check computes false on its own and
+  // the latch never fires. Fixing the data made the state machine correct.
+  const removeCoBorrowerMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("DELETE", `/api/urla/${activeApplication?.id}/co-applicant/2`);
+      return response.json();
+    },
+    onSuccess: () => {
+      setBorrowerData((prev) => ({ ...prev, 2: emptySlice() }));
+      setHasCoBorrower(false);
+      setActiveSeq(1);
+      queryClient.invalidateQueries({ queryKey: urlaKeys.detail(activeApplication?.id) });
+      toast({
+        title: "Co-borrower removed",
+        description: "Their information has been deleted from this application. Yours is unchanged.",
+      });
+    },
+    onError: () => {
+      // The old behaviour failed silently and looked like success. Say so.
+      toast({
+        title: "We couldn't remove the co-borrower",
+        description: "Nothing was changed. Give it another try in a moment — if it keeps happening, message your loan team.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Which rows the borrower filled in but the save cannot accept, phrased for
+  // them. Takes no arguments and reads the same state buildPayload does, on
+  // purpose — see knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md: giving
+  // these builders a parameter is what lets the wrong borrower slice be passed.
+  const describeUnsavedRows = (): string[] => {
+    const notes: string[] = [];
+    const sections: [UrlaRowSection, Record<string, unknown>[], string][] = [
+      ["employment", borrowerData[1]?.employmentRecords ?? [], "job"],
+      ["asset", borrowerData[1]?.assets ?? [], "asset"],
+      ["liability", borrowerData[1]?.liabilities ?? [], "liability"],
+      ["otherIncome", otherIncomes as Record<string, unknown>[], "other-income"],
+    ];
+    for (const [section, rows, noun] of sections) {
+      const blocked = rows
+        .map(r => urlaRowSaveState(section, r))
+        .filter((s): s is { state: "incomplete"; missing: string[] } => s.state === "incomplete");
+      if (!blocked.length) continue;
+      const missing = Array.from(new Set(blocked.flatMap(b => b.missing)));
+      notes.push(
+        blocked.length === 1
+          ? `one ${noun} row still needs ${missing.join(" and ")}`
+          : `${blocked.length} ${noun} rows still need ${missing.join(" and ")}`,
+      );
+    }
+    return notes;
+  };
+
   const saveMutation = useMutation({
     mutationFn: async ({ data }: { data: UrlaSavePayload; silent?: boolean }) => {
       const response = await apiRequest("POST", `/api/urla/${activeApplication?.id}/save`, data);
@@ -269,12 +331,56 @@ export default function URLAForm() {
     onSuccess: (_result, variables) => {
       setLastSavedAt(new Date());
       if (!variables.silent) {
-        toast({
-          title: "Application saved",
-          description: "Everything is safely stored — you can pick this up anytime.",
-        });
+        // Rows the database cannot accept are still left out of the payload —
+        // but the borrower is told, by row and by reason. Reporting "Everything
+        // is safely stored" over a dropped row was the actual defect in #451:
+        // the row vanished from the payload, the toast claimed success, and the
+        // post-save refetch erased it from the screen too, so no state existed
+        // in which the borrower could tell.
+        const unsaved = describeUnsavedRows();
+        if (unsaved.length) {
+          toast({
+            title: "Saved — but some rows need one more detail",
+            description: `${unsaved.join("; ")}. Everything else is stored; add the missing detail and save again.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Application saved",
+            description: "Everything is safely stored — you can pick this up anytime.",
+          });
+        }
       }
-      queryClient.invalidateQueries({ queryKey: ['/api/urla', activeApplication?.id] });
+      const savedApplicationId = activeApplication?.id;
+      if (!savedApplicationId) return;
+      queryClient.invalidateQueries({ queryKey: urlaKeys.detail(savedApplicationId) });
+      // The save is NOT confined to the URLA tables. `POST /api/urla/:id/save`
+      // runs evaluateTridTrigger (server/services/trid.ts), and once the six
+      // pieces of application information are on file that writes
+      // `tridTriggeredAt` onto the LOAN APPLICATION ROW and appends a
+      // compliance deal-activity — Reg Z §1026.2(a)(3), which starts the
+      // 3-business-day Loan Estimate clock.
+      //
+      // Both of those are served under loanApplicationKeys.detail (the detail
+      // response carries `activities`), and two borrower surfaces read it:
+      // LoanPipeline and CreditConsent. Invalidating only the URLA key left
+      // them rendering the pre-trigger file — the borrower completes the
+      // section that legally starts their LE clock and the app still shows the
+      // state from before it started.
+      //
+      // detail() is the family PREFIX, so this reaches the nested pipeline /
+      // conditions reads too; enumerating those by hand is the failure mode
+      // documented on homeownershipGoalKeys.
+      //
+      // Deliberately OUTSIDE the `!variables.silent` branch. The six pieces
+      // complete at an INTERMEDIATE step (personal info + property info), which
+      // saves silently — so gating this on the loud final save would skip the
+      // one save that actually trips the trigger. `silent` is per-step, not a
+      // debounced autosave (handleContinue), so this runs a handful of times
+      // per session, not per keystroke.
+      queryClient.invalidateQueries({
+        queryKey: loanApplicationKeys.detail(savedApplicationId),
+      });
     },
     onError: () => {
       toast({
@@ -285,19 +391,28 @@ export default function URLAForm() {
     },
   });
 
+  // Every repeating section drops rows the borrower never touched, but the test
+  // is EMPTINESS (hasBorrowerContent), not "did they fill in the one field we
+  // picked". The old per-section predicates discarded any row filled in a
+  // different order — employment dates and income without the employer name, an
+  // asset balance without an institution, a liability payment without a
+  // creditor — and the save then reported "Everything is safely stored".
   const buildSectionsPayload = (s: BorrowerSlice): SectionsPayload => ({
     personalInfo: s.personalInfo,
     employmentHistory: s.employmentRecords
-      .filter(emp => emp.employerName || emp.positionTitle)
+      .filter(r => isUrlaRowSaveable("employment", r))
       .map(emp => ({ ...emp, employmentType: emp.employmentType || "current" })),
-    assets: s.assets.filter(asset => asset.accountType || asset.financialInstitution),
-    liabilities: s.liabilities.filter(liability => liability.liabilityType || liability.creditorName),
+    assets: s.assets.filter(r => isUrlaRowSaveable("asset", r)),
+    liabilities: s.liabilities.filter(r => isUrlaRowSaveable("liability", r)),
     declarations: s.declarations,
     demographics: demographicsToPayload(s.demographics),
   });
 
   const buildPayload = (): UrlaSavePayload => {
-    const cleanedOtherIncomes = otherIncomes.filter(income => income.incomeSource && income.monthlyAmount);
+    // Was `incomeSource && monthlyAmount` — the only section requiring BOTH, so
+    // it lost a row for a source with no amount yet AND for an amount with no
+    // source. That asymmetry was not deliberate.
+    const cleanedOtherIncomes = otherIncomes.filter(r => isUrlaRowSaveable("otherIncome", r));
     const primary = buildSectionsPayload(borrowerData[1] ?? emptySlice());
 
     const payload: UrlaSavePayload = {
@@ -481,10 +596,19 @@ export default function URLAForm() {
                   variant="ghost"
                   size="sm"
                   className="gap-2"
+                  disabled={removeCoBorrowerMutation.isPending}
                   onClick={() => {
-                    setBorrowerData((prev) => ({ ...prev, 2: emptySlice() }));
-                    setHasCoBorrower(false);
-                    setActiveSeq(1);
+                    // Confirm because this is now durable and irreversible. It
+                    // used to be local state only, which is exactly why the
+                    // co-borrower came back after the next refetch (#450).
+                    const co = borrowerData[2]?.personalInfo;
+                    const who = [co?.firstName, co?.lastName].filter(Boolean).join(" ").trim();
+                    const ok = window.confirm(
+                      `Remove ${who || "the co-borrower"} from this application?\n\n` +
+                      "Everything they entered — employment, assets, liabilities and declarations — is deleted and cannot be recovered. Your own information is not affected.",
+                    );
+                    if (!ok) return;
+                    removeCoBorrowerMutation.mutate();
                   }}
                   data-testid="button-remove-coborrower"
                 >
