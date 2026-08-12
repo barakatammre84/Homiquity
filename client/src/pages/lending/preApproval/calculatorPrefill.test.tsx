@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useForm } from "react-hook-form";
 import type { PreApprovalFormData } from "@shared/schema";
-import { CREDIT_SCORE_BAND_VALUES } from "@shared/schema";
+import { CREDIT_SCORE_BAND_VALUES } from "@shared/preApprovalForm";
 import { writeCalculatorPrefill, readCalculatorPrefill } from "@/lib/calculatorPrefill";
 import { gapFillFromCalculatorPrefill, useCalculatorPrefill } from "./calculatorPrefill";
 
