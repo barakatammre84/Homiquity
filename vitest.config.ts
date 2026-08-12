@@ -46,6 +46,7 @@ export default defineConfig({
       "tests/rateLockConfirmation.test.ts",
       "tests/leDisclosureBaseline.test.ts",
       "tests/counterpartyAndCompensation.test.ts",
+      "tests/lenderApprovalControl.test.ts",
       "tests/compensationClawback.test.ts",
       "tests/feeProvenanceAndCosts.test.ts",
       "tests/leDisclosedFeeProvenance.test.ts",

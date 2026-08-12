@@ -8,6 +8,7 @@ import { describe, it, expect } from "vitest";
 import {
   approvedLenderCount,
   approvedWholesaleLenders,
+  evaluateLenderLockEligibility,
   evaluateLenderSubmissionEligibility,
   isApprovedLender,
   type LenderCounterparty,
@@ -186,5 +187,51 @@ describe("F-6 — portfolio roll-up", () => {
     expect(s.fundedVolume).toBe(0);
     expect(s.pullThroughPct).toBeNull();
     expect(s.compensationVariance).toBe(0);
+  });
+});
+
+describe("F-20 — the lock rule is weaker than the submission rule, deliberately", () => {
+  // Submission transmits a borrower's file to a third party, so an unapproved
+  // counterparty is refused outright. A lock is an internal record and no PII
+  // leaves the system, so the harm is misrepresentation rather than
+  // disclosure. The rule therefore CLASSIFIES rather than blocks — except for
+  // a fictional company on a production file, which should not exist at all.
+  it("marks an approved lender's lock as a real commitment", () => {
+    const r = evaluateLenderLockEligibility(
+      lender({ approvalStatus: "approved" }),
+      { isProduction: true },
+    );
+    expect(r.allowed).toBe(true);
+    expect(r.simulated).toBe(false);
+  });
+
+  it("lets staff record a quote against an unapproved lender, but not as a lock", () => {
+    const r = evaluateLenderLockEligibility(lender(), { isProduction: true });
+    expect(r.allowed).toBe(true);
+    expect(r.simulated).toBe(true);
+    expect(r.reason).toMatch(/indicative quote/i);
+  });
+
+  it("refuses a demo counterparty in production and quotes it elsewhere", () => {
+    const demo = lender({ isDemo: true, approvalStatus: "approved" });
+    expect(evaluateLenderLockEligibility(demo, { isProduction: true }).allowed).toBe(false);
+
+    const dev = evaluateLenderLockEligibility(demo, { isProduction: false });
+    expect(dev.allowed).toBe(true);
+    expect(dev.simulated).toBe(true); // never a commitment, in any environment
+  });
+
+  it("agrees with isApprovedLender — the !isDemo half is not droppable", () => {
+    // The defect was rateLocks.ts hand-rolling `approvalStatus !== "approved"`,
+    // which silently dropped the demo check and recorded simulated:false.
+    for (const l of [
+      lender({ approvalStatus: "approved", isDemo: true }),
+      lender({ approvalStatus: "target" }),
+      lender({ approvalStatus: "inactive" }),
+    ]) {
+      const r = evaluateLenderLockEligibility(l, { isProduction: false });
+      expect(r.simulated).toBe(!isApprovedLender(l));
+      expect(r.simulated).toBe(true);
+    }
   });
 });

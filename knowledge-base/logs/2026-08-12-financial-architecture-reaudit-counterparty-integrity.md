@@ -33,10 +33,10 @@ That is this audit's finding, in four parts.
 
 | # | Finding | Area | Severity |
 |---|---|---|---|
-| F-20 | "Confirmed" is a presence test over four columns, not a counterparty test — a lock against a fictional lender is classified as a real lender obligation, and the liability register therefore prices it at $0 | Capital flow / Balance sheet | **High** |
-| F-21 | The revenue ledger is simulation-blind, while the cost ledger beside it is simulation-aware — gross margin subtracts de-simulated cost from contaminated revenue | Unit economics | **High** |
-| F-22 | The control that authorizes PII transmission and unblocks all revenue has the weakest audit trail of the three admin money surfaces | Risk / Liability | **Medium-High** |
-| F-23 | `epoClawbackDays` has no write surface, so the clawback reserve rests on an assumed window permanently, by construction | Balance sheet | Medium |
+| F-20 | "Confirmed" is a presence test over four columns, not a counterparty test — a lock against a fictional lender is classified as a real lender obligation, and the liability register therefore prices it at $0 | Capital flow / Balance sheet | **High** — ✅ fixed |
+| F-21 | The revenue ledger is simulation-blind, while the cost ledger beside it is simulation-aware — gross margin subtracts de-simulated cost from contaminated revenue | Unit economics | **High** — ⚠️ open |
+| F-22 | The control that authorizes PII transmission and unblocks all revenue has the weakest audit trail of the three admin money surfaces | Risk / Liability | **Medium-High** — ✅ fixed |
+| F-23 | `epoClawbackDays` has no write surface, so the clawback reserve rests on an assumed window permanently, by construction | Balance sheet | Medium — ⚠️ partly fixed (write path at approval; no correction path) |
 | — | F-1…F-13, F-17, F-18, F-19 remediation holds at HEAD | all | ✅ verified |
 | — | F-9 fee values · F-14 channel decision · minimum net worth | — | ⚠️ still open, unchanged |
 
@@ -358,12 +358,163 @@ F-23 was findable at all.
 
 ## Scope note
 
-This is an audit, as requested: findings, quantification, and structural fixes. **No remediation
-was applied.** All four findings change behavior on money or PII paths — refusing locks, refusing
-submissions, restructuring an authorization endpoint, and altering the figures on the admin
-financial dashboard — and the first three would take effect in production. They are specified
-precisely enough to implement directly, but the decision to change what the platform refuses
-belongs to a human.
+This began as an audit: findings, quantification, and structural fixes, with no remediation
+applied, because all four change behavior on money or PII paths and the decision to change what
+the platform refuses belongs to a human.
+
+**F-20 and F-22 were subsequently authorized and are now fixed** — see the remediation sections
+below. **F-21 and F-23 remain open**, except for the one part of F-23 that F-22's endpoint
+necessarily carries (recording the contracted clawback window at approval, which is the only
+moment the column can honestly be written).
+
+---
+
+## Remediation — F-20 (2026-08-12)
+
+**Confirmation is now a counterparty test.**
+
+The fix went into `isLenderConfirmed()` rather than into its callers, because the register, the
+borrower-facing noun, the activity-log copy and the extend-guard all already route through that
+one function. Repairing the definition repaired all four at once — which is the same argument that
+put the QM basis in `loanCosts.ts` under F-18.
+
+### What shipped
+
+| Change | File |
+|---|---|
+| `isLenderConfirmed()` additionally requires `simulated === false` | `shared/rateLockConfirmation.ts` |
+| `evaluateLenderLockEligibility()` — the counterparty rule for locks | `shared/wholesaleLenders.ts` |
+| Route consumes the shared rule; hand-rolled check deleted | `server/routes/borrower/rateLocks.ts` |
+| 8 new tests (4 F-20 confirmation, 4 lock eligibility) | `tests/rateLockConfirmation.test.ts`, `tests/counterpartyAndCompensation.test.ts` |
+
+**The counterparty fact is read from the row, not from a live lender lookup.** `simulated` is
+derived at lock time from `isApprovedLender()` and stored. That avoids an N+1 in the register and
+— more importantly — is the correct semantics in both directions: a lock taken before an agreement
+existed does not retroactively become a real commitment when the agreement is signed, and a lock
+taken while the lender was approved stays the lender's obligation if their status later lapses.
+A missing `simulated` resolves to unconfirmed; missing evidence is not evidence of a commitment.
+
+**The lock rule is deliberately weaker than the submission rule**, and the asymmetry is the
+reasoning, not an oversight. Submission transmits a borrower's file to a third party, so an
+unapproved counterparty is refused outright. A lock is an internal record — no PII leaves the
+system — and the harm is *misrepresentation*: telling a borrower their rate is committed when
+nobody is obliged to honor it. So the lock rule **classifies rather than blocks**: staff may still
+record what they have pre-launch, it is simply not a lock. The single refusal is a demo row on a
+production file, which should not exist at all once the demo rows are retired at go-live.
+
+Reusing `evaluateLenderSubmissionEligibility` unchanged would have blocked demo lenders in every
+environment and broken the gated-beta walkthrough, since the three seeded demo lenders are the only
+lenders carrying comp plans.
+
+### What this changes in production
+
+**Every existing lock becomes an indicative quote**, because no lender is approved yet and
+`simulated` defaults to `true`. That is not a regression — it is the true position stated out loud,
+and it is the same call F-3 made for pre-`0040` rows. Two visible consequences:
+
+- Borrower- and staff-facing copy reads *"indicative quote (not locked)"* rather than *"rate
+  lock"*, and `POST /api/rate-locks/:id/extend` refuses these rows with `lock_not_confirmed` —
+  correctly, since there is nothing to extend.
+- The contingent-liability register's `lock_honor` line **stops reporting $0** and begins carrying
+  the real exposure at `ASSUMED_RATE_SHOCK_POINTS` (2 points of price ≈ $8,000 per $400k file).
+  The reserve number will go **up**. That is the finding being measured rather than hidden.
+
+No migration: the fix reads the `simulated` column migration `0040` already added.
+
+### Test re-base, and why it is the fix
+
+Two existing assertions in `tests/rateLockConfirmation.test.ts` failed on the first run — the
+`CONFIRMED` fixture predates the counterparty requirement and carried no `simulated`. They were
+re-based (the fixture now states `simulated: false`, which is *what makes it confirmed*), exactly
+as F-12's three boundary tests were re-based when the Reg Z cap tightened. **That shift is the
+fix.** Four new tests pin the new invariant, including that the counterparty test is *additional*
+to the presence test rather than a replacement for it.
+
+---
+
+## Remediation — F-22 (2026-08-12)
+
+**Approving a counterparty is now a business event with evidence, and the generic write path can
+no longer express one.**
+
+### What shipped
+
+| Change | File |
+|---|---|
+| `writeWholesaleLenderSchema` — omits the authorization columns | `shared/schema/lendingWholesale.ts` |
+| `POST /api/wholesale-lenders/:id/approval` — audited, evidence-bearing | `server/routes/rate-sheets.ts` |
+| Create and update routes repointed at the restricted schema | `server/routes/rate-sheets.ts` |
+| 11 new tests | `tests/lenderApprovalControl.test.ts` (new) |
+
+**The boundary is enforced at the schema, not in the handler.** `LENDER_AUTHORIZATION_COLUMNS`
+names `approvalStatus` and `isDemo`, and `writeWholesaleLenderSchema` omits them, so Zod strips
+them from any create or update body. A route using that schema *cannot* apply an authorization
+change even if someone adds a field later — as opposed to a handler check somebody can forget.
+`insertWholesaleLenderSchema` is untouched, so seeds and storage typing are unaffected; the
+restriction is on the route surface, not on the table. Creation is likewise restricted: a new
+lender lands at the DB defaults (`target` / `false`), so it is fail-closed and cannot be born
+approved.
+
+**The approval endpoint records the evidence, not just the fact.** It requires a `reason` in every
+direction (de-authorizing matters as much as approving), a `brokerAgreementReference` to assert
+`approved`, and it audits `previousApprovalStatus → nextApprovalStatus` as **values** —
+matching the fee-schedule publish and comp-band surfaces, which were both better controlled than
+the authorization surface before this. It refuses `approved` on a demo row outright
+(`cannot_approve_demo_lender`) rather than relying on `isApprovedLender()` filtering it
+downstream: a record asserting a broker agreement with a company that does not exist should not
+be creatable.
+
+**The F-23 fold-in.** `epoClawbackDays` is required on the transition to `approved`. This is the
+one part of F-23 that belongs here rather than in its own change: nothing else in the system can
+write that column, and the moment an agreement is executed is the only moment its term is honestly
+knowable. The rest of F-23 — that the register still has no way to *correct* a window later —
+remains open.
+
+No migration: both columns already exist.
+
+---
+
+## Security review — TEAM_PRACTICES §9 (2026-08-12)
+
+The F-22 endpoint adds a `requireRole("admin")` gate, which is a §9 **role/permission gate**
+trigger. Structured pass run; recorded here per §9 (and to be carried into the PR body if one is
+opened). **One MEDIUM finding, found and fixed within this change; no other findings.**
+
+**MEDIUM — pre-authorization information disclosure on `POST /api/rate-locks` (fixed).** The F-20
+eligibility check was initially placed where the lender lookup already sat, which is *before*
+`verifyInternalStaffApplicationAccess`. That would have let any internal-staff user — including one
+not assigned to the file — probe each wholesale lender's approval and demo status through the 422
+response. It also revealed a pre-existing instance of the same defect: the `unknown_lender` 400
+already leaked lender-id existence to unassigned staff. **Both are closed**: assignment scoping now
+runs before any lender lookup. No borrower PII was reachable either way, which is why this is
+MEDIUM and not HIGH.
+
+Also covered:
+
+- **Authorization.** The new approval endpoint is `requireRole("admin")`, matching every sibling
+  lender route in the file; pinned by a source guard so it cannot be dropped silently. The
+  rate-lock route's existing gates (`isAuthenticated` → `isInternalStaffRole` → assignment scope)
+  are unchanged in substance and now strictly earlier.
+- **Mass assignment.** This is the change's own subject and it moves in the safe direction: the
+  authorization columns are removed from the generic write schema, and the approval handler builds
+  its update object explicitly rather than spreading a request body.
+- **SQL injection.** Drizzle-parameterized throughout; no raw fragments added.
+- **CSRF.** The new route is a normal `POST` under the global protection; the only carve-out
+  remains `/api/webhooks/`.
+- **Data exposure / logging.** The endpoint returns lender name and status — no PII. The audit
+  payload carries a business reason and an agreement reference, neither of which is PII, and the
+  route is not on `RESPONSE_BODY_LOG_ALLOWLIST`.
+- **Fail-closed behavior.** `toCounterparty()` maps an unrecognized `approvalStatus` to `target`;
+  `isLenderConfirmed()` treats a missing counterparty fact as unconfirmed.
+
+Confirmed by inspection that neither trigger the guard cannot see is present: no `shared/schema/`
+column holding PII was added, and no new PII sub-processor.
+
+### Verification
+
+Typecheck clean · **2,801 tests green** (2,386 server / 415 client, +19) · zod-schema-semantics
+snapshot re-recorded and **purely additive** — 20 insertions, 0 deletions, so no existing schema
+changed what it accepts or rejects · KB index and doc-freshness guards pass. No migration.
 
 ---
 
