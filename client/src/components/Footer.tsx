@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Phone, Mail } from "lucide-react";
 import { COMPANY_IDENTITY, companyNmlsDisplay, contactPhoneTel } from "@shared/companyIdentity";
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
+import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 
 export function Footer() {
   // Deep Ink container in both modes (bg-primary would invert badly in dark
@@ -56,7 +57,15 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-sidebar-foreground">Products</h3>
             <ul className="mt-4 space-y-1 text-sm text-sidebar-foreground/70">
-              <li><Link href="/apply" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-lend">Homiquity Lend</Link></li>
+              <li>
+                <Link
+                  href={PRELAUNCH_GATED ? "/" : "/apply"}
+                  className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors"
+                  data-testid="link-footer-lend"
+                >
+                  {PRELAUNCH_GATED ? "Join the Waitlist" : "Homiquity Lend"}
+                </Link>
+              </li>
               <li><Link href="/ai-coach" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-coach">Homiquity Coach</Link></li>
               <li><Link href="/rates" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-rates">Rates</Link></li>
               <li><Link href="/resources" className="block rounded-md px-2 py-2 -mx-2 hover:text-sidebar-foreground transition-colors" data-testid="link-footer-resources-2">Resources</Link></li>

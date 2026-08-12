@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { COMPANY_IDENTITY } from "@shared/companyIdentity";
+import { COMPANY_IDENTITY, companyNmlsDisplay } from "@shared/companyIdentity";
 import { ArrowRight, Clock, Home, LogIn, Shield, TrendingUp } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
@@ -244,7 +244,7 @@ export function FunnelFooter() {
 
         <div className="border-t border-muted pt-4 text-xs text-muted-foreground leading-relaxed space-y-3">
           <p>
-            &copy; {new Date().getFullYear()} Homiquity Mortgage Corporation. All rights reserved. Homiquity is a family of companies serving the homeownership ecosystem including mortgage brokerage, property search, and AI-powered guidance.
+            &copy; {new Date().getFullYear()} Homiquity Mortgage Corporation. All rights reserved.{companyNmlsDisplay() ? ` ${companyNmlsDisplay()}.` : ""} Homiquity is a family of companies serving the homeownership ecosystem including mortgage brokerage, property search, and AI-powered guidance.
           </p>
           <p>
             Mortgage loans arranged by Homiquity Mortgage Corporation through third-party wholesale lending partners. Not available in all states. Equal Housing Opportunity. NMLS Consumer Access.
