@@ -201,6 +201,13 @@ export default defineConfig({
       // design — an unlisted test file is silently never run — so the fix is
       // to stop contending for one line, not to replace it with a glob.
       "tests/emailProviderObservability.test.ts",
+      // Rent reporting, Phase 0. metro2Gate is the self-releasing citation gate on the
+      // fixed-width compiler (sibling of nonQmProgramGate); rentFurnishing pins the
+      // provenance gate, the queue state machine, and that billing stays off.
+      "tests/metro2Gate.test.ts",
+      "tests/rentFurnishing.test.ts",
+      "tests/creditMonitoring.test.ts",
+      "tests/rentReportingSurface.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

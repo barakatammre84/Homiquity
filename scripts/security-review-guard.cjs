@@ -70,6 +70,16 @@ const PATH_TRIGGERS = [
   // A wrong change here bypasses rate limiting and falsifies legal consent evidence.
   { label: "request identity & trust boundary", match: (f) => /^server\/(clientIp|trustProxy)\.ts$/.test(f) },
   { label: "rate-limit policy", match: (f) => f === "server/services/rateLimitPolicy.ts" },
+  // Furnishing is the inverse of every other credit path in this repo. Everywhere else we
+  // are a consumer-report USER (permissible purpose, adverse action); here we WRITE to a
+  // consumer's file at a third party. A wrong change does not surface as a failed request —
+  // it lands inaccurate derogatory information on a real person's credit report, and the
+  // remedy is a dispute they have to file. §9 named no CRA/furnisher trigger at all before
+  // the rent-reporting program (2026-08-08).
+  {
+    label: "consumer-data furnishing (CRA)",
+    match: (f) => f === "server/services/rentFurnishing.ts" || f.startsWith("shared/lib/metro2/"),
+  },
 ];
 
 /** Triggers that live in the diff's content rather than its file list. */
@@ -86,6 +96,20 @@ const LINE_TRIGGERS = [
     // this guard's own PR.
     label: "PII-adjacent logging (RESPONSE_BODY_LOG_ALLOWLIST)",
     match: (line, file) => file === "server/app.ts" && line.includes("RESPONSE_BODY_LOG_ALLOWLIST"),
+  },
+  {
+    // Money movement is a CONTENT trigger, not a path one, because the file that will
+    // carry it does not exist yet and naming a speculative path would produce a trigger
+    // that can never fire. What is stable is the dependency: money cannot move without a
+    // processor SDK, so the moment one is added is the moment a review is owed — before
+    // any route is written. §9 had no money-movement trigger of any kind (2026-08-08),
+    // which is a real gap independent of rent: the repo has no ledger and no trust/
+    // operating account separation, so the first funds-touching PR arrives with none of
+    // the invariants that would make it reviewable after the fact.
+    label: "money movement / payment processing",
+    match: (line, file) =>
+      (file === "package.json" || file.startsWith("server/")) &&
+      /\b(stripe|dwolla|braintree|adyen|@moov-io|marqeta|unit-finance|paymentIntent|PaymentInitiation|TransferAuthorization)\b/i.test(line),
   },
 ];
 

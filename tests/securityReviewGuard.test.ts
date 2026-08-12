@@ -84,6 +84,12 @@ describe("detectTriggers — §9 path triggers", () => {
     ["server/clientIp.ts", "request identity & trust boundary"],
     ["server/trustProxy.ts", "request identity & trust boundary"],
     ["server/services/rateLimitPolicy.ts", "rate-limit policy"],
+    // Added 2026-08-08 with the rent-reporting program. Furnishing inverts every other
+    // credit path in this repo: elsewhere we READ a consumer report, here we WRITE to a
+    // consumer's file at a bureau. §9 carried no CRA/furnisher trigger before this.
+    ["server/services/rentFurnishing.ts", "consumer-data furnishing (CRA)"],
+    ["shared/lib/metro2/compiler.ts", "consumer-data furnishing (CRA)"],
+    ["shared/lib/metro2/format.ts", "consumer-data furnishing (CRA)"],
   ];
 
   it.each(cases)("flags %s as %s", (file, label) => {
@@ -162,6 +168,44 @@ describe("detectTriggers — content triggers", () => {
 
   it("ignores a bare mention that is not a call", () => {
     const lines = [{ file: "server/routes/lending/index.ts", line: "// see requireRole docs" }];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  // Money movement (added 2026-08-08). This is a content trigger rather than a path one
+  // because the file that will carry it does not exist yet — a speculative path would be
+  // a trigger that can never fire. The dependency is the stable signal: money cannot move
+  // without a processor SDK, so the review is owed the moment one is added.
+  it("flags a payment-processor dependency landing in package.json", () => {
+    const lines = [{ file: "package.json", line: '+    "stripe": "^18.0.0",' }];
+    expect(detectTriggers([], lines).map((t: { label: string }) => t.label)).toContain(
+      "money movement / payment processing",
+    );
+  });
+
+  it("flags a funds-transfer call appearing under server/, whatever the file is named", () => {
+    const lines = [
+      { file: "server/services/rentDisbursement.ts", line: "  const auth = await plaid.TransferAuthorization.create(req);" },
+    ];
+    expect(detectTriggers([], lines).map((t: { label: string }) => t.label)).toContain(
+      "money movement / payment processing",
+    );
+  });
+
+  it("does NOT flag a payment processor named in docs or client code", () => {
+    // Scoped to package.json + server/ deliberately. The adjudication log and the renter
+    // page both discuss processors in prose; neither moves money, and a guard that reds
+    // every PR mentioning Stripe converts the review section into boilerplate — the
+    // failure mode §9 explicitly warns about ("keep the triggers narrow").
+    const lines = [
+      { file: "knowledge-base/logs/2026-08-08-rent-reporting-pitch-adjudication.md", line: "no stripe dependency exists" },
+      { file: "client/src/pages/public/RenterReporting.tsx", line: "  // no Stripe, no checkout, nothing is sold" },
+    ];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  it("does not fire on an unrelated server line that merely contains a substring", () => {
+    // `\b` anchoring matters: "unit-finance" must not match "unit" in ordinary prose.
+    const lines = [{ file: "server/services/loanCosts.ts", line: "  const unit = costPerUnit(loan);" }];
     expect(detectTriggers([], lines)).toEqual([]);
   });
 });
