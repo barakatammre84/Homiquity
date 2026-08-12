@@ -15,6 +15,7 @@ export default defineConfig({
       "tests/inviteValidateAudit.test.ts",
       "tests/vaResidualEngineParity.test.ts",
       "tests/fcraConsentGateBehavior.test.ts",
+      "tests/mcpSoftPullConsentOrder.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
       "tests/accessControl.test.ts",

@@ -206,7 +206,46 @@ server.registerTool(
         return fail("Borrower has no loan application; a soft pull must attach to an application.");
       }
 
-      // 3. Cached, non-expired soft pull?
+      // 3. FCRA gate: an active consent must exist — checked BEFORE the cache
+      // is read, because a cache hit is itself a DISCLOSURE of the borrower's
+      // report. This ordering is the fix for F-042: the consent check used to
+      // sit after the cached-return branch, so a borrower who revoked consent
+      // still had their scores, total debt and DTI handed to any agent for the
+      // remaining 90 days of cache life — while the compliance suite stayed
+      // green, because it asserted only that the gate's error string existed in
+      // this file, never that control reached it. Guarded now by an explicit
+      // ordering assertion in tests/mcpSoftPullConsentOrder.test.ts.
+      //
+      // Revocation has to stop re-disclosure, not just stop new inquiries.
+      const [consent] = await db
+        .select({ id: creditConsents.id })
+        .from(creditConsents)
+        .where(
+          and(
+            eq(creditConsents.userId, borrower.id),
+            eq(creditConsents.consentGiven, true),
+            eq(creditConsents.isActive, true),
+          ),
+        )
+        .orderBy(desc(creditConsents.consentTimestamp))
+        .limit(1);
+      if (!consent) {
+        // FCRA-relevant evidence: an agent attempted a pull without consent.
+        await auditInvocation({
+          toolName,
+          args,
+          outcome: "refused",
+          resultSummary: { reason: "no_active_consent" },
+          applicationId: application.id,
+          userId: borrower.id,
+        });
+        return fail(
+          "FCRA: no active credit consent on file for this borrower. A soft pull cannot be " +
+            "performed until the borrower completes the credit consent flow.",
+        );
+      }
+
+      // 4. Cached, non-expired soft pull?
       const [existing] = await db
         .select()
         .from(creditPulls)
@@ -247,35 +286,6 @@ server.registerTool(
           dti: monthly && monthlyIncome ? Number((monthly / monthlyIncome).toFixed(4)) : null,
           expiresAt: existing.expiresAt,
         });
-      }
-
-      // 4. FCRA gate: an active soft-pull consent must exist.
-      const [consent] = await db
-        .select({ id: creditConsents.id })
-        .from(creditConsents)
-        .where(
-          and(
-            eq(creditConsents.userId, borrower.id),
-            eq(creditConsents.consentGiven, true),
-            eq(creditConsents.isActive, true),
-          ),
-        )
-        .orderBy(desc(creditConsents.consentTimestamp))
-        .limit(1);
-      if (!consent) {
-        // FCRA-relevant evidence: an agent attempted a pull without consent.
-        await auditInvocation({
-          toolName,
-          args,
-          outcome: "refused",
-          resultSummary: { reason: "no_active_consent" },
-          applicationId: application.id,
-          userId: borrower.id,
-        });
-        return fail(
-          "FCRA: no active credit consent on file for this borrower. A soft pull cannot be " +
-            "performed until the borrower completes the credit consent flow.",
-        );
       }
 
       // 5. Pull via the bureau adapter; persistence goes through creditService
