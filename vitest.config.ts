@@ -221,6 +221,7 @@ export default defineConfig({
       "tests/rentFurnishing.test.ts",
       "tests/creditMonitoring.test.ts",
       "tests/rentReportingSurface.test.ts",
+      "tests/urlaRowContent.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

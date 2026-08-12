@@ -1,6 +1,7 @@
 // Borrower routes: URLA sections (personal info/SSN/employment/income/assets/liabilities/property) + bulk save.
 // One registrar in the original registration order — see ./index.ts.
 import type { Express } from "express";
+import { isUrlaRowSaveable } from "@shared/lib/urlaRowContent";
 import type { IStorage } from "../../storage";
 import { isAuthenticated } from "../../auth";
 import { logAudit } from "../../auditLog";
@@ -465,7 +466,7 @@ export function registerUrlaRoutes(
         if (Array.isArray(opts.employmentHistory) && opts.employmentHistory.length > 0) {
           results.employmentHistory = [];
           for (const emp of opts.employmentHistory) {
-            if (!emp.employerName && !emp.positionTitle && !emp.baseIncome) continue;
+            if (!isUrlaRowSaveable("employment", emp)) continue;
             const cleanEmp = pickTableFields(URLA_TABLES.employment, emp);
             // The self-employment worksheet is a structured JSON object, so
             // pickTableFields drops it (URLA tables are scalar-only by design).
@@ -499,7 +500,7 @@ export function registerUrlaRoutes(
         if (Array.isArray(opts.assets) && opts.assets.length > 0) {
           results.assets = [];
           for (const asset of opts.assets) {
-            if (!asset.accountType && !asset.financialInstitution) continue;
+            if (!isUrlaRowSaveable("asset", asset)) continue;
             const cleanAsset = pickTableFields(URLA_TABLES.asset, asset, ["accountNumber"]);
             if (asset.id) {
               const existing = await storage.getUrlaAssetById(asset.id);
@@ -516,7 +517,7 @@ export function registerUrlaRoutes(
         if (Array.isArray(opts.liabilities) && opts.liabilities.length > 0) {
           results.liabilities = [];
           for (const liability of opts.liabilities) {
-            if (!liability.liabilityType && !liability.creditorName) continue;
+            if (!isUrlaRowSaveable("liability", liability)) continue;
             const cleanLiability = pickTableFields(URLA_TABLES.liability, liability, ["accountNumber"]);
             if (liability.id) {
               const existing = await storage.getUrlaLiabilityById(liability.id);
@@ -618,7 +619,7 @@ export function registerUrlaRoutes(
       if (otherIncomeSources && Array.isArray(otherIncomeSources) && otherIncomeSources.length > 0) {
         results.otherIncomeSources = [];
         for (const income of otherIncomeSources) {
-          if (!income.incomeSource || !income.monthlyAmount) continue;
+          if (!isUrlaRowSaveable("otherIncome", income)) continue;
           const cleanIncome = pickTableFields(URLA_TABLES.otherIncome, income);
           if (income.id) {
             const existing = await storage.getOtherIncomeSourceById(income.id);
