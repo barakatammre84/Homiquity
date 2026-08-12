@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -124,6 +124,7 @@ export function UploadDocumentDialog({
   trigger: React.ReactNode;
   onUploaded?: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string>(toUploadableDocumentType(defaultDocumentType));
   const [description, setDescription] = useState("");

@@ -1,8 +1,8 @@
 import { lazy, Suspense, useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { useParams, useSearchParams, Link } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, ApiError, loanApplicationKeys, urlaKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, ApiError, loanApplicationKeys, urlaKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -75,6 +75,7 @@ const TAB_VALUES = ["overview", "documents", "conditions", "timeline", "credit",
 // migrate child-by-child; do not add a fourth. (kb rule: .claude/skills/ui-components)
 
 export default function BorrowerFile() {
+  const queryClient = useQueryClient();
   const params = useParams();
   const applicationId = params.id as string;
   const { user, isLoading: authLoading } = useAuth();

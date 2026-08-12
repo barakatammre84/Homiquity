@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,6 +118,7 @@ function SlaCountdown({ deadline }: { deadline: string }) {
 }
 
 function CreateEscalationDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [form, setForm] = useState({
     subject: "",
@@ -256,6 +257,7 @@ function CreateEscalationDialog({ open, onOpenChange }: { open: boolean; onOpenC
 }
 
 function ResolveDialog({ escalation, open, onOpenChange }: { escalation: DealRescueEscalation; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [resolution, setResolution] = useState("");
 

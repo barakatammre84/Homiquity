@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, Trash2 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ export function PublishDialog({
   onClose: () => void;
   knownCodes: string[];
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [matrixCode, setMatrixCode] = useState("");
   const [description, setDescription] = useState("");

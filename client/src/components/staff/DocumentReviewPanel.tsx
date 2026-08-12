@@ -14,8 +14,8 @@
  * The comparison badges are display-only triage and feed nothing.
  */
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Document, LoanApplication } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,6 +90,7 @@ export function DocumentReviewPanel({
   selectedDocumentId,
   onSelectDocument,
 }: DocumentReviewPanelProps) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [rejectTarget, setRejectTarget] = useState<Document | null>(null);
   const [rejectReason, setRejectReason] = useState("");

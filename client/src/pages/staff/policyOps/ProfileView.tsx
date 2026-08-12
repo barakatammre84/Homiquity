@@ -1,8 +1,8 @@
 // Policy profile detail: thresholds + approval workflow.
 // Extracted verbatim from PolicyOps.tsx.
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,7 @@ export function PolicyProfileView({
   onBack: () => void;
   onEditRules: () => void;
 }) {
+  const queryClient = useQueryClient();
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishReason, setPublishReason] = useState("");
   const { toast } = useToast();

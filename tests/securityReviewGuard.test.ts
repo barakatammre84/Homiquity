@@ -203,6 +203,42 @@ describe("detectTriggers — content triggers", () => {
     expect(detectTriggers([], lines)).toEqual([]);
   });
 
+  // PII encryption call sites (added 2026-08-12). The vault FILES were triggers; their
+  // CALLERS were not, so a module encrypting a landlord email produced zero triggers.
+  it("flags a new encryption call site outside the vault files", () => {
+    const lines = [
+      { file: "server/storage/leases.ts", line: "  const e = encryptSensitiveData(input.landlordEmail);" },
+    ];
+    expect(detectTriggers([], lines).map((t: { label: string }) => t.label)).toContain(
+      "PII encryption call site",
+    );
+  });
+
+  it("flags a decrypt call too — reading PII back out is the same trigger", () => {
+    const lines = [
+      { file: "shared/somewhere.ts", line: "return decryptSensitiveData(enc, iv, keyId);" },
+    ];
+    expect(detectTriggers([], lines).map((t: { label: string }) => t.label)).toContain(
+      "PII encryption call site",
+    );
+  });
+
+  it("does NOT self-trigger on this guard or its own tests naming the functions", () => {
+    // The RESPONSE_BODY_LOG_ALLOWLIST trigger shipped with exactly this false positive
+    // and fired on its own PR. Scoping to server/ and shared/ is what prevents it here.
+    const lines = [
+      { file: "scripts/security-review-guard.cjs", line: "/\\b(encryptSensitiveData|decryptSensitiveData)/" },
+      { file: "tests/securityReviewGuard.test.ts", line: "line: 'encryptSensitiveData(x)'" },
+      { file: "knowledge-base/governance/TEAM_PRACTICES.md", line: "calls `encryptSensitiveData`" },
+    ];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
+  it("does not fire on a bare mention that is not a call", () => {
+    const lines = [{ file: "server/storage/leases.ts", line: "// see encryptSensitiveData docs" }];
+    expect(detectTriggers([], lines)).toEqual([]);
+  });
+
   it("does not fire on an unrelated server line that merely contains a substring", () => {
     // `\b` anchoring matters: "unit-finance" must not match "unit" in ordinary prose.
     const lines = [{ file: "server/services/loanCosts.ts", line: "  const unit = costPerUnit(loan);" }];

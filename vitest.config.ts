@@ -50,6 +50,8 @@ export default defineConfig({
       "tests/counterpartyAndCompensation.test.ts",
       "tests/lenderApprovalControl.test.ts",
       "tests/compensationClawback.test.ts",
+      "tests/revenueRecognition.test.ts",
+      "tests/costEntryDisclosureImpact.test.ts",
       "tests/commissionPayout.test.ts",
       "tests/feeProvenanceAndCosts.test.ts",
       "tests/leDisclosedFeeProvenance.test.ts",
@@ -221,6 +223,9 @@ export default defineConfig({
       "tests/rentFurnishing.test.ts",
       "tests/creditMonitoring.test.ts",
       "tests/rentReportingSurface.test.ts",
+      // Lease capture: the encryption round-trip, the view's refusal to leak ciphertext,
+      // UTC date semantics, and the validation boundary.
+      "tests/leaseCapture.test.ts",
       "tests/urlaRowContent.test.ts",
       "tests/urlaCoApplicantRemoval.test.ts",
     ],

@@ -1,4 +1,15 @@
 import { ACTIVE_APP_STORAGE_KEY } from "@/hooks/useActiveApplication";
+// THE LAST module-singleton `queryClient` consumer, and it stays that way.
+//
+// Every component and hook moved to `useQueryClient()` so their invalidations go
+// through the client they were rendered under — otherwise the refresh lands on a
+// cache no test can observe. This file cannot follow: `logout()` is a plain
+// async function called from click handlers, not a render, so there is no
+// provider in scope and a hook here would break the Rules of Hooks.
+//
+// That is fine precisely because of what it does — `clear()` wipes the whole
+// cache on the way out, and the singleton IS the app's cache (App.tsx passes it
+// to QueryClientProvider). Do not "finish the migration" by converting this one.
 import { queryClient } from "@/lib/queryClient";
 
 /**

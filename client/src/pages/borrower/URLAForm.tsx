@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,7 +10,7 @@ import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrackActivity, useTrackFormStart } from "@/hooks/useActivityTracker";
-import { apiRequest, queryClient, dashboardKeys, urlaKeys, loanApplicationKeys } from "@/lib/queryClient";
+import { apiRequest, dashboardKeys, urlaKeys, loanApplicationKeys } from "@/lib/queryClient";
 import type {
   LoanApplication,
   UrlaPersonalInfo,
@@ -162,6 +162,7 @@ const STEPS: UrlaStep[] = [
 ];
 
 export default function URLAForm() {
+  const queryClient = useQueryClient();
   const { isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const track = useTrackActivity();

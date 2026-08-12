@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, dashboardKeys } from "@/lib/queryClient";
+import { apiRequest, dashboardKeys } from "@/lib/queryClient";
 import type { LoanApplication } from "@shared/schema";
 import { getLoanAppStatusMeta, isTerminalLoanAppStatus } from "@shared/loanApplicationStatus";
 import {
@@ -117,6 +117,7 @@ export function ApplicationSwitcher({
   activeApplicationId,
   onSelectApplication 
 }: ApplicationSwitcherProps) {
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [appToWithdraw, setAppToWithdraw] = useState<LoanApplication | null>(null);

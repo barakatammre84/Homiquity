@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,6 +88,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function BrandingTab({ profile, onSave }: { profile: CoBrandProfile | null; onSave: () => void }) {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -387,6 +388,7 @@ function ReferralsTab() {
 }
 
 function DealDeskTab() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newThread, setNewThread] = useState({ subject: "", scenarioType: "general", notes: "", loanAmount: "", creditScore: "" });

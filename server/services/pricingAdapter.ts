@@ -2,6 +2,7 @@ import type { IStorage } from "../storage";
 import { calculateLLPA } from "../pricing";
 import type { RateSheetProduct, LenderPricingAdjustment, WholesaleLender } from "@shared/schema";
 import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
+import { isApprovedLender, isLenderApprovalStatus } from "@shared/wholesaleLenders";
 
 export interface BorrowerPricingProfile {
   creditScore: number;
@@ -45,6 +46,17 @@ export interface ComputedOffer {
   lenderFees: RateSheetProduct["lenderFees"];
   eligibilityConstraints: RateSheetProduct["eligibilityConstraints"];
   labels: string[];
+  /**
+   * True only when this offer's lender is an APPROVED, non-demo counterparty.
+   *
+   * Offers are selected on `status: "ACTIVE"`, which is row liveness and not
+   * an agreement — so today every quote comes from a seeded demo company.
+   * That is fine for a quote and fatal for a sufficiency count: §1026.36(e)(3)(i)
+   * measures creditors "with which the originator regularly does business",
+   * and the anti-steering option set reads this flag rather than counting
+   * lender rows (2026-08-07 audit, F-0807-01).
+   */
+  lenderApproved: boolean;
 }
 
 /** @see {@link monthlyPrincipalAndInterest} — annualRate is a PERCENT here. */
@@ -202,6 +214,17 @@ export async function computeOffers(
         lenderFees: product.lenderFees as any,
         eligibilityConstraints: product.eligibilityConstraints as any,
         labels: [],
+        // Derived from the shared counterparty rule, never re-hand-rolled:
+        // approved AND not a demo row. An unrecognised approval_status falls
+        // back to "target", so a typo can never mark an offer deliverable.
+        lenderApproved: isApprovedLender({
+          lenderId: lender.lenderId,
+          lenderName: lender.lenderName,
+          approvalStatus: isLenderApprovalStatus(lender.approvalStatus)
+            ? lender.approvalStatus
+            : "target",
+          isDemo: lender.isDemo,
+        }),
       });
     }
   }
