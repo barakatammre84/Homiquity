@@ -1,8 +1,9 @@
 /**
  * Roadmap G-C: pull-through % and cycle-time days, derived from status
- * transitions — so the acquisition playbook's gates (>70% pull-through,
- * <12-day time-to-clear) are reportable from day one of real traffic
- * instead of raw unassembled audit rows.
+ * transitions — so the founder's acquisition targets (>70% pull-through,
+ * <12-day time-to-clear; institutional knowledge, not a committed doc)
+ * are reportable from day one of real traffic instead of raw unassembled
+ * audit rows.
  *
  * Honesty rules (the FinancialReports page renders these properties as-is):
  *  - TWO pull-through denominators, both named. "Resolved" divides funded by

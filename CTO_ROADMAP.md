@@ -154,7 +154,8 @@ anything else in this file being true.
   to a surface **or delete them**; fire `calculateAgentCommission` from the funded-loan transition
   (near `graduateClosedLoan`) rather than a schedule.
 - [ ] **3.8 Tag agent-sourced inbound leads.** `leads.source` has no value for an agent-referred
-  borrower, so the playbook's 30%-agent-sourced gate is **structurally unmeasurable**. Needs a
+  borrower, so the founder's 30%-agent-sourced acquisition target (institutional knowledge, not a
+  committed doc) is **structurally unmeasurable**. Needs a
   business decision on the intake mechanism (referral link / agent portal / manual code) before any
   engineering.
 - [ ] **3.9 VA funnel.** The engine already routes `isVeteran` → VA products (580 FICO / 100% LTV

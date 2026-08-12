@@ -4,7 +4,8 @@
 **PH-2 merged (#134**, migration `0022`; its consent copy is a standing counsel gate);
 **next: PH-3**; PH-4/PH-5/PH-6 open · **Owner:** Amr (founder/PM) · **Roadmap:** tracked in
 CTO_ROADMAP "Active program tracks"; executes the partner/COI GTM pivot (partner waitlist PRs
-#96–#98) and the agent-B2B2C lane of the borrower-acquisition playbook; consumes the UAL income
+#96–#98) and the agent-B2B2C lane of the founder's acquisition strategy (institutional knowledge,
+not a committed doc); consumes the UAL income
 engine (#108, merged); resolves roadmap **ARC-1** (leads API has no client binding — the embed
 decision) in PH-6 · **Last updated:** 2026-07-12
 

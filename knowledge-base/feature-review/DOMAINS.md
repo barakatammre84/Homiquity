@@ -17,7 +17,7 @@ Status ledger (updated by the orchestrator after each run):
 
 | # | Domain | Last reviewed | Result |
 |---|---|---|---|
-| 1 | Public funnel, acquisition & education | 2026-08-05 | public-funnel-01/02 (P2) fixed `cef2890` + 1 refuted (ApprovalStrength SEO half) — see FINDINGS.md |
+| 1 | Public funnel, acquisition & education | **2026-08-12** (re-run) | 2026-08-05: public-funnel-01/02 (P2) fixed `cef2890` + 1 refuted. **2026-08-12 re-run:** `public-funnel-05` (P2, Reg Z trigger terms on 7 of 8 calculators — APR entirely absent) and `public-funnel-06` (P2, six `<Gated>`-backing endpoints with no server `prelaunchGate`) both CONFIRMED, **both awaiting compliance-auditor** before action; `public-funnel-07` (P3 doc-drift) FIXED — 13 phantom/dead doc citations corrected, 3 deliberately left (append-only ledger, frozen archive, founder-intent), escalated as **U-18**. Also from the 08-12 UX/SEO pass: `ux-24`/`ux-25` FIXED, `ux-26` open (P3), `public-funnel-03` + `design-system-Logo-unused` REFUTED. **CLEAN (verified):** leads intake TrustedForm/dedupe/role-gating, `leadNotifications` fire-and-forget + no-Reg-Z-copy, `rateService` fail-closed + Appendix-J APR, all soliciting routes `<Gated>` client-side, prelaunch fail-safe defaults, referral/invite client-server wiring. Owned unit tests 46/46 green (`tests/leads.test.ts` is integration-only, not executed — read instead) |
 | 2 | Application & intake | 2026-08-05 | **intake-01 (P0, TRID) fixed `c27b01e`** + intake-03 same commit + intake-02 fixed `eafdb47` + intake-04 fixed `69104f9`. All Domain 2 findings closed except ux-11 (HMDA/Reg C, blocked on U-8 — regulatory source access). See FINDINGS.md |
 | 3 | AI Coach, documents & extraction | 2026-08-05 | **F-027 P1** (borrower text parsed as trusted extraction → forged tier-1 provenance + prompt injection; §9 security review required) + F-028/029/030 P2 + F-031 P3, all open. Doc-drift F-032/F-033 **fixed** (`e5ab91a`, `0934e9c`); a 2nd F-013 instance fixed (`aca9377`). 2 refuted, 1 confirmed-but-deliberate. Escalations **U-9** (is prod traffic reaching Anthropic — decides AG-3 status) and **U-10** (LL-2026-04 cite provenance). **CLEAN, verified:** the "AI never decides" gate is real — `coachProfileSync` is provenance/draft/status-fenced, and no automated decision path reads `notes` or the borrower graph. See FINDINGS.md |
 | 4 | Verification & credit | 2026-08-05 | **F-034 + F-035 (P0, FCRA)** — the consent ledger stores a disclosure the borrower never saw, and that record is the mechanism that *hides* a soft-consent-gating-a-hard-pull scope gap. **F-036 (P1)** production pull rows assert a real inquiry that never happened (found by compliance-auditor; missed by reviewer *and* verifier). Plus F-037 (P1\*), F-038–F-043 (P2), ux-19 (P1), ux-20–23. None fixed. Escalations **U-11** (no FCRA/ESIGN source locally — third instance of one structural gap) and **U-12** (consent→pull coverage map is a legal reading). **CLEAN:** the consent gate's *existence* is real and unbypassable on every entrance; AG-1/AG-2 still hold; no plaintext credit-response leak; F-027 does not reach this domain. See FINDINGS.md |
@@ -43,8 +43,12 @@ Status ledger (updated by the orchestrator after each run):
   `client/src/lib/prelaunch.ts`, referral landings (`pages/agent-broker/{ReferralLanding,PartnerLanding,ApplyInvite}.tsx`).
 - **Intended use**: persona-siloed conversion pages feeding the funnel; prelaunch/waitlist
   gating of soliciting routes; calculators as lead tools.
-- **Source docs**: `kb/` landing-page conversion research + GTM battlecards, borrower-acquisition
-  playbook, `L1_VISION_AND_SCOPE.md` (was PRODUCT_SPINE), `knowledge-base/handbook/app-guide/01-start-here.md`.
+- **Source docs**: `knowledge-base/research/gtm/` GTM battlecards + competitive briefs;
+  `L1_VISION_AND_SCOPE.md` (was PRODUCT_SPINE), `knowledge-base/handbook/app-guide/01-start-here.md`.
+  The acquisition-funnel targets (>70% pull-through, <12-day cycle time, 30% agent-sourced) are
+  **founder-held institutional knowledge, not a committed doc** — no landing-page conversion
+  research or borrower-acquisition playbook file exists in this repo (verified 2026-08-12,
+  FINDINGS.md `public-funnel-07`). Do not cite either as an authority.
 - **Owned tests**: `tests/leads*`, calculator/APR-adjacent units. **Reg Z trigger-term risk** on
   any rate/payment displayed → compliance flag.
 - **Wiring note (audit):** #61 Approval Strength + #63 Buying Power/SEO land here (MVP).
@@ -163,7 +167,11 @@ Status ledger (updated by the orchestrator after each run):
   (`SubmissionReadinessDialog.tsx` → `POST /api/underwrite/submit-gse`; Run-DU/LPA verified in
   the 07-12 walkthrough). Still open: confirm with Target-5 lenders whether a DU casefile is
   required at submission.
-- **Source docs**: broker/MISMO/PPE strategy docs, `DEVELOPER_PLAYBOOK.md` §2.3.
+- **Source docs**: PPE-strategy references scattered across
+  `knowledge-base/governance/AI_GOVERNANCE_POLICY.md`, `knowledge-base/specs/LO_ADVISOR_PROGRAM.md`,
+  `knowledge-base/specs/PARTNER_HUB_PROGRAM.md` — **no single broker/MISMO/PPE strategy doc
+  exists** (verified 2026-08-12); flag it if this domain's review needs one consolidated.
+  `DEVELOPER_PLAYBOOK.md` §2.3.
 - **Owned tests**: `tests/lenderSubmission*` (**F-005: determinism flake is a real product bug —
   `mismo.ts:1034` ms timestamp in hashed XML; = PRs #64/#65**), `tests/brokerSubmissionReadiness*`.
 - **Compliance**: Reg Z anti-steering §1026.36, TRID, Fannie DU.
@@ -237,8 +245,9 @@ Status ledger (updated by the orchestrator after each run):
   materialized conditions; SLA tasks escalate; two staff scoping models (internal-unrestricted
   vs team-scoped); **client gates must match server gates** (`isInternalStaffRole` vs
   `isStaffRole` — D-002 closed 2026-07-08; #119 enforced the separation app-wide).
-- **Source docs**: `knowledge-base/handbook/app-guide/08-services.md`, `knowledge-base/logs/lo-audit/*`, access-control notes,
-  `knowledge-base/runbooks/support-playbooks/`.
+- **Source docs**: `knowledge-base/handbook/app-guide/08-services.md`,
+  `knowledge-base/archive/lo-audit/*` (archived 2026-08-06 — findings closed/reframed in
+  `CTO_ROADMAP.md`), access-control notes, `knowledge-base/runbooks/support-playbooks/`.
 - **Owned tests**: integration `loCommandCenter`, `tests/borrowerStateMachine*`,
   `tests/lifecycleEngine*`, `tests/statusVocabulary*`, `tests/accessControl*`. **F-013:**
   `maintenanceMode.test.ts` runs in neither config. **Coverage:** `pipelineEngine.updatePipelineStage`
@@ -255,8 +264,13 @@ Status ledger (updated by the orchestrator after each run):
 - **Intended use**: property search/affordability; AVM via the `RAPIDAPI_KEY` realty-us adapter
   (unset → simulated/no live value locally); closed-loan graduation → Homeowner Hub with equity
   snapshot + refi alerts (TCPA-gated).
-- **Source docs**: property-data-vendor notes, lifecycle-architecture (Incubator/Engine/Portfolio
-  separation), `knowledge-base/handbook/app-guide/09-integrations.md`.
+- **Source docs**: `knowledge-base/archive/founder-routines/2026-07-04-vendor-procurement.md`
+  (RapidAPI/AVM vendor notes — archived); the Incubator/Engine/Portfolio split as described in
+  `knowledge-base/archive/ux-audit/workflows.md:55` and
+  `knowledge-base/archive/assessments/STATE_OF_THE_PLATFORM.md:26` — **both archived; no live
+  lifecycle-architecture doc exists** (verified 2026-08-12). If this domain's review needs a live
+  one, that is a CREATE decision for the founder, not something a reviewer should infer.
+  `knowledge-base/handbook/app-guide/09-integrations.md`.
 - **Owned tests**: `tests/valueEstimate*`, `tests/marketDataParsers*`. **Zero-coverage:**
   `propertyAnalyzer.ts`, property routes.
 
@@ -302,9 +316,13 @@ Runs over every surface from teams 1–12, on three axes:
   `app-guide/07-frontend.md`.
 - **Compliance rails on copy**: Reg Z trigger terms (flag to compliance-auditor), no consent
   dark patterns (**audit: consent UX is exemplary — 0 pre-checked boxes**), Reg B denial tone.
-- **Builds on the standing system**: cross-reference `knowledge-base/logs/ux-audit/page-audit.md` ids; use
-  `psychology-patterns.md` as the copy standard; `component-inventory.csv` for the census.
-- **Source docs**: `design_guidelines.md`, `knowledge-base/logs/ux-audit/*`, landing-page research, design skills
-  under `.agents/skills/`.
+- **Builds on the standing system**: cross-reference
+  `knowledge-base/archive/ux-audit/page-audit.md` ids (archived 2026-08-06 — live successor is
+  `feature-review/FINDINGS.md`); use `knowledge-base/archive/ux-audit/psychology-patterns.md` as
+  the copy standard; `knowledge-base/archive/ux-audit/component-inventory.csv` for the census.
+- **Source docs**: `knowledge-base/handbook/design/design_guidelines.md`,
+  `knowledge-base/archive/ux-audit/*` (archived 2026-08-06), design skills under
+  `.agents/skills/`. (Acquisition-funnel/landing-page research is founder-held institutional
+  knowledge, not a committed doc — see Domain 1's Source docs note.)
 - **Owned checks**: `node scripts/design-token-guard.cjs` (via `npm run checkup`), preview
   screenshots/inspects per surface group. **A11y:** 12/14 property `<img>` lack `alt`.

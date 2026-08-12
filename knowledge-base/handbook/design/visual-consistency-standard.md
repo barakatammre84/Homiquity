@@ -266,5 +266,5 @@ Converting one of the 57% opt-out pages:
   Homiquity" attribution). Route feature completion through compliance review before ship.
   **Never fabricate NMLS or brand data.**
 - **Copy/terminology/voice is a separate later track** — this standard is visual only.
-- `knowledge-base/logs/ux-audit/` predates PageShell (2026-07-08) — historical reference,
+- `knowledge-base/archive/ux-audit/` predates PageShell (2026-07-08) — historical reference,
   not the current standard; this doc supersedes its spacing/elevation notes.

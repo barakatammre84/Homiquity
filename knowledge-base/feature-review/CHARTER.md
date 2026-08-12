@@ -36,9 +36,10 @@ after any significant change — the teams are durable agents in `.claude/agents
 5. **Compliance humility.** Nobody rules on MISMO/ULDD/UCD/QM/SFC/TRID/FCRA/ECOA/TCPA/NMLS/
    ESIGN questions from memory. Verify against `docs/fannie-mae/`, `docs/nmls/`, or eCFR — or
    mark UNVERIFIABLE and escalate. Never invent MISMO names, edit codes, or SFCs.
-6. **Cross-reference, don't duplicate.** `knowledge-base/logs/ux-audit/page-audit.md` and `CTO_ROADMAP.md`
-   already track known issues; findings that overlap must cite them. Known deliberate cuts
-   (launch-sprint list, `ASSUMPTIONS.md`) are not defects.
+6. **Cross-reference, don't duplicate.** `feature-review/FINDINGS.md` (and, for pre-2026-08-06 UI
+   audit history, `knowledge-base/archive/ux-audit/page-audit.md` — archived; the routine that
+   maintained it is dead) and `CTO_ROADMAP.md` already track known issues; findings that overlap
+   must cite them. Known deliberate cuts (launch-sprint list, `ASSUMPTIONS.md`) are not defects.
 
 ## Reality Map — read BEFORE reviewing (stops false-positive findings)
 
