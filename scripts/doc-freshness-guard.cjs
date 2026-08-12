@@ -39,6 +39,9 @@ const REQUIRED = [
   "governance/CHANNEL_DECISION.md",
   "governance/CONTINGENT_LIABILITY_REGISTER.md",
   "governance/UNCONSUMED_CAPABILITIES.md",
+  // Shared memory for concurrent sessions. A stale sync protocol silently stops
+  // being followed, which is the failure it exists to prevent — so it goes loud.
+  "governance/SESSION_SYNC_PROTOCOL.md",
 ];
 
 const LINE = /\*\*Freshness:\*\*\s*last verified\s*(\d{4}-\d{2}-\d{2})\s*·\s*review every\s*(\d+)\s*days/;

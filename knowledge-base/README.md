@@ -45,6 +45,11 @@ doc-drift bug to fix):
 
 ### Governance — policies & session rules · [`governance/`](governance/)
 - [TEAM_PRACTICES.md](governance/TEAM_PRACTICES.md) — how we work (the house-style exemplar).
+- [SESSION_SYNC_PROTOCOL.md](governance/SESSION_SYNC_PROTOCOL.md) — how concurrent sessions work
+  *with each other*: refresh memory before acting, claim a file before editing it, stay within 2
+  commits of `main`, and the **shared lessons register** every domain skill routes to. Exists
+  because a session cannot see another session's context — on 2026-08-12 a refactor run
+  top-ranked a file that an open PR was already rewriting.
 - [AI_GOVERNANCE_POLICY.md](governance/AI_GOVERNANCE_POLICY.md) · [MODEL_RISK_GOVERNANCE.md](governance/MODEL_RISK_GOVERNANCE.md)
   · [ASSUMPTIONS.md](governance/ASSUMPTIONS.md) · [ARMED_LAUNCH_CHARTER_2026-07-07.md](governance/ARMED_LAUNCH_CHARTER_2026-07-07.md)
 - [CHANNEL_DECISION.md](governance/CHANNEL_DECISION.md) — **OPEN, founder-owned:** broker or

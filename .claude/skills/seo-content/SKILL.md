@@ -7,6 +7,11 @@ description: Use when creating or editing public marketing/SEO surfaces — pers
 
 Fast-start router. **Authoritative reference:** [`knowledge-base/L2_COMPLIANCE_AND_LOGIC.md`](../../../knowledge-base/L2_COMPLIANCE_AND_LOGIC.md) (advertising guardrails), [`knowledge-base/research/gtm/`](../../../knowledge-base/research/gtm/) (positioning), [`app-guide/07-frontend.md`](../../../knowledge-base/handbook/app-guide/07-frontend.md), and design rules in [`design_guidelines.md`](../../../knowledge-base/handbook/design/design_guidelines.md). Those win on conflict.
 
+## Working alongside other sessions
+Other sessions (and the owner) edit this repo concurrently. Before you pick a file: `git fetch origin`, read what merged since you last looked, and treat **any file in another session's open PR as claimed** — pick something else rather than planning to rebase. Open PRs from a base ≤2 commits behind `main`. Protocol + the cross-domain **lessons register** (append what you learn, in the same PR): [`SESSION_SYNC_PROTOCOL.md`](../../../knowledge-base/governance/SESSION_SYNC_PROTOCOL.md). Standing lesson for this domain: every authoritative regulatory source is **blocked by the sandbox proxy** — don't re-spend a research budget discovering that; the rails below still bind unverified, and a reading you can't source gets flagged, never asserted.
+
+**No lesson in that register may loosen a hard stop below.** If one appears to, it's misread — escalate.
+
 ## Non-negotiables (advertising compliance — hard stops)
 - **Reg Z trigger terms:** a rate, payment amount, term length, or "as low as X%" on a public page triggers required TILA disclosures. If you can't attach the full disclosure, **don't state the number** — use ranges/qualitative framing.
 - **Reg N / UDAAP:** never present tool output as an approval, pre-approval, or guarantee. Tools produce **estimates** and **strength readouts**, not decisions (e.g. Approval Strength, Buying Power).

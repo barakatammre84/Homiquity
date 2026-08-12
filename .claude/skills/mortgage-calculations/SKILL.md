@@ -7,6 +7,9 @@ description: Use when building or changing mortgage math — affordability, paym
 
 Fast-start router. **Authoritative reference:** [`knowledge-base/compliance/UNDERWRITING_SCENARIOS.md`](../../../knowledge-base/compliance/UNDERWRITING_SCENARIOS.md) (scenario catalog + the no-citation-no-implementation contract), [`app-guide/08-services.md`](../../../knowledge-base/handbook/app-guide/08-services.md), and CLAUDE.md's compliance-first section. Those win on conflict.
 
+## Working alongside other sessions
+Other sessions (and the owner) edit this repo concurrently. Before you pick a file: `git fetch origin`, read what merged since you last looked, and treat **any file in another session's open PR as claimed** — pick something else rather than planning to rebase. Open PRs from a base ≤2 commits behind `main`. Protocol + the cross-domain **lessons register** (append what you learn, in the same PR): [`SESSION_SYNC_PROTOCOL.md`](../../../knowledge-base/governance/SESSION_SYNC_PROTOCOL.md). Note the register's standing rule for this domain: extract calculator math to a pure `client/src/lib/<name>Estimate.ts` with a colocated test, characterization-test-first.
+
 ## Non-negotiables
 - **Determinism:** the engines (`server/underwritingEngine.ts`, `server/services/decisionEngine.ts`, `server/services/ruleEngine.ts`) are pure — same inputs, same outcome, typed error classification. No randomness, no vendor calls, no AI inside them. Keep it that way.
 - **No citation, no implementation:** every regulated calculation cites its source (Fannie B-guideline, VA Pamphlet 26-7, QM threshold). **Never invent** thresholds, MISMO names, or enumerations — verify against [`docs/fannie-mae/`](../../../docs/fannie-mae/) + the Loan Delivery job aid, and use `shared/fannieMae/qmThresholds.ts` for QM points-and-fees / APR-APOR spreads.
