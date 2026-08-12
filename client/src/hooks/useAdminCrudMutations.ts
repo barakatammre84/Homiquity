@@ -10,8 +10,8 @@
 // POST /base, PATCH /base/:id, DELETE /base/:id, and that the list query is
 // keyed by the base path. Anything that doesn't fit should keep its own
 // useMutation rather than grow options here.
-import { useMutation, type UseMutationResult } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation, type UseMutationResult, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export interface AdminCrudOptions<TFormData> {
@@ -50,6 +50,7 @@ export function useAdminCrudMutations<TFormData>({
   toPayload,
   onSaved,
 }: AdminCrudOptions<TFormData>): AdminCrudMutations<TFormData> {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const buildPayload = toPayload ?? ((data: TFormData) => data);
 

@@ -1,13 +1,14 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar, CalendarClock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import type { HomeownerProfile } from "./types";
 
 export function AnnualReviewSection({ profile }: { profile: HomeownerProfile }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const scheduleMutation = useMutation({

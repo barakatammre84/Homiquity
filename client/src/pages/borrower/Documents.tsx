@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearch } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
+import { apiRequest, loanApplicationKeys, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
 import { useActiveApplication } from "@/hooks/useActiveApplication";
 import type { Document, LoanApplication, LoanCondition } from "@shared/schema";
 import { canonicalDocumentType } from "@shared/documentTypes";
@@ -36,6 +36,7 @@ interface DashboardData {
 }
 
 export default function Documents() {
+  const queryClient = useQueryClient();
   const { isLoading: authLoading } = useAuth();
   const [expandedCategories, setExpandedCategories] = useState<string[]>(["income", "assets"]);
   const [activeDocType, setActiveDocType] = useState<{ type: string; rowKey: string } | null>(null);

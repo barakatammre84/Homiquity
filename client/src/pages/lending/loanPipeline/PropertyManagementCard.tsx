@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Home,
   MapPin,
@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/formatters";
-import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import type { ApplicationProperty, LoanApplication } from "@shared/schema";
 
 const EMPTY_NEW_PROPERTY = {
@@ -52,6 +52,7 @@ export interface PropertyManagementCardProps {
 }
 
 export function PropertyManagementCard({ applicationId, application, properties }: PropertyManagementCardProps) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showAddPropertyDialog, setShowAddPropertyDialog] = useState(false);
   const [showDealFellThroughDialog, setShowDealFellThroughDialog] = useState(false);

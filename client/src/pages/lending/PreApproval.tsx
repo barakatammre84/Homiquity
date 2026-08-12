@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation, useSearchParams, Link } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { preApprovalFormSchema } from "@shared/preApprovalForm";
 import type { PreApprovalFormData } from "@shared/schema";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
+import { apiRequest, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { maskCurrencyDigits } from "@/lib/formatters";
 import {
@@ -63,6 +63,7 @@ export default function PreApproval() {
 }
 
 function PreApprovalFunnel() {
+  const queryClient = useQueryClient();
   const {
     stepId,
     flags,
