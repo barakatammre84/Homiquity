@@ -61,6 +61,25 @@ describe("F-028 — monthly income from YTD gross", () => {
     expect(monthlyIncomeFromYtd(2_000, "2026-01-08")).toBeNull();
   });
 
+  it("reads the period end date in UTC, so the figure does not move with the server's timezone", () => {
+    // Regression pin. `payPeriodEndDate` is a date-only string, which ECMA-262
+    // parses as UTC midnight — but getMonth()/getDate() report LOCAL components.
+    // Reading them locally shifts the stub back a day west of Greenwich, and
+    // these two dates are where that is most visible:
+    //
+    //   "2026-06-30"  UTC -> 5 + 30/30 = 6.000    local(UTC-4) -> 5 + 29/30 = 5.967
+    //   "2026-07-01"  UTC -> 6 +  1/31 = 6.032    local(UTC-4) -> 5 + 30/30 = 6.000
+    //
+    // The first shipped as a 0.56% OVERSTATEMENT of monthly income — the
+    // dangerous direction for an underwriting input, and invisible in CI because
+    // GitHub runners are UTC.
+    expect(monthlyIncomeFromYtd(25_200, "2026-06-30")).toBe(4_200);
+    expect(monthlyIncomeFromYtd(25_200, "2026-07-01")).toBe(4_177.54);
+
+    // Crossing midnight UTC must not change the answer either.
+    expect(monthlyIncomeFromYtd(25_200, "2026-06-30T23:59:59Z")).toBe(4_200);
+  });
+
   it("returns null rather than guessing when inputs are missing", () => {
     expect(monthlyIncomeFromYtd(undefined, "2026-06-30")).toBeNull();
     expect(monthlyIncomeFromYtd(25_200, undefined)).toBeNull();

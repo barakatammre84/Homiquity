@@ -58,8 +58,16 @@ export function monthlyIncomeFromYtd(
   const end = new Date(payPeriodEndDate);
   if (Number.isNaN(end.getTime())) return null;
 
-  const daysInMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
-  const monthsElapsed = end.getMonth() + end.getDate() / daysInMonth;
+  // Read the date in UTC, not local time. `payPeriodEndDate` is a date-only
+  // string ("2026-06-30"), which ECMA-262 parses as UTC midnight — but
+  // getMonth()/getDate() report LOCAL components. West of Greenwich that shifts
+  // the stub back a day: "2026-06-30" reads as 29 June, monthsElapsed becomes
+  // 5 + 29/30 = 5.967 instead of 6, and the same stub yields $4,223.46/mo here
+  // and $4,200.00/mo in CI. This figure is an underwriting input, so it must not
+  // depend on the server's timezone — and the error runs in the dangerous
+  // direction, overstating income by ~0.6%.
+  const daysInMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
+  const monthsElapsed = end.getUTCMonth() + end.getUTCDate() / daysInMonth;
   if (monthsElapsed < 1) return null;
 
   return Math.round((ytdGross / monthsElapsed) * 100) / 100;
