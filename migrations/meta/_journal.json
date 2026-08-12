@@ -379,6 +379,13 @@
       "when": 1786046400000,
       "tag": "0053_user_phones",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1786147200000,
+      "tag": "0054_rent_ledger",
+      "breakpoints": true
     }
   ]
 }
