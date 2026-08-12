@@ -31,7 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient, dashboardKeys } from "@/lib/queryClient";
 import type { LoanApplication } from "@shared/schema";
-import { getLoanAppStatusMeta, isTerminalLoanAppStatus } from "@shared/schema";
+import { getLoanAppStatusMeta, isTerminalLoanAppStatus } from "@shared/loanApplicationStatus";
 import {
   ChevronDown,
   Home,

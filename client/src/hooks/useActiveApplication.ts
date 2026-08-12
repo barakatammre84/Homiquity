@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useSearchParams } from "wouter";
-import { isTerminalLoanAppStatus, pickWorkableLoanApplication } from "@shared/schema";
-
+import { isTerminalLoanAppStatus, pickWorkableLoanApplication } from "@shared/loanApplicationStatus";
 /**
  * The query-string key that carries the borrower's chosen loan file, e.g.
  * /documents?app=<id>. Exported so tests and deep links agree on one spelling.

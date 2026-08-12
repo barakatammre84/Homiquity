@@ -29,6 +29,7 @@ export default defineConfig({
       "tests/activeApplicationListParity.test.ts",
       "tests/apiRequestConvergence.test.ts",
       "tests/queryKeyConvergence.test.ts",
+      "tests/clientSchemaImports.test.ts",
       "tests/borrowerTaskView.test.ts",
       "tests/borrowerDocumentView.test.ts",
       "tests/borrowerActivityView.test.ts",
