@@ -64,8 +64,15 @@ const ALLOWED_RAW_FETCH: Record<string, string> = {
   // now use apiRequest. A public POST being exempt from the redirect is not a
   // reason to be exempt from reading the response.
   "client/src/components/AddressInput.tsx": "public /api/geocode/* autocomplete, called from an input handler (not a query)",
-  "client/src/pages/public/RedeemInvite.tsx":
-    "public /api/staff-invites/validate/:code, fetched in a submit handler (the authenticated redeem call uses apiRequest)",
+  // RedeemInvite is gone from this list for the same reason as the four capture
+  // forms above: "public, called from a handler" said nothing about whether the
+  // site reads the response. It did not check `res.ok`, and the validate route
+  // answers 500 with `{ error }` and NO `valid` field
+  // (server/routes/staff-invites.ts:77) — so `validation.valid` was `undefined`,
+  // which rendered the destructive "invalid code" panel and disabled Redeem. A
+  // transient 500 told a staff member their good invite was invalid and locked
+  // them out of using it. It now distinguishes a 404 (the server's answer) from
+  // a failure to ask at all.
   // ApplyInvite was listed here to keep the server's expired-vs-invalid copy
   // verbatim, on the assumption that ApiError's "<status>: <body>" shape would
   // change it. It does not: `friendlyApiError` parses exactly that shape and

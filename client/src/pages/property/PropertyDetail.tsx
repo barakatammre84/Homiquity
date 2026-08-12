@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
+import { markBrowsedProperties } from "@/lib/pendingAttribution";
 
 interface QualificationBreakdown {
   meetsGuidelines: boolean;
@@ -155,7 +156,7 @@ export default function PropertyDetail() {
   const trackActivity = useTrackActivity();
 
   useEffect(() => {
-    try { localStorage.setItem("homiquity_browsed_properties", "true"); } catch {}
+    markBrowsedProperties();
   }, []);
 
   const { data: property, isLoading: propertyLoading } = useQuery<Property>({
