@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
 
 interface AdminUserStatsInput {
   id: string;

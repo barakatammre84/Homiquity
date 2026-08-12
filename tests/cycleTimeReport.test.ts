@@ -127,3 +127,87 @@ describe("route wiring", () => {
     expect(src).toContain("Math.min(365, Math.max(7, raw))");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Audit F-23 — the cash-conversion cycle.
+//
+// An asset-light broker's only liquidity risk is working capital: spend goes
+// out at application, cash comes back after the lender's wire. Funding is not
+// the moment cash arrives. `compensation_received_at` recorded that second half
+// on every funded submission and was read by nothing — summarizeCompensation
+// reads the amount beside it and ignores the timestamp.
+// ---------------------------------------------------------------------------
+describe("F-23 — funding→remittance lag and days-to-cash", () => {
+  const APPS = [
+    { id: "a", createdAt: at(0), status: "funded" },
+    { id: "b", createdAt: at(0), status: "funded" },
+  ];
+  const FUNDED = [
+    { applicationId: "a", fundedAt: at(20) },
+    { applicationId: "b", fundedAt: at(30) },
+  ];
+
+  it("measures the lag from the submission's own timestamps", () => {
+    const r = computeCycleTimeReport(90, APPS, FUNDED, [
+      { applicationId: "a", fundedAt: at(20), compensationReceivedAt: at(25) },
+      { applicationId: "b", fundedAt: at(30), compensationReceivedAt: at(39) },
+    ]);
+    expect(r.remittanceLag.measuredCount).toBe(2);
+    expect(r.remittanceLag.medianDays).toBe(7); // (5 + 9) / 2
+    expect(r.remittanceLag.p90Days).toBe(9);
+  });
+
+  it("adds the two halves into days-to-cash", () => {
+    const r = computeCycleTimeReport(90, APPS, FUNDED, [
+      { applicationId: "a", fundedAt: at(20), compensationReceivedAt: at(25) },
+      { applicationId: "b", fundedAt: at(30), compensationReceivedAt: at(39) },
+    ]);
+    // cycle median 25 (20 and 30) + lag median 7
+    expect(r.cycleTime.medianDays).toBe(25);
+    expect(r.daysToCash.medianDays).toBe(32);
+    expect(r.daysToCash.p90Days).toBe(r.cycleTime.p90Days! + r.remittanceLag.p90Days!);
+  });
+
+  it("leaves days-to-cash NULL when the lag is unmeasured — the wire is not instant", () => {
+    // The dangerous default: reporting the funding cycle as days-to-cash would
+    // understate the exact window this figure exists to surface.
+    const r = computeCycleTimeReport(90, APPS, FUNDED, []);
+    expect(r.cycleTime.medianDays).toBe(25);
+    expect(r.remittanceLag.medianDays).toBeNull();
+    expect(r.daysToCash.medianDays).toBeNull();
+    expect(r.notes.join(" ")).toMatch(/not zero, it is unmeasured/);
+  });
+
+  it("excludes and counts a funded file with no remittance timestamp", () => {
+    const r = computeCycleTimeReport(90, APPS, FUNDED, [
+      { applicationId: "a", fundedAt: at(20), compensationReceivedAt: at(25) },
+      { applicationId: "b", fundedAt: at(30), compensationReceivedAt: null },
+    ]);
+    expect(r.remittanceLag.measuredCount).toBe(1);
+    expect(r.remittanceLag.unmeasuredFundedCount).toBe(1);
+    expect(r.notes.join(" ")).toMatch(/no usable remittance timestamp/);
+  });
+
+  it("treats a remittance dated before funding as corrupt, not a same-day wire", () => {
+    const r = computeCycleTimeReport(90, APPS, FUNDED, [
+      { applicationId: "a", fundedAt: at(20), compensationReceivedAt: at(19) },
+    ]);
+    expect(r.remittanceLag.measuredCount).toBe(0);
+    expect(r.remittanceLag.unmeasuredFundedCount).toBe(1);
+  });
+
+  it("ignores remittances on files outside the window's cohort", () => {
+    const r = computeCycleTimeReport(90, APPS, FUNDED, [
+      { applicationId: "a", fundedAt: at(20), compensationReceivedAt: at(25) },
+      { applicationId: "stranger", fundedAt: at(0), compensationReceivedAt: at(60) },
+    ]);
+    expect(r.remittanceLag.measuredCount).toBe(1);
+    expect(r.remittanceLag.medianDays).toBe(5);
+  });
+
+  it("stays backward-compatible when no remittance rows are passed", () => {
+    const r = computeCycleTimeReport(90, APPS, FUNDED);
+    expect(r.remittanceLag.measuredCount).toBe(0);
+    expect(r.daysToCash.p90Days).toBeNull();
+  });
+});

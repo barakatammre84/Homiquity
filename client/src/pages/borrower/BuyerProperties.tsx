@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication } from "@shared/schema";
-import { selectPreApprovalContext } from "@shared/schema";
+import { selectPreApprovalContext } from "@shared/loanApplicationStatus";
 import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
 import {
   Search,

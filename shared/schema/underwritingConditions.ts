@@ -215,31 +215,14 @@ export const CONDITION_CATEGORIES = [
 
 export const CONDITION_PRIORITY = ["prior_to_approval", "prior_to_docs", "prior_to_funding"] as const;
 
-/**
- * The ONLY statuses `loanConditions.status` may hold. Lifecycle:
- * "outstanding" (issued / reopened) → "submitted" (a borrower upload matched —
- * pipelineEngine) → "cleared" / "waived" / "not_applicable" (staff verdicts,
- * role-gated in server/routes/underwriting/pipeline.ts).
- */
-export const LOAN_CONDITION_STATUSES = [
-  "outstanding",
-  "submitted",
-  "cleared",
-  "waived",
-  "not_applicable",
-] as const;
-export type LoanConditionStatus = (typeof LOAN_CONDITION_STATUSES)[number];
+import { LOAN_CONDITION_STATUSES, type LoanConditionStatus } from "../statusVocabularies";
 
-/**
- * Verdict statuses — the condition no longer needs work. Everything outside
- * this set ("outstanding", "submitted") counts as open; readiness gates and
- * open-condition counts must derive from this so the two can't diverge.
- */
-export const SETTLED_CONDITION_STATUSES: readonly LoanConditionStatus[] = [
-  "cleared",
-  "waived",
-  "not_applicable",
-];
+// Moved to shared/statusVocabularies.ts (a table-free module) so client imports
+// of SETTLED_CONDITION_STATUSES do not drag every Drizzle table into the browser
+// bundle. Re-exported so existing importers are unaffected.
+export type { LoanConditionStatus };
+export { LOAN_CONDITION_STATUSES };
+export { SETTLED_CONDITION_STATUSES } from "../statusVocabularies";
 
 export const loanConditions = pgTable("loan_conditions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

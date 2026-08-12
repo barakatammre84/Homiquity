@@ -18,11 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RefreshCw } from "lucide-react";
 import { getStatusLabel } from "@/lib/formatters";
-import {
-  STAFF_SETTABLE_STATUSES,
-  isProtectedCreditDecisionStatus,
-  isApprovalOutcomeStatus,
-} from "@shared/schema";
+import { STAFF_SETTABLE_STATUSES, isApprovalOutcomeStatus, isProtectedCreditDecisionStatus } from "@shared/loanApplicationStatus";
 import { HMDA_DENIAL_REASONS } from "./model";
 
 /**

@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication, AgentProfile } from "@shared/schema";
-import { selectPreApprovalContext } from "@shared/schema";
+import { selectPreApprovalContext } from "@shared/loanApplicationStatus";
 import {
   MapPin,
   Bed,

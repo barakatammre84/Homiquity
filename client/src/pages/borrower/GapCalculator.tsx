@@ -13,6 +13,7 @@ import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import {
   GapGoalOnboardingForm,
   goalFormSchema,
+  type GoalFormInput,
   type GoalFormValues,
 } from "./GapGoalOnboardingForm";
 import { queryClient, apiRequest, homeownershipGoalKeys } from "@/lib/queryClient";
@@ -59,7 +60,9 @@ export default function GapCalculator() {
     enabled: !!goalData?.goal,
   });
 
-  const form = useForm<GoalFormValues>({
+  // <input, context, output>: the fields hold what the DOM gives us, while
+  // `handleSubmit` hands `onSubmitGoal` the resolver-coerced numbers.
+  const form = useForm<GoalFormInput, unknown, GoalFormValues>({
     resolver: zodResolver(goalFormSchema),
     defaultValues: {
       currentCreditScore: 600,
