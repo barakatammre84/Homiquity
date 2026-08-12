@@ -81,16 +81,27 @@ Each of these killed the previous suite. Probe them; do not trust this table's a
 Local time. Windows are deliberately non-overlapping: two routines writing code in the same ten
 minutes is how a peer's refactor gets clobbered.
 
-| Time | Routine | Cadence | Writes code? | Produces |
-|---|---|---|---|---|
-| 07:45 | **Launch Gate** | daily | no — tickets only | `RELEASABLE: yes/no` + the day's gate verdict |
-| 09:10 | **Frontend Wiring Audit** | daily | yes — capture path | committed fix on a worktree branch |
-| 09:45 | **Sprint Blitz** | daily | yes — one queue item | **one PR** |
-| 12:30 | **Lender Delivery Gate** | daily | small/safe only | delivery verdict + Target-5 execution |
-| 15:00 | **Deliverable QA Sweep** | daily | no — findings only | verified rows in `FINDINGS.md` |
-| 18:30 | **Evening Triage** | daily | docs only | roadmap update + the founder's tomorrow list |
-| Mon 09:35 | **Vendor & Procurement** | weekly | no | vendor/contract board |
-| Sun 20:00 | **Refactor Radar** | weekly | yes — `client/src` only | at most one PR |
+The scheduler adds a small **deterministic dispatch offset** per task, so a routine fires a few
+minutes after its cron minute. "Fires" below is the real observed time — the number that matters
+when reasoning about overlap. `taskId` is the scheduler key.
+
+| Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Produces |
+|---|---|---|---|---|---|
+| 07:48 | `45 7 * * *` | **Launch Gate** (`launch-gate`) | daily | no — tickets only | `RELEASABLE: yes/no` + the day's gate verdict |
+| 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
+| 09:53 | `45 9 * * *` | **Sprint Blitz** (`sprint-blitz`) | daily | yes — one queue item | **one PR** |
+| 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | delivery verdict + Target-5 execution |
+| 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified rows in `FINDINGS.md` |
+| 18:40 | `30 18 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
+| Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | vendor/contract board |
+| Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | at most one PR |
+
+The wiring audit keeps its original unwieldy `taskId` on purpose — renaming it would discard its
+run history and stored tool approvals. Judge it by its description, not its slug.
+
+**Scheduled tasks only run while the app is open.** A task due while it is closed runs on next
+launch. A gap in `reports/` may therefore mean "the laptop was shut", not "the routine broke" —
+Evening Triage distinguishes the two rather than assuming either.
 
 The **Frontend Wiring Audit** and **Refactor Radar** keep their own detailed rails
 ([`../refactor-radar/`](../refactor-radar/) and the radar `SKILL.md`); this charter adds the clock,
