@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, taskKeys, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, taskKeys, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { titleCaseFromSnake } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -92,6 +92,7 @@ function getDocumentCategoryLabel(category: string) {
 }
 
 export default function Tasks() {
+  const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const { uploadFile } = useUpload();

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, dashboardKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, dashboardKeys } from "@/lib/queryClient";
 import { usePlaidLink, type PlaidLinkOnSuccess } from "react-plaid-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -198,6 +198,7 @@ function PlaidLinkButton({
 }
 
 export default function VerificationPage() {
+  const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 

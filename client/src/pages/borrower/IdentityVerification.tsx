@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, onboardingStatusKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, onboardingStatusKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +108,7 @@ interface KbaResult {
 }
 
 function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: OnboardingStatus["kba"]; applicationId: string | null; onComplete: () => void }) {
+  const queryClient = useQueryClient();
   const [questions, setQuestions] = useState<KbaQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<{ questionId: string; selectedIndex: number }[]>([]);
@@ -253,6 +254,7 @@ function KBAFlow({ kbaStatus, applicationId, onComplete }: { kbaStatus: Onboardi
 }
 
 function KYCAMLStatus({ kyc, applicationId }: { kyc: KycStatus | null; applicationId: string | null }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const screenMutation = useMutation({
@@ -344,6 +346,7 @@ function KYCAMLStatus({ kyc, applicationId }: { kyc: KycStatus | null; applicati
 }
 
 export default function IdentityVerification() {
+  const queryClient = useQueryClient();
   const { data: status, isLoading, isError, error, refetch } = useQuery<OnboardingStatus>({
     queryKey: onboardingStatusKeys.root(),
     refetchInterval: 5000,

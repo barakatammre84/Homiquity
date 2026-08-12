@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { PageShell } from "@/components/PageShell";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { Badge } from "@/components/ui/badge";
@@ -109,6 +109,7 @@ function toFormValue(field: ProfileFieldDef, raw: string | number | boolean | nu
 }
 
 export default function Profile() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data, isLoading } = useQuery<FinancialProfileResponse>({
     queryKey: ["/api/profile/financial"],

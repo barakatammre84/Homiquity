@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient, coachConversationKeys } from "@/lib/queryClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, coachConversationKeys } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageSquare, Sparkles, WifiOff } from "lucide-react";
@@ -81,6 +81,7 @@ function getSourceContext(): { banner: string; autoMessage: string } | null {
 }
 
 export default function AICoach() {
+  const queryClient = useQueryClient();
   usePageView("/ai-coach");
   const trackActivity = useTrackActivity();
   const trackCoachSession = useTrackCoachSession();

@@ -1,8 +1,8 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { PREQUAL_ELIGIBLE_STATUSES } from "@shared/letters";
 
@@ -72,6 +72,7 @@ export function LoanLetterButton({
   status: string;
   kind: keyof typeof LETTER_KINDS;
 }) {
+  const queryClient = useQueryClient();
   const spec: LetterKind = LETTER_KINDS[kind];
   const { toast } = useToast();
 

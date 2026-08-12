@@ -21,7 +21,7 @@ Humans: claim too. A routine cannot see your editor.
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| _(none)_ | — | — | — | — | — |
+| frontend-wiring-audit | the remaining **71** `client/src` singleton-`queryClient` importers (all except `lib/logout.ts`) | `.claude/worktrees/pensive-noether-5232f2` | `claude/queryclient-migration-batch2` | 2026-08-12T21:52Z | Finish the `useQueryClient()` migration started in #501. `lib/logout.ts` is deliberately excluded — it calls `queryClient.clear()` from a plain async function, not a render, so the hook cannot apply there. |
 
 ## Recently released
 

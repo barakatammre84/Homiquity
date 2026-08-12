@@ -1,16 +1,17 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
 import { format } from "date-fns";
 import type { EquitySnapshot } from "./types";
 
 export function EquitySection({ profileId }: { profileId: string }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: snapshots = [], isLoading, isError, error, refetch } = useQuery<EquitySnapshot[]>({
     queryKey: ["/api/homeowner/equity", profileId],

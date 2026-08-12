@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 
 import { Footer } from "@/components/Footer";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import type { AgentProfile, Property } from "@shared/schema";
 import {
   Home,
@@ -27,6 +27,7 @@ interface AgentWithData extends AgentProfile {
 }
 
 export default function AgentDashboard() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
 

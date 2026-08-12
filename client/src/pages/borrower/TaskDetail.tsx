@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, taskKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, taskKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,7 @@ function getPriorityBadge(priority: TaskPriority) {
 }
 
 export default function TaskDetail() {
+  const queryClient = useQueryClient();
   const [, params] = useRoute("/task/:id");
   const taskId = params?.id;
   const { user, isLoading: authLoading } = useAuth();
