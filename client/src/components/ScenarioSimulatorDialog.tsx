@@ -24,6 +24,17 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatCurrencyDecimal } from "@/lib/formatters";
 import { Calculator, Info, Loader2, MapPin, Play, Scale } from "lucide-react";
+import {
+  PRODUCT_FILTERS,
+  buildScenarioPayload,
+  derivePropertyPrefill,
+  type AddressSuggestion,
+  type AntiSteeringOption,
+  type EvaluatedOffer,
+  type OfferQualification,
+  type PropertyDetail,
+  type ScenarioResponse,
+} from "./scenarioSimulator/scenarioRequest";
 
 // -----------------------------------------------------------------------------
 // LO-2 — What-If Scenario Simulator (LO Advisor Program).
@@ -40,83 +51,6 @@ import { Calculator, Info, Loader2, MapPin, Play, Scale } from "lucide-react";
 //  - the FICO what-if is labeled hypothetical — it never triggers a pull (I6).
 // -----------------------------------------------------------------------------
 
-interface AddressSuggestion {
-  id: string;
-  type: string;
-  label: string;
-  city: string | null;
-  stateCode: string | null;
-}
-
-// Mirrors server/routes/property.ts detail-live (fields used here only).
-interface PropertyDetail {
-  property_id: string;
-  price: number;
-  address: string;
-  city: string;
-  stateCode: string;
-  zipcode: string;
-  propertyType: string;
-  taxHistory: { year: number; tax: number }[];
-  estimates: unknown;
-  hoa: { fee: number; frequency: string } | null;
-}
-
-// Mirrors server/services/scenarioSimulator.ts (client-side projection).
-interface OfferQualification {
-  decision: "APPROVED" | "REJECTED" | "MANUAL_REVIEW";
-  dti: number | null;
-  ltv: number | null;
-  reasons: string[];
-}
-
-interface EvaluatedOffer {
-  lenderId: string;
-  productId: string;
-  productCode: string;
-  productName: string;
-  productType: string;
-  loanTerm: number;
-  lockTerm: number;
-  adjustedRate: number;
-  payment: {
-    principalAndInterest: number;
-    mortgageInsurance: number;
-    escrow: number;
-    totalPiti: number;
-  };
-  apr: number;
-  costs: { totalClosingCosts: number; cashToClose: number; pointsAndFeesDollars: number };
-  qualification: OfferQualification;
-}
-
-interface AntiSteeringOption {
-  key: "lowest_rate" | "lowest_rate_no_risky_features" | "lowest_points_and_fees";
-  lenderId: string;
-  productId: string;
-}
-
-interface ScenarioResponse {
-  runId: string | null;
-  serverMs: number;
-  status: "OK" | "NO_ELIGIBLE_PRODUCTS" | "NEEDS_MORE_INFO" | "NEEDS_INCOME_EVALUATION";
-  simulated: boolean;
-  missingItems: string[];
-  income: {
-    primaryMonthlyQualifyingIncome: number;
-    incomeBasis: string;
-    requiresManualReview: boolean;
-  } | null;
-  monthlyDebts: number | null;
-  offers: EvaluatedOffer[];
-  excludedProducts: string[];
-  antiSteering: {
-    citation: string;
-    creditorsQuoted: number;
-    options: AntiSteeringOption[];
-  } | null;
-}
-
 const OPTION_LABELS: Record<AntiSteeringOption["key"], string> = {
   lowest_rate: "Lowest rate",
   lowest_rate_no_risky_features: "Lowest rate, no risky features",
@@ -131,29 +65,6 @@ const DECISION_BADGE: Record<
   MANUAL_REVIEW: { label: "Manual review", variant: "warning" },
   REJECTED: { label: "Does not qualify", variant: "destructive" },
 };
-
-const PRODUCT_FILTERS = ["ALL", "CONVENTIONAL", "FHA", "VA", "JUMBO", "ARM"] as const;
-
-/** Best AVM value from the raw realty `estimates` payload (both casings). */
-function bestEstimateValue(estimates: unknown): number | null {
-  const e = estimates as { current_values?: unknown; currentValues?: unknown } | null;
-  const values = (e?.current_values ?? e?.currentValues) as
-    | { estimate?: number; isbest_homevalue?: boolean; isBestHomeValue?: boolean }[]
-    | undefined;
-  if (!Array.isArray(values) || values.length === 0) return null;
-  const usable = values.filter((v) => typeof v?.estimate === "number" && v.estimate! > 0);
-  if (usable.length === 0) return null;
-  const best = usable.find((v) => v.isbest_homevalue || v.isBestHomeValue) ?? usable[0];
-  return best.estimate ?? null;
-}
-
-function mapPropertyType(raw: string): "single_family" | "condo" | "townhouse" | "multi_family" {
-  const t = (raw || "").toLowerCase();
-  if (/condo/.test(t)) return "condo";
-  if (/town/.test(t)) return "townhouse";
-  if (/multi|duplex|triplex|fourplex/.test(t)) return "multi_family";
-  return "single_family";
-}
 
 interface ScenarioSimulatorDialogProps {
   applicationId: string;
@@ -205,46 +116,30 @@ export function ScenarioSimulatorDialog({ applicationId, borrowerName }: Scenari
   // Prefill once per loaded property detail (licensed data, never scraped).
   useEffect(() => {
     if (!propertyDetail) return;
-    const estimate = bestEstimateValue(propertyDetail.estimates);
-    const price = propertyDetail.price > 0 ? propertyDetail.price : estimate;
-    if (price) setPurchasePrice(String(Math.round(price)));
-    if (estimate) setPropertyValue(String(Math.round(estimate)));
-    const latestTax = propertyDetail.taxHistory?.[0]?.tax;
-    if (latestTax && latestTax > 0) setAnnualTaxes(String(Math.round(latestTax)));
-    setPropertyType(mapPropertyType(propertyDetail.propertyType));
-    setAddressContext({
-      line: propertyDetail.address,
-      city: propertyDetail.city,
-      stateCode: propertyDetail.stateCode,
-      zipcode: propertyDetail.zipcode,
-      propertyId: propertyDetail.property_id,
-      source: "realty-us",
-      observedPropertyType: propertyDetail.propertyType,
-    });
+    const prefill = derivePropertyPrefill(propertyDetail);
+    if (prefill.purchasePrice) setPurchasePrice(prefill.purchasePrice);
+    if (prefill.propertyValue) setPropertyValue(prefill.propertyValue);
+    if (prefill.annualTaxes) setAnnualTaxes(prefill.annualTaxes);
+    setPropertyType(prefill.propertyType);
+    setAddressContext(prefill.addressContext);
   }, [propertyDetail]);
 
   const simulate = useMutation({
     mutationFn: async (): Promise<ScenarioResponse> => {
-      const price = parseFloat(purchasePrice);
-      const dpValue = parseFloat(downPaymentValue);
-      const scenario: Record<string, unknown> = {
-        purchasePrice: price,
-        ...(downPaymentUnit === "percent"
-          ? { downPaymentPercent: dpValue }
-          : { downPaymentAmount: dpValue }),
+      const scenario = buildScenarioPayload({
+        purchasePrice,
+        downPaymentValue,
+        downPaymentUnit,
+        productFilter,
         occupancyType,
         propertyType,
-        lockTermDays: Number(lockTermDays),
-      };
-      if (productFilter !== "ALL") scenario.productTypes = [productFilter];
-      if (propertyType === "multi_family") scenario.numberOfUnits = Number(numberOfUnits);
-      if (ficoWhatIf.trim() !== "") scenario.ficoWhatIf = Number(ficoWhatIf);
-      if (annualTaxes.trim() !== "") scenario.annualPropertyTaxes = parseFloat(annualTaxes);
-      if (propertyValue.trim() !== "") scenario.propertyValue = parseFloat(propertyValue);
-      if (addressContext) {
-        scenario.addressContext = addressContext;
-        if (addressContext.stateCode?.length === 2) scenario.propertyState = addressContext.stateCode;
-      }
+        numberOfUnits,
+        ficoWhatIf,
+        lockTermDays,
+        annualTaxes,
+        propertyValue,
+        addressContext,
+      });
       const res = await apiRequest("POST", "/api/scenarios/simulate", { applicationId, scenario });
       return res.json();
     },
