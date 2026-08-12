@@ -26,8 +26,13 @@ Traced the borrower capture path end to end — calculators → `/apply` → aut
 **4. Invite attribution expired with the tab** *(fixed, this branch — `84382bb`)*
 `ApplyInvite.tsx:91` wrote `sessionStorage["inviteId"]`; the draft, pending-submit marker and both sibling attribution codes are all `localStorage` (`lib/pendingAttribution.ts`). `server/routes/lending/applications.ts:208-236` uses it to flip the invite to `applied` and set `referringBrokerId`, which routes the file to the referring LO. Legacy key still read and cleared, never written.
 
-**5. CHARTER §1 standing blocker — CLOSED, chain verified**
+**5. CHARTER §1 standing blocker — CLOSED, chain verified and DATED**
 `urla/PropertySection.tsx:180` Select → `onLoanDetailsChange` → `URLAForm.tsx:602 setLoanDetails` → `:205` state → `:336 buildPayload` includes `loanDetails` → `server/routes/borrower/urla.ts:587-599` → `storage.updateLoanApplication(applicationId, parsedLoanDetails.data)`.
+
+The whole path landed in **`6407119` (#400), 2026-08-05** — *"fix(launch): pre-flight fix wave B — engine decidability + URLA section-4 write path"*. Dated with `git log -S "loanDetailsChanged" -- server/routes/borrower/urla.ts` and `git log -S "loanDetails," -- client/src/pages/borrower/URLAForm.tsx`; both point only at that commit. WF2-F4 was recorded the **same day**, so it was written before the fix merged and never re-checked. **It has been closed for a week while three documents asserted it** (`WORKFLOWS.md:31`, `CHARTER.md §1`, and the `routine-suite` memory). Peer `homiquity-37` notified with the evidence; the memory file is corrected. `WORKFLOWS.md` and `CHARTER.md` are Evening Triage's territory under §6, so this routine did not edit them.
+
+**7. A transient 500 told staff their good invite was invalid** *(fixed, this branch — `dfb7b77`)*
+`GET /api/staff-invites/validate/:code` answers 500 with `{ error }` and no `valid` field (`server/routes/staff-invites.ts:77`). `RedeemInvite.tsx` set that straight into `validation` with no `res.ok` check, so `validation.valid` was `undefined` — which rendered the destructive invalid-code panel *and* disabled Redeem (`validation !== null && !validation.valid`), locking a valid invite out for the session and printing a 5xx internal string on a public page. A 404 is the server's answer and still sets `validation`; anything else now leaves it null with a neutral retry note. `RedeemInvite.test.tsx`: 3 of 7 cases fail against the previous code.
 
 **6. Not fixed — the largest structural finding.** 83 client files import the module-singleton `queryClient` (163 `.invalidateQueries` call sites); 8 use `useQueryClient()`. Tests render under a fresh `new QueryClient()` (`SubmissionLifecycleControl.tsx:3,101,107` vs its test at `:29,33`), so invalidations land on a client no test observes. Deferred: it touches files in unmerged #490.
 
@@ -41,7 +46,7 @@ Traced the borrower capture path end to end — calculators → `/apply` → aut
 1. **Migrate 83 client files off the singleton `queryClient` to `useQueryClient()`** — do the ~9 files with a `.test.tsx` sibling first, so their refresh assertions stop being vacuous. Blocked on #490 merging.
 2. **Correct CHARTER §1's standing evidence** — WF2-F4 is closed; leaving it in makes every routine re-report a fixed blocker.
 3. **Merge #493** — until then the suite has no claim register and CHARTER §5's lock is unenforceable.
-4. **Finish the transport sweep** — `AddressInput` (2 public GETs, better as `getPublicQueryFn`), `RedeemInvite` (no `res.ok` check), `RentCard` (multipart; `apiRequest` cannot send `FormData`). Keep the allowlist honest — it fails on stale entries.
+4. **Finish the transport sweep** — `RedeemInvite` is done (`dfb7b77`). Still open: `AddressInput` (2 public GETs from a debounced input handler; both *do* check `res.ok`, so this is a shape question — `getPublicQueryFn` + a params-object key — not a defect) and `RentCard` (multipart; `apiRequest` JSON-stringifies its body and cannot send `FormData`, so it needs either an `apiRequest` extension or a documented raw exception). Keep the allowlist honest — it fails on stale entries.
 5. **`Messages.tsx` runs three uncoordinated polls** (`:47` 30s, `:59` 5s, `:66` 3s ≈ 32 req/min/tab) with no backoff, while every other live surface was consolidated onto `useShellBadges` or SSE.
 6. **Do not "clean up" `URLAForm.tsx`** — `knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md` (landed today, #486) refutes eight extraction proposals; the worst writes a co-applicant's PII into the primary borrower's rows.
 
