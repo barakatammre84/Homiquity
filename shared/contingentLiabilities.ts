@@ -34,6 +34,7 @@ export const EXPOSURE_CATEGORIES = [
   "lock_honor",
   "lock_extension",
   "regz_lo_comp",
+  "commission_payable",
   "surety_bond",
   "minimum_net_worth",
 ] as const;
@@ -92,6 +93,20 @@ export interface RegisterInputs {
   };
   /** Funded loans carrying a known Reg Z §1026.36 / ATR defect. */
   regZExposedLoanCount: number;
+  /**
+   * Commission payouts on funded files (`broker_commissions`), split by
+   * lifecycle state. See shared/costLedger.ts for why `approved` is a payable
+   * and `pending` is not yet one.
+   */
+  commissions: {
+    approvedAmount: number;
+    approvedCount: number;
+    pendingAmount: number;
+    pendingCount: number;
+    /** Already disbursed on loans still inside a live EPO clawback window. */
+    paidInsideClawbackWindowAmount: number;
+    paidInsideClawbackWindowCount: number;
+  };
 }
 
 /**
@@ -222,6 +237,42 @@ export function buildContingentLiabilityRegister(input: RegisterInputs): Conting
       input.regZExposedLoanCount > 0
         ? "Loans funded before the compensation and QM gates landed may carry defects — review them individually."
         : "No funded loan is currently flagged with a known defect.",
+  });
+
+  // --- Commission payouts owed on funded files ----------------------------
+  //
+  // The only obligation on this register that is a CASH payable rather than a
+  // contingency: once a loan funds and the commission is approved, the company
+  // owes the money outright. It belongs here anyway, because this register is
+  // the platform's only balance-sheet artifact and omitting the one certain
+  // liability from the list of uncertain ones inverts the reader's picture of
+  // what the company owes.
+  //
+  // The EPO interaction is the part that does not net out. When a lender
+  // reclaims its compensation on an early payoff, the clawback entry above
+  // sizes the loss at the comp we must return — but a commission already
+  // DISBURSED against that same loan is not recoverable from the lender and
+  // generally not from the payee. So the true cash loss on an EPO is the
+  // clawback PLUS the commission already paid, and that second amount is
+  // reported here rather than silently folded into the first.
+  const commissionPayable = round2(input.commissions.approvedAmount);
+  entries.push({
+    category: "commission_payable",
+    label: "Commission payouts owed on funded files",
+    basis: "computed",
+    amount: commissionPayable,
+    count: input.commissions.approvedCount,
+    window: "From approval until disbursement",
+    trigger: "A funded file carries an approved referral/originator commission not yet paid",
+    assumptions: [],
+    action:
+      input.commissions.pendingCount > 0
+        ? `Approve or reject ${input.commissions.pendingCount} pending commission(s) worth $${input.commissions.pendingAmount.toFixed(2)} — they are owed or not owed, and today they are neither.`
+        : null,
+    note:
+      input.commissions.paidInsideClawbackWindowCount > 0
+        ? `$${input.commissions.paidInsideClawbackWindowAmount.toFixed(2)} of commission has already been disbursed on ${input.commissions.paidInsideClawbackWindowCount} loan(s) still inside a live EPO window. That money is unrecoverable if the lender claws back its compensation, so the real loss on those files exceeds the EPO figure above by this amount.`
+        : "No disbursed commission sits on a loan inside a live EPO window.",
   });
 
   // --- Licensing capital requirements -------------------------------------

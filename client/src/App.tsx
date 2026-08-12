@@ -61,6 +61,7 @@ const AffordabilityCheck = lazy(() => import("@/pages/public/AffordabilityCheck"
 const ApprovalStrength = lazy(() => import("@/pages/public/ApprovalStrength"));
 const Waitlist = lazy(() => import("@/pages/public/Waitlist"));
 const PartnerWaitlist = lazy(() => import("@/pages/public/PartnerWaitlist"));
+const RentReporting = lazy(() => import("@/pages/public/RentReporting"));
 
 const PreApproval = lazy(() => import("@/pages/lending/PreApproval"));
 const LoanOptions = lazy(() => import("@/pages/lending/LoanOptions"));
@@ -273,6 +274,9 @@ function Router() {
         {/* Partner / center-of-influence waitlist — ungated. Pre-launch we recruit
             the referral network (LOs, lenders, CPAs, agents), not consumer applicants. */}
         <Route path="/partners"><BareLayout><PartnerWaitlist /></BareLayout></Route>
+        {/* Rent reporting — pre-launch interest capture, ungated. Email-only waitlist:
+            nothing is reported to a bureau and nothing is sold, and the page says so. */}
+        <Route path="/rent-reporting"><BareLayout><RentReporting /></BareLayout></Route>
         {/* PartnerHub self-service onboarding (PH-1) — ungated B2B, like /for-cpas. */}
         <Route path="/partners/join"><BareLayout><PartnersJoin /></BareLayout></Route>
         {/* Partner co-brand landing — consumer-facing, so prelaunch-gated like /ref/:code. */}

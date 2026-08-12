@@ -8,6 +8,7 @@ import {
   extractBankStatementData,
   extractLeaseData,
 } from "../extractionService";
+import type { ExtractedDocumentData, ExtractedTaxReturnData } from "../extractionCore";
 import { recordCoarseExtraction, markHumanReviewCompleted } from "../services/documentConfidence";
 import { allowedUploadTypes, bufferMatchesAllowedSignature } from "./utils";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@shared/uploads";
@@ -305,7 +306,10 @@ export function registerDocumentRoutes(
       }
 
       const { documentYear } = req.body;
-      let extractedData: any;
+      // Typed, not `any`: the readiness wiring below reads real fields off this
+      // object, and an `any` here is exactly what hid F-030 from tsc — a map
+      // indexed by field names that exist on none of these interfaces.
+      let extractedData: ExtractedDocumentData;
 
       switch (document.documentType) {
         case "tax_return":
@@ -370,21 +374,50 @@ export function registerDocumentRoutes(
           const { hasUserConsent } = await import("../consentGate");
           if (await hasUserConsent("tax_document_use", document.userId)) {
             const { saveTaxInsightForDocument } = await import("../services/taxInsightService");
-            await saveTaxInsightForDocument(document.userId, id, extractedData);
+            // Safe by construction: this branch is guarded on
+            // documentType === "tax_return", which is exactly the case that
+            // selected extractTaxReturnData in the switch above.
+            await saveTaxInsightForDocument(
+              document.userId,
+              id,
+              extractedData as ExtractedTaxReturnData,
+            );
           }
         } catch (insightErr) {
           console.warn("[TaxInsight] Insight derivation failed (non-fatal):", insightErr);
         }
       }
 
-      if (extractedData.confidence !== "low" && extractedData.extractedFields) {
+      // Persist the VALUES the model read, not just the field names (F-028).
+      // Without this the numbers are discarded after extraction and the file
+      // keeps asking the borrower for figures it has already been shown.
+      // Non-fatal: a lost signal must not fail the extraction.
+      if (extractedData.confidence !== "low") {
+        try {
+          const { persistDocumentFacts } = await import("../services/documentFacts");
+          await persistDocumentFacts(
+            id,
+            document.documentType,
+            extractedData as unknown as Record<string, any>,
+            extractedData.confidence,
+            extractedData.modelId,
+          );
+        } catch (factErr) {
+          console.warn("[DocumentFacts] persist failed (non-fatal):", factErr);
+        }
+      }
+
+      if (extractedData.confidence !== "low") {
         try {
           const { wireExtractionToReadiness } = await import("../services/optimizationEngine");
+          // Pass the extraction RESULT, not `extractedFields` — the latter is a
+          // string[] of field NAMES, and handing it to a value-reading map is
+          // what made every value-bearing readiness row silently skip (F-030).
           const readinessResult = await wireExtractionToReadiness(
             document.userId,
             id,
             document.documentType,
-            extractedData.extractedFields,
+            extractedData as unknown as Record<string, any>,
             extractedData.confidence
           );
           console.log(`[OPT-1] Readiness fields updated: ${readinessResult.fieldsUpdated.join(", ") || "none"}`);
@@ -494,6 +527,19 @@ export function registerDocumentRoutes(
           reviewedByUserId: user.id,
           reviewedAt: new Date(),
         });
+
+        // A human confirmed this really is the document it claims to be, so the
+        // presence credit granted at upload climbs from tier 3 to tier 1. Only
+        // on verify: a rejection must never promote, and updateReadinessField
+        // never downgrades, so a bounce simply leaves the tier-3 credit alone.
+        if (status === DOCUMENT_STATUS.VERIFIED) {
+          try {
+            const { creditDocumentPresence } = await import("../services/optimizationEngine");
+            await creditDocumentPresence(document.userId, id, document.documentType, "verified");
+          } catch (readinessErr) {
+            console.warn("[Readiness] presence credit on verify failed (non-fatal):", readinessErr);
+          }
+        }
 
         // Close the MR-6 accuracy loop: a verify/reject IS a completed human
         // review, so stamp the confidence row (no-op when extraction never

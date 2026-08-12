@@ -6,6 +6,30 @@ Every tick reads this file **before** choosing work (rail R2) and updates it in 
 as the change it describes. Ids are `F-###` in discovery order and are **never reused** —
 they are the same ids the dated audit logs cite.
 
+> ## ⚠️ ID COLLISION — read before minting an id
+>
+> **`F-20` … `F-24` mean two different things**, because two sessions audited the finances
+> concurrently and each minted ids from the same next-free number.
+>
+> - **Canonical (merged to `main`, [#469](https://github.com/barakatammre84/Homiquity/pull/469),
+>   audit dated 2026-08-08):** F-20 commission payouts counted as no cost · F-21 payout unbounded
+>   by the revenue it shares · F-22 borrower-paid platform fees absent from revenue · F-23
+>   cash-conversion cycle uncomputed · F-24 money-out routes unaudited.
+> - **This branch (unmerged, audit dated 2026-08-12):** F-20 confirmation is a presence test ·
+>   F-21 revenue ledger simulation-blind · F-22 lender authorization audit trail · F-23
+>   `epoClawbackDays` had no write surface. Plus seeded F-24…F-27 in this file.
+>
+> **`main` wins** — it is merged and earlier-dated. The 08-12 set needs renumbering to
+> **F-30…F-33** (and this file's seeded F-24…F-27 to F-34…F-37) with a supersession banner on the
+> 08-12 log per TEAM_PRACTICES §2, which forbids rewriting a log in place. **Owner decision,
+> flagged 2026-08-12 tick 1; not done unilaterally.** Until it lands, cite an id *with its audit
+> date* — a bare "F-21" is ambiguous.
+>
+> **Allocation rule, effective now:** ids are allocated **in this file on `main`**, never minted
+> per-session from "next free". A session that cannot see `main`'s ledger must not mint an id — it
+> records the finding with a provisional `F-NEW-<slug>` and numbers it when it rebases. This is the
+> rule that would have prevented the collision, and it is cheap.
+
 Seeded 2026-08-12 from the three audits to date, at `origin/main` @ `2444950`:
 [2026-08-04](../logs/2026-08-04-financial-architecture-capital-structure-audit.md) ·
 [2026-08-05](../logs/2026-08-05-financial-architecture-reaudit-qm-loan-size-floor.md) ·
@@ -85,8 +109,26 @@ Recorded because three audits found the same *shapes*, not the same bugs:
    simulation while the revenue ledger beside it was blind. When one module is careful,
    check its neighbour.
 
+## The 2026-08-08 audit's findings (another session, merged) — do not re-discover
+
+Recorded so this routine does not re-audit money the other session already walked. Ids are
+**that audit's**, canonical on `main`.
+
+| id (08-08) | summary | status |
+|----|---------|--------|
+| F-20 | `broker_commissions` — a live payout table reaching no margin figure, balance sheet or audit log, while `costLedger.ts` asserted commissions were "not captured anywhere". A declared gap and an unjoined table look identical in a margin figure and are entirely different problems | `done` — charged by lifecycle state; approved-but-unpaid booked as a payable; disbursed commission inside a live EPO window reported as loss *on top of* the clawback, not netted |
+| F-21 | Payout struck as 0–10% of loan amount with no reference to the file's compensation and no funded gate — a $25,000 payable against $5,000 of revenue was permitted | `done` (`shared/commissionPayout.ts`) — but its **Reg Z §1026.36(d)(1) / RESPA §8 posture needs counsel**: ledger `regz-1026-36d1-referral-commission-payout`, roadmap 1.10, roadmap 3.7 blocked on it |
+| F-22 | Borrower-paid platform fee income (~$2,000/file) absent from the revenue line — so with their F-20, **both sides of the margin were wrong in opposite directions** | `open` — policy decided 2026-08-08 (recognize on receipt); implementation is roadmap 3.14 |
+| F-23 | Cash-conversion cycle computed nowhere despite every operand recorded, including `compensation_received_at` read by nothing | `done` — `daysToCash` measures funded → remittance and stays **null** rather than collapsing to the funding cycle when the lag is unmeasured |
+| F-24 | Money-out routes unaudited: a $30 credit pull was audited, opening a payable worth up to 10% of the loan amount was not | `done` — four-eyes on disbursement left as a founder call (enforcing a second approver on a one-person company would block the only path to paying anyone) |
+
+**Convergence worth noting:** their working-capital loop skips `simulated` cost entries for the
+same reason the 08-12 pass excluded simulated revenue — two independent audits reached the same
+rule. That agreement is evidence the rule is right, and it is why the two changes merged cleanly.
+
 ## Run log
 
 | tick | base | mode | outcome |
 |------|------|------|---------|
-| 2026-08-12 | `2444950` | audit + fix | F-20…F-23 found, verified by execution, and fixed under owner authorization; `/admin/lenders` built; routine installed |
+| 2026-08-12 t0 | `2444950` | audit + fix | 08-12 findings found, verified by execution, fixed under owner authorization; `/admin/lenders` built; routine installed |
+| 2026-08-12 t1 | `3ba30c9` | refresh-only (R3) | **Branch was 15 commits behind** — refresh was the whole tick, exactly as R3 intends. Merged `origin/main`: 7 overlapping files, 3 conflicts (`costLedger.ts`, `submissions.ts`, KB README), all resolved additively — the two sessions' changes were complementary, not contradictory. `contingentLiabilityRegister.ts` auto-merged and was re-verified by hand (both `epoClawbackDays` and `simulated` present) because a silent auto-merge in a money path is not evidence. 3,079 tests green post-merge. **Found the id collision above** — the first thing the team-sync rail caught |

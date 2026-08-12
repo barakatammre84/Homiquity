@@ -39,8 +39,8 @@ import { isStaffRole, isInternalStaffRole } from "@shared/roles";
 import { canReviewDocuments } from "@shared/documentStatus";
 import { formatCurrency } from "@/lib/formatters";
 import { DocumentReviewPanel } from "@/components/staff/DocumentReviewPanel";
-import { CREDIT_DECISION_ROLES, FINANCIAL_VERIFICATION_ROLES, type UrlaPersonalInfo } from "@shared/schema";
-
+import { CREDIT_DECISION_ROLES, FINANCIAL_VERIFICATION_ROLES } from "@shared/loanApplicationStatus";
+import type { UrlaPersonalInfo } from "@shared/schema";
 import { type ApplicationData, type PipelineData } from "./borrowerFile/model";
 import { StatusUpdateDialog } from "./borrowerFile/StatusUpdateDialog";
 import { CompensationCard } from "./borrowerFile/CompensationCard";

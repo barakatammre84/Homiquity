@@ -583,6 +583,61 @@
       "lastVerified": "2026-08-05",
       "reviewIntervalDays": 30,
       "notes": "DOCTRINE CHANGE - NEEDS COUNSEL. Opened 2026-08-05 resolving F-17, the non-QM dead band created by a fixed fee meeting a tiered cap. The fix removes the fixedness rather than picking a different fixed number, so the band cannot reappear when the CFPB adjusts the 1026.43(e) dollar amounts annually. TWO THINGS A HUMAN MUST CONFIRM. (1) It NARROWS an earlier invariant. The F-1 remediation asserted that borrower-facing totals are wholly invariant to lender-paid compensation, because the Loan Estimate has no paid-by-others column. That is no longer literally true: comp and our fees consume the same cap, so a richer comp plan now yields a smaller borrower fee. Compensation is still never ADDED to any borrower total, and the surviving invariant is directional - more compensation can never increase a borrower charge - which is pinned by tests/loCompensation.test.ts. Economically this is a lender credit, and it always runs in the borrower's favour, but whether a fee that varies with the comp plan is acceptable disclosure practice is a counsel question, not an engineering one. (2) Fair-lending posture: the reduction is formulaic and driven only by loan amount and comp plan, never discretionary and never by borrower characteristic. That is the safest form, but it should be confirmed as part of the fair-lending review since loan amount correlates with other things. Reset reviewIntervalDays to 180 once both are cleared."
+    },
+    {
+      "id": "regz-1026-36d1-referral-commission-payout",
+      "rule": "Compensation paid BY Homiquity to a referring broker/originator on a funded file. Implemented as: POST /api/broker/commissions accepts an admin-supplied rate of 0-10% of the loan amount, chosen per file; the unwired calculateAgentCommission would instead pay 25% of the lender compensation, which varies by lender and product.",
+      "value": "0-10% of loan amount, admin-set per file; unwired path = 25% of lender comp bps",
+      "citation": "Regulation Z, 12 CFR 1026.36(d)(1) (loan-originator compensation may not be based on a term of a transaction; a FIXED percentage of the amount of credit extended is permitted) and RESPA, 12 CFR 1024.14 (Regulation X) where the payee is a referral source rather than a loan originator. NEITHER VERIFIED - see notes.",
+      "sourceUrl": "https://www.ecfr.gov/current/title-12/chapter-X/subchapter-C/part-1026/subpart-E/section-1026.36",
+      "codeRef": "server/routes/agent-broker/profileBroker.ts POST/PATCH /api/broker/commissions; server/services/optimizationEngine.ts calculateAgentCommission; shared/schema/admin.ts brokerCommissions",
+      "lastVerified": "2026-08-08",
+      "reviewIntervalDays": 14,
+      "notes": "OPENED BY THE 2026-08-08 FINANCIAL ARCHITECTURE AUDIT (F-21). This is NOT a verified reading - it is an unverified posture recorded so it cannot be forgotten. WHAT WAS VERIFIED, IN CODE: (1) the payout path is live and admin-gated, and its rate is chosen per file rather than set by a fixed schedule; (2) the rate is applied to the LOAN AMOUNT with no server-side check against the compensation expected or received on that file, so the permitted maximum of 10% on a $250,000 loan creates a $25,000 payable against roughly $5,000 of revenue at the seeded 200 bps lender-paid plan; (3) calculateAgentCommission has zero callers today, and its referrer gate tests for a role string 'agent' that does not exist in shared/roles.ts ALL_ROLES - so only role 'broker' could ever satisfy it, and the realtor and cpa partner personas cannot. That is the RESPA-safe posture, but it reads as incidental rather than designed; (4) CTO_ROADMAP.md item 3.7 schedules wiring that function to the funded-loan transition, at which point the payout becomes 25% of a lender compensation figure that varies by lender and product. TWO QUESTIONS FOR COUNSEL BEFORE EITHER PATH CARRIES A LIVE FILE. (a) Is a per-file discretionary percentage of the loan amount a 'fixed percentage of the amount of credit extended' under 1026.36(d)(1)(ii), or is it compensation that varies by transaction? The 25%-of-lender-comp variant is the sharper case, since lender comp bps differ by lender and product. (b) If the payee is a referral source rather than a loan originator, does the payment survive RESPA section 8? The partner tables (shared/schema/partners.ts, shared/schema/cpaPartners.ts) were deliberately built with NO fee or commission columns for exactly this reason (charter 5-C1), and broker_commissions is that column set sitting on the same referral edge. WHY IT CANNOT BE ANSWERED HERE: Reg Z cannot be verified from inside a session - ecfr.gov, consumerfinance.gov, govinfo.gov and law.cornell.edu are all blocked, and docs/reg-z/ holds no source text. Reg X is likewise absent from docs/. The 14-day interval is deliberate so this goes loud until answered; reset to 180 once counsel clears both questions."
+    },
+    {
+      "id": "fcra-1681s2-furnisher-accuracy",
+      "rule": "A furnished rent tradeline must rest on a first-party payment record. Only rent_payments rows with provenance='platform_processed' are eligible to enter the furnishing queue; 'bank_observed' (inferred from transaction data) and 'self_reported' are never furnishable.",
+      "value": "provenance must equal platform_processed",
+      "citation": "FCRA 15 U.S.C. 1681s-2(a) furnisher accuracy duty (VERBATIM VERIFICATION PENDING - see notes)",
+      "sourceUrl": "https://www.ecfr.gov/current/title-12/chapter-X/subchapter-C/part-1022",
+      "codeRef": "server/services/rentFurnishing.ts FURNISHABLE_PROVENANCE; shared/schema/rent.ts rentPayments",
+      "lastVerified": "2026-08-08",
+      "reviewIntervalDays": 14,
+      "notes": "VERBATIM TEXT NOT YET VERIFIED. Authored 2026-08-08 opening the rent-reporting program; docs/fcra/ is README-only and every authoritative host is blocked from agent environments (same condition as regz-1026-36d2-dual-compensation). What WAS verified: the implemented behavior, and that no local source contradicts it. The reading is conservative in exactly one direction - it can only REFUSE to furnish, never furnish more - so shipping ahead of verification cannot create the harm it guards against. The external pitch that opened this program proposed the opposite: furnishing off a Plaid keyword match within 5 percent of the lease amount, which would place a DEROGATORY mark on a real consumer's file from a fuzzy string comparison. That design is rejected and this entry is the guard against its return. Nothing is transmitted to any bureau while docs/fcra/ is empty. A human must read 1681s-2(a) and Reg V Appendix E before the first furnish, then reset reviewIntervalDays to 180."
+    },
+    {
+      "id": "regv-1022-43-dispute-response",
+      "rule": "A furnished tradeline must be suppressible and correctable on consumer dispute. rent_furnishing_queue carries terminal states 'disputed' and 'suppressed'; a suppressed line is excluded from every subsequent file and is never re-queued without a new authorization.",
+      "value": "disputed and suppressed are reachable terminal states",
+      "citation": "Regulation V, 12 CFR 1022.43 (direct disputes) and FCRA 15 U.S.C. 1681s-2(b) (VERBATIM VERIFICATION PENDING - see notes)",
+      "sourceUrl": "https://www.ecfr.gov/current/title-12/chapter-X/subchapter-C/part-1022/section-1022.43",
+      "codeRef": "server/services/rentFurnishing.ts FURNISHING_TRANSITIONS; shared/schema/rent.ts rentFurnishingQueue",
+      "lastVerified": "2026-08-08",
+      "reviewIntervalDays": 14,
+      "notes": "VERBATIM TEXT NOT YET VERIFIED - same blocked-network condition and same session as fcra-1681s2-furnisher-accuracy. The state machine models the OBLIGATION but not the OPERATION: receiving and answering an ACDV through e-OSCAR within the statutory window is a staffed process, not code, and it does not exist yet. That gap is a founder/counsel item recorded in docs/fcra/README.md, and it is a precondition for furnisher registration - not something a later PR can quietly close. A human must confirm the response deadline and the required record-correction mechanics, then reset reviewIntervalDays to 180."
+    },
+    {
+      "id": "cdia-metro2-base-segment-layout",
+      "rule": "The Metro 2 base segment field layout is UNKNOWN to this repo. FIELD_LAYOUT is empty and compileBaseSegment throws; no fixed-width record can be produced until the CDIA Metro 2 Format Manual is placed in docs/cdia-metro2/.",
+      "value": "FIELD_LAYOUT = [] (throws)",
+      "citation": "CDIA Metro 2 Format Manual - NOT OBTAINED. Licensed to members and vetted furnishers; not publicly downloadable.",
+      "sourceUrl": "https://www.cdiaonline.org/",
+      "codeRef": "shared/lib/metro2/compiler.ts FIELD_LAYOUT; shared/lib/metro2/format.ts padNumeric",
+      "lastVerified": "2026-08-08",
+      "reviewIntervalDays": 14,
+      "notes": "NOT A PENDING VERIFICATION - A MISSING DOCUMENT. Unlike the Reg Z entries, whose text is public and merely unreachable from agent environments, the Metro 2 manual cannot be fetched at all: acquisition is a CDIA membership/procurement action a human must complete. Guessing is uniquely dangerous in a fixed-width format because a wrong offset does not fail loudly - it yields a well-formed file whose fields land in the wrong columns, i.e. inaccurate information on a real consumer's credit file. The external pitch asserted 'Account Type 3A (Unsecured rent)'; that value is quarantined as an unverified external claim and must not be coded against. tests/metro2Gate.test.ts fails if FIELD_LAYOUT is populated while docs/cdia-metro2/ holds no citation file, so the manual's arrival - never a developer's recollection - is what releases the compiler. Same quarantine pattern as tests/nonQmProgramGate.test.ts."
+    },
+    {
+      "id": "croa-1679b-advance-payment",
+      "rule": "No consumer may be charged for rent reporting before a tradeline has actually been furnished. RENT_REPORTING_BILLING_ENABLED is false and there is no billing hook, no processor, and no price surface anywhere in the product.",
+      "value": "false",
+      "citation": "CROA 15 U.S.C. 1679b(b) advance-payment prohibition; UDAAP (VERBATIM VERIFICATION PENDING - see notes)",
+      "sourceUrl": "https://www.consumerfinance.gov/",
+      "codeRef": "server/services/rentFurnishing.ts RENT_REPORTING_BILLING_ENABLED",
+      "lastVerified": "2026-08-08",
+      "reviewIntervalDays": 14,
+      "notes": "VERBATIM TEXT NOT YET VERIFIED - docs/fcra/ is README-only and consumerfinance.gov is blocked from agent environments. Opened 2026-08-08 against the external pitch's explicit revenue model: 'queue the users in a Pending Bureau Submission database state, COLLECT THE SUBSCRIPTION REVENUE, and batch-release the Metro 2 file the day you hit 100 users.' Charging a consumer monthly for credit reporting that is not occurring is a deceptive-practice exposure regardless of CROA's scope, and whether a subscription positioned as credit improvement falls inside CROA at all is the open counsel question already raised by the 2026-08-04 renter-incubation adjudication section 5.6. This entry records the conservative posture taken instead: no charge until first successful furnish. It can only forgo revenue, never create the violation. A human must obtain a CROA scope opinion before any billing lands, then reset reviewIntervalDays to 180."
     }
   ]
 }

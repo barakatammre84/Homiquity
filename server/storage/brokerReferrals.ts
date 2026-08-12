@@ -123,6 +123,16 @@ export class BrokerReferralsStorage extends RatesStorage {
     return updated;
   }
 
+  /**
+   * Every commission row, whatever its status. The financial roll-ups need the
+   * rejected and paid rows too — `getAllPendingCommissions` is an admin work
+   * queue, not a ledger, and reading a ledger off a queue was how commission
+   * payouts stayed outside the margin figure.
+   */
+  async getAllBrokerCommissions(): Promise<BrokerCommission[]> {
+    return db.select().from(brokerCommissions).orderBy(desc(brokerCommissions.createdAt));
+  }
+
   async getAllPendingCommissions(): Promise<(BrokerCommission & { broker: User; application: LoanApplication })[]> {
     const commissions = await db
       .select()

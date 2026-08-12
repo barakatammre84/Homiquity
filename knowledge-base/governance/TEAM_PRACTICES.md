@@ -270,6 +270,21 @@ PR body (part of the §5.8 contract).
   `server/routes/leads.ts` — the TCPA consent provenance. A wrong change here bypasses rate
   limiting and falsifies legal consent evidence.)*
 - **Rate-limit policy:** `server/services/rateLimitPolicy.ts`.
+- **Consumer-data furnishing (CRA):** `server/services/rentFurnishing.ts`,
+  `shared/lib/metro2/`. *(Added 2026-08-08 with the rent-reporting program. Every other
+  credit path in this repo makes us a consumer-report **user** — permissible purpose,
+  adverse action, retention. Furnishing inverts that: we **write** to a consumer's file at
+  a third party. A wrong change here does not surface as a failed request; it lands
+  inaccurate derogatory information on a real person's credit report, and the only remedy
+  is a dispute they must file. §9 named no CRA or furnisher trigger at all before this.)*
+- **Money movement / payment processing:** adding or activating a payment-processor
+  dependency (in `package.json` or anywhere under `server/`). *(Added 2026-08-08. This one
+  is a **content** trigger, not a path: the file that will carry it does not exist yet, and
+  a speculative path would be a trigger that can never fire. The dependency is the stable
+  signal — money cannot move without a processor SDK, so the review is owed the moment one
+  lands, before any route is written. The gap this closes is independent of rent: the repo
+  has no ledger and no trust/operating account separation, so the first funds-touching PR
+  would arrive with none of the invariants that make it reviewable after the fact.)*
 - **Logging near PII:** any widening of `RESPONSE_BODY_LOG_ALLOWLIST` in `server/app.ts`.
 **Partly enforced by the gate.** `pnpm guard:security`
 ([`scripts/security-review-guard.cjs`](../../scripts/security-review-guard.cjs)) fails the PR
@@ -277,10 +292,25 @@ when it touches a trigger below and the PR body carries no heading containing
 `Security review`. Two things it deliberately is not: it proves the review was *written
 down*, never that it was *correct* — with a single collaborator no automation can do the
 latter, which is also why CODEOWNERS cannot be used here (GitHub forbids self-approval, so
-requiring code-owner review would deadlock every §9 PR). And it cannot see the last two
-triggers below — a `shared/schema/` PII column and a new PII sub-processor need someone to
-know which columns are PII and which vendors are processors. **A green gate is not evidence
-that §9 is satisfied on those two.** The rule binds whether or not the script fires.
+requiring code-owner review would deadlock every §9 PR). And its coverage of the two
+judgement-based triggers is partial at best:
+
+- **`shared/schema/` PII columns — detected, but only by name.** The guard fires on a
+  newly added column or table whose name carries identity/contact/consent vocabulary
+  (`ssn`, `dob`, `*_phone`, `email`, `ip`, `address`, `consent_*`, `account_number`,
+  `first/last/full_name`, …). It deliberately does **not** fire on a column that already
+  existed and is merely being edited or relocated, and it deliberately leaves income,
+  credit scores and balances out of the vocabulary — they are the bulk of an underwriting
+  schema, and including them would burn the signal. So a PII column named outside that
+  vocabulary (`applicant_identifier`, `contact_detail`) still passes silently. **The
+  trigger is a floor, not a ceiling.** *(Closed a real blind spot: before this, no trigger
+  covered `shared/schema/**` at all, and a `user_phones` table carrying a phone number plus
+  TCPA consent provenance produced zero triggers.)*
+- **New PII sub-processor — not detected at all.** Knowing a new vendor is a processor is
+  human judgement, and nothing in a diff carries it.
+
+**A green gate is not evidence that §9 is satisfied on either.** The rule binds whether or
+not the script fires.
 
 **Keep the triggers narrow.** Every path above is named because a wrong change to *that
 file* has a specific, statable cost. Do not widen them into globs (`server/services/*`):

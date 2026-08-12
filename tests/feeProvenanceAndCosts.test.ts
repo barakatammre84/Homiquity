@@ -17,7 +17,10 @@ import {
 } from "../shared/compliance/feeProvenance";
 import {
   computeUnitEconomics,
+  computeWorkingCapitalPosition,
   costForApplication,
+  projectWorkingCapital,
+  summarizeCommissionCosts,
   summarizeCosts,
 } from "../shared/costLedger";
 import { computeClosingCosts } from "../server/services/loanCosts";
@@ -163,7 +166,7 @@ describe("F-11 — unit economics", () => {
     const u = computeUnitEconomics({ receivedCompensation: 8_000, fundedCount: 1, costs });
     expect(u.grossMargin).toBe(7_290);
     expect(u.grossMarginPct).toBeCloseTo(91.13, 2);
-    // Labour and commissions are captured nowhere, so this must never be
+    // Labour and overhead are captured nowhere, so this must never be
     // presented as the real margin.
     expect(u.costSideIncomplete).toBe(true);
     expect(u.notes.join(" ")).toMatch(/upper bound/i);
@@ -184,5 +187,162 @@ describe("F-11 — unit economics", () => {
     const u = computeUnitEconomics({ receivedCompensation: 8_000, fundedCount: 1, costs: withSim });
     expect(u.directCost).toBe(0);
     expect(u.notes.join(" ")).toMatch(/still-simulated vendor adapters/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-20 — commission payouts are a cost, and were counted as none.
+//
+// `broker_commissions` recorded real money leaving the company per funded
+// loan; nothing financial read the table, so the margin figure omitted the
+// largest variable cost a brokerage carries while asserting commissions were
+// "not captured anywhere".
+// ---------------------------------------------------------------------------
+describe("F-20 — commission payouts on the cost side", () => {
+  const rows = [
+    { status: "paid", commissionAmount: "1200.00" },
+    { status: "approved", commissionAmount: "800.00" },
+    { status: "pending", commissionAmount: "500.00" },
+    { status: "rejected", commissionAmount: "9999.00" },
+  ];
+
+  it("splits the payout by lifecycle state rather than summing it flat", () => {
+    const c = summarizeCommissionCosts(rows);
+    expect(c.paidAmount).toBe(1_200);
+    expect(c.approvedAmount).toBe(800);
+    expect(c.pendingAmount).toBe(500);
+    // committed = approved + paid. Pending is not yet owed; rejected never is.
+    expect(c.committedAmount).toBe(2_000);
+  });
+
+  it("never lets a rejected commission reach any total", () => {
+    const c = summarizeCommissionCosts(rows);
+    const everyTotal = c.paidAmount + c.approvedAmount + c.pendingAmount;
+    expect(everyTotal).toBe(2_500);
+    expect(c.committedAmount).toBeLessThan(9_999);
+  });
+
+  it("charges committed commission against gross margin", () => {
+    const costs = summarizeCosts([{ applicationId: "a1", category: "appraisal", amount: "650" }]);
+    const withoutCommissions = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs,
+    });
+    const withCommissions = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs,
+      commissions: summarizeCommissionCosts(rows),
+    });
+
+    expect(withoutCommissions.grossMargin).toBe(7_350);
+    // 2,000 of committed payout is 25% of revenue on this file. Omitting it
+    // overstated margin by exactly that.
+    expect(withCommissions.grossMargin).toBe(5_350);
+    expect(withCommissions.commissionCost).toBe(2_000);
+    expect(withCommissions.vendorCost).toBe(650);
+    expect(withCommissions.directCost).toBe(2_650);
+  });
+
+  it("says how much pending commission would move the number if approved", () => {
+    const u = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs: summarizeCosts([]),
+      commissions: summarizeCommissionCosts(rows),
+    });
+    expect(u.notes.join(" ")).toMatch(/500\.00 of commission/);
+    expect(u.notes.join(" ")).toMatch(/pending admin sign-off/);
+  });
+
+  it("keeps the margin an upper bound even with commissions counted", () => {
+    // Labour and overhead remain unmodeled — counting one more cost line must
+    // not be mistaken for completing the cost side.
+    const u = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs: summarizeCosts([]),
+      commissions: summarizeCommissionCosts(rows),
+    });
+    expect(u.costSideIncomplete).toBe(true);
+    expect(u.notes.join(" ")).toMatch(/upper bound/i);
+    expect(u.notes.join(" ")).toMatch(/processing labour/i);
+  });
+
+  it("omitting commissions entirely is equivalent to zero, not a crash", () => {
+    const u = computeUnitEconomics({
+      receivedCompensation: 8_000,
+      fundedCount: 1,
+      costs: summarizeCosts([]),
+    });
+    expect(u.commissionCost).toBe(0);
+    expect(u.grossMargin).toBe(8_000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-23 — working capital.
+//
+// F-16 established there is no duration mismatch on assets because there are no
+// assets. What remains is the cash-flow question: spend goes out at application
+// and comes back after the lender's wire. Two figures, and they are different
+// kinds of thing — one measured off the ledger, one projected from an arrival
+// rate the platform does not hold.
+// ---------------------------------------------------------------------------
+describe("F-23 — working capital", () => {
+  it("reports committed capital as a measurement, not a model", () => {
+    const w = computeWorkingCapitalPosition({
+      unrecoveredCost: 4_260,
+      unrecoveredFileCount: 6,
+      daysToCashMedian: 32,
+      daysToCashP90: 48,
+    });
+    expect(w.committed).toBe(4_260);
+    expect(w.costPerUnrecoveredFile).toBe(710);
+    expect(w.notes.join(" ")).toMatch(/measured, not modeled/);
+  });
+
+  it("returns null per-file spend on an empty book rather than dividing by zero", () => {
+    const w = computeWorkingCapitalPosition({
+      unrecoveredCost: 0,
+      unrecoveredFileCount: 0,
+      daysToCashMedian: null,
+      daysToCashP90: null,
+    });
+    expect(w.costPerUnrecoveredFile).toBeNull();
+    expect(w.notes.join(" ")).toMatch(/projection below cannot be run yet/);
+  });
+
+  it("projects steady-state capital by Little's Law", () => {
+    // 20 files/month × $710 each, tied up 45 days = 1.5 months of arrivals.
+    expect(
+      projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: 710, daysToCash: 45 }),
+    ).toBe(21_300);
+  });
+
+  it("scales linearly in each operand — the property that makes it a planning number", () => {
+    const base = projectWorkingCapital({ filesStartedPerMonth: 10, costPerFile: 500, daysToCash: 30 })!;
+    expect(projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: 500, daysToCash: 30 })).toBe(base * 2);
+    expect(projectWorkingCapital({ filesStartedPerMonth: 10, costPerFile: 1_000, daysToCash: 30 })).toBe(base * 2);
+    expect(projectWorkingCapital({ filesStartedPerMonth: 10, costPerFile: 500, daysToCash: 60 })).toBe(base * 2);
+  });
+
+  it("refuses to project on a missing operand rather than returning a partial number", () => {
+    expect(projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: null, daysToCash: 45 })).toBeNull();
+    expect(projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: 710, daysToCash: null })).toBeNull();
+    expect(projectWorkingCapital({ filesStartedPerMonth: 0, costPerFile: 710, daysToCash: 45 })).toBeNull();
+  });
+
+  it("does NOT double-count the days — the formula the audit doc first stated was circular", () => {
+    // The original write-up said `in-flight count × cost × days/365`. An
+    // in-flight count is ALREADY arrival rate × time in system, so multiplying
+    // by the days again counts them twice. Use an arrival rate OR an in-flight
+    // count, never both: at 20 files/month over 45 days there are ~30 files in
+    // flight, each tying up $710 — $21,300, which is what the projection gives.
+    const inFlight = 20 * (45 / 30);
+    expect(
+      projectWorkingCapital({ filesStartedPerMonth: 20, costPerFile: 710, daysToCash: 45 }),
+    ).toBe(inFlight * 710);
   });
 });

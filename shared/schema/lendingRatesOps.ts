@@ -119,18 +119,14 @@ export type InsertApplicationInvite = z.infer<typeof insertApplicationInviteSche
 export type ApplicationInvite = typeof applicationInvites.$inferSelect;
 
 // ===== RATE LOCK SYSTEM =====
+import { RATE_LOCK_STATUSES, type RateLockStatus } from "../statusVocabularies";
 
-/**
- * The ONLY statuses `rateLocks.status` may hold. Expiry is computed from
- * `expiresAt`, not stored — an expired lock keeps its last status, so "open"
- * checks must pair OPEN_RATE_LOCK_STATUSES with an `expiresAt` comparison
- * where staleness matters.
- */
-export const RATE_LOCK_STATUSES = ["active", "extended", "cancelled"] as const;
-export type RateLockStatus = (typeof RATE_LOCK_STATUSES)[number];
-
-/** A live lock: "extended" is still open — only cancellation closes one. */
-export const OPEN_RATE_LOCK_STATUSES: readonly RateLockStatus[] = ["active", "extended"];
+// Moved to shared/statusVocabularies.ts (a table-free module) so client imports
+// of OPEN_RATE_LOCK_STATUSES do not drag every Drizzle table into the browser
+// bundle. Re-exported so existing importers are unaffected.
+export type { RateLockStatus };
+export { RATE_LOCK_STATUSES };
+export { OPEN_RATE_LOCK_STATUSES } from "../statusVocabularies";
 
 /**
  * Who bears a rate-lock extension fee.

@@ -21,6 +21,7 @@ export default defineConfig({
       "tests/creditVendorInterlock.test.ts",
       "tests/clientIp.test.ts",
       "tests/securityHeaders.test.ts",
+      "tests/cspViolationReport.test.ts",
       "tests/canonicalHost.test.ts",
       "tests/zodSchemaSemantics.test.ts",
       "tests/routeGates.test.ts",
@@ -28,6 +29,7 @@ export default defineConfig({
       "tests/activeApplicationListParity.test.ts",
       "tests/apiRequestConvergence.test.ts",
       "tests/queryKeyConvergence.test.ts",
+      "tests/clientSchemaImports.test.ts",
       "tests/borrowerTaskView.test.ts",
       "tests/borrowerDocumentView.test.ts",
       "tests/borrowerActivityView.test.ts",
@@ -48,6 +50,7 @@ export default defineConfig({
       "tests/counterpartyAndCompensation.test.ts",
       "tests/lenderApprovalControl.test.ts",
       "tests/compensationClawback.test.ts",
+      "tests/commissionPayout.test.ts",
       "tests/feeProvenanceAndCosts.test.ts",
       "tests/leDisclosedFeeProvenance.test.ts",
       "tests/nPlusOneBatching.test.ts",
@@ -159,6 +162,10 @@ export default defineConfig({
       "tests/taxDocumentIntelligence.test.ts",
       "tests/taxReconciliation.test.ts",
       "tests/situationClassifier.test.ts",
+      "tests/readinessReconciliation.test.ts",
+      "tests/documentFacts.test.ts",
+      "tests/readinessSelfAttestation.test.ts",
+      "tests/extractionReadinessWiring.test.ts",
       "tests/documentConfidence.test.ts",
       "tests/documentReview.test.ts",
       "tests/cpaPartners.test.ts",
@@ -202,6 +209,18 @@ export default defineConfig({
       // design — an unlisted test file is silently never run — so the fix is
       // to stop contending for one line, not to replace it with a glob.
       "tests/emailProviderObservability.test.ts",
+      // The zod ↔ @hookform/resolvers pairing. A mismatch there turns every
+      // failed validation into an unhandled rejection instead of a form error,
+      // which deadens submit/continue buttons app-wide with no visible symptom.
+      // Pure unit test: no HTTP, no DB.
+      "tests/formResolverContract.test.ts",
+      // Rent reporting, Phase 0. metro2Gate is the self-releasing citation gate on the
+      // fixed-width compiler (sibling of nonQmProgramGate); rentFurnishing pins the
+      // provenance gate, the queue state machine, and that billing stays off.
+      "tests/metro2Gate.test.ts",
+      "tests/rentFurnishing.test.ts",
+      "tests/creditMonitoring.test.ts",
+      "tests/rentReportingSurface.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

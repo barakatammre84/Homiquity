@@ -17,7 +17,7 @@
 # is the wanted posture (a scheduler that silently no-ops hides a dead sweep).
 #
 # GitHub exposes only WHICH cron expression fired (github.event.schedule), so
-# one workflow carries all six expressions and the resolve step maps the
+# one workflow carries all seven expressions and the resolve step maps the
 # expression back to its job path. An expression with no mapping fails the
 # run rather than skipping — editing a schedule without its case arm must be
 # loud. Scheduled workflows run against the default branch only.
@@ -32,6 +32,7 @@ on:
     - cron: "0 14 * * *" # /api/jobs/adverse-action-delivery
     - cron: "45 13 * * *" # /api/jobs/task-escalation
     - cron: "17 11 * * 1" # /api/jobs/aggregate-data (Mondays)
+    - cron: "15 13 * * *" # /api/jobs/credit-monitoring
   # Manual lever: lets the founder prove CRON_SECRET end-to-end without
   # waiting for a schedule, and re-fire a missed sweep after an outage.
   workflow_dispatch:
@@ -47,6 +48,7 @@ on:
           - adverse-action-delivery
           - task-escalation
           - aggregate-data
+          - credit-monitoring
 
 permissions:
   contents: none
@@ -72,6 +74,7 @@ jobs:
               "0 14 * * *") job="adverse-action-delivery" ;;
               "45 13 * * *") job="task-escalation" ;;
               "17 11 * * 1") job="aggregate-data" ;;
+              "15 13 * * *") job="credit-monitoring" ;;
               *)
                 echo "::error::No job mapped for schedule '$FIRED' — a cron expression was edited without updating this case list"
                 exit 1
