@@ -161,11 +161,39 @@ mechanism preventing the Wiring Audit, Sprint Blitz and Radar from landing on th
 1. `git fetch origin && git pull --rebase origin main`, then `pnpm install --frozen-lockfile`
    **again after the rebase** — stale `node_modules` fakes a red `tsc` in files you never touched,
    and a routine has already nearly reported "main is broken" on that alone.
-2. `ListAgents` — peers named `homiquity-*` are humans working this repo *right now*.
-3. Read `REGISTER.md`. If your intended target is claimed and the claim is **< 24 h old**, pick
-   something else. Claims **≥ 24 h old are stale and reclaimable** — say so in your report.
-4. Add your own row (routine, target, worktree, branch, UTC timestamp) and commit it.
-5. On finish — shipped, abandoned, or crashed — **remove your row**. A stale claim blocks everyone.
+2. **Open PRs of any label, and their changed files.** Every file in an open PR is claimed by
+   whoever opened it, whether or not they also wrote a `REGISTER.md` row.
+3. Read `REGISTER.md`. If your intended target is claimed and the claim is **< 24 h old**, work
+   the assist ladder below instead. Claims **≥ 24 h old are stale and reclaimable** — say so in
+   your report.
+4. `ListAgents` — **advisory only, and read it last.** Peers named `homiquity-*` are humans on
+   this repo right now, but a "No reachable agents" result is *not* evidence that nobody is
+   working: it returned exactly that during an active three-way collision (2026-08-12) and again
+   in a session where five other sessions had open PRs. Signal order is `origin/main` → open PRs
+   → `REGISTER.md` → `ListAgents`, weakest last.
+5. Add your own row (routine, target, worktree, branch, UTC timestamp) and commit it.
+6. On finish — shipped, abandoned, or crashed — **remove your row**. A stale claim blocks everyone.
+
+### The assist ladder — help land what exists before adding to it
+
+A claimed target is not a dead end, it is a redirect. Routines generate faster than one founder
+reviews, so **opening another PR is the lowest-value move available when work is already in
+flight.** Take the first rung that applies:
+
+1. **Something in flight is broken** — red CI, a merge conflict, a base gone stale. Fix it. A red
+   PR blocks the queue everyone shares; it is never "someone else's job".
+2. **Something in flight is unverified** — run its tests, check its evidence against its claims,
+   post what you found. Reviewing is contributing.
+3. **Something in flight is incomplete** — supply the missing test, doc, or ledger row **as a
+   comment on that PR**, not as a competing PR of your own.
+4. **The queue is clear** — now start new work, under §6's territory rules.
+
+**Ending a tick idle because peers were busy is a FAILED tick, not a polite one.** Report "review
+capacity is the blocker" only when the queue is genuinely healthy and there is nothing to assist.
+
+**Assist without hijacking.** Push to another session's branch only when it is stalled (no new
+commits *and* the session unreachable) or its owner asked. Never force-push another session's
+branch, never close its PR, never silently rewrite its approach — say what you changed and why.
 
 **A routine that skips the register does not get to write code.** If the register is unreachable or
 the repo is dirty in a way you did not cause, report and stop.
@@ -265,6 +293,7 @@ they never push to `main`. Evening Triage may bundle the day's reports into one 
 ## 10. Honesty rails
 
 These are not style notes. Each one is a failure that already happened here.
+New lessons accrete in [`LESSONS.md`](LESSONS.md) between edits to this section — append there mid-run rather than losing what you learned, and promote a rule here once it proves general.
 
 - **Never claim a deploy without the `/api/health` commit.** Green checks lie.
 - **Never claim main is broken without reinstalling after a rebase** and checking

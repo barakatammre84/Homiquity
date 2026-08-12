@@ -96,6 +96,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 The contract binding all eight scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, and the corrected escalation runbook. Their job descriptions live in `~/.claude/scheduled-tasks/`; **this directory wins wherever they disagree.**
 - [CHARTER.md](routines/CHARTER.md) — the contract: two acceptance questions, the clock, the hand-off chain, write territory, the `RELEASABLE` verdict, escalation, honesty rails.
 - [REGISTER.md](routines/REGISTER.md) — the claim lock: who is writing which file right now (humans claim here too).
+- [LESSONS.md](routines/LESSONS.md) — the shared lessons register: what one session learned that the next would otherwise re-learn, every row citing evidence. Feeds CHARTER §10; may never loosen a compliance rail.
 - [reports/](routines/reports/) — dated run reports; the proof-of-life record.
 
 ### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
