@@ -113,12 +113,52 @@ Practically:
    success criterion first ("write a failing test, then make it pass" beats "make it work"),
    then ship the **minimum diff** that satisfies it. Every changed line traces to the
    request; if a simpler approach exists, say so instead of building the clever one.
+10. **A test guarding a compliance invariant or a regulated calculation is mutation-tested
+    before it counts.** Break the thing it protects, confirm the test goes red, restore, and
+    state `N/N caught` in the PR body. Deliberately narrow — this is not "mutation-test
+    everything" (a rule that fires on every PR becomes boilerplate, the same failure mode §9
+    warns about for security triggers). It binds where a false green is a *compliance*
+    statement.
+    *(Prevents: a test that cannot fail. Empirical, not theoretical — on 2026-08-12 this
+    caught **four** holes in freshly written tests that were passing and looked right: a
+    ban-list guard that stayed green on a wrong VA utility rate; a parity suite blind to the
+    cushion multiplier because the engine reports its requirement pre-cushion; a WHERE-clause
+    assertion that was vacuous because walking a drizzle condition reaches each Column's
+    parent table and collects the whole schema; and an ECOA suite that passed while
+    `MANUAL_REVIEW` was treated as `APPROVED`. Every one was written by someone who believed
+    it worked — which is the point: you cannot review your way to this, you have to try to
+    break it.)*
+11. **Never write a test that asserts a known-defective behavior is correct.** When a fix is
+    blocked — on a legal reading, an escalation, a product decision — pin the gap as a
+    characterization test named `GAP (<finding-id>)` that states the correct behavior and how
+    to invert the assertion once fixed. An untested gap gets silently reintroduced, or
+    silently "fixed" with nobody noticing which; a gap asserted as correct is worse, because
+    the suite now defends it.
+    *(Pattern: `tests/fcraConsentGateBehavior.test.ts`. Precedent for why it matters: F-043 —
+    `complianceInvariants.test.ts` asserted the error string of the very consent gate F-035
+    calls insufficient, so the compliance suite certified the defect and stayed green through
+    the whole F-034/F-035/F-040 cluster.)*
 
 ### Known traps index (check before fighting a known battle)
 
 The trap doctrine lives where it lives — this is the one-stop pointer list. A newly
 discovered trap gets a line here in the same PR.
 
+- **A source-grep is not a compliance test** — it passes on wrong logic and breaks on renames.
+  `tests/complianceInvariants.test.ts` is the standing instance (F-014). Four conversions to
+  behavioral tests on 2026-08-12 each found something the text search could not see: three
+  forked numeric literals live under a green guard (**F-051**); a consent never bound to the
+  application it authorizes (**F-052**); a **live** FCRA re-disclosure — the cached-pull branch
+  returned bureau data before control reached the gate, so a revoked borrower's report was
+  re-disclosed for up to 90 days while the suite stayed green (**F-042**); and a `denied`-check
+  whose "allowed statuses" assertion matched a *type annotation*, erased at runtime.
+  Two rules follow. **(a)** Assert on behavior — what the code returns, what it persists, what
+  order it queries in — never on the file's text. **(b)** Do **not** wholesale-rewrite that
+  file: its architectural negative-space claims ("no AI import in the decision path", "no
+  forked APR solver", "only `trid.ts` writes `tridTriggeredAt`") are *correctly* grep-based,
+  because nothing else can express "this dependency must not exist." Convert assertions about
+  regulated **math and behavior**; leave the dependency guards alone. Scope detail lives on the
+  F-014 row in [FINDINGS.md](../feature-review/FINDINGS.md).
 - **`pnpm db:push` from a worktree** drops other branches' columns on the shared dev DB, and
   `--force` also drops `sessions` (logging out every user); it is an exit-1 stub for that reason
   — [DB_MIGRATIONS.md](../runbooks/DB_MIGRATIONS.md).
