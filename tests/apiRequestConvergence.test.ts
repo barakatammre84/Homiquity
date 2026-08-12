@@ -63,7 +63,15 @@ const ALLOWED_RAW_FETCH: Record<string, string> = {
   // envelope, so the copy reads identically and gains 5xx suppression. All four
   // now use apiRequest. A public POST being exempt from the redirect is not a
   // reason to be exempt from reading the response.
-  "client/src/components/AddressInput.tsx": "public /api/geocode/* autocomplete, called from an input handler (not a query)",
+  // AddressInput removed for the same reason as the capture forms and
+  // RedeemInvite: "public, called from a handler" was true about the 401
+  // redirect and said nothing about whether the site reads the response. It
+  // did not. `if (res.ok)` had no else on BOTH calls, so a failed autocomplete
+  // left the PREVIOUS input's suggestions selectable, and a failed details
+  // lookup hit an EMPTY catch that left the field showing a complete address
+  // while onSelect never fired — zip/state/county/lat/lng silently uncaptured
+  // on the URLA property section. /api/geocode/* answers 503 whenever
+  // GOOGLE_MAPS_API_KEY is unset, so that is not a rare path.
   // RedeemInvite is gone from this list for the same reason as the four capture
   // forms above: "public, called from a handler" said nothing about whether the
   // site reads the response. It did not check `res.ok`, and the validate route

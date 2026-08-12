@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
+import { apiRequest } from "@/lib/queryClient";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { Loader2 } from "lucide-react";
 
 interface AddressSuggestion {
@@ -38,6 +40,8 @@ export function AddressInput({ onSelect, onChange, placeholder = "Enter an addre
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(-1);
+  /** Set when a lookup could not be completed — never used for "no matches". */
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -49,17 +53,35 @@ export function AddressInput({ onSelect, onChange, placeholder = "Enter an addre
     }
 
     setIsLoading(true);
+    setLookupError(null);
     try {
       const modeParam = mode === "location" ? "&mode=location" : "";
-      const res = await fetch(`/api/geocode/autocomplete?input=${encodeURIComponent(input)}${modeParam}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSuggestions(data);
-        setIsOpen(data.length > 0);
-        setHighlightIndex(-1);
-      }
-    } catch {
+      // apiRequest so a non-2xx and a network error share ONE failure path.
+      // They did not: `if (res.ok)` had no else, so a failed lookup left the
+      // PREVIOUS input's suggestions on screen with the dropdown still open —
+      // the borrower could pick a result for an address they had already typed
+      // past. The endpoint is public (no auth middleware on /api/geocode/*), so
+      // the session-expiry redirect can never fire here.
+      const res = await apiRequest(
+        "GET",
+        `/api/geocode/autocomplete?input=${encodeURIComponent(input)}${modeParam}`,
+      );
+      const data = await res.json();
+      setSuggestions(data);
+      setIsOpen(data.length > 0);
+      setHighlightIndex(-1);
+    } catch (error) {
+      // Never show results that do not correspond to what is in the box.
       setSuggestions([]);
+      setIsOpen(false);
+      setHighlightIndex(-1);
+      // 503 is the one that actually bites: the route answers it whenever
+      // GOOGLE_MAPS_API_KEY is unset (server/routes/geocode.ts:34), so every
+      // lookup fails and the old code showed nothing at all — indistinguishable
+      // from "we don't cover your address".
+      setLookupError(
+        friendlyApiError(error, "Address lookup is unavailable — type your address in full."),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -82,25 +104,42 @@ export function AddressInput({ onSelect, onChange, placeholder = "Enter an addre
     setIsFetchingDetails(true);
 
     try {
-      const res = await fetch(`/api/geocode/details?placeId=${encodeURIComponent(suggestion.placeId)}`);
-      if (res.ok) {
-        const details = await res.json();
-        if (details.formattedAddress) {
-          setValue(details.formattedAddress);
-          onChange?.(details.formattedAddress);
-          onSelect({
-            formattedAddress: details.formattedAddress,
-            lat: details.lat,
-            lng: details.lng,
-            zip: details.zip,
-            city: details.city,
-            state: details.state,
-            streetAddress: details.streetAddress,
-            county: details.county,
-          });
-        }
+      const res = await apiRequest(
+        "GET",
+        `/api/geocode/details?placeId=${encodeURIComponent(suggestion.placeId)}`,
+      );
+      const details = await res.json();
+      if (!details.formattedAddress) {
+        throw new Error("The lookup returned no address for that suggestion.");
       }
-    } catch {
+      setValue(details.formattedAddress);
+      onChange?.(details.formattedAddress);
+      onSelect({
+        formattedAddress: details.formattedAddress,
+        lat: details.lat,
+        lng: details.lng,
+        zip: details.zip,
+        city: details.city,
+        state: details.state,
+        streetAddress: details.streetAddress,
+        county: details.county,
+      });
+    } catch (error) {
+      // This branch used to be an EMPTY catch, and it was the worse of the two
+      // failures on this component. The input had already been set to the
+      // suggestion's text above, so the field showed a complete, authoritative-
+      // looking address while `onSelect` never fired — meaning zip, state,
+      // county, city and lat/lng were silently never captured. On the URLA
+      // property section that is a subject property with an address string and
+      // nothing structured behind it, and those fields feed delivery.
+      //
+      // We cannot fabricate them, so say so instead of looking finished.
+      setLookupError(
+        friendlyApiError(
+          error,
+          "We couldn't verify that address — please re-enter it, or your loan team will confirm it.",
+        ),
+      );
     } finally {
       setIsFetchingDetails(false);
     }
@@ -155,6 +194,12 @@ export function AddressInput({ onSelect, onChange, placeholder = "Enter an addre
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
         )}
       </div>
+
+      {lookupError && (
+        <p className="mt-1 text-xs text-muted-foreground" data-testid="text-address-lookup-error">
+          {lookupError}
+        </p>
+      )}
 
       {isOpen && suggestions.length > 0 && (
         <div
