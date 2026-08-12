@@ -21,7 +21,7 @@ Humans: claim too. A routine cannot see your editor.
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| _(none)_ | — | — | — | — | — |
+| frontend-wiring-audit | the 12 `client/src` components that import the module-singleton `queryClient` **and** have a `.test.tsx` sibling | `.claude/worktrees/pensive-noether-5232f2` | `claude/frontend-standardization-2` | 2026-08-12T20:50Z | Migrate them to `useQueryClient()`. Their tests render under a fresh `new QueryClient()`, so every post-mutation invalidation currently lands on a client no test observes — the refresh assertions are vacuous. Scoped to the tested files this run; the other ~71 singleton importers stay unclaimed. |
 
 ## Recently released
 
