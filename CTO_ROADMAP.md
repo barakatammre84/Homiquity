@@ -167,9 +167,6 @@ anything else in this file being true.
   halal-lane channel gates (two founder calls + the spec-§5 counsel review; funder-agnostic math only
   until then) · **LO-3** client-facing Advisor Report (its LO-2 dependency merged) · **PH-3**
   partner-asset compliance guard + co-branded education engine.
-- [ ] **3.13 A client component-test lane.** There are **zero `client/src` entries** in either vitest
-  `include` and no jsdom dependency — so a `.test.tsx` under `client/src` is a file that never runs,
-  in CI or locally. This was measured as the real constraint on UI velocity.
 
 ---
 

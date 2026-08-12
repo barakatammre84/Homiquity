@@ -1,3 +1,5 @@
+> **⛔ ARCHIVED 2026-08-06 — the UX daily-loop routine is dead (last run 2026-07-16). Do not act on this document.** It lived under `logs/`, which the [KB index](../README.md) declares immutable ("never rewritten"), while its own README described a routine that rewrote these artifacts daily — a contradiction resolved by archiving. The successor register is [feature-review/FINDINGS.md](../../feature-review/FINDINGS.md), which this directory's own exec-summary already named. Design *values* are canonical in [handbook/design/visual-consistency-standard.md](../../handbook/design/visual-consistency-standard.md). Retained for history only.
+
 # Proposal: Warm-neutral canvas variant ("Warm Paper")
 
 **Status: PROPOSED — not applied.** This is a decision memo, not shipped work.

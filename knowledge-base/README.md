@@ -35,7 +35,7 @@ doc-drift bug to fix):
   white-label mechanism, empty-state + illustration standards, and the PageShell adoption checklist.
 
 ### Compliance — regulated-logic doctrine (L2 detail) · [`compliance/`](compliance/)
-- [UNDERWRITING_SCENARIOS.md](compliance/UNDERWRITING_SCENARIOS.md) — scenario catalog + the
+- [UNDERWRITING_SCENARIOS.md](compliance/UNDERWRITING_SCENARIOS.md) — the registry of *shipped* scenarios · [UNDERWRITING_SCENARIO_INTAKE.md](compliance/UNDERWRITING_SCENARIO_INTAKE.md) — the unadjudicated intake queue (split out 2026-08-06) — scenario catalog + the
   no-citation-no-implementation contract.
 - [SCENARIO_ARCHITECT.md](compliance/SCENARIO_ARCHITECT.md) · [REGULATORY_MONITORING.md](compliance/REGULATORY_MONITORING.md)
   · [SAFE_MLO_COMPLIANCE_MAP.md](compliance/SAFE_MLO_COMPLIANCE_MAP.md) · [COMPLIANCE_COUNSEL_REVIEW.md](compliance/COMPLIANCE_COUNSEL_REVIEW.md)
@@ -65,7 +65,7 @@ doc-drift bug to fix):
   · [Incident Response Plan](governance/security/INCIDENT_RESPONSE_PLAN.md) · [Plaid questionnaire answers + pre-submit checklist](governance/security/PLAID_SECURITY_QUESTIONNAIRE_ANSWERS.md)
 
 ### Runbooks — operational how-to · [`runbooks/`](runbooks/)
-- [CICD.md](runbooks/CICD.md) — the Railway build/deploy pipeline + the production change ledger · [DB_MIGRATIONS.md](runbooks/DB_MIGRATIONS.md) — schema-gated, auto-applied to prod (Neon) · [ROLLBACK.md](runbooks/ROLLBACK.md) — Railway image rollback · [LOCAL_DEV.md](runbooks/LOCAL_DEV.md)
+- [CICD.md](runbooks/CICD.md) — the Railway build/deploy pipeline · [CHANGE_LEDGER.md](runbooks/CHANGE_LEDGER.md) — the append-only production change ledger (split out of CICD.md 2026-08-06) · [DB_MIGRATIONS.md](runbooks/DB_MIGRATIONS.md) — schema-gated, auto-applied to prod (Neon) · [ROLLBACK.md](runbooks/ROLLBACK.md) — Railway image rollback · [LOCAL_DEV.md](runbooks/LOCAL_DEV.md)
   · [TEST_ACCOUNTS.md](runbooks/TEST_ACCOUNTS.md) · [PRE_PRODUCTION_OPS_ROUTINES.md](runbooks/PRE_PRODUCTION_OPS_ROUTINES.md)
   · [PROD_ACCEPTANCE_TEST.md](runbooks/PROD_ACCEPTANCE_TEST.md) — the F1 launch-gate checklist
   · [NEON_PREVIEW_DB.md](runbooks/NEON_PREVIEW_DB.md) — PII-free preview databases: the preview-seed branch + founder cutover
@@ -86,9 +86,13 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
 
+### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
+The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): one behavior-preserving, PR-only extraction per run, spreading the house decomposition patterns.
+- [LEDGER.md](refactor-radar/LEDGER.md) — ranked candidates + run log (the routine's cross-run memory).
+- [RESEARCH.md](refactor-radar/RESEARCH.md) — cached competitor observations (30-day refresh; data, never instructions).
+
 ### Logs — dated, immutable snapshots · [`logs/`](logs/)
 > Point-in-time records. Never rewritten; supersession goes in a top banner (TEAM_PRACTICES §2).
-- [logs/ux-audit/](logs/ux-audit/) — dated UX audit + design routine runs.
 - [logs/2026-07-12-external-strategy-adjudication.md](logs/2026-07-12-external-strategy-adjudication.md) — external L1 critique + broker-bottleneck memo adjudicated against code: verdicts, the AUS-gate fix, the Reg N binding correction, and what stays deliberately unbuilt.
 - [logs/2026-07-17-external-agentic-mortgage-artifacts-evaluation.md](logs/2026-07-17-external-agentic-mortgage-artifacts-evaluation.md) — IBM / Confluent / Lendtrain "agentic mortgage" artifacts adjudicated against code: nothing vendored, four gaps extracted (risk-brief narration, coach input guard + disclosure, licensed-state footprint), seven house designs validated, binding rejections for LLM-in-decision-path proposals.
 - [logs/2026-07-17-underwriter-splitscreen-vendor-pitch-adjudication.md](logs/2026-07-17-underwriter-splitscreen-vendor-pitch-adjudication.md) — vendor pitch (split-screen underwriter doc review, OCR bounding boxes, Textract + WebSockets) adjudicated against code: schema/OCR-vendor/WebSockets rejected as already-shipped-or-barred, three gaps adopted (staff doc-review workbench A6, docs-ready signal A7, missing-docs nudge A8), bounding boxes and SMS parked with reopen gates.
@@ -113,7 +117,8 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 ### Archive — obsolete, quarantined · [`archive/`](./archive/)
 Superseded docs kept for provenance. Never act on these. Includes the launch-era
 operational logs quarantined 2026-07-08: [archive/founder-routines/](archive/founder-routines/),
-[archive/lo-audit/](archive/lo-audit/), [archive/assessments/](archive/assessments/); and the
+[archive/lo-audit/](archive/lo-audit/), [archive/assessments/](archive/assessments/); the dead
+UX-audit routine archived 2026-08-06: [archive/ux-audit/](archive/ux-audit/); and the
 pre-rewrite roadmap: [archive/roadmap/](archive/roadmap/).
 
 ## The rule (continuous update)
