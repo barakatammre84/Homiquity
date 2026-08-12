@@ -12,6 +12,7 @@ export default defineConfig({
     // vitest.integration.config.ts instead.
     include: [
       "tests/amortization.test.ts",
+      "tests/inviteValidateAudit.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
       "tests/accessControl.test.ts",

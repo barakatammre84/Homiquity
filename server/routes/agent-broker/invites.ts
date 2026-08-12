@@ -17,6 +17,7 @@ import {
   insertApplicationMilestoneSchema,
   loanApplications,
 } from "@shared/schema";
+import { logAudit } from "../../auditLog";
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
 import { routeParams } from "../../http/routeParams";
@@ -143,11 +144,31 @@ export function registerInviteRoutes(
 
       // Mark as clicked if first time
       if (invite.status === "pending") {
-        await storage.updateApplicationInvite(invite.id, { 
+        await storage.updateApplicationInvite(invite.id, {
           status: "clicked",
           clickedAt: new Date(),
         });
       }
+
+      // PII read — CLAUDE.md requires an audit entry for anything touching
+      // borrower PII, and the response below discloses clientName/clientEmail
+      // (public-funnel-08). Two deliberate omissions, both of which would turn
+      // this record into a second leak rather than a control:
+      //   - targetId is the invite id, never the token. The token is a bearer
+      //     capability (crypto.randomBytes(32)); recording it would let anyone
+      //     with audit-log read access replay the URL. Same reasoning as the
+      //     "[REDACTED]" target in staff-invites.ts's invite.redeemed.
+      //   - metadata records the PRESENCE of the PII fields, never the values,
+      //     so the audit store never becomes a second copy of the borrower's
+      //     name and email (the incomeSummary read-audit convention).
+      // Unauthenticated by design, so actorUserId is null — the IP/UA that
+      // logAudit records are the only actor identity available here.
+      logAudit(req, "application_invite.viewed", "application_invite", invite.id, {
+        referrerId: invite.referrerId,
+        statusBefore: invite.status,
+        disclosedClientName: invite.clientName !== null,
+        disclosedClientEmail: invite.clientEmail !== null,
+      });
 
       res.json({
         valid: true,
