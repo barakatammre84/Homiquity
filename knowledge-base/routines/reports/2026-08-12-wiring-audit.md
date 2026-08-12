@@ -34,7 +34,12 @@ The whole path landed in **`6407119` (#400), 2026-08-05** — *"fix(launch): pre
 **7. A transient 500 told staff their good invite was invalid** *(fixed, this branch — `dfb7b77`)*
 `GET /api/staff-invites/validate/:code` answers 500 with `{ error }` and no `valid` field (`server/routes/staff-invites.ts:77`). `RedeemInvite.tsx` set that straight into `validation` with no `res.ok` check, so `validation.valid` was `undefined` — which rendered the destructive invalid-code panel *and* disabled Redeem (`validation !== null && !validation.valid`), locking a valid invite out for the session and printing a 5xx internal string on a public page. A 404 is the server's answer and still sets `validation`; anything else now leaves it null with a neutral retry note. `RedeemInvite.test.tsx`: 3 of 7 cases fail against the previous code.
 
-**6. Not fixed — the largest structural finding.** 83 client files import the module-singleton `queryClient` (163 `.invalidateQueries` call sites); 8 use `useQueryClient()`. Tests render under a fresh `new QueryClient()` (`SubmissionLifecycleControl.tsx:3,101,107` vs its test at `:29,33`), so invalidations land on a client no test observes. Deferred: it touches files in unmerged #490.
+**6. The singleton `queryClient` — 12 of 83 migrated** *(`384ab1a`)*
+83 client files imported the module singleton (163 `.invalidateQueries` call sites); 8 used `useQueryClient()`. Tests render under their own `new QueryClient()`, so invalidations landed on a cache no test observed. Migrated the 12 with a `.test.tsx` sibling, where the fix pays the same day; **72 remain**, unclaimed.
+
+`SubmissionLifecycleControl.test.tsx` gains the assertion that was previously impossible — spy on the client the component was *rendered under*, require both invalidations to reach it. Verified honest: it **fails** when that component is put back on the singleton.
+
+`TestLogin.test.tsx` had been rendering the page with **no `QueryClientProvider` at all** and passing, purely because the singleton needs no provider. `useQueryClient()` throws there — the truthful answer, since the test was rendering the component in a tree it never runs in. Now wrapped, as the app does.
 
 **Gate output** (this branch, rebased on `3ba30c9`, reinstalled after rebase):
 `pnpm check` exit 0 · `pnpm test` 2,603 node + 464 client, exit 0 · `guard:querykeys` exit 0 · `guard:tokens` exit 0 (baseline 97, no regression) · `clientSchemaImports` exit 0 · `detectTriggers()` over the changed files → `[]`.
@@ -43,9 +48,9 @@ The whole path landed in **`6407119` (#400), 2026-08-05** — *"fix(launch): pre
 
 ## Proposed tickets
 
-1. **Migrate 83 client files off the singleton `queryClient` to `useQueryClient()`** — do the ~9 files with a `.test.tsx` sibling first, so their refresh assertions stop being vacuous. Blocked on #490 merging.
+1. **Migrate the remaining 72 singleton `queryClient` importers to `useQueryClient()`** — the 12 with a test sibling are done (`384ab1a`). Take the rest in batches; `tsc` catches a misplaced hook because the import is gone, which makes the mechanical edit safe to script.
 2. **Correct CHARTER §1's standing evidence** — WF2-F4 is closed; leaving it in makes every routine re-report a fixed blocker.
-3. **Merge #493** — until then the suite has no claim register and CHARTER §5's lock is unenforceable.
+3. ~~Merge #493~~ — **done**; the register is live and this run claimed and released through it.
 4. **Finish the transport sweep** — `RedeemInvite` is done (`dfb7b77`). Still open: `AddressInput` (2 public GETs from a debounced input handler; both *do* check `res.ok`, so this is a shape question — `getPublicQueryFn` + a params-object key — not a defect) and `RentCard` (multipart; `apiRequest` JSON-stringifies its body and cannot send `FormData`, so it needs either an `apiRequest` extension or a documented raw exception). Keep the allowlist honest — it fails on stale entries.
 5. **`Messages.tsx` runs three uncoordinated polls** (`:47` 30s, `:59` 5s, `:66` 3s ≈ 32 req/min/tab) with no backoff, while every other live surface was consolidated onto `useShellBadges` or SSE.
 6. **Do not "clean up" `URLAForm.tsx`** — `knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md` (landed today, #486) refutes eight extraction proposals; the worst writes a co-applicant's PII into the primary borrower's rows.

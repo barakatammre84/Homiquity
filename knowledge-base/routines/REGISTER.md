@@ -21,7 +21,7 @@ Humans: claim too. A routine cannot see your editor.
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| frontend-wiring-audit | the 12 `client/src` components that import the module-singleton `queryClient` **and** have a `.test.tsx` sibling | `.claude/worktrees/pensive-noether-5232f2` | `claude/frontend-standardization-2` | 2026-08-12T20:50Z | Migrate them to `useQueryClient()`. Their tests render under a fresh `new QueryClient()`, so every post-mutation invalidation currently lands on a client no test observes — the refresh assertions are vacuous. Scoped to the tested files this run; the other ~71 singleton importers stay unclaimed. |
+| _(none)_ | — | — | — | — | — |
 
 ## Recently released
 
@@ -29,4 +29,5 @@ Keep the last ~10 for collision forensics; trim older rows freely.
 
 | routine / session | target | released (UTC) | outcome |
 |---|---|---|---|
+| frontend-wiring-audit 2026-08-12 | the 12 `client/src` components importing the singleton `queryClient` **with** a `.test.tsx` sibling | 2026-08-12 | **shipped** — migrated to `useQueryClient()` on `claude/frontend-standardization-2` (`384ab1a`). The other **72** singleton importers are untouched and unclaimed; take them in tested-first batches. Note `TestLogin.test.tsx` had been rendering with no `QueryClientProvider` at all — only the singleton made that pass. |
 | refactor-radar 2026-08-08 | `client/src/components/ScenarioSimulatorDialog.tsx` (RR-004) | 2026-08-12 | **abandoned** — run crashed mid-flight and left its worktree behind, hard-blocking every later radar run (`SKILL.md` Phase 0.4). Work snapshotted to `wip/radar-2026-08-08-scenario-simulator-abandoned` (do not merge; superseded by merged PR #467), worktree removed, RR-004 returned to `open`. |
