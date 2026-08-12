@@ -1,16 +1,16 @@
 # Frontend Wiring Audit — 2026-08-12
 
-STATUS: WARN — four capture-path defects found and fixed; the claim register was unreachable, and CHARTER §1's standing launch-blocker is stale.
+STATUS: WARN — five capture-path defects found and fixed, plus the first 12 of the singleton-`queryClient` migration; one launch-blocking claim proved stale, and the branch carrying all of it has no PR.
 
 ## ⛔ Human actions
 
-1. **Merge or close [PR #490](https://github.com/barakatammre84/Homiquity/pull/490)** (green, `MERGEABLE/CLEAN`, auto-merge deliberately not armed). It carries three of the four fixes. The fourth is committed on `claude/frontend-standardization-2` and not pushed — the loop instruction for this session said not to push, which **conflicts with CHARTER §9** ("routines commit on a branch and open a PR"). Flagging rather than resolving it unilaterally.
-2. **CHARTER §1's standing evidence is out of date.** It states `preferredLoanType` / `amortizationType` have "no product write path — only the demo seed sets them, so organic files cannot submit", and instructs any routine finding it open to report it as launch-blocking. **It is closed.** Verified end to end below. The charter should be corrected, or a later routine will keep re-reporting a fixed blocker as launch-blocking.
-3. **`REGISTER.md` does not exist on `main`** — it is on unmerged PR #493. CHARTER §5 says a routine that cannot claim "does not get to write code", and §5 also says to report and stop if the register is unreachable. I wrote code before reading the charter (it was published mid-run), so this is disclosed, not excused. Until #493 merges the suite has **no working lock**.
+1. **Merge or close [PR #490](https://github.com/barakatammre84/Homiquity/pull/490)** (green, auto-merge deliberately not armed) — it carries three of the fixes.
+2. **The other eight commits are on `claude/frontend-standardization-2` with NO PR.** This session's loop instruction said not to push, which conflicts with CHARTER §9 ("routines commit on a branch and open a PR"). Per [[cross-session-coordination]], *a branch with no PR is invisible to `gh pr list`* — the exact shape of the nine-audit collision. Flagging rather than resolving unilaterally; say the word and it goes up.
+3. **`WORKFLOWS.md:31` still carries WF2-F4** as an open launch-blocker. It is closed (evidence below). A peer corrected `CHARTER.md` §1 and the memory in `f41f2d5`; `WORKFLOWS.md` is Evening Triage's territory under §6, so this routine did not edit it.
 
 ## Summary
 
-Traced the borrower capture path end to end — calculators → `/apply` → auth gate → draft → URLA → submit. Found four defects, all invisible from either end alone and all with green guards: a credit band handed over in the wrong vocabulary, a URLA save that mutates the loan application row while invalidating only URLA, four public signup forms rendering success on a rejected POST, and an invite attribution whose storage tier expired before the submit it accompanies. All four are fixed with regression tests; three are in PR #490 and one is committed locally. The single highest-value finding remains open and unfixed: the client binds to a module-singleton `queryClient` in 83 files, which makes every post-mutation refresh path unobservable in tests — the exact defect class this repo keeps shipping.
+Traced the borrower capture path end to end — calculators → `/apply` → auth gate → draft → URLA → submit. Five defects, all invisible from either end alone and every one with green guards: a credit band handed over in the wrong vocabulary, a URLA save that mutates the loan application row while invalidating only URLA, four public signup forms rendering success on a rejected POST, an invite attribution whose storage tier expired before the submit it accompanies, and a 500 that told staff their valid invite code was invalid. All five are fixed with regression tests that were each verified to fail against the previous code. The structural finding — 83 files bound to a module-singleton `queryClient`, making every post-mutation refresh unobservable in tests — is now 12 files smaller, starting with the tested ones.
 
 ## Evidence
 
@@ -41,8 +41,8 @@ The whole path landed in **`6407119` (#400), 2026-08-05** — *"fix(launch): pre
 
 `TestLogin.test.tsx` had been rendering the page with **no `QueryClientProvider` at all** and passing, purely because the singleton needs no provider. `useQueryClient()` throws there — the truthful answer, since the test was rendering the component in a tree it never runs in. Now wrapped, as the app does.
 
-**Gate output** (this branch, rebased on `3ba30c9`, reinstalled after rebase):
-`pnpm check` exit 0 · `pnpm test` 2,603 node + 464 client, exit 0 · `guard:querykeys` exit 0 · `guard:tokens` exit 0 (baseline 97, no regression) · `clientSchemaImports` exit 0 · `detectTriggers()` over the changed files → `[]`.
+**Gate output** (this branch, rebased on `4789008`, reinstalled after the rebase):
+`pnpm check` exit 0 · `pnpm test` **2,647 node + 485 client**, exit 0 · `guard:querykeys` exit 0 · `guard:tokens` exit 0 (baseline 97, no regression) · `clientSchemaImports` exit 0 · `apiRequestConvergence` exit 0 (allowlist honest in both directions) · `detectTriggers()` over the 14 changed files → `[]`.
 
 **Not verified:** no browser check — dev servers cannot start in an unattended run (CHARTER §10). This is test-and-typecheck evidence only.
 
