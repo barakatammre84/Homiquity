@@ -83,6 +83,7 @@ const IdentityVerification = lazy(() => import("@/pages/borrower/IdentityVerific
 const OnboardingJourney = lazy(() => import("@/pages/borrower/OnboardingJourney"));
 const EConsent = lazy(() => import("@/pages/borrower/EConsent"));
 const GapCalculator = lazy(() => import("@/pages/borrower/GapCalculator"));
+const MyLease = lazy(() => import("@/pages/borrower/MyLease"));
 const BuyerProperties = lazy(() => import("@/pages/borrower/BuyerProperties"));
 const HmdaDemographics = lazy(() => import("@/pages/borrower/HmdaDemographics"));
 
@@ -414,6 +415,10 @@ function Router() {
         {/* Private Pages - Borrower only (clients working on their mortgage) */}
         <Route path="/gap-calculator">
           <BorrowerPage><GapCalculator /></BorrowerPage>
+        </Route>
+        {/* Rent ledger capture. Saving a lease furnishes nothing — the page says so. */}
+        <Route path="/my-lease">
+          <BorrowerPage><MyLease /></BorrowerPage>
         </Route>
         <Route path="/loan-options/:id">
           {(params) => <BorrowerPage><LoanOptions /></BorrowerPage>}

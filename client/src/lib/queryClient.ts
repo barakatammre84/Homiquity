@@ -303,6 +303,19 @@ export const homeownershipGoalKeys = {
 };
 
 /**
+ * Lease reads.
+ *
+ * Segmented, so `all()` is a real invalidation prefix: `partialMatchKey` compares
+ * element by element, so a single `["/api/leases"]` string would never have matched
+ * `["/api/leases/<id>"]` — the same trap documented on `consentKeys` below.
+ */
+export const leaseKeys = {
+  /** Every lease read — the prefix a write should invalidate. */
+  all: () => ["/api/leases"] as const,
+  detail: (id: string) => ["/api/leases", id] as const,
+};
+
+/**
  * Consent reads. SEGMENTED under a bare `/api/consents` root on purpose.
  *
  * `partialMatchKey` (query-core) compares queryKey arrays ELEMENT BY ELEMENT —

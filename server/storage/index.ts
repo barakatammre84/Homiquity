@@ -11,9 +11,9 @@
 // IStorage is DERIVED from the class instead of hand-maintained: the old
 // 733-line interface had to be edited in lockstep with every method change.
 // Add new methods to the matching domain file (or a new chain link).
-import { LeadsStorage } from "./leads";
+import { LeasesStorage } from "./leases";
 
-export class DatabaseStorage extends LeadsStorage {}
+export class DatabaseStorage extends LeasesStorage {}
 
 export const storage = new DatabaseStorage();
 

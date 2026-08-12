@@ -214,6 +214,9 @@ export default defineConfig({
       "tests/rentFurnishing.test.ts",
       "tests/creditMonitoring.test.ts",
       "tests/rentReportingSurface.test.ts",
+      // Lease capture: the encryption round-trip, the view's refusal to leak ciphertext,
+      // UTC date semantics, and the validation boundary.
+      "tests/leaseCapture.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
