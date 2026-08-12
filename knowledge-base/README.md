@@ -59,6 +59,7 @@ doc-drift bug to fix):
 
 > The living docs above carry a **Freshness** line (`pnpm guard:docs`). Dated logs under
 > [`logs/`](logs/) deliberately do not — a log is history, not a claim about the present.
+- [SESSION_CLAIMS.md](SESSION_CLAIMS.md) — the cross-session coordination board: who is working on what, the graduated overlap protocol, central finding-id allocation, and the standing lanes per routine. Exists because two sessions audited the finances four days apart, could not see each other, and both minted `F-20`…`F-24`.
 - [security/](governance/security/) — the security governance pack (vendor-diligence ready; drafted for the Plaid
   clearance): [Information Security Policy](governance/security/INFORMATION_SECURITY_POLICY.md)
   · [Access Control Policy](governance/security/ACCESS_CONTROL_POLICY.md) · [Asset & Endpoint Register](governance/security/ASSET_REGISTER.md)

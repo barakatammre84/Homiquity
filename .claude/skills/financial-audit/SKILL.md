@@ -72,16 +72,42 @@ was when the loop started.
    - `git log --oneline origin/main -20` — what landed since the last tick.
    - The newest `knowledge-base/logs/*financial-architecture*` entry.
    - `CTO_ROADMAP.md` §0–§2 if the tick may touch launch-blocking work.
-4. **Team sync — assume you are not alone.**
-   - `git branch -r --sort=-committerdate | head -20` and open PRs
-     (`mcp__github__list_pull_requests`, state `open`): note every branch and PR
-     another session has in flight, and the files they touch.
-   - `ListAgents` to see live sessions; if one is working the same area, prefer a
-     different ledger row rather than racing it.
-   - **Collision rule:** never edit a file that an open PR from another session
-     already modifies. Ledger the finding `blocked-collision: <PR#>` and pick
-     another. Two sessions editing one money path is how a fix gets silently
-     reverted by a merge.
+4. **Team sync — assume you are not alone, and do not rely on seeing anyone.**
+
+   Order matters: the signals below run **strongest first**, because the weakest one
+   is the one that feels most authoritative.
+
+   a. **`origin/main` — always true, no cooperation required.** `git log --oneline
+      origin/main -20` and open PRs (`mcp__github__list_pull_requests`, state
+      `open`). A file with an open PR against it is claimed by that PR.
+   b. **[`knowledge-base/SESSION_CLAIMS.md`](../../../knowledge-base/SESSION_CLAIMS.md)** —
+      declared intent, which `main` cannot show until work lands. Read it, honour
+      live claims, and **write your own claim** before Phase 2.
+   c. **`ListAgents` / `SendMessage` — a bonus, never the gate.** Verified blind on
+      2026-08-12: it returned *No reachable agents* while another session's financial
+      audit was merging into `main`. **Never skip or defer a tick on the strength of
+      an empty `ListAgents`** — it cannot see the sessions that cause collisions. When
+      an agent IS reachable and its work overlaps, message it; that is real
+      coordination, and it is the only thing here that beats a claim file.
+
+   **Graduated response — proceed / adjacent / defer.** Blanket deference is not
+   teamwork; it is a routine that never runs. Measure the overlap, then choose:
+
+   | overlap | response |
+   |---|---|
+   | none | Proceed. Claim your files. |
+   | adjacent (same area, different files) | Proceed, claim, and keep the diff inside the files you claimed. |
+   | direct (same file, or the same finding-id space) | **Do not race.** Ledger `blocked-collision: <PR#/session>`, pick another row, and `SendMessage` if reachable. |
+
+   **Finding ids are allocated on `main`, never minted from "next free."** This is the
+   rail that would have prevented the 2026-08-08 / 2026-08-12 collision, in which two
+   sessions independently minted `F-20`…`F-24` for different findings. If you cannot
+   see `main`'s ledger, record `F-NEW-<slug>` and number it when you rebase.
+
+   **Merging another session's work is not a formality.** Resolve conflicts
+   *additively* where the two changes are independent concerns, and **re-verify by
+   hand any money path that auto-merged** — a clean auto-merge across two sessions'
+   edits to one financial mapping is not evidence that the result is correct.
 5. **Ledger reconciliation:** for each row at `in-pr`, check its PR — MERGED → `done`
    (record PR# + date); CLOSED-unmerged → `failed: closed unmerged — ask owner`.
 6. Apply R4 backpressure. Then decide the tick's mode:
