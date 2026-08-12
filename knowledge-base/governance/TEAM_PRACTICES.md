@@ -277,10 +277,25 @@ when it touches a trigger below and the PR body carries no heading containing
 `Security review`. Two things it deliberately is not: it proves the review was *written
 down*, never that it was *correct* — with a single collaborator no automation can do the
 latter, which is also why CODEOWNERS cannot be used here (GitHub forbids self-approval, so
-requiring code-owner review would deadlock every §9 PR). And it cannot see the last two
-triggers below — a `shared/schema/` PII column and a new PII sub-processor need someone to
-know which columns are PII and which vendors are processors. **A green gate is not evidence
-that §9 is satisfied on those two.** The rule binds whether or not the script fires.
+requiring code-owner review would deadlock every §9 PR). And its coverage of the two
+judgement-based triggers is partial at best:
+
+- **`shared/schema/` PII columns — detected, but only by name.** The guard fires on a
+  newly added column or table whose name carries identity/contact/consent vocabulary
+  (`ssn`, `dob`, `*_phone`, `email`, `ip`, `address`, `consent_*`, `account_number`,
+  `first/last/full_name`, …). It deliberately does **not** fire on a column that already
+  existed and is merely being edited or relocated, and it deliberately leaves income,
+  credit scores and balances out of the vocabulary — they are the bulk of an underwriting
+  schema, and including them would burn the signal. So a PII column named outside that
+  vocabulary (`applicant_identifier`, `contact_detail`) still passes silently. **The
+  trigger is a floor, not a ceiling.** *(Closed a real blind spot: before this, no trigger
+  covered `shared/schema/**` at all, and a `user_phones` table carrying a phone number plus
+  TCPA consent provenance produced zero triggers.)*
+- **New PII sub-processor — not detected at all.** Knowing a new vendor is a processor is
+  human judgement, and nothing in a diff carries it.
+
+**A green gate is not evidence that §9 is satisfied on either.** The rule binds whether or
+not the script fires.
 
 **Keep the triggers narrow.** Every path above is named because a wrong change to *that
 file* has a specific, statable cost. Do not widen them into globs (`server/services/*`):
