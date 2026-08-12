@@ -41,24 +41,40 @@ they are the same ids the dated audit logs cite.
 > the concrete cost of per-session id minting and unmerged memory, and it is the reason for the
 > allocation rule below.
 >
-> ### How to cite until this is resolved
+> ### RESOLVED — date-qualified ids, adopted 2026-08-12
 >
-> **Always qualify with the audit date: `F-21 (08-09)`.** Never a bare `F-21`.
+> **Scheme:** `F-<MMDD>-<NN>` — the date of the audit that minted the finding, then a
+> two-digit ordinal within that audit. `F-0810-01` is the 08-10 audit's first finding.
 >
-> ### Resolution — owner decision, not taken unilaterally
+> Chosen over a central register because it is **unique by construction, with zero
+> coordination**: a session that cannot see `main` can still mint a correct id. A central
+> register reintroduces the exact dependency that broke here — it requires visibility before
+> you can name a finding, and visibility is what fails.
 >
-> Renumbering one branch is no longer sufficient; six sets collide. The two workable schemes:
-> **(a) date-qualified ids** (`F-0810-01`) — no renumbering of history, every existing cite stays
-> readable once qualified; or **(b) one monotonic register on `main`** that each audit appends to
-> *before* publishing, renumbering the five unmerged sets on the way in. (b) is cleaner long-term,
-> (a) is cheaper today. Either way TEAM_PRACTICES §2 forbids rewriting the published logs in
-> place — the mapping goes in a supersession banner.
+> **`F-1` … `F-19` are NOT renumbered.** They have a single origin (08-04, 08-05), are
+> unambiguous, and are cited throughout the code, the roadmap and the governance docs.
+> Requalifying them would be churn against zero collision risk. The scheme applies from the
+> collided `F-2x` space onward.
+>
+> **Cross-reference for the six collided sets** — old cite → new id. Published logs keep their
+> original text (TEAM_PRACTICES §2 forbids rewriting a log in place); each carries a
+> supersession banner pointing here.
+>
+> | audit | old | new |
+> |---|---|---|
+> | 08-07 | F-20 … F-23 | `F-0807-01` … `F-0807-04` |
+> | 08-08 | F-20 … F-24 | `F-0808-01` … `F-0808-05` |
+> | 08-09 | F-20 … F-23 | `F-0809-01` … `F-0809-04` |
+> | 08-10 | F-20 … F-25 | `F-0810-01` … `F-0810-06` |
+> | 08-11 | F-20 … F-26 | `F-0811-01` … `F-0811-07` |
+> | 08-12 | F-20 … F-23 | `F-0812-01` … `F-0812-04` |
+>
+> Ordinals follow each log's own severity table, top to bottom.
 >
 > ### Allocation rule, effective now
 >
-> Ids are allocated **in this file on `main`**, never minted per-session from "next free". A
-> session that cannot see `main`'s ledger records `F-NEW-<slug>` and numbers it on rebase. This is
-> the cheap rail that would have prevented all six collisions.
+> Mint `F-<MMDD>-<NN>` using **your audit's date**, and never a bare next-free integer. No
+> lookup, no register, no coordination — which is the point.
 
 Seeded 2026-08-12; **corrected the same day** after tick 1 discovered six further audits. Not three —
 nine. Five are on `main` (08-04, 08-05, 08-06, 08-08, and the merged history), four are stranded
@@ -89,10 +105,10 @@ which is why Phase 0.4 reads open PRs, not just `main`.
 | F-9 | risk | Medium | Third-party fee constants are unsourced national guesses in a **zero-tolerance** bucket. Architecture fixed (provenance tiers, `suspectedInaccurate` on transfer taxes); the **values** remain `platform_estimate`. Illinois transfer tax is levied at state, county AND municipal level against a single 0.1% national constant | `blocked-human`: needs a human with the Illinois statute — `ilga.gov`, `tax.illinois.gov`, `chicago.gov` are all blocked from this environment | `shared/compliance/feeProvenance.ts`; ledger `platform-closing-cost-fee-schedule` (30-day interval) |
 | F-14 | capital efficiency | Escalation | Broker vs. mini-correspondent. One constant, and the largest unanswered question about the capital structure: under correspondent, F-16 dies, a warehouse line becomes necessary, duration mismatch becomes real, and the contingent-liability register is materially incomplete | `blocked-human`: founder decision | [CHANNEL_DECISION.md](../governance/CHANNEL_DECISION.md); `shared/businessChannel.ts`; freeze guard holds 1,482 lines at baseline |
 | F-17 | unit economics | High | The QM dead band was resolved in code (fees now trim to fit), but the **business lever** remains: at ~300 bps compensation alone exceeds the cap and no fee reduction rescues the file. Fees are no longer the constraint at any loan size; the comp plan is | `blocked-human`: a negotiation, not a code change | [2026-08-05 log](../logs/2026-08-05-financial-architecture-reaudit-qm-loan-size-floor.md) §Resolution |
-| F-24 | balance sheet | Medium | **Minimum net worth and surety bond are unquantified**, so reserve adequacy cannot be answered — every contingent exposure is a claim against exactly the net worth the licence requires be maintained. Verified 2026-08-12 that the local NMLS guidebook (Ch. VII, pp. 120/122) is filing mechanics only and defers the amount to state law. Structural note: the requirement is the **most stringent state in the footprint**, so multi-state expansion moves the floor *discontinuously* — an expansion plan's licensing line is a `max()`, not a sum | `blocked-human`: needs the Illinois RMLA statute | [CONTINGENT_LIABILITY_REGISTER.md](../governance/CONTINGENT_LIABILITY_REGISTER.md) §2 |
-| F-25 | risk | Low | Reg Z readings shipped ahead of verification (dual compensation §1026.36(d)(2), points-and-fees §1026.32(b)(1)(ii), the §1026.4(a)(3) finance-charge question, the tax-service-fee classification, LE Section C tolerance tier). All are conservative in one direction only, and all carry short review intervals so `pnpm checkup` goes loud | `blocked-human`: `docs/reg-z/` holds no authoritative source text; every federal host is blocked | `data/regulatory/regulatory-ledger.json`; [docs/reg-z/README.md](../../docs/reg-z/README.md) |
-| F-26 | balance sheet | Low | The clawback register quantifies exposure but **does not monitor for actual payoffs** — nothing tells the platform a loan paid off, so `totalAtRisk` is exposure, never realized loss. EPD (early-payment-default) repurchase provisions are also unmodeled | `open` | `shared/compensationClawback.ts`; noted in the F-8 remediation |
-| F-27 | unit economics | Medium | Gross margin is an **upper bound** and says so: loan-officer compensation, processing labour and overhead allocation are modeled nowhere, so the cost side is direct vendor spend only | `open` | `shared/costLedger.ts` `computeUnitEconomics` notes |
+| `F-0812-05` | balance sheet | Medium | **Minimum net worth and surety bond are unquantified**, so reserve adequacy cannot be answered — every contingent exposure is a claim against exactly the net worth the licence requires be maintained. Verified 2026-08-12 that the local NMLS guidebook (Ch. VII, pp. 120/122) is filing mechanics only and defers the amount to state law. Structural note: the requirement is the **most stringent state in the footprint**, so multi-state expansion moves the floor *discontinuously* — an expansion plan's licensing line is a `max()`, not a sum | `blocked-human`: needs the Illinois RMLA statute | [CONTINGENT_LIABILITY_REGISTER.md](../governance/CONTINGENT_LIABILITY_REGISTER.md) §2 |
+| `F-0812-06` | risk | Low | Reg Z readings shipped ahead of verification (dual compensation §1026.36(d)(2), points-and-fees §1026.32(b)(1)(ii), the §1026.4(a)(3) finance-charge question, the tax-service-fee classification, LE Section C tolerance tier). All are conservative in one direction only, and all carry short review intervals so `pnpm checkup` goes loud | `blocked-human`: `docs/reg-z/` holds no authoritative source text; every federal host is blocked | `data/regulatory/regulatory-ledger.json`; [docs/reg-z/README.md](../../docs/reg-z/README.md) |
+| `F-0812-07` | balance sheet | Low | The clawback register quantifies exposure but **does not monitor for actual payoffs** — nothing tells the platform a loan paid off, so `totalAtRisk` is exposure, never realized loss. EPD (early-payment-default) repurchase provisions are also unmodeled | `open` | `shared/compensationClawback.ts`; noted in the F-8 remediation |
+| `F-0812-08` | unit economics | Medium | Gross margin is an **upper bound** and says so: loan-officer compensation, processing labour and overhead allocation are modeled nowhere, so the cost side is direct vendor spend only | `open` | `shared/costLedger.ts` `computeUnitEconomics` notes |
 
 ## Closed — recorded so they are not re-discovered, and so a regression reads as a change
 
@@ -114,10 +130,10 @@ which is why Phase 0.4 reads open PRs, not just `main`.
 | F-16 | Asset-light structure is correct; no money movement anywhere | `sound` — re-verified 2026-08-12. **F-14 is the one thing that would invalidate it** |
 | F-18 | QM constraint evaluated after its own remedy expired | `done` 2026-08-05 — evaluated at the compensation election |
 | F-19 | Tax service fee counted in the QM denominator but not the numerator | `done` 2026-08-05 — one `PLATFORM_FINANCE_CHARGES` list feeds both |
-| F-20 | "Confirmed" was a presence test, not a counterparty test — a lock against a fictional lender booked as the lender's obligation, and the register priced it at $0 | `done` 2026-08-12 |
-| F-21 | Revenue ledger simulation-blind while the cost ledger beside it was simulation-aware — margin subtracted real cost from imaginary revenue | `done` 2026-08-12 |
-| F-22 | Lender authorization writable through the generic PATCH, audited by field name only | `done` 2026-08-12 — audited approval endpoint; columns off the generic write path |
-| F-23 | `epoClawbackDays` had no write surface, pinning the reserve to an assumed window | `done` 2026-08-12 — captured at approval, corrected via contract-terms; plus `/admin/lenders` |
+| `F-0812-01` | "Confirmed" was a presence test, not a counterparty test — a lock against a fictional lender booked as the lender's obligation, and the register priced it at $0 | `done` 2026-08-12 |
+| `F-0812-02` | Revenue ledger simulation-blind while the cost ledger beside it was simulation-aware — margin subtracted real cost from imaginary revenue | `done` 2026-08-12 |
+| `F-0812-03` | Lender authorization writable through the generic PATCH, audited by field name only | `done` 2026-08-12 — audited approval endpoint; columns off the generic write path |
+| `F-0812-04` | `epoClawbackDays` had no write surface, pinning the reserve to an assumed window | `done` 2026-08-12 — captured at approval, corrected via contract-terms; plus `/admin/lenders` |
 
 ## Standing signals — where findings keep coming from
 
@@ -142,16 +158,16 @@ Recorded because three audits found the same *shapes*, not the same bugs:
 
 ## The 2026-08-08 audit's findings (another session, merged) — do not re-discover
 
-Recorded so this routine does not re-audit money the other session already walked. Ids are
-**that audit's**, canonical on `main`.
+Recorded so this routine does not re-audit money the other session already walked.
+Date-qualified per the scheme above; the log itself still reads `F-20`…`F-24`.
 
-| id (08-08) | summary | status |
+| id | summary | status |
 |----|---------|--------|
-| F-20 | `broker_commissions` — a live payout table reaching no margin figure, balance sheet or audit log, while `costLedger.ts` asserted commissions were "not captured anywhere". A declared gap and an unjoined table look identical in a margin figure and are entirely different problems | `done` — charged by lifecycle state; approved-but-unpaid booked as a payable; disbursed commission inside a live EPO window reported as loss *on top of* the clawback, not netted |
-| F-21 | Payout struck as 0–10% of loan amount with no reference to the file's compensation and no funded gate — a $25,000 payable against $5,000 of revenue was permitted | `done` (`shared/commissionPayout.ts`) — but its **Reg Z §1026.36(d)(1) / RESPA §8 posture needs counsel**: ledger `regz-1026-36d1-referral-commission-payout`, roadmap 1.10, roadmap 3.7 blocked on it |
-| F-22 | Borrower-paid platform fee income (~$2,000/file) absent from the revenue line — so with their F-20, **both sides of the margin were wrong in opposite directions** | `open` — policy decided 2026-08-08 (recognize on receipt); implementation is roadmap 3.14 |
-| F-23 | Cash-conversion cycle computed nowhere despite every operand recorded, including `compensation_received_at` read by nothing | `done` — `daysToCash` measures funded → remittance and stays **null** rather than collapsing to the funding cycle when the lag is unmeasured |
-| F-24 | Money-out routes unaudited: a $30 credit pull was audited, opening a payable worth up to 10% of the loan amount was not | `done` — four-eyes on disbursement left as a founder call (enforcing a second approver on a one-person company would block the only path to paying anyone) |
+| `F-0808-01` | `broker_commissions` — a live payout table reaching no margin figure, balance sheet or audit log, while `costLedger.ts` asserted commissions were "not captured anywhere". A declared gap and an unjoined table look identical in a margin figure and are entirely different problems | `done` — charged by lifecycle state; approved-but-unpaid booked as a payable; disbursed commission inside a live EPO window reported as loss *on top of* the clawback, not netted |
+| `F-0808-02` | Payout struck as 0–10% of loan amount with no reference to the file's compensation and no funded gate — a $25,000 payable against $5,000 of revenue was permitted | `done` (`shared/commissionPayout.ts`) — but its **Reg Z §1026.36(d)(1) / RESPA §8 posture needs counsel**: ledger `regz-1026-36d1-referral-commission-payout`, roadmap 1.10, roadmap 3.7 blocked on it |
+| `F-0808-03` | Borrower-paid platform fee income (~$2,000/file) absent from the revenue line — so with `F-0808-01`, **both sides of the margin were wrong in opposite directions** | `open` — policy decided 2026-08-08 (recognize on receipt); implementation is roadmap 3.14 |
+| `F-0808-04` | Cash-conversion cycle computed nowhere despite every operand recorded, including `compensation_received_at` read by nothing | `done` — `daysToCash` measures funded → remittance and stays **null** rather than collapsing to the funding cycle when the lag is unmeasured |
+| `F-0808-05` | Money-out routes unaudited: a $30 credit pull was audited, opening a payable worth up to 10% of the loan amount was not | `done` — four-eyes on disbursement left as a founder call (enforcing a second approver on a one-person company would block the only path to paying anyone) |
 
 **Convergence worth noting:** their working-capital loop skips `simulated` cost entries for the
 same reason the 08-12 pass excluded simulated revenue — two independent audits reached the same
@@ -163,3 +179,4 @@ rule. That agreement is evidence the rule is right, and it is why the two change
 |------|------|------|---------|
 | 2026-08-12 t0 | `2444950` | audit + fix | 08-12 findings found, verified by execution, fixed under owner authorization; `/admin/lenders` built; routine installed |
 | 2026-08-12 t1 | `3ba30c9` | refresh-only (R3) | **Branch was 15 commits behind** — refresh was the whole tick, exactly as R3 intends. Merged `origin/main`: 7 overlapping files, 3 conflicts (`costLedger.ts`, `submissions.ts`, KB README), all resolved additively — the two sessions' changes were complementary, not contradictory. `contingentLiabilityRegister.ts` auto-merged and was re-verified by hand (both `epoClawbackDays` and `simulated` present) because a silent auto-merge in a money path is not evidence. 3,079 tests green post-merge. **Found the id collision above** — the first thing the team-sync rail caught |
+| 2026-08-12 t1b | `10329fa` | coordination | Read open PRs, not just `main` — found **PR #489 carrying four further audits** (08-07, 08-09, 08-10, 08-11). The real chain is nine audits, one per day; this ledger had claimed three. Six had minted `F-20`. Coordinated by comment on #489 rather than editing another session's branch. **Date-qualified ids adopted**; cron moved hourly → weekly on the evidence that the queue is not draining |

@@ -1,5 +1,22 @@
 # Financial Architecture Re-Audit — Counterparty Integrity — 2026-08-12
 
+> **⚠️ ID SUPERSESSION (2026-08-12).** The `F-20`…`F-23` used throughout this document are
+> **date-qualified** as of the same day, because six of the nine financial audits run between
+> 08-04 and 08-12 independently minted ids starting at `F-20`:
+>
+> | in this document | canonical id |
+> |---|---|
+> | F-20 | `F-0812-01` |
+> | F-21 | `F-0812-02` |
+> | F-22 | `F-0812-03` |
+> | F-23 | `F-0812-04` |
+>
+> The body is left as written (TEAM_PRACTICES §2 — a log is history, never rewritten in place).
+> **Cite the canonical ids.** Note also that the 08-10 audit — stranded unmerged on
+> PR [#489](https://github.com/barakatammre84/Homiquity/pull/489) until 08-12 — had already found
+> four of these findings two days earlier; this pass fixed them, but the analysis was duplicated.
+> Full chain and scheme: [financial-audit/LEDGER.md](../financial-audit/LEDGER.md).
+
 **Scope:** the same four areas as the [2026-08-04 audit](./2026-08-04-financial-architecture-capital-structure-audit.md)
 and the [2026-08-05 re-audit](./2026-08-05-financial-architecture-reaudit-qm-loan-size-floor.md)
 — capital flow, risk/liability, unit economics, balance sheet — re-run against HEAD one week

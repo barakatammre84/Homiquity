@@ -99,10 +99,12 @@ was when the loop started.
    | adjacent (same area, different files) | Proceed, claim, and keep the diff inside the files you claimed. |
    | direct (same file, or the same finding-id space) | **Do not race.** Ledger `blocked-collision: <PR#/session>`, pick another row, and `SendMessage` if reachable. |
 
-   **Finding ids are allocated on `main`, never minted from "next free."** This is the
-   rail that would have prevented the 2026-08-08 / 2026-08-12 collision, in which two
-   sessions independently minted `F-20`…`F-24` for different findings. If you cannot
-   see `main`'s ledger, record `F-NEW-<slug>` and number it when you rebase.
+   **Finding ids are date-qualified: `F-<MMDD>-<NN>`**, using your audit's own date
+   (`F-0812-01`). Never a bare next-free integer — six of the nine financial audits
+   minted `F-20` that way, and it now means six different findings. The scheme needs
+   **no lookup and no coordination**, which is the point: a session that cannot see
+   `main` can still mint a correct id. `F-1`…`F-19` keep their original form (single
+   origin, unambiguous, cited throughout the repo).
 
    **Merging another session's work is not a formality.** Resolve conflicts
    *additively* where the two changes are independent concerns, and **re-verify by

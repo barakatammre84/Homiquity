@@ -8,11 +8,12 @@ writes to it when it takes work.
 
 ## Why this exists, and why live-agent discovery is not enough
 
-On 2026-08-12 two sessions audited the platform's finances within four days of each other. Neither
-could see the other, so both minted findings `F-20`…`F-24` from "the next free number", and the
-ids now mean two different things (see
-[financial-audit/LEDGER.md](financial-audit/LEDGER.md)). Four files were edited by both; three
-conflicted; one money path auto-merged silently.
+Between 2026-08-04 and 2026-08-12 the platform's finances were audited **nine times, once a day**,
+by sessions that could not see each other. **Six of them minted findings starting at `F-20`** from
+"the next free number", so `F-20` came to mean six different things (see
+[financial-audit/LEDGER.md](financial-audit/LEDGER.md)). Two of those audits — 08-10 and 08-12 —
+independently derived the *same four findings* two days apart, and four of the 08-12 files had
+also been edited by another session: three conflicted, and one money path auto-merged silently.
 
 The obvious fix — "check whether another session is live, and stand down if so" — **would not have
 worked.** `ListAgents` was run during the collision and returned *No reachable agents*: it sees
@@ -43,10 +44,12 @@ claim must never block real work (see Expiry).
    - **Direct overlap** (same files or same finding-id space) → do **not** race. Prefer different
      work. If the work must happen, coordinate: `SendMessage` if the session is reachable,
      otherwise leave a note in the Notes column and let the owner sequence it.
-4. Claim ids/numbering centrally. Finding ids are allocated in the owning register on `main`
-   (financial: `financial-audit/LEDGER.md`; product/UX: `feature-review/FINDINGS.md`), **never**
-   minted per-session from "next free". A session that cannot see `main` records a provisional
-   `F-NEW-<slug>` and numbers it on rebase.
+4. **Use ids that cannot collide.** Finding ids are date-qualified — `F-<MMDD>-<NN>`, using your
+   audit's own date (`F-0812-01`) — never a bare next-free integer. Six of the nine financial
+   audits minted `F-20` from "next free" and it now means six different findings. Date
+   qualification needs **no register and no visibility**, which is exactly why it survives the
+   case where sessions cannot see each other. (Ids predating the scheme, `F-1`…`F-19`, keep their
+   original form: single origin, no ambiguity.)
 
 **When you finish or abandon:** remove your row in the same PR as the work. A board nobody clears
 becomes a board nobody reads.
@@ -61,7 +64,7 @@ themselves, so the board must degrade toward "available", never toward "blocked 
 
 | since | session / routine | scope — files or area | branch / PR | notes |
 |-------|-------------------|------------------------|-------------|-------|
-| 2026-08-12 | `/financial-audit` (loop, hourly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids **F-30…F-37 reserved** | `claude/fervent-mayer-oqk0iv` | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Will not touch `client/**` UI decomposition — that is refactor-radar's lane. |
+| 2026-08-12 | `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0812-*` (date-qualified — no reservation needed) | `claude/fervent-mayer-oqk0iv` | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Will not touch `client/**` UI decomposition — that is refactor-radar's lane. |
 
 ## Observed in flight — not declared by their sessions
 
@@ -84,7 +87,7 @@ Recorded so routines do not have to negotiate the common case every time.
 | routine | lane | stays out of |
 |---------|------|--------------|
 | [`/refactor-radar`](../.claude/skills/refactor-radar/SKILL.md) (weekly) | `client/src/**` UI-vs-logic extraction, behaviour-preserving | `server/**`, `shared/` money modules, anything with a live finding |
-| [`/financial-audit`](../.claude/skills/financial-audit/SKILL.md) (hourly loop) | money paths + the financial registers; audit-first | `client/src/**` decomposition, `shared/schema/**` without a migration, company identity |
+| [`/financial-audit`](../.claude/skills/financial-audit/SKILL.md) (weekly) | money paths + the financial registers; audit-first | `client/src/**` decomposition, `shared/schema/**` without a migration, company identity |
 | feature-review agents | domain review, findings register | fixing anything (they report; they never fix) |
 
 **Known shared-file hazards** — both routines legitimately touch these, so expect conflicts and
