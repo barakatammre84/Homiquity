@@ -20,6 +20,7 @@ import {
   insertWholesaleLenderSchema,
   writeWholesaleLenderSchema,
   LENDER_AUTHORIZATION_COLUMNS,
+  LENDER_CONTRACT_TERM_COLUMNS,
 } from "../shared/schema";
 
 const BASE = {
@@ -99,5 +100,63 @@ describe("F-22 — the approval endpoint is the only path, and it records eviden
     expect(source).toMatch(
       /app\.post\(\s*"\/api\/wholesale-lenders\/:id\/approval",\s*requireRole\("admin"\)/,
     );
+  });
+});
+
+describe("F-23 — the clawback window has a correction path, and it is audited", () => {
+  const source = readFileSync(join(__dirname, "../server/routes/rate-sheets.ts"), "utf8");
+
+  it("keeps the reserve input off the generic write path", () => {
+    // epoClawbackDays feeds the clawback reserve, so a silent edit through the
+    // generic PATCH would move a balance-sheet figure with no trail.
+    const shape = Object.keys(writeWholesaleLenderSchema.shape);
+    for (const column of LENDER_CONTRACT_TERM_COLUMNS) {
+      expect(shape).not.toContain(column);
+      expect(Object.keys(insertWholesaleLenderSchema.shape)).toContain(column);
+    }
+  });
+
+  it("exposes a dedicated, admin-gated contract-terms endpoint", () => {
+    expect(source).toMatch(
+      /app\.patch\(\s*"\/api\/wholesale-lenders\/:id\/contract-terms",\s*requireRole\("admin"\)/,
+    );
+  });
+
+  it("requires a reason and audits previous -> next values", () => {
+    expect(source).toMatch(/wholesale_lender\.contract_terms_updated/);
+    expect(source).toMatch(/previousEpoClawbackDays/);
+    expect(source).toMatch(/nextEpoClawbackDays/);
+  });
+
+  it("accepts null explicitly — 'no term on record' is a real state", () => {
+    // Clearing the term returns the register to its flagged assumption, which
+    // is honest for a lapsed agreement. Nullable, not merely optional.
+    expect(source).toMatch(/epoClawbackDays: z\.number\(\)\.int\(\)\.positive\(\)\.max\(3650\)\.nullable\(\)/);
+  });
+
+  it("refuses to record a contracted term for a lender with no agreement", () => {
+    expect(source).toMatch(/no_agreement_for_terms/);
+  });
+});
+
+describe("one handler per path — the lender catalog is not shadowed", () => {
+  const rateSheets = readFileSync(join(__dirname, "../server/routes/rate-sheets.ts"), "utf8");
+  const submissions = readFileSync(
+    join(__dirname, "../server/routes/underwriting/submissions.ts"),
+    "utf8",
+  );
+
+  it("registers the collection route exactly once, in the file that wins", () => {
+    // Two handlers existed on GET /api/wholesale-lenders with different role
+    // gates AND different payloads. Express serves the first registered
+    // (registerUnderwritingRoutes precedes registerRateSheetRoutes), so the
+    // rate-sheets copy was dead — and a registrar reorder would have silently
+    // started returning `apiConfig` to the browser.
+    expect(submissions).toMatch(/"\/api\/wholesale-lenders"/);
+    expect(rateSheets).not.toMatch(/app\.get\(\s*"\/api\/wholesale-lenders"/);
+  });
+
+  it("keeps apiConfig off the live catalog response", () => {
+    expect(submissions).toMatch(/apiConfig, \.\.\.lender/);
   });
 });

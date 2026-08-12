@@ -802,14 +802,14 @@
     "string": "reject:",
     "number": "reject:",
     "true": "reject:",
-    "all-keys-typed": "reject:ausSupport,epoClawbackDays,nonQm",
-    "missing-lenderId": "reject:ausSupport,epoClawbackDays,lenderId,nonQm",
-    "missing-lenderName": "reject:ausSupport,epoClawbackDays,lenderName,nonQm",
-    "missing-lenderCode": "reject:ausSupport,epoClawbackDays,lenderCode,nonQm",
-    "missing-primaryContact": "reject:ausSupport,epoClawbackDays,nonQm",
-    "missing-contactEmail": "reject:ausSupport,epoClawbackDays,nonQm",
-    "missing-contactPhone": "reject:ausSupport,epoClawbackDays,nonQm",
-    "wrongtype-lenderId": "reject:ausSupport,epoClawbackDays,lenderId,nonQm"
+    "all-keys-typed": "reject:ausSupport,nonQm",
+    "missing-lenderId": "reject:ausSupport,lenderId,nonQm",
+    "missing-lenderName": "reject:ausSupport,lenderName,nonQm",
+    "missing-lenderCode": "reject:ausSupport,lenderCode,nonQm",
+    "missing-primaryContact": "reject:ausSupport,nonQm",
+    "missing-contactEmail": "reject:ausSupport,nonQm",
+    "missing-contactPhone": "reject:ausSupport,nonQm",
+    "wrongtype-lenderId": "reject:ausSupport,lenderId,nonQm"
   },
   "schema.insertRateSheetSchema": {
     "undefined": "reject:",

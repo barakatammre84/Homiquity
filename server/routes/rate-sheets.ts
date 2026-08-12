@@ -18,18 +18,17 @@ export function registerRateSheetRoutes(
   // WHOLESALE LENDERS
   // ============================================================
 
-  app.get("/api/wholesale-lenders", requireRole("admin"), async (req, res) => {
-    try {
-      const lenders = await storage.getWholesaleLenders({
-        status: firstQueryValue(req.query.status),
-        integrationTier: firstQueryValue(req.query.integrationTier),
-      });
-      res.json(lenders);
-    } catch (err) {
-      console.error("Error fetching wholesale lenders:", err);
-      res.status(500).json({ error: "Failed to fetch wholesale lenders" });
-    }
-  });
+  // GET /api/wholesale-lenders is deliberately NOT registered here.
+  //
+  // It lives in routes/underwriting/submissions.ts, which registers earlier
+  // (server/routes.ts: registerUnderwritingRoutes before
+  // registerRateSheetRoutes), so a second handler on this path was shadowed —
+  // dead code that looked live. That is a trap in two directions: a fix
+  // applied here would have had no effect, and reordering the registrars would
+  // have silently swapped the response for one that includes `apiConfig`,
+  // which the live route strips on purpose (integration endpoints and auth
+  // shape no picker needs). The admin counterparty screen consumes the live
+  // route; it does not need apiConfig either.
 
   app.get("/api/wholesale-lenders/:id", requireRole("admin"), async (req, res) => {
     try {
@@ -185,6 +184,76 @@ export function registerRateSheetRoutes(
     } catch (err) {
       console.error("Error changing lender approval:", err);
       res.status(500).json({ error: "Failed to change lender approval" });
+    }
+  });
+
+  // ------------------------------------------------------------
+  // Contract terms — the correction path (F-23).
+  //
+  // The approval endpoint captures `epoClawbackDays` at the one moment it is
+  // first knowable, but a term can be mis-keyed, renegotiated, or clarified
+  // after the fact, and there was no way to change it without a direct
+  // database write. Left that way, the clawback reserve would rest on whatever
+  // was typed once, forever.
+  //
+  // Separate from approval on purpose: correcting a term is not an approval
+  // decision, and routing it through the approval endpoint would either
+  // manufacture spurious approval-change audit entries or discourage the
+  // correction. It stays audited because it moves a balance-sheet figure.
+  // ------------------------------------------------------------
+  app.patch("/api/wholesale-lenders/:id/contract-terms", requireRole("admin"), async (req, res) => {
+    try {
+      const termsSchema = z.object({
+        /**
+         * Null is a MEANINGFUL value here, not a missing one: it says "no
+         * agreement term is on record", which returns the register to the
+         * flagged platform assumption. That is the honest state for a lender
+         * whose agreement lapsed, and it is why this is nullable rather than
+         * merely optional.
+         */
+        epoClawbackDays: z.number().int().positive().max(3650).nullable(),
+        reason: z.string().trim().min(1).max(1000),
+      });
+
+      const data = parseBodyOr400(termsSchema, req.body, res);
+      if (data === undefined) return;
+
+      const id = routeParam(req, "id");
+      const existing = await storage.getWholesaleLender(id);
+      if (!existing) return res.status(404).json({ error: "Lender not found" });
+
+      // A term is a fact about an executed agreement. Recording one against a
+      // lender we have no agreement with would put a "contracted" window on
+      // the reserve with no contract behind it — the exact false precision
+      // clawbackWindowFor()'s assumed/contracted split exists to prevent.
+      if (data.epoClawbackDays !== null && existing.approvalStatus !== "approved") {
+        return res.status(422).json({
+          error:
+            `${existing.lenderName} is not an approved lender (status: ${existing.approvalStatus}), ` +
+            `so there is no executed agreement to take a contract term from.`,
+          code: "no_agreement_for_terms",
+        });
+      }
+
+      const updated = await storage.updateWholesaleLender(id, {
+        epoClawbackDays: data.epoClawbackDays,
+      });
+
+      await logAudit(req, "wholesale_lender.contract_terms_updated", "wholesale_lender", id, {
+        lenderName: existing.lenderName,
+        previousEpoClawbackDays: existing.epoClawbackDays ?? null,
+        nextEpoClawbackDays: data.epoClawbackDays,
+        reason: data.reason,
+      });
+
+      res.json({
+        id: updated?.id ?? id,
+        lenderName: existing.lenderName,
+        epoClawbackDays: updated?.epoClawbackDays ?? null,
+      });
+    } catch (err) {
+      console.error("Error updating lender contract terms:", err);
+      res.status(500).json({ error: "Failed to update lender contract terms" });
     }
   });
 

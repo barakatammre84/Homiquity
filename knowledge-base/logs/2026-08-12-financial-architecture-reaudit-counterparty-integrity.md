@@ -36,7 +36,7 @@ That is this audit's finding, in four parts.
 | F-20 | "Confirmed" is a presence test over four columns, not a counterparty test — a lock against a fictional lender is classified as a real lender obligation, and the liability register therefore prices it at $0 | Capital flow / Balance sheet | **High** — ✅ fixed |
 | F-21 | The revenue ledger is simulation-blind, while the cost ledger beside it is simulation-aware — gross margin subtracts de-simulated cost from contaminated revenue | Unit economics | **High** — ✅ fixed |
 | F-22 | The control that authorizes PII transmission and unblocks all revenue has the weakest audit trail of the three admin money surfaces | Risk / Liability | **Medium-High** — ✅ fixed |
-| F-23 | `epoClawbackDays` has no write surface, so the clawback reserve rests on an assumed window permanently, by construction | Balance sheet | Medium — ⚠️ partly fixed (write path at approval; no correction path) |
+| F-23 | `epoClawbackDays` has no write surface, so the clawback reserve rests on an assumed window permanently, by construction | Balance sheet | Medium — ✅ fixed |
 | — | F-1…F-13, F-17, F-18, F-19 remediation holds at HEAD | all | ✅ verified |
 | — | F-9 fee values · F-14 channel decision · minimum net worth | — | ⚠️ still open, unchanged |
 
@@ -362,10 +362,10 @@ This began as an audit: findings, quantification, and structural fixes, with no 
 applied, because all four change behavior on money or PII paths and the decision to change what
 the platform refuses belongs to a human.
 
-**F-20, F-22 and F-21 were subsequently authorized and are now fixed** — see the remediation
-sections below. **F-23 remains partly open**: F-22's endpoint carries the part that belongs to it
-(recording the contracted clawback window at approval, the only moment the column can honestly be
-written), but there is still no way to correct a window afterwards.
+**All four findings were subsequently authorized and are now fixed** — see the remediation
+sections below. The F-23 work also closed the gap that made the others hard to operate: there was
+no user interface for onboarding a real counterparty at all, so every fix above was reachable only
+by hand.
 
 ---
 
@@ -537,6 +537,99 @@ No migration: the fix reads the `simulated` column migration `0042`'s table alre
 
 ---
 
+## Remediation — F-23, and the counterparty onboarding surface (2026-08-12)
+
+**The clawback window can now be corrected, and there is finally a UI for getting real
+counterparty data into the system.**
+
+### F-23 — the correction path
+
+F-22's endpoint captured `epoClawbackDays` at approval, which is the moment it first becomes
+knowable. It could not be changed afterwards, so a mis-keyed or renegotiated term would have sat
+in the reserve forever.
+
+`PATCH /api/wholesale-lenders/:id/contract-terms` (admin, audited, reason required) is that path.
+Three deliberate properties:
+
+- **Separate from approval.** Correcting a term is not an approval decision. Routing it through
+  the approval endpoint would either manufacture spurious approval-change audit entries or
+  discourage the correction — and a correction nobody makes is the actual failure mode.
+- **`null` is a meaningful value, not a missing one.** Clearing the term records *"no agreement
+  term is on file"*, returning the register to its flagged platform assumption. That is the honest
+  state for a lapsed agreement, and it is why the field is nullable rather than optional.
+- **A contracted term requires an agreement.** Recording one against a non-approved lender is
+  refused (`no_agreement_for_terms`) — otherwise the register would show a `contracted` window
+  with no contract behind it, which is precisely the false precision the
+  `assumed`/`contracted` split exists to prevent.
+
+`epoClawbackDays` also moved **off** the generic write path
+(`LENDER_CONTRACT_TERM_COLUMNS`), for the same reason the authorization columns did: it is an
+input to a balance-sheet figure, so it should not be silently editable as an ordinary attribute.
+
+### The onboarding surface — `/admin/lenders`
+
+**Everything the platform can earn runs through a signed broker agreement, and the columns
+recording one had no user interface at all.** `POST`/`PATCH /api/wholesale-lenders` had zero
+client callers, and F-22's audited approval endpoint was reachable only by hand. Onboarding a real
+lender at go-live meant writing to the database directly — which is exactly how an unaudited
+authorization change happens.
+
+The page is built around three rules, none cosmetic:
+
+1. **Approved-lender count is the headline**, not a column. It is the binding constraint on
+   revenue (F-5): at zero, production submissions are blocked and no rate lock can be a real
+   commitment (F-20). The banner says so, and nudges toward the three-lender best-execution
+   target.
+2. **Approval is evidence, not a toggle.** The dialog asks for the broker-agreement reference and
+   the contracted EPO window because the server requires them, and it explains *why* the EPO term
+   is being asked for — it is the largest contingent liability on the balance sheet.
+3. **An assumed window never renders as a contracted number.** A lender with no term shows
+   *"Not on record — reserve assumes 180 days"*, never `180`.
+
+A demo row cannot be approved and the action is disabled rather than offered-and-refused; a new
+lender is created as a `target` with the create form carrying no authorization control at all.
+
+**Also linked `/admin/pricing-policy` in the sidebar.** It shipped with the F-17 work and was
+never added to the navigation, so the wholesale comp bands — which are lender data too — were
+reachable only by typing the URL.
+
+### A shadowed route found while wiring the page
+
+`GET /api/wholesale-lenders` had **two** handlers: one in `routes/underwriting/submissions.ts`
+(broader staff roles, `apiConfig` stripped) and one in `routes/rate-sheets.ts` (admin-only, full
+row). `registerUnderwritingRoutes` runs first, so the underwriting one wins and the rate-sheets
+copy was dead code.
+
+Harmless today, and a trap in two directions: a fix applied to the dead handler would have had no
+effect, and reordering the registrars would have silently swapped in a response carrying
+`apiConfig` — integration endpoints and auth shape — now that a browser page consumes this
+endpoint. The shadowed handler is removed and a test pins that the path has exactly one
+registration.
+
+### What was deliberately NOT built
+
+**Company identity and licensing stay compile-time.** `shared/companyIdentity.ts` holds the NMLS
+id, the Illinois license number, and the licensed-state footprint, and it is founder-maintained by
+design: `companyNmlsDisplay()` returns null rather than a placeholder, `isCompanyNmlsPending()`
+gates the whole pre-license launch, and the file states *"Add a state here ONLY when its license
+is issued and verifiable on NMLS Consumer Access — never speculatively."*
+
+Putting that behind an admin form would convert a compliance control reviewed in a pull request
+into a text box, on data where an invented value is itself a violation (SAFE Act 12 CFR 1008
+unique-identifier requirements). A deploy is the correct friction for a value that changes once a
+year and gates market entry. Recorded here so the absence reads as a decision rather than an
+oversight.
+
+### Verification
+
+Typecheck clean · **2,834 tests green** (2,406 server / 428 client) · 10 new component tests for
+the page, 7 new server tests · zod snapshot re-recorded, and every one of its 8 deltas is the same
+single fact (`epoClawbackDays` no longer faults on `writeWholesaleLenderSchema`) — no other schema
+and no URLA/compliance payload changed · design-token, KB-index, doc-freshness, schema-migration
+and delivery-stack guards all pass. No migration.
+
+---
+
 ## Security review — TEAM_PRACTICES §9 (2026-08-12)
 
 The F-22 endpoint adds a `requireRole("admin")` gate, which is a §9 **role/permission gate**
@@ -572,6 +665,19 @@ Also covered:
 
 Confirmed by inspection that neither trigger the guard cannot see is present: no `shared/schema/`
 column holding PII was added, and no new PII sub-processor.
+
+**Second pass — the F-23 endpoint and the admin page (same day).** `PATCH
+/api/wholesale-lenders/:id/contract-terms` adds another `requireRole("admin")` gate, so §9 fired
+again. **No HIGH or MEDIUM findings.** The handler builds its update object explicitly rather than
+spreading a body; the payload holds no PII; the new page is admin-only through the same
+`AdminPage` wrapper as its siblings, with every endpoint it calls independently server-gated
+(a client route guard is UX, never the control).
+
+One LOW, fixed rather than accepted: surfacing the lender catalog in a browser meant checking what
+that endpoint returns. `GET /api/wholesale-lenders` had two registrations, and the shadowed one
+returned `apiConfig` — integration endpoints and auth shape — which the live one strips
+deliberately. Nothing was exposed, because the stripping route registers first, but the duplicate
+made that a matter of registrar ordering rather than of design. Removed, and pinned by a test.
 
 ### Verification
 

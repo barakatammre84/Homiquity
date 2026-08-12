@@ -124,6 +124,17 @@ export type InsertWholesaleLender = z.infer<typeof insertWholesaleLenderSchema>;
 export const LENDER_AUTHORIZATION_COLUMNS = ["approvalStatus", "isDemo"] as const;
 
 /**
+ * Columns carrying a term of the executed broker agreement.
+ *
+ * `epoClawbackDays` is an input to the clawback reserve on the admin financial
+ * report and in the contingent-liability register, so a silent edit moves a
+ * balance-sheet figure. Like the authorization columns it is kept off the
+ * generic write path and moved only through an audited endpoint — captured at
+ * approval, corrected through `PATCH .../contract-terms` (F-23).
+ */
+export const LENDER_CONTRACT_TERM_COLUMNS = ["epoClawbackDays"] as const;
+
+/**
  * Schema for the generic lender create/update routes.
  *
  * Deliberately omits the authorization columns above, so a caller cannot set
@@ -136,6 +147,7 @@ export const LENDER_AUTHORIZATION_COLUMNS = ["approvalStatus", "isDemo"] as cons
 export const writeWholesaleLenderSchema = insertWholesaleLenderSchema.omit({
   approvalStatus: true,
   isDemo: true,
+  epoClawbackDays: true,
 });
 export type WholesaleLender = typeof wholesaleLenders.$inferSelect;
 
