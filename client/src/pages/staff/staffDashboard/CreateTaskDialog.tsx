@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, taskKeys } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, taskKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ export function CreateTaskDialog({
   applications: LoanApplication[];
   getUserName: (userId: string) => string | null;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [newTask, setNewTask] = useState({
     title: "",
