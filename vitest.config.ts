@@ -11,6 +11,7 @@ export default defineConfig({
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
     include: [
+      "tests/amortization.test.ts",
       "tests/accessControl.test.ts",
       "tests/commitmentLetterProvenance.test.ts",
       "tests/uploadsUnavailableCopy.test.ts",
@@ -190,6 +191,11 @@ export default defineConfig({
       "tests/documentChecklist.test.ts",
       "tests/documentUploadTerminalGuard.test.ts",
       "tests/complianceScore.test.ts",
+      // The zod↔@hookform/resolvers pairing. A mismatch there makes every
+      // failed validation an unhandled rejection instead of a form error,
+      // which deadens submit/continue buttons app-wide with no visible
+      // symptom. Pure unit test: no HTTP, no DB.
+      "tests/formResolverContract.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ConversionCTA } from "@/components/ConversionCTA";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 import {
   Home,
   DollarSign,
@@ -81,11 +82,11 @@ function calculateMortgage(inputs: MortgageInputs): MortgageResults {
   const monthlyRate = interestRate / 100 / 12;
   const numPayments = loanTermYears * 12;
 
-  const monthlyPrincipalInterest =
-    monthlyRate > 0
-      ? (loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments))) /
-        (Math.pow(1 + monthlyRate, numPayments) - 1)
-      : loanAmount / numPayments;
+  const monthlyPrincipalInterest = monthlyPrincipalAndInterest(
+    loanAmount,
+    interestRate,
+    numPayments,
+  );
 
   const monthlyPropertyTax = (homePrice * (propertyTaxRate / 100)) / 12;
   const monthlyInsurance = (homePrice * (insuranceRate / 100)) / 12;

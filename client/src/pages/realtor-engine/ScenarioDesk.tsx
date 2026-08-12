@@ -24,6 +24,7 @@ import {
 import { PageShell } from "@/components/PageShell";
 import { Link } from "wouter";
 import { formatCurrency, formatCurrencyDecimal } from "@/lib/formatters";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 type LoanProgram = "conventional" | "fha" | "va" | "usda";
 
@@ -85,12 +86,12 @@ function calculateScenario(input: ScenarioInput): ScenarioResult | null {
   const loanAmount = purchasePrice - downPaymentAmount;
   const ltv = (loanAmount / purchasePrice) * 100;
 
-  const monthlyRate = interestRate / 12 / 100;
   const numPayments = 360;
-  const monthlyPrincipalInterest =
-    monthlyRate > 0
-      ? loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1)
-      : loanAmount / numPayments;
+  const monthlyPrincipalInterest = monthlyPrincipalAndInterest(
+    loanAmount,
+    interestRate,
+    numPayments,
+  );
 
   let monthlyPmi = 0;
   if (loanProgram === "conventional" && ltv > 80) {

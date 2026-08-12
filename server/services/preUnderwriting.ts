@@ -32,6 +32,7 @@ import { toNum as toNumber } from "@shared/lib/number";
 import { COMPANY_CONFIG } from "../config/company";
 import { isAutopilotEnabled, canGenerateFollowUps } from "./autopilot/config";
 import { materializeFlagsToFollowUps } from "./autopilot/followUps";
+import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
 import {
   adjustLiabilities,
   assessIncomeSeasoning,
@@ -108,11 +109,8 @@ export interface PreUwInput {
 export function estimateMonthlyPITI(purchasePrice: number, downPayment: number): number {
   const loanAmount = Math.max(purchasePrice - downPayment, 0);
   if (loanAmount <= 0 || purchasePrice <= 0) return 0;
-  const monthlyRate = ASSUMED_ANNUAL_RATE / 12;
-  const n = 360;
-  const pAndI =
-    (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, n)) /
-    (Math.pow(1 + monthlyRate, n) - 1);
+  // ASSUMED_ANNUAL_RATE is a FRACTION (0.065-style), not a percent.
+  const pAndI = monthlyPrincipalAndInterestFromFraction(loanAmount, ASSUMED_ANNUAL_RATE, 360);
   const taxAndInsurance = (purchasePrice * TAX_INSURANCE_ANNUAL_PCT) / 12;
   return pAndI + taxAndInsurance;
 }

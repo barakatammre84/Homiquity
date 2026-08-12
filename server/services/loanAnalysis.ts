@@ -1,6 +1,7 @@
 import { storage } from "../storage";
 import { lookupResolver } from "./lookupResolver";
 import { recalculateDecision, type InstantDecision } from "./decisionEngine";
+import { monthlyPrincipalAndInterest, paymentFactor } from "@shared/lib/amortization";
 
 // =============================================================================
 // DETERMINISTIC INTAKE ANALYSIS
@@ -71,11 +72,8 @@ function baseRateFor(loanType: "conventional" | "fha" | "va", creditScore: numbe
   return rate;
 }
 
-function monthlyPI(loanAmount: number, annualRate: number, termMonths: number): number {
-  if (annualRate <= 0) return loanAmount / termMonths;
-  const r = annualRate / 100 / 12;
-  return (loanAmount * r * Math.pow(1 + r, termMonths)) / (Math.pow(1 + r, termMonths) - 1);
-}
+/** @see @shared/lib/amortization — annualRate is a PERCENT here. */
+const monthlyPI = monthlyPrincipalAndInterest;
 
 function toNumber(v: unknown): number {
   const n = parseFloat(String(v ?? "").replace(/[,$]/g, ""));
@@ -194,9 +192,8 @@ function maxQualifyingPurchase(
   if (budget <= 0) return 0;
 
   const rate = baseRateFor("conventional", creditScore);
-  const r = rate / 100 / 12;
   const n = 360;
-  const k = (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  const k = paymentFactor(rate, n);
   const t = 0.012; // annual property-tax model (matches loanEstimate)
   const ins = 150; // flat monthly insurance floor ($1,800/yr conservative)
 
