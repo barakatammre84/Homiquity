@@ -845,19 +845,11 @@ export type LoanEstimateDisclosure = typeof loanEstimateDisclosures.$inferSelect
 //
 // One row per cost incurred against a file. Immutable — a correction is a new
 // row (a reversal), never an edit, so the ledger stays auditable.
-export const LOAN_COST_CATEGORIES = [
-  "credit_report",
-  "appraisal",
-  "avm",
-  "verification",
-  "aus",
-  "title",
-  "flood",
-  "rate_lock_extension",
-  "marketing",
-  "other",
-] as const;
-export type LoanCostCategory = (typeof LOAN_COST_CATEGORIES)[number];
+import { LOAN_COST_CATEGORIES, type LoanCostCategory } from "../statusVocabularies";
+// Moved to shared/statusVocabularies.ts (table-free) so client cost reporting
+// does not drag every Drizzle table into the browser bundle.
+export { LOAN_COST_CATEGORIES };
+export type { LoanCostCategory };
 
 export const loanCostEntries = pgTable(
   "loan_cost_entries",

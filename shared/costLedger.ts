@@ -21,7 +21,7 @@
 // Pure and deterministic. Persistence is `loan_cost_entries`.
 // ---------------------------------------------------------------------------
 
-import { LOAN_COST_CATEGORIES, type LoanCostCategory } from "./schema/compliance";
+import { LOAN_COST_CATEGORIES, type LoanCostCategory } from "./statusVocabularies";
 
 export { LOAN_COST_CATEGORIES, type LoanCostCategory };
 

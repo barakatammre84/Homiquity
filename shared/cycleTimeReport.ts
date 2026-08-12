@@ -18,7 +18,7 @@
  *
  * Pure and deterministic: no I/O, no clock — callers pass the rows.
  */
-import { LOAN_APP_TERMINAL_STATUSES } from "./schema";
+import { LOAN_APP_TERMINAL_STATUSES } from "./loanApplicationStatus";
 
 export interface CycleTimeAppRow {
   id: string;

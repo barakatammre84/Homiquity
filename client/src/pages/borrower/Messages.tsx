@@ -3,7 +3,7 @@ import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { isStaffRole } from "@shared/schema";
+import { isStaffRole } from "@shared/roles";
 import type { TeamMessage } from "@shared/schema";
 import type { ConversationData, ListEntry, TeamMember } from "./messages/types";
 import { ConversationList } from "./messages/ConversationList";
