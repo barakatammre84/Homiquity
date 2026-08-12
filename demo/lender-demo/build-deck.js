@@ -1,7 +1,7 @@
 /**
  * Homiquity — Lender Demo deck generator (pptxgenjs).
  * Full end-to-end story for wholesale/TPO lenders. Royal Blue Emerald brand.
- * Honesty rails: NMLS in progress; vendor legs are deterministic simulations
+ * Honesty rails: licensed (NMLS #427468, IL only) but pre-launch gated; vendor legs are deterministic simulations
  * behind production adapters (never claimed live).
  */
 const pptxgen = require("pptxgenjs");
@@ -105,7 +105,7 @@ async function build() {
       { x: M, y: 4.15, w: 11, h: 0.95, fontFace: FB, fontSize: 18, lineSpacingMultiple: 1.05, margin: 0 }
     );
     // credentialing status line (honest)
-    s.addText("Wholesale-partner briefing  ·  NMLS licensing in progress", { x: M, y: 6.35, w: 9, h: 0.35, fontFace: FB, fontSize: 12, color: "AEBCE0", margin: 0 });
+    s.addText("Wholesale-partner briefing  ·  NMLS #427468  ·  Illinois", { x: M, y: 6.35, w: 9, h: 0.35, fontFace: FB, fontSize: 12, color: "AEBCE0", margin: 0 });
     await veteranMark(s, M, 6.78, true);
   }
 
@@ -424,7 +424,7 @@ async function build() {
       ["FaLock", "PII through a vault", "SSNs stored as ciphertext + last-4, decrypted only at the delivery seam."],
       ["FaClipboardCheck", "Audit log everywhere", "Every PII touch and file action is recorded for the record."],
       ["FaUniversity", "Fannie-Mae-grounded", "MISMO/ULDD terms verified against the official spec — never invented."],
-      ["FaFileSignature", "Correct NMLS identity", "The company identifier prints on the package the day licensing lands."],
+      ["FaFileSignature", "Correct NMLS identity", "The company identifier — NMLS #427468 — prints on every package today."],
       ["FaShieldAlt", "The package makes no promises", "Neutral validation language — no approval or eligibility claims."],
     ];
     const cols = 2, cw = (PW - 2 * M - 0.5) / 2, ch = 1.25, gp = 0.35, gx = M, gy = 1.85;
@@ -458,7 +458,7 @@ async function build() {
     await iconCircle(s, "FaBolt", 7.3, 2.3, 0.6, ROYAL, WHITE);
     s.addText("What makes it live", { x: 8.05, y: 2.3, w: 4.4, h: 0.6, fontFace: FB, bold: true, fontSize: 17, color: INK, valign: "middle", margin: 0 });
     y = 3.2;
-    for (const t of ["NMLS licensing — in progress (the long-lead item)", "A signed broker agreement with your channel", "One adapter swap per vendor (credit, DU/LPA, AVM)", "Ops keys (email, storage) — a day of setup"]) {
+    for (const t of ["NMLS licensing — DONE (#427468, Illinois; additional states as licenses issue)", "A signed broker agreement with your channel", "One adapter swap per vendor (credit, DU/LPA, AVM)", "Ops keys (email, storage) — a day of setup"]) {
       s.addImage({ data: await icon("FaArrowRight", ROYAL), x: 7.35, y: y + 0.02, w: 0.22, h: 0.22 });
       s.addText(t, { x: 7.73, y, w: 4.7, h: 0.5, fontFace: FB, fontSize: 13, color: INK, margin: 0 });
       y += 0.62;
@@ -475,7 +475,7 @@ async function build() {
     s.addShape(pres.shapes.OVAL, { x: 11.4, y: -1.3, w: 3.4, h: 3.4, fill: { color: EMERALD_BR, transparency: 60 } });
     s.addText("THE ASK", { x: M, y: 1.35, w: 8, h: 0.35, fontFace: FB, bold: true, fontSize: 13, color: EMERALD_BR, charSpacing: 3, margin: 0 });
     s.addText("Credential us on your\nTPO channel.", { x: M, y: 1.8, w: 11, h: 1.8, fontFace: FH, bold: true, fontSize: 40, color: WHITE, lineSpacingMultiple: 1.0, margin: 0 });
-    s.addText("The platform is built and validated. We're completing licensing now. Let's set up a live pilot the day it clears — and prove first-pass, standards-valid delivery on real files.", { x: M, y: 3.75, w: 10.5, h: 1.1, fontFace: FB, fontSize: 17, color: "D5DEF5", lineSpacingMultiple: 1.1, margin: 0 });
+    s.addText("The platform is built and validated. We're licensed — NMLS 427468, Illinois. Let's set up a live pilot — and prove first-pass, standards-valid delivery on real files.", { x: M, y: 3.75, w: 10.5, h: 1.1, fontFace: FB, fontSize: 17, color: "D5DEF5", lineSpacingMultiple: 1.1, margin: 0 });
     // contact card (placeholders flagged)
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: M, y: 5.15, w: 8.4, h: 1.5, rectRadius: 0.12, fill: { color: WHITE } });
     s.addText([
@@ -483,7 +483,7 @@ async function build() {
       { text: "Ammre Barakat, Founder", options: { color: SLATE, fontSize: 13, breakLine: true } },
       { text: "support@homiquity.com  ·  (224) 400-0531  ·  homiquity.com", options: { color: ROYAL, fontSize: 13, bold: true } },
     ], { x: M + 0.35, y: 5.35, w: 7.8, h: 1.1, fontFace: FB, valign: "middle", margin: 0 });
-    s.addText("NMLS # prints here once issued.", { x: M + 0.35, y: 6.62, w: 6, h: 0.3, fontFace: FB, italic: true, fontSize: 10, color: SLATE, margin: 0 });
+    s.addText("NMLS #427468  ·  Illinois Residential Mortgage License #3423789", { x: M + 0.35, y: 6.62, w: 6, h: 0.3, fontFace: FB, italic: true, fontSize: 10, color: SLATE, margin: 0 });
     await veteranMark(s, 9.0, 5.5, true);
     s.addText("Confidential — for prospective wholesale-lender partners.", { x: 9.0, y: 6.1, w: 3.6, h: 0.5, fontFace: FB, fontSize: 10, color: "AEBCE0", margin: 0 });
   }

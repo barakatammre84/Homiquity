@@ -1,13 +1,25 @@
 # Wholesale Lender "Target 5" Shortlist — 2026-07-04
 
+> ## ✅ STATUS 2026-08-06 — F1 CLEARED; EVERY "once F1 clears" ITEM BELOW IS LIVE
+>
+> The company has been licensed since **2026-07-13**: **NMLS #427468**
+> (`shared/companyIdentity.ts`), Illinois only, IL Residential Mortgage License **#3423789**
+> (IDFPR). This file was written 2026-07-04 and gates five actions on a condition that has been
+> satisfied for three weeks — **they are all actionable now**, tracked as **CTO_ROADMAP §1.5**.
+>
+> The desk research below is a **2026-07-04 snapshot**. Before contacting anyone, re-verify each
+> lender is still wholesale-broker-friendly and NMLS-active (the last checklist item, now overdue).
+
 Owner: founder (all outbound contact/credentialing). Claude maintains this file as desk-research
-prep so the day F1 (NMLS licensing, currently PENDING in `server/config/company.ts`) clears,
-the next step is *submission*, not *research*.
+prep for lender submission. **F1 cleared 2026-07-13 — `server/config/company.ts` no longer reads
+`PENDING`**, so the next step is *submission*, not *research*.
 
-⛔ No outbound emails have been sent to any lender below — that is founder-only, gated on F1.
-Everything in this file is public-source desk research (lender websites, trade press).
+✅ No outbound emails have been sent to any lender below. That is founder-only work, and it is
+**no longer gated**. Everything in this file is public-source desk research (lender websites,
+trade press).
 
-Strategy context: [kb/founder-routines/broker-mismo-ppe-strategy — see MEMORY] Homiquity is a
+Strategy context (no such file was ever written; the strategy is recorded in agent memory as
+`broker-mismo-ppe-strategy`): Homiquity is a
 broker with its own MISMO 3.4 middleware, targeting a lean PPE (Lender Price and/or Mortech —
 see `CTO_ROADMAP.md` F11) and dual DU + LPA submission. Shortlist below is GSE/conventional-heavy
 with one non-QM lender for diversification, matching that strategy.
@@ -20,7 +32,7 @@ with one non-QM lender for diversification, matching that strategy.
   Source: [New Broker Resources](https://www.uwm.com/new-broker-resources), [Join](https://www.uwm.com/join-now).
 - **Sandbox-access prerequisites:** not published publicly — requires an Account Executive contact
   post-application. ⛔ Missing — needs a founder call to the Director Hotline (248-833-4602, per
-  public listing) once F1 clears.
+  public listing). ✅ **UNBLOCKED 2026-08-06** — F1 cleared 2026-07-13.
 - **Pricing-matrix format:** not confirmed. UWM has its own proprietary pricing engine (BOLT);
   unclear if it exposes a PPE-consumable rate sheet feed vs. portal-only pricing. ⛔ Missing —
   ask AE whether a Lender Price/Mortech-consumable feed exists, or if it's portal-only.
@@ -85,7 +97,7 @@ with one non-QM lender for diversification, matching that strategy.
   systems/process before the first submission — implies a guided (not self-serve) onboarding.
   Source: [Become a Partner](https://www.newrezwholesale.com/get-approved/).
 - **Sandbox-access prerequisites:** implied to be handled by the Brigade contact post-application;
-  no self-serve sandbox found. ⛔ Missing — confirm with Brigade contact once F1 clears.
+  no self-serve sandbox found. ✅ **UNBLOCKED 2026-08-06** — confirm with the Brigade contact; F1 cleared 2026-07-13.
 - **Pricing-matrix format:** ⛔ Missing — [Product Profiles](https://www.newrezwholesale.com/loan-products/product-profiles-brokers/)
   page exists but format (PDF vs. feed) not confirmed.
 - **What we have:** application entry point, confirmation of a guided-onboarding model (useful to
@@ -103,9 +115,9 @@ couldn't extract automatically, so day-1-after-licensing is submission-ready:
 - [ ] Confirm whether UWM's BOLT pricing and Rocket Pro TPO's pricing are consumable by a
       Lender Price/Mortech PPE feed, or portal-only (affects F11 PPE middleware scope).
 - [ ] Angel Oak and Newrez have no public approval-checklist detail — if either becomes a near-term
-      priority, this likely needs a direct (non-outbound-sales) info request once F1 clears rather
+      priority, this needs a direct (non-outbound-sales) info request — ✅ **UNBLOCKED 2026-08-06** — rather
       than more desk research; automated search hit a wall.
-- [ ] Re-verify all five lenders still wholesale-broker-friendly and NMLS-active before F1 clears
+- [ ] Re-verify all five lenders still wholesale-broker-friendly and NMLS-active — ⚠️ **NOW OVERDUE**: F1 cleared 2026-07-13 and this snapshot is from 2026-07-04
       (this file is a snapshot; wholesale lending is a volatile channel — HomePoint-style
       shutdowns happen).
 

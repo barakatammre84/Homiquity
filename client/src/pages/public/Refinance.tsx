@@ -17,6 +17,7 @@ import { ImageTextSection } from "@/components/ImageTextSection";
 import { lifestyleImages } from "@/lib/lifestyleImages";
 import { formatCurrency } from "@/lib/formatters";
 import { usePageView } from "@/hooks/useActivityTracker";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 import {
   ArrowRight,
   CheckCircle2,
@@ -28,12 +29,7 @@ import {
 } from "lucide-react";
 
 /** Standard amortized principal-and-interest payment. */
-function monthlyPI(balance: number, annualRatePct: number, months: number): number {
-  if (balance <= 0 || months <= 0) return 0;
-  const r = annualRatePct / 100 / 12;
-  if (r === 0) return balance / months;
-  return (balance * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
-}
+const monthlyPI = monthlyPrincipalAndInterest;
 
 /** Currency field: displays formatted digits, stores a plain number. */
 function CurrencyInput({

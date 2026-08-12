@@ -76,6 +76,15 @@ gate (see the roadmap ticket) instead of relying solely on the hand-built valida
   manually** (Cloudflare blocks scripted fetch): **Form 1084 (Cash Flow Analysis)** and the
   business-return analysis subsections — see that file's "Missing artifacts" section.
 
+### Rental income (Income Assessment, Chapter B3-3)
+- `rental-income-reference.md` — verified capture of the current Selling Guide rental-income
+  sections, including the 2026-07-17 renumbering check. Grounds the deterministic rental
+  calculators (`server/services/underwritingNuance.ts`,
+  `server/services/income/paths/rental.ts`) and their DTI application in
+  `server/services/income/orchestrator.ts` / `server/services/decisionEngine.ts`.
+  *(Present on disk since it was written; this inventory row was missing until 2026-08-06 — an
+  uninventoried reference is one a future session will not know it can cite.)*
+
 ### Other
 - `Wire Instruction Reference ID_final_05202025.pdf`
 

@@ -11,6 +11,9 @@ export default defineConfig({
     // database required. Everything that makes network calls to the app lives in
     // vitest.integration.config.ts instead.
     include: [
+      "tests/amortization.test.ts",
+      "tests/livenessProbe.test.ts",
+      "tests/cronSchedules.test.ts",
       "tests/accessControl.test.ts",
       "tests/commitmentLetterProvenance.test.ts",
       "tests/uploadsUnavailableCopy.test.ts",
@@ -18,6 +21,7 @@ export default defineConfig({
       "tests/creditVendorInterlock.test.ts",
       "tests/clientIp.test.ts",
       "tests/securityHeaders.test.ts",
+      "tests/cspViolationReport.test.ts",
       "tests/canonicalHost.test.ts",
       "tests/zodSchemaSemantics.test.ts",
       "tests/routeGates.test.ts",
@@ -31,6 +35,7 @@ export default defineConfig({
       "tests/rateProductHeadings.test.ts",
       "tests/migrationLedgerGuard.test.ts",
       "tests/securityReviewGuard.test.ts",
+      "tests/userPhones.test.ts",
       "tests/dependabotReactGrouping.test.ts",
       "tests/loCommsLint.test.ts",
       "tests/borrowerConditionView.test.ts",
@@ -190,6 +195,13 @@ export default defineConfig({
       "tests/documentChecklist.test.ts",
       "tests/documentUploadTerminalGuard.test.ts",
       "tests/complianceScore.test.ts",
+      // Appended at the END, not at the top anchor. #440 and #443 both went
+      // stale without merging because every concurrent PR inserted its entry
+      // just after "tests/accessControl.test.ts", so each one conflicted with
+      // whichever sibling merged first. The list is an explicit allowlist by
+      // design — an unlisted test file is silently never run — so the fix is
+      // to stop contending for one line, not to replace it with a glob.
+      "tests/emailProviderObservability.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

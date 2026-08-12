@@ -233,6 +233,11 @@ function setupEmailPasswordAuth(app: Express) {
       const email = rawEmail.trim().toLowerCase();
       const user = await authStorage.getUserByEmail(email);
       if (user && user.passwordHash) {
+        // Return value deliberately ignored: surfacing a send failure here would
+        // make the response differ between "account exists but mail failed" and
+        // "no such account", which is exactly the enumeration oracle the uniform
+        // response exists to prevent. A failed send is recorded by emailService
+        // (and by the boot-time provider check) — never by this response body.
         await issuePasswordReset(user, publicBaseUrl(req));
       }
       res.json({
@@ -308,7 +313,19 @@ function setupEmailPasswordAuth(app: Express) {
       if (user.emailVerifiedAt) {
         return res.json({ success: true, message: "Your email is already verified." });
       }
-      await issueEmailVerification(user, publicBaseUrl(req));
+      // Report what actually happened. This is the one recovery endpoint that
+      // can: the caller is authenticated and asking about their own address, so
+      // a truthful failure is not an account-enumeration oracle (unlike
+      // /forgot-password above, which must stay uniform). Answering "sent" when
+      // no provider is configured — or when SendGrid rejected the send — leaves
+      // the user waiting on mail that will never arrive.
+      const sent = await issueEmailVerification(user, publicBaseUrl(req));
+      if (!sent) {
+        console.error(`[Auth] Verification email could not be sent for user ${user.id}`);
+        return res.status(502).json({
+          error: "We couldn't send the verification email right now. Please try again shortly.",
+        });
+      }
       res.json({ success: true, message: "Verification email sent." });
     } catch (error) {
       console.error("Resend-verification error:", error);

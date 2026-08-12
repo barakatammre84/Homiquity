@@ -1,5 +1,18 @@
 # Non-W2 Lending — Research Briefing: What Homiquity Has Already Built
 
+> ## ⛔ SUPERSEDED 2026-08-06 — do not act on this document
+>
+> A 2026-07-17 snapshot pinned to `main` @ `98a9674`; `main` has moved several hundred commits. The
+> governing document for this program is
+> **[NON_W2_TECH_OPTIMIZATION_PLAN.md](NON_W2_TECH_OPTIMIZATION_PLAN.md)** (adopted 2026-07-17); the
+> live defect register is [feature-review/FINDINGS.md](../feature-review/FINDINGS.md). This banner was
+> owed since the [2026-08-04 sovereign-stack adjudication](../logs/2026-08-04-sovereign-underwriting-stack-pitch-adjudication.md)
+> flagged four stale claims here and it was never written.
+>
+> **The load-bearing stale claim is in §11's own staleness footnote:** it asserts `nmlsId: "PENDING"`.
+> The code has carried **NMLS #427468** since #154 (2026-07-13) — the footnote's own next sentence
+> says so, and then the assertion contradicts it. Kept verbatim below per the immutable-snapshot rule.
+
 > **Point-in-time snapshot: 2026-07-17, `main` @ `98a9674`.** Written for the outside
 > research team studying how to make Homiquity the best platform for non-W2 borrowers
 > (self-employed, 1099/contractor, K-1 partners, rental investors, complex income). It

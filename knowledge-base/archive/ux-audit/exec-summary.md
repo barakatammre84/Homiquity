@@ -1,3 +1,5 @@
+> **2026-08-06: ARCHIVED** — the routine that maintained this is dead; open findings live in [feature-review/FINDINGS.md](../../feature-review/FINDINGS.md). See [archive/README.md](../README.md).
+
 # Executive Summary — UX Audit
 
 > ⚠️ **Dated snapshot (banner added 2026-07-12).** Risk #1 below (accessibility) was

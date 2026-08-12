@@ -1,6 +1,13 @@
 import { useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, dashboardKeys, consentKeys, applicationResourceKeys } from "@/lib/queryClient";
+import {
+  queryClient,
+  apiRequest,
+  dashboardKeys,
+  consentKeys,
+  consentTemplateKeys,
+  applicationResourceKeys,
+} from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -73,12 +80,13 @@ export function TaxReturnInsightCard() {
   const { data: consents } = useQuery<ConsentRecord[]>({
     queryKey: consentKeys.me(),
   });
+  // ONE identity for this endpoint. This used to key on a bare
+  // `"tax_document_use"` segment plus a hand-written queryFn, while
+  // ConsentGateCard read the same `GET /api/consent-templates?type=` through the
+  // params-object form — so identical server data occupied two cache entries,
+  // was fetched twice, and no single invalidation could reach both.
   const { data: templates } = useQuery<ConsentTemplateRecord[]>({
-    queryKey: ["/api/consent-templates", "tax_document_use"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/consent-templates?type=tax_document_use");
-      return res.json();
-    },
+    queryKey: consentTemplateKeys.byType("tax_document_use"),
   });
 
   const insight = insightData?.insights?.[0];

@@ -50,7 +50,7 @@ export interface LexiconRule {
    * When true, an affirmative (non-negated) match hard-blocks the send outright
    * — no override — because the phrasing is a prohibited misrepresentation with
    * no legitimate affirmative form (e.g. guaranteeing approval, Reg N
-   * §1014.3(i)). A negated match ("approval is NOT guaranteed") is compliant and
+   * §1014.3(q)). A negated match ("approval is NOT guaranteed") is compliant and
    * is skipped by the negation guard in lintOutboundText.
    */
   hardBlock?: boolean;

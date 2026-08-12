@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { predictionKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -51,19 +51,17 @@ interface Benchmark {
 }
 
 export default function PredictionInsights({ applicationId }: { applicationId?: string }) {
-  const predUrl = applicationId
-    ? `/api/predictions/me?applicationId=${applicationId}`
-    : "/api/predictions/me";
+  // No queryFn / no second URL spelling. `/api/predictions/me` reads
+  // `?applicationId=` (server/routes/data-intelligence.ts) — it is not
+  // `/me/:id` — so the old bare-scalar key resolved to a path that does not
+  // exist, and the hand-written queryFn was the only thing making it work.
+  // The params-object form makes the key describe the request it performs.
   const { data: prediction, isLoading: predLoading } = useQuery<Prediction>({
-    queryKey: ["/api/predictions/me", applicationId],
-    queryFn: async () => {
-      const res = await apiRequest("GET", predUrl);
-      return res.json();
-    },
+    queryKey: predictionKeys.me(applicationId),
   });
 
   const { data: benchmark, isLoading: benchLoading } = useQuery<Benchmark>({
-    queryKey: ["/api/predictions/benchmark"],
+    queryKey: predictionKeys.benchmark(),
   });
 
   if (predLoading || benchLoading) {

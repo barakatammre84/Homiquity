@@ -5,8 +5,8 @@ collection, deterministic underwriting, MISMO 3.4 packaging, and delivery of com
 loan files to wholesale lenders. Deployed at <https://www.homiquity.com> (Railway — one persistent
 Node process serving both the API and the static client; `www` is the canonical host).
 
-**Current status (2026-07-19): company NMLS licensure is real — NMLS #427468, Illinois
-(`shared/companyIdentity.ts`, #154/#201) — and the site remains in pre-launch gated mode
+**Current status (2026-08-06): company NMLS licensure is real — NMLS #427468, Illinois
+(IL Residential Mortgage License #3423789 — `shared/companyIdentity.ts`, #154/#201/#419) — and the site remains in pre-launch gated mode
 pending the founder go-live flips.** The public site is live in production behind the
 **pre-launch gate** (`server/services/prelaunchGate.ts` — flag-driven, with a fail-safe
 that re-gates production if the NMLS id ever reads `PENDING`), so a stranger reaches
@@ -85,7 +85,8 @@ Two axes of authority:
 ### Tier 4 — Dated snapshots (true as of their date only)
 
 Everything under [knowledge-base/logs/](knowledge-base/logs/) — currently the dated
-UX audit + design routine runs ([logs/ux-audit/](knowledge-base/logs/ux-audit/)). The
+adjudication logs — external-pitch verdicts, postmortems, financial audits. The dead UX-audit
+routine was archived 2026-08-06 to [archive/ux-audit/](knowledge-base/archive/ux-audit/). The
 launch-era operational logs (founder-routines, lo-audit) and one-time platform assessments
 (2026-07-02 → 07-06) were quarantined 2026-07-08 to
 [knowledge-base/archive/](knowledge-base/archive/) (banner-marked; never act on them).
