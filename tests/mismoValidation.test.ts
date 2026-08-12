@@ -151,7 +151,10 @@ function baseUrla(overrides: Record<string, any> = {}) {
       hasConveyedTitleInLieuOfForeclosure: false,
       hasBeenForeclosed: false,
       hasDeclaredBankruptcy: false,
-      isUSCitizen: true,
+      // NOT setting isUSCitizen: no client surface writes it, so a fixture that
+      // supplies it describes an application the product cannot produce. That
+      // fiction is exactly what hid #448 — the gate required it, every demo and
+      // every test handed it over, and no real file ever could.
     },
     realEstateOwned: [],
     hmdaDemographics: [
@@ -282,14 +285,62 @@ describe("GSE gating (hard-fail on sections 1a, 4, 5)", () => {
           isPartyToLawsuit: false,
           hasConveyedTitleInLieuOfForeclosure: false,
           hasBeenForeclosed: false,
-          hasDeclaredBankruptcy: false,
-          isUSCitizen: null, // missing required declaration
+          hasDeclaredBankruptcy: null, // missing required declaration (5b-K)
         },
       }),
     });
     const result = await validateMISMOCompleteness("app-1");
     expect(result.gseGatingFailed).toBe(true);
     expect(sectionByNumber(result, "5").gating).toBe(true);
+  });
+
+  // ------------------------------------------------------------------------
+  // Regression: section 5 must NOT require a citizenship declaration.
+  //
+  // `declarations.isUSCitizen` was a required section-5 field that NO client
+  // surface has ever written, and section 5 is a gating section — so every real
+  // application was permanently blocked from GSE delivery readiness (#448).
+  //
+  // It survived because every SYNTHETIC path supplied the value the product
+  // could not: this file's own fixture set `isUSCitizen: true` (see baseUrla),
+  // and server/scripts/seedDemoFile.ts sets `citizenship: "us_citizen"`. Demo
+  // files and 2,600 tests passed a gate no genuine file could reach.
+  //
+  // On the URLA, citizenship is Section 1a, not a Section 5 declaration —
+  // section 5 is exactly the eleven questions A–K. The fact is still required,
+  // by 1a, which is also gating. These two tests pin both halves so the
+  // duplicate cannot come back and the real requirement cannot be dropped.
+  // ------------------------------------------------------------------------
+  it("does not hard-fail when the eleven declarations are answered but no citizenship declaration exists", async () => {
+    setFixtures({
+      urla: baseUrla({
+        declarations: {
+          willOccupyAsPrimaryResidence: true,
+          hasOwnershipInterestInPast3Years: false,
+          isBorrowingForDownPayment: false,
+          hasOutstandingJudgments: false,
+          isDelinquentOnFederalDebt: false,
+          isPartyToLawsuit: false,
+          hasConveyedTitleInLieuOfForeclosure: false,
+          hasBeenForeclosed: false,
+          hasDeclaredBankruptcy: false,
+          // isUSCitizen deliberately absent — this is the shape of EVERY real
+          // application, because nothing writes that column.
+        },
+      }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(sectionByNumber(result, "5").missingFields).not.toContain("US Citizen Status");
+    expect(result.gseGatingFailed).toBe(false);
+  });
+
+  it("still hard-fails when section 1a has no citizenship — the requirement moved, it did not vanish", async () => {
+    setFixtures({
+      urla: baseUrla({ personalInfo: completePersonalInfo({ citizenship: null }) }),
+    });
+    const result = await validateMISMOCompleteness("app-1");
+    expect(sectionByNumber(result, "1a").missingFields).toContain("Citizenship Status");
+    expect(result.gseGatingFailed).toBe(true);
   });
 
   it("does not hard-fail for a missing field in a non-gating section", async () => {

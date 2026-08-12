@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { getPublicQueryFn } from "@/lib/queryClient";
+import { setPendingInviteId } from "@/lib/pendingAttribution";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,7 +89,10 @@ export default function ApplyInvite() {
   useEffect(() => {
     if (data?.invite?.id) {
       setInviteId(data.invite.id);
-      sessionStorage.setItem("inviteId", data.invite.id);
+      // localStorage, via the shared module — see PENDING_INVITE_ID_KEY. This
+      // was a per-tab sessionStorage write, which gave the attribution a shorter
+      // lifetime than the funnel draft it has to accompany across the auth gate.
+      setPendingInviteId(data.invite.id);
     }
   }, [data]);
 

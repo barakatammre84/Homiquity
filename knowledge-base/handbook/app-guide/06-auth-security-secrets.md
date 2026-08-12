@@ -94,7 +94,7 @@ exact-role-gated surfaces. Per-resource ownership checks (does this application 
   same vault via an `encryptToken`/`decryptToken` envelope
   (`encv1:keyId:iv:ciphertext`) in the existing text column. Backfill/rotate
   legacy rows with `scripts/migrate-encrypt-pii.ts` (idempotent, guarded DDL —
-  do **not** use `drizzle-kit push --force`; see `.agents/memory/db-push-blocker.md`).
+  do **not** use `drizzle-kit push --force` — it would drop the `sessions` table and log out every user; see [DB_MIGRATIONS.md](../../runbooks/DB_MIGRATIONS.md)).
 - **Input whitelisting**: URLA write endpoints route every body through
   `pickTableFields` (`server/routes/urlaValidation.ts`) — unknown keys, server-
   managed keys, and encrypted-column names are dropped (mass-assignment defense);

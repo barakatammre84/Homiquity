@@ -85,7 +85,8 @@ Two axes of authority:
 ### Tier 4 — Dated snapshots (true as of their date only)
 
 Everything under [knowledge-base/logs/](knowledge-base/logs/) — currently the dated
-UX audit + design routine runs ([logs/ux-audit/](knowledge-base/logs/ux-audit/)). The
+adjudication logs — external-pitch verdicts, postmortems, financial audits. The dead UX-audit
+routine was archived 2026-08-06 to [archive/ux-audit/](knowledge-base/archive/ux-audit/). The
 launch-era operational logs (founder-routines, lo-audit) and one-time platform assessments
 (2026-07-02 → 07-06) were quarantined 2026-07-08 to
 [knowledge-base/archive/](knowledge-base/archive/) (banner-marked; never act on them).

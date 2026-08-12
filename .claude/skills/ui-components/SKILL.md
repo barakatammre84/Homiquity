@@ -5,7 +5,7 @@ description: Use when building or restyling any client UI — pages, components,
 
 # UI components & design system
 
-Fast-start router. **Authoritative reference:** [`kb/handbook/design/design_guidelines.md`](../../../knowledge-base/handbook/design/design_guidelines.md) (normative rules) + its operational companion [`visual-consistency-standard.md`](../../../knowledge-base/handbook/design/visual-consistency-standard.md) (spacing/elevation scales, icon registry, `<Logo>`/white-label, empty-state + adoption checklists), and the code itself — `client/src/index.css` (CSS-variable tokens) + `tailwind.config.ts` + `client/src/components/ui/**` are the source of truth. Page map: [`app-guide/07-frontend.md`](../../../knowledge-base/handbook/app-guide/07-frontend.md).
+Fast-start router. **Authoritative reference:** [`knowledge-base/handbook/design/design_guidelines.md`](../../../knowledge-base/handbook/design/design_guidelines.md) (normative rules) + its operational companion [`visual-consistency-standard.md`](../../../knowledge-base/handbook/design/visual-consistency-standard.md) (spacing/elevation scales, icon registry, `<Logo>`/white-label, empty-state + adoption checklists), and the code itself — `client/src/index.css` (CSS-variable tokens) + `tailwind.config.ts` + `client/src/components/ui/**` are the source of truth. Page map: [`app-guide/07-frontend.md`](../../../knowledge-base/handbook/app-guide/07-frontend.md).
 
 ## Non-negotiables
 - **No raw Tailwind palette classes** (`text-emerald-600`, `bg-amber-100`, …). `pnpm guard:tokens` (`scripts/design-token-guard.cjs`) runs **in the required CI gate** (since 2026-07-19) and fails the PR on any count over baseline. Use semantic tokens and `<Badge>`/`<Alert>` variants; run it locally before pushing.

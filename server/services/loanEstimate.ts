@@ -3,10 +3,11 @@ import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
 import { computeClosingCosts, calculatePMI, estimateMonthlyEscrow } from "./loanCosts";
-import { activeFeeSchedule } from "./platformFeeSchedule";
+import { resolveFeeScheduleForApplication } from "./platformFeeSchedule";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import { toActualFeeMap, type ActualFeeMap } from "@shared/compliance/feeProvenance";
 import type { LoanApplication } from "@shared/schema";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 export interface LoanEstimateData {
   applicationId: string;
@@ -136,14 +137,18 @@ export interface LoanEstimateData {
     /** 3 business days after applicationDate (§1026.19(e)(1)(iii)); null until triggered. */
     leDueDate: Date | null;
   };
+
+  /**
+   * The platform fee schedule version these figures were computed under.
+   * Persisted onto the disclosure at first issuance so the file stays pinned
+   * to it (audit FA-20). BASELINE_FEE_SCHEDULE_VERSION = the compiled-in
+   * baseline.
+   */
+  feeScheduleVersion: number;
 }
 
-function calculateMonthlyPayment(principal: number, annualRate: number, termMonths: number): number {
-  if (annualRate === 0) return principal / termMonths;
-  const monthlyRate = annualRate / 12 / 100;
-  return principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / 
-    (Math.pow(1 + monthlyRate, termMonths) - 1);
-}
+/** @see {@link monthlyPrincipalAndInterest} — annualRate is a PERCENT here. */
+const calculateMonthlyPayment = monthlyPrincipalAndInterest;
 
 function estimateClosingDate(): Date {
   const closingDate = new Date();
@@ -447,9 +452,12 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
   // (services/loanCosts.ts) — the LO-2 scenario simulator reads the same
   // function, so a scenario's cash-to-close matches the LE for equal inputs.
   const closingDate = estimateClosingDate();
-  // The ACTIVE published fee schedule, not the compiled-in baseline: fees are
-  // admin-editable, and the LE is the surface that discloses them.
-  const feeSchedule = await activeFeeSchedule();
+  // The schedule that governs THIS file. Once an LE has been issued the file
+  // is pinned to the schedule it was disclosed under, so re-pricing the
+  // platform cannot move its zero-tolerance lines and manufacture a cure
+  // (audit FA-20). Before first issuance this is the active schedule.
+  const { schedule: feeSchedule, version: feeScheduleVersion } =
+    await resolveFeeScheduleForApplication(applicationId);
   const costs = computeClosingCosts({
     purchasePrice,
     downPayment,
@@ -641,6 +649,7 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
       applicationDate: tridTriggeredAt,
       leDueDate,
     },
+    feeScheduleVersion,
   };
 }
 

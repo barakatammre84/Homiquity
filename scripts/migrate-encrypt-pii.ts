@@ -7,7 +7,7 @@
  * What it does, idempotently:
  *   1. Adds the encrypted columns (ADD COLUMN IF NOT EXISTS — deliberately NOT
  *      drizzle-kit push, which stalls on unrelated interactive prompts in this
- *      repo; see .agents/memory/db-push-blocker.md).
+ *      repo; see knowledge-base/runbooks/DB_MIGRATIONS.md).
  *   2. Backfills: encrypts every legacy plaintext value (urla_personal_info.ssn,
  *      urla_assets.account_number, urla_liabilities.account_number) into the
  *      new columns via AES-256-GCM (server/services/encryptionService.ts).

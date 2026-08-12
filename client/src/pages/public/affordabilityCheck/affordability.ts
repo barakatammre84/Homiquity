@@ -12,6 +12,7 @@
  * pins.
  */
 import type { AffordabilityResult, AffordabilityStatus, FinancialInputs, PropertyData } from "./types";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 /** Annual homeowner's insurance as a share of price. */
 const INSURANCE_ANNUAL_RATE = 0.005;
@@ -56,14 +57,7 @@ export function calculateAffordabilityForProperty(
   const monthlyRate = interestRate / 100 / 12;
   const numPayments = TERM_MONTHS;
 
-  let principalInterest = 0;
-  if (monthlyRate > 0) {
-    principalInterest =
-      (loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments))) /
-      (Math.pow(1 + monthlyRate, numPayments) - 1);
-  } else {
-    principalInterest = loanAmount / numPayments;
-  }
+  const principalInterest = monthlyPrincipalAndInterest(loanAmount, interestRate, numPayments);
 
   const monthlyTax = (price * property.propertyTaxRate) / 100 / 12;
   const monthlyInsurance = (price * INSURANCE_ANNUAL_RATE) / 12;

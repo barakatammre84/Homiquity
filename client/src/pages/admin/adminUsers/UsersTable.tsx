@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Search, MoreHorizontal, UserCog, Users, Filter } from "lucide-react";
 import { format } from "date-fns";
-import { isStaffRole, type UserRole } from "@shared/schema";
+import { isStaffRole, type UserRole } from "@shared/roles";
 import { getRoleConfig, getInitials, getDisplayName } from "@/lib/adminUserDisplay";
 import type { AdminUser } from "./types";
 

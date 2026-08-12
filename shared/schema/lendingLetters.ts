@@ -53,14 +53,8 @@ export type PreApprovalProductType = typeof PRE_APPROVAL_PRODUCT_TYPES[number];
 export const PRE_APPROVAL_OCCUPANCY_TYPES = ["Primary", "Second", "Investment"] as const;
 export type PreApprovalOccupancyType = typeof PRE_APPROVAL_OCCUPANCY_TYPES[number];
 
-export const PRE_APPROVAL_LETTER_STATUS = [
-  "draft",
-  "issued",
-  "superseded",
-  "expired",
-  "revoked",
-] as const;
-export type PreApprovalLetterStatus = typeof PRE_APPROVAL_LETTER_STATUS[number];
+export type { PreApprovalLetterStatus } from "../statusVocabularies";
+export { PRE_APPROVAL_LETTER_STATUS } from "../statusVocabularies";
 
 export const preApprovalLetters = pgTable("pre_approval_letters", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -5,7 +5,8 @@ import { useLocation, useSearchParams, Link } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { preApprovalFormSchema, type PreApprovalFormData } from "@shared/schema";
+import { preApprovalFormSchema } from "@shared/preApprovalForm";
+import type { PreApprovalFormData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,8 @@ import {
   PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
   PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
   PREAPPROVAL_PENDING_SUBMIT_KEY as PENDING_SUBMIT_KEY,
+  readPendingInviteId,
+  clearPendingInviteId,
 } from "@/lib/pendingAttribution";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
@@ -43,6 +46,7 @@ import { useDeferredSubmit } from "./preApproval/useDeferredSubmit";
 import { useDraftRestore } from "./preApproval/useDraftRestore";
 import { useServerDraftAutosave } from "./preApproval/useServerDraftAutosave";
 import { useCoachPrefill, type CoachIntake } from "./preApproval/coachPrefill";
+import { useCalculatorPrefill } from "./preApproval/calculatorPrefill";
 import { StateStep } from "./preApproval/StateStep";
 import { IncomeSourcesStep } from "./preApproval/IncomeSourcesStep";
 import { RestoreDraftBanner, AuthGateOverlay, AffordabilityTeaserOverlay, FunnelFooter } from "./preApproval/FunnelChrome";
@@ -96,7 +100,11 @@ function PreApprovalFunnel() {
   const urlSource = urlParams.get("source");
   const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
 
-  const inviteId = useRef(sessionStorage.getItem("inviteId"));
+  // Read once per mount, through the shared module so the legacy per-tab key is
+  // still honoured for an invite stashed by an older client. Captured in a ref
+  // rather than read at submit time because the deferred post-auth replay
+  // (useDeferredSubmit) fires from a closure created at mount.
+  const inviteId = useRef(readPendingInviteId());
 
   const form = useForm<PreApprovalFormData>({
     resolver: zodResolver(preApprovalFormSchema),
@@ -125,32 +133,11 @@ function PreApprovalFunnel() {
     },
   });
 
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("calculatorPrefill");
-      if (!raw) return;
-      const prefill = JSON.parse(raw);
-      sessionStorage.removeItem("calculatorPrefill");
-      const current = form.getValues();
-      if (prefill.annualIncome && !current.annualIncome) {
-        form.setValue("annualIncome", String(prefill.annualIncome));
-      }
-      if (prefill.monthlyDebts && !current.monthlyDebts) {
-        form.setValue("monthlyDebts", String(prefill.monthlyDebts));
-      }
-      if (prefill.downPayment && !current.downPayment) {
-        form.setValue("downPayment", String(prefill.downPayment));
-      }
-      if (prefill.creditScore && !current.creditScore) {
-        const score = prefill.creditScore;
-        const bucket = score >= 740 ? "excellent" : score >= 700 ? "good" : score >= 660 ? "fair" : "poor";
-        form.setValue("creditScore", bucket);
-      }
-      if (prefill.purchasePrice && !current.purchasePrice) {
-        form.setValue("purchasePrice", String(prefill.purchasePrice));
-      }
-    } catch {}
-  }, []);
+  // Figures handed over by the affordability / rent-to-own calculators. Gap-fill
+  // only, and deliberately BEFORE useCoachPrefill below — see
+  // preApproval/calculatorPrefill.ts for the contract and for the credit-band
+  // vocabulary bug the inline version of this shipped.
+  useCalculatorPrefill(form);
 
   // Draft/step/pending-submit keys now live in @/lib/pendingAttribution so the
   // post-auth router (getPostAuthRoute) can detect a deferred submit too.
@@ -209,8 +196,11 @@ function PreApprovalFunnel() {
       queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
 
+      // Consume only now, on a SUCCESSFUL submit — a borrower who abandons the
+      // funnel keeps their attribution for the next attempt. Clears both tiers
+      // so a legacy per-tab copy cannot re-attribute a later application.
       if (inviteId.current) {
-        sessionStorage.removeItem("inviteId");
+        clearPendingInviteId();
       }
 
       toast({
@@ -239,6 +229,37 @@ function PreApprovalFunnel() {
   });
 
   const currentQ = QUESTIONS_BY_ID[stepId];
+
+  // Every step starts at the top of the page.
+  //
+  // Without this the funnel drifts: `AnimatePresence mode="wait"` keeps the
+  // OUTGOING step mounted until its exit animation finishes, so for those
+  // ~250ms the document is roughly twice as tall and the incoming step's input
+  // sits far down it. Focusing that input (below) makes the browser scroll it
+  // into view — a long way — and when the exit completes and the document
+  // shrinks back, the scroll offset stays where it was. Measured on the
+  // purchase-price step: scrollY 242 of a possible 265, which put the question
+  // heading 162px ABOVE the viewport and left the input pinned under the fixed
+  // "Step X of Y" header. The step looked blank.
+  //
+  // `focus({ preventScroll: true })` below stops the scroll being provoked;
+  // this resets anything the borrower scrolled themselves on the previous step.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [stepId]);
+
+  // Autofocus WITHOUT the browser's implicit scroll-into-view — see above. The
+  // `autoFocus` attribute gives no way to pass `preventScroll`, so focus is
+  // driven by hand.
+  //
+  // A ref CALLBACK rather than an effect on `stepId`: under
+  // `AnimatePresence mode="wait"` the incoming step does not mount until the
+  // outgoing one has finished animating out, so a `[stepId]` effect fires while
+  // the new input does not yet exist and would focus nothing. The callback runs
+  // when the element actually attaches, whenever that turns out to be.
+  const focusStepInput = useCallback((el: HTMLInputElement | null) => {
+    el?.focus({ preventScroll: true });
+  }, []);
 
   const watchedValues = form.watch();
   const dynamicTitle = useMemo(() => getDynamicTitle(currentQ, watchedValues), [currentQ, watchedValues]);
@@ -434,7 +455,7 @@ function PreApprovalFunnel() {
               <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
               <Input
                 key={`currency-${fieldName}`}
-                autoFocus
+                ref={focusStepInput}
                 data-testid={`input-${currentQ.field}`}
                 value={displayValue}
                 onChange={(e) => {
@@ -467,7 +488,7 @@ function PreApprovalFunnel() {
               {IconComponent && <IconComponent className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />}
               <Input
                 key={`number-${fieldName}`}
-                autoFocus
+                ref={focusStepInput}
                 data-testid={`input-${currentQ.field}`}
                 type="text"
                 inputMode="numeric"

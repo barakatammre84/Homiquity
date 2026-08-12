@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { AlertCircle } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
-import { ALL_ROLES } from "@shared/schema";
+import { ALL_ROLES } from "@shared/roles";
 import { useAdminUserStats } from "@/hooks/useAdminUserStats";
 import type { AdminUser } from "./adminUsers/types";
 import { UserStatsSummary } from "./adminUsers/UserStatsSummary";

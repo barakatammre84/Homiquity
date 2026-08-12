@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/formatters";
 import type { Property, LoanApplication, AgentProfile } from "@shared/schema";
-import { selectPreApprovalContext } from "@shared/schema";
+import { selectPreApprovalContext } from "@shared/loanApplicationStatus";
 import {
   MapPin,
   Bed,
@@ -35,6 +35,8 @@ import {
   Building,
 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { monthlyPrincipalAndInterestFromFraction } from "@shared/lib/amortization";
+import { markBrowsedProperties } from "@/lib/pendingAttribution";
 
 interface QualificationBreakdown {
   meetsGuidelines: boolean;
@@ -79,9 +81,9 @@ function calculateQualification(
   const annualRate = creditScore && creditScore >= 760 ? 0.0625 : creditScore && creditScore >= 720 ? 0.065 : creditScore && creditScore >= 680 ? 0.07 : 0.075;
   const monthlyRate = annualRate / 12;
   const numPayments = 360;
-  
-  const monthlyPI = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
-    (Math.pow(1 + monthlyRate, numPayments) - 1);
+
+  // annualRate is a FRACTION (0.065-style), not a percent.
+  const monthlyPI = monthlyPrincipalAndInterestFromFraction(loanAmount, annualRate, numPayments);
   
   // Calculate accurate payment breakdown
   const principalFirstMonth = monthlyPI - (loanAmount * monthlyRate);
@@ -154,7 +156,7 @@ export default function PropertyDetail() {
   const trackActivity = useTrackActivity();
 
   useEffect(() => {
-    try { localStorage.setItem("homiquity_browsed_properties", "true"); } catch {}
+    markBrowsedProperties();
   }, []);
 
   const { data: property, isLoading: propertyLoading } = useQuery<Property>({

@@ -85,6 +85,34 @@ export default function FinancialReports() {
         <Skeleton className="h-40 w-full" data-testid="skeleton-compensation" />
       ) : (
         <>
+          {/* ---- Simulated activity (F-21) ----
+              Every figure below counts REAL submissions only. Saying so
+              matters most right now: with no approved lender every submission
+              is simulated, so the revenue cards read $0 and pull-through reads
+              "—". Unexplained, that looks like a broken dashboard rather than
+              an accurate one, and the temptation is to "fix" it by counting
+              the simulated rows — which is the defect this closes. */}
+          {(comp.simulated.fundedCount > 0 ||
+            comp.simulated.inFlightCount > 0 ||
+            comp.simulated.deadCount > 0) && (
+            <Card className="border-warning" data-testid="card-simulated-activity">
+              <CardContent className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4 text-sm">
+                <Badge variant="warning" data-testid="badge-simulated-activity">
+                  Simulated activity excluded
+                </Badge>
+                <span className="text-muted-foreground" data-testid="text-simulated-activity">
+                  Every figure on this page counts real lender submissions only.{" "}
+                  {comp.simulated.fundedCount} simulated funding(s) worth{" "}
+                  {money(comp.simulated.fundedVolume)} — carrying{" "}
+                  {money(comp.simulated.receivedCompensation)} of compensation nobody wired —
+                  are excluded, along with {comp.simulated.inFlightCount} in flight and{" "}
+                  {comp.simulated.deadCount} resolved. A submission is simulated until the
+                  lender behind it has an executed broker agreement.
+                </span>
+              </CardContent>
+            </Card>
+          )}
+
           {/* ---- Revenue & counterparty capacity ---- */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
@@ -193,6 +221,12 @@ export default function FinancialReports() {
                 {comp.clawbackExposure.usesAssumedWindow && (
                   <Badge variant="secondary" data-testid="badge-clawback-assumed">
                     Window is a platform assumption — no contracted EPO term yet
+                  </Badge>
+                )}
+                {comp.clawbackExposure.simulatedExcludedCount > 0 && (
+                  <Badge variant="secondary" data-testid="badge-clawback-simulated-excluded">
+                    {comp.clawbackExposure.simulatedExcludedCount} simulated funding(s) excluded —
+                    no lender paid us, so nothing can be reclaimed
                   </Badge>
                 )}
               </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,11 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RefreshCw } from "lucide-react";
 import { getStatusLabel } from "@/lib/formatters";
-import {
-  STAFF_SETTABLE_STATUSES,
-  isProtectedCreditDecisionStatus,
-  isApprovalOutcomeStatus,
-} from "@shared/schema";
+import { STAFF_SETTABLE_STATUSES, isApprovalOutcomeStatus, isProtectedCreditDecisionStatus } from "@shared/loanApplicationStatus";
 import { HMDA_DENIAL_REASONS } from "./model";
 
 /**
@@ -43,6 +39,7 @@ export function StatusUpdateDialog({
   financialDataProvenance: string | null | undefined;
   canSetCreditDecisions: boolean;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [statusUpdate, setStatusUpdate] = useState<{ open: boolean; status: string; notes: string; denialReasons: string[] }>({ open: false, status: "", notes: "", denialReasons: [] });
 

@@ -74,12 +74,17 @@ export const ROUTE_GATES = {
    * so spreading the shared partner set would silently widen the client gate the
    * moment a new partner role is added while the server stayed put.
    *
-   * NOTE: `cpa` is listed here but the server answers 403 — a CPA reaching
-   * PartnersHub gets an empty/error page. Pre-existing; narrowing it is a role-gate
-   * change and needs the §9 security review, so it is not done as part of this
-   * refactor. See the route-gate drift audit.
+   * `cpa` was listed here until 2026-08-12 while the server answered 403, so a
+   * CPA reaching PartnersHub rendered a page whose every data call failed. It is
+   * removed rather than added server-side: CPAs already have their own surface
+   * (`cpaPortal` above), and PartnerHub serves referral and commission data —
+   * which is precisely what the CPA channel must never carry, since RESPA §8(a)
+   * bars referral compensation to CPAs in any form. Widening the server to match
+   * the client would have built the thing the charter forbids.
+   *
+   * Pinned by tests/routeGateDrift.test.ts so it cannot drift back.
    */
-  partnerHub: ["realtor", "cpa", "admin"],
+  partnerHub: ["realtor", "admin"],
 
   /** Admin console. */
   adminOnly: ["admin"],

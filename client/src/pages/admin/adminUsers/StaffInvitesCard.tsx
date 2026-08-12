@@ -32,7 +32,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Copy, Check, Ticket } from "lucide-react";
 import { format } from "date-fns";
-import { STAFF_ROLES } from "@shared/schema";
+import { STAFF_ROLES } from "@shared/roles";
 import type { StaffInvite } from "@shared/schema";
 import { getRoleConfig } from "@/lib/adminUserDisplay";
 

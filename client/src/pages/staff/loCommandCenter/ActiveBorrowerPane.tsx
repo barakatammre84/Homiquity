@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getLoanAppStatusMeta } from "@shared/schema";
+import { getLoanAppStatusMeta } from "@shared/loanApplicationStatus";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { DocRequestDraftDialog } from "./DocRequestDraftDialog";
 import { prettyPathId, type CockpitData } from "./types";

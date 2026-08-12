@@ -1,5 +1,10 @@
 # LO Recruiting Battlecard — vs. NEXA Mortgage
 
+> **⚠️ REVIEW OVERDUE (2026-08-06).** This card declares a quarterly review cadence and was last
+> updated 2026-07-08 — competitor pricing and product claims move faster than that. **Re-verify every
+> figure against the competitor's current public material before using it in front of an LO**;
+> a stale comparative claim is a Reg N / UDAAP exposure, not just an out-of-date slide.
+
 **Last updated:** 2026-07-06 · **Use:** recruiting conversations with producing loan officers.
 **Review cadence:** quarterly, or immediately after a NEXA comp/tech announcement.
 

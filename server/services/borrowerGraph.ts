@@ -24,6 +24,7 @@ import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 import { eq, desc, sql, and, gte, count, isNotNull } from "drizzle-orm";
 import { computeNextAction } from "./nextAction";
 import { pickActiveLoanApplication } from "@shared/schema";
+import { annuityFactor, monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 export interface IncomeSource {
   source: "document" | "application" | "coach" | "goal";
@@ -77,7 +78,8 @@ export interface BehaviorSignals {
 export interface ReadinessSnapshot {
   completionPercentage: number;
   tier: "ready_now" | "almost_ready" | "building" | "exploring" | "unknown";
-  source: "coach" | "calculated";
+  /** Which model answered. "checklist" is the evidence model and wins when populated. */
+  source: "checklist" | "coach" | "calculated";
   completedInputs: string[];
   outstandingInputs: string[];
   estimatedTimeline: string | null;
@@ -410,6 +412,60 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     }
   }
 
+  // Pay-stub income and bank-statement assets (F-028). These are the values a
+  // model actually read off the borrower's own documents, persisted to
+  // extracted_fields by the extraction route — a SERVER-written table, which is
+  // the whole difference from the notes-parsing branches F-027 deleted. Those
+  // read a column the borrower could write; nothing here is borrower-reachable.
+  //
+  // Tier 1 on extraction alone, matching the tax_insights path directly above:
+  // a machine read the document. A staff verify is recorded on the row
+  // (humanVerified) and strengthens it further, but is not required for the
+  // graph, which is advisory — it feeds coaching, prediction, lender matching
+  // and scenarios, never the binding decision path.
+  try {
+    const { getFactsForDocuments } = await import("./documentFacts");
+    const facts = await getFactsForDocuments(docs.map(d => d.id));
+
+    const employerByDoc = new Map<string, string>();
+    for (const f of facts) {
+      if (f.fieldName === "employer_name" && f.valueString) {
+        employerByDoc.set(f.documentId, f.valueString);
+      }
+    }
+    const accountTypeByDoc = new Map<string, string>();
+    for (const f of facts) {
+      if (f.fieldName === "account_type" && f.valueString) {
+        accountTypeByDoc.set(f.documentId, f.valueString);
+      }
+    }
+
+    for (const f of facts) {
+      if (f.fieldName === "monthly_income_ytd_avg" && f.valueNumeric && f.valueNumeric > 0) {
+        incomeSources.push({
+          source: "document",
+          trust: "tier1",
+          type: "pay_stub_ytd_average",
+          amount: f.valueNumeric,
+          period: "monthly",
+          employerName: employerByDoc.get(f.documentId) ?? null,
+          confidence: f.humanVerified ? "verified" : "high",
+        });
+      }
+      if (f.fieldName === "closing_balance" && f.valueNumeric && f.valueNumeric > 0) {
+        assetRecords.push({
+          source: "document",
+          trust: "tier1",
+          type: "bank_statement_balance",
+          balance: f.valueNumeric,
+          accountType: accountTypeByDoc.get(f.documentId) ?? null,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("[BorrowerGraph] Failed to fetch document facts:", err);
+  }
+
   if (activeApp) {
     const hasLineItemIncome = activeApp.incomeSources && Array.isArray(activeApp.incomeSources) && (activeApp.incomeSources as any[]).length > 0;
 
@@ -710,9 +766,8 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     const monthlyIncome = bestAnnualIncome / 12;
     const maxHousingPayment = monthlyIncome * 0.43 - (totalMonthlyDebts || 0);
     if (maxHousingPayment > 0) {
-      const rate = 0.065 / 12;
-      const term = 360;
-      const factor = (Math.pow(1 + rate, term) - 1) / (rate * Math.pow(1 + rate, term));
+      // 6.5% assumed rate, expressed as a percent for the shared helper.
+      const factor = annuityFactor(6.5, 360);
       estimatedMaxPurchase = Math.round(maxHousingPayment * factor * 0.85);
     }
   }
@@ -770,7 +825,60 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     lastAssessedAt: null,
   };
 
-  if (coachConvWithProfile) {
+  // ONE readiness number, derived from the checklist that actually holds the
+  // evidence. Three models used to answer "how ready are you": this checklist
+  // (25 weighted fields with trust tiers), the coach's conversational
+  // percentage, and an ad-hoc status-plus-bonuses calculation below. Only the
+  // coach's ever reached a borrower, and the three could disagree freely.
+  //
+  // The checklist wins when it has data because it is the only one that knows
+  // WHAT is missing rather than just how far along the file is — `missingRequired`
+  // is a list of field labels, which is the answer a borrower actually wants.
+  // It is fed by the application (tier 2) and upgraded by documents (tier 1),
+  // so it no longer starts empty; before that feed existed it would have
+  // reported 0% for an advanced file, which is why it could not be primary.
+  //
+  // The coach and calculated paths remain as fallbacks, in that order, for a
+  // borrower with no checklist rows yet (pure-coach users, pre-application).
+  const checklistScore = checklistRows.length > 0
+    ? (() => {
+        let totalWeight = 0;
+        let collectedWeight = 0;
+        const collected: string[] = [];
+        const outstanding: string[] = [];
+        for (const row of checklistRows) {
+          const weight = parseFloat(row.weight || "1");
+          totalWeight += weight;
+          if (row.isCollected) {
+            collectedWeight += weight;
+            collected.push(row.fieldLabel);
+          } else if (row.isRequired) {
+            outstanding.push(row.fieldLabel);
+          }
+        }
+        return {
+          percentage: totalWeight > 0 ? Math.round((collectedWeight / totalWeight) * 100) : 0,
+          collected,
+          outstanding,
+        };
+      })()
+    : null;
+
+  if (checklistScore) {
+    readiness.source = "checklist";
+    readiness.completionPercentage = checklistScore.percentage;
+    readiness.completedInputs = checklistScore.collected;
+    readiness.outstandingInputs = checklistScore.outstanding;
+    readiness.tier =
+      checklistScore.percentage >= 80 ? "ready_now"
+      : checklistScore.percentage >= 60 ? "almost_ready"
+      : checklistScore.percentage >= 35 ? "building"
+      : "exploring";
+    readiness.estimatedTimeline = coachConvWithProfile
+      ? ((coachConvWithProfile.financialProfile as any)?.estimatedTimeline ?? null)
+      : null;
+    readiness.lastAssessedAt = new Date().toISOString();
+  } else if (coachConvWithProfile) {
     const fp = coachConvWithProfile.financialProfile as any;
     readiness.source = "coach";
     readiness.completionPercentage = coachConvWithProfile.completionPercentage || fp?.completionPercentage || fp?.readinessScore || 0;
@@ -1109,9 +1217,9 @@ export async function getPropertyAffordability(
   const estimatedDownPayment = Math.round(propertyPrice * downPaymentPercent);
   const loanAmount = propertyPrice - estimatedDownPayment;
 
-  const rate = 0.065 / 12;
+  // 6.5% assumed rate, expressed as a percent for the shared helper.
   const term = 360;
-  const monthlyPI = loanAmount * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1);
+  const monthlyPI = monthlyPrincipalAndInterest(loanAmount, 6.5, term);
   const monthlyTaxIns = propertyPrice * 0.015 / 12;
   const estimatedMonthlyPayment = Math.round(monthlyPI + monthlyTaxIns);
 

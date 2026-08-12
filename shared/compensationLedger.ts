@@ -147,9 +147,41 @@ export interface CompensationRecord {
   fundedLoanAmount?: string | number | null;
   compensationExpectedAmount?: string | number | null;
   compensationReceivedAmount?: string | number | null;
+  /**
+   * True while the lender leg is the deterministic simulation
+   * (`lender_submissions.simulated`, which DEFAULTS TO TRUE).
+   *
+   * Nothing here read this column until F-21, so simulated funding was summed
+   * into revenue, pull-through and the clawback reserve exactly as though a
+   * lender had wired the money — while `costLedger.ts` next door was carefully
+   * segregating simulated spend. Gross margin was therefore real cost
+   * subtracted from imaginary revenue.
+   */
+  simulated?: boolean | null;
+}
+
+/**
+ * Simulated activity, kept apart from every real figure.
+ *
+ * Reported rather than dropped, for the same reason `CostSummary` reports
+ * `simulatedCost`: a walkthrough that produces a funded submission should be
+ * visible as what it is, not vanish. What it must never do is move a number
+ * anyone would read as revenue.
+ */
+export interface SimulatedCompensationSummary {
+  fundedCount: number;
+  fundedVolume: number;
+  /** Compensation "received" on simulated funding — money nobody wired. */
+  receivedCompensation: number;
+  inFlightCount: number;
+  deadCount: number;
 }
 
 export interface CompensationSummary {
+  /**
+   * Every field on this object counts REAL submissions only. Simulated rows
+   * are excluded throughout and totalled in `simulated` below.
+   */
   /** Submissions in a live, non-terminal state. */
   inFlightCount: number;
   fundedCount: number;
@@ -165,6 +197,8 @@ export interface CompensationSummary {
   shortPaidCount: number;
   /** Funded loans with no remittance recorded — revenue we cannot confirm. */
   awaitingRemittanceCount: number;
+  /** Simulated activity, excluded from every figure above. */
+  simulated: SimulatedCompensationSummary;
 }
 
 const DEAD_STATUSES = new Set(["denied", "withdrawn"]);
@@ -175,6 +209,11 @@ const DEAD_STATUSES = new Set(["denied", "withdrawn"]);
  * Pull-through is computed over RESOLVED submissions only (funded vs.
  * denied/withdrawn) — counting in-flight files as failures would make the
  * metric drift with pipeline size rather than with performance.
+ *
+ * SIMULATED ROWS ARE EXCLUDED from every figure and totalled separately.
+ * Pull-through in particular must not mix them: a walkthrough drives files to
+ * `funded` on demand, so including simulated rows would report a pull-through
+ * approaching 100% that describes the demo script rather than the business.
  */
 export function summarizeCompensation(records: CompensationRecord[]): CompensationSummary {
   let fundedCount = 0;
@@ -186,7 +225,30 @@ export function summarizeCompensation(records: CompensationRecord[]): Compensati
   let shortPaidCount = 0;
   let awaitingRemittanceCount = 0;
 
+  const simulated: SimulatedCompensationSummary = {
+    fundedCount: 0,
+    fundedVolume: 0,
+    receivedCompensation: 0,
+    inFlightCount: 0,
+    deadCount: 0,
+  };
+
   for (const record of records) {
+    // Branch on provenance BEFORE anything else, so no simulated amount can
+    // reach a real accumulator by any path through the block below.
+    if (record.simulated) {
+      if (record.status === "funded") {
+        simulated.fundedCount += 1;
+        simulated.fundedVolume += numberOrNull(record.fundedLoanAmount) ?? 0;
+        simulated.receivedCompensation += numberOrNull(record.compensationReceivedAmount) ?? 0;
+      } else if (DEAD_STATUSES.has(record.status)) {
+        simulated.deadCount += 1;
+      } else {
+        simulated.inFlightCount += 1;
+      }
+      continue;
+    }
+
     if (record.status === "funded") {
       fundedCount += 1;
       fundedVolume += numberOrNull(record.fundedLoanAmount) ?? 0;
@@ -222,5 +284,10 @@ export function summarizeCompensation(records: CompensationRecord[]): Compensati
     compensationVariance: round2(receivedCompensation - expectedCompensation),
     shortPaidCount,
     awaitingRemittanceCount,
+    simulated: {
+      ...simulated,
+      fundedVolume: round2(simulated.fundedVolume),
+      receivedCompensation: round2(simulated.receivedCompensation),
+    },
   };
 }

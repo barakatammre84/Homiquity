@@ -1,5 +1,11 @@
 # Design Guidelines — Homiquity
 
+> **Precedence, when this file and [`visual-consistency-standard.md`](./visual-consistency-standard.md)
+> both state a number:** that file wins. It is the operational checklist and holds the canonical
+> *values*; this file holds the *rationale*. Numeric tables were de-duplicated out of here on
+> 2026-08-06 because the same widths, gutters and icon rungs appeared in both, and a change had to
+> land twice or silently drift.
+>
 > **Source of truth is the code, not this file.** Tokens live in
 > [`client/src/index.css`](../../../client/src/index.css) (CSS variables) and
 > [`tailwind.config.ts`](../../../tailwind.config.ts); primitives live in
@@ -113,18 +119,16 @@ across `max-w-xl`→`7xl`, three gutters, and `py-8`→`py-24` — finding `ux-0
 pages **must** use it; the 57% that opt out migrate in the propagation sweep. Full-bleed
 marketing/hero pages and centered spinner/empty states are the only legitimate exceptions.
 
-- **Container width — semantic set only:** `narrow` `max-w-2xl` (forms) · `content`
-  `max-w-4xl` (default reading) · `wide` `max-w-6xl` (dashboards) · `full` `max-w-7xl`
-  (data/marketing). **Retire page-level `max-w-xl / 3xl / 5xl`.**
-- **Gutter — one convention:** `px-4 sm:px-6 lg:px-8` (owned by PageShell). ⏳ PageShell
-  applies flat `px-4` today; Phase 2 upgrades its gutter to this three-step so every page
-  inherits it.
-- **Page vertical padding:** owned by PageShell (`py-8 sm:py-10`); don't set your own.
-- **Section rhythm:** default `space-y-6`; `space-y-4` (compact) and `space-y-8` (generous)
-  are the only other sanctioned tiers.
-- **Card padding:** default `p-6`; `p-4` for dense dashboard cards. **Retire `p-2/p-3/p-8`.**
-- **Spacing primitives:** Tailwind `2, 4, 6, 8, 12, 16`; form field `space-y-4`.
-- **Grids:** dashboards `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`; comparisons `lg:grid-cols-3`.
+**The canonical values — container widths, gutter, page padding, section rhythm, card padding,
+`<h1>` size — live in one table:
+[`visual-consistency-standard.md` §1](./visual-consistency-standard.md#1-spacing--scaffold--quick-reference).**
+Read them there; don't restate them here.
+
+The rules that need explaining rather than listing: spacing primitives stay on Tailwind's
+`2, 4, 6, 8, 12, 16` and form fields on `space-y-4`; dashboards grid as
+`grid-cols-1 md:grid-cols-2 lg:grid-cols-3` and comparisons as `lg:grid-cols-3`. The widths are a
+**semantic set, not a scale** — pick by what the page *is* (form / reading / dashboard / data), which
+is why page-level `max-w-xl / 3xl / 5xl` are retired rather than merely discouraged.
 
 ## Radii, elevation, motion
 - **Radii:** `--radius` .75rem → `rounded-lg` 12px (cards/modals), `rounded-md` 8px
@@ -174,9 +178,10 @@ marketing/hero pages and centered spinner/empty states are the only legitimate e
   `CircleCheckBig`). Import icons **from the registry** `client/src/lib/icons.ts` (added in
   Phase 2) by semantic name, not directly from `lucide-react`. The concept→glyph table lives in
   [`visual-consistency-standard.md`](./visual-consistency-standard.md).
-- **Size rungs (`h-N w-N` form only — retire the `size-4` shorthand):** inline `h-4 w-4`
-  (default) · emphasis `h-5 w-5` · badge/dense `h-3.5 w-3.5` · feature `h-6`/`h-8` ·
-  empty-state `h-10`. Buttons keep `[&_svg]:size-4` internally.
+- **Size rungs** are canonical in
+  [`visual-consistency-standard.md`](./visual-consistency-standard.md) alongside the concept→glyph
+  table. The rule worth stating here: use the `h-N w-N` form, **not** the `size-4` shorthand, so the
+  guard and a reader see the same thing. Buttons keep `[&_svg]:size-4` internally.
 
 ## Branding & white-label (⏳ rolling out)
 

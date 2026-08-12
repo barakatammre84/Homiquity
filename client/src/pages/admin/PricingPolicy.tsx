@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/formatters";
 
 /**
  * Admin pricing policy — the platform fee schedule and wholesale comp bands.
@@ -79,10 +80,8 @@ interface LenderRow {
 const FEE_SCHEDULE_KEY = ["/api/admin/pricing-policy/fee-schedule"] as const;
 const LENDERS_KEY = ["/api/admin/pricing-policy/lenders"] as const;
 
-const money = (value: number) =>
-  value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-
 export default function PricingPolicy() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data, isLoading } = useQuery<FeeScheduleResponse>({ queryKey: FEE_SCHEDULE_KEY });
@@ -192,11 +191,11 @@ export default function PricingPolicy() {
             <>
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <span className="text-muted-foreground">Application fee</span>
-                <span data-testid="text-application-fee">{money(active.applicationFee)}</span>
+                <span data-testid="text-application-fee">{formatCurrency(active.applicationFee)}</span>
                 <span className="text-muted-foreground">Underwriting fee</span>
-                <span data-testid="text-underwriting-fee">{money(active.underwritingFee)}</span>
+                <span data-testid="text-underwriting-fee">{formatCurrency(active.underwritingFee)}</span>
                 <span className="text-muted-foreground">Tax service fee</span>
-                <span data-testid="text-tax-service-fee">{money(active.taxServiceFee)}</span>
+                <span data-testid="text-tax-service-fee">{formatCurrency(active.taxServiceFee)}</span>
                 <span className="text-muted-foreground">Origination (borrower-paid)</span>
                 <span data-testid="text-origination-rate">
                   {(active.originationFeeRate * 100).toFixed(3).replace(/\.?0+$/, "")}%
@@ -300,13 +299,13 @@ export default function PricingPolicy() {
               <TableBody>
                 {previewRows.map(row => (
                   <TableRow key={row.loanAmount} data-testid={`row-preview-${row.loanAmount}`}>
-                    <TableCell>{money(row.loanAmount)}</TableCell>
-                    <TableCell>{money(row.feesCharged)}</TableCell>
+                    <TableCell>{formatCurrency(row.loanAmount)}</TableCell>
+                    <TableCell>{formatCurrency(row.feesCharged)}</TableCell>
                     <TableCell>
                       {!row.originable ? (
                         <Badge variant="destructive">Not originable</Badge>
                       ) : row.trimmed ? (
-                        <Badge variant="secondary">Trimmed from {money(row.standardTotal)}</Badge>
+                        <Badge variant="secondary">Trimmed from {formatCurrency(row.standardTotal)}</Badge>
                       ) : (
                         <span className="text-muted-foreground">Full schedule</span>
                       )}
@@ -350,7 +349,7 @@ export default function PricingPolicy() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {money(row.applicationFee + row.underwritingFee + row.taxServiceFee)}
+                        {formatCurrency(row.applicationFee + row.underwritingFee + row.taxServiceFee)}
                       </TableCell>
                       <TableCell>{new Date(row.effectiveFrom).toLocaleDateString()}</TableCell>
                       <TableCell className="text-muted-foreground">{row.note ?? "—"}</TableCell>
@@ -367,6 +366,7 @@ export default function PricingPolicy() {
 }
 
 function LenderCompensationCard({ lenders }: { lenders: LenderRow[] }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ defaultBps: string; minBps: string; maxBps: string }>({

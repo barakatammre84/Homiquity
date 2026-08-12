@@ -353,6 +353,22 @@ export const extractedFields = pgTable("extracted_fields", {
   pageId: varchar("page_id").references(() => documentPages.id),
   pageNumber: integer("page_number"), // 1-indexed page attribution from classification
 
+  /**
+   * The simple-upload document these fields came from (finding F-028).
+   *
+   * Two document pipelines exist. The UAL tax pipeline builds
+   * document_uploads → document_pages → logical_documents and attributes fields
+   * by logicalDocumentId. The borrower upload flow writes plain `documents`
+   * rows and extracts straight off them — and until now it had nowhere to put
+   * the VALUES it read, so pay-stub income and bank-statement assets were
+   * extracted and then dropped. Tax returns escaped that only because
+   * tax_insights exists for them specifically.
+   *
+   * Nullable, like logicalDocumentId and pageId: a row is attributed to
+   * whichever pipeline produced it, never both.
+   */
+  documentId: varchar("document_id").references(() => documents.id),
+
   // Field identification
   fieldName: varchar("field_name", { length: 255 }).notNull(), // e.g., "grossMonthlyIncome", "employerName"
   fieldCategory: varchar("field_category", { length: 100 }), // income, asset, liability, identity, property
@@ -384,6 +400,7 @@ export const extractedFields = pgTable("extracted_fields", {
   extractedAt: timestamp("extracted_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_extracted_fields_doc").on(table.logicalDocumentId),
+  index("idx_extracted_fields_source_doc").on(table.documentId),
   index("idx_extracted_fields_page").on(table.pageId),
   index("idx_extracted_fields_name").on(table.fieldName),
   index("idx_extracted_fields_mismo").on(table.mismoPath),

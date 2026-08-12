@@ -5,9 +5,12 @@
 // F-6: revenue existed nowhere — a funded loan earned an unknown amount and a
 //      lender short-paying us was invisible.
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   approvedLenderCount,
   approvedWholesaleLenders,
+  evaluateLenderLockEligibility,
   evaluateLenderSubmissionEligibility,
   isApprovedLender,
   type LenderCounterparty,
@@ -186,5 +189,146 @@ describe("F-6 — portfolio roll-up", () => {
     expect(s.fundedVolume).toBe(0);
     expect(s.pullThroughPct).toBeNull();
     expect(s.compensationVariance).toBe(0);
+  });
+});
+
+describe("F-20 — the lock rule is weaker than the submission rule, deliberately", () => {
+  // Submission transmits a borrower's file to a third party, so an unapproved
+  // counterparty is refused outright. A lock is an internal record and no PII
+  // leaves the system, so the harm is misrepresentation rather than
+  // disclosure. The rule therefore CLASSIFIES rather than blocks — except for
+  // a fictional company on a production file, which should not exist at all.
+  it("marks an approved lender's lock as a real commitment", () => {
+    const r = evaluateLenderLockEligibility(
+      lender({ approvalStatus: "approved" }),
+      { isProduction: true },
+    );
+    expect(r.allowed).toBe(true);
+    expect(r.simulated).toBe(false);
+  });
+
+  it("lets staff record a quote against an unapproved lender, but not as a lock", () => {
+    const r = evaluateLenderLockEligibility(lender(), { isProduction: true });
+    expect(r.allowed).toBe(true);
+    expect(r.simulated).toBe(true);
+    expect(r.reason).toMatch(/indicative quote/i);
+  });
+
+  it("refuses a demo counterparty in production and quotes it elsewhere", () => {
+    const demo = lender({ isDemo: true, approvalStatus: "approved" });
+    expect(evaluateLenderLockEligibility(demo, { isProduction: true }).allowed).toBe(false);
+
+    const dev = evaluateLenderLockEligibility(demo, { isProduction: false });
+    expect(dev.allowed).toBe(true);
+    expect(dev.simulated).toBe(true); // never a commitment, in any environment
+  });
+
+  it("agrees with isApprovedLender — the !isDemo half is not droppable", () => {
+    // The defect was rateLocks.ts hand-rolling `approvalStatus !== "approved"`,
+    // which silently dropped the demo check and recorded simulated:false.
+    for (const l of [
+      lender({ approvalStatus: "approved", isDemo: true }),
+      lender({ approvalStatus: "target" }),
+      lender({ approvalStatus: "inactive" }),
+    ]) {
+      const r = evaluateLenderLockEligibility(l, { isProduction: false });
+      expect(r.simulated).toBe(!isApprovedLender(l));
+      expect(r.simulated).toBe(true);
+    }
+  });
+});
+
+describe("F-21 — no simulated row may contribute to a real financial total", () => {
+  // lender_submissions.simulated DEFAULTS TO TRUE and was read by no financial
+  // computation, while costLedger.ts beside it carefully segregated simulated
+  // spend. Gross margin was real cost subtracted from imaginary revenue.
+  const realFunded = {
+    status: "funded",
+    simulated: false,
+    fundedLoanAmount: 400_000,
+    compensationExpectedAmount: 8_000,
+    compensationReceivedAmount: 8_000,
+  };
+  const simulatedFunded = {
+    status: "funded",
+    simulated: true,
+    fundedLoanAmount: 400_000,
+    compensationExpectedAmount: 8_000,
+    compensationReceivedAmount: 8_000,
+  };
+
+  it("keeps simulated funding out of every revenue figure", () => {
+    const s = summarizeCompensation([realFunded, simulatedFunded]);
+    expect(s.fundedCount).toBe(1);
+    expect(s.fundedVolume).toBe(400_000);
+    expect(s.receivedCompensation).toBe(8_000);
+    expect(s.expectedCompensation).toBe(8_000);
+  });
+
+  it("reports the simulated activity rather than dropping it silently", () => {
+    const s = summarizeCompensation([realFunded, simulatedFunded]);
+    expect(s.simulated.fundedCount).toBe(1);
+    expect(s.simulated.fundedVolume).toBe(400_000);
+    expect(s.simulated.receivedCompensation).toBe(8_000);
+  });
+
+  it("does not let simulated rows drive pull-through", () => {
+    // A walkthrough drives files to funded on demand. Mixing them in would
+    // report a pull-through that describes the demo script, not the business.
+    const s = summarizeCompensation([
+      { status: "denied", simulated: false },
+      simulatedFunded,
+      simulatedFunded,
+    ]);
+    expect(s.pullThroughPct).toBe(0); // 0 real funded of 1 real resolved
+    expect(s.simulated.fundedCount).toBe(2);
+  });
+
+  it("returns an all-simulated book as zero revenue, not as revenue", () => {
+    // Today's actual position: no approved lender, so every row is simulated.
+    const s = summarizeCompensation([simulatedFunded, simulatedFunded]);
+    expect(s.receivedCompensation).toBe(0);
+    expect(s.fundedCount).toBe(0);
+    expect(s.pullThroughPct).toBeNull(); // nothing REAL resolved — not a fake 0%
+    expect(s.simulated.receivedCompensation).toBe(16_000);
+  });
+
+  it("treats a missing simulated flag as real, matching the cost ledger", () => {
+    // costLedger uses `if (entry.simulated)`, so undefined counts as real.
+    // The DB column is notNull, so this only arises for hand-built objects;
+    // the two ledgers must at least agree.
+    const s = summarizeCompensation([{ ...realFunded, simulated: undefined }]);
+    expect(s.fundedCount).toBe(1);
+    expect(s.receivedCompensation).toBe(8_000);
+  });
+});
+
+describe("F-21 — the call sites actually pass the column through", () => {
+  // The pure functions above are only half the fix. The original defect was
+  // not that the arithmetic was wrong — it was that `simulated` was written to
+  // the database and then read by nobody. A roll-up that silently receives
+  // `undefined` treats every row as real and the defect is back, with tests
+  // still green. These guards pin the wiring.
+  const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
+
+  it("selects the column in the admin stats roll-up", () => {
+    expect(read("server/storage/stats.ts")).toMatch(/simulated: lenderSubmissions\.simulated/);
+  });
+
+  it("passes it into the clawback register from both builders", () => {
+    expect(read("server/services/contingentLiabilityRegister.ts")).toMatch(/simulated: s\.simulated/);
+    expect(read("server/routes/underwriting/submissions.ts")).toMatch(/simulated: s\.simulated/);
+  });
+
+  it("excludes simulated fundings from the remittance discrepancy list", () => {
+    expect(read("server/routes/underwriting/submissions.ts")).toMatch(
+      /status === "funded" && !s\.simulated/,
+    );
+  });
+
+  it("discloses excluded simulated revenue in the margin notes", () => {
+    expect(read("server/routes/underwriting/submissions.ts")).toMatch(
+      /simulatedRevenue: summary\.simulated\.receivedCompensation/,
+    );
   });
 });

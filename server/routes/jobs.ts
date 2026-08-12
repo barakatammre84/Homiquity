@@ -5,6 +5,7 @@ import { sweepUndeliveredAdverseActions } from "../services/adverseActionDeliver
 import { aggregateAnonymizedData } from "../services/optimizationEngine";
 import { runRateLockAlertSweep } from "../services/rateLockAlerts";
 import { runLetterExpirySweep } from "../services/letterExpiry";
+import { runCreditMonitoringSweep } from "../services/creditMonitoring";
 import { taskEngine } from "../services/taskEngine";
 import { logAudit } from "../auditLog";
 import { db } from "../db";
@@ -77,6 +78,35 @@ export function registerJobRoutes(app: Express) {
       } catch (err) {
         console.error("[jobs] Rate-lock alert sweep failed:", err);
         res.status(500).json({ ok: false, error: "Rate-lock alert sweep failed" });
+      }
+    });
+  });
+
+  // Credit-monitoring sweep. Emits a staff task per representative-score DROP between an
+  // application's two most recent completed pulls. Same dual-trigger shape as its siblings.
+  //
+  // Output is a STAFF TASK, never borrower outreach: this repo models no FCRA permissible
+  // purpose, and a credit-triggered solicitation is prescreen/firm-offer territory. The
+  // lookback window in the sweep is what makes repeated runs idempotent — emitCreditEvent
+  // stamps Date.now() into its own idempotency key, so it does not dedupe.
+  app.get("/api/jobs/credit-monitoring", async (req, res) => {
+    if (isCronRequest(req)) {
+      try {
+        const result = await runCreditMonitoringSweep();
+        return res.json({ ok: true, trigger: "cron", ...result });
+      } catch (err) {
+        console.error("[jobs] Credit monitoring sweep failed:", err);
+        return res.status(500).json({ ok: false, error: "Credit monitoring sweep failed" });
+      }
+    }
+    return requireRole("admin")(req, res, async () => {
+      try {
+        const result = await runCreditMonitoringSweep();
+        logAudit(req, "jobs.credit_monitoring", "system", "credit_monitoring", { ...result });
+        res.json({ ok: true, trigger: "manual", ...result });
+      } catch (err) {
+        console.error("[jobs] Credit monitoring sweep failed:", err);
+        res.status(500).json({ ok: false, error: "Credit monitoring sweep failed" });
       }
     });
   });

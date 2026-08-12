@@ -8,6 +8,7 @@ import {
 import { eq, and, sql, gte, desc } from "drizzle-orm";
 import { buildBorrowerGraph, type BorrowerGraph } from "./borrowerGraph";
 import crypto from "crypto";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 interface MatchEvaluation {
   factor: string;
@@ -272,10 +273,8 @@ function evaluateProduct(graph: BorrowerGraph, product: LenderProduct, loanAmoun
 
   let estimatedMonthlyPayment: number | null = null;
   if (loanAmount && estimatedRate) {
-    const monthlyRate = estimatedRate / 100 / 12;
-    const term = 360;
     estimatedMonthlyPayment = Math.round(
-      loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1)
+      monthlyPrincipalAndInterest(loanAmount, estimatedRate, 360),
     );
   }
 

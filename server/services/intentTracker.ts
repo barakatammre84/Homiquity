@@ -254,6 +254,23 @@ export async function initializeReadinessChecklist(userId: string, applicationId
   }
 }
 
+/** Every readiness fieldName the checklist seeds. The canonical vocabulary. */
+export const READINESS_FIELD_NAMES: readonly string[] = READINESS_FIELDS.map(f => f.fieldName);
+
+/**
+ * The only verification statuses a BORROWER may assert about themselves.
+ *
+ * The others — document_extracted, third_party_verified, manually_verified —
+ * all map to tier 1 and mean "a model read it", "a vendor confirmed it" or "a
+ * human checked it". Those are earned by an event the server observed, never
+ * claimed by the subject of the record. Server-side callers use
+ * updateReadinessField directly and are not bound by this list.
+ */
+export const BORROWER_ASSERTABLE_STATUSES: readonly FieldVerificationStatus[] = [
+  "not_collected",
+  "self_reported",
+];
+
 export async function updateReadinessField(
   userId: string,
   fieldName: string,

@@ -151,6 +151,77 @@ export function evaluateLenderSubmissionEligibility(
   };
 }
 
+export interface LenderLockEligibility {
+  allowed: boolean;
+  /**
+   * True when no real lender is on the hook, whatever confirmation number was
+   * keyed in. Persisted to `rate_locks.simulated`, which is what
+   * `isLenderConfirmed()` reads (F-20).
+   */
+  simulated: boolean;
+  reason: string;
+  remediation: string[];
+}
+
+/**
+ * May we record a rate lock against this lender?
+ *
+ * This is deliberately WEAKER than the submission rule, because the risk is
+ * different. Submission transmits a borrower's file to a third party, so an
+ * unapproved counterparty is refused outright. A lock is an internal record —
+ * no PII leaves the system — and the harm is MISREPRESENTATION: telling a
+ * borrower their rate is committed when nobody is obliged to honor it.
+ *
+ * So the rule classifies rather than blocks. Staff may record what they have
+ * pre-launch; it is simply not a lock unless a real approved lender made a
+ * real commitment. The one refusal is a demo row in production: a fictional
+ * company has no business appearing on a production borrower's file at all,
+ * and by go-live the demo rows are meant to be retired.
+ */
+export function evaluateLenderLockEligibility(
+  lender: LenderCounterparty,
+  opts: { isProduction: boolean },
+): LenderLockEligibility {
+  if (lender.isDemo) {
+    if (opts.isProduction) {
+      return {
+        allowed: false,
+        simulated: true,
+        reason:
+          `${lender.lenderName} is a seeded demo counterparty, not a real company. ` +
+          `A rate lock cannot be recorded against it on a production file.`,
+        remediation: [
+          `Pick a real wholesale lender with an executed broker agreement.`,
+          `Retire the demo rows: set status to INACTIVE on the admin lender screen.`,
+        ],
+      };
+    }
+    return {
+      allowed: true,
+      simulated: true,
+      reason:
+        `${lender.lenderName} is a seeded demo counterparty — recording an INDICATIVE QUOTE, ` +
+        `not a lock. This path is blocked in production.`,
+      remediation: [],
+    };
+  }
+
+  if (isApprovedLender(lender)) {
+    return { allowed: true, simulated: false, reason: "Approved wholesale lender", remediation: [] };
+  }
+
+  return {
+    allowed: true,
+    simulated: true,
+    reason:
+      `${lender.lenderName} is not an approved wholesale lender (status: ${lender.approvalStatus}), ` +
+      `so this is an INDICATIVE QUOTE rather than a lender commitment.`,
+    remediation: [
+      `Execute a broker agreement with ${lender.lenderName} to obtain real lock commitments.`,
+    ],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Submission status machine
 // ---------------------------------------------------------------------------
