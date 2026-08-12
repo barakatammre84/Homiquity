@@ -19,7 +19,11 @@ const VALUES = {
   purchasePrice: "450,000",
   downPayment: "50,000",
   monthlyDebts: "400",
-  creditScore: "excellent",
+  // A real CREDIT_SCORE_BAND_VALUES member. This fixture said "excellent" —
+  // the leads vocabulary, which the funnel's schema rejects — and a fixture
+  // asserting an invalid value is how the calculator handoff shipped writing
+  // one for a year. Keep funnel fixtures answerable by the funnel.
+  creditScore: "760",
 } as unknown as PreApprovalFormData;
 
 let submit: ReturnType<typeof vi.fn>;

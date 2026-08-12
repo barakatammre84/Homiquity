@@ -445,6 +445,36 @@ export const consentTemplateKeys = {
 };
 
 /**
+ * URLA (Uniform Residential Loan Application) reads. A THIRD top-level path
+ * alongside `/api/loan-applications` and `/api/applications` — see the note on
+ * `applicationResourceKeys` below; all three are keyed by an application id and
+ * none of them are each other.
+ *
+ * Modelled here because the same resource is read by two personas from two
+ * files: the borrower's URLAForm and the staff BorrowerFile both fetched
+ * `['/api/urla', id]` as a hand-typed literal, and the borrower's save
+ * invalidated a third hand-typed copy of it. Three spellings of one identity
+ * that happened to agree — `pnpm guard:querykeys` could not have caught them
+ * drifting apart, because its template-string rule only sees
+ * `` [`/api/urla/${id}`] ``; a hand-typed SEGMENTED key is invisible to it. URLA
+ * is the largest data-capture surface in the app, so it is the worst place to
+ * leave an identity that only convention holds together.
+ *
+ * `/api/urla/:id/ssn` is deliberately NOT modelled: it serves the SSN vault and
+ * no client surface reads it. A key factory for an endpoint nothing fetches is
+ * an invitation to cache PII that never needed to be in the browser.
+ */
+export const urlaKeys = {
+  /** Every URLA read — the prefix a URLA write should invalidate. */
+  all: () => ["/api/urla"] as const,
+  // `string | null | undefined` for the same reason as
+  // `applicationResourceKeys`: the borrower's call site holds
+  // `activeApplication?.id`, which has not resolved on the first render.
+  detail: (applicationId: string | null | undefined) =>
+    ["/api/urla", applicationId] as const,
+};
+
+/**
  * Document-checklist / deal-team resource. NOTE: `/api/applications` is a
  * DIFFERENT endpoint from `/api/loan-applications` — see the note on
  * `loanApplicationKeys`. Kept separate so nobody conflates the two.
