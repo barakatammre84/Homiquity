@@ -6,34 +6,65 @@ Every tick reads this file **before** choosing work (rail R2) and updates it in 
 as the change it describes. Ids are `F-###` in discovery order and are **never reused** —
 they are the same ids the dated audit logs cite.
 
-> ## ⚠️ ID COLLISION — read before minting an id
+> ## ⚠️ THE `F-2x` ID NAMESPACE HAS COLLAPSED — read before citing or minting an id
 >
-> **`F-20` … `F-24` mean two different things**, because two sessions audited the finances
-> concurrently and each minted ids from the same next-free number.
+> **There are NINE financial audits, one per day from 2026-08-04 to 2026-08-12**, and **six of
+> them independently minted ids starting at `F-20`**. `F-20` currently means six different
+> findings. A bare `F-2x` cite is meaningless.
 >
-> - **Canonical (merged to `main`, [#469](https://github.com/barakatammre84/Homiquity/pull/469),
->   audit dated 2026-08-08):** F-20 commission payouts counted as no cost · F-21 payout unbounded
->   by the revenue it shares · F-22 borrower-paid platform fees absent from revenue · F-23
->   cash-conversion cycle uncomputed · F-24 money-out routes unaudited.
-> - **This branch (unmerged, audit dated 2026-08-12):** F-20 confirmation is a presence test ·
->   F-21 revenue ledger simulation-blind · F-22 lender authorization audit trail · F-23
->   `epoClawbackDays` had no write surface. Plus seeded F-24…F-27 in this file.
+> | audit | ids minted | where | one-line subject |
+> |---|---|---|---|
+> | 08-04 | F-1…F-16 | `main` | the founding audit — unambiguous, still canonical |
+> | 08-05 | F-17…F-19 | `main` | QM dead band, election-time gate, finance-charge symmetry |
+> | 08-06 | — | `main` | pricing-policy control plane |
+> | 08-07 | F-20…F-23 | PR [#489](https://github.com/barakatammre84/Homiquity/pull/489) | counterparty gate absent at price formation; no receivable; ungated TRID re-pricing; register has no denominator |
+> | 08-08 | F-20…F-24 | **`main` (merged)** | commission payouts as cost; payout unbounded by revenue; platform fees absent from revenue; cash-conversion; money-out audit |
+> | 08-09 | F-20…F-23 | PR #489 | dual-comp guard covers one fee of three; revenue single-channel; recorded vs charged comp; debit-only ledger |
+> | 08-10 | F-20…F-25 | PR #489 | **near-duplicate of 08-12 — see below** |
+> | 08-11 | F-20…F-26 | PR #489 | revenue pinned by the QM cap; fee trim as unrecorded concession; platform fees not revenue |
+> | 08-12 | F-20…F-23 | this branch | confirmation is a presence test; revenue simulation-blind; authorization audit trail; no EPO write surface |
 >
-> **`main` wins** — it is merged and earlier-dated. The 08-12 set needs renumbering to
-> **F-30…F-33** (and this file's seeded F-24…F-27 to F-34…F-37) with a supersession banner on the
-> 08-12 log per TEAM_PRACTICES §2, which forbids rewriting a log in place. **Owner decision,
-> flagged 2026-08-12 tick 1; not done unilaterally.** Until it lands, cite an id *with its audit
-> date* — a bare "F-21" is ambiguous.
+> ### The duplication this cost, stated plainly
 >
-> **Allocation rule, effective now:** ids are allocated **in this file on `main`**, never minted
-> per-session from "next free". A session that cannot see `main`'s ledger must not mint an id — it
-> records the finding with a provisional `F-NEW-<slug>` and numbers it when it rebases. This is the
-> rule that would have prevented the collision, and it is cheap.
+> **The 08-10 audit found what the 08-12 audit found, two days earlier**, and has been sitting
+> unmerged on a docs branch the whole time:
+>
+> | 08-10 finding | 08-12 finding |
+> |---|---|
+> | F-20 a simulated confirmation counts as the lender's obligation — honor exposure reports $0 | F-20, same defect, same $0 register consequence |
+> | F-21 the rate-lock route accepts fictional demo lenders the submission path hard-blocks | F-20(a), same |
+> | F-22 there is no implemented path to approve a lender — the revenue switch does not exist | F-22 + the `/admin/lenders` build |
+> | F-23 two surfaces compute EPO exposure over different windows | F-23 / the `epoClawbackDays` work |
+>
+> Four findings, discovered twice, by two sessions that could not see each other. The second pass
+> also *fixed* them — so the fix is real and not wasted, but the **audit** was duplicated. This is
+> the concrete cost of per-session id minting and unmerged memory, and it is the reason for the
+> allocation rule below.
+>
+> ### How to cite until this is resolved
+>
+> **Always qualify with the audit date: `F-21 (08-09)`.** Never a bare `F-21`.
+>
+> ### Resolution — owner decision, not taken unilaterally
+>
+> Renumbering one branch is no longer sufficient; six sets collide. The two workable schemes:
+> **(a) date-qualified ids** (`F-0810-01`) — no renumbering of history, every existing cite stays
+> readable once qualified; or **(b) one monotonic register on `main`** that each audit appends to
+> *before* publishing, renumbering the five unmerged sets on the way in. (b) is cleaner long-term,
+> (a) is cheaper today. Either way TEAM_PRACTICES §2 forbids rewriting the published logs in
+> place — the mapping goes in a supersession banner.
+>
+> ### Allocation rule, effective now
+>
+> Ids are allocated **in this file on `main`**, never minted per-session from "next free". A
+> session that cannot see `main`'s ledger records `F-NEW-<slug>` and numbers it on rebase. This is
+> the cheap rail that would have prevented all six collisions.
 
-Seeded 2026-08-12 from the three audits to date, at `origin/main` @ `2444950`:
-[2026-08-04](../logs/2026-08-04-financial-architecture-capital-structure-audit.md) ·
-[2026-08-05](../logs/2026-08-05-financial-architecture-reaudit-qm-loan-size-floor.md) ·
-[2026-08-12](../logs/2026-08-12-financial-architecture-reaudit-counterparty-integrity.md).
+Seeded 2026-08-12; **corrected the same day** after tick 1 discovered six further audits. Not three —
+nine. Five are on `main` (08-04, 08-05, 08-06, 08-08, and the merged history), four are stranded
+on PR [#489](https://github.com/barakatammre84/Homiquity/pull/489) (08-07, 08-09, 08-10, 08-11),
+and 08-12 is on this branch. **A tick that reads only `main` sees barely half the audit history** —
+which is why Phase 0.4 reads open PRs, not just `main`.
 
 ## Status vocabulary
 
