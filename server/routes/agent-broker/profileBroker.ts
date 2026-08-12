@@ -18,6 +18,11 @@ import {
   loanApplications,
   BROKER_COMMISSION_STATUSES,
 } from "@shared/schema";
+import {
+  MAX_COMMISSION_RATE,
+  evaluateCommissionPayout,
+  fundedSubmissionOf,
+} from "@shared/commissionPayout";
 import { parseBodyOr400 } from "../validate";
 import { firstQueryValue } from "../queryParams";
 import { routeParams } from "../../http/routeParams";
@@ -128,9 +133,55 @@ export function registerProfileBrokerRoutes(
     }
   });
 
+  // ---------------------------------------------------------------------
+  // Read side: the largest payout this file may carry, and why (audit F-21).
+  //
+  // Exists so an admin learns the ceiling before choosing a rate rather than
+  // by tripping the 422 below — the same read/write pairing the compensation
+  // election got under F-18. Both surfaces score off `evaluateCommissionPayout`
+  // so they cannot disagree about a file.
+  // ---------------------------------------------------------------------
+  app.get("/api/broker/commissions/quote/:applicationId", requireRole("admin"), async (req, res) => {
+    try {
+      const applicationId = String(req.params.applicationId);
+      const application = await storage.getLoanApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      const rateRaw = firstQueryValue(req.query.rate);
+      // With no rate supplied, probe at the platform ceiling: the evaluation
+      // reports the same maxAmount/maxRate either way, and a refusal here is
+      // information rather than an error.
+      const rate = rateRaw !== undefined ? Number(rateRaw) : MAX_COMMISSION_RATE;
+
+      const submissions = await storage.getLenderSubmissionsByApplication(applicationId);
+      const funded = fundedSubmissionOf(submissions);
+
+      res.json(
+        evaluateCommissionPayout({
+          applicationStatus: application.status,
+          submissionStatus: funded?.status,
+          fundedLoanAmount: funded?.fundedLoanAmount,
+          compensationReceivedAmount: funded?.compensationReceivedAmount,
+          compensationExpectedAmount: funded?.compensationExpectedAmount,
+          rate,
+        }),
+      );
+    } catch (error) {
+      console.error("Commission payout quote error:", error);
+      res.status(500).json({ error: "Failed to evaluate the commission payout" });
+    }
+  });
+
   // Commission creation is restricted to admin only.
-  // loanAmount is derived server-side from the application record — not client-supplied —
-  // to prevent fabrication of inflated commission amounts.
+  //
+  // Every input to the amount is derived server-side — the client supplies only
+  // a rate. Audit F-21: the basis is the FUNDED loan amount from the lender
+  // submission, not `purchasePrice − downPayment` off the application, and the
+  // payout is bounded by the compensation it is a share of. Before that, a 10%
+  // rate on a $250k loan opened a $25,000 payable against $5,000 of revenue on
+  // a file that need not even have funded.
   app.post("/api/broker/commissions", requireRole("admin"), async (req, res) => {
     try {
       const { applicationId, brokerId, commissionRate } = req.body;
@@ -139,41 +190,78 @@ export function registerProfileBrokerRoutes(
         return res.status(400).json({ error: "applicationId, brokerId, and commissionRate are required" });
       }
 
-      // commissionRate is a decimal fraction (e.g. 0.025 = 2.5%). Reject non-numeric
-      // or out-of-range values to prevent malformed or fabricated commission records.
+      // commissionRate is a decimal fraction (e.g. 0.025 = 2.5%).
       const rate = Number(commissionRate);
-      if (!Number.isFinite(rate) || rate <= 0 || rate > 0.1) {
-        return res.status(400).json({ error: "commissionRate must be a number between 0 and 0.1 (0%–10%)" });
-      }
 
       const application = await storage.getLoanApplication(applicationId);
       if (!application) {
         return res.status(404).json({ error: "Application not found" });
       }
 
-      // Derive the authoritative loan amount from the application record.
-      // Purchases: purchase price minus down payment (consistent with pipelineEngine
-      // and loanAnalysis). Fall back to the pre-approval amount (e.g. refinances) when a
-      // purchase price is not on file.
-      const purchasePrice = Number(application.purchasePrice ?? 0);
-      const downPayment = Number(application.downPayment ?? 0);
-      const loanAmount =
-        purchasePrice > 0
-          ? purchasePrice - downPayment
-          : Number(application.preApprovalAmount ?? 0);
-      if (!loanAmount || loanAmount <= 0) {
-        return res.status(422).json({ error: "Application does not have a loan amount on file" });
+      const submissions = await storage.getLenderSubmissionsByApplication(applicationId);
+      const funded = fundedSubmissionOf(submissions);
+      const evaluation = evaluateCommissionPayout({
+        applicationStatus: application.status,
+        submissionStatus: funded?.status,
+        fundedLoanAmount: funded?.fundedLoanAmount,
+        compensationReceivedAmount: funded?.compensationReceivedAmount,
+        compensationExpectedAmount: funded?.compensationExpectedAmount,
+        rate,
+      });
+
+      if (!evaluation.allowed) {
+        // A bad rate is a client error; everything else is a refusal about the
+        // state of the file, which is 422 rather than 400.
+        const status = evaluation.verdict === "rate_out_of_range" ? 400 : 422;
+
+        // Audit the refusal, not only the success. A blocked payout is the
+        // interesting event — it is an admin trying to pay more than the file
+        // earned, or paying on a file that has not funded.
+        const { logAudit } = await import("../../auditLog");
+        logAudit(req, "broker_commission.refused", "loan_application", applicationId, {
+          brokerId,
+          commissionRate: rate,
+          verdict: evaluation.verdict,
+          attemptedAmount: evaluation.amount,
+          maxAmount: evaluation.maxAmount,
+        });
+
+        return res.status(status).json({
+          error: evaluation.message,
+          verdict: evaluation.verdict,
+          remediation: evaluation.remediation,
+          maxAmount: evaluation.maxAmount,
+          maxRate: evaluation.maxRate,
+        });
       }
 
-      const commissionAmount = (Number(loanAmount) * Number(commissionRate)).toFixed(2);
+      const loanAmount = evaluation.loanAmount!;
+      const commissionAmount = evaluation.amount!.toFixed(2);
 
       const commission = await storage.createBrokerCommission({
         brokerId,
         applicationId,
         loanAmount: loanAmount.toString(),
-        commissionRate: commissionRate.toString(),
+        commissionRate: rate.toString(),
         commissionAmount,
         status: "pending",
+      });
+
+      // Money out of the company leaves a trail. A $30 credit-pull cost entry
+      // is audited (`loan_cost.recorded`); creating a payout obligation worth
+      // up to 10% of the loan amount was not, which left the only cash-
+      // disbursement path on the platform with no record of who opened it.
+      const { logAudit } = await import("../../auditLog");
+      logAudit(req, "broker_commission.created", "loan_application", applicationId, {
+        commissionId: commission.id,
+        brokerId,
+        loanAmount,
+        commissionRate: rate,
+        commissionAmount,
+        // The revenue it was bounded against, so the trail shows what the
+        // ceiling was at the moment the payable was opened.
+        revenueBasis: evaluation.revenueBasis,
+        revenueBasisSource: evaluation.revenueBasisSource,
       });
 
       res.status(201).json(commission);
@@ -239,6 +327,20 @@ export function registerProfileBrokerRoutes(
       const updated = await storage.updateBrokerCommission(id, updateData);
       if (!updated) {
         return res.status(404).json({ error: "Commission not found" });
+      }
+
+      // Only status transitions are audited — a notes edit is not a financial
+      // event. "paid" is the disbursement, and it is the same admin who could
+      // have created the payable, so the trail is the only separation there is.
+      if (updateData.status !== undefined) {
+        const { logAudit } = await import("../../auditLog");
+        logAudit(req, "broker_commission.status_changed", "loan_application", existing.applicationId, {
+          commissionId: existing.id,
+          brokerId: existing.brokerId,
+          previousStatus: existing.status,
+          newStatus: updateData.status,
+          commissionAmount: existing.commissionAmount,
+        });
       }
 
       res.json(updated);

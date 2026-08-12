@@ -100,6 +100,17 @@ anything else in this file being true.
   business-partner APIs unlock with F6). See
   [REGULATORY_MONITORING.md](knowledge-base/compliance/REGULATORY_MONITORING.md).
 - [ ] **1.9 Delete the dead `GEMINI_API_KEY`** — all AI is Anthropic; the key is verified unused.
+- [ ] **1.10 Counsel: is the referral-commission payout permitted?** Two questions, both opened by
+  the [2026-08-08 financial re-audit](knowledge-base/logs/2026-08-08-financial-architecture-reaudit-commission-payouts.md)
+  (F-21) and recorded in the regulatory ledger under `regz-1026-36d1-referral-commission-payout` on a
+  **14-day** interval so `pnpm checkup` goes loud. (a) **Reg Z §1026.36(d)(1)** — a *fixed* percentage
+  of the amount of credit extended is permitted; `POST /api/broker/commissions` takes a percentage
+  chosen **per file** by an admin, and `calculateAgentCommission` would pay 25% of a lender comp
+  figure that varies by lender and product. (b) **RESPA §8** — the partner tables were built with no
+  fee/commission columns *by design* (charter §5-C1), and `broker_commissions` is that column set on
+  the same referral edge. Today only the staff `broker` role can reach it (the `agent` role in the
+  gate does not exist), so nothing is exposed — but §3.7 schedules wiring it up. **No commission may
+  be paid on a live file until this is answered.**
 
 ---
 
@@ -152,7 +163,12 @@ anything else in this file being true.
   — verifying `checkPipelineProgress` actually enforces it.
 - [ ] **3.7 Optimization-engine dispositions:** wire `matchAndPriceBorrower` / `getCoachPreFillData`
   to a surface **or delete them**; fire `calculateAgentCommission` from the funded-loan transition
-  (near `graduateClosedLoan`) rather than a schedule.
+  (near `graduateClosedLoan`) rather than a schedule. **Blocked on §1.10** — wiring this fires a
+  payout whose Reg Z / RESPA posture is unanswered. When it is unblocked, the wiring must write
+  through `evaluateCommissionPayout` (`shared/commissionPayout.ts`) the way
+  `POST /api/broker/commissions` does: this path inserts straight into `broker_commissions` and so
+  is bounded by nothing and audited nowhere. Its own two defects — the dead `"agent"` role check and
+  the 275 bps fallback that assumed the top of the seeded range — are already fixed (audit F-21).
 - [ ] **3.8 Tag agent-sourced inbound leads.** `leads.source` has no value for an agent-referred
   borrower, so the playbook's 30%-agent-sourced gate is **structurally unmeasurable**. Needs a
   business decision on the intake mechanism (referral link / agent portal / manual code) before any
@@ -167,6 +183,17 @@ anything else in this file being true.
   halal-lane channel gates (two founder calls + the spec-§5 counsel review; funder-agnostic math only
   until then) · **LO-3** client-facing Advisor Report (its LO-2 dependency merged) · **PH-3**
   partner-asset compliance guard + co-branded education engine.
+
+- [ ] **3.14 Recognize platform fee income** (audit F-22) — **unblocked 2026-08-08: recognize ON
+  RECEIPT.** That settles the basis with it — you recognize what arrived, and the amount *charged*
+  becomes the expected side for variance, mirroring the compensation lifecycle F-6 built. The charged
+  snapshot is therefore the **actually charged** figure (the trimmed post-F-17 amount the LE
+  disclosed), not the standard schedule. The revenue line today counts only the lender remittance,
+  while the $500 application + $1,500 underwriting fees are our own charges levied under **both**
+  compensation models and recognized nowhere — combined with F-20 that meant both sides of the margin
+  were wrong in opposite directions. Build: snapshot the schedule charged at LE issuance, record
+  collection at settlement beside `compensation_received_at`, and surface the charged-vs-collected
+  variance the same way lender short-pay is surfaced.
 
 ---
 

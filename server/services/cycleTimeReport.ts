@@ -7,7 +7,7 @@
  */
 import { db } from "../db";
 import { and, eq, gte, sql } from "drizzle-orm";
-import { loanApplications, auditLogs } from "@shared/schema";
+import { loanApplications, auditLogs, lenderSubmissions } from "@shared/schema";
 import { computeCycleTimeReport, type CycleTimeReport } from "@shared/cycleTimeReport";
 
 export async function buildCycleTimeReport(windowDays: number): Promise<CycleTimeReport> {
@@ -36,6 +36,18 @@ export async function buildCycleTimeReport(windowDays: number): Promise<CycleTim
     )
     .groupBy(auditLogs.targetId);
 
+  // Funding→remittance (F-23). Read off the submission rather than the audit
+  // trail: unlike the status transition, the wire date is a recorded fact on
+  // the row, not an inference from a status change.
+  const remittanceRows = await db
+    .select({
+      applicationId: lenderSubmissions.applicationId,
+      fundedAt: lenderSubmissions.fundedAt,
+      compensationReceivedAt: lenderSubmissions.compensationReceivedAt,
+    })
+    .from(lenderSubmissions)
+    .where(eq(lenderSubmissions.status, "funded"));
+
   return computeCycleTimeReport(
     windowDays,
     apps
@@ -44,5 +56,6 @@ export async function buildCycleTimeReport(windowDays: number): Promise<CycleTim
     fundedRows
       .filter((r) => r.applicationId != null)
       .map((r) => ({ applicationId: r.applicationId!, fundedAt: r.fundedAt })),
+    remittanceRows,
   );
 }

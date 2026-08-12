@@ -744,6 +744,18 @@ export async function aggregateAnonymizedData(): Promise<{
   return { factsCreated, borrowersProcessed };
 }
 
+/**
+ * Compute (and record) the referral payout on a funded loan.
+ *
+ * UNCALLED TODAY, and blocked from being called: roadmap 3.7 schedules wiring
+ * it to the funded-loan transition, and roadmap 1.10 holds that behind the open
+ * Reg Z §1026.36(d)(1) / RESPA §8 questions (ledger
+ * `regz-1026-36d1-referral-commission-payout`). When it IS wired, it must write
+ * through `evaluateCommissionPayout` (shared/commissionPayout.ts) the way
+ * `POST /api/broker/commissions` does, so that both paths bound the payout by
+ * the same rule and audit it the same way — this one inserts straight into the
+ * table and does neither.
+ */
 export async function calculateAgentCommission(
   applicationId: string,
   fundedAmount: number
@@ -760,10 +772,21 @@ export async function calculateAgentCommission(
   if (!user?.referredByUserId) return null;
 
   const referrer = await storage.getUser(user.referredByUserId);
-  if (!referrer || (referrer.role !== "agent" && referrer.role !== "broker")) return null;
+  // Audit F-21: this gate previously also tested for a role string "agent",
+  // which is not in shared/roles.ts ALL_ROLES and so could never match. It is
+  // removed rather than "fixed" by adding a role: the self-registering realtor
+  // and cpa partner personas are referral sources, and whether a referral
+  // source may be paid a share of compensation at all is the open RESPA §8
+  // question in ledger entry `regz-1026-36d1-referral-commission-payout`.
+  // Widening this gate is that question's answer, not a typo fix.
+  if (!referrer || referrer.role !== "broker") return null;
 
   let lenderCompensation: any = null;
-  let brokerCompBps = 275;
+  // NOT a default — a sentinel. Audit F-21: this was 275, the TOP of the seeded
+  // comp range (100–275, default 200), so an unresolvable comp plan paid 25% of
+  // a basis 37.5% higher than the real one. A fallback inside a payout
+  // calculation must err low or refuse; this one refuses.
+  let brokerCompBps: number | null = null;
 
   try {
     const matchResults = await db.select()
@@ -795,6 +818,17 @@ export async function calculateAgentCommission(
     }
   } catch (err) {
     console.warn("[Commission] Failed to lookup lender compensation:", err);
+  }
+
+  // No resolvable comp plan means the revenue this payout is a share of is
+  // unknown, and an unknown must never be treated as "assume the richest".
+  // Refusing costs a recoverable delay; guessing high costs cash.
+  if (brokerCompBps === null) {
+    console.warn(
+      `[Commission] No lender compensation plan resolved for application ${applicationId} — ` +
+        `refusing to compute a payout rather than assuming one.`,
+    );
+    return null;
   }
 
   const totalBrokerRevenue = (fundedAmount * brokerCompBps) / 10000;
