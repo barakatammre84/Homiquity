@@ -18,6 +18,8 @@ import {
   PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
   PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
   PREAPPROVAL_PENDING_SUBMIT_KEY as PENDING_SUBMIT_KEY,
+  readPendingInviteId,
+  clearPendingInviteId,
 } from "@/lib/pendingAttribution";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
@@ -98,7 +100,11 @@ function PreApprovalFunnel() {
   const urlSource = urlParams.get("source");
   const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
 
-  const inviteId = useRef(sessionStorage.getItem("inviteId"));
+  // Read once per mount, through the shared module so the legacy per-tab key is
+  // still honoured for an invite stashed by an older client. Captured in a ref
+  // rather than read at submit time because the deferred post-auth replay
+  // (useDeferredSubmit) fires from a closure created at mount.
+  const inviteId = useRef(readPendingInviteId());
 
   const form = useForm<PreApprovalFormData>({
     resolver: zodResolver(preApprovalFormSchema),
@@ -190,8 +196,11 @@ function PreApprovalFunnel() {
       queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
 
+      // Consume only now, on a SUCCESSFUL submit — a borrower who abandons the
+      // funnel keeps their attribution for the next attempt. Clears both tiers
+      // so a legacy per-tab copy cannot re-attribute a later application.
       if (inviteId.current) {
-        sessionStorage.removeItem("inviteId");
+        clearPendingInviteId();
       }
 
       toast({
