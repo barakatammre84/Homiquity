@@ -143,3 +143,47 @@ describe("F-8 — the exposure register", () => {
     expect(r.usesAssumedWindow).toBe(false);
   });
 });
+
+describe("F-21 — a simulated funding cannot enter the reserve", () => {
+  // totalAtRisk is presented as the reserve figure on the admin dashboard and
+  // in the contingent-liability register. A walkthrough that drives a
+  // submission to `funded` records a compensationReceivedAmount, so before
+  // this fix it added money nobody wired to the reserve for money we might
+  // have to give back.
+  const entry = (over: Record<string, unknown> = {}) => ({
+    submissionId: "s1",
+    lenderId: "summit",
+    status: "funded",
+    fundedAt: daysAgo(30),
+    compensationReceivedAmount: 8_000,
+    ...over,
+  });
+
+  it("excludes simulated fundings from the exposure and the total", () => {
+    const r = buildClawbackRegister([entry({ simulated: true })], NOW);
+    expect(r.atRiskCount).toBe(0);
+    expect(r.totalAtRisk).toBe(0);
+  });
+
+  it("counts what it excluded rather than dropping it silently", () => {
+    const r = buildClawbackRegister([entry({ simulated: true })], NOW);
+    expect(r.simulatedExcludedCount).toBe(1);
+  });
+
+  it("still carries real exposure alongside", () => {
+    const r = buildClawbackRegister(
+      [entry({ simulated: true }), entry({ submissionId: "s2", simulated: false })],
+      NOW,
+    );
+    expect(r.atRiskCount).toBe(1);
+    expect(r.totalAtRisk).toBe(8_000);
+    expect(r.simulatedExcludedCount).toBe(1);
+  });
+
+  it("does not let a simulated row raise the assumed-window flag on its own", () => {
+    // usesAssumedWindow drives a governance badge. A demo row must not make
+    // the register claim a real reserve rests on an assumption.
+    const r = buildClawbackRegister([entry({ simulated: true })], NOW);
+    expect(r.usesAssumedWindow).toBe(false);
+  });
+});

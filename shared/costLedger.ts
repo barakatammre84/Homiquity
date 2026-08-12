@@ -106,6 +106,13 @@ export interface UnitEconomicsInput {
   receivedCompensation: number;
   fundedCount: number;
   costs: CostSummary;
+  /**
+   * Compensation booked against SIMULATED fundings, already excluded from
+   * `receivedCompensation`. Passed in only so the exclusion can be stated in
+   * `notes` — the cost side has always disclosed its simulated total, and a
+   * revenue figure that quietly drops rows is the same defect mirrored.
+   */
+  simulatedRevenue?: number;
 }
 
 export interface UnitEconomics {
@@ -150,6 +157,12 @@ export function computeUnitEconomics(input: UnitEconomicsInput): UnitEconomics {
   if (input.costs.simulatedCost > 0) {
     notes.push(
       `$${input.costs.simulatedCost.toFixed(2)} of cost sits behind still-simulated vendor adapters and is excluded from these figures.`,
+    );
+  }
+  if (input.simulatedRevenue && input.simulatedRevenue > 0) {
+    notes.push(
+      `$${input.simulatedRevenue.toFixed(2)} of compensation was booked against SIMULATED lender ` +
+        `fundings and is excluded from revenue — no lender wired it.`,
     );
   }
   if (input.fundedCount === 0) {

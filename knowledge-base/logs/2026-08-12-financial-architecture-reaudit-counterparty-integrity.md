@@ -34,7 +34,7 @@ That is this audit's finding, in four parts.
 | # | Finding | Area | Severity |
 |---|---|---|---|
 | F-20 | "Confirmed" is a presence test over four columns, not a counterparty test — a lock against a fictional lender is classified as a real lender obligation, and the liability register therefore prices it at $0 | Capital flow / Balance sheet | **High** — ✅ fixed |
-| F-21 | The revenue ledger is simulation-blind, while the cost ledger beside it is simulation-aware — gross margin subtracts de-simulated cost from contaminated revenue | Unit economics | **High** — ⚠️ open |
+| F-21 | The revenue ledger is simulation-blind, while the cost ledger beside it is simulation-aware — gross margin subtracts de-simulated cost from contaminated revenue | Unit economics | **High** — ✅ fixed |
 | F-22 | The control that authorizes PII transmission and unblocks all revenue has the weakest audit trail of the three admin money surfaces | Risk / Liability | **Medium-High** — ✅ fixed |
 | F-23 | `epoClawbackDays` has no write surface, so the clawback reserve rests on an assumed window permanently, by construction | Balance sheet | Medium — ⚠️ partly fixed (write path at approval; no correction path) |
 | — | F-1…F-13, F-17, F-18, F-19 remediation holds at HEAD | all | ✅ verified |
@@ -362,10 +362,10 @@ This began as an audit: findings, quantification, and structural fixes, with no 
 applied, because all four change behavior on money or PII paths and the decision to change what
 the platform refuses belongs to a human.
 
-**F-20 and F-22 were subsequently authorized and are now fixed** — see the remediation sections
-below. **F-21 and F-23 remain open**, except for the one part of F-23 that F-22's endpoint
-necessarily carries (recording the contracted clawback window at approval, which is the only
-moment the column can honestly be written).
+**F-20, F-22 and F-21 were subsequently authorized and are now fixed** — see the remediation
+sections below. **F-23 remains partly open**: F-22's endpoint carries the part that belongs to it
+(recording the contracted clawback window at approval, the only moment the column can honestly be
+written), but there is still no way to correct a window afterwards.
 
 ---
 
@@ -474,6 +474,69 @@ No migration: both columns already exist.
 
 ---
 
+## Remediation — F-21 (2026-08-12)
+
+**The revenue ledger now reads the column it was ignoring, and the cost side's discipline is
+mirrored rather than re-invented.**
+
+### What shipped
+
+| Change | File |
+|---|---|
+| `simulated` on `CompensationRecord`; every figure real-only; `simulated` block segregated | `shared/compensationLedger.ts` |
+| Simulated fundings excluded from the reserve; `simulatedExcludedCount` reported | `shared/compensationClawback.ts` |
+| `simulatedRevenue` note, beside the existing simulated-cost note | `shared/costLedger.ts` |
+| Column selected / passed through at all four call sites | `server/storage/stats.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/underwriting/submissions.ts` |
+| Banner + clawback badge so nothing is excluded silently | `client/src/pages/admin/FinancialReports.tsx` |
+| 16 new tests | `tests/counterpartyAndCompensation.test.ts`, `tests/compensationClawback.test.ts`, `client/.../FinancialReports.test.tsx` |
+
+**The branch on provenance happens first**, before any accumulator is touched, so no simulated
+amount can reach a real total by any path through the block. **Pull-through was the subtlest
+one:** a walkthrough drives files to `funded` on demand, so mixing simulated rows in would have
+reported a pull-through describing the demo script rather than the business — it is now computed
+over real resolved submissions only, and returns `null` rather than a fake `0%` when nothing real
+has resolved.
+
+**Excluded, never dropped.** `summarizeCompensation` reports a `simulated` block, the clawback
+register reports `simulatedExcludedCount`, and `computeUnitEconomics` emits a note naming the
+excluded dollars — matching what the cost side has always done with `simulatedCost`. A figure that
+quietly discards rows is the same defect as one that quietly includes them.
+
+**A missing flag counts as real**, matching `costLedger.ts`'s `if (entry.simulated)`. The column
+is `notNull` so this only arises for hand-built objects, but the two ledgers must agree.
+
+### Measured, on today's actual position
+
+Executed against a two-submission book — the state a gated-beta walkthrough produces, with real
+vendor cost incurred and no approved lender:
+
+| Figure | Before | After |
+|---|---|---|
+| Revenue | $16,000 | **$0** |
+| Pull-through | 100% | **null** (nothing *real* resolved) |
+| Clawback reserve | $16,000 | **$0** (2 excluded) |
+| **Gross margin** | **+$15,290** | **−$710** |
+
+The margin line is the finding in one number: real cost was being subtracted from imaginary
+revenue, and the true position is that the business has spent $710 and earned nothing yet.
+
+### The client change is load-bearing, not decoration
+
+With zero approved lenders every submission is simulated, so the revenue cards now read `$0` and
+pull-through reads `—`. Unexplained, that looks like a broken dashboard, and the tempting "fix" is
+to count the simulated rows — which is precisely the defect being closed. The banner states what
+was excluded and why, so the zero reads as accurate rather than broken.
+
+### What this does not do
+
+It does not make the revenue figures *complete* — it makes them *real*. The cost side is still
+direct vendor spend only (labour and overhead are modeled nowhere), so `grossMargin` remains the
+upper bound `computeUnitEconomics` has always declared it to be.
+
+No migration: the fix reads the `simulated` column migration `0042`'s table already carried.
+
+---
+
 ## Security review — TEAM_PRACTICES §9 (2026-08-12)
 
 The F-22 endpoint adds a `requireRole("admin")` gate, which is a §9 **role/permission gate**
@@ -512,7 +575,12 @@ column holding PII was added, and no new PII sub-processor.
 
 ### Verification
 
-Typecheck clean · **2,801 tests green** (2,386 server / 415 client, +19) · zod-schema-semantics
+Covers F-20 and F-22. F-21 adds no §9 trigger: it changes ledger arithmetic, a report payload and
+an admin page, touching no auth, role gate, PII column, upload path or messaging surface. The
+report route's existing `requireRole("admin")` is unchanged.
+
+Typecheck clean · **2,817 tests green** (2,399 server / 418 client, +35 across all three
+findings) · zod-schema-semantics
 snapshot re-recorded and **purely additive** — 20 insertions, 0 deletions, so no existing schema
 changed what it accepts or rejects · KB index and doc-freshness guards pass. No migration.
 
