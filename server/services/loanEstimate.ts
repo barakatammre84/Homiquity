@@ -7,6 +7,7 @@ import { resolveFeeScheduleForApplication } from "./platformFeeSchedule";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import { toActualFeeMap, type ActualFeeMap } from "@shared/compliance/feeProvenance";
 import type { LoanApplication } from "@shared/schema";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 export interface LoanEstimateData {
   applicationId: string;
@@ -146,12 +147,8 @@ export interface LoanEstimateData {
   feeScheduleVersion: number;
 }
 
-function calculateMonthlyPayment(principal: number, annualRate: number, termMonths: number): number {
-  if (annualRate === 0) return principal / termMonths;
-  const monthlyRate = annualRate / 12 / 100;
-  return principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / 
-    (Math.pow(1 + monthlyRate, termMonths) - 1);
-}
+/** @see {@link monthlyPrincipalAndInterest} — annualRate is a PERCENT here. */
+const calculateMonthlyPayment = monthlyPrincipalAndInterest;
 
 function estimateClosingDate(): Date {
   const closingDate = new Date();

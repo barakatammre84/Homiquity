@@ -5,7 +5,7 @@ description: Use when building or changing mortgage math — affordability, paym
 
 # Mortgage calculations & the decision engines
 
-Fast-start router. **Authoritative reference:** [`kb/compliance/UNDERWRITING_SCENARIOS.md`](../../../knowledge-base/compliance/UNDERWRITING_SCENARIOS.md) (scenario catalog + the no-citation-no-implementation contract), [`app-guide/08-services.md`](../../../knowledge-base/handbook/app-guide/08-services.md), and CLAUDE.md's compliance-first section. Those win on conflict.
+Fast-start router. **Authoritative reference:** [`knowledge-base/compliance/UNDERWRITING_SCENARIOS.md`](../../../knowledge-base/compliance/UNDERWRITING_SCENARIOS.md) (scenario catalog + the no-citation-no-implementation contract), [`app-guide/08-services.md`](../../../knowledge-base/handbook/app-guide/08-services.md), and CLAUDE.md's compliance-first section. Those win on conflict.
 
 ## Non-negotiables
 - **Determinism:** the engines (`server/underwritingEngine.ts`, `server/services/decisionEngine.ts`, `server/services/ruleEngine.ts`) are pure — same inputs, same outcome, typed error classification. No randomness, no vendor calls, no AI inside them. Keep it that way.

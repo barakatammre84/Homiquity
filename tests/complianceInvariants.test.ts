@@ -488,6 +488,18 @@ describe("AI governance (AG-2): the MCP surface authenticates WHICH agent it ser
   });
 });
 
+describe("C2 binding: raw pre-underwriting flag prose never reaches borrower surfaces", () => {
+  // The preUnderwriting flag reasons carry staff-side signal prose — creditor
+  // names, balances, what-if DTI figures computed over unverified data (the
+  // class the rate-com adjudication's C2 binding bars from borrowers; the
+  // 2026-08-04 CROA audit found the Dashboard chip tooltip relaying it).
+  it("the borrower Dashboard chip tooltip stays generic", () => {
+    const source = read("client/src/pages/borrower/Dashboard.tsx");
+    expect(source).not.toMatch(/title=\{[^}]*f\.reason/s);
+    expect(source).toContain("your loan team will guide you");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Compliance-critical field registry (audit F-2 class).
 //

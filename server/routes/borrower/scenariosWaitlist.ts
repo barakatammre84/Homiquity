@@ -7,6 +7,7 @@ import { type User } from "@shared/schema";
 import { z } from "zod";
 import { buildBorrowerGraph, getPropertyAffordability } from "../../services/borrowerGraph";
 import { firstQueryValue } from "../queryParams";
+import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 // Verify that an internal staff user is actually assigned to the given application.
 // Returns true for admin (unrestricted), checks LO assignment for lo/loa, and
@@ -52,10 +53,7 @@ export function registerScenarioWaitlistRoutes(
         loanAmount = loanAmount * 1.0175;
       }
 
-      const monthlyRate = rate / 12 / 100;
-      const numPayments = 360;
-      const factor = Math.pow(1 + monthlyRate, numPayments);
-      const monthlyPrincipalInterest = loanAmount * (monthlyRate * factor) / (factor - 1);
+      const monthlyPrincipalInterest = monthlyPrincipalAndInterest(loanAmount, rate, 360);
 
       let monthlyPmi = 0;
       if (validated.loanProgram === "conventional" && ltv > 80) {

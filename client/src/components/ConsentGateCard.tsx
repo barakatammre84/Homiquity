@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest, consentKeys } from "@/lib/queryClient";
+import { apiRequest, consentKeys, consentTemplateKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,9 +41,10 @@ export function ConsentGateCard({
 
   // No queryFn: the key IS the request. The default transport builds the URL
   // from it via buildQueryUrl, so the trailing object becomes `?type=...` and
-  // the cache key and the fetched URL cannot drift apart.
+  // the cache key and the fetched URL cannot drift apart. Built from the factory
+  // so this and TaxReturnInsightCard address the endpoint identically.
   const { data: templates, isLoading } = useQuery<ConsentTemplate[]>({
-    queryKey: ["/api/consent-templates", { type: consentType }],
+    queryKey: consentTemplateKeys.byType(consentType),
   });
 
   const template = templates?.[0];

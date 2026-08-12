@@ -24,6 +24,7 @@ import { CONFORMING_LOAN_LIMIT_2026 } from "@shared/lendingLimits";
 import { eq, desc, sql, and, gte, count, isNotNull } from "drizzle-orm";
 import { computeNextAction } from "./nextAction";
 import { pickActiveLoanApplication } from "@shared/schema";
+import { annuityFactor, monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
 export interface IncomeSource {
   source: "document" | "application" | "coach" | "goal";
@@ -765,9 +766,8 @@ export async function buildBorrowerGraph(userId: string): Promise<BorrowerGraph>
     const monthlyIncome = bestAnnualIncome / 12;
     const maxHousingPayment = monthlyIncome * 0.43 - (totalMonthlyDebts || 0);
     if (maxHousingPayment > 0) {
-      const rate = 0.065 / 12;
-      const term = 360;
-      const factor = (Math.pow(1 + rate, term) - 1) / (rate * Math.pow(1 + rate, term));
+      // 6.5% assumed rate, expressed as a percent for the shared helper.
+      const factor = annuityFactor(6.5, 360);
       estimatedMaxPurchase = Math.round(maxHousingPayment * factor * 0.85);
     }
   }
@@ -1217,9 +1217,9 @@ export async function getPropertyAffordability(
   const estimatedDownPayment = Math.round(propertyPrice * downPaymentPercent);
   const loanAmount = propertyPrice - estimatedDownPayment;
 
-  const rate = 0.065 / 12;
+  // 6.5% assumed rate, expressed as a percent for the shared helper.
   const term = 360;
-  const monthlyPI = loanAmount * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1);
+  const monthlyPI = monthlyPrincipalAndInterest(loanAmount, 6.5, term);
   const monthlyTaxIns = propertyPrice * 0.015 / 12;
   const estimatedMonthlyPayment = Math.round(monthlyPI + monthlyTaxIns);
 
