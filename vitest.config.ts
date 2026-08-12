@@ -226,6 +226,10 @@ export default defineConfig({
       "tests/leaseCapture.test.ts",
       "tests/urlaRowContent.test.ts",
       "tests/urlaCoApplicantRemoval.test.ts",
+      // CTO_ROADMAP §3.2 — the compliance dashboard's per-application MISMO
+      // validation, now batched. Pins that the batched loader and the
+      // single-application one produce IDENTICAL verdicts.
+      "tests/mismoValidationBatch.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a

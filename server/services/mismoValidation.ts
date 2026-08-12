@@ -9,8 +9,11 @@ import {
   type PlatformFeeSchedule,
 } from "./loanCosts";
 import { activeFeeSchedule } from "./platformFeeSchedule";
+import type { CompleteUrlaData } from "../storage/urlaBatch";
 import type {
   LoanApplication,
+  LoanCondition,
+  Document,
   UrlaPersonalInfo,
   EmploymentHistory,
   UrlaAsset,
@@ -587,16 +590,54 @@ function validateHmdaLar(application: LoanApplication): MISMOValidationResult["h
 // Main validator
 // ---------------------------------------------------------------------------
 
-export async function validateMISMOCompleteness(applicationId: string): Promise<MISMOValidationResult> {
+/**
+ * Everything the validator reads. Loading is separated from scoring so a list
+ * view can load N applications in a fixed number of queries and still run the
+ * IDENTICAL scoring function — the compliance dashboard used to call the
+ * single-application path in a loop, which cost 15 queries per file
+ * (CTO_ROADMAP §3.2, "the last N+1 loop").
+ *
+ * Verdicts are unchanged by construction: there is exactly one scoring
+ * implementation and both entry points call it. Only the loading differs.
+ */
+export interface MISMOValidationInputs {
+  application: LoanApplication;
+  urlaData: CompleteUrlaData;
+  conditions: LoanCondition[];
+  documents: Document[];
+  borrowerProfile: BorrowerProfile | undefined;
+  feeSchedule: PlatformFeeSchedule;
+}
+
+/** Load one application's validator inputs. Throws when the application is gone. */
+async function loadValidationInputs(applicationId: string): Promise<MISMOValidationInputs> {
   const application = await storage.getLoanApplication(applicationId);
   if (!application) {
     throw new Error("Application not found");
   }
 
-  const urlaData = await storage.getCompleteUrlaData(applicationId);
-  const conditions = await storage.getLoanConditionsByApplication(applicationId);
-  const documents = await storage.getDocumentsByApplication(applicationId);
-  const borrowerProfile = await storage.getBorrowerProfileByUserId(application.userId);
+  const [urlaData, conditions, documents, borrowerProfile, feeSchedule] = await Promise.all([
+    storage.getCompleteUrlaData(applicationId),
+    storage.getLoanConditionsByApplication(applicationId),
+    storage.getDocumentsByApplication(applicationId),
+    storage.getBorrowerProfileByUserId(application.userId),
+    activeFeeSchedule(),
+  ]);
+
+  return { application, urlaData, conditions, documents, borrowerProfile, feeSchedule };
+}
+
+export async function validateMISMOCompleteness(applicationId: string): Promise<MISMOValidationResult> {
+  return evaluateMISMOCompleteness(await loadValidationInputs(applicationId));
+}
+
+/**
+ * Score one application. Pure: no storage, no clock beyond what the inputs
+ * carry, no vendor calls — same inputs, same verdict.
+ */
+export function evaluateMISMOCompleteness(inputs: MISMOValidationInputs): MISMOValidationResult {
+  const { application, urlaData, conditions, documents, borrowerProfile, feeSchedule } = inputs;
+  const applicationId = application.id;
 
   const hmdaRows = urlaData.hmdaDemographics || [];
   const primaryHmda =
@@ -735,7 +776,7 @@ export async function validateMISMOCompleteness(applicationId: string): Promise<
   const armValidation = validateArm(application);
   armValidation.issues.forEach(i => criticalErrors.push(`ARM: ${i}`));
 
-  const pointsAndFees = evaluatePointsAndFees(application, await activeFeeSchedule());
+  const pointsAndFees = evaluatePointsAndFees(application, feeSchedule);
   if (pointsAndFees.issue) {
     criticalErrors.push(`ATR/QM: ${pointsAndFees.issue}`);
   }
@@ -824,9 +865,64 @@ export async function validateMISMOCompleteness(applicationId: string): Promise<
   };
 }
 
-export async function getApplicationValidationSummary(applicationId: string) {
-  const validation = await validateMISMOCompleteness(applicationId);
+/**
+ * Score many applications with a fixed number of queries (13 total: 9 URLA + 1
+ * conditions + 1 documents + 1 borrower profiles + 1 cached fee schedule)
+ * rather than 15 per application.
+ *
+ * Takes the application ROWS, not ids: every caller is a list view that already
+ * holds them, and re-reading each one was itself part of the N+1.
+ *
+ * Applications whose scoring throws are omitted, matching the per-application
+ * callers' `.catch(() => null)` — a single unscoreable file must not blank the
+ * whole dashboard.
+ */
+export async function validateMISMOCompletenessBatch(
+  applications: LoanApplication[],
+): Promise<Map<string, MISMOValidationResult>> {
+  const results = new Map<string, MISMOValidationResult>();
+  if (applications.length === 0) return results;
 
+  const applicationIds = applications.map(a => a.id);
+  const userIds = Array.from(new Set(applications.map(a => a.userId)));
+
+  const [urlaByApp, conditionsByApp, documentsByApp, profilesByUser, feeSchedule] =
+    await Promise.all([
+      storage.getCompleteUrlaDataBatch(applicationIds),
+      storage.getLoanConditionsByApplications(applicationIds),
+      storage.getDocumentsByApplications(applicationIds),
+      storage.getBorrowerProfilesByUserIds(userIds),
+      activeFeeSchedule(),
+    ]);
+
+  for (const application of applications) {
+    const urlaData = urlaByApp.get(application.id);
+    // A missing URLA bucket means the batch loader was not asked for this id;
+    // scoring it against empty data would report a real file as 0% complete, so
+    // skip it the way an individual failure is skipped.
+    if (!urlaData) continue;
+    try {
+      results.set(
+        application.id,
+        evaluateMISMOCompleteness({
+          application,
+          urlaData,
+          conditions: conditionsByApp.get(application.id) ?? [],
+          documents: documentsByApp.get(application.id) ?? [],
+          borrowerProfile: profilesByUser.get(application.userId),
+          feeSchedule,
+        }),
+      );
+    } catch {
+      // Omitted, as the per-application path does.
+    }
+  }
+  return results;
+}
+
+/** The dashboard-shaped summary of an already-computed validation. */
+export function toValidationSummary(validation: MISMOValidationResult) {
+  const applicationId = validation.applicationId;
   return {
     applicationId,
     score: validation.overallScore,
@@ -852,12 +948,24 @@ export async function getApplicationValidationSummary(applicationId: string) {
   };
 }
 
-export async function getBatchValidationStatus(applicationIds: string[]) {
-  const results = await Promise.all(
-    applicationIds.map(id => getApplicationValidationSummary(id).catch(() => null))
-  );
+export async function getApplicationValidationSummary(applicationId: string) {
+  return toValidationSummary(await validateMISMOCompleteness(applicationId));
+}
 
-  return results.filter(r => r !== null);
+/**
+ * Dashboard summaries for many applications, in one batched load.
+ *
+ * Takes rows rather than ids: this used to map ids through the
+ * single-application path, which re-read each application and made 15 queries
+ * per file. It had no callers, so the shape was free to fix — but leaving the
+ * N+1 spelling in place would have handed it to whoever called it next.
+ */
+export async function getBatchValidationStatus(applications: LoanApplication[]) {
+  const validations = await validateMISMOCompletenessBatch(applications);
+  return applications
+    .map(a => validations.get(a.id))
+    .filter((v): v is MISMOValidationResult => v !== undefined)
+    .map(toValidationSummary);
 }
 
 export interface GseSubmissionGate {
