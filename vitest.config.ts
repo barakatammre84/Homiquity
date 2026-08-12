@@ -51,6 +51,7 @@ export default defineConfig({
       "tests/lenderApprovalControl.test.ts",
       "tests/compensationClawback.test.ts",
       "tests/revenueRecognition.test.ts",
+      "tests/costEntryDisclosureImpact.test.ts",
       "tests/commissionPayout.test.ts",
       "tests/feeProvenanceAndCosts.test.ts",
       "tests/leDisclosedFeeProvenance.test.ts",
