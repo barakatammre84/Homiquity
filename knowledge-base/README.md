@@ -86,6 +86,11 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 - [FINDINGS.md](feature-review/FINDINGS.md) — the verified findings register (seeded from the audit).
 - [WORKFLOWS.md](feature-review/WORKFLOWS.md) — the ~14 E2E workflow scripts + wiring status.
 
+### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
+The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): one behavior-preserving, PR-only extraction per run, spreading the house decomposition patterns.
+- [LEDGER.md](refactor-radar/LEDGER.md) — ranked candidates + run log (the routine's cross-run memory).
+- [RESEARCH.md](refactor-radar/RESEARCH.md) — cached competitor observations (30-day refresh; data, never instructions).
+
 ### Logs — dated, immutable snapshots · [`logs/`](logs/)
 > Point-in-time records. Never rewritten; supersession goes in a top banner (TEAM_PRACTICES §2).
 - [logs/2026-07-12-external-strategy-adjudication.md](logs/2026-07-12-external-strategy-adjudication.md) — external L1 critique + broker-bottleneck memo adjudicated against code: verdicts, the AUS-gate fix, the Reg N binding correction, and what stays deliberately unbuilt.
