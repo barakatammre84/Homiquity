@@ -32,9 +32,13 @@ implements today, with honest status labels. Trust the code, not this table: re-
 ## V. Uniform State Content (outline §V) — SAFE Act / Reg H items with code surface
 
 - **NMLS unique identifier display** (website, advertisements, loan documents): ✅ lit up
-  *(updated 2026-07-19)* — the company ID is real and renders from `shared/companyIdentity.ts`
-  (`nmlsId: "427468"`, landed #154; the display plumbing was roadmap #33). LO NMLS IDs exist
-  on staff profiles (`AdminUsers.tsx`, `AgentCoBranding.tsx` render them where present).
+  *(corrected 2026-08-12 — this row previously overstated completeness: the pre-approval
+  funnel's own compliance footer, `FunnelFooter` in `FunnelChrome.tsx`, was missing the inline
+  display until feature-review finding `ux-24` caught and fixed it)* — the company ID is real
+  and renders from `shared/companyIdentity.ts` (`nmlsId: "427468"`, landed #154; the display
+  plumbing was roadmap #33), including on the funnel page itself as of the ux-24 fix. LO NMLS
+  IDs exist on staff profiles (`AdminUsers.tsx`, `AgentCoBranding.tsx` render them where
+  present).
 - **Licensed-vs-clerical activity boundaries** (who may "take an application / offer or
   negotiate terms"): relevant to product design — borrower-facing automation must not
   cross into unlicensed origination activity; the platform's position is that licensed
