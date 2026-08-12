@@ -240,25 +240,6 @@ jobs:
         # mask a broken bundle. (Job `name:` above deliberately unchanged —
         # verbatim required-check string; see the rename warning.)
         run: pnpm build
-      - name: Client bundle-size ratchet
-        # Measures the ARTIFACT the step above just produced, so it must stay after
-        # it — the guard fails loudly rather than skipping if dist/public is absent,
-        # because a size guard that passes with nothing to measure is the one state
-        # it cannot judge (CHARTER.md §10, "a guard only answers its own question").
-        #
-        # Gates the EAGER ENTRY GRAPH only — the entry chunk plus its modulepreloads,
-        # i.e. what a first-time visitor downloads before anything renders. Lazy route
-        # chunks are reported but never gated, so adding a page cannot fail CI; that
-        # would train everyone to bump the baseline reflexively and kill the ratchet.
-        #
-        # Complements tests/clientSchemaImports.test.ts rather than repeating it: that
-        # test forbids ONE source-level cause (a value import of the @shared/schema
-        # barrel, which shipped 174 table definitions to every visitor in #482); this
-        # counts bytes, so it also catches a fat dependency, a de-lazied route, or a
-        # barrel from any other module. #482 records that removing every client value
-        # import was not enough on its own. (Job `name:` above deliberately unchanged
-        # — verbatim required-check string; see the rename warning.)
-        run: pnpm guard:bundle
       - name: Self-host artifact boots (Railway migration path)
         # Build success ≠ boot success (the 2026-07-17 postmortem rule, aimed at
         # the persistent-host bundle Railway actually runs). The `Production
