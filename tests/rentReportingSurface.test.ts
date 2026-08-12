@@ -99,7 +99,13 @@ describe("capture path", () => {
   it("posts to the email-capture endpoint, not the consumer mortgage lead intake", () => {
     // /api/leads mandates a TrustedForm certificate we cannot mint on our own page and
     // fires speed-to-lead outreach. A waitlist signup is not a mortgage inquiry.
-    expect(src).toContain('fetch("/api/email-capture"');
+    //
+    // Matches the ENDPOINT, not the transport that calls it. This used to pin
+    // `fetch("/api/email-capture"` and broke when the page moved onto apiRequest
+    // (so a rejected signup stops rendering as a success). The compliance claim
+    // is about which endpoint receives the address — asserting the caller's
+    // spelling made a transport refactor look like a compliance regression.
+    expect(src).toContain('"/api/email-capture"');
     // Checked against the comment-stripped source: the header comment names /api/leads
     // precisely to record why it is NOT used, and that explanation must not fail its own test.
     expect(visibleCopy).not.toContain("/api/leads");

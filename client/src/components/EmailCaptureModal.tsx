@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { friendlyApiError } from "@/lib/errorMessage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Mail, ArrowRight, Shield } from "lucide-react";
@@ -87,20 +89,35 @@ export function EmailCaptureModal() {
     const form = e.target as HTMLFormElement;
     const honeypot = (form.elements.namedItem("website") as HTMLInputElement)?.value || "";
     try {
-      await fetch("/api/email-capture", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          source: location,
-          website: honeypot,
-        }),
+      // apiRequest, not a raw request. A bare `await` on the browser primitive
+      // only REJECTS on a network error, so with no `res.ok` check every server
+      // rejection counted as a success: the modal closed, the visitor was marked
+      // captured, and we toasted "You're on the list!" while nothing was stored.
+      //
+      // Both rejections are reachable. The capture endpoint answers 400 on a
+      // Zod-invalid address — its rule is stricter than the regex above — and
+      // 429 once the limiter trips at 5 per 15 min per IP (server/app.ts
+      // emailCaptureLimiter), which a shared office or CGNAT mobile IP reaches
+      // easily. apiRequest throws ApiError on any non-2xx.
+      //
+      // The endpoint is public with no auth middleware, so it cannot answer 401
+      // and the session-expiry redirect can never fire. That matters because
+      // this modal renders on /learn, /resources and /article — none of which
+      // are in queryClient's PRE_AUTH_PATHS.
+      await apiRequest("POST", "/api/email-capture", {
+        email: email.trim(),
+        source: location,
+        website: honeypot,
       });
       setState({ dismissed: false, captured: true });
       setShow(false);
       toast({ title: "You're on the list!", description: "We'll send you helpful mortgage tips and rate updates." });
-    } catch {
-      toast({ title: "Something went wrong", description: "Please try again.", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: "We couldn't add you just yet",
+        description: friendlyApiError(error, "Please check your email address and try again."),
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
