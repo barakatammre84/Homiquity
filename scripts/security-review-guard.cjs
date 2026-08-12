@@ -114,6 +114,30 @@ const LINE_TRIGGERS = [
       (file === "package.json" || file.startsWith("server/")) &&
       /\b(stripe|dwolla|braintree|adyen|@moov-io|marqeta|unit-finance|paymentIntent|PaymentInitiation|TransferAuthorization)\b/i.test(line),
   },
+  {
+    // §9 names the three vault FILES, but not the code that CALLS them — so a PR that
+    // encrypts and decrypts borrower PII in a brand-new module produced zero triggers.
+    // Found the way the others were: by running detectTriggers() over a real change set
+    // (the lease-capture PR, which encrypts a landlord email and a property address) and
+    // getting "no §9 trigger among 11 changed file(s)".
+    //
+    // Same shape as the #433 webhook gap, inverted. There, the route was a trigger and
+    // the delegate that did the actual auth was not. Here, the vault is a trigger and
+    // its callers are not — and the caller is where a plaintext write, a dropped keyId,
+    // or a decrypt-swallowed-to-null actually happens.
+    //
+    // NARROW BY CONSTRUCTION, not by hope: exactly six files in the repo call these
+    // functions, and three of them (encryptionService, piiVault, ssnVault) are already
+    // PATH_TRIGGERS. Scoped to server/ and shared/ so this script and its own tests —
+    // which necessarily name the functions — cannot self-trigger, the false positive
+    // that went live on RESPONSE_BODY_LOG_ALLOWLIST.
+    label: "PII encryption call site",
+    match: (line, file) =>
+      (file.startsWith("server/") || file.startsWith("shared/")) &&
+      /\b(encryptSensitiveData|decryptSensitiveData|encryptPiiField|decryptPiiField|encryptSsnToColumns|decryptSsnFromRow)\s*\(/.test(
+        line,
+      ),
+  },
 ];
 
 // -----------------------------------------------------------------------------
