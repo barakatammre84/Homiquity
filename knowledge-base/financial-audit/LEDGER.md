@@ -136,6 +136,43 @@ which is why Phase 0.4 reads open PRs *and* recent branches, not just `main`.
 | `F-0812-03` | Lender authorization writable through the generic PATCH, audited by field name only | `done` 2026-08-12 — audited approval endpoint; columns off the generic write path |
 | `F-0812-04` | `epoClawbackDays` had no write surface, pinning the reserve to an assumed window | `done` 2026-08-12 — captured at approval, corrected via contract-terms; plus `/admin/lenders` |
 
+## Triage of the four landed audits (2026-08-12 tick 2)
+
+21 findings across 08-07, 08-09, 08-10 and 08-11 — four audits of the **same codebase**, so most
+are duplicates of each other or already closed by later work. Every status below was **verified
+against HEAD**, not taken from the log that raised it. Date-qualified per the scheme above.
+
+### Closed — do not re-raise
+
+| id | finding | closed by |
+|----|---------|-----------|
+| `F-0810-01` | A simulated confirmation counts as the lender's obligation; honor exposure $0 | `F-0812-01` — verified: `isLenderConfirmed` requires `simulated === false` |
+| `F-0810-02` | The rate-lock route accepts fictional demo lenders | `F-0812-01` — verified: route consumes `evaluateLenderLockEligibility` |
+| `F-0810-03` | No implemented path to approve a lender — the revenue switch does not exist | `F-0812-03` + `/admin/lenders` — verified: approval endpoint + UI |
+| `F-0810-04` | Two surfaces compute EPO exposure over different windows | 08-08 (#469) passed `epoClawbackDays` into the live register; `F-0812-04` gave it a write path |
+| `F-0810-06` | Working capital unmeasured — the ledgers never joined on time | 08-08 (#469) — verified: `computeWorkingCapitalPosition` + `daysToCash` |
+| `F-0809-04` | No cash-conversion figure | same as above |
+| `F-0807-01` | **The counterparty gate does not exist at price formation** | **fixed this tick** — see below |
+
+### Open, ranked
+
+| rank | id(s) | finding | why it is ranked here |
+|------|-------|---------|----------------------|
+| 1 | `F-0809-02` · `F-0811-03` · `F-0808-03` | **Revenue is single-channel: the platform's own ~$2,000/file is revenue nowhere.** 20–31.5% of a funded loan's revenue is invisible and a borrower-paid file reports a *negative* margin | Three audits found it independently. Policy already decided 2026-08-08 (**recognize on receipt**); roadmap 3.14. **Blocked on a real question:** there is no payment rail (F-16 — deliberately), so no receipt event exists to recognize against. Needs the owner to say what counts as receipt before code |
+| 2 | `F-0811-05` · `F-0809-03` | The comp ledger is blind to the compensation model, so **every borrower-paid file reads as a lender short-pay** | Verified open: no `compensationModel` in `compensationLedger.ts`. Same root as rank 1 and should land with it — fixing revenue without this just moves the wrong number |
+| 3 | `F-0807-03` | A staff-keyed cost entry silently re-prices four **zero-tolerance** TRID lines with no changed-circumstance gate | Borrower-facing disclosure risk; the `resolveActualFeesFor` bridge got a `simulated` filter (#351) but never a CoC gate |
+| 4 | `F-0810-05` | Over-paid compensation is booked as revenue and carried as no liability | Verified open: `over_paid` is classified in the comp ledger but appears nowhere in `contingentLiabilities.ts`. Lenders reclaim overpayments |
+| 5 | `F-0811-02` | The QM fee trim is an unbudgeted, unrecorded revenue concession | The trim (08-05 F-17 resolution) reduces our own fees to fit the cap and records nothing, so the concession is invisible in margin |
+| 6 | `F-0811-07` | No file records which fee-schedule version priced it; the pricing fallback is silent | **Partly closed** — `feeScheduleVersion` exists on `loan_estimate_disclosures` and is written by `leDisclosureBaseline`. Residual is the silent fallback |
+
+### Not code — escalations carried forward
+
+| id(s) | why |
+|-------|-----|
+| `F-0811-01` | Revenue per file is pinned by the QM cap; the comp lever is worth ~$0 under $250k. Analysis, and the same business lever as F-17 — a comp-plan negotiation, not a change |
+| `F-0809-01` | The §1026.36(d)(2) guard covers the origination fee only. **Flagged, never asserted** — Reg Z text unverifiable in-session (`F-0812-06`) |
+| `F-0807-04` | The register has no denominator: company capital is represented nowhere, so "adequate" is uncomputable | Same item as `F-0812-05` (minimum net worth) — needs the Illinois statute |
+
 ## Standing signals — where findings keep coming from
 
 Recorded because three audits found the same *shapes*, not the same bugs:
@@ -182,3 +219,4 @@ rule. That agreement is evidence the rule is right, and it is why the two change
 | 2026-08-12 t1 | `3ba30c9` | refresh-only (R3) | **Branch was 15 commits behind** — refresh was the whole tick, exactly as R3 intends. Merged `origin/main`: 7 overlapping files, 3 conflicts (`costLedger.ts`, `submissions.ts`, KB README), all resolved additively — the two sessions' changes were complementary, not contradictory. `contingentLiabilityRegister.ts` auto-merged and was re-verified by hand (both `epoClawbackDays` and `simulated` present) because a silent auto-merge in a money path is not evidence. 3,079 tests green post-merge. **Found the id collision above** — the first thing the team-sync rail caught |
 | 2026-08-12 t1b | `10329fa` | coordination | Read open PRs, not just `main` — found **PR #489 carrying four further audits** (08-07, 08-09, 08-10, 08-11). The real chain is nine audits, one per day; this ledger had claimed three. Six had minted `F-20`. Coordinated by comment on #489 rather than editing another session's branch. **Date-qualified ids adopted**; cron moved hourly → weekly on the evidence that the queue is not draining |
 | 2026-08-12 t1c | `2bef0b2` | refresh-only (R3) | **#489 merged by the owner** minutes after the coordination comment, landing all four stranded audits. Eight of nine audits are now on `main` — the audit history is shared memory for the first time. Refreshed onto it: one conflict, `knowledge-base/README.md`, the exact serial-append pattern both this board and #489's own description had predicted; resolved by keeping both sides in date order. Ledger corrected from "stranded" to landed |
+| 2026-08-12 t2 | `4789008` | audit + fix | Worked the four landed audits. Triaged 21 findings against HEAD: **7 already closed**, 6 open and ranked, 3 escalations. Fixed `F-0807-01` — the anti-steering option set counted fictional creditors toward the §1026.36(e)(3)(i) sufficiency number, reporting `creditorsQuoted: 3 / singleCreditor: false` when the true count of creditors we do business with is **zero** |
