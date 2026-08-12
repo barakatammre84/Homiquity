@@ -62,7 +62,11 @@
 // which is what actually has to agree; the matcher is rightly per-channel.
 import { useEffect, useRef } from "react";
 import type { UseFormReturn } from "react-hook-form";
-import { CREDIT_SCORE_BAND_VALUES, type PreApprovalFormData } from "@shared/schema";
+// CREDIT_SCORE_BAND_VALUES from the table-free module, NOT the schema barrel:
+// a value import of @shared/schema defeats tree-shaking and ships all 174
+// Drizzle table definitions to every visitor (#482, tests/clientSchemaImports).
+import { CREDIT_SCORE_BAND_VALUES } from "@shared/preApprovalForm";
+import type { PreApprovalFormData } from "@shared/schema";
 import { readCalculatorPrefill, type CalculatorPrefill } from "@/lib/calculatorPrefill";
 
 /** Figures that map straight onto a funnel currency field. */
