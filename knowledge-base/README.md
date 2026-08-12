@@ -24,6 +24,11 @@ doc-drift bug to fix):
 ### Handbook — how the system is built · [`handbook/`](handbook/)
 - [DEVELOPER_PLAYBOOK.md](handbook/DEVELOPER_PLAYBOOK.md) — the map: where code lives, the core
   workflows, the golden rules.
+- [URLA_FORM_REFACTOR_TRAP.md](handbook/URLA_FORM_REFACTOR_TRAP.md) — why the "obviously pure"
+  helpers in `URLAForm.tsx` must **not** be extracted. Three adversarial reviews refuted all
+  three candidate extractions; each failure mode is invisible to `tsc`, to the full test suite
+  and to every CI guard, and the worst writes a **co-applicant's PII into the primary
+  borrower's rows**. Read before touching that file.
 - [app-guide/](handbook/app-guide/) — the 11-chapter subsystem handbook (read in order, or jump):
   - [01 — Start Here](handbook/app-guide/01-start-here.md) · [02 — Architecture, Entry & Exit Points](handbook/app-guide/02-architecture.md) · [03 — Database & Schema](handbook/app-guide/03-database.md)
   - [04 — API Surface](handbook/app-guide/04-api-routes.md) · [05 — Data Flow: A Loan's Journey](handbook/app-guide/05-data-flow.md) · [06 — Auth, Security & Secrets](handbook/app-guide/06-auth-security-secrets.md)
