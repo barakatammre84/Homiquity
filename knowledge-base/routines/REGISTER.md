@@ -21,7 +21,7 @@ Humans: claim too. A routine cannot see your editor.
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| frontend-wiring-audit | the remaining **71** `client/src` singleton-`queryClient` importers (all except `lib/logout.ts`) | `.claude/worktrees/pensive-noether-5232f2` | `claude/queryclient-migration-batch2` | 2026-08-12T21:52Z | Finish the `useQueryClient()` migration started in #501. `lib/logout.ts` is deliberately excluded — it calls `queryClient.clear()` from a plain async function, not a render, so the hook cannot apply there. |
+| _(none)_ | — | — | — | — | — |
 
 ## Recently released
 
@@ -29,5 +29,6 @@ Keep the last ~10 for collision forensics; trim older rows freely.
 
 | routine / session | target | released (UTC) | outcome |
 |---|---|---|---|
+| frontend-wiring-audit 2026-08-12 | the remaining 71 singleton-`queryClient` importers | 2026-08-12 | **shipped** — #504, merged and verified in prod via `/api/health`. The migration is now COMPLETE: `client/src/lib/logout.ts` is the only module-singleton consumer left and carries a comment explaining why it must stay (plain async fn, not a render; and `clear()` on the app's own cache is exactly what it wants). |
 | frontend-wiring-audit 2026-08-12 | the 12 `client/src` components importing the singleton `queryClient` **with** a `.test.tsx` sibling | 2026-08-12 | **shipped** — migrated to `useQueryClient()` on `claude/frontend-standardization-2` (`384ab1a`). The other **72** singleton importers are untouched and unclaimed; take them in tested-first batches. Note `TestLogin.test.tsx` had been rendering with no `QueryClientProvider` at all — only the singleton made that pass. |
 | refactor-radar 2026-08-08 | `client/src/components/ScenarioSimulatorDialog.tsx` (RR-004) | 2026-08-12 | **abandoned** — run crashed mid-flight and left its worktree behind, hard-blocking every later radar run (`SKILL.md` Phase 0.4). Work snapshotted to `wip/radar-2026-08-08-scenario-simulator-abandoned` (do not merge; superseded by merged PR #467), worktree removed, RR-004 returned to `open`. |
