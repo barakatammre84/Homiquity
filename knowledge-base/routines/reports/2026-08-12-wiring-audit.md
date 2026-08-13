@@ -56,3 +56,17 @@ The whole path landed in **`6407119` (#400), 2026-08-05** — *"fix(launch): pre
 6. **Do not "clean up" `URLAForm.tsx`** — `knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md` (landed today, #486) refutes eight extraction proposals; the worst writes a co-applicant's PII into the primary borrower's rows.
 
 STATUS: WARN
+
+---
+
+## Addendum — iteration 5 (queryClient migration complete)
+
+**#504 merged and verified in prod** (`/api/health` → `634cdcf`, polled to confirm; probes 1–3 returned a peer's deploy mid-rollout, which is why a single probe is not proof).
+
+The remaining **71** singleton importers now use `useQueryClient()`. The migration is **complete**: `client/src/lib/logout.ts` is the only module-singleton consumer left, deliberately, and now carries a comment saying so — `logout()` is a plain async function called from click handlers, not a render, so a hook there breaks the Rules of Hooks; and `clear()` wiping the app's own cache is exactly the case where the singleton is right.
+
+Two custom hooks (`useAdminCrudMutations`, `useTaskOperations`) migrated cleanly — `useQueryClient()` is legal inside a hook.
+
+**Process finding worth keeping.** The repo squash-merges (11 of the last 12 main commits), which breaks any branch stacked on an open PR: once the base squashes, the stacked branch's copies become duplicates and `git rebase origin/main` conflicts on the first one. The fix is `git rebase --onto origin/main <base-tip> <branch>`. That needs a force-push, **which is denied in this session** — so #497 was closed and reopened as #501 from a fresh branch. When main moved again under #504, the answer was `git merge origin/main` (no force required) rather than another rebase. One real conflict, in `Verification.tsx`: #505 added `useEffect, useRef` while this branch removed the singleton import; both kept.
+
+STATUS: OK

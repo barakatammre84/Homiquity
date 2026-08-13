@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Home } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressInput } from "@/components/AddressInput";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 
 /** First-run state: no homeowner profile exists yet, so collect the loan and property basics. */
 export function SetupForm() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     propertyAddress: "",

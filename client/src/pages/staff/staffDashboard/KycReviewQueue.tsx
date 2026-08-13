@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,6 +97,7 @@ function borrowerLabel(screening: PendingScreening) {
 }
 
 export function KycReviewQueue() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
   const [active, setActive] = useState<PendingScreening | null>(null);

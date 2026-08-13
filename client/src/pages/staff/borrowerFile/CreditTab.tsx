@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { Link } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +52,7 @@ export function CreditTab({
   applicationId: string;
   canRevokeLetter: boolean;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: creditData, isLoading: creditLoading } = useQuery<CreditSummary>({

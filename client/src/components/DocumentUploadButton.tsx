@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, dashboardKeys, applicationResourceKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUpload } from "@/hooks/use-upload";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -39,6 +39,7 @@ export function DocumentUploadButton({
   applicationId?: string | null;
   onDone?: () => void;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { uploadFile, progress } = useUpload();
   const inputRef = useRef<HTMLInputElement>(null);

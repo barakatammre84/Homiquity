@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isStaffRole } from "@shared/roles";
 import type { TeamMessage } from "@shared/schema";
@@ -12,6 +12,7 @@ import { MessageThread } from "./messages/MessageThread";
 import { MessageComposer } from "./messages/MessageComposer";
 
 export default function Messages() {
+  const queryClient = useQueryClient();
   const params = useParams<{ memberId?: string }>();
   const memberId = params.memberId;
   const { user } = useAuth();

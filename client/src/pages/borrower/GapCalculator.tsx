@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import {
   type GoalFormInput,
   type GoalFormValues,
 } from "./GapGoalOnboardingForm";
-import { queryClient, apiRequest, homeownershipGoalKeys } from "@/lib/queryClient";
+import { apiRequest, homeownershipGoalKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { HomeownershipGoal, CreditAction, SavingsTransaction, JourneyMilestone } from "@shared/schema";
 import type { CreditRecommendation, GapAnalysis } from "./gapCalculator/types";
@@ -28,6 +28,7 @@ import { MilestonesTab } from "./gapCalculator/MilestonesTab";
 import { ApplyCtaCard } from "./gapCalculator/ApplyCtaCard";
 
 export default function GapCalculator() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showOnboarding, setShowOnboarding] = useState(false);
 

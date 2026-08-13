@@ -1,5 +1,5 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,7 @@ interface ReferringPartner {
 }
 
 export function PartnerSharingCard() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data } = useQuery<ReferringPartner>({

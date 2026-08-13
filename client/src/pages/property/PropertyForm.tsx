@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Footer } from "@/components/Footer";
 import { PageShell } from "@/components/PageShell";
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AddressInput } from "@/components/AddressInput";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import type { Property } from "@shared/schema";
 import { ChevronLeft } from "lucide-react";
 
@@ -31,6 +31,7 @@ const STATES = [
 ];
 
 export default function PropertyForm() {
+  const queryClient = useQueryClient();
   const params = useParams();
   const [, navigate] = useLocation();
   const propertyId = params?.propertyId as string | undefined;

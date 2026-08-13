@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import {
   BookOpen,
   Star,
 } from "lucide-react";
-import { apiRequest, queryClient, getPublicQueryFn } from "@/lib/queryClient";
+import { apiRequest, getPublicQueryFn } from "@/lib/queryClient";
 import type { Faq, ContentCategory } from "@shared/schema";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,7 @@ import { SEOHead } from "@/components/SEOHead";
 import { faqPageSchema, breadcrumbSchema } from "@/lib/structuredData";
 
 export default function FAQ() {
+  const queryClient = useQueryClient();
   usePageView("/faq");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);

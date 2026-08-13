@@ -104,6 +104,7 @@ when reasoning about overlap. `taskId` is the scheduler key.
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified rows in `FINDINGS.md` |
 | 18:40 | `30 18 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
 | Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | vendor/contract board |
+| Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | furnishing-gate posture + the two procurement asks |
 | Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | at most one PR |
 
 The wiring audit keeps its original unwieldy `taskId` on purpose — renaming it would discard its
@@ -185,6 +186,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | QA Sweep | nothing | — (findings only; fixes are a human or Blitz session) |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
 | Vendor & Procurement | nothing | `.env`, Railway config, anything outbound |
+| Rent Reporting Watch | its own report file only | **every** rent/furnishing code path — it exists to *observe* the gates, and a routine that can open one is not a watchdog |
 | Refactor Radar | `client/src/**` minus `components/ui/**` | its own R4 off-limits list — unchanged |
 
 **Off limits to every routine, always:** `shared/schema/**` and `migrations/**` without a same-PR
