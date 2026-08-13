@@ -34,24 +34,37 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    # NO `branches:` FILTER, deliberately — every PR is gated, whatever its base.
+    #
+    # This carried `branches: [main]` until 2026-08-13. The effect was that a PR
+    # based on another feature branch matched nothing and got ZERO check-runs for
+    # its entire life, then ran for the first time only when someone retargeted it
+    # to main — which is the moment they are about to merge it, i.e. the latest
+    # possible moment and the one where a red result is most expensive.
+    #
+    # Worse, a zero-check PR does not LOOK unchecked. `gh pr view` reports
+    # `mergeStateStatus: CLEAN`, which means "no merge conflicts" and says nothing
+    # about CI; on a stacked PR the two are indistinguishable at a glance. Observed
+    # on #517 and #518 (2026-08-13), both reported CLEAN with no run ever scheduled.
+    # PR #425 (2026-08-06) was the same shape with auto-merge armed — nothing was
+    # stopping it.
+    #
+    # Only the `gate` job can fire here: `migrate-prod` is `push ||
+    # workflow_dispatch` and `verify-deploy` is `push`, so neither can be reached by
+    # a pull_request event no matter what its base is. And the §9 guard diffs
+    # `github.event.pull_request.base.sha` — the PR's REAL base — so a stacked PR is
+    # checked against its parent branch and sees only its own changes.
+    #
     # `types` is explicit because the DEFAULT set (opened, synchronize, reopened)
-    # silently skips two events this repo actually relies on:
+    # silently skips two events this repo relies on:
     #
-    #   edited      — fires when a PR's BASE BRANCH is retargeted. A stacked PR
-    #                 opened against another feature branch does not match
-    #                 `branches: [main]`, so it gets no run; retargeting it to
-    #                 main then produces `edited`, which the default set ignores.
-    #                 Result: a PR sitting on main with ZERO checks and
-    #                 auto-merge armed — nothing is stopping it. Observed on
-    #                 PR #425 (2026-08-06): 0 check-runs until it was manually
-    #                 closed and reopened.
-    #
-    #                 `edited` also fires on title/body edits, which is not
-    #                 waste here: `guard:security` reads the PR BODY from the
-    #                 event payload (`github.event.pull_request.body`), so a
-    #                 re-run replays the OLD body and can never see a security
-    #                 review added after the fact. Also observed on PR #424.
+    #   edited      — fires on a base-branch retarget, which is now a re-gate
+    #                 against the NEW base rather than the first gate ever. It also
+    #                 fires on title/body edits, which is load-bearing:
+    #                 `guard:security` reads the PR BODY from the event payload
+    #                 (`github.event.pull_request.body`), so re-running an old run
+    #                 replays the OLD body and can never see a security review added
+    #                 after the fact. Observed on PR #424.
     #
     #   ready_for_review — a draft PR marked ready otherwise keeps whatever
     #                 (possibly no) checks it had as a draft.
