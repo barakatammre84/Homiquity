@@ -18,6 +18,7 @@ import { registerOnboardingRoutes } from "./onboarding";
 import { registerRealtorProgramRoutes } from "./realtorPrograms";
 import { registerGuaranteeHomeownerRoutes } from "./guaranteesHomeowner";
 import { registerScenarioWaitlistRoutes } from "./scenariosWaitlist";
+import { registerLeaseRoutes } from "./leases";
 
 export { verifyInternalStaffApplicationAccess } from "./access";
 
@@ -39,4 +40,7 @@ export function registerBorrowerRoutes(
   registerRealtorProgramRoutes(app, storage);
   registerGuaranteeHomeownerRoutes(app, storage);
   registerScenarioWaitlistRoutes(app, storage);
+  // Appended, not inserted: the calls above preserve the original registration order
+  // (= Express matching order). /api/leases* collides with nothing above it.
+  registerLeaseRoutes(app, storage);
 }

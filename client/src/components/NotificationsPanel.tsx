@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { isStaffRole } from "@shared/roles";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,7 +25,7 @@ import {
   CheckCheck,
 } from "lucide-react";
 import type { DealActivity } from "@shared/schema";
-import { queryClient, apiRequest, dashboardKeys } from "@/lib/queryClient";
+import { apiRequest, dashboardKeys } from "@/lib/queryClient";
 
 interface NotificationItem {
   id: string;
@@ -160,6 +160,7 @@ export function realNotificationToItem(n: RealNotification): NotificationItem {
 }
 
 export function NotificationsBell() {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
 

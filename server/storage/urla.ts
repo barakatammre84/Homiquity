@@ -292,6 +292,51 @@ export class UrlaStorage extends TasksStorage {
     await db.delete(urlaAssets).where(eq(urlaAssets.id, id));
   }
 
+  /**
+   * Remove one co-applicant's URLA records from an application.
+   *
+   * Keyed on the EXACT borrowerSequenceNumber, never `> 1`: sequences can be
+   * sparse or out of order (an application may carry only a co-borrower #3), so
+   * a range delete would take people the caller did not ask to remove. Sequence
+   * is also the only valid discriminator on hmda_demographics, whose borrowerId
+   * is the application's userId for EVERY borrower and cannot tell them apart.
+   *
+   * Refuses seq <= 1 outright — the primary borrower is not removable, and a
+   * bug that passed 1 here would wipe the applicant's own file.
+   *
+   * Returns per-table counts so the caller can audit what actually went.
+   */
+  async deleteCoApplicantRecords(
+    applicationId: string,
+    seq: number,
+  ): Promise<Record<string, number>> {
+    if (!Number.isInteger(seq) || seq <= 1) {
+      throw new Error(`Refusing to delete borrower sequence ${seq}: only co-applicants (seq > 1) may be removed`);
+    }
+
+    const tables = [
+      ["personalInfo", urlaPersonalInfo],
+      ["employmentHistory", employmentHistory],
+      ["assets", urlaAssets],
+      ["liabilities", urlaLiabilities],
+      ["declarations", borrowerDeclarations],
+      ["demographics", hmdaDemographics],
+    ] as const;
+
+    const removed: Record<string, number> = {};
+    for (const [label, table] of tables) {
+      const rows = await db
+        .delete(table as any)
+        .where(and(
+          eq((table as any).applicationId, applicationId),
+          eq((table as any).borrowerSequenceNumber, seq),
+        ))
+        .returning({ id: (table as any).id });
+      removed[label] = rows.length;
+    }
+    return removed;
+  }
+
   // URLA Liabilities
   async getUrlaLiabilities(applicationId: string): Promise<UrlaLiability[]> {
     return await db

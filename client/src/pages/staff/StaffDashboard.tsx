@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { queryClient, taskKeys, taskEngineKeys } from "@/lib/queryClient";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { taskKeys, taskEngineKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,7 @@ import { ReviewTab } from "./staffDashboard/ReviewTab";
 import { ComplianceTab } from "./staffDashboard/ComplianceTab";
 
 export default function StaffDashboard() {
+  const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);

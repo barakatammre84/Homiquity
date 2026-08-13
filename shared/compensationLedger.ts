@@ -24,6 +24,8 @@
 // Pure and deterministic. Persistence lives on `lender_submissions`.
 // ---------------------------------------------------------------------------
 
+import { expectedLenderRemittance } from "./revenueRecognition";
+
 export type CompensationVarianceStatus =
   /** Funded, and the remittance matches what the plan predicted. */
   | "as_expected"
@@ -62,8 +64,21 @@ export function evaluateCompensationVariance(input: {
   // and normalized here rather than at every call site.
   expectedAmount: number | string | null | undefined;
   receivedAmount: number | string | null | undefined;
+  /**
+   * The elected compensation model. Under `borrower_paid` the LENDER remits
+   * nothing — the originator is paid by the consumer — so the expectation
+   * against a remittance is ZERO and a zero receipt is `as_expected`.
+   *
+   * Omitting this reads every borrower-paid file as a lender short-pay
+   * (F-0811-05): the column has been on `lender_submissions` since the comp
+   * lifecycle shipped, and nothing read it.
+   */
+  compensationModel?: string | null;
 }): CompensationVariance {
-  const expected = numberOrNull(input.expectedAmount);
+  const expected = expectedLenderRemittance({
+    compensationModel: input.compensationModel,
+    compensationExpectedAmount: input.expectedAmount,
+  });
   const received = numberOrNull(input.receivedAmount);
 
   if (received === null) {
@@ -144,6 +159,8 @@ function numberOrNull(value: number | string | null | undefined): number | null 
 
 export interface CompensationRecord {
   status: string;
+  /** Elected comp model — decides what the LENDER is expected to remit. */
+  compensationModel?: string | null;
   fundedLoanAmount?: string | number | null;
   compensationExpectedAmount?: string | number | null;
   compensationReceivedAmount?: string | number | null;
@@ -253,7 +270,10 @@ export function summarizeCompensation(records: CompensationRecord[]): Compensati
       fundedCount += 1;
       fundedVolume += numberOrNull(record.fundedLoanAmount) ?? 0;
 
-      const expected = numberOrNull(record.compensationExpectedAmount);
+      const expected = expectedLenderRemittance({
+        compensationModel: record.compensationModel,
+        compensationExpectedAmount: record.compensationExpectedAmount,
+      });
       const received = numberOrNull(record.compensationReceivedAmount);
       expectedCompensation += expected ?? 0;
       receivedCompensation += received ?? 0;
@@ -261,7 +281,11 @@ export function summarizeCompensation(records: CompensationRecord[]): Compensati
       if (received === null) {
         awaitingRemittanceCount += 1;
       } else {
-        const variance = evaluateCompensationVariance({ expectedAmount: expected, receivedAmount: received });
+        const variance = evaluateCompensationVariance({
+          expectedAmount: record.compensationExpectedAmount,
+          receivedAmount: received,
+          compensationModel: record.compensationModel,
+        });
         if (variance.status === "short_paid") shortPaidCount += 1;
       }
     } else if (DEAD_STATUSES.has(record.status)) {

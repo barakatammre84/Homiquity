@@ -44,12 +44,37 @@ export interface AntiSteeringOption {
   adjustedRate: number;
   /** Dollar total of discount points + origination-type lender fees. */
   pointsAndFeesDollars: number;
+  /**
+   * True only when this option came from an approved, non-demo counterparty.
+   * An option the platform could not actually deliver is still shown — it is a
+   * real quote off a real rate sheet — but a consumer must be able to tell.
+   */
+  lenderApproved: boolean;
 }
 
 export interface AntiSteeringOptionSet {
   citation: "12 CFR §1026.36(e)(2)-(3)";
-  /** Distinct creditors quoted — the (e)(3)(i) "significant number" surface. */
+  /**
+   * Distinct **approved** creditors quoted — the (e)(3)(i) "significant
+   * number" surface.
+   *
+   * (e)(3)(i) measures creditors "with which the originator regularly does
+   * business". A lender at `target` has no broker agreement, and a seeded demo
+   * row is not a company at all, so neither is a creditor we do business with
+   * — regularly or otherwise. This counted every lender that produced an offer
+   * until the 2026-08-07 audit (F-0807-01): with the three seeded demo lenders
+   * it reported `creditorsQuoted: 3, singleCreditor: false`, which reads as a
+   * shopped, plausibly-compliant option set when the true count is ZERO.
+   */
   creditorsQuoted: number;
+  /** Every distinct lender quoted, approved or not. Never the (e)(3)(i) number. */
+  creditorsQuotedTotal: number;
+  /**
+   * True when NO approved creditor quoted — today's actual state, and strictly
+   * worse than `singleCreditor`. The safe harbor cannot be available on an
+   * option set containing no creditor the originator does business with.
+   */
+  noApprovedCreditors: boolean;
   options: AntiSteeringOption[];
   /**
    * True when a (B) candidate exists; false only if every offer carries a
@@ -69,7 +94,8 @@ export interface AntiSteeringOptionSet {
    *
    * Directly downstream of counterparty concentration (audit F-5): with one
    * approved wholesale lender, every option set the platform can produce is
-   * single-creditor.
+   * single-creditor. Counted over APPROVED creditors only — see
+   * `creditorsQuoted`.
    */
   singleCreditor: boolean;
 }
@@ -131,6 +157,7 @@ function toOption(key: AntiSteeringOptionKey, offer: ComputedOffer): AntiSteerin
     productId: offer.productId,
     adjustedRate: offer.adjustedRate,
     pointsAndFeesDollars: pointsAndFeesDollars(offer),
+    lenderApproved: offer.lenderApproved === true,
   };
 }
 
@@ -140,12 +167,19 @@ function toOption(key: AntiSteeringOptionKey, offer: ComputedOffer): AntiSteerin
  * that state separately).
  */
 export function deriveAntiSteeringOptions(offers: ComputedOffer[]): AntiSteeringOptionSet {
-  const creditorsQuoted = new Set(offers.map((o) => o.lenderId)).size;
+  // The sufficiency count is over APPROVED creditors; the total is reported
+  // beside it so nothing is hidden, never in its place.
+  const creditorsQuoted = new Set(
+    offers.filter((o) => o.lenderApproved === true).map((o) => o.lenderId),
+  ).size;
+  const creditorsQuotedTotal = new Set(offers.map((o) => o.lenderId)).size;
 
   if (offers.length === 0) {
     return {
       citation: "12 CFR §1026.36(e)(2)-(3)",
       creditorsQuoted,
+      creditorsQuotedTotal,
+      noApprovedCreditors: true,
       options: [],
       hasNoRiskyFeatureOption: false,
       singleCreditor: false,
@@ -169,6 +203,8 @@ export function deriveAntiSteeringOptions(offers: ComputedOffer[]): AntiSteering
   return {
     citation: "12 CFR §1026.36(e)(2)-(3)",
     creditorsQuoted,
+    creditorsQuotedTotal,
+    noApprovedCreditors: creditorsQuoted === 0,
     options,
     hasNoRiskyFeatureOption: lowestRateNoRisky !== null,
     singleCreditor: creditorsQuoted <= 1,

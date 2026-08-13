@@ -30,6 +30,9 @@ function offer(overrides: Partial<ComputedOffer>): ComputedOffer {
     lenderName: "Fixture Lender",
     lenderCode: "FIX",
     lenderId: "lender-1",
+    // Default to an APPROVED counterparty so the existing option-set tests keep
+    // describing a normal shopped set; unapproved is opted into explicitly.
+    lenderApproved: true,
     productId: "product-1",
     productCode: "FIX-C30",
     productName: "Conforming 30-Year Fixed",
@@ -306,6 +309,55 @@ describe("deriveAntiSteeringOptions (§1026.36(e)(3))", () => {
       offer({ lenderId: "lender-2", productId: "p3" }),
     ]);
     expect(set.creditorsQuoted).toBe(2);
+    expect(set.creditorsQuotedTotal).toBe(2);
+    expect(set.noApprovedCreditors).toBe(false);
+  });
+
+  // F-0807-01 — the (e)(3)(i) "significant number" surface counted any lender
+  // that produced an offer. Offers are selected on `status: "ACTIVE"` (row
+  // liveness, not an agreement), so with the three seeded demo lenders it
+  // reported creditorsQuoted: 3 / singleCreditor: false — a shopped,
+  // plausibly-compliant option set built entirely from fictional companies.
+  it("does not count unapproved creditors toward the (e)(3)(i) sufficiency number", () => {
+    const set = deriveAntiSteeringOptions([
+      offer({ lenderId: "SAMPLE-SUMMIT-001", lenderApproved: false }),
+      offer({ lenderId: "SAMPLE-BLUERIVER-001", productId: "p2", lenderApproved: false }),
+      offer({ lenderId: "SAMPLE-ATLAS-001", productId: "p3", lenderApproved: false }),
+    ]);
+    expect(set.creditorsQuoted).toBe(0);
+    expect(set.noApprovedCreditors).toBe(true);
+    // Strictly worse than single-creditor, and it must say so rather than
+    // reading as a three-creditor set.
+    expect(set.singleCreditor).toBe(true);
+  });
+
+  it("reports the unapproved quotes rather than hiding them", () => {
+    // The quotes are real rate-sheet output and still shown; only the
+    // sufficiency count excludes them, and the total keeps them visible.
+    const set = deriveAntiSteeringOptions([
+      offer({ lenderId: "SAMPLE-SUMMIT-001", lenderApproved: false }),
+      offer({ lenderId: "SAMPLE-ATLAS-001", productId: "p3", lenderApproved: false }),
+    ]);
+    expect(set.creditorsQuotedTotal).toBe(2);
+    expect(set.options.length).toBeGreaterThan(0);
+    expect(set.options.every((o) => o.lenderApproved === false)).toBe(true);
+  });
+
+  it("an unapproved lender cannot pad an approved creditor's count", () => {
+    const set = deriveAntiSteeringOptions([
+      offer({ lenderId: "uwm", lenderApproved: true }),
+      offer({ lenderId: "SAMPLE-SUMMIT-001", productId: "p2", lenderApproved: false }),
+    ]);
+    expect(set.creditorsQuoted).toBe(1);
+    expect(set.singleCreditor).toBe(true);
+    expect(set.noApprovedCreditors).toBe(false);
+  });
+
+  it("treats a missing approval fact as unapproved — fail closed", () => {
+    const { lenderApproved: _omitted, ...noFact } = offer({});
+    const set = deriveAntiSteeringOptions([noFact as never]);
+    expect(set.creditorsQuoted).toBe(0);
+    expect(set.noApprovedCreditors).toBe(true);
   });
 });
 

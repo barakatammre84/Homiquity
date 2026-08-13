@@ -1,13 +1,14 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { GraduationCap, Rocket, Target } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { PROGRAM_TYPES } from "./types";
 
 /** Pre-enrollment state: pick a program track. */
 export function EnrollmentView() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const enrollMutation = useMutation({

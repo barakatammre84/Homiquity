@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Building2, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import type { HomeownerProfile } from "./types";
 
 export function QuickActions({ profile }: { profile: HomeownerProfile }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [balanceDialog, setBalanceDialog] = useState(false);
   const [valueDialog, setValueDialog] = useState(false);

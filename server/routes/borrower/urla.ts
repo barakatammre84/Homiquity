@@ -285,6 +285,43 @@ export function registerUrlaRoutes(
     }
   });
 
+  // Remove a co-applicant from the application.
+  //
+  // The Remove Co-Borrower button used to be purely local state: the bulk save
+  // is upsert-only and simply omitted `coApplicants` when the flag was false,
+  // so nothing was ever deleted and the post-save refetch found the seq-2 rows
+  // still there and put the co-borrower straight back on screen — after a
+  // success toast. A co-applicant the borrower had deliberately removed stayed
+  // on the loan file and was still exported to MISMO (#450).
+  //
+  // Destructive and irreversible, so: ownership-checked like every other delete
+  // here, refuses the primary borrower, and writes an audit entry recording
+  // exactly what was removed. The audit log is where the evidence of the
+  // removal lives once the rows are gone.
+  app.delete("/api/urla/:applicationId/co-applicant/:seq", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const { applicationId, seq } = routeParams(req);
+      const sequence = Number(seq);
+      if (!Number.isInteger(sequence) || sequence <= 1) {
+        return res.status(400).json({ error: "Only a co-applicant (borrower sequence 2 or higher) can be removed" });
+      }
+      const application = await storage.getLoanApplicationWithAccess(applicationId, user.id, user.role);
+      if (!application) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const removed = await storage.deleteCoApplicantRecords(applicationId, sequence);
+      await logAudit(req, "urla.co_applicant.removed", "loan_application", applicationId, {
+        borrowerSequenceNumber: sequence,
+        removed,
+      });
+      res.json({ removed });
+    } catch (error) {
+      console.error("Remove co-applicant error:", error);
+      res.status(500).json({ error: "Failed to remove co-applicant" });
+    }
+  });
+
   app.delete("/api/urla/assets/:id", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as User;

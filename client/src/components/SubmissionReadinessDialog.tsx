@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
@@ -97,6 +97,7 @@ export function SubmissionReadinessDialog({
   applicationId: string;
   borrowerName: string;
 }) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [lenderId, setLenderId] = useState<string>("");
   // Which submission's "log lender conditions" form is expanded, if any.

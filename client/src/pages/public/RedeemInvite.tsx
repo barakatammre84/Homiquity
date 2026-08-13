@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { friendlyApiError } from "@/lib/errorMessage";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,6 +20,8 @@ export default function RedeemInvite() {
   const [validating, setValidating] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
   const [validation, setValidation] = useState<{ valid: boolean; role?: string; email?: string; error?: string } | null>(null);
+  /** "We couldn't ask" — distinct from `validation` ("the server answered"). */
+  const [checkFailed, setCheckFailed] = useState<string | null>(null);
   const [redeemed, setRedeemed] = useState(false);
   const [newRole, setNewRole] = useState("");
 
@@ -30,15 +32,46 @@ export default function RedeemInvite() {
     }
   }, [params?.code]);
 
+  /**
+   * "This code is not valid" and "we could not check the code" are different
+   * answers and must not share a state.
+   *
+   * The old version set whatever `res.json()` produced straight into
+   * `validation`, with no `res.ok` check. On a 500 the server returns
+   * `{ error: "Failed to validate invite" }` with NO `valid` field
+   * (server/routes/staff-invites.ts:77), so `validation.valid` was `undefined`
+   * — falsy. That rendered the destructive "invalid code" panel AND disabled
+   * the Redeem button below (`validation !== null && !validation.valid`), so a
+   * staff member holding a perfectly good invite was told it was invalid and
+   * locked out of redeeming it for the rest of the session by a transient
+   * server error. It also printed a 5xx internal string on a public page.
+   *
+   * A 404 is different: it is the server's ANSWER — no such code — and it
+   * carries the `{ valid: false, error }` body this panel is built to show.
+   * friendlyApiError draws exactly that line for us: it extracts the envelope
+   * for a 4xx and suppresses the body of a 5xx in favour of the fallback.
+   */
   const validateCode = async (inviteCode: string) => {
     if (!inviteCode.trim()) return;
     setValidating(true);
+    setCheckFailed(null);
     try {
-      const res = await fetch(`/api/staff-invites/validate/${inviteCode.toUpperCase()}`);
-      const data = await res.json();
-      setValidation(data);
-    } catch {
-      setValidation({ valid: false, error: "Failed to validate code" });
+      const res = await apiRequest("GET", `/api/staff-invites/validate/${inviteCode.toUpperCase()}`);
+      setValidation(await res.json());
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        setValidation({
+          valid: false,
+          error: friendlyApiError(error, "That invite code isn't valid."),
+        });
+        return;
+      }
+      // Unknown — leave `validation` null so the Redeem button stays enabled
+      // and the code can be re-checked.
+      setValidation(null);
+      setCheckFailed(
+        friendlyApiError(error, "We couldn't check that code just now. Please try again."),
+      );
     } finally {
       setValidating(false);
     }
@@ -146,6 +179,17 @@ export default function RedeemInvite() {
                       </div>
                     </>
                   )}
+                </div>
+              )}
+
+              {/* Neutral, not destructive: the code may well be fine — we just
+                  couldn't reach the check. Redeem stays enabled below. */}
+              {checkFailed && (
+                <div className="flex items-start gap-3 rounded-lg bg-muted p-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground" data-testid="text-invite-check-failed">
+                    {checkFailed}
+                  </p>
                 </div>
               )}
 

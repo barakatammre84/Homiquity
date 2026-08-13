@@ -304,3 +304,63 @@ export async function getToleranceReview(
     evaluation,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Cost-entry -> disclosure impact (F-0807-03)
+// ---------------------------------------------------------------------------
+
+/**
+ * What booking a cost entry does to an already-disclosed charge.
+ *
+ * Four loan-cost categories (appraisal, credit report, flood, title) feed
+ * `resolveActualFeesFor` and therefore re-price ZERO-TOLERANCE Loan Estimate
+ * lines. Once a baseline exists, the borrower's number is held — so the entry
+ * does not change what they see. What it does instead is quietly create CURE
+ * LIABILITY: money owed at closing, produced as a side effect of bookkeeping,
+ * discovered later in a report nobody reads until it is due.
+ *
+ * This makes the consequence visible at the moment of the action — the same
+ * principle as evaluating the QM cap at the compensation election rather than
+ * at submission, when the remedy has expired.
+ *
+ * It deliberately does NOT block. A real invoice is a real invoice, and
+ * refusing to record spend would corrupt the cost ledger to flatter a
+ * disclosure. Non-blocking, but never silent.
+ */
+export interface DisclosedFeeImpact {
+  feeId: string;
+  label: string;
+  bucket: string;
+  /** The amount the borrower was disclosed. */
+  disclosedAmount: number;
+  /** The ledger total for this fee after the new entry. */
+  ledgerTotal: number;
+  /** ledgerTotal - disclosedAmount, when positive. Zero-tolerance => a cure. */
+  increase: number;
+  /** True when this increase is a dollar-for-dollar cure absent a documented CoC. */
+  createsCureExposure: boolean;
+}
+
+export async function evaluateCostEntryDisclosureImpact(
+  applicationId: string,
+  feeId: string,
+  ledgerTotal: number,
+): Promise<DisclosedFeeImpact | null> {
+  const baselineRow = await storage.getLatestLoanEstimateDisclosure(applicationId);
+  if (!baselineRow) return null; // Nothing disclosed yet: no exposure to create.
+
+  const snapshot = baselineRow.snapshot as DisclosureSnapshot | null;
+  const disclosed = snapshot?.fees?.find((f) => f.id === feeId);
+  if (!disclosed) return null;
+
+  const increase = Math.round((ledgerTotal - disclosed.amount + Number.EPSILON) * 100) / 100;
+  return {
+    feeId,
+    label: disclosed.label,
+    bucket: disclosed.bucket,
+    disclosedAmount: disclosed.amount,
+    ledgerTotal: Math.round((ledgerTotal + Number.EPSILON) * 100) / 100,
+    increase: increase > 0 ? increase : 0,
+    createsCureExposure: increase > 0 && disclosed.bucket === "zero",
+  };
+}

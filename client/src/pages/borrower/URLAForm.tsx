@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,7 +10,7 @@ import { QueryErrorState } from "@/components/ui/query-boundary";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrackActivity, useTrackFormStart } from "@/hooks/useActivityTracker";
-import { apiRequest, queryClient, dashboardKeys, urlaKeys, loanApplicationKeys } from "@/lib/queryClient";
+import { apiRequest, dashboardKeys, urlaKeys, loanApplicationKeys } from "@/lib/queryClient";
 import type {
   LoanApplication,
   UrlaPersonalInfo,
@@ -162,6 +162,7 @@ const STEPS: UrlaStep[] = [
 ];
 
 export default function URLAForm() {
+  const queryClient = useQueryClient();
   const { isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const track = useTrackActivity();
@@ -261,6 +262,40 @@ export default function URLAForm() {
   useEffect(() => {
     if (activeApplication?.id) trackFormStart("urla");
   }, [activeApplication?.id, trackFormStart]);
+
+  // Removal has to be a real request. The bulk save is upsert-only and simply
+  // omits `coApplicants` when the flag is false, so clearing slot 2 locally
+  // deleted nothing and the next refetch put the co-borrower back (#450).
+  //
+  // Note what this does NOT do: it does not make `hasCoBorrower` two-way. That
+  // latch is monotonic on purpose — hydration only ever sets it TRUE, which is
+  // what lets ADD Co-Borrower survive the post-save refetch. Once the seq-2 rows
+  // are genuinely gone, the six-way `hasCo` check computes false on its own and
+  // the latch never fires. Fixing the data made the state machine correct.
+  const removeCoBorrowerMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("DELETE", `/api/urla/${activeApplication?.id}/co-applicant/2`);
+      return response.json();
+    },
+    onSuccess: () => {
+      setBorrowerData((prev) => ({ ...prev, 2: emptySlice() }));
+      setHasCoBorrower(false);
+      setActiveSeq(1);
+      queryClient.invalidateQueries({ queryKey: urlaKeys.detail(activeApplication?.id) });
+      toast({
+        title: "Co-borrower removed",
+        description: "Their information has been deleted from this application. Yours is unchanged.",
+      });
+    },
+    onError: () => {
+      // The old behaviour failed silently and looked like success. Say so.
+      toast({
+        title: "We couldn't remove the co-borrower",
+        description: "Nothing was changed. Give it another try in a moment — if it keeps happening, message your loan team.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Which rows the borrower filled in but the save cannot accept, phrased for
   // them. Takes no arguments and reads the same state buildPayload does, on
@@ -562,10 +597,19 @@ export default function URLAForm() {
                   variant="ghost"
                   size="sm"
                   className="gap-2"
+                  disabled={removeCoBorrowerMutation.isPending}
                   onClick={() => {
-                    setBorrowerData((prev) => ({ ...prev, 2: emptySlice() }));
-                    setHasCoBorrower(false);
-                    setActiveSeq(1);
+                    // Confirm because this is now durable and irreversible. It
+                    // used to be local state only, which is exactly why the
+                    // co-borrower came back after the next refetch (#450).
+                    const co = borrowerData[2]?.personalInfo;
+                    const who = [co?.firstName, co?.lastName].filter(Boolean).join(" ").trim();
+                    const ok = window.confirm(
+                      `Remove ${who || "the co-borrower"} from this application?\n\n` +
+                      "Everything they entered — employment, assets, liabilities and declarations — is deleted and cannot be recovered. Your own information is not affected.",
+                    );
+                    if (!ok) return;
+                    removeCoBorrowerMutation.mutate();
                   }}
                   data-testid="button-remove-coborrower"
                 >

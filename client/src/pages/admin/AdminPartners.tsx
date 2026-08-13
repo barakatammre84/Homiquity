@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,7 @@ function LicenseCell({ row }: { row: AdminPartnerRow }) {
 }
 
 function PartnerAccountsTab() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
 

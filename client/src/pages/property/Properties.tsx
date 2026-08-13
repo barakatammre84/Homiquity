@@ -22,6 +22,7 @@ import { PropertyCard } from "./properties/PropertyCard";
 import { LivePropertyCard } from "./properties/LivePropertyCard";
 import { PreApprovalCtaCard, StickyPreApprovalBanner } from "./properties/PreApprovalCta";
 import type { LiveSearchResponse, SearchMode, ViewMode } from "./properties/types";
+import { markBrowsedProperties } from "@/lib/pendingAttribution";
 
 export default function Properties() {
   const { isAuthenticated } = useAuth();
@@ -41,7 +42,7 @@ export default function Properties() {
   const [showSavedBanner, setShowSavedBanner] = useState(!!saved.current?.locationId);
 
   useEffect(() => {
-    try { localStorage.setItem("homiquity_browsed_properties", "true"); } catch {}
+    markBrowsedProperties();
   }, []);
 
   useEffect(() => {
