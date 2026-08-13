@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import type { AgentProfile } from "@shared/schema";
 import { ChevronLeft, X } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
@@ -24,6 +24,7 @@ const SPECIALTIES = [
 ];
 
 export default function AgentEdit() {
+  const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const { toast } = useToast();
 

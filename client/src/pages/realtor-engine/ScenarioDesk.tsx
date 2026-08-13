@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,6 +180,7 @@ function ResultRow({ label, value, icon: Icon, highlight }: { label: string; val
 }
 
 export default function ScenarioDesk() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [input, setInput] = useState<ScenarioInput>({
     purchasePrice: "",

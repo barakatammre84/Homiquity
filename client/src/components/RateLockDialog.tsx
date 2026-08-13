@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +49,7 @@ interface RateLockDialogProps {
 }
 
 export function RateLockDialog({ applicationId, borrowerName }: RateLockDialogProps) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [optionId, setOptionId] = useState("");

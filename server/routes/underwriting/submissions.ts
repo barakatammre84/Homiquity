@@ -401,6 +401,50 @@ export function registerSubmissionRoutes(
         })),
       );
 
+      // Revenue recognition (F-0808-03 / F-0809-02 / F-0811-03). Revenue was
+      // lender compensation only, so the platform's own ~$2,000/file was
+      // income nowhere and a BORROWER-PAID file reported a negative margin.
+      // Recognized on the lender's remittance advice (owner decision), sourced
+      // from the file's ISSUED Loan Estimate rather than a recompute of
+      // today's fee schedule — which would re-price history.
+      const { recognizeRevenue } = await import("@shared/revenueRecognition");
+      const disclosures = await storage.getAllLoanEstimateDisclosures();
+      const latestDisclosure = new Map<string, any>();
+      for (const d of disclosures) {
+        // Rows come back version-descending, so the first per application is
+        // its current baseline.
+        if (!latestDisclosure.has(d.applicationId)) latestDisclosure.set(d.applicationId, d);
+      }
+      let platformFeeRevenueTotal = 0;
+      let unrecognizedPlatformFees = 0;
+      let platformFeesUnknownCount = 0;
+      for (const sub of submissions) {
+        const snapshot = latestDisclosure.get(sub.applicationId)?.snapshot as
+          | { fees?: { id: string; label: string; amount: number; bucket: string }[] }
+          | undefined;
+        const recognized = recognizeRevenue({
+          status: sub.status,
+          compensationModel: sub.compensationModel,
+          compensationReceivedAmount: sub.compensationReceivedAmount,
+          compensationReceivedAt: sub.compensationReceivedAt,
+          disclosedFees: (snapshot?.fees as never) ?? null,
+          simulated: sub.simulated,
+        });
+        platformFeeRevenueTotal += recognized.platformFees;
+        unrecognizedPlatformFees += recognized.unrecognizedPlatformFees;
+        if (recognized.platformFeesUnknown) platformFeesUnknownCount += 1;
+      }
+      const revenue = {
+        lenderCompensation: summary.receivedCompensation,
+        platformFees: Math.round((platformFeeRevenueTotal + Number.EPSILON) * 100) / 100,
+        total:
+          Math.round((summary.receivedCompensation + platformFeeRevenueTotal + Number.EPSILON) * 100) / 100,
+        unrecognizedPlatformFees:
+          Math.round((unrecognizedPlatformFees + Number.EPSILON) * 100) / 100,
+        /** Funded files with no issued LE — unknown, never summed as zero. */
+        platformFeesUnknownCount,
+      };
+
       // Cost side + margin (F-11). Revenue alone is not unit economics: costs
       // are incurred on every file and revenue arrives only on the ones that
       // close, so the meaningful denominator is the funded count.
@@ -420,7 +464,9 @@ export function registerSubmissionRoutes(
       // financial view read.
       const commissions = summarizeCommissionCosts(commissionRows);
       const unitEconomics = computeUnitEconomics({
-        receivedCompensation: summary.receivedCompensation,
+        // BOTH channels now — a margin built on lender compensation alone
+        // understates a lender-paid file and inverts a borrower-paid one.
+        receivedCompensation: revenue.total,
         fundedCount: summary.fundedCount,
         costs,
         simulatedRevenue: summary.simulated.receivedCompensation,
@@ -461,6 +507,7 @@ export function registerSubmissionRoutes(
         // counterparty there is no revenue capacity at all (F-5).
         approvedLenderCount: approvedLenderCount(lenderRows.map(toCounterparty)),
         discrepancies,
+        revenue,
         clawbackExposure: clawback,
         costs,
         commissions,
@@ -573,14 +620,39 @@ export function registerSubmissionRoutes(
           recordedBy: req.user!.id,
         });
 
+        // F-0807-03 — four of these categories re-price ZERO-TOLERANCE Loan
+        // Estimate lines. With a baseline in place the borrower's number is
+        // held, so the entry does not change what they see; it creates CURE
+        // LIABILITY instead. Surface that here, where the person booking it
+        // can still act, rather than in a cure report read at closing.
+        // Never blocks: a real invoice is a real invoice.
+        const { COST_CATEGORY_TO_DISCLOSED_FEE_ID } = await import("../../services/loanEstimate");
+        const feeId = COST_CATEGORY_TO_DISCLOSED_FEE_ID[parsed.data.category];
+        let disclosureImpact = null;
+        if (feeId) {
+          const { evaluateCostEntryDisclosureImpact } = await import(
+            "../../services/leDisclosureBaseline"
+          );
+          // The ledger total for this category, not the single entry: a
+          // supplemental invoice adds to the first, and a reversal subtracts.
+          const allEntries = await storage.getLoanCostEntries(id);
+          const ledgerTotal = allEntries
+            .filter(e => e.category === parsed.data.category && !e.simulated)
+            .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+          disclosureImpact = await evaluateCostEntryDisclosureImpact(id, feeId, ledgerTotal);
+        }
+
         const { logAudit } = await import("../../auditLog");
         logAudit(req, "loan_cost.recorded", "loan_application", id, {
           costEntryId: entry.id,
           category: parsed.data.category,
           amount: parsed.data.amount,
+          // The cure has a traceable cause now, rather than appearing in a
+          // tolerance report with no record of what moved it.
+          disclosureImpact,
         });
 
-        res.status(201).json(entry);
+        res.status(201).json({ ...entry, disclosureImpact });
       } catch (error) {
         console.error("Record loan cost error:", error);
         res.status(500).json({ error: "Failed to record the cost entry" });

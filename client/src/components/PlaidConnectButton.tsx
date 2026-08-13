@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePlaidLink, type PlaidLinkOnSuccess } from "react-plaid-link";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Landmark, RefreshCw } from "lucide-react";
@@ -37,6 +37,7 @@ export function PlaidConnectButton({
   testId?: string;
   onDone?: () => void;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkTokenId, setLinkTokenId] = useState<string | null>(null);

@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { lintOutboundText } from "@shared/compliance/loCommsLint";
 import { DocumentNeedsSummary } from "@/components/UploadDocumentDialog";
 import { DocumentRequestDialog } from "./DocumentRequestDialog";
@@ -32,6 +32,7 @@ export function MessageComposer({
   recipientName,
   threadApplicationId,
 }: MessageComposerProps) {
+  const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const { toast } = useToast();
 

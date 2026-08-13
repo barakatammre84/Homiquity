@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { QueryErrorState } from "@/components/ui/query-boundary";
 import { Button } from "@/components/ui/button";
@@ -183,6 +183,7 @@ function SessionCard({
 }
 
 export default function StrategySessions() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);

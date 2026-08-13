@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -51,6 +51,7 @@ interface CocRow {
 const dateLabel = (iso: string) => new Date(iso).toISOString().split("T")[0];
 
 export function ChangeOfCircumstancePanel({ applicationId }: { applicationId: string }) {
+  const queryClient = useQueryClient();
   const [recordOpen, setRecordOpen] = useState(false);
   const [reasonType, setReasonType] = useState<string>("");
   const [description, setDescription] = useState("");

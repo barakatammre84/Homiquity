@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { PageShell } from "@/components/PageShell";
 import { computeInviteStats, filterInvites } from "./inviteGenerator/inviteStats";
 import { inviteFormSchema, type FilterTab, type InviteFormValues, type InviteWithStatus } from "./inviteGenerator/types";
@@ -17,6 +17,7 @@ import { InviteTable } from "./inviteGenerator/InviteTable";
 import { InviteEmptyState } from "./inviteGenerator/InviteEmptyState";
 
 export default function InviteGenerator() {
+  const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);

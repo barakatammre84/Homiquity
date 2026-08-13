@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ export function ReviewWorkbenchPanel({
   borrowerUserId: string;
   applicationId?: string;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const listUrl = `/api/tax-intelligence/review-items?userId=${encodeURIComponent(borrowerUserId)}${applicationId ? `&applicationId=${encodeURIComponent(applicationId)}` : ""}`;
   const { data, isLoading } = useQuery<{ items: ReviewItem[] }>({ queryKey: [listUrl] });

@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, taskEngineKeys } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, taskEngineKeys } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { USER_ROLE_TO_TASK_ROLE, type TaskMetrics, type SlaClassConfig, type TaskWithSlaStatus } from "./model";
 
 export function useTaskOperations() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
   const userRole = user?.role || "";

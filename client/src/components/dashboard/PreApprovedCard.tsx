@@ -1,8 +1,8 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Loader2 } from "lucide-react";
-import { apiRequest, queryClient, loanApplicationKeys } from "@/lib/queryClient";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { downloadResponseAsFile } from "@/lib/downloadFile";
 import { formatCurrency } from "@/lib/formatters";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ interface PreApprovedCardProps {
  * edit route) and is intentionally omitted.
  */
 export function PreApprovedCard({ applicationId, amount, validUntil }: PreApprovedCardProps) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const statusQuery = useQuery<{ hasLetter: boolean; letterNumber?: string; estimatedAmount?: string }>({
