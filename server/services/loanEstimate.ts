@@ -170,7 +170,7 @@ function prepaidInterestDaysFor(closingDate: Date): number {
  * and "marketing" are real costs but not borrower charges, and must never
  * silently inflate a disclosure.
  */
-const COST_CATEGORY_TO_FEE_ID: Record<string, string> = {
+export const COST_CATEGORY_TO_DISCLOSED_FEE_ID: Record<string, string> = {
   appraisal: "appraisal",
   credit_report: "credit_report",
   flood: "flood_determination",
@@ -202,7 +202,7 @@ async function resolveActualFeesFor(applicationId: string): Promise<ActualFeeMap
     const totals: Record<string, number> = {};
     for (const entry of entries) {
       if (entry.simulated) continue;
-      const feeId = COST_CATEGORY_TO_FEE_ID[entry.category];
+      const feeId = COST_CATEGORY_TO_DISCLOSED_FEE_ID[entry.category];
       if (!feeId) continue;
       totals[feeId] = (totals[feeId] ?? 0) + Number(entry.amount || 0);
     }

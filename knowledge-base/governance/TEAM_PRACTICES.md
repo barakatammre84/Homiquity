@@ -270,6 +270,15 @@ PR body (part of the §5.8 contract).
   `server/routes/leads.ts` — the TCPA consent provenance. A wrong change here bypasses rate
   limiting and falsifies legal consent evidence.)*
 - **Rate-limit policy:** `server/services/rateLimitPolicy.ts`.
+- **PII encryption call sites:** any code under `server/` or `shared/` that calls
+  `encryptSensitiveData` / `decryptSensitiveData` / `encryptPiiField` / `decryptPiiField` /
+  `encryptSsnToColumns` / `decryptSsnFromRow`. *(Added 2026-08-12. The three vault **files**
+  were already triggers, but their **callers** were not — so a PR that encrypted a landlord
+  email and a property address in a new module produced zero triggers. Same shape as the
+  2026-08-06 webhook gap, inverted: there the route was covered and the delegate was not;
+  here the vault is covered and the caller is not. The caller is where a plaintext write, a
+  dropped `keyId`, or a decrypt swallowed to `null` actually happens. Narrow by
+  construction — six files in the repo call these, three already triggers.)*
 - **Consumer-data furnishing (CRA):** `server/services/rentFurnishing.ts`,
   `shared/lib/metro2/`. *(Added 2026-08-08 with the rent-reporting program. Every other
   credit path in this repo makes us a consumer-report **user** — permissible purpose,

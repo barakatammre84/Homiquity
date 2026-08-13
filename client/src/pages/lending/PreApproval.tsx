@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation, useSearchParams, Link } from "wouter";
 import { SEOHead } from "@/components/SEOHead";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { preApprovalFormSchema } from "@shared/preApprovalForm";
 import type { PreApprovalFormData } from "@shared/schema";
@@ -11,13 +11,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
+import { apiRequest, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
 import { maskCurrencyDigits } from "@/lib/formatters";
 import {
   PREAPPROVAL_AUTOSAVE_KEY as AUTOSAVE_KEY,
   PREAPPROVAL_STEP_KEY as AUTOSAVE_STEP_KEY,
   PREAPPROVAL_PENDING_SUBMIT_KEY as PENDING_SUBMIT_KEY,
+  readPendingInviteId,
+  clearPendingInviteId,
 } from "@/lib/pendingAttribution";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView, useTrackActivity, useTrackFormStart, useTrackFormAbandon } from "@/hooks/useActivityTracker";
@@ -61,6 +63,7 @@ export default function PreApproval() {
 }
 
 function PreApprovalFunnel() {
+  const queryClient = useQueryClient();
   const {
     stepId,
     flags,
@@ -98,7 +101,11 @@ function PreApprovalFunnel() {
   const urlSource = urlParams.get("source");
   const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
 
-  const inviteId = useRef(sessionStorage.getItem("inviteId"));
+  // Read once per mount, through the shared module so the legacy per-tab key is
+  // still honoured for an invite stashed by an older client. Captured in a ref
+  // rather than read at submit time because the deferred post-auth replay
+  // (useDeferredSubmit) fires from a closure created at mount.
+  const inviteId = useRef(readPendingInviteId());
 
   const form = useForm<PreApprovalFormData>({
     resolver: zodResolver(preApprovalFormSchema),
@@ -190,8 +197,11 @@ function PreApprovalFunnel() {
       queryClient.invalidateQueries({ queryKey: loanApplicationKeys.all() });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.root() });
 
+      // Consume only now, on a SUCCESSFUL submit — a borrower who abandons the
+      // funnel keeps their attribution for the next attempt. Clears both tiers
+      // so a legacy per-tab copy cannot re-attribute a later application.
       if (inviteId.current) {
-        sessionStorage.removeItem("inviteId");
+        clearPendingInviteId();
       }
 
       toast({

@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest, homeownershipGoalKeys } from "@/lib/queryClient";
+import { apiRequest, homeownershipGoalKeys } from "@/lib/queryClient";
 import type { SavingsTransaction } from "@shared/schema";
 import { savingsFormSchema, type GapAnalysis, type SavingsFormInput, type SavingsFormValues } from "./types";
 
@@ -27,6 +27,7 @@ export interface SavingsVaultTabProps {
 }
 
 export function SavingsVaultTab({ analysis, savingsTransactions }: SavingsVaultTabProps) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showSavingsDialog, setShowSavingsDialog] = useState(false);
 

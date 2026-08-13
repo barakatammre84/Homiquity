@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -81,6 +81,7 @@ const FEE_SCHEDULE_KEY = ["/api/admin/pricing-policy/fee-schedule"] as const;
 const LENDERS_KEY = ["/api/admin/pricing-policy/lenders"] as const;
 
 export default function PricingPolicy() {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data, isLoading } = useQuery<FeeScheduleResponse>({ queryKey: FEE_SCHEDULE_KEY });
@@ -365,6 +366,7 @@ export default function PricingPolicy() {
 }
 
 function LenderCompensationCard({ lenders }: { lenders: LenderRow[] }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ defaultBps: string; minBps: string; maxBps: string }>({

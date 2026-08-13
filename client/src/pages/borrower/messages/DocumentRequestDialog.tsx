@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileText, FileUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import type { DocumentRequestData } from "@shared/schema";
 import { DOCUMENT_TYPES } from "./types";
 
@@ -33,6 +33,7 @@ export function DocumentRequestDialog({
   recipientId: string;
   recipientName: string;
 }) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState("");
   const [description, setDescription] = useState("");

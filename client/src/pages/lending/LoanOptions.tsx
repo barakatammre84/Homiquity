@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 
 import { ConsentGateCard } from "@/components/ConsentGateCard";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, loanApplicationKeys, consentKeys } from "@/lib/queryClient";
+import { apiRequest, loanApplicationKeys, consentKeys } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication, LoanOption } from "@shared/schema";
 import { AlertCircle, CheckCircle2, Clock, Shield } from "lucide-react";
@@ -25,6 +25,7 @@ interface LoanOptionsData {
 }
 
 export default function LoanOptions() {
+  const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<"cards" | "compare">("cards");

@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useActiveApplication } from "@/hooks/useActiveApplication";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useAutopilotStatus } from "@/hooks/useAutopilotStatus";
 import { AutopilotBanner } from "@/components/AutopilotBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/useActivityTracker";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient, dashboardKeys, coachConversationKeys, loanApplicationKeys, taskEngineKeys } from "@/lib/queryClient";
+import { apiRequest, dashboardKeys, coachConversationKeys, loanApplicationKeys, taskEngineKeys } from "@/lib/queryClient";
 import { deriveJourneyStepDetails } from "@shared/borrowerJourney";
 import { formatCurrency } from "@/lib/formatters";
 import { hasPendingPreApprovalSubmit } from "@/lib/pendingAttribution";
@@ -57,6 +57,7 @@ import {
   Zap,
 } from "lucide-react";
 
+import { hasBrowsedProperties } from "@/lib/pendingAttribution";
 import {
   NEXT_ACTION_ICONS,
   getPreUwFlags,
@@ -123,7 +124,7 @@ export default function Dashboard() {
   const [browsedProperties, setBrowsedProperties] = useState(false);
   useEffect(() => {
     try {
-      setBrowsedProperties(localStorage.getItem("homiquity_browsed_properties") === "true");
+      setBrowsedProperties(hasBrowsedProperties());
     } catch {}
   }, []);
 

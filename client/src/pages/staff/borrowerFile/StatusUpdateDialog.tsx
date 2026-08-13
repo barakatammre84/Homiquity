@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest, loanApplicationKeys } from "@/lib/queryClient";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, loanApplicationKeys } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,6 +39,7 @@ export function StatusUpdateDialog({
   financialDataProvenance: string | null | undefined;
   canSetCreditDecisions: boolean;
 }) {
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [statusUpdate, setStatusUpdate] = useState<{ open: boolean; status: string; notes: string; denialReasons: string[] }>({ open: false, status: "", notes: "", denialReasons: [] });
 
