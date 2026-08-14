@@ -32,15 +32,20 @@ Today's Launch Gate report was absent, so I ran the gates on `origin/main` mysel
 
 `getBatchValidationStatus` had **zero callers** and was itself the N+1 spelling — rebuilt on the batch path rather than left for the next caller to adopt.
 
-**Gates on the branch** (`d7338ff`, rebased on `a58bea5`, reinstalled after the rebase):
+**Gates on the branch.** Four commits landed on `main` while this ran (#506, #504, #508, #510), so the branch was rebased onto `0922545` and the **entire suite re-run** after `pnpm install --frozen-lockfile` (CHARTER §5.1). Numbers below are post-rebase:
 
 | gate | result |
 |---|---|
 | `pnpm check` | exit 0 |
-| `pnpm test` | **2,718 node** (was 2,692; +26) + **504 client**, exit 0 |
+| `pnpm test` (node) | **192 files / 2,740 tests**, exit 0 |
+| `pnpm test:client` | **66 files / 489 tests**, exit 0 |
 | `pnpm guard:schema` / `:tokens` / `:channel` / `:docs` / `:querykeys` / `:migrations` / `:kb` | all exit 0 |
 | `pnpm build` | exit 0 |
-| `detectTriggers()` over all 10 changed files | `[]` |
+| `detectTriggers()` over all 12 changed files | `[]` |
+
+Pre-rebase, for the record: 2,718 node (from a 2,692 baseline, +26 mine) + 504 client.
+
+**One observation that is not mine.** The client lane went **70 files / 504 tests → 66 / 489** across the rebase. `git diff --name-only origin/main...HEAD` confirms this branch touches **zero** `client/src` files, so the drop arrived with main — most plausibly #504, which finished the `queryClient` migration. Everything passes, so this is not a failure; but four test files and fifteen assertions disappearing during a mechanical migration is worth one person confirming was deliberate. Flagged, not diagnosed.
 
 §9 was audited by **running** `detectTriggers()` from `scripts/security-review-guard.cjs`, not by reading the trigger list (CHARTER §10). No trigger fired. `server/storage/urla.ts` does handle PII, so the SSN presenter on the batched personal-info rows is called out explicitly in the PR and pinned by a source guard.
 
@@ -56,8 +61,9 @@ For Evening Triage to land — none edited into the roadmap directly.
 2. **Rewrite §2.2 as founder-held.** Its code half is verified complete (evidence above); as written, "Fix uploads end-to-end" reads as engineering work and will keep drawing routines into re-verifying it. The residue is two Railway variables, already listed in §1.2.
 3. **Tick §3.2 closed** once #514 merges.
 4. **§3 is nearly out of engineering-eligible work.** Of thirteen items, ten need a founder/product decision or authority this repo does not hold. If the Blitz is to keep shipping daily, the queue needs either those decisions or new engineering items — otherwise the honest outcome on most days is "queue empty," which is a governance signal, not a scheduling accident.
-5. **A peer is migrating the remaining 72 singleton `queryClient` importers** on `claude/queryclient-migration-batch2` **without a REGISTER.md row.** The register only works if every writer files one; worth a nudge rather than a rule change.
-6. **`server/storage/{batchGroup,urlaBatch}.ts` are now shared ground** for the next batching job — grouping helpers with the ordering/denseness contract documented. Use them rather than hand-rolling another group-by.
+5. **Confirm the client test-file drop in #504 was intentional** — 70 files / 504 tests → 66 / 489, arriving with main during this run (evidence above). If four files were deleted as redundant, say so in the ledger; if they were lost, that is 15 assertions no longer running.
+6. **The register was bypassed by the run that did #504.** That work was in flight on `claude/queryclient-migration-batch2` with no REGISTER.md active row — it filed only a *released* row, after the fact. The lock only works if the row goes in **before** writing; worth a nudge rather than a rule change.
+7. **`server/storage/{batchGroup,urlaBatch}.ts` are now shared ground** for the next batching job — grouping helpers with the ordering/denseness contract documented. Use them rather than hand-rolling another group-by.
 
 ## Eligible queue after today
 
