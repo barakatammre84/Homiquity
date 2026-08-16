@@ -64,7 +64,7 @@ themselves, so the board must degrade toward "available", never toward "blocked 
 
 | since | session / routine | scope — files or area | branch / PR | notes |
 |-------|-------------------|------------------------|-------------|-------|
-| 2026-08-12 | `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0812-*` (date-qualified — no reservation needed) | `claude/fervent-mayer-oqk0iv` | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Will not touch `client/**` UI decomposition — that is refactor-radar's lane. |
+| 2026-08-16 | `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/contingentLiabilities.ts`, `shared/cycleTimeReport.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/underwriting/submissions.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0816-*` (date-qualified — no reservation needed) | `claude/fervent-mayer-6ofjk2` | **Audit-only this tick** — no ledger row was at `authorized`, so nothing outside `knowledge-base/**` was touched. Supersedes the 08-12 claim (branch `claude/fervent-mayer-oqk0iv`, work landed). Fixes only owner-authorized rows, one per tick. Will not touch `client/**` UI decomposition — that is refactor-radar's lane. |
 
 ## Observed in flight — not declared by their sessions
 
