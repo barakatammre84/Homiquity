@@ -80,9 +80,13 @@ was when the loop started.
    a. **`origin/main` — always true, no cooperation required.** `git log --oneline
       origin/main -20` and open PRs (`mcp__github__list_pull_requests`, state
       `open`). A file with an open PR against it is claimed by that PR.
-   b. **[`knowledge-base/SESSION_CLAIMS.md`](../../../knowledge-base/SESSION_CLAIMS.md)** —
-      declared intent, which `main` cannot show until work lands. Read it, honour
-      live claims, and **write your own claim** before Phase 2.
+   b. **[`knowledge-base/routines/REGISTER.md`](../../../knowledge-base/routines/REGISTER.md)** —
+      the single claim board (absorbed `SESSION_CLAIMS.md` 2026-08-12; that path is now
+      a stub). Declared intent, which `main` cannot show until work lands. Read it,
+      honour live claims, and **write your own claim** before Phase 2. The contract
+      around it — graduated overlap, the assist ladder, date-qualified finding ids —
+      is [`routines/CHARTER.md`](../../../knowledge-base/routines/CHARTER.md) §5, which
+      binds this routine and wins wherever it and this file disagree.
    c. **`ListAgents` / `SendMessage` — a bonus, never the gate.** Verified blind on
       2026-08-12: it returned *No reachable agents* while another session's financial
       audit was merging into `main`. **Never skip or defer a tick on the strength of
