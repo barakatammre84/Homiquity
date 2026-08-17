@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| primary-engineer 2026-08-17 (item 2, assist) | PR #503 `chore/bundle-size-guard` — `scripts/bundle-size-baseline.json` (red gate: stale baseline vs main's growth) | `.claude/worktrees/primary-engineer-2026-08-17-2` | `chore/bundle-size-guard` | 2026-08-17 19:35 | CHARTER §5 assist ladder rung 1: the queue's only red PR. Owner session dead since 08-12 (later commits are web-flow base merges). Re-baseline to measured main, attribute the bytes, get it green. |
 | `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0812-*` | — | `claude/fervent-mayer-oqk0iv` | 2026-08-12 | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Stays out of `client/**` UI decomposition — that is refactor-radar's lane. |
 
 ## Recently released
