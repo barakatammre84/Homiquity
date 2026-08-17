@@ -313,6 +313,8 @@ export const leaseKeys = {
   /** Every lease read — the prefix a write should invalidate. */
   all: () => ["/api/leases"] as const,
   detail: (id: string) => ["/api/leases", id] as const,
+  /** A lease's rent payments. Segmented, so `all()` covers it as a prefix. */
+  payments: (id: string) => ["/api/leases", id, "payments"] as const,
 };
 
 /**

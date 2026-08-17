@@ -1,27 +1,59 @@
 # Routine claim register
 
-The lock. Every routine and every human session that intends to **write code** claims its target
-here first. Rules live in [`CHARTER.md`](CHARTER.md) §5; this file is only the table.
+**The lock, and the only one.** Every routine and every human session that intends to **write
+code** claims its target here first. Rules live in [`CHARTER.md`](CHARTER.md) §5; this file is the
+table plus the overlap protocol.
 
-Without this, the Frontend Wiring Audit (09:10), Sprint Blitz (09:45) and Refactor Radar (Sun 20:00)
+Without this, the Frontend Wiring Audit (09:10), the Primary Engineer (07:15 — absorbed Sprint Blitz 2026-08-17) and Refactor Radar (Sun 20:00)
 all write to `client/src/**` with no idea the others exist.
+
+> **Absorbed `knowledge-base/SESSION_CLAIMS.md` on 2026-08-12.** Two boards briefly existed — this
+> one from PR #493 and SESSION_CLAIMS from PR #496, written hours apart by sessions that could not
+> see each other, which is the very failure both were built to prevent. This file is authoritative;
+> that one is now a pointer stub. Its graduated overlap protocol, shared-file hazards and live claim
+> are below; its finding-id scheme and signal hierarchy moved to `CHARTER.md` §5 and §10.
+
+## A claim is a courtesy, not a mutex
+
+Nothing enforces it. It costs one commit and it degrades toward *available*, never toward *blocked
+forever* — a session that dies mid-run cannot clean up after itself, so a board that latches would
+be worse than no board.
+
+**The stronger signal is always `origin/main`.** A file with an open PR against it is claimed by
+that PR, board row or not. Read commits and open PRs first; read this board second, for the intent
+that `main` cannot show until work lands.
 
 ## How to use it
 
 1. **Claim before writing.** Add a row: routine, target, worktree, branch, UTC timestamp, intent.
-2. **Respect fresh claims.** Target claimed **< 24 h** ago → pick something else.
-3. **Reclaim stale ones.** A claim **≥ 24 h** old is stale — take it, and say so in your report.
-4. **Release on finish.** Delete your row whether you shipped, abandoned, or failed. A stale claim
-   blocks every peer.
+2. **Respect fresh claims.** Target claimed **< 24 h** ago → do not race it; take the graduated
+   response below.
+3. **Reclaim stale ones.** A claim **≥ 24 h** old with no open PR or commit behind it is dead —
+   take the work and say so in your report. A claim of any age that *does* have an open PR behind
+   it is live, because `main` outranks this page.
+4. **Release on finish.** Delete your row whether you shipped, abandoned, or failed, in the same PR
+   as the work. A board nobody clears becomes a board nobody reads.
 5. **Commit the claim** on your branch so peers can see it. Never push to `main`.
 
-Humans: claim too. A routine cannot see your editor.
+Humans claim too — a routine cannot see your editor.
+
+## Graduated overlap response
+
+When your intended work meets a live claim, the answer is rarely "stop":
+
+- **No overlap** → proceed; add your claim.
+- **Adjacent** (same area, different files) → proceed, add your claim *naming the adjacency*, and
+  keep your diff inside the files you listed.
+- **Direct overlap** (same files, or the same finding-id space) → do **not** race. Prefer different
+  work, or work the assist ladder in [`CHARTER.md`](CHARTER.md) §5 against what is already in
+  flight. If the work genuinely must happen now, coordinate — `SendMessage` if the session is
+  reachable, otherwise a note in the row's Notes for the owner to sequence.
 
 ## Active claims
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| _(none)_ | — | — | — | — | — |
+| `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/contingentLiabilities.ts`, `shared/cycleTimeReport.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/underwriting/submissions.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0816-*` (date-qualified — no reservation needed) | — | `claude/fervent-mayer-6ofjk2` | 2026-08-16 | **Audit-only this tick** — no ledger row was at `authorized`, so nothing outside `knowledge-base/**` was touched. Supersedes the 08-12 claim (branch `claude/fervent-mayer-oqk0iv`, work landed). Fixes only owner-authorized rows, one per tick. Will not touch `client/**` UI decomposition — that is refactor-radar's lane. |
 
 ## Recently released
 
@@ -29,6 +61,23 @@ Keep the last ~10 for collision forensics; trim older rows freely.
 
 | routine / session | target | released (UTC) | outcome |
 |---|---|---|---|
+| lender-delivery-gate 2026-08-12 | `tests/mismoXsdValidation.test.ts` (worktree `wt-lender`, branch `routine/lender-gate-2026-08-12`) | 2026-08-12 | **shipped** — eight XSD cases early-`return`ed without `xmllint`, which vitest reports as PASSED; converted to `it.skipIf` so absence is visible. Proven both ways: on `adaa826` with no xmllint the suite reports **19 passed**; on the branch, **8 skipped**. Claim was recorded at commit time, not before the edit — a §5.4 deviation, noted in the report. |
 | frontend-wiring-audit 2026-08-12 | the remaining 71 singleton-`queryClient` importers | 2026-08-12 | **shipped** — #504, merged and verified in prod via `/api/health`. The migration is now COMPLETE: `client/src/lib/logout.ts` is the only module-singleton consumer left and carries a comment explaining why it must stay (plain async fn, not a render; and `clear()` on the app's own cache is exactly what it wants). |
 | frontend-wiring-audit 2026-08-12 | the 12 `client/src` components importing the singleton `queryClient` **with** a `.test.tsx` sibling | 2026-08-12 | **shipped** — migrated to `useQueryClient()` on `claude/frontend-standardization-2` (`384ab1a`). The other **72** singleton importers are untouched and unclaimed; take them in tested-first batches. Note `TestLogin.test.tsx` had been rendering with no `QueryClientProvider` at all — only the singleton made that pass. |
 | refactor-radar 2026-08-08 | `client/src/components/ScenarioSimulatorDialog.tsx` (RR-004) | 2026-08-12 | **abandoned** — run crashed mid-flight and left its worktree behind, hard-blocking every later radar run (`SKILL.md` Phase 0.4). Work snapshotted to `wip/radar-2026-08-08-scenario-simulator-abandoned` (do not merge; superseded by merged PR #467), worktree removed, RR-004 returned to `open`. |
+
+## Known shared-file hazards
+
+Several routines legitimately touch these. Expect conflicts and resolve **additively** rather than
+taking one side wholesale:
+
+- **`vitest.config.ts`** — the node-lane `include:` array; more than one routine adds test files.
+- **`knowledge-base/README.md`** — the doc index; keep both entries, in date order.
+- **`tests/__snapshots__/zod-schema-semantics.json`** — re-recorded by any schema change. **Never
+  take one side wholesale**: re-record after merging and re-read every delta, because the snapshot
+  is what tells you a data-admission rule changed.
+
+There is deliberately **no "observed in flight" table** here. One existed on the old board and was
+stale within hours — every row it listed had merged or moved by the next day. Open PRs are the live
+answer to "who else is working", and they are one API call away; a hand-copied snapshot of them is
+a claim about the past wearing the clothes of the present.

@@ -14,6 +14,9 @@ export default defineConfig({
       "tests/amortization.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
+      // The CI trigger surface. A `branches:` filter under pull_request means a
+      // stacked PR gets zero check-runs while still reporting mergeStateStatus CLEAN.
+      "tests/ciTriggers.test.ts",
       "tests/accessControl.test.ts",
       "tests/commitmentLetterProvenance.test.ts",
       "tests/uploadsUnavailableCopy.test.ts",
@@ -228,6 +231,7 @@ export default defineConfig({
       "tests/leaseCapture.test.ts",
       "tests/urlaRowContent.test.ts",
       "tests/urlaCoApplicantRemoval.test.ts",
+      "tests/mutationErrorHandling.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
     // boot without a DATABASE_URL. Unit tests never touch the database, so a
