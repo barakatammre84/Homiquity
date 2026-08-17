@@ -89,6 +89,32 @@ set -a; source .env; set +a
 TEST_BASE_URL=http://localhost:5002 pnpm test:integration
 ```
 
+### Run the gate locally — one-time setup, and why it saves money
+
+```bash
+git config core.hooksPath .githooks
+```
+
+That arms `.githooks/pre-push`, which runs exactly what CI's `gate` job runs —
+typecheck, the schema↔migration guard, the design-token ratchet, then the unit
+suites — and **refuses the push** if any of them fails. Skip it once with
+`git push --no-verify`.
+
+This is a cost control, not a style preference. The repo is private, so Actions
+minutes are metered (roadmap KTLO-2). Measured 2026-08-17: **66 CI runs over 4.85
+days — ~13.6/day**, one billable `gate` job each at ~4–5 min, so **~1,850
+min/month against a 2,000-minute free allowance.** A red gate costs that run *and*
+the re-run after the fix, so catching one locally saves about ten minutes of
+allowance, not five. Ordered fail-fastest-first: `tsc` is ~25 s and catches the
+common break before vitest spends three minutes proving the same thing.
+
+The hooks live in a **tracked** `.githooks/` rather than `.git/hooks` so they
+survive a reclone, apply in every worktree, and are visible to review.
+
+`pnpm checkup` remains the heavier pre-PR sweep — it adds the production build,
+the dependency audit, the KB/doc/regulatory guards and a prod health probe. The
+hook deliberately skips those to stay cheap enough to leave on.
+
 ## Landing work on GitHub
 
 `main` is protected — direct pushes are blocked by branch protection and barred
