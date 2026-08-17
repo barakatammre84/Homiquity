@@ -153,6 +153,15 @@ export default function AICoach() {
         });
       }
     },
+    // Silent before: the checkbox simply did not change, so an action item
+    // looked un-tickable for no visible reason.
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't update that item",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const messages = activeData?.messages ?? [];
