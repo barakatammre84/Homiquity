@@ -21,7 +21,7 @@ Humans: claim too. A routine cannot see your editor.
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| _(none)_ | — | — | — | — | — |
+| refactor-radar 2026-08-17 | `client/src/pages/calculators/AmortizationCalculator.tsx` (RR-015) | `.claude/worktrees/refactor-radar-2026-08-17` | `refactor-radar/2026-08-17-amortization-estimate` | 2026-08-17 16:21 | Extract the inline pure amortization math (`simulate`/`calculate` + its 4 interfaces + `defaultInputs`) to `client/src/lib/amortizationEstimate.ts`, mirroring merged RR-012 (`rentVsBuyEstimate.ts`, #481). Behavior-preserving; page keeps all JSX/state/mutation. |
 
 ## Recently released
 
