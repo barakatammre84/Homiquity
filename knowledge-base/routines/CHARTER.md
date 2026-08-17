@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-12.
+**Last verified against the code:** 2026-08-17.
 
 Each routine lives as a `SKILL.md` in `~/.claude/scheduled-tasks/<id>/` and runs in a **fresh
 session with no memory of any other run**. That file is the *job description*. **This file is the
@@ -66,6 +66,43 @@ a single closed row. Green delivery suites hide it because **the fixture is the 
 
 ---
 
+## 1a. The mission and the launch sequence
+
+Homiquity is an **online end-to-end mortgage brokerage**. The launch sequence below is the suite's
+shared ranking input, set by the founder on 2026-08-17:
+
+1. **Illinois first** — everything required to originate for Illinois borrowers, end to end.
+2. **California second** — staged behind Illinois being live.
+3. **National scaling** — gated on business performance, state by state; never speculative.
+
+At equal §1 rank, **work that advances the Illinois launch wins the tiebreak.** The state-licensing
+posture and filing ladder live in `knowledge-base/compliance-watch/STATE_LADDER.md`, maintained by
+Compliance Watch — every row there is cited to a source in `docs/` or marked `UNVERIFIED`, never
+asserted from memory.
+
+---
+
+## 1b. The decision authority matrix — what "automatic mode" means
+
+The suite is the company's autonomous execution layer. Authority is graded by **how far the machine
+takes an artifact before a human touches it**, not by topic:
+
+| Level | Meaning | Covers |
+|---|---|---|
+| **L1 — decides and acts** | Finished artifact / ready PR; no pre-approval | code within lanes (tests, tooling, refactors, docs included), analysis, drafts of anything, monitoring and probes, opening PRs, routine ledgers and reports |
+| **L2 — acts, then flags** | Ships, but the PR/report flags it for explicit review | expand-only schema migrations (same-PR, hand-authored, idempotent); any §9-tripping diff — ships as a **draft PR** with ⛔ "write the security review or reject", the review itself always human-authored; wide cross-cutting refactors; verified-dead-code removal |
+| **L3 — prepares, human signs** | The machine does everything except the signature/click | merging any PR (a merge to `main` is a production deploy); contract migrations; license filings and regulator correspondence; contracts and vendor commitments; disclosure-policy changes; any outbound or external communication; money movement; production variables; each state's launch go/no-go |
+| **L4 — human-only** | The decision itself is human, not preparable into a signature | being the licensee / control person; credit-decision policy beyond cited deterministic rules; anything statute assigns to a person |
+
+**L1/L2 is where automatic mode lives:** routines select their own work, ship without
+pre-approval, and are judged by their reports. The L3/L4 rows map to legal accountability (NMLS
+licensing names accountable humans; credit policy belongs to the accountable licensee) and to
+incident history (§8's auto-merge near-miss; the 2026-07-13 contract-migration outage). **They are
+amended only by the founder, knowingly — never by a routine, and never by a session acting on a
+routine's behalf.** A rail the machine can relax for itself is not a rail.
+
+---
+
 ## 2. Standing facts — re-verify, never assume
 
 Each of these killed the previous suite. Probe them; do not trust this table's age.
@@ -97,15 +134,20 @@ when reasoning about overlap. `taskId` is the scheduler key.
 
 | Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Produces |
 |---|---|---|---|---|---|
+| 07:21 | `15 7 * * *` | **Primary Engineer** (`primary-engineer`) | daily | yes — company-wide lane | up to **3 launch-ranked PRs** |
 | 07:48 | `45 7 * * *` | **Launch Gate** (`launch-gate`) | daily | no — tickets only | `RELEASABLE: yes/no` + the day's gate verdict |
 | 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
-| 09:53 | `45 9 * * *` | **Sprint Blitz** (`sprint-blitz`) | daily | yes — one queue item | **one PR** |
 | 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | delivery verdict + Target-5 execution |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified rows in `FINDINGS.md` |
 | 18:40 | `30 18 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
 | Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | vendor/contract board |
+| Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state-launch compliance ladder + signature-ready drafts |
 | Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | furnishing-gate posture + the two procurement asks |
 | Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | at most one PR |
+
+**Sprint Blitz (`sprint-blitz`, was 09:53 daily) was retired 2026-08-17** — absorbed into the
+Primary Engineer, which carries its queue, its ranking, and its fix-the-gate-first rule. The 09:53
+slot is free.
 
 The wiring audit keeps its original unwieldy `taskId` on purpose — renaming it would discard its
 run history and stored tool approvals. Judge it by its description, not its slug.
@@ -123,17 +165,19 @@ anything here.
 
 ## 4. The hand-off chain
 
-The day is a pipeline, not eight independent jobs.
+The day is a pipeline, not a stack of independent jobs.
 
 ```
-07:45 Launch Gate ──► is main releasable? is prod current? what broke overnight?
-        │                    │
-        │ FAIL ──────────────┼──► 09:45 Sprint Blitz's item IS the failure. It fixes the
-        │                    │       gate instead of picking a feature. No exceptions.
-        ▼                    ▼
-09:10 Wiring Audit ──► capture-path defects (question B)
+07:15 Primary Engineer ──► up to 3 launch-ranked items → PRs (question A or B, highest rank
+        │                   first; Illinois tiebreak). Feeds on YESTERDAY's QA Sweep, Evening
+        │                   Triage, and the most recent Launch Gate report. A Launch Gate FAIL
+        │                   there — or a red main at orient time — makes the fix item one.
+        │                   No exceptions.
         ▼
-09:45 Sprint Blitz ──► ONE launch-queue item → PR (question A or B, highest rank first)
+07:45 Launch Gate ──► is main releasable? is prod current? what broke overnight?
+        │             (a FAIL here is the NEXT Primary Engineer run's first item)
+        ▼
+09:10 Wiring Audit ──► capture-path defects (question B)
         ▼
 12:30 Lender Gate ──► can an organic file reach a lender clean? (question A)
         ▼
@@ -141,10 +185,15 @@ The day is a pipeline, not eight independent jobs.
         ▼
 18:30 Evening Triage ──► reads all of the above, dedupes into ONE backlog,
                           updates CTO_ROADMAP.md, writes the founder's list
+
+Tue 13:15 Compliance Watch ──► state-launch ladder + signature-ready drafts; its ⛔ items
+                                feed Evening Triage's founder list that evening
 ```
 
 **Reading a peer's report is mandatory, not optional.** A missing upstream report is a `WARN` with
-the routine named — never silently ignored, and never treated as "nothing happened."
+the routine named — never silently ignored, and never treated as "nothing happened." The Primary
+Engineer runs before the day's Launch Gate, so its upstreams are yesterday's reports and the most
+recent gate verdict; it cites them, never re-derives them.
 
 Evening Triage holds **exclusive** authority to edit `CTO_ROADMAP.md` §0–§3. Every other routine
 *proposes* tickets in its report; Triage lands them. This is what stops six routines appending six
@@ -155,18 +204,64 @@ near-duplicate items to the same queue.
 ## 5. The claim register — the lock
 
 [`REGISTER.md`](REGISTER.md) is the single table of who is writing what, right now. It is the only
-mechanism preventing the Wiring Audit, Sprint Blitz and Radar from landing on the same file.
+mechanism preventing the Wiring Audit, the Primary Engineer and Radar from landing on the same
+file. The Primary Engineer ships up to three PRs a run — it claims each item as a row and releases
+each row when that item ships, parks, or dies; a day's unreleased rows are the next run's first
+cleanup.
 
 **Before writing a single line of code**, a routine must:
 
 1. `git fetch origin && git pull --rebase origin main`, then `pnpm install --frozen-lockfile`
    **again after the rebase** — stale `node_modules` fakes a red `tsc` in files you never touched,
    and a routine has already nearly reported "main is broken" on that alone.
-2. `ListAgents` — peers named `homiquity-*` are humans working this repo *right now*.
-3. Read `REGISTER.md`. If your intended target is claimed and the claim is **< 24 h old**, pick
-   something else. Claims **≥ 24 h old are stale and reclaimable** — say so in your report.
-4. Add your own row (routine, target, worktree, branch, UTC timestamp) and commit it.
-5. On finish — shipped, abandoned, or crashed — **remove your row**. A stale claim blocks everyone.
+2. **Open PRs of any label, and their changed files.** Every file in an open PR is claimed by
+   whoever opened it, whether or not they also wrote a `REGISTER.md` row.
+3. Read `REGISTER.md`. If your intended target is claimed and the claim is **< 24 h old**, work
+   the assist ladder below instead. Claims **≥ 24 h old are stale and reclaimable** — say so in
+   your report.
+4. `ListAgents` — **advisory only, and read it last.** Peers named `homiquity-*` are humans on
+   this repo right now, but a "No reachable agents" result is *not* evidence that nobody is
+   working: it returned exactly that during an active three-way collision (2026-08-12) and again
+   in a session where five other sessions had open PRs. Signal order is `origin/main` → open PRs
+   → `REGISTER.md` → `ListAgents`, weakest last.
+5. Add your own row (routine, target, worktree, branch, UTC timestamp), commit it, **and push the
+   branch** — an unpushed claim is invisible to every peer, which is the exact failure the claim
+   boards exist to prevent.
+6. On finish — shipped, abandoned, or crashed — **remove your row**. A stale claim blocks everyone.
+
+### The assist ladder — help land what exists before adding to it
+
+A claimed target is not a dead end, it is a redirect. Routines generate faster than one founder
+reviews, so **opening another PR is the lowest-value move available when work is already in
+flight.** Take the first rung that applies:
+
+1. **Something in flight is broken** — red CI, a merge conflict, a base gone stale. Fix it. A red
+   PR blocks the queue everyone shares; it is never "someone else's job".
+2. **Something in flight is unverified** — run its tests, check its evidence against its claims,
+   post what you found. Reviewing is contributing.
+3. **Something in flight is incomplete** — supply the missing test, doc, or ledger row **as a
+   comment on that PR**, not as a competing PR of your own.
+4. **The queue is clear** — now start new work, under §6's territory rules.
+
+**Ending a tick idle because peers were busy is a FAILED tick, not a polite one.** Report "review
+capacity is the blocker" only when the queue is genuinely healthy and there is nothing to assist.
+
+**Assist without hijacking.** Push to another session's branch only when it is stalled (no new
+commits *and* the session unreachable) or its owner asked. Never force-push another session's
+branch, never close its PR, never silently rewrite its approach — say what you changed and why.
+
+### Ids must not need a register to stay unique
+
+**Finding ids are date-qualified — `F-<MMDD>-<NN>`, using your own run's date (`F-0812-01`).
+Never a bare next-free integer.**
+
+Between 2026-08-04 and 2026-08-12 the finances were audited nine times by sessions that could not
+see each other, and **six of them minted findings starting at `F-20`** from "the next free number",
+so `F-20` came to mean six different things. Date qualification is unique **by construction, with
+zero coordination** — which is exactly why it survives the case a central allocator cannot: you
+must be able to *see* `main` before you can ask it for the next number, and not seeing each other
+was the whole problem. Ids predating the scheme (`F-1`…`F-19`) keep their original form: single
+origin, no ambiguity. The same rule holds for any new id space a routine invents.
 
 **A routine that skips the register does not get to write code.** If the register is unreachable or
 the repo is dirty in a way you did not cause, report and stop.
@@ -179,15 +274,17 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 
 | Routine | May edit | Never edits |
 |---|---|---|
+| Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b) | capture-path files under an active Wiring Audit claim; files with open `refactor-radar/LEDGER.md` rows; the deferred lender API/UI (LS-10 — founder-gated); §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
 | Launch Gate | nothing | — (report + proposed tickets only) |
 | Wiring Audit | `client/src/**` on the capture path | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
-| Sprint Blitz | anything **not** founder-gated, with the full gate suite green | §9-triggering paths without a written security review; regulated math without a citation |
 | Lender Gate | small, safe, isolated fixes only | the underwriting/decision engines |
-| QA Sweep | nothing | — (findings only; fixes are a human or Blitz session) |
+| QA Sweep | nothing | — (findings only; fixes are a human or a Primary Engineer run) |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
 | Vendor & Procurement | nothing | `.env`, Railway config, anything outbound |
+| Compliance Watch | `knowledge-base/compliance-watch/**` + its own report file | every code path; `docs/**` (read-only reference); anything outbound — it drafts, only the founder files or sends |
 | Rent Reporting Watch | its own report file only | **every** rent/furnishing code path — it exists to *observe* the gates, and a routine that can open one is not a watchdog |
 | Refactor Radar | `client/src/**` minus `components/ui/**` | its own R4 off-limits list — unchanged |
+| Financial Audit | money paths + the financial registers; **audit-first, reports rather than fixes** — fixes only owner-authorized ledger rows, one per tick | `client/src/**` decomposition (radar's lane), `shared/schema/**` without a migration, company identity |
 
 **Off limits to every routine, always:** `shared/schema/**` and `migrations/**` without a same-PR
 hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session code;
@@ -267,6 +364,7 @@ they never push to `main`. Evening Triage may bundle the day's reports into one 
 ## 10. Honesty rails
 
 These are not style notes. Each one is a failure that already happened here.
+New lessons accrete in [`LESSONS.md`](LESSONS.md) between edits to this section — append there mid-run rather than losing what you learned, and promote a rule here once it proves general.
 
 - **Never claim a deploy without the `/api/health` commit.** Green checks lie.
 - **Never claim main is broken without reinstalling after a rebase** and checking
@@ -304,3 +402,11 @@ Adding, retiring or re-timing a routine means editing **this file and the schedu
 the same session. A definition on disk that is not registered in the scheduler is not a routine —
 it is a fossil, and fossils are what produced §0. Retired definitions are archived under
 `~/.claude/scheduled-tasks/_archive/`, never left registered-looking.
+
+**Worked example (2026-08-17):** Sprint Blitz was retired into the Primary Engineer in one
+session — its definition copied to `_archive/sprint-blitz/` with a dated retirement note, the
+scheduler task deleted, its §3 row removed, and the two new routines (`primary-engineer`,
+`compliance-watch`) registered with recurring `cronExpression`s (never `fireAt` — a one-shot
+self-disables) before this file's clock rows were finalized from the scheduler's real jitter.
+Both directions of §11 in one commit: nothing registered-looking that isn't registered, nothing
+registered that this file doesn't carry.

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Home, Info, Loader2, Plus } from "lucide-react";
 import type { LeaseView } from "@shared/leaseView";
+import { LeasePayments } from "./myLease/LeasePayments";
 
 /**
  * My lease — the authenticated capture surface for the rent ledger.
@@ -162,6 +163,7 @@ export default function MyLease() {
                 <div className="mt-2 text-xs" data-testid={`text-lease-furnishing-${lease.id}`}>
                   {lease.furnishingEnrolled ? "Reporting to bureaus" : "Not being reported"}
                 </div>
+                <LeasePayments leaseId={lease.id} monthlyRent={lease.monthlyRentAmount} />
               </CardContent>
             </Card>
           ))}
