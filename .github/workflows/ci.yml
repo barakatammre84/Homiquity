@@ -95,6 +95,29 @@ jobs:
     # enforce_admins off temporarily (Settings → Branches). Both need repo admin.
     name: gate (typecheck · tests · schema guard)
     if: github.event_name == 'pull_request'
+    # One in-flight gate per PR — a new push supersedes the old run instead of
+    # racing it. Without this, every push to a branch started a fresh ~5-minute
+    # run while the superseded one ran to completion for a commit nobody would
+    # ever merge. The repo is PRIVATE, so those minutes are metered (KTLO-2):
+    # measured 2026-08-17, 66 CI runs over 4.85 days (~13.6/day) at ~4-5 min
+    # each is ~1,850 min/month against a 2,000-minute free allowance.
+    #
+    # SAFE BECAUSE OF THE `if:` ONE LINE ABOVE, not because of this group's key.
+    # `gate` runs on pull_request ONLY, so cancel-in-progress structurally cannot
+    # reach `migrate-prod` (push || workflow_dispatch) or `verify-deploy` (push)
+    # — a cancelled deploy or a half-applied migration is the 2026-07-13 outage
+    # class and is not reachable from here. tests/ciTriggers.test.ts pins both
+    # that `if:` and this block together; if the `if:` is ever widened, THIS
+    # becomes dangerous and that test is what says so.
+    #
+    # Cancelling is never a lost signal: a cancel only happens because a NEWER
+    # run for the same PR started, and branch protection evaluates the latest
+    # run for the head SHA. On an `edited` event that supersedes an in-flight
+    # `synchronize`, the surviving run is the one carrying the NEWER PR body —
+    # which is what guard:security needs to read.
+    concurrency:
+      group: gate-pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     services:
       # Disposable Postgres for the self-host boot probe (Railway migration

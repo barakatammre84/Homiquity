@@ -36,6 +36,34 @@ export interface LeaseView {
   readonly furnishingEnrolled: boolean;
 }
 
+/**
+ * The borrower-facing shape of one rent payment.
+ *
+ * `provenance` is on the view deliberately. It is the field that decides whether a row
+ * could ever be furnished to a credit bureau, and a borrower is entitled to see which
+ * of their payments rest on first-party evidence and which are their own say-so. It is
+ * also the honest way to render `furnishable: false` without the surface having to
+ * re-derive the rule.
+ */
+export interface RentPaymentView {
+  readonly id: string;
+  readonly leaseId: string;
+  /** `YYYY-MM-DD` — the period this payment covers. */
+  readonly dueDate: string;
+  /** `YYYY-MM-DD`, or null while unpaid. */
+  readonly paidDate: string | null;
+  readonly amountDue: string;
+  readonly amountPaid: string | null;
+  readonly status: string;
+  readonly provenance: string;
+  /**
+   * Whether this row is eligible to be furnished. Computed server-side from
+   * `provenance` so a surface can never disagree with the gate — always `false`
+   * today, because only `platform_processed` qualifies and nothing produces it yet.
+   */
+  readonly furnishable: boolean;
+}
+
 /** `YYYY-MM-DD` from a UTC-anchored timestamp. Never uses local getters — see the header. */
 export function toDateOnly(value: Date | string | null | undefined): string | null {
   if (value == null) return null;
