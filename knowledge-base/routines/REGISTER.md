@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| primary-engineer 2026-08-17 (item 3) | `client/src/pages/borrower/CreditConsent.tsx` + colocated test (FINDINGS ux-20: nothing visible at the hard-pull ask says "hard inquiry") | `.claude/worktrees/primary-engineer-2026-08-17-3` | `routine/primary-engineer-2026-08-17-3` | 2026-08-17 19:55 | Surface the hard-inquiry fact at the checkbox, callout and fine print, mirroring the platform's own FCRA disclosure item 2 language. Strengthens the disclosure surface only. |
 | `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0812-*` | — | `claude/fervent-mayer-oqk0iv` | 2026-08-12 | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Stays out of `client/**` UI decomposition — that is refactor-radar's lane. |
 
 ## Recently released
