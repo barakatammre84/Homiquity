@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Bot,
   Calculator,
+  ClipboardList,
   Home,
   PiggyBank,
   Scale,
@@ -62,6 +63,15 @@ const TOOLKIT = [
     title: "Rent-to-Own Path",
     description: "Structured plans for getting to the down payment.",
     testId: "renter-tool-rent-to-own",
+  },
+  {
+    // The rent ledger's front door for the renter persona. Shipped 2026-08-17 as an
+    // orphan route — the audit found /my-lease had zero inbound links anywhere.
+    href: "/my-lease",
+    icon: ClipboardList,
+    title: "My Lease & Rent Record",
+    description: "Keep a record of your lease and rent payments.",
+    testId: "renter-tool-my-lease",
   },
   {
     href: "/ai-coach",

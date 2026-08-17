@@ -139,7 +139,7 @@ when reasoning about overlap. `taskId` is the scheduler key.
 | 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
 | 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | delivery verdict + Target-5 execution |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified rows in `FINDINGS.md` |
-| 18:40 | `30 18 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list |
+| 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list — re-timed from 18:40 on 2026-08-17: the last slot of the day is the one catch-up bursts shed, and it had never once run |
 | Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | vendor/contract board |
 | Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state-launch compliance ladder + signature-ready drafts |
 | Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | furnishing-gate posture + the two procurement asks |
@@ -183,7 +183,7 @@ The day is a pipeline, not a stack of independent jobs.
         ▼
 15:00 QA Sweep ──► one domain + one workflow, adversarially verified → FINDINGS.md
         ▼
-18:30 Evening Triage ──► reads all of the above, dedupes into ONE backlog,
+21:00 Evening Triage ──► reads all of the above, dedupes into ONE backlog,
                           updates CTO_ROADMAP.md, writes the founder's list
 
 Tue 13:15 Compliance Watch ──► state-launch ladder + signature-ready drafts; its ⛔ items
