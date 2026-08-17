@@ -84,8 +84,32 @@ interface StepContext {
   app: LoanApplication;
 }
 
+/**
+ * The seven step ids, as a union rather than `string`.
+ *
+ * These ids are matched against the `<TabsContent value="…">` literals ~580
+ * lines below, in the same file. While `id` was `string` that was a
+ * compiler-unchecked contract: renaming a step here silently rendered an empty
+ * tab panel, with nothing red in `tsc`, the test suite, or any guard.
+ *
+ * Narrowing it closes that in both directions — each panel literal is pinned
+ * with `satisfies UrlaStepId`, so a typo or a half-finished rename is a build
+ * error. knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md names exactly this
+ * narrowing as the prerequisite for ever moving the STEPS table out of this
+ * file. It is the prerequisite only — the move itself is still refuted there,
+ * and this change does not license it.
+ */
+type UrlaStepId =
+  | "borrower"
+  | "employment"
+  | "assets"
+  | "liabilities"
+  | "property"
+  | "declarations"
+  | "demographics";
+
 interface UrlaStep {
-  id: string;
+  id: UrlaStepId;
   label: string;
   estimate: string;
   intro: string;
@@ -667,11 +691,11 @@ export default function URLAForm() {
                 <p className="text-sm text-muted-foreground">{currentStep.intro}</p>
               </div>
 
-              <TabsContent value="borrower" className="mt-0 space-y-6">
+              <TabsContent value={"borrower" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <PersonalInfoSection personalInfo={slice.personalInfo} onChange={setPersonalInfo} />
               </TabsContent>
 
-              <TabsContent value="employment" className="mt-0 space-y-6">
+              <TabsContent value={"employment" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <EmploymentSection
                   employmentRecords={slice.employmentRecords}
                   onChange={setEmploymentRecords}
@@ -682,15 +706,15 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <TabsContent value="assets" className="mt-0 space-y-6">
+              <TabsContent value={"assets" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <AssetsSection assets={slice.assets} onChange={setAssets} />
               </TabsContent>
 
-              <TabsContent value="liabilities" className="mt-0 space-y-6">
+              <TabsContent value={"liabilities" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <LiabilitiesSection liabilities={slice.liabilities} onChange={setLiabilities} />
               </TabsContent>
 
-              <TabsContent value="property" className="mt-0 space-y-6">
+              <TabsContent value={"property" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <PropertySection
                   propertyInfo={propertyInfo}
                   onChange={setPropertyInfo}
@@ -700,7 +724,7 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <TabsContent value="declarations" className="mt-0 space-y-6">
+              <TabsContent value={"declarations" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <DeclarationsSection
                   declarations={slice.declarations}
                   onChange={setDeclarations}
@@ -708,7 +732,7 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <TabsContent value="demographics" className="mt-0 space-y-6">
+              <TabsContent value={"demographics" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <DemographicsSection
                   demographics={slice.demographics}
                   onChange={setDemographics}
