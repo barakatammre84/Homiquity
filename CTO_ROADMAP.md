@@ -35,43 +35,50 @@ simulated vs pending) · [feature-review/FINDINGS.md](knowledge-base/feature-rev
 These outrank every engineering item below. They are not features; they are the condition for
 anything else in this file being true.
 
-- [ ] **KTLO-1. Railway trial expiry — roughly 30 days / ~$4.97 of credit left.** When it runs out
-  **production stops serving.** Add a payment method / move off trial: Railway → project
-  `Homiquity` → Settings → Billing. Coupled consequence: image retention is **72 h on Hobby**, so
-  past that window [ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md) §1 has no one-step path.
-  **Founder-held.**
-- [ ] **KTLO-2. GitHub Actions capacity — the gate is queueing.** Observed 2026-08-06 21:2xZ: the CI
-  run for `fix/railway-health-and-cron-host` sat `queued` 30+ minutes (normal is ~4 min), two open
-  PRs have **zero check-runs and no run at all** (a dropped event, which needs an empty commit or
-  close+reopen — `gh run rerun` reuses the original id and won't help), and five scheduled
-  `cron-jobs` runs failed or were cancelled. The repo is **private**, so Actions minutes are
-  metered. `gate (typecheck · tests · schema guard)` is the required status on `main` — **if it
-  cannot run, nothing merges and `migrate-prod` never applies a migration.** Check Settings →
-  Billing → Actions. **Founder-held.**
+- [ ] **KTLO-1. Railway billing — add a payment method; the risk is the expiring trial credit, not
+  consumption.** Re-measured 2026-08-17 (#536): 7-day usage ≈ **$3.20/month** (CPU avg 0.0002 vCPU,
+  mem 0.32 GB — the container is idle), so this is the $5 Hobby plan plus a trial credit last read
+  "~30 days / ~$4.97" on **2026-08-06** and unreadable by any session since (no MCP billing
+  endpoint; the local `RAILWAY_API_TOKEN` is dead — #536 E8). When the credit lapses **production
+  stops serving.** Railway → project `Homiquity` → Settings → Billing. Coupled: image retention is
+  **72 h on Hobby** — today's deploys restored a rollback window that relapses ~2026-08-20 without
+  another deploy ([ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md) §1). **Founder-held.**
+- [ ] **KTLO-2. GitHub Actions minutes — this is the platform bill, not Railway.** Measured
+  2026-08-17 (#536 E9): ~13.6 CI runs/day × ~4–5 billable min ≈ **1,850 of the private repo's
+  2,000 free min/month (~92%)**; overage $0.008/min. The 2026-08-06 queueing symptom is stale —
+  Actions was healthy all day today (launch-gate 2026-08-17). Mitigations landed 2026-08-17: the
+  local pre-push gate (#529) and superseded-run cancellation (#535). Decide: set an Actions
+  spending limit **knowing a hard cap that halts `gate` also halts every merge and `migrate-prod`**,
+  or accept overage. Settings → Billing → Actions. **Founder-held.**
 - [ ] **KTLO-3. Neon production compute is unpinned — cold starts measured at 5.5–7.4 s.** The first
   request after autosuspend pays that, on the borrower funnel. Decide alongside KTLO-1 (same billing
   conversation): pin the compute / disable autosuspend on the production branch, or accept it and
-  record the number in [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md). **Founder-held.**
+  record the number in [ASSUMPTIONS.md](knowledge-base/governance/ASSUMPTIONS.md). Still unverified
+  2026-08-17: the GitHub cron sweeps (every ~20–40 min) keep the compute warm and mask the cold
+  start; the first borrower after a real idle window still pays it (#526 E6). **Founder-held.**
 
 ---
 
 ## §1 Founder-held — blocks go-live
 
-- [ ] **1.1 The go-live flip.** Set `PRELAUNCH_GATED=false` **and** `VITE_PRELAUNCH_GATED=false` in
-  Railway → service `Homiquity` → Variables (environment `production`). `VITE_*` is compiled into
-  the client bundle, so this needs a **redeploy, not a restart** — and it has not shipped until
-  `GET /api/health` reports the new `commit`. `BETA_ACCESS_CODE` is a separate front-door switch.
-- [ ] **1.2 Railway service variables — ~48 of the 65 names in `.env.example` are unset.**
-  Launch-critical subset, in order: `GCS_SERVICE_ACCOUNT_KEY` + `PRIVATE_OBJECT_DIR` (durable
-  uploads — the code half is done; `request-url` 503s `UPLOADS_UNCONFIGURED` until this lands);
-  `SENDGRID_API_KEY` + `FROM_EMAIL` + SPF/DKIM DNS (real email — note DKIM is currently unaligned,
-  see the DNS notes); `SENTRY_DSN` + an uptime monitor on `/api/health` (a prod crash is invisible
-  today); `CRON_SECRET` **matching** the GitHub repository secret used by `cron-jobs.yml`. While in
-  that panel, confirm `DATABASE_URL` points at the **production** Neon branch — on 2026-08-06 it
-  pointed at a stale one and `/api/articles` + `/sitemap.xml` 500'd while `/api/health` stayed 200.
-  Then walk the remaining names and decide set-or-omit for each. ~1 hour.
-- [ ] **1.3 Wholesale-lender outreach — UNBLOCKED since 2026-07-13; nobody acted on it for three
-  weeks.** F1 cleared with NMLS #427468, but the shortlist still gated five actions on "once F1
+- [ ] **1.1 Confirm the go-live flip that live probes say already happened.** Prod has served
+  ungated public pages since 2026-08-06; re-probed 2026-08-17: `/` and `/api/rates` 200 with no
+  prelaunch/waitlist markers (launch-gate report). `PRELAUNCH_GATED` and `VITE_PRELAUNCH_GATED`
+  still exist as **names** in Railway variables and values are unreadable from any session — open
+  the panel, confirm both are `false`/removed, then archive this line. `BETA_ACCESS_CODE` is a
+  separate front-door switch (currently unset — #526 E2).
+- [ ] **1.2 Railway service variables — live read 2026-08-17 (#526 E2): 19 non-injected names set;
+  launch-critical still unset:** `GCS_SERVICE_ACCOUNT_KEY` + `PRIVATE_OBJECT_DIR` (+
+  `PUBLIC_OBJECT_SEARCH_PATHS`) — durable uploads; `request-url` 503s `UPLOADS_UNCONFIGURED` until
+  they land; `SENTRY_DSN` + an uptime monitor on `/api/health` (a prod crash between CI
+  `verify-deploy` runs is invisible); `GOOGLE_MAPS_API_KEY` — `server/routes/geocode.ts:34` 503s
+  without it, so **every production address lookup fails today**; `RAPIDAPI_KEY` (or record staying
+  on the simulated rate survey in ASSUMPTIONS.md). Also delete the stray lowercase `fromemail`
+  sitting beside the real `FROM_EMAIL`. Verified done and dropped from this line 2026-08-17:
+  SendGrid key + `FROM_*` set; `CRON_SECRET` matches (sweeps 200 — #526 E6); `DATABASE_URL` on a
+  populated branch (data-backed routes 200). ~45 min.
+- [ ] **1.3 Wholesale-lender outreach — UNBLOCKED since 2026-07-13; still unworked five weeks later
+  (2026-08-17).** F1 cleared with NMLS #427468, but the shortlist still gated five actions on "once F1
   clears". Live now: the UWM AE / Director-hotline call (sandbox process + whether BOLT exposes a
   PPE-consumable feed); the Newrez Brigade contact for the sandbox path; Angel Oak / Newrez
   approval-checklist requests; a manual read of Plaza's wholesale-broker guide PDF for
@@ -80,7 +87,9 @@ anything else in this file being true.
   [wholesale-lender-shortlist](knowledge-base/research/my-research/wholesale-lender-shortlist-2026-07-04.md).
 - [ ] **1.4 Start the F3 (credit vendor) and F6 (DU/LPA) applications now** — vendor paperwork lead
   time runs *in parallel* with everything else, not after it. Starting the paperwork is not the same
-  as building against it.
+  as building against it. No application opened as of 2026-08-17 (#526). Ask in the same first
+  email: SOC 2 Type II + signed DPA + permissible-purpose / FCRA end-user certification package
+  (F3); both the DU **and** LPA legs (F6).
 - [ ] **1.5 Production reseed for #24** — grids rerun + BRC-J30 jumbo min `806500.01`.
   `seedMarketPricing` is skip-if-exists, so this is a **destructive wipe-and-reseed**.
   Founder-supervised.
@@ -98,8 +107,13 @@ anything else in this file being true.
   notifications (**email is the only Fannie channel** — their page is bot-protected), Freddie Guide
   bulletins, FHA INFO, VA lender news; register for the Developer Portal (public APIs free,
   business-partner APIs unlock with F6). See
-  [REGULATORY_MONITORING.md](knowledge-base/compliance/REGULATORY_MONITORING.md).
-- [ ] **1.9 Delete the dead `GEMINI_API_KEY`** — all AI is Anthropic; the key is verified unused.
+  [REGULATORY_MONITORING.md](knowledge-base/compliance/REGULATORY_MONITORING.md). Urgency doubled
+  2026-08-17: the automated Tier-2 watcher (`reg:watch`) has been dark since 2026-07-04 (§3.15) —
+  right now **no channel, automated or human, reports a guideline change**.
+- [ ] **1.9 Delete the dead `GEMINI_API_KEY` from local `.env`** — all AI is Anthropic; prod
+  verified clean 2026-08-17 (absent from the live variable list, #526 E2). The same local `.env`
+  also carries a dead `RAILWAY_API_TOKEN` and a dead `OPENAI_API_KEY` (#536 E8) — delete all three
+  together.
 - [ ] **1.10 Counsel: is the referral-commission payout permitted?** Two questions, both opened by
   the [2026-08-08 financial re-audit](knowledge-base/logs/2026-08-08-financial-architecture-reaudit-commission-payouts.md)
   (F-21) and recorded in the regulatory ledger under `regz-1026-36d1-referral-commission-payout` on a
@@ -111,20 +125,40 @@ anything else in this file being true.
   the same referral edge. Today only the staff `broker` role can reach it (the `agent` role in the
   gate does not exist), so nothing is exposed — but §3.7 schedules wiring it up. **No commission may
   be paid on a live file until this is answered.**
+- [ ] **1.11 Set the four email-auth DNS records at Squarespace — the 2026-08-17 vendor FAIL
+  (#526 E1).** SPF TXT on the apex, DMARC TXT at `_dmarc`, and SendGrid's `s1`/`s2` DKIM CNAMEs
+  **on the apex** (the existing `s1._domainkey.www` is scoped to the wrong host and never queried).
+  Until then every password reset, verification and waitlist email leaves unauthenticated and lands
+  in spam while `/api/health` reports email fine. MX (Google Workspace) intact — inbound
+  unaffected. Recovery values: the DNS zone notes. ~20 min.
+- [ ] **1.12 Procure the Reg Z / FCRA / CROA source texts** (compliance-watch 2026-08-17 ⛔5;
+  procedure in `docs/reg-z/README.md`): 12 CFR 1026.36(d)(1)-(2), 1026.32(b)(1), 1026.19(e)(3),
+  FCRA 1681s-2, CROA 1679b. Authoritative hosts are network-blocked from sessions; **five ledger
+  entries hit their review dates 2026-08-18 → 2026-08-23** and no session can clear them without
+  the texts landing in `docs/`.
+- [ ] **1.13 One NMLS login session, four outcomes** (compliance-watch 2026-08-17 ⛔1–4 +
+  [STATE_LADDER.md](knowledge-base/compliance-watch/STATE_LADDER.md)): (a) **does an IL-licensed
+  MLO with an approved sponsorship exist?** — if not, nobody can originate the first Illinois loan
+  and this becomes the top item in this section; (b) pull Consumer Access / MU1 / surety bond /
+  financial-statement records; (c) download the IL checklists from the NMLS Resource Center
+  (unreachable from sessions) and hand them to a session for `docs/nmls/`; (d) confirm the first
+  MCR due date (computed: Q3-2026 RMLA due **2026-11-14**; prep draft ready in
+  `knowledge-base/compliance-watch/drafts/`) and calendar it. ~1 h.
+- [ ] **1.14 Decide F-040's scope: the stored FCRA disclosure promises 120-day consent validity,
+  but `credit_consents` has no expiry column and no gate checks age.** Does 120 days bind funnel
+  soft-pull consents too, or only `/credit-consent` hard pulls? Strictest defensible reading (bind
+  everything, force re-consent past 120 d) is the default absent an answer. The mechanism (expiry
+  column + age gate, expand-only migration) is a routine engineering item once decided (PE-006).
 
 ---
 
 ## §2 Engineering — launch-blocking, ordered
 
-- [ ] **2.1 Land or close [#446](https://github.com/barakatammre84/Homiquity/pull/446)** — a real
-  `GET /health` liveness probe, and stop routing the three scheduled sweeps through a third-party
-  DNS zone. Three cron sweeps died 2026-08-06 with `curl` exit 6 (could not resolve host) because
-  they call `www.homiquity.com`, a CNAME in a Squarespace-hosted zone; machine-to-machine traffic
-  must use `*.up.railway.app`. Currently **blocked on KTLO-2** (zero check-runs).
 - [ ] **2.2 Fix uploads end-to-end**, then run the acceptance test. The code half is done
   (memory storage, honest failure copy in #444); it is `GCS_SERVICE_ACCOUNT_KEY` +
-  `PRIVATE_OBJECT_DIR` from §1.2 that makes it real. Uploads silently vanishing is the single
-  worst borrower-facing failure available to us.
+  `PRIVATE_OBJECT_DIR` from §1.2 that makes it real (names confirmed still unset in the 2026-08-17
+  live read — #526 E2). Uploads silently vanishing is the single worst borrower-facing failure
+  available to us.
 - [ ] **2.3 Run [PROD_ACCEPTANCE_TEST.md](knowledge-base/runbooks/PROD_ACCEPTANCE_TEST.md) end to
   end** once §1.1 and §1.2 land. See §5.
 
@@ -144,7 +178,9 @@ anything else in this file being true.
 - [ ] **3.2 The last N+1 loop.** `validateMISMOCompleteness` runs once per active application in
   `server/routes/underwriting/compliance.ts` and makes 5+ storage reads internally. Batching it means
   restructuring the URLA validator's data loading — a compliance-sensitive refactor, which is why it
-  did not ride the mechanical batching PR. Pattern to follow: `/api/dashboard`'s `inArray`.
+  did not ride the mechanical batching PR. Pattern to follow: `/api/dashboard`'s `inArray`. **The
+  fix already exists: [#514](https://github.com/barakatammre84/Homiquity/pull/514) (from the retired
+  sprint-blitz) is open and green as of 2026-08-17 — review/merge it rather than rebuilding.**
 - [ ] **3.3 Internal data-lineage view for masked lender identity.** Borrower surfaces mask the
   wholesale lender by doctrine (`shared/borrowerOfferView.ts`); compliance and staff need the
   unmasked lineage somewhere.
@@ -194,6 +230,23 @@ anything else in this file being true.
   were wrong in opposite directions. Build: snapshot the schedule charged at LE issuance, record
   collection at settlement beside `compensation_received_at`, and surface the charged-vs-collected
   variance the same way lender short-pay is surfaced.
+
+- [ ] **3.15 Register `reg:watch:save` on a schedule — or delete it and declare Tier 2 human-only**
+  (#526 E5). `data/regulatory/regulatory-watch-state.json` last ran **2026-07-04** while
+  `REGULATORY_MONITORING.md` still calls the tier "automated, live" — the CHARTER §0 fossil
+  pattern. Cheapest honest fix: a weekly CI step + a `lastRun` age assertion in `pnpm checkup`.
+- [ ] **3.16 Un-red `pnpm checkup`: record an accepted-risk its dependency check can read**
+  (launch-gate LG-3, 2026-08-17). 1 low + 4 moderate advisories, all in
+  `@modelcontextprotocol/sdk`'s HTTP transport, which `server/mcp/index.ts` never loads (stdio
+  only). Bump the SDK when upstream patches; **no `pnpm.overrides`**. A permanently-red check is a
+  dead check.
+- [ ] **3.17 Adjudicate the 13-commit orphan `claude/lucid-edison-br5hsb`** (2026-08-12; no PR
+  until rescue-draft [#542](https://github.com/barakatammre84/Homiquity/pull/542)): +1,543/−72
+  including five compliance behavior-test suites (FCRA consent order, ECOA intake-never-denies,
+  invite-validate PII audit, VA residual parity / F-051) and server fixes. Its F-042 slice is
+  superseded by #537; the rest may still be live value. After #537 lands: rebase, drop the
+  superseded slice, land what's green — or close explicitly. Five days of invisibility already
+  cost one duplicate rebuild (#537 vs `15c1f19`).
 
 ---
 
