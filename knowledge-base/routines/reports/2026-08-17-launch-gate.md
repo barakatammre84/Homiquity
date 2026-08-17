@@ -24,12 +24,20 @@ RELEASABLE: yes · main 1f520b1 · prod 1f520b1 · drift 0 commits · gates ✓ 
    by `git revert <sha>` + push and a full rebuild (CHARTER §8), which is minutes, not seconds. This
    is a **consequence of KTLO-1**, not an independent item — leaving Hobby fixes both.
 
-3. **The suite has been dark since 2026-08-12.** `knowledge-base/routines/reports/` holds exactly one
-   report (`2026-08-12-wiring-audit.md`). Eight routines × 5 days should have produced far more. This
-   is the §0 failure mode the charter exists to catch — *"a routine that cannot be shown to have run
-   is not a control."* Most likely cause is benign (CHARTER §3: scheduled tasks only run while the app
-   is open, and this very run was suspended mid-flight for ~4.5 days — see Coverage). It still needs a
-   deliberate confirm-or-fix rather than an assumption. **Founder-held.**
+3. **Four days with no routine report: 2026-08-13 → 2026-08-16.** Searched **every remote branch**,
+   not just `main`. Reports that exist: three dated 2026-08-12 (`wiring-audit` on `main`;
+   `lender-delivery-gate` and `sprint-blitz` on unmerged `routine/*` branches) and this one. Nothing
+   for the four days between. Two qualifiers that keep this honest: today's suite **is** running —
+   `vendor-procurement` and `refactor-radar` both hold live worktrees right now — and CHARTER §3's
+   "scheduled tasks only run while the app is open" plausibly explains a laptop-shut gap, which this
+   very run demonstrates (it was suspended twice, for ~4.5 days total). So this is a gap to
+   **confirm**, not yet a broken control. Worth confirming anyway, because it is the exact §0 failure
+   mode the charter exists to catch — *"a routine that cannot be shown to have run is not a control."*
+   **Founder-held.**
+
+   Separately and more actionable: two of the three 2026-08-12 reports **live only on unmerged
+   branches**, so anyone reading `main` sees one report where three exist. Evening Triage's report
+   count (CHARTER §7) will undercount for exactly this reason unless it looks across branches.
 
 ---
 
@@ -40,9 +48,9 @@ RELEASABLE: yes · main 1f520b1 · prod 1f520b1 · drift 0 commits · gates ✓ 
 commit, so drift is zero and the silent-stale-deploy failure mode is not present. The real exposure
 is operational, not code: Railway's 72 h image retention lapsed ~42 h ago, so there is no one-step
 rollback, and that traces directly back to the unpaid Hobby plan in KTLO-1. Nothing has merged to
-`main` in **4.7 days** while **17 PRs sit open** (none with auto-merge armed — checked), and the
-routine suite has written no report since 2026-08-12; GitHub Actions itself is healthy, so this is a
-queue that stopped being drained, not a broken gate. The security delta is clean: no secrets in the
+`main` in **4.7 days** while **17 PRs sit open** (none with auto-merge armed — checked), and no
+routine report exists for 2026-08-13 → 2026-08-16 on any branch; GitHub Actions itself is healthy, so
+this is a queue that stopped being drained, not a broken gate. The security delta is clean: no secrets in the
 window, no PII interpolated into server logs, `ssnVault` still the only SSN persistence path, and the
 one client/server role-gate pair I traced matches. `pnpm checkup` exits non-zero on **dependency
 vulnerabilities** — 1 low + 4 moderate, **zero critical/high**, all unreachable in this deployment
@@ -253,9 +261,13 @@ Checked and clean: **no open PR has auto-merge armed** (`gh pr list --json autoM
 - **This run straddled two multi-day host suspensions.** It began 2026-08-12 17:35 CDT, the machine
   slept, and it resumed and completed 2026-08-17. My first gate pass ran against `0922545` and is
   discarded; **everything reported here was re-run against `1f520b1`**, current `origin/main` at
-  16:49Z today. This is also the most likely explanation for the five-day gap in `reports/` —
+  16:49Z today. This is also the most likely explanation for the 2026-08-13 → 2026-08-16 reports gap —
   CHARTER §3's "scheduled tasks only run while the app is open" — but I am reporting it as unconfirmed
   rather than assuming it.
+- **An earlier draft of this report said `reports/` "holds exactly one report".** That was true of
+  `main` and false of the repo: two more 2026-08-12 reports sit on unmerged `routine/*` branches. The
+  claim is corrected above. Recording the miss because it is the failure it warns about — a count
+  taken from one branch is not a count of what ran.
 - **The primary checkout was dirty on arrival** (`knowledge-base/feature-review/FINDINGS.md`,
   `DOMAINS.md` — a peer QA-sweep session's uncommitted work). Per CHARTER §5 I did not touch it; the
   gates ran in a separate worktree instead, which is why `checkup`'s sync check reads FAIL.
@@ -275,7 +287,7 @@ Checked and clean: **no open PR has auto-merge armed** (`gh pr list --json autoM
 | **LG-3** | B | **Resolve the permanently-red `pnpm checkup` dependency check.** 1 low + 4 moderate, all transitive under `@modelcontextprotocol/sdk` → `hono` / `@hono/node-server`, all in an HTTP transport `server/mcp/` never loads (stdio only). Either bump the SDK when upstream patches, or record an accepted-risk exception the check can read. Leaving it red trains everyone to ignore `checkup` — the same "control that isn't a control" failure as CHARTER §0. **No `pnpm.overrides` floor**: classification is already correct and an override would hide a real path if the transport ever changed. |
 | **LG-4** | A/B | **Drain the PR queue, starting with [#519](https://github.com/barakatammre84/Homiquity/pull/519)** ("a stacked PR got zero checks and still read as CLEAN"). A gate that can read CLEAN without running governs the trustworthiness of the other 16 merges, so it goes first. Then the silent-success fixes (#509, #511, #512) — question B, and the defect class this repo keeps rediscovering. |
 | **LG-5** | — | **Reconcile `CTO_ROADMAP.md:59` §1.1.** Probed prod suggests the prelaunch flip is already done (`/api/rates` 200, no gate markers served); the box is still unchecked. Confirm in Railway → Variables, then check it. Cheap, and it removes a false launch blocker from the founder's list. |
-| **LG-6** | — | **Confirm or fix the five-day reports gap.** Only `2026-08-12-wiring-audit.md` exists. If it was the laptop being shut (likely, given this run's own suspensions), say so in the register so the next Launch Gate does not re-raise it; if the scheduler lost registrations, that is CHARTER §11 and a fossil in the making. |
+| **LG-6** | — | **Confirm or close the 2026-08-13 → 2026-08-16 reports gap**, and **merge the two stranded 2026-08-12 reports** (`lender-delivery-gate`, `sprint-blitz`) that exist only on unmerged branches. If the gap was the laptop being shut — likely, given this run's own two suspensions — record that so the next Launch Gate does not re-raise it; if the scheduler lost registrations, that is CHARTER §11 and a fossil in the making. Also worth a line in CHARTER §7: a report count taken from `main` alone undercounts, because routines land reports by PR. |
 
 ---
 
