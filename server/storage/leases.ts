@@ -1,8 +1,9 @@
 import { db } from "../db";
-import { and, desc, eq } from "drizzle-orm";
-import { leases, type Lease } from "@shared/schema";
-import { type LeaseView, toDateOnly } from "@shared/leaseView";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { leases, rentPayments, type Lease, type RentPayment } from "@shared/schema";
+import { type LeaseView, type RentPaymentView, toDateOnly } from "@shared/leaseView";
 import { decryptSensitiveData, encryptSensitiveData } from "../services/encryptionService";
+import { FURNISHABLE_PROVENANCE } from "../services/rentFurnishing";
 import { LeadsStorage } from "./leads";
 
 /**
@@ -177,4 +178,95 @@ export class LeasesStorage extends LeadsStorage {
       .returning();
     return row;
   }
+
+  // ---------------------------------------------------------------------------
+  // Rent payments
+  // ---------------------------------------------------------------------------
+
+  /**
+   * List a lease's payments, owner-scoped in one query.
+   *
+   * `rent_payments` has no `userId` of its own — ownership runs through the lease. The
+   * join puts that in the SQL rather than in a caller's memory, so there is no version
+   * of this that "forgot" to check whose lease it is.
+   *
+   * Ordered by `dueDate` ascending: a payment history reads forwards, and the furnishing
+   * queue will eventually consume it in period order.
+   */
+  async listRentPaymentsForUser(leaseId: string, userId: string): Promise<RentPayment[]> {
+    const rows = await db
+      .select({ payment: rentPayments })
+      .from(rentPayments)
+      .innerJoin(leases, eq(rentPayments.leaseId, leases.id))
+      .where(and(eq(rentPayments.leaseId, leaseId), eq(leases.userId, userId)))
+      .orderBy(asc(rentPayments.dueDate));
+    return rows.map((r) => r.payment);
+  }
+
+  /**
+   * Record one rent payment.
+   *
+   * `provenance` is NOT a parameter. It is pinned to `self_reported` at the only place
+   * that inserts, because this is the borrower-entry path and a borrower's own say-so is
+   * exactly what `self_reported` means. Accepting it from a caller — even an internal
+   * one — would put the field that decides furnishability one careless argument away
+   * from claiming first-party evidence we do not have.
+   *
+   * `processorReference` is likewise absent: it is the audit thread back to a payment
+   * partner, and there is no partner. A synthesised value there is precisely the
+   * falsified provenance CLAUDE.md forbids.
+   *
+   * Returns undefined when the lease is not the caller's — the insert is guarded by a
+   * prior owner-scoped read rather than trusting the caller.
+   */
+  async recordSelfReportedRentPayment(
+    leaseId: string,
+    userId: string,
+    input: {
+      dueDate: Date;
+      amountDue: string;
+      paidDate?: Date | null;
+      amountPaid?: string | null;
+      status: string;
+    },
+  ): Promise<RentPayment | undefined> {
+    const lease = await this.getLeaseForUser(leaseId, userId);
+    if (!lease) return undefined;
+
+    const [row] = await db
+      .insert(rentPayments)
+      .values({
+        leaseId,
+        dueDate: input.dueDate,
+        paidDate: input.paidDate ?? null,
+        amountDue: input.amountDue,
+        amountPaid: input.amountPaid ?? null,
+        status: input.status,
+        provenance: "self_reported",
+        processorReference: null,
+      })
+      .returning();
+    return row;
+  }
+}
+
+/**
+ * Map a payment row to its borrower-facing view.
+ *
+ * `furnishable` is derived from the SAME constant the furnishing gate reads, not
+ * re-stated here — so a surface can never claim a row is reportable when the gate
+ * would refuse it, and widening the gate updates both at once.
+ */
+export function toRentPaymentView(row: RentPayment): RentPaymentView {
+  return {
+    id: row.id,
+    leaseId: row.leaseId,
+    dueDate: toDateOnly(row.dueDate) as string,
+    paidDate: toDateOnly(row.paidDate),
+    amountDue: row.amountDue,
+    amountPaid: row.amountPaid,
+    status: row.status,
+    provenance: row.provenance,
+    furnishable: FURNISHABLE_PROVENANCE.includes(row.provenance as never),
+  };
 }
