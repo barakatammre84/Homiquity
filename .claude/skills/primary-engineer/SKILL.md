@@ -43,14 +43,20 @@ moves only when the founder has a free evening.
   propose only). Building a lender-persona or borrower-facing *new* surface class is a founder ask,
   not a routine decision.
 - **R3 — Volume and backpressure.** Up to **3 PRs per run**, each item its own worktree branch and
-  its own REGISTER row. **OBSERVE MODE** (audit + report, no code) when ≥3 of this routine's PRs
-  are already open unmerged — founder merge throughput is the real constraint — or when the repo
-  is dirty in a way you did not cause. Never build >2 commits behind `origin/main`; re-fetch
-  between items.
-- **R4 — The §5 claim lock, per item.** `git fetch origin && git pull --rebase origin main`, then
-  `pnpm install --frozen-lockfile` **again after the rebase**; `ListAgents`; read `REGISTER.md`
+  its own REGISTER row; **never two items touching the same file in one run.** **OBSERVE MODE**
+  (audit + report, no code) when ≥3 of this routine's PRs are already open unmerged — founder
+  merge throughput is the real constraint — or when the repo is dirty in a way you did not cause,
+  **scoped to your own worktrees and branches**: the shared primary checkout carrying a declared
+  peer's uncommitted work is the normal state of this multi-session repo and is not, by itself,
+  an observe trigger. Never build >2 commits behind `origin/main`; re-fetch between items.
+- **R4 — The §5 claim lock, per item, run entirely inside that item's fresh worktree** (the
+  shared primary checkout is never the venue). `git fetch origin && git pull --rebase origin main`,
+  then `pnpm install --frozen-lockfile` **again after the rebase**; `ListAgents` (or whatever
+  session-listing capability this harness provides — record `SKIPPED` if none); read `REGISTER.md`
   and `knowledge-base/SESSION_CLAIMS.md`; claim the item (row: routine, target, worktree, branch,
-  UTC timestamp); **release the row when the item ships, parks, or dies** — always.
+  UTC timestamp) and **push the claim commit with the item branch immediately** — an unpushed
+  claim is invisible to every peer (§5); **release the row when the item ships, parks, or dies** —
+  always.
 - **R5 — Security and the §9 detector as ship gate.** Never edit the §6 permanent list
   (`encryptionService.ts`, `ssnVault.ts`, auth/session code, `server/integrations/object_storage/**`,
   outbound messaging, the underwriting/decision/rule engines, `shared/lib/amortization.ts`,
@@ -104,7 +110,7 @@ unreachable — report exactly what you saw and stop).
    one per day). If the file exists on `origin/main` but
    not in the current checkout, follow the `git show origin/main:...` copy.
 2. Read CHARTER.md (§1, §1a, §1b, §5, §6, §8–§11), REGISTER.md, SESSION_CLAIMS.md,
-   `knowledge-base/refactor-radar/LEDGER.md`. `ListAgents`.
+   `knowledge-base/refactor-radar/LEDGER.md`. `ListAgents` (fallback per R4 if absent).
 3. Read upstreams: the most recent `launch-gate` report, yesterday's `deliverable-qa-sweep` and
    `evening-triage` reports. Reports often live on unmerged `routine/*` PR branches — check
    `gh pr list --state open` before declaring one missing; a genuinely missing upstream is a §4
@@ -112,7 +118,11 @@ unreachable — report exactly what you saw and stop).
 4. Note the real clock time — catch-up runs are normal; treat upstreams as "most recent
    available, dated". Pick the mode.
 
-## Phase 1 — Pick up to three items, in this order
+## Phase 1 — Pick up to three items
+
+The source order below is the **scan** order. The final slate is ranked by CHARTER §1 (question A
+before B), then the §1a Illinois tiebreak, then — inside the same roadmap section — the roadmap's
+own listed order. Scan in this order:
 
 **(a) A red gate outranks everything.** If the most recent Launch Gate report says `STATUS: FAIL`,
 or your own orient-time `pnpm check` + `pnpm test` on fresh `origin/main` is red (reinstall first;
@@ -121,7 +131,9 @@ exceptions, no features first.**
 **(b) `CTO_ROADMAP.md`** ranked by CHARTER §1 — §0 keep-the-lights-on that is *engineering*, then
 §2 launch-blocking, then §3 — **skipping founder-held items** (NMLS, contracts, vendor paperwork,
 Railway variables), Illinois tiebreak per §1a.
-**(c) Verified rows in `knowledge-base/feature-review/FINDINGS.md`** not already fixed (R9).
+**(c) Verified rows in `knowledge-base/feature-review/FINDINGS.md`** not already fixed (R9). A
+row you verify as already fixed on `origin/main` is closed via a proposed ticket for QA
+Sweep/Evening Triage — never by editing `FINDINGS.md` yourself (not your territory).
 **(d) Open rows in `knowledge-base/primary-engineer/LEDGER.md`.**
 **(e) A rotating silent-success sweep** of one surface — the house defect class: an unconditional
 success toast, a filter before a write, a refetch restoring stale truth, local state standing in

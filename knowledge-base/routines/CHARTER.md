@@ -217,7 +217,9 @@ cleanup.
 2. `ListAgents` — peers named `homiquity-*` are humans working this repo *right now*.
 3. Read `REGISTER.md`. If your intended target is claimed and the claim is **< 24 h old**, pick
    something else. Claims **≥ 24 h old are stale and reclaimable** — say so in your report.
-4. Add your own row (routine, target, worktree, branch, UTC timestamp) and commit it.
+4. Add your own row (routine, target, worktree, branch, UTC timestamp), commit it, **and push the
+   branch** — an unpushed claim is invisible to every peer, which is the exact failure the claim
+   boards exist to prevent.
 5. On finish — shipped, abandoned, or crashed — **remove your row**. A stale claim blocks everyone.
 
 **A routine that skips the register does not get to write code.** If the register is unreachable or
