@@ -95,6 +95,48 @@ describe("widening the PR trigger cannot reach a deploy job", () => {
   });
 });
 
+describe("a superseded gate run is cancelled, and only a gate run", () => {
+  // Cost control (KTLO-2): the repo is private, so Actions minutes are metered.
+  // Without a concurrency group, every push to a branch started a fresh ~5-minute
+  // run while the superseded one ran to completion for a commit nobody would merge.
+  //
+  // The DANGER this pins is the other direction. `cancel-in-progress` is only safe
+  // on `gate` because `gate` runs on pull_request ONLY — see the "gate runs only on
+  // pull_request" case above. A cancelled `migrate-prod` is a half-applied migration,
+  // which is the 2026-07-13 outage. So both halves are pinned here, together.
+  const jobBlock = (job: string) => {
+    const start = CI.indexOf(`\n  ${job}:`);
+    expect(start, `job ${job} not found`).toBeGreaterThan(-1);
+    const rest = CI.slice(start + 1);
+    const next = rest.slice(1).search(/\n {2}[\w-]+:\n/);
+    return next === -1 ? rest : rest.slice(0, next + 1);
+  };
+
+  it("gate cancels its own superseded runs, keyed per PR", () => {
+    const gate = jobBlock("gate");
+    expect(gate, "gate lost its concurrency group — superseded runs burn metered minutes").toMatch(
+      /^\s{4}concurrency:\s*$/m,
+    );
+    expect(gate).toMatch(/^\s{6}group:\s*gate-pr-\$\{\{\s*github\.event\.pull_request\.number\s*\}\}\s*$/m);
+    expect(gate).toMatch(/^\s{6}cancel-in-progress:\s*true\s*$/m);
+  });
+
+  it("migrate-prod is NEVER cancellable", () => {
+    // A cancelled migration leaves prod's schema half-applied. This has always been
+    // false; it is pinned because the gate change above makes `cancel-in-progress:
+    // true` a familiar line to copy downward into the wrong job.
+    const migrate = jobBlock("migrate-prod");
+    expect(migrate).toMatch(/^\s{6}cancel-in-progress:\s*false\s*$/m);
+    expect(migrate).not.toMatch(/^\s{6}cancel-in-progress:\s*true\s*$/m);
+  });
+
+  it("verify-deploy has no concurrency group at all", () => {
+    // It proves prod is serving a specific commit. Cancelling or de-duplicating it
+    // would silently drop the only check that catches a failed Railway build.
+    expect(jobBlock("verify-deploy")).not.toMatch(/^\s{4}concurrency:/m);
+  });
+});
+
 describe("the §9 guard diffs the PR's real base", () => {
   it("uses pull_request.base.sha, not a hardcoded main", () => {
     // This is what makes a stacked PR check its OWN changes rather than its parent's.
