@@ -13,17 +13,21 @@ Launch Gate). No backpressure: zero primary-engineer PRs were open at orient. Gu
 
 ## ⛔ Human actions
 
-1. **Merge [#503](https://github.com/barakatammre84/Homiquity/pull/503) soon — its baseline is a
-   race by design.** It was the queue's only red PR; it is now green (gate pass, run
-   32060365045) after this routine re-baselined it to the measured tip (521,319 → 522,148 raw).
-   Any future merge that grows the eager bundle re-reds it until it lands. The two web-flow
-   "update branch" merges on it today suggest you were already trying.
-2. **Two new ready PRs from this run:** [#537](https://github.com/barakatammre84/Homiquity/pull/537)
+1. **[#537](https://github.com/barakatammre84/Homiquity/pull/537) needs one founder-side CI nudge.**
+   GitHub Actions dropped **four consecutive dispatch events** for its branch (PR opened ·
+   synchronize from a push · body `edited` · close/reopen) while every sibling branch dispatched
+   within a minute — run list evidence in the body below. Every playbook remedy this routine may
+   take is exhausted. The "Update branch" button (a web-flow synchronize with a real merge commit)
+   is the remaining lever, or simply wait for delayed delivery. The change itself is fully
+   verified locally (evidence below); do not merge until the gate actually runs.
+2. **Merge the run's ready PRs:** [#537](https://github.com/barakatammre84/Homiquity/pull/537)
    (F-042 — the MCP soft-pull tool returned cached bureau data before its FCRA gate; gate now
-   first and type-scoped) and [#539](https://github.com/barakatammre84/Homiquity/pull/539)
-   (ux-20 — "hard inquiry" now visible at the consent ask). Both §9-clean by `detectTriggers()`
-   on their final diffs. #514 (roadmap §3.2, the last N+1) also sits green and merge-ready from
-   the retired sprint-blitz — this routine's absorbed queue; nothing further needed on it.
+   first and type-scoped, once CI runs) and [#539](https://github.com/barakatammre84/Homiquity/pull/539)
+   (ux-20 — "hard inquiry" now visible at the consent ask; **gate already green**, run
+   32061953955). Both §9-clean by `detectTriggers()` on their final diffs. #514 (roadmap §3.2,
+   the last N+1) also sits green and merge-ready from the retired sprint-blitz — this routine's
+   absorbed queue; nothing further needed on it. (#503, this run's item 2, **you merged at
+   19:32Z mid-run** — push run 32060938363 green; the bundle ratchet is live on `main`.)
 3. **KTLO-1 (Railway billing) remains the standing hardest item** — unchanged from today's Launch
    Gate report; not repeated here.
 
@@ -95,10 +99,15 @@ and re-measuring rather than shipping against a stale base.
   reasons). Recorded here because a `complianceInvariants` edit must never pass silently.
 - Gates: `tsc` clean · node **194/2748+1skip** · client **72/516** · build OK · 8/8 `guard:*` OK ·
   `detectTriggers()` on the final diff (6 files, 526 lines): **zero triggers** → ready, not draft.
-- ⚠ At write time the PR had **zero check runs** (the dropped-event class CI's own comment
-  documents); a `--no-verify` empty-commit nudge was pushed (`e25652b` — sanctioned skip: empty
-  tree-delta on a tree whose full gate suite had just run green locally). If checks are still
-  absent when read, close/reopen #537 — `gh run rerun` cannot help when no run exists.
+- ⚠ **CI never dispatched for this branch — four events dropped**: PR opened (~19:30Z),
+  synchronize from an empty-commit push (`e25652b`, `--no-verify` — sanctioned skip: empty
+  tree-delta on a tree whose full gate suite had just run green locally), a body `edited` nudge
+  (~20:00Z, the trigger type ci.yml carries for exactly this), and a REST close/reopen (~20:05Z).
+  Zero `workflow_runs` for the branch after each, while `gh run list` shows every sibling branch
+  (#539, #503, #495, compliance-watch, financial-audit) dispatching `pull_request` runs within a
+  minute of their events in the same window. `gh run rerun` cannot help when no run exists.
+  Founder lever in ⛔ 1. The gate job is `if: pull_request`-only, so `workflow_dispatch` was
+  correctly not used (it would reach only `migrate-prod`).
 
 **Item 2 — #503 assist (no new PR)**
 - Was: gate FAIL (`bundle-size-guard: baseline 521,319 → now 522,104/522,148`). Branch adds zero
@@ -107,7 +116,10 @@ and re-measuring rather than shipping against a stale base.
 - Done per the guard's own red-message procedure: merged `origin/main` @ `4d7d919`,
   `pnpm install --frozen-lockfile` re-run, `pnpm build`, baseline set to the guard's own measured
   **522,148**; attribution comment on the PR names the merges the bytes bought.
-- Now: **gate PASS** (run 32060365045, 5m7s). Claim taken and released on the branch itself.
+- Now: **gate PASS** (run 32060365045, 5m7s) — and the founder **merged #503 to `main` at
+  19:32Z mid-run** (push run 32060938363, success). The ratchet is live. Claim taken and released
+  on the branch itself. The two `cancelled` runs at 19:20/19:24 are #535's superseded-run
+  yielding working as designed on my back-to-back pushes.
 - Mid-item, `origin/main` advanced four merges (#517 #518 #522 #528 — the founder actively
   merging); re-fetched and re-measured before baselining. Vendor chunk hashes unchanged across the
   dependabot bumps, so the number stands on the true tip.
