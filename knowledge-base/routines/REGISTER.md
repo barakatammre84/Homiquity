@@ -21,7 +21,7 @@ Humans: claim too. A routine cannot see your editor.
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| _(none)_ | — | — | — | — | — |
+| refactor-radar 2026-08-17 (owner-directed) | `client/src/pages/borrower/URLAForm.tsx` (RR-005) | `.claude/worktrees/refactor-radar-2026-08-17-urla` | `refactor-radar/2026-08-17-urla-step-ids` | 2026-08-17 17:31 | **Not** the RR-005 extraction — that is documented-unsafe (`URLA_FORM_REFACTOR_TRAP.md`, re-verified today). Type-only: narrow the seven `STEPS[].id` values to a union, the prerequisite the trap doc itself names. |
 
 ## Recently released
 
