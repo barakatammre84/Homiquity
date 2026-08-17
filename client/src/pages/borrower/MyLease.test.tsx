@@ -95,6 +95,55 @@ describe("MyLease — what the borrower sees", () => {
   });
 });
 
+describe("MyLease — deletion", () => {
+  it("asks before erasing, and says the removal is permanent", async () => {
+    leases = [lease()];
+    renderPage();
+    fireEvent.click(screen.getByTestId("button-delete-lease-lease-1"));
+
+    const confirm = await screen.findByTestId("confirm-delete-lease-1");
+    expect(confirm.textContent).toMatch(/removed for good|can't be undone/i);
+    // Nothing goes out on the first click — the confirm step is the guard.
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+
+  it("DELETEs the lease once confirmed", async () => {
+    leases = [lease()];
+    renderPage();
+    fireEvent.click(screen.getByTestId("button-delete-lease-lease-1"));
+    fireEvent.click(await screen.findByTestId("button-confirm-delete-lease-1"));
+
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledTimes(1));
+    expect(apiRequest.mock.calls[0][0]).toBe("DELETE");
+    expect(apiRequest.mock.calls[0][1]).toBe("/api/leases/lease-1");
+  });
+
+  it("backs out without deleting", async () => {
+    leases = [lease()];
+    renderPage();
+    fireEvent.click(screen.getByTestId("button-delete-lease-lease-1"));
+    fireEvent.click(await screen.findByTestId("button-cancel-delete-lease-1"));
+
+    await waitFor(() => expect(screen.queryByTestId("confirm-delete-lease-1")).toBeNull());
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+
+  it("explains a 409 as 'reported, must be suppressed' rather than a generic failure", async () => {
+    // The user asked for removal and it did not happen. Telling them "couldn't delete
+    // that" would be the silent-failure shape — they are entitled to know why.
+    apiRequest.mockRejectedValue(Object.assign(new Error("409"), { status: 409 }));
+    leases = [lease()];
+    renderPage();
+    fireEvent.click(screen.getByTestId("button-delete-lease-lease-1"));
+    fireEvent.click(await screen.findByTestId("button-confirm-delete-lease-1"));
+
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    const call = toast.mock.calls[0][0];
+    expect(call.title).toMatch(/can't be deleted/i);
+    expect(call.description).toMatch(/suppressed/i);
+  });
+});
+
 describe("MyLease — submission", () => {
   it("posts only the fields the borrower filled in", async () => {
     renderPage();

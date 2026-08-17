@@ -12,6 +12,8 @@ import {
   assertTransition,
   evaluateProgramReadiness,
   hasMetro2Authority,
+  ERASABLE_FURNISHING_STATES,
+  isErasable,
 } from "../server/services/rentFurnishing";
 import { FURNISHING_STATE, RENT_PAYMENT_PROVENANCE } from "../shared/schema/rent";
 
@@ -129,6 +131,32 @@ describe("furnishing queue state machine", () => {
     expect(canTransition("pending_authority", "queued")).toBe(false);
     expect(canTransition("pending_authority", "furnished")).toBe(false);
     expect(() => assertTransition("pending_authority", "furnished")).toThrow(/illegal furnishing transition/);
+  });
+});
+
+describe("erasability — deletion vs suppression", () => {
+  it("only pending_authority is erasable", () => {
+    expect([...ERASABLE_FURNISHING_STATES]).toEqual(["pending_authority"]);
+    expect(isErasable("pending_authority")).toBe(true);
+  });
+
+  it("a furnished lease is NOT erasable — suppression is the remedy, not deletion", () => {
+    // Once a line has left the building, deleting our copy does not un-say it. It
+    // destroys the evidence of what we furnished while the furnished data stays at the
+    // bureau — unanswerable when the consumer disputes it.
+    for (const state of ["furnished", "disputed", "queued", "pending_minimum_lines"] as const) {
+      expect(isErasable(state), state).toBe(false);
+    }
+  });
+
+  it("a suppressed lease is not erasable either — the suppression IS the record", () => {
+    expect(isErasable("suppressed")).toBe(false);
+  });
+
+  it("every declared state has an erasability answer", () => {
+    for (const state of FURNISHING_STATE) {
+      expect(typeof isErasable(state)).toBe("boolean");
+    }
   });
 });
 
