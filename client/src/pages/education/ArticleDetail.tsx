@@ -17,6 +17,7 @@ import type { Article, ContentCategory } from "@shared/schema";
 import { SEOHead } from "@/components/SEOHead";
 import { articleSchema, breadcrumbSchema } from "@/lib/structuredData";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { personaRoutesForArticle } from "./articlePersonaRoutes";
 
 export default function ArticleDetail() {
   const params = useParams<{ slug: string }>();
@@ -247,6 +248,16 @@ export default function ArticleDetail() {
                     View FAQs
                   </Button>
                 </Link>
+                {!PRELAUNCH_GATED &&
+                  personaRoutesForArticle(article.loanProductFamilies, article.transactionPurposes).map(
+                    (route) => (
+                      <Link key={route.href} href={route.href}>
+                        <Button variant="outline" data-testid={route.testid}>
+                          {route.label}
+                        </Button>
+                      </Link>
+                    ),
+                  )}
                 {!PRELAUNCH_GATED && (
                   <Link href="/apply">
                     <Button data-testid="button-get-preapproved">

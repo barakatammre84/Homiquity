@@ -3,6 +3,7 @@ import { usePageView, useTrackActivity } from "@/hooks/useActivityTracker";
 import { calculateAffordabilityEstimate } from "@/lib/affordabilityEstimate";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { SEOHead } from "@/components/SEOHead";
+import { webApplicationSchema } from "@/lib/structuredData";
 import { PageShell } from "@/components/PageShell";
 import { IncomeCard } from "./affordabilityCalculator/IncomeCard";
 import { DebtsCard } from "./affordabilityCalculator/DebtsCard";
@@ -47,6 +48,12 @@ export default function AffordabilityCalculator() {
       <SEOHead
         title="Mortgage Affordability Calculator — How Much Home Can You Afford?"
         description="Free mortgage affordability calculator. Adjust income, monthly debts, down payment, and credit score with interactive sliders to see your comfortable home price range — no sign-up, no credit check."
+        canonical="/calculators/affordability"
+        jsonLd={webApplicationSchema({
+          name: "Mortgage Affordability Calculator — How Much Home Can You Afford?",
+          description: "Free mortgage affordability calculator. Adjust income, monthly debts, down payment, and credit score with interactive sliders to see your comfortable home price range — no sign-up, no credit check.",
+          path: "/calculators/affordability",
+        })}
       />
       <PageShell width="wide">
         <div className="mb-10 text-center">

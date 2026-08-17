@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { webApplicationSchema } from "@/lib/structuredData";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -160,6 +161,12 @@ export default function BahCalculator() {
       <SEOHead
         title="BAH Calculator — Turn Your Housing Allowance Into a Home | VA Loan"
         description="Free Basic Allowance for Housing (BAH) calculator for active-duty service members. See how much home your BAH can buy off base with a VA loan — $0 down, no PMI."
+        canonical="/calculators/bah"
+        jsonLd={webApplicationSchema({
+          name: "BAH Calculator — Turn Your Housing Allowance Into a Home | VA Loan",
+          description: "Free Basic Allowance for Housing (BAH) calculator for active-duty service members. See how much home your BAH can buy off base with a VA loan — $0 down, no PMI.",
+          path: "/calculators/bah",
+        })}
       />
       <PageShell width="wide">
         <div className="mb-8 text-center">

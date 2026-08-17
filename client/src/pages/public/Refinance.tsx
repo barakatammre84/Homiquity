@@ -468,7 +468,12 @@ export default function Refinance() {
                   The honest answer: when the math works for how long you'll keep the home. If the
                   monthly savings repay the closing costs well before you plan to move — or a shorter
                   term fits your budget and cuts years of interest — it's worth a serious look. The
-                  break-even figure in the calculator above is the number to watch.
+                  break-even figure in the calculator above is the number to watch. Weighing a switch
+                  between rate types? Our guide to{" "}
+                  <Link href="/learn/fixed-vs-adjustable-rate-mortgages" className="underline underline-offset-2" data-testid="link-refi-learn-fixed-vs-arm">
+                    fixed vs. adjustable-rate mortgages
+                  </Link>{" "}
+                  lays out the trade-offs.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="cost">
@@ -476,9 +481,17 @@ export default function Refinance() {
                   What does refinancing cost?
                 </AccordionTrigger>
                 <AccordionContent>
-                  Like your original mortgage, a refinance involves closing costs, including third-party
+                  Like your original mortgage, a refinance involves{" "}
+                  <Link href="/glossary#closing-costs" className="underline underline-offset-2" data-testid="link-refi-glossary-closing-costs">
+                    closing costs
+                  </Link>
+                  , including third-party
                   fees such as the appraisal, title work, and county recording. You'll see every fee
-                  itemized in your official Loan Estimate shortly after you apply — before you commit to
+                  itemized in your official{" "}
+                  <Link href="/glossary#loan-estimate-le" className="underline underline-offset-2" data-testid="link-refi-glossary-le">
+                    Loan Estimate
+                  </Link>{" "}
+                  shortly after you apply — before you commit to
                   anything or pay anything.
                 </AccordionContent>
               </AccordionItem>

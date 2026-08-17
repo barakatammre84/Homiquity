@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { webApplicationSchema } from "@/lib/structuredData";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency, formatDuration } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -236,6 +237,12 @@ export default function AmortizationCalculator() {
       <SEOHead
         title="Amortization Calculator — See Your Full Mortgage Payoff Schedule"
         description="Free amortization calculator. See how much of every mortgage payment goes to principal vs. interest, your full year-by-year payoff schedule, and how extra payments save you interest and time."
+        canonical="/calculators/amortization"
+        jsonLd={webApplicationSchema({
+          name: "Amortization Calculator — See Your Full Mortgage Payoff Schedule",
+          description: "Free amortization calculator. See how much of every mortgage payment goes to principal vs. interest, your full year-by-year payoff schedule, and how extra payments save you interest and time.",
+          path: "/calculators/amortization",
+        })}
       />
       <PageShell width="wide">
         <div className="mb-8 text-center">

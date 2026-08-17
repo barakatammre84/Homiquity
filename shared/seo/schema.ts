@@ -95,3 +95,28 @@ export function faqPageSchema(faqs: Faq[]): JsonLd | null {
     })),
   };
 }
+
+/**
+ * WebApplication schema for a free interactive tool (calculator pages).
+ *
+ * `offers: $0` states the tool itself is free to use — it is not a credit
+ * term, so it carries no Reg Z trigger exposure. Keep `name`/`description`
+ * mirroring the page's SEOHead copy so the head and the graph agree.
+ */
+export function webApplicationSchema(opts: { name: string; description: string; path: string }): JsonLd {
+  const url = absoluteUrl(opts.path);
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "@id": `${url}#webapp`,
+    name: opts.name,
+    description: opts.description,
+    url,
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "Web",
+    browserRequirements: "Requires JavaScript",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    provider: { "@id": ORG_ID },
+    isPartOf: { "@id": WEBSITE_ID },
+  };
+}

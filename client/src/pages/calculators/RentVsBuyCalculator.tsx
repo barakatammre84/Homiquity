@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { webApplicationSchema } from "@/lib/structuredData";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,12 @@ export default function RentVsBuyCalculator() {
       <SEOHead
         title="Rent vs. Buy Calculator — Compare the True Cost of Renting and Owning"
         description="Free rent vs. buy calculator. Compare monthly costs, equity built, and long-term net worth between renting and owning to see which makes sense for you."
+        canonical="/calculators/rent-vs-buy"
+        jsonLd={webApplicationSchema({
+          name: "Rent vs. Buy Calculator — Compare the True Cost of Renting and Owning",
+          description: "Free rent vs. buy calculator. Compare monthly costs, equity built, and long-term net worth between renting and owning to see which makes sense for you.",
+          path: "/calculators/rent-vs-buy",
+        })}
       />
       <PageShell width="wide">
         <div className="mb-8 text-center">

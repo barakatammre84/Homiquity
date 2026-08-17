@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { webApplicationSchema } from "@/lib/structuredData";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -126,6 +127,12 @@ export default function DownPaymentCalculator() {
       <SEOHead
         title="Down Payment Calculator — How Much Cash Do You Need to Buy?"
         description="Free down payment calculator. Enter a home price to see your down payment, estimated closing costs, and the total cash you'll need at the table — plus how much you'd need at 3%, 5%, 10%, and 20% down."
+        canonical="/calculators/down-payment"
+        jsonLd={webApplicationSchema({
+          name: "Down Payment Calculator — How Much Cash Do You Need to Buy?",
+          description: "Free down payment calculator. Enter a home price to see your down payment, estimated closing costs, and the total cash you'll need at the table — plus how much you'd need at 3%, 5%, 10%, and 20% down.",
+          path: "/calculators/down-payment",
+        })}
       />
       <PageShell width="wide">
         <div className="mb-8 text-center">

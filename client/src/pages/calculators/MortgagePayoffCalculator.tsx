@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { webApplicationSchema } from "@/lib/structuredData";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency, formatDuration } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -178,6 +179,12 @@ export default function MortgagePayoffCalculator() {
       <SEOHead
         title="Mortgage Payoff Calculator — Pay Off Your Home Faster"
         description="Free mortgage payoff calculator. See how extra monthly payments, a one-time lump sum, or a biweekly schedule can shorten your loan and save thousands in interest."
+        canonical="/calculators/payoff"
+        jsonLd={webApplicationSchema({
+          name: "Mortgage Payoff Calculator — Pay Off Your Home Faster",
+          description: "Free mortgage payoff calculator. See how extra monthly payments, a one-time lump sum, or a biweekly schedule can shorten your loan and save thousands in interest.",
+          path: "/calculators/payoff",
+        })}
       />
       <PageShell width="wide">
         <div className="mb-8 text-center">

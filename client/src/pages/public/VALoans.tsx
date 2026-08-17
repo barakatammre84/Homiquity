@@ -296,7 +296,10 @@ export default function VALoans() {
                   can usually be rolled into the loan instead of paid in cash. The amount
                   depends on your down payment and whether you've used the benefit before —
                   and many veterans receiving VA disability compensation are exempt
-                  entirely. You'll see your exact figure itemized in your Loan Estimate
+                  entirely. You'll see your exact figure itemized in your{" "}
+                  <Link href="/glossary#loan-estimate-le" className="underline underline-offset-2" data-testid="link-va-glossary-le">
+                    Loan Estimate
+                  </Link>{" "}
                   before you commit to anything.
                 </AccordionContent>
               </AccordionItem>
@@ -316,7 +319,11 @@ export default function VALoans() {
                   I've heard VA appraisals are strict. Should I worry?
                 </AccordionTrigger>
                 <AccordionContent>
-                  The VA appraisal includes Minimum Property Requirements that protect you
+                  The{" "}
+                  <Link href="/glossary#appraisal" className="underline underline-offset-2" data-testid="link-va-glossary-appraisal">
+                    VA appraisal
+                  </Link>{" "}
+                  includes Minimum Property Requirements that protect you
                   from buying a home with serious problems — it's a feature, not a bug. It
                   does mean your team needs to know how to handle repair negotiations and
                   timelines. Ours does, and you'll see appraisal status tracked step by step

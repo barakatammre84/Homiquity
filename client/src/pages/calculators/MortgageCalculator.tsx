@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { webApplicationSchema } from "@/lib/structuredData";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -209,6 +210,12 @@ export default function MortgageCalculator() {
       <SEOHead
         title="Mortgage Calculator — Monthly Payment & Cost Breakdown"
         description="Free mortgage calculator. See your estimated monthly payment — principal, interest, taxes, insurance, PMI, and HOA — with an interactive amortization schedule. No sign-up required."
+        canonical="/calculators/mortgage"
+        jsonLd={webApplicationSchema({
+          name: "Mortgage Calculator — Monthly Payment & Cost Breakdown",
+          description: "Free mortgage calculator. See your estimated monthly payment — principal, interest, taxes, insurance, PMI, and HOA — with an interactive amortization schedule. No sign-up required.",
+          path: "/calculators/mortgage",
+        })}
       />
       <PageShell width="wide">
         <div className="mb-8 text-center">

@@ -269,7 +269,12 @@ export default function SelfEmployed() {
                   Lenders do start from the net income on your returns — but that's exactly
                   why a human review matters. Certain deductions, like depreciation, can
                   often be added back when income is calculated properly. An algorithm reads
-                  one number; a person reads the whole return.
+                  one number; a person reads the whole return. Curious how lenders weigh
+                  income against debts? Our guide to{" "}
+                  <Link href="/learn/understanding-debt-to-income-ratio" className="underline underline-offset-2" data-testid="link-se-learn-dti">
+                    debt-to-income ratios
+                  </Link>{" "}
+                  walks through the math.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="years">
@@ -315,7 +320,12 @@ export default function SelfEmployed() {
                 <AccordionContent>
                   No. Seeing your options uses a soft credit check, which doesn't affect
                   your score. A hard credit pull only happens later in the process, and only
-                  after you explicitly authorize it.
+                  after you explicitly authorize it. If you're working on your score first,
+                  our guide on{" "}
+                  <Link href="/learn/improve-credit-score-mortgage" className="underline underline-offset-2" data-testid="link-se-learn-credit">
+                    improving your credit before a mortgage
+                  </Link>{" "}
+                  covers what actually moves it.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

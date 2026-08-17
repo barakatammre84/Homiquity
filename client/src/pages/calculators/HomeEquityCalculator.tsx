@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PresalesDisclaimer } from "@/components/PresalesDisclaimer";
 import { PageShell } from "@/components/PageShell";
 import { SEOHead } from "@/components/SEOHead";
+import { webApplicationSchema } from "@/lib/structuredData";
 import { PRELAUNCH_GATED } from "@/lib/prelaunch";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -114,6 +115,12 @@ export default function HomeEquityCalculator() {
       <SEOHead
         title="Home Equity Calculator — How Much Equity Do You Have?"
         description="Free home equity calculator. Enter your home's value and what you still owe to see your equity, your loan-to-value, and how much you could potentially borrow with a HELOC or cash-out refinance."
+        canonical="/calculators/home-equity"
+        jsonLd={webApplicationSchema({
+          name: "Home Equity Calculator — How Much Equity Do You Have?",
+          description: "Free home equity calculator. Enter your home's value and what you still owe to see your equity, your loan-to-value, and how much you could potentially borrow with a HELOC or cash-out refinance.",
+          path: "/calculators/home-equity",
+        })}
       />
       <PageShell width="wide">
         <div className="mb-8 text-center">
