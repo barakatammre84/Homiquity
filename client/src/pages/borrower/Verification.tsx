@@ -66,6 +66,41 @@ const verificationTypes = [
   },
 ];
 
+/** The two verifications a file actually needs: employment and identity. */
+export const REQUIRED_VERIFICATION_TYPES = new Set(
+  verificationTypes.filter((v) => v.required).map((v) => v.type),
+);
+
+/**
+ * Progress against the REQUIRED verifications only.
+ *
+ * Filtered by TYPE, not just by status. Counting every verified record let the
+ * two OPTIONAL verifications (income, assets) satisfy a total of two REQUIRED
+ * ones: a borrower who connected their bank for assets and payroll for income —
+ * and had done neither employment nor identity — was told "2 of 2 required
+ * verifications complete" under an "All Required Complete" badge, while both
+ * required checks were still outstanding.
+ *
+ * Counts DISTINCT types, not rows. Verifications are a log — a borrower can
+ * hold more than one record for the same check (a retry after a failure, or a
+ * re-run) — so counting rows reopens the same hole from the other side: two
+ * verified employment records would report "2 of 2 required complete" with
+ * identity untouched.
+ *
+ * Exported for tests: the old expression was a one-liner inside the component
+ * and therefore unobservable, which is how it stayed wrong.
+ */
+export function countCompletedRequired(
+  verifications: { verificationType: string; status: string }[] | undefined | null,
+): number {
+  const done = new Set(
+    (verifications ?? [])
+      .filter((v) => v.status === "verified" && REQUIRED_VERIFICATION_TYPES.has(v.verificationType))
+      .map((v) => v.verificationType),
+  );
+  return done.size;
+}
+
 function getStatusBadge(status: string) {
   const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
     pending: { variant: "secondary", label: "Not Started" },
@@ -269,7 +304,7 @@ export default function VerificationPage() {
     );
   }
 
-  const completedCount = verifications?.filter((v) => v.status === "verified").length || 0;
+  const completedCount = countCompletedRequired(verifications);
   const totalRequired = verificationTypes.filter((v) => v.required).length;
 
   return (
