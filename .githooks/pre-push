@@ -39,6 +39,27 @@ fi
 
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
+# TOOLING PRE-FLIGHT — and it must WARN, never block.
+#
+# Found by this hook blocking its own author's push, one commit after it merged.
+# Every routine in knowledge-base/routines/CHARTER.md works in a `git worktree`,
+# and a fresh worktree has NO node_modules of its own — so `pnpm test` died with
+# "vitest: command not found" and the hook reported it as a failed gate. That is
+# wrong twice over: it is a statement about the checkout, not about the code, and
+# a hook that blocks a push for a reason the author cannot act on teaches exactly
+# one habit — `--no-verify` — which disables the control permanently.
+#
+# So an uninstalled checkout gets a loud, specific warning and the push proceeds;
+# CI still gates the PR. Only real check failures block.
+if [ ! -d node_modules ] || ! [ -x node_modules/.bin/vitest ]; then
+  echo "pre-push gate SKIPPED — dependencies are not installed in this checkout"
+  echo "  $(pwd)"
+  echo "  install with: pnpm install --frozen-lockfile"
+  echo "  (a fresh git worktree has no node_modules of its own — expected, not an error)"
+  echo "  CI's gate still runs on the PR; this only skips the local pre-check."
+  exit 0
+fi
+
 failed=()
 
 step() {
