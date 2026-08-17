@@ -14,6 +14,9 @@ export default defineConfig({
       "tests/amortization.test.ts",
       "tests/livenessProbe.test.ts",
       "tests/cronSchedules.test.ts",
+      // The CI trigger surface. A `branches:` filter under pull_request means a
+      // stacked PR gets zero check-runs while still reporting mergeStateStatus CLEAN.
+      "tests/ciTriggers.test.ts",
       "tests/accessControl.test.ts",
       "tests/commitmentLetterProvenance.test.ts",
       "tests/uploadsUnavailableCopy.test.ts",
