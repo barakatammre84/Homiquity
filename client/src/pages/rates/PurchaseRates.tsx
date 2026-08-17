@@ -4,6 +4,7 @@ import { getPublicQueryFn } from "@/lib/queryClient";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   TrendingDown, 
@@ -136,20 +137,19 @@ export default function PurchaseRates() {
             </Card>
           </>
         ) : (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No purchase rates available</h3>
-              <p className="text-muted-foreground mb-6">
-                Enter your ZIP code above to see current purchase mortgage rates for your area.
-              </p>
+          <EmptyState
+            icon={Home}
+            title="No purchase rates available"
+            description="Enter your ZIP code above to see current purchase mortgage rates for your area."
+            action={
               <Button asChild className="bg-accent hover:bg-accent/90 text-white">
                 <Link href="/apply" data-testid="link-get-preapproved-empty">
                   Get Pre-Approved Instead
                 </Link>
               </Button>
-            </CardContent>
-          </Card>
+            }
+            data-testid="empty-state-purchase-rates"
+          />
         )}
 
         <div className="grid md:grid-cols-2 gap-8 mb-12">
