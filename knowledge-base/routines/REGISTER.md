@@ -4,7 +4,7 @@
 code** claims its target here first. Rules live in [`CHARTER.md`](CHARTER.md) §5; this file is the
 table plus the overlap protocol.
 
-Without this, the Frontend Wiring Audit (09:10), Sprint Blitz (09:45) and Refactor Radar (Sun 20:00)
+Without this, the Frontend Wiring Audit (09:10), the Primary Engineer (07:15 — absorbed Sprint Blitz 2026-08-17) and Refactor Radar (Sun 20:00)
 all write to `client/src/**` with no idea the others exist.
 
 > **Absorbed `knowledge-base/SESSION_CLAIMS.md` on 2026-08-12.** Two boards briefly existed — this
