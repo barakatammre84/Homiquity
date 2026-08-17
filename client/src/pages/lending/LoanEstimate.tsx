@@ -193,11 +193,28 @@ export default function LoanEstimate() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" data-testid="button-print">
+          <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print">
             <Printer className="mr-2 h-4 w-4" />
             Print
           </Button>
-          <Button size="sm" data-testid="button-download">
+          {/*
+            Download PDF has no implementation behind it. A Loan Estimate PDF is
+            a TRID disclosure with prescribed content and layout — it is not a
+            screenshot of this page — and generating one belongs in
+            pdfLetterGenerator alongside the pre-approval, pre-qualification and
+            adverse-action documents, verified against the form.
+
+            Until then the control says so rather than looking clickable and
+            doing nothing, which is what it did before. Print covers the
+            borrower's actual need today: the disclosure tells them to save this
+            and compare it against their Closing Disclosure.
+          */}
+          <Button
+            size="sm"
+            disabled
+            title="Not available yet — use Print, and choose “Save as PDF”."
+            data-testid="button-download"
+          >
             <Download className="mr-2 h-4 w-4" />
             Download PDF
           </Button>

@@ -456,3 +456,35 @@
     min-width: 44px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Print
+ *
+ * The Loan Estimate is a document the borrower is told to save and compare
+ * against their Closing Disclosure, so Print has to emit the whole thing. Its
+ * body sits inside a fixed-height Radix ScrollArea whose viewport is
+ * `overflow: hidden scroll` under an `h-[calc(100vh-64px)]` root — printing
+ * that as-is clips the disclosure to whatever happened to be on screen.
+ * Releasing both lets the content flow and paginate normally.
+ *
+ * Scoped to print only; nothing here affects the on-screen layout.
+ * ------------------------------------------------------------------------ */
+@media print {
+  [data-radix-scroll-area-viewport] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* The ScrollArea root carries the fixed height and `overflow: hidden`. */
+  :has(> [data-radix-scroll-area-viewport]) {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Scrollbars are chrome, not content. */
+  [data-radix-scroll-area-scrollbar] {
+    display: none !important;
+  }
+}
