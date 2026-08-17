@@ -98,8 +98,10 @@ unreachable — report exactly what you saw and stop).
 1. `git fetch origin`. **Guard:** `git cat-file -e origin/main:.claude/skills/primary-engineer/SKILL.md`.
    If absent, the enabling PR has not merged: write the minimal §9 report — Summary one sentence,
    ⛔ "merge the primary-engineer enabling PR", final line `STATUS: WARN — enabling PR unmerged` —
-   reusing the existing open guard PR if one exists (one standing guard PR, never one per day),
-   and **stop. Never improvise the phases from memory.** If the file exists on `origin/main` but
+   and **stop. Never improvise the phases from memory.** **The standing guard PR is the open PR
+   from the fixed branch `routine/primary-engineer-guard`** — the first guard run creates that
+   branch and its PR; every later guard run appends its report there (one guard PR total, never
+   one per day). If the file exists on `origin/main` but
    not in the current checkout, follow the `git show origin/main:...` copy.
 2. Read CHARTER.md (§1, §1a, §1b, §5, §6, §8–§11), REGISTER.md, SESSION_CLAIMS.md,
    `knowledge-base/refactor-radar/LEDGER.md`. `ListAgents`.

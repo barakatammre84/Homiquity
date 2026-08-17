@@ -14,10 +14,10 @@ Status vocabulary: `done` · `drafted` · `in-progress` · `blocked-founder` · 
 
 | id | item | status | evidence / cite | baseline |
 |---|---|---|---|---|
-| CW-0.1 | Confirm what NMLS #427468 currently is and covers (an NMLS ID is a system record, not a state license) — verify on Consumer Access + with the founder; record scope here | unverified | standing fact: `shared/companyIdentity.ts`, issued 2026-07-13 (CHARTER §2) — scope not recorded anywhere in-repo | 2026-08-17 |
+| CW-0.1 | Confirm what NMLS #427468 currently covers (an NMLS ID is a system record, not a state license — Guidebook Ch. I §D, PDF p.13) — verify on NMLS Consumer Access; record scope here | blocked-founder | **Partial scope IS in-repo** (corrected 2026-08-17 — the seeded "not recorded anywhere" claim was born stale): `shared/companyIdentity.ts:120-139` — `LICENSED_STATES=["IL"]` + **Illinois Residential Mortgage License #3423789**, founder-confirmed 2026-07-17 (#201) and 2026-08-06; the file itself says rendering the number does not prove it (`:135-136`). Remaining: Consumer Access verification — founder access needed | 2026-08-17 |
 | CW-0.2 | Company Form (MU1) posture: control persons, qualifying individuals, disclosure questions, ACN obligations — enumerate what is on file vs. required | unverified | Guidebook Ch. II (PDF pp.18–51) — enumerate on first run | 2026-08-17 |
 | CW-0.3 | MLO licensure & sponsorship posture (MU4): who originates, sponsored by whom, in which states | unverified | Guidebook Ch. V (PDF pp.89–111) | 2026-08-17 |
-| CW-0.4 | Mortgage Call Report obligations: which components, first due date | unverified | Guidebook Ch. VIII (PDF pp.126–135) | 2026-08-17 |
+| CW-0.4 | Mortgage Call Report obligations: which components, first due date | unverified | Guidebook Ch. VIII (PDF pp.126–135). ⚠️ Guidebook-internal wording variance found 2026-08-17: Standard-filer FC deadline reads "calendar year end" (p.126) vs "fiscal year end" (p.128) — escalate per R4, never harmonize | 2026-08-17 |
 | CW-0.5 | Surety bond posture (ESB): whether required per licensed state, amount basis, renewal | unverified | Guidebook Ch. IX (PDF pp.136–142); amounts are state-specific — needs state checklist | 2026-08-17 |
 | CW-0.6 | Financial statement / net-worth filing obligations | unverified | Guidebook Ch. VII (PDF pp.120–125) | 2026-08-17 |
 
