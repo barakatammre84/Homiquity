@@ -1,9 +1,16 @@
 import { db } from "../db";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { leases, rentPayments, type Lease, type RentPayment } from "@shared/schema";
+import {
+  leases,
+  rentPayments,
+  rentFurnishingQueue,
+  type FurnishingState,
+  type Lease,
+  type RentPayment,
+} from "@shared/schema";
 import { type LeaseView, type RentPaymentView, toDateOnly } from "@shared/leaseView";
 import { decryptSensitiveData, encryptSensitiveData } from "../services/encryptionService";
-import { FURNISHABLE_PROVENANCE } from "../services/rentFurnishing";
+import { FURNISHABLE_PROVENANCE, isErasable } from "../services/rentFurnishing";
 import { LeadsStorage } from "./leads";
 
 /**
@@ -179,6 +186,60 @@ export class LeasesStorage extends LeadsStorage {
     return row;
   }
 
+  /**
+   * Erase a lease and everything hanging off it.
+   *
+   * WHY A HARD DELETE. The repo's usual instinct is a soft delete — `cancelTask` is an
+   * audited status flip, not a DROP. That is right for a work item, whose history is
+   * the product. It is wrong here. What this row holds is a landlord's email and a
+   * street address the borrower typed in, encrypted precisely because they are not ours
+   * to keep; answering "delete my data" with a status flag would leave that ciphertext
+   * in the table while telling the user it was gone. That is the deceptive-success
+   * pattern this codebase keeps finding, aimed at a privacy promise.
+   *
+   * WHAT IT REFUSES. A lease whose furnishing queue has moved past `pending_authority`
+   * cannot be erased — see ERASABLE_FURNISHING_STATES. Deleting the local row would
+   * destroy the evidence of what was furnished while leaving the furnished data at the
+   * bureau. Suppression is the remedy there, and the caller is told so by name.
+   *
+   * One transaction: payments and the queue row both hold an FK to `leases`, so a
+   * partial delete would either fail on the constraint or orphan a history.
+   */
+  async deleteLeaseForUser(id: string, userId: string): Promise<LeaseDeletionResult> {
+    return db.transaction(async (tx) => {
+      const [lease] = await tx
+        .select({ id: leases.id })
+        .from(leases)
+        .where(and(eq(leases.id, id), eq(leases.userId, userId)))
+        .limit(1);
+      if (!lease) return { ok: false, reason: "not_found" } as const;
+
+      const [queued] = await tx
+        .select({ state: rentFurnishingQueue.state })
+        .from(rentFurnishingQueue)
+        .where(eq(rentFurnishingQueue.leaseId, id))
+        .limit(1);
+      if (queued && !isErasable(queued.state as FurnishingState)) {
+        return { ok: false, reason: "requires_suppression", state: queued.state } as const;
+      }
+
+      const removedPayments = await tx
+        .delete(rentPayments)
+        .where(eq(rentPayments.leaseId, id))
+        .returning({ id: rentPayments.id });
+
+      if (queued) {
+        await tx.delete(rentFurnishingQueue).where(eq(rentFurnishingQueue.leaseId, id));
+      }
+
+      // Ownership stays in the WHERE even here, where it is already proven — the
+      // predicate is what makes this statement safe to read in isolation.
+      await tx.delete(leases).where(and(eq(leases.id, id), eq(leases.userId, userId)));
+
+      return { ok: true, deletedPayments: removedPayments.length } as const;
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Rent payments
   // ---------------------------------------------------------------------------
@@ -249,6 +310,15 @@ export class LeasesStorage extends LeadsStorage {
     return row;
   }
 }
+
+/**
+ * Why a lease could not be erased. `furnished` is the interesting one: it means the
+ * line has left the building and the honest remedy is suppression, not deletion.
+ */
+export type LeaseDeletionResult =
+  | { ok: true; deletedPayments: number }
+  | { ok: false; reason: "not_found" }
+  | { ok: false; reason: "requires_suppression"; state: string };
 
 /**
  * Map a payment row to its borrower-facing view.

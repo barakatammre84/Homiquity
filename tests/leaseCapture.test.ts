@@ -388,6 +388,41 @@ describe("toRentPaymentView", () => {
   });
 });
 
+describe("deletion is a real erase, not a status flag", () => {
+  // The repo's usual instinct is a soft delete (cancelTask is an audited status flip).
+  // That is right for a work item, whose history is the product. It is wrong for a
+  // landlord's email and a street address the borrower typed in: answering "delete my
+  // data" with a flag leaves the ciphertext in the table while telling them it's gone.
+  const src = fs.readFileSync(path.join(ROOT, "server/storage/leases.ts"), "utf8");
+
+  it("issues real DELETEs against all three tables", () => {
+    expect(src).toMatch(/\.delete\(rentPayments\)/);
+    expect(src).toMatch(/\.delete\(rentFurnishingQueue\)/);
+    expect(src).toMatch(/\.delete\(leases\)/);
+  });
+
+  it("does it in one transaction — a partial delete orphans a payment history", () => {
+    expect(src).toMatch(/deleteLeaseForUser[\s\S]{0,200}db\.transaction/);
+  });
+
+  it("keeps ownership in the WHERE even on the final delete", () => {
+    expect(src).toMatch(/\.delete\(leases\)[\s\S]{0,120}eq\(leases\.userId, userId\)/);
+  });
+
+  it("consults the furnishing gate rather than deciding erasability locally", () => {
+    expect(src).toMatch(/isErasable\(/);
+    expect(src).not.toMatch(/state\s*===\s*["']pending_authority["']/);
+  });
+
+  it("does not write the erased PII into the audit metadata", () => {
+    const route = fs.readFileSync(path.join(ROOT, "server/routes/borrower/leases.ts"), "utf8");
+    const deleteBlock = route.slice(route.indexOf('app.delete("/api/leases/:id"'));
+    const auditCall = deleteBlock.slice(0, deleteBlock.indexOf("res.json"));
+    expect(auditCall).toMatch(/lease\.deleted/);
+    expect(auditCall).not.toMatch(/landlordEmail|propertyAddress|landlordName/);
+  });
+});
+
 describe("the writer can only produce self_reported rows", () => {
   it("pins provenance at the single insert site", () => {
     // Source-text, because the alternative is a live database. The insert must name
