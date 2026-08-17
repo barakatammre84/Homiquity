@@ -64,10 +64,23 @@ describe("Reg B (ECOA): AI stays out of the credit-decision path", () => {
 });
 
 describe("FCRA: credit pulls remain consent-gated", () => {
-  it("the MCP soft-pull tool hard-fails without an active consent", () => {
-    const source = read("server/mcp/index.ts");
-    expect(source).toContain("creditConsents");
-    expect(source).toMatch(/FCRA: no active credit consent/);
+  it("the MCP soft-pull tool hard-fails without an active covering consent — before any bureau data, cached included", () => {
+    // The gate lives in softPullGate.ts (F-042) so its ORDER is unit-testable:
+    // consent first, cache second, and the consent's TYPE must cover the pull.
+    // Behavioral teeth are in tests/mcpSoftPullGate.test.ts (including that a
+    // refusal never touches the credit_pulls table); this invariant pins the
+    // wiring. Strictly stronger than the pre-F-042 form of this test, which
+    // only asserted a consent query existed SOMEWHERE in index.ts — where it
+    // sat below the cached-pull return.
+    const handler = read("server/mcp/index.ts");
+    expect(handler).toContain("evaluateSoftPull");
+    expect(handler).toMatch(/FCRA: no active credit consent/);
+
+    const gate = read("server/mcp/softPullGate.ts");
+    expect(gate).toContain("creditConsents");
+    expect(gate).toContain("consentCoversPullType");
+    expect(gate).toContain("no_active_consent");
+    expect(gate).toContain("consent_scope_mismatch");
   });
 
   it("the funnel persists the soft-pull acknowledgment as evidence", () => {
