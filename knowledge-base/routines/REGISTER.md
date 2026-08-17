@@ -54,6 +54,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
 | `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0812-*` | — | `claude/fervent-mayer-oqk0iv` | 2026-08-12 | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Stays out of `client/**` UI decomposition — that is refactor-radar's lane. |
+| primary-engineer 2026-08-17 (item 1) | `server/mcp/index.ts` + a new test file (FINDINGS F-042: soft-pull tool returns cached bureau data before its FCRA gate; gate ignores consent type) | `.claude/worktrees/primary-engineer-2026-08-17-1` | `routine/primary-engineer-2026-08-17-1` | 2026-08-17 19:10 | Move the consent gate ahead of the cached-pull branch and scope it with `consentCoversPullType`. Tightens only. |
 
 ## Recently released
 
