@@ -17,6 +17,7 @@ import type { Article, ContentCategory } from "@shared/schema";
 import { SEOHead } from "@/components/SEOHead";
 import { articleSchema, breadcrumbSchema } from "@/lib/structuredData";
 import { MarkdownContent } from "@/components/MarkdownContent";
+import { PERSONA_ROUTES, personaForArticle } from "@/lib/personaRoutes";
 
 export default function ArticleDetail() {
   const params = useParams<{ slug: string }>();
@@ -247,13 +248,27 @@ export default function ArticleDetail() {
                     View FAQs
                   </Button>
                 </Link>
-                {!PRELAUNCH_GATED && (
-                  <Link href="/apply">
-                    <Button data-testid="button-get-preapproved">
-                      Get Pre-Approved
-                    </Button>
-                  </Link>
-                )}
+                {!PRELAUNCH_GATED &&
+                  (() => {
+                    // Route the conversion CTA by the article's loan-product
+                    // taxonomy (migration 0052) so a VA-loan reader lands on
+                    // /va-loans, not the generic funnel. Unclassified content
+                    // keeps the generic CTA.
+                    const persona = personaForArticle(article);
+                    return persona ? (
+                      <Link href={PERSONA_ROUTES[persona].href}>
+                        <Button data-testid={`button-persona-${persona}`}>
+                          {PERSONA_ROUTES[persona].ctaLabel}
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link href="/apply">
+                        <Button data-testid="button-get-preapproved">
+                          Get Pre-Approved
+                        </Button>
+                      </Link>
+                    );
+                  })()}
               </div>
             </div>
       </article>

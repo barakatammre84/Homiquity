@@ -5,6 +5,8 @@
 // reference other entries by their slug (see `slugifyTerm`) so the page can wire
 // up in-page cross-links without hardcoding anchors here.
 
+import type { PersonaKey } from "@/lib/personaRoutes";
+
 export interface GlossaryTerm {
   /** Display name, e.g. "Adjustable-rate mortgage (ARM)". */
   term: string;
@@ -14,6 +16,14 @@ export interface GlossaryTerm {
   related?: string[];
   /** For pure cross-reference entries ("See X"), the slug of the target term. */
   see?: string;
+  /**
+   * Persona landing page this term naturally converts to (e.g. "va" →
+   * /va-loans). Rendered as a per-term link so a reader looking up "VA loans"
+   * is routed to the matching persona funnel instead of losing that intent.
+   * Only tag terms whose subject IS the persona — not terms that merely
+   * mention one.
+   */
+  persona?: PersonaKey;
   /**
    * Inline-tooltip form, when this term is surfaced via <TermTooltip>. `key` is
    * the identifier passed as <TermTooltip term="key">, `label` is the short
@@ -69,6 +79,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     definition:
       "A cash-out refinance is when a mortgage is refinanced for more than the outstanding balance—converting home equity into cash. Cash-out refinancing can be a great way to free up money for outstanding debt or to make an investment in home improvements.",
     related: ["refinance", "equity"],
+    persona: "refinance",
   },
   {
     term: "Cash reserve",
@@ -207,12 +218,14 @@ export const glossaryTerms: GlossaryTerm[] = [
     definition:
       'A down payment is the amount of cash you pay upfront toward the purchase of a home. It\'s often expressed as a percentage of the selling price of a home—typically 5–20% depending on the type of loan. The difference between your down payment and the price of the home is what you finance with a mortgage. Generally, if you put less than 20% "down" on a home, private mortgage insurance (PMI) is required in addition to your monthly payment.',
     related: ["private-mortgage-insurance-pmi", "down-payment-assistance-dpa"],
+    persona: "first-time-buyer",
   },
   {
     term: "Down payment assistance (DPA)",
     definition:
       "Down payment assistance (DPA) is money from a state or local government agency or nonprofit that covers part of your down payment or closing costs. Depending on the program it arrives as a grant you never repay, a loan forgiven over time, or a low- or no-interest loan repaid when you sell or refinance. Each program sets its own eligibility rules — income and purchase-price limits, minimum credit scores, homebuyer education, and owner-occupancy requirements — and terms can change or funding can pause without notice, so confirm current details with the administering agency or a HUD-approved housing counselor.",
     related: ["down-payment", "cash-to-close", "gift-letter"],
+    persona: "first-time-buyer",
   },
   {
     term: "Earnest money/good faith deposit",
@@ -244,6 +257,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     definition:
       "The Federal Housing Administration (FHA) is a government agency that promotes affordable, easy-to-qualify-for home loans. FHA loans are only available through approved lenders. If you're a first-time homebuyer without a substantial credit history, an FHA loan could be an attractive option. You can qualify for an FHA loan with a minimum credit score of 500 and a 3.5% down payment. FHA loans require an upfront mortgage insurance premium and, if there's less than a 10% down payment, require mortgage insurance for the life of the loan. At Homiquity, we require a minimum credit score of 620.",
     related: ["mortgage-insurance-premium-mip", "conventional-mortgage"],
+    persona: "first-time-buyer",
   },
   {
     term: "FICO score",
@@ -515,6 +529,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     definition:
       "A refinance (also known as a refi) is the process of applying for a new home loan to replace an existing home loan. Homeowners generally refinance to change the rate or term of their home loan (rate/term refinance) or to take cash out of the equity that they've built (cash-out refinance).",
     related: ["cash-out-refinance", "equity"],
+    persona: "refinance",
   },
   {
     term: "Secondary home",
@@ -593,6 +608,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     definition:
       "VA loans are home loans with lenient qualifying guidelines and favorable terms for active military service members, veterans, and eligible military spouses. Because VA loans are backed in part by the federal government, lenders and banks are able to offer reduced interest rates.",
     related: ["nonconforming-loan", "federal-housing-administration-loans"],
+    persona: "va",
   },
   {
     term: "Verified pre-approval",

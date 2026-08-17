@@ -15,6 +15,7 @@ import {
 import { usePageView } from "@/hooks/useActivityTracker";
 import { SEOHead } from "@/components/SEOHead";
 import { definedTermSetSchema, breadcrumbSchema } from "@/lib/structuredData";
+import { PERSONA_ROUTES } from "@/lib/personaRoutes";
 import { glossaryTerms, slugifyTerm, type GlossaryTerm } from "./glossaryData";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -328,6 +329,23 @@ export default function Glossary() {
                                   {termNameBySlug[s]}
                                 </button>
                               ))}
+                            </div>
+                          )}
+
+                          {/* Per-term persona funnel link — a reader looking up
+                              "VA loans" has declared intent; route it to the
+                              matching persona page instead of losing it. Gated
+                              with the persona pages themselves pre-license. */}
+                          {t.persona && !PRELAUNCH_GATED && (
+                            <div className="mt-3">
+                              <Link
+                                href={PERSONA_ROUTES[t.persona].href}
+                                className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                                data-testid={`link-persona-${slug}`}
+                              >
+                                {PERSONA_ROUTES[t.persona].ctaLabel}
+                                <ChevronRight className="h-4 w-4" />
+                              </Link>
                             </div>
                           )}
                         </Card>
