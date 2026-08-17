@@ -64,7 +64,6 @@ themselves, so the board must degrade toward "available", never toward "blocked 
 
 | since | session / routine | scope — files or area | branch / PR | notes |
 |-------|-------------------|------------------------|-------------|-------|
-| 2026-08-17 | interactive authoring session — automatic-mode charter revision | `knowledge-base/routines/CHARTER.md` (new sections + clock/territory rows), `.claude/skills/{primary-engineer,compliance-watch}/**`, `knowledge-base/{primary-engineer,compliance-watch}/**` | `chore/automatic-mode-charter` | Adds primary-engineer + compliance-watch routines, retires sprint-blitz (absorbed); scheduler registered same-session per §11. **Adjacent to PR #499** (charter + claim-board edits) — our sections are additive; merge in either order. |
 | 2026-08-12 | `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0812-*` (date-qualified — no reservation needed) | `claude/fervent-mayer-oqk0iv` | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Will not touch `client/**` UI decomposition — that is refactor-radar's lane. |
 
 ## Observed in flight — not declared by their sessions
