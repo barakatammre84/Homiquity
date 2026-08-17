@@ -64,7 +64,7 @@ doc-drift bug to fix):
 
 > The living docs above carry a **Freshness** line (`pnpm guard:docs`). Dated logs under
 > [`logs/`](logs/) deliberately do not — a log is history, not a claim about the present.
-- [SESSION_CLAIMS.md](SESSION_CLAIMS.md) — the cross-session coordination board: who is working on what, the graduated overlap protocol, central finding-id allocation, and the standing lanes per routine. Exists because two sessions audited the finances four days apart, could not see each other, and both minted `F-20`…`F-24`.
+- [SESSION_CLAIMS.md](SESSION_CLAIMS.md) — **stub.** Absorbed into [routines/REGISTER.md](routines/REGISTER.md) on 2026-08-12; retained only so existing links resolve.
 - [security/](governance/security/) — the security governance pack (vendor-diligence ready; drafted for the Plaid
   clearance): [Information Security Policy](governance/security/INFORMATION_SECURITY_POLICY.md)
   · [Access Control Policy](governance/security/ACCESS_CONTROL_POLICY.md) · [Asset & Endpoint Register](governance/security/ASSET_REGISTER.md)
@@ -96,6 +96,7 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 The contract binding all eight scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, and the corrected escalation runbook. Their job descriptions live in `~/.claude/scheduled-tasks/`; **this directory wins wherever they disagree.**
 - [CHARTER.md](routines/CHARTER.md) — the contract: two acceptance questions, the clock, the hand-off chain, write territory, the `RELEASABLE` verdict, escalation, honesty rails.
 - [REGISTER.md](routines/REGISTER.md) — the claim lock: who is writing which file right now (humans claim here too).
+- [LESSONS.md](routines/LESSONS.md) — the shared lessons register: what one session learned that the next would otherwise re-learn, every row citing evidence. Feeds CHARTER §10; may never loosen a compliance rail.
 - [reports/](routines/reports/) — dated run reports; the proof-of-life record.
 
 ### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
