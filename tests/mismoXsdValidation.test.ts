@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,14 +30,21 @@ import { generateMISMO34XML, type MISMOLoanDTO } from "../server/mismo";
 // across incidental line-number/formatting churn in the generated XML.
 // ---------------------------------------------------------------------------
 
-let xmllintInstalled = true;
-beforeAll(() => {
+// Detected at COLLECTION time (module scope), not in beforeAll, so the
+// xmllint-dependent cases can use `it.skipIf` — which reports them as SKIPPED.
+// They previously `return`ed early, which vitest reports as PASSED: on any
+// machine without libxml2 the entire schema-validity gate on our lender-facing
+// MISMO 3.4 export went green while asserting nothing. `ubuntu-latest` does not
+// list libxml2-utils in its documented apt package set, so that is not a
+// hypothetical. A skipped test is visible in the run output; a vacuous pass is not.
+const xmllintInstalled = (() => {
   try {
     execFileSync("xmllint", ["--version"], { stdio: "ignore" });
+    return true;
   } catch {
-    xmllintInstalled = false;
+    return false;
   }
-});
+})();
 
 /**
  * A fixture that MUST stay representative of a real borrower file.
@@ -135,7 +142,7 @@ function baseDto(overrides: Partial<MISMOLoanDTO> = {}): MISMOLoanDTO {
 }
 
 describe("validateAgainstXsd (harness correctness)", () => {
-  it("validates a conformant document as valid", () => {
+  it.skipIf(!xmllintInstalled)("validates a conformant document as valid", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "mismo-xsd-harness-"));
     const xsdPath = path.join(dir, "control.xsd");
     writeFileSync(
@@ -152,7 +159,6 @@ describe("validateAgainstXsd (harness correctness)", () => {
 </xsd:schema>`,
     );
     try {
-      if (!xmllintInstalled) return;
       const result = validateAgainstXsd("<ROOT><OK>yes</OK></ROOT>", xsdPath);
       expect(result.skipped).toBe(false);
       expect(result.valid).toBe(true);
@@ -162,7 +168,7 @@ describe("validateAgainstXsd (harness correctness)", () => {
     }
   });
 
-  it("flags a document with an unexpected element", () => {
+  it.skipIf(!xmllintInstalled)("flags a document with an unexpected element", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "mismo-xsd-harness-"));
     const xsdPath = path.join(dir, "control.xsd");
     writeFileSync(
@@ -179,7 +185,6 @@ describe("validateAgainstXsd (harness correctness)", () => {
 </xsd:schema>`,
     );
     try {
-      if (!xmllintInstalled) return;
       const result = validateAgainstXsd("<ROOT><NOT_OK>no</NOT_OK></ROOT>", xsdPath);
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
@@ -188,12 +193,11 @@ describe("validateAgainstXsd (harness correctness)", () => {
     }
   });
 
-  it("returns skipped:true instead of a false failure when xmllint is unavailable", () => {
+  it.skipIf(xmllintInstalled)("returns skipped:true instead of a false failure when xmllint is unavailable", () => {
     // Exercised implicitly by every assertion above via the module-level
     // availability cache; this test documents the contract explicitly using
     // a path that is guaranteed not to exist so a broken installation would
     // still not report a false "invalid".
-    if (xmllintInstalled) return; // covered by the real run in CI/dev with xmllint present
     const result = validateAgainstXsd("<ROOT/>", "/nonexistent/schema.xsd");
     expect(result.skipped).toBe(true);
   });
@@ -236,16 +240,14 @@ describe("MISMO export vs. the official schema (known-violations baseline)", () 
   // EMPTY and must stay empty: any new offending element is a regression —
   // fix the export, never grow a baseline back.
 
-  it("underwriting-purpose export validates clean against the official schema", () => {
-    if (!xmllintInstalled) return;
+  it.skipIf(!xmllintInstalled)("underwriting-purpose export validates clean against the official schema", () => {
     const xml = generateMISMO34XML(baseDto());
     const result = validateMismoExport(xml);
     expect(extractOffendingElements(result.errors)).toEqual([]);
     expect(result.valid).toBe(true);
   });
 
-  it("loanDelivery-purpose export validates clean against the official schema", () => {
-    if (!xmllintInstalled) return;
+  it.skipIf(!xmllintInstalled)("loanDelivery-purpose export validates clean against the official schema", () => {
     const xml = generateMISMO34XML(baseDto(), { purpose: "loanDelivery", noteDate: "2026-03-15" });
     const result = validateMismoExport(xml);
     expect(extractOffendingElements(result.errors)).toEqual([]);
@@ -266,8 +268,7 @@ describe("phone normalization (MISMONumericString \\d* facet)", () => {
     for (const v of values) expect(v).toMatch(/^\d*$/);
   });
 
-  it("survives every format the client can store, incl. E.164 and extensions", () => {
-    if (!xmllintInstalled) return;
+  it.skipIf(!xmllintInstalled)("survives every format the client can store, incl. E.164 and extensions", () => {
     const xml = generateMISMO34XML(
       baseDto({
         personalInfo: {
@@ -459,8 +460,7 @@ describe("EXTENSION content is actually validated (not skipped)", () => {
       "</ULDD:TotallyMadeUpIndicator>",
     );
 
-  it("emits the short sale at its one legal home, and it validates", () => {
-    if (!xmllintInstalled) return;
+  it.skipIf(!xmllintInstalled)("emits the short sale at its one legal home, and it validates", () => {
     const xml = generateMISMO34XML(baseDto({ declarations: { hasCompletedShortSale: true } as any }));
     expect(xml).toContain(
       "<ULDD:PriorPropertyShortSaleCompletedIndicator>true</ULDD:PriorPropertyShortSaleCompletedIndicator>",
@@ -468,15 +468,13 @@ describe("EXTENSION content is actually validated (not skipped)", () => {
     expect(validateMismoExport(xml).valid).toBe(true);
   });
 
-  it("REJECTS a fabricated ULDD element name — the whole point of the wrapper", () => {
-    if (!xmllintInstalled) return;
+  it.skipIf(!xmllintInstalled)("REJECTS a fabricated ULDD element name — the whole point of the wrapper", () => {
     const bad = fabricated(generateMISMO34XML(baseDto()));
     expect(bad).toContain("ULDD:TotallyMadeUpIndicator");
     expect(validateMismoExport(bad).valid).toBe(false);
   });
 
-  it("documents the blind spot: the base schema alone passes that same document", () => {
-    if (!xmllintInstalled) return;
+  it.skipIf(!xmllintInstalled)("documents the blind spot: the base schema alone passes that same document", () => {
     // Not an aspiration — this is what the gate did before 2026-08-06, and it
     // is why `validateMismoExport` exists rather than a bare MISMO_BASE_XSD.
     const bad = fabricated(generateMISMO34XML(baseDto()));
