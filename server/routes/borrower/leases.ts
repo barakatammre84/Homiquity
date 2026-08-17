@@ -5,6 +5,7 @@ import type { IStorage } from "../../storage";
 import { toLeaseView, toRentPaymentView } from "../../storage/leases";
 import { logAudit } from "../../auditLog";
 import { routeParam } from "../../http/routeParams";
+import { isForeignKeyViolation, isUniqueViolation } from "../../http/dbErrors";
 import { type User } from "@shared/schema";
 import { fromDateOnly } from "@shared/leaseView";
 
@@ -306,8 +307,17 @@ export function registerLeaseRoutes(app: Express, storage: IStorage) {
       // The (lease_id, due_date) unique index is the guard against double-counting a
       // month into a history that a furnishing run would eventually read. Answer 409
       // rather than letting a constraint violation surface as a 500.
-      if ((err as { code?: string })?.code === "23505") {
+      //
+      // isUniqueViolation, not a bare `err.code` check: drizzle 0.45 wraps driver
+      // errors, putting the pg code on `err.cause` — the bare check shipped here
+      // and 500'd on every duplicate, proven live by the 2026-08-17 audit.
+      if (isUniqueViolation(err)) {
         return res.status(409).json({ error: "A payment for that period already exists" });
+      }
+      // A POST racing this lease's DELETE loses the FK between the owner check and
+      // the insert. The lease is gone, so answer what a fresh GET would: 404.
+      if (isForeignKeyViolation(err)) {
+        return res.status(404).json({ error: "Lease not found" });
       }
       next(err);
     }
