@@ -38,6 +38,11 @@ RELEASABLE: yes · main 1f520b1 · prod 1f520b1 · drift 0 commits · gates ✓ 
    Separately and more actionable: two of the three 2026-08-12 reports **live only on unmerged
    branches**, so anyone reading `main` sees one report where three exist. Evening Triage's report
    count (CHARTER §7) will undercount for exactly this reason unless it looks across branches.
+   **Landed as docs-only in [#527](https://github.com/barakatammre84/Homiquity/pull/527).** Not by
+   merging their branches: both carry code — #507 a test file, **#514 ten files and 1,110 insertions
+   of server storage batching** across the URLA and MISMO delivery paths — so merging either to close
+   a documentation gap would have shipped a perf refactor as a side effect, today of all days, with
+   no rollback available. Both PRs stay open on their own merits.
 
 ---
 
@@ -287,7 +292,7 @@ Checked and clean: **no open PR has auto-merge armed** (`gh pr list --json autoM
 | **LG-3** | B | **Resolve the permanently-red `pnpm checkup` dependency check.** 1 low + 4 moderate, all transitive under `@modelcontextprotocol/sdk` → `hono` / `@hono/node-server`, all in an HTTP transport `server/mcp/` never loads (stdio only). Either bump the SDK when upstream patches, or record an accepted-risk exception the check can read. Leaving it red trains everyone to ignore `checkup` — the same "control that isn't a control" failure as CHARTER §0. **No `pnpm.overrides` floor**: classification is already correct and an override would hide a real path if the transport ever changed. |
 | **LG-4** | A/B | **Drain the PR queue, starting with [#519](https://github.com/barakatammre84/Homiquity/pull/519)** ("a stacked PR got zero checks and still read as CLEAN"). A gate that can read CLEAN without running governs the trustworthiness of the other 16 merges, so it goes first. Then the silent-success fixes (#509, #511, #512) — question B, and the defect class this repo keeps rediscovering. |
 | **LG-5** | — | **Reconcile `CTO_ROADMAP.md:59` §1.1.** Probed prod suggests the prelaunch flip is already done (`/api/rates` 200, no gate markers served); the box is still unchecked. Confirm in Railway → Variables, then check it. Cheap, and it removes a false launch blocker from the founder's list. |
-| **LG-6** | — | **Confirm or close the 2026-08-13 → 2026-08-16 reports gap**, and **merge the two stranded 2026-08-12 reports** (`lender-delivery-gate`, `sprint-blitz`) that exist only on unmerged branches. If the gap was the laptop being shut — likely, given this run's own two suspensions — record that so the next Launch Gate does not re-raise it; if the scheduler lost registrations, that is CHARTER §11 and a fossil in the making. Also worth a line in CHARTER §7: a report count taken from `main` alone undercounts, because routines land reports by PR. |
+| **LG-6** | — | **Confirm or close the 2026-08-13 → 2026-08-16 reports gap.** The two missing 2026-08-12 reports are already handled — landed docs-only in [#527](https://github.com/barakatammre84/Homiquity/pull/527), deliberately *not* by merging #507/#514, which carry code. For the remaining four-day gap: if it was the laptop being shut — likely, given this run's own two suspensions — record that so the next Launch Gate does not re-raise it; if the scheduler lost registrations, that is CHARTER §11 and a fossil in the making. Also worth a line in CHARTER §7: a report count taken from `main` alone undercounts, because routines land reports by PR — and a routine's report PR is often carrying its code too, so the two cannot be landed as one decision. |
 
 ---
 
