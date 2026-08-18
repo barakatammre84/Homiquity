@@ -174,3 +174,58 @@ describe("URLAForm — rows the save drops are reported for BOTH borrowers", () 
     expect(lastToastDescription()).toContain("your asset row still needs an account type");
   });
 });
+
+
+/**
+ * The step rail's mobile contract. It shipped as `overflow-x-auto`, a horizontally
+ * scrolling rail whose seven `shrink-0` triggers put steps 4–7 off-screen at 320px
+ * with no affordance that they existed — DESIGN_SYSTEM.md §12.3 forbids horizontal
+ * scrolling on a capture screen.
+ *
+ * happy-dom has no layout engine, so none of this measures a rendered viewport. It
+ * pins the CONTRACT that makes the steps reachable: no width-gated scroller, every
+ * step present, and — because the labels are visually hidden below lg — each tab
+ * keeps its accessible name and the active step's name is rendered in the panel.
+ */
+describe("URLAForm — the step rail is reachable on a phone", () => {
+  beforeEach(() => {
+    apiRequest.mockReset();
+    apiRequest.mockResolvedValue({ json: async () => ({ ok: true }) });
+    toast.mockReset();
+    window.sessionStorage.clear();
+  });
+
+  const STEP_IDS = [
+    "borrower",
+    "employment",
+    "assets",
+    "liabilities",
+    "property",
+    "declarations",
+    "demographics",
+  ];
+
+  it("never re-introduces a horizontally scrolling rail", async () => {
+    renderPage();
+    const list = await screen.findByRole("tablist");
+    expect(list.className.split(/\s+/)).not.toContain("overflow-x-auto");
+    expect(list.className).toContain("flex-wrap");
+  });
+
+  it("renders all seven steps, each keeping its accessible name", async () => {
+    renderPage();
+    await screen.findByTestId("tab-borrower");
+    for (const id of STEP_IDS) {
+      expect(screen.getByTestId(`tab-${id}`)).toBeTruthy();
+    }
+    // Labels are sr-only below lg, so they must still be in the DOM — a tab whose
+    // name is only a number is unusable with a screen reader.
+    expect(screen.getByTestId("tab-borrower").textContent).toContain("About you");
+    expect(screen.getByTestId("tab-demographics").textContent).toContain("Demographics");
+  });
+
+  it("names the active step in the panel, where the phone can see it", async () => {
+    renderPage();
+    expect((await screen.findByTestId("text-urla-step-label")).textContent).toBe("About you");
+  });
+});

@@ -40,6 +40,9 @@ export function DeclarationsSection({ declarations, onChange, activeSeq }: Decla
               >
                 {q.label}
               </Label>
+              {/* touch-target: these Yes/No pairs are the whole interaction of this
+                  step — eleven questions, twenty-two taps — at h-9 (36px). §11's floor
+                  is 44px; the utility applies it below 767px only. */}
               <div
                 role="group"
                 aria-labelledby={`declaration-label-${q.key as string}`}
@@ -49,6 +52,7 @@ export function DeclarationsSection({ declarations, onChange, activeSeq }: Decla
                 <Button
                   type="button"
                   size="sm"
+                  className="touch-target"
                   variant={current === true ? "default" : "outline"}
                   aria-pressed={current === true}
                   onClick={() => onChange({ ...declarations, [q.key]: true })}
@@ -59,6 +63,7 @@ export function DeclarationsSection({ declarations, onChange, activeSeq }: Decla
                 <Button
                   type="button"
                   size="sm"
+                  className="touch-target"
                   variant={current === false ? "default" : "outline"}
                   aria-pressed={current === false}
                   onClick={() => onChange({ ...declarations, [q.key]: false })}
