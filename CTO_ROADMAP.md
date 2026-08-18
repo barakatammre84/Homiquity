@@ -175,19 +175,6 @@ anything else in this file being true.
   available to us.
 - [ ] **2.3 Run [PROD_ACCEPTANCE_TEST.md](knowledge-base/runbooks/PROD_ACCEPTANCE_TEST.md) end to
   end** once §1.1 and §1.2 land. See §5.
-- [ ] **2.4 F-051 (P0) — the delivered MISMO package tells every wholesale lender the AUS said
-  `Approve`, whatever it actually said.** `server/mismo.ts:860` emits
-  `AutomatedUnderwritingRecommendationDescription` as the compile-time literal `"Approve"`, so a
-  `refer` / `refer_with_caution` / `approve_ineligible` file is delivered as an approval. Fix: read
-  `loanApplications.ausRecommendation` (`shared/schema/lendingCore.ts:50`, written at
-  `server/routes/aus.ts:230`) and **omit the whole `AUTOMATED_UNDERWRITINGS` container when there
-  is nothing to report**, exactly as `mismo.ts:405-408` does for citizenship — never substitute a
-  value. *(Triage correction to the qa-sweep write-up: the DTO field **does** exist —
-  `shared/mismo.ts:720` — and is simply never populated or read, so this is a mapping gap, not a
-  missing type.)* Acceptance question A; open and unowned for 5 days. **Fix in flight
-  2026-08-18 as [#545](https://github.com/barakatammre84/Homiquity/pull/545)** — `MERGEABLE`, gate
-  green, awaiting the founder's merge. This is the queue's only open P0; it does not close until
-  #545 lands.
 - [ ] **2.5 F-080 — the delivered package drops the co-borrower.** One `PARTY` is emitted for a
   two-borrower file while **both** employers and both incomes are emitted under it, so the package
   misstates who earns the income, under the wrong SSN — and it validates clean (`xmllint` passes,

@@ -11,11 +11,15 @@
 > **missing**. At 09:22 only two of today's routines had reached their slot. Treating "no report at
 > 09:22" as a WARN would be manufacturing an alarm.
 
-STATUS: WARN — nothing failed and prod is current, but the day's **only open P0 (F-051) still has
-not merged** despite its fix sitting green and `MERGEABLE` in [#545](https://github.com/barakatammre84/Homiquity/pull/545),
-and **[#546](https://github.com/barakatammre84/Homiquity/pull/546) went `CONFLICTING`** under this
-morning's merge round. Yesterday's ⛔ list is otherwise being drained hard: five PRs merged before
-noon.
+STATUS: WARN — nothing failed and prod is current, but
+**[#546](https://github.com/barakatammre84/Homiquity/pull/546) is `CONFLICTING`** and today's
+launch-gate / primary-engineer / wiring-audit reports are still pending at this hour. Yesterday's
+⛔ list is being drained hard: five PRs merged before noon.
+
+> **Superseded at 14:07Z — see the addendum.** As written at 09:22, the lead WARN driver was that
+> the day's only open P0 (F-051) had not merged despite its fix sitting green in #545. The founder
+> then instructed this session to merge it. **#545 is merged (`1eb8fdb`); the open-P0 count is
+> zero.** The WARN stands on the narrower basis above.
 
 ---
 
@@ -36,15 +40,13 @@ two items that became time-critical today.** Do not re-read yesterday's list as 
    the only reason this is on your desk. Two P1s (F-076, F-079) stay held below their evidence
    until it clears. **~5 minutes of your time; the rest is a session's work.**
 
-2. **Merge [#545](https://github.com/barakatammre84/Homiquity/pull/545) — it closes the queue's
-   only P0.** `MERGEABLE`, gate green. F-051 has been open and unowned for 5 days: the delivered
-   MISMO package currently tells every wholesale lender the AUS said `Approve`, whatever it
-   actually said (`server/mismo.ts:860` emits a compile-time literal). This is acceptance question
-   A failing in the most direct way available, and the fix is one click. ⚠️ **Sequencing caveat
-   from the QA sweep (roadmap §2.5):** F-080 — the package also drops the co-borrower — is *not*
-   fixed by #545, and landing AUS honesty alone still promotes a materially false file into an
-   immutable hashed submission. #545 is strictly an improvement, but **do not read it as "the
-   lender package is now truthful."**
+2. ~~**Merge #545** — it closes the queue's only P0.~~ **✅ Done at your instruction, 14:07Z**
+   (squashed `1eb8fdb`; prod verified serving it). F-051 is closed and §2.4 archived.
+   ⚠️ **The caveat that came with it still stands and is now the live item:** F-080 (roadmap §2.5) —
+   the package emits one `PARTY` for a two-borrower file with both employers and both incomes
+   attached to it under the wrong SSN, and it **validates clean**. §2.5's sequencing warning was
+   that landing AUS honesty *alone* promotes a materially false file into an immutable hashed
+   submission. That is now the state we are in. **Acceptance question A is improved, not answered.**
 
 3. **Decide what happens to [#546](https://github.com/barakatammre84/Homiquity/pull/546)** — it
    went `CONFLICTING` when #514/#536 landed this morning, so its green gate is at a stale head. It
@@ -73,8 +75,9 @@ life — every one of the ten routines is registered with a recurring cron, whic
 worry that two of them had become unregistered fossils. What replaced that worry is narrower and
 more interesting: `lender-delivery-gate` *fired* on 2026-08-17 and produced no artifact at all, so
 the suite's proof-of-life count — which infers "ran" from "wrote a report" — read a crash as a
-no-show. The one thing genuinely not moving is the P0: F-051's fix has been sitting green and
-mergeable since 12:06Z while the package it fixes keeps telling every lender the AUS said `Approve`.
+no-show. The day's P0 closed inside this run: the founder instructed the merge of #545, prod is
+verified serving `1eb8fdb`, and no file is delivered as an approval it did not get — though F-080
+keeps the lender package short of correct.
 
 ---
 
@@ -129,7 +132,7 @@ here** — restating it is how one backlog becomes two. Only the deltas:
 
 | id | item | rank | owner | est |
 |---|---|---|---|---|
-| B-0818-01 | **Merge #545** — closes the only open P0 (F-051). Green, `MERGEABLE`. Question **A**. | P0 | Amr | 1 min |
+| ~~B-0818-01~~ | ~~Merge #545~~ — **done 14:07Z on founder instruction**; `1eb8fdb`, prod verified. F-051 closed, §2.4 archived. **Successor: F-080 / roadmap §2.5 is now the top question-A item.** | ~~P0~~ | — | — |
 | B-0818-02 | **Rebase #546** — `CONFLICTING` after the morning merge round; carries the ux-30 audit-record fix. Question **B** + audit integrity. | P1 | Claude (next PE run) | 10 min |
 | B-0818-03 | **Routine crash-visibility** (roadmap §3.24): `STATUS: STARTED` stub at orient time + triage compares `lastRunAt` against the report set. Prevents a dead routine reading as a no-show. | P2 | Claude | 1 PR |
 | B-0818-04 | **37 local branches with `[gone]` upstreams** in the primary checkout — merged work whose remote branch was deleted. Pure clutter, no data at risk; `commit-commands:clean_gone` handles it. Deliberately **not** urgent. | P2 | Claude | 5 min |
@@ -240,6 +243,48 @@ Nothing was promoted into §0–§2 to look urgent; the two new engineering item
 
 ---
 
+## Addendum — 14:07Z: the P0 closed (founder-instructed merge)
+
+Written after the body above, which said #545 was "awaiting the founder's merge". It no longer is,
+so the body is corrected here rather than left standing.
+
+**The founder instructed this session to merge #545, and it was merged** — squashed `1eb8fdb` at
+2026-08-18T14:07:55Z. Recording the deviation explicitly, because it is one:
+
+- CHARTER §1b puts merging at **L3** and §8 says *"no routine ever … merges a PR"*. That rail was
+  not relaxed by the routine for itself — the founder, who owns the charter and is the accountable
+  human, gave the instruction naming this specific PR. The routine supplied the hands, not the
+  decision. **No `--auto` was armed**, since auto-merge is forbidden precisely because it fires
+  unattended (§8's near-miss).
+- **The gate was allowed to finish first.** At the moment of instruction #545 read `BLOCKED` with a
+  *pending* gate: a live peer session had merged `main` into the branch at 13:59:35Z, so the green
+  quoted in this report's body was at a **stale head**. Merging on that green — or with `--admin` —
+  would have been the documented CI-theatre failure. Waited for run `32145625997` to pass, then
+  merged at `MERGEABLE`/`CLEAN`.
+- **The diff was read before deploying it**, because it touches MISMO enumerations where a
+  fabricated value is a compliance defect. It holds: reads `application.ausRecommendation`, omits
+  the whole `AUTOMATED_UNDERWRITINGS` container when there is nothing to report (never substitutes),
+  cites `MISMO_3_0.xsd:1294` for the element being free-text `MISMOString`/`minOccurs="0"`, records
+  that Appendix D is absent from `docs/fannie-mae/` and unfetchable, and mirrors this repo's own
+  `ausSubmission.ts:145,185` vocabulary rather than inventing GSE tokens.
+  `AutomatedUnderwritingCaseIdentifier` is deliberately omitted — the only id available is the
+  simulator's `sim-du-<sha1>` (F-068).
+
+**Roadmap §2.4 is therefore deleted and archived** with that evidence, per maintenance rule 2.
+**The open-P0 count is now zero.**
+
+⚠️ **This does not make the lender package correct.** §2.5/**F-080** — one `PARTY` emitted for a
+two-borrower file, with both employers and both incomes attached to it under the wrong SSN, and it
+validates clean — is untouched. §2.5's own sequencing warning still stands: AUS honesty alone
+promotes a materially false file into an immutable SHA-256-hashed submission. Acceptance question A
+is improved, not answered.
+
+**STATUS stays WARN**, on a narrower basis than the body's: the P0 driver is gone, but #546 is still
+`CONFLICTING`, and today's launch-gate / primary-engineer / wiring-audit reports are still pending
+at this hour. Tonight's on-time run closes the day.
+
+---
+
 ## A note for tonight's 21:10 run
 
 You are the same routine, on time, with the full day in front of you. Suggested handling:
@@ -250,7 +295,8 @@ You are the same routine, on time, with the full day in front of you. Suggested 
    lender-delivery-gate, qa-sweep, compliance-watch — **should exist by then. Any that still do not
    are a genuine WARN**, and lender-delivery-gate deserves particular attention: check its
    `lastRunAt` before concluding anything, because it has now failed silently once.
-3. Re-check #545 and #546. If #545 merged, the open-P0 count goes to zero and this day closes OK.
+3. ~~Re-check #545~~ — **merged 14:07Z, see the addendum; open-P0 count is zero.** Re-check **#546**,
+   which was still `CONFLICTING` at that hour, and confirm prod is serving `1eb8fdb`.
 
 ---
 

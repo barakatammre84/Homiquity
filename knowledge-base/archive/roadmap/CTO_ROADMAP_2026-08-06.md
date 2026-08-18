@@ -297,6 +297,20 @@ Strategy: own borrower intent *before* the credit pull via first-party channels 
 - [x] DEVELOPER_PLAYBOOK.md + PORT fix (6a01de0)
 - [x] CTO platform assessment (b0d6766)
 - [x] Design system Phases 1–3, dashboard query rewrite, AUS pipeline, MCP server, Vercel migration, brand unification (earlier) *[the Vercel leg was superseded 2026-08 by the migration to Railway; the Vercel project has since been deleted]*
+- [x] **§2.4 F-051 (P0) — the AUS recommendation was a compile-time literal — closed 2026-08-18,
+  founder-instructed merge of [#545](https://github.com/barakatammre84/Homiquity/pull/545)**
+  (squashed `1eb8fdb`, merged 14:07:55Z). `server/mismo.ts` now reads
+  `application.ausRecommendation` and **omits the whole `AUTOMATED_UNDERWRITINGS` container when
+  there is nothing to report** rather than substituting a value — the rule `:405-408` already
+  applied to citizenship. Reviewed before deploy against the CLAUDE.md no-invented-enumerations
+  rule and it holds: the PR cites `MISMO_3_0.xsd:1294` showing
+  `AutomatedUnderwritingRecommendationDescription` is free-text `MISMOString`, `minOccurs="0"`,
+  records that Fannie's Appendix D vocabulary is absent from `docs/fannie-mae/` and unfetchable
+  (escalation U-22), and therefore mirrors this repo's own `ausSubmission.ts:145,185` vocabulary
+  instead of inventing GSE tokens. `AutomatedUnderwritingCaseIdentifier` is deliberately not
+  emitted — the only id available is the simulator's `sim-du-<sha1>` (F-068), which would have
+  reintroduced the same defect in a different element. **Does not make the package correct:
+  §2.5/F-080 (dropped co-borrower) remains open, and that item's sequencing warning still stands.**
 - [x] **§3.2 The last N+1 loop — closed 2026-08-18 by evening-triage.**
   [#514](https://github.com/barakatammre84/Homiquity/pull/514) (authored by the retired sprint-blitz
   on 2026-08-12) merged 2026-08-18T12:43Z after the rebase the 2026-08-17 triage called for.
