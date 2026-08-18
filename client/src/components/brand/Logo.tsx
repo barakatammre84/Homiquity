@@ -33,7 +33,7 @@ const imgHeight = {
 
 const toneClass = {
   brand: "text-primary", // brand hue on light surfaces
-  onDark: "text-sidebar-foreground", // on the royal sidebar / dark surfaces
+  onDark: "text-background", // on the ink closer bands (chrome is light now)
   mono: "text-foreground", // neutral
 } as const;
 

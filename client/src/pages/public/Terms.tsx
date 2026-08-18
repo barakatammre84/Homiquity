@@ -94,21 +94,21 @@ export default function Terms() {
       <SEOHead title="Terms of Use" description="Read the terms and conditions for using the Homiquity mortgage platform and related services." />
       <Navigation />
 
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[hsl(213,52%,18%)] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-info/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-success/10 blur-3xl" />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white/90 backdrop-blur-sm">
-            <Scale className="h-4 w-4 text-success-subtle-foreground" />
+      {/* Calm Emerald: a quiet light header — reference pages carry no
+          colored hero band. */}
+      <section className="border-b bg-muted px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-background px-4 py-2 text-sm text-muted-foreground">
+            <Scale className="h-4 w-4" />
             Legal Agreement
           </div>
-          <h1 className="text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl" data-testid="text-terms-title">
+          <h1 className="text-3xl font-bold leading-tight sm:text-4xl" data-testid="text-terms-title">
             Terms of Use
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80">
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
             Please read these terms carefully before using the Homiquity platform.
           </p>
-          <p className="mt-2 text-sm text-white/60">Last updated: July 3, 2026</p>
+          <p className="mt-2 text-sm text-muted-foreground">Last updated: July 3, 2026</p>
         </div>
       </section>
 

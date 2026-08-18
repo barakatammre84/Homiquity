@@ -142,13 +142,19 @@ The white-label seam. Mounted on `PrivateLayout` only.
 
 - Resolves the active tenant's co-brand profile (`co_brand_profiles`, keyed by the
   session's LO/broker) and sets the **brandable** CSS vars on the layout root via
-  `style`/`setProperty`: `--primary`, `--accent`, `--sidebar`, `--ring`, `--brand-logo`.
-  Defaults to Royal Blue Emerald / Homiquity when there is no tenant.
-- Because the private UI is built on `bg-primary` / `bg-accent` **semantic** classes, the
+  `style`/`setProperty`: `--primary`, `--ring` (+ the rail's own action/ring slots
+  `--sidebar-primary`, `--sidebar-ring`), `--brand-logo`. Defaults to Calm Emerald /
+  Homiquity when there is no tenant. *(Calm Emerald 2026-08-18 narrowed the set:
+  `accentColor` is accepted but not applied — `--accent` is the neutral menu-hover
+  surface — and the chrome `--sidebar`/`--sidebar-foreground` stay neutral for every
+  tenant; brand shows through actions + logo, never by painting navigation.)*
+- Because the private UI is built on `bg-primary` **semantic** classes, the
   whole portal re-skins automatically — and it stays **token-guard-safe** (no inline hex,
   no raw palette classes in components).
-- **Never overrides fixed tokens:** the neutral ramp, `--surface` + elevation, and all
-  semantic status tokens (success/warning/info/destructive) are constant across tenants.
+- **Never overrides fixed tokens:** the neutral ramp, the navigation chrome
+  (`--sidebar`/`--sidebar-foreground`/`--sidebar-border`/`--sidebar-accent`), `--accent`,
+  `--surface` + elevation, and all semantic status tokens (success/warning/info/
+  destructive) are constant across tenants.
 - **Contrast:** derive `--primary-foreground` / `--accent-foreground` from the chosen
   color's luminance (or validate the picked color for AA on save). White text is not
   assumed to pass; the co-branding settings color inputs should reject or auto-correct a
@@ -206,10 +212,11 @@ The worked example of the whole standard (spacing · surface + `shadow-card` · 
 icons · vertical timeline · branding-aware chrome). Implementation detail:
 `client/src/pages/borrower/Dashboard.tsx`.
 
-- **Shell:** `min-h-full bg-surface`; a full-bleed royal-blue **hero** (`bg-accent
-  text-accent-foreground` — re-skins to the tenant brand via BrandingProvider; never
-  `text-white`), then a `max-w-6xl` two-column grid overlapping the hero (`-mt-8`),
-  collapsing to one column on mobile. Keep the existing sidebar chrome — no competing top nav.
+- **Shell:** `min-h-full bg-surface`; a **calm header** on the app ground (Calm
+  Emerald 2026-08-18 — the old full-bleed royal-blue `bg-accent` hero band is retired):
+  eyebrow + `<h1>` in foreground type + muted subtitle, no colored band, no `text-white`;
+  then a `max-w-6xl` two-column grid, collapsing to one column on mobile. Keep the
+  existing sidebar chrome — no competing top nav.
 - **Left column (wider):** the "next step" card → **Tasks** card (`BorrowerRequests`,
   restyled to an uppercase "TASKS" label + "Complete items" action + "all caught up" empty
   state) → **Loan Progress** card (`JourneyTracker` new `variant="vertical"`: our 7 steps as
@@ -252,8 +259,9 @@ Converting one of the 57% opt-out pages:
 ## 9. Enforcement
 
 - **`scripts/design-token-guard.cjs`** — keeps raw palette colors at 0 and `bg-white`/
-  `text-white` literals ≤ baseline. All new color goes through tokens (the royal-blue hero
-  uses `bg-accent`/`text-accent-foreground`).
+  `text-white` literals ≤ baseline. All new color goes through tokens. (Calm Emerald
+  removed the largest `text-white` consumers — the colored header bands — so the
+  baseline only ratchets down.)
 - **New lints (⏳, non-blocking → ratcheted):** flag page-level `min-h-screen` hand-rolls
   (PageShell drift) and direct `lucide-react` imports outside `icons.ts` (registry drift).
 - **`.claude/agents/ux-reviewer.md`** + the **`ui-components`** skill carry these rules and

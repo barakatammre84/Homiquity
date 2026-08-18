@@ -224,11 +224,13 @@ export function RenterHome({
           </div>
         </div>
 
-        {/* The on-ramp to the origination journey */}
-        <Card className="bg-sidebar text-sidebar-foreground border-transparent" data-testid="card-renter-cta">
+        {/* The on-ramp to the origination journey — a standard card; the
+            emerald CTA carries the emphasis (Calm Emerald: no dark ink cards
+            in the app chrome). */}
+        <Card data-testid="card-renter-cta">
           <CardContent className="p-5 space-y-3">
             <p className="text-base font-semibold">Ready sooner than you think?</p>
-            <p className="text-sm opacity-80">
+            <p className="text-sm text-muted-foreground">
               A pre-approval takes about 3 minutes, uses a soft credit check, and shows sellers
               you're serious.
             </p>
@@ -241,7 +243,6 @@ export function RenterHome({
               <Link href="/properties">
                 <Button
                   variant="ghost"
-                  className="text-sidebar-foreground"
                   data-testid="button-renter-browse"
                 >
                   <Search className="h-4 w-4" />

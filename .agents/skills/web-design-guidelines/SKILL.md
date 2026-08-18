@@ -17,7 +17,7 @@ Review files for compliance with Web Interface Guidelines.
 > On conflict, Homiquity's own design rules win:
 > [`design_guidelines.md`](../../../knowledge-base/handbook/design/design_guidelines.md) and
 > [`visual-consistency-standard.md`](../../../knowledge-base/handbook/design/visual-consistency-standard.md)
-> (Royal Blue Emerald tokens, the design-token guard, WCAG AA).
+> (Calm Emerald tokens, the design-token guard, WCAG AA).
 
 ## How It Works
 

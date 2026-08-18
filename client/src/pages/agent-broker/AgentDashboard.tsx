@@ -62,40 +62,36 @@ export default function AgentDashboard() {
   const isLoading = agentLoading || listingsLoading;
 
   return (
-    /* Full-bleed hero + overlap — a documented PageShell exception (same pattern
-       as the borrower dashboard). No bg here: it sits on PrivateLayout's surface. */
+    /* Calm header on the app ground — a documented PageShell exception (same
+       pattern as the borrower dashboard). No bg here: it sits on
+       PrivateLayout's surface. */
     <div className="min-h-screen">
-      {/* Premium Agent Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-        
-        <div className="relative mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-primary-foreground/80 mb-2">
-                <Home className="h-4 w-4" />
-                <span className="text-sm font-medium">Real Estate Partner</span>
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                Agent Dashboard
-              </h1>
-              <p className="mt-1 text-primary-foreground/80">
-                Manage your listings and track performance
-              </p>
+      {/* Header — calm greeting on the app ground (Calm Emerald) */}
+      <div className="mx-auto max-w-6xl px-4 pt-8 sm:pt-10 pb-2 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-muted-foreground mb-2">
+              <Home className="h-4 w-4" />
+              <span className="text-xs font-semibold uppercase tracking-wider">Real Estate Partner</span>
             </div>
-            <Link href="/agent/edit">
-              <Button className="bg-white text-primary shadow-lg gap-2">
-                <Edit className="h-4 w-4" />
-                Edit Profile
-              </Button>
-            </Link>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Agent Dashboard
+            </h1>
+            <p className="mt-1 text-muted-foreground">
+              Manage your listings and track performance
+            </p>
           </div>
+          <Link href="/agent/edit">
+            <Button variant="outline" className="gap-2">
+              <Edit className="h-4 w-4" />
+              Edit Profile
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* Stats Cards with overlap effect */}
-      <div className="mx-auto max-w-6xl px-4 -mt-6 sm:px-6 lg:px-8">
+      {/* Stats Cards */}
+      <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 lg:px-8">
         {isLoading ? (
           <div className="space-y-6">
             <Skeleton className="h-40 w-full" />

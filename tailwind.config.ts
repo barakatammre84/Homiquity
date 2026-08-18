@@ -126,15 +126,17 @@ export default {
           warning: "#F59E0B", // pending loan-officer review
           danger: "#EF4444", // TCPA opt-out / credit alert
         },
-        // "Royal Blue Emerald" ramp. The dark end (950/900/700) is a vivid
-        // royal-blue gradient used only for the dark hero surfaces on the
-        // persona/landing pages; the light end (500→50) stays neutral slate for
-        // micro-copy, borders, and section fills. Prefer the semantic tokens
-        // (bg-background, text-foreground, …) in components.
+        // "Calm Emerald" ramp. The dark end (950/900/700) is a deep slate INK
+        // used only for the final-CTA closer bands on the public persona pages
+        // — a calm near-black, not a brand color (the vivid royal-blue gradient
+        // was retired 2026-08-18 as visual noise; keys keep their names so the
+        // gradient call-sites don't churn). The light end (500→50) stays
+        // neutral slate for micro-copy, borders, and section fills. Prefer the
+        // semantic tokens (bg-background, text-foreground, …) in components.
         precision: {
-          950: "#0A1E52", // deep royal navy — hero gradient anchor
-          900: "#1B3B9E", // royal blue — hero gradient mid
-          700: "#2456D6", // vivid royal blue — hero gradient end + glow
+          950: "#020617", // slate-950 — ink closer anchor
+          900: "#0F172A", // slate-900 — ink closer mid
+          700: "#1E293B", // slate-800 depth — ink closer end
           500: "#64748B", // Muted Slate — placeholders, micro-copy
           300: "#94A3B8", // slate-400 — hover borders, disabled states
           100: "#E2E8F0", // slate-200 — card hairlines, active input bg

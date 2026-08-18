@@ -28,27 +28,23 @@ export function ConversationList({
 }: ConversationListProps) {
   return (
     <>
-      {/* Premium Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-
-        <div className="relative px-6 py-8">
-          <div className="flex items-center gap-2 text-primary-foreground/80 mb-2">
-            <MessageCircle className="h-4 w-4" />
-            <span className="text-sm font-medium">Communication</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            Messages
-          </h1>
-          <p className="mt-1 text-primary-foreground/80">
-            {isStaff ? "Secure messages with your borrowers" : "Chat with your mortgage team"}
-          </p>
+      {/* Header — calm greeting on the app ground (Calm Emerald: no colored
+          band; hierarchy from type scale + whitespace) */}
+      <div className="px-6 pt-8 pb-2">
+        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+          <MessageCircle className="h-4 w-4" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Communication</span>
         </div>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Messages
+        </h1>
+        <p className="mt-1 text-muted-foreground">
+          {isStaff ? "Secure messages with your borrowers" : "Chat with your mortgage team"}
+        </p>
       </div>
 
-      <div className="p-4 sm:p-6 lg:p-8 -mt-6">
-        <Card className="shadow-lg border-0">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <Card>
           <CardHeader>
             <CardTitle>{isStaff ? "Conversations" : "Your Team"}</CardTitle>
           </CardHeader>

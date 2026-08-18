@@ -69,9 +69,10 @@ false positive:
   the audit and closed in #135's §9 review — the "no IDOR" line predates that discovery.)*
 - **`grep-only` compliance tests give false confidence** — `complianceInvariants.test.ts` (F-014)
   executes nothing. A green run there ≠ correct regulated math.
-- **Design system:** `main` is **Royal Blue Emerald** (2026-07-08 repaint #93; PageShell
-  scaffold #131). Audit artifacts referencing Obsidian Indigo or Charcoal Emerald predate it —
-  don't file color findings from them.
+- **Design system:** `main` is **Calm Emerald** (2026-08-18 light-chrome repaint of Royal Blue
+  Emerald; PageShell scaffold #131) — quiet light chrome, no colored bands as page furniture,
+  emerald as the one action color. Audit artifacts referencing Royal Blue Emerald, Obsidian
+  Indigo, or Charcoal Emerald predate it — don't file color findings from them.
 
 ## Severity scale
 

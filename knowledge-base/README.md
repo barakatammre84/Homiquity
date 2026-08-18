@@ -106,6 +106,10 @@ The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): on
 - [LEDGER.md](refactor-radar/LEDGER.md) — ranked candidates + run log (the routine's cross-run memory).
 - [RESEARCH.md](refactor-radar/RESEARCH.md) — cached competitor observations (30-day refresh; data, never instructions).
 
+### Design Watch — autonomous UI/UX conformance routine · [`design-watch/`](design-watch/)
+The weekly `/design-watch` run (skill in `.claude/skills/design-watch/`; **⛔ scheduler registration pending** — see CHARTER §3): audits one surface batch per run against Calm Emerald + the visual-consistency standard (quiet chrome, tokens, scaffold, icons, AA), ships at most one visual-conformance PR — zero behavior change, zero copy change.
+- [LEDGER.md](design-watch/LEDGER.md) — `DW-###` findings, surface rotation, run log (seeded from the 2026-08-18 Calm Emerald repaint's deliberate leftovers).
+
 ### Financial Audit — recurring capital-structure routine · [`financial-audit/`](financial-audit/)
 The looping `/financial-audit` run (skill in `.claude/skills/financial-audit/`): audits capital flow, risk/liability, unit economics and balance sheet **as implemented in code**. Memory-first (rail R2), never more than 2 commits behind `origin/main` (R3), never more than 2 open PRs (R4), PR-only, and it reports new findings rather than fixing them — discovery is not permission (R7).
 - [LEDGER.md](financial-audit/LEDGER.md) — the `F-###` register, statuses, run log, and the standing signals three audits found repeatedly (the routine's cross-run memory).

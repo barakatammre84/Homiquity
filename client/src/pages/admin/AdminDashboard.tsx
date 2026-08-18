@@ -102,29 +102,23 @@ export default function AdminDashboard() {
   })) || [];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Premium Admin Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-primary/30 blur-3xl" />
-        
-        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3 text-primary-foreground/80 mb-3">
-            <Shield className="h-5 w-5" />
-            <span className="text-sm font-medium">Administrator</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            Admin Dashboard
-          </h1>
-          <p className="mt-1 text-primary-foreground/80">
-            Monitor loan pipeline, user activity, and system performance
-          </p>
+    <div className="min-h-screen bg-surface">
+      {/* Header — calm greeting on the app ground (Calm Emerald) */}
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:pt-10 pb-2 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+          <Shield className="h-4 w-4" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Administrator</span>
         </div>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Admin Dashboard
+        </h1>
+        <p className="mt-1 text-muted-foreground">
+          Monitor loan pipeline, user activity, and system performance
+        </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="mx-auto max-w-7xl px-4 -mt-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Total Users"

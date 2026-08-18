@@ -4,12 +4,20 @@ import * as React from "react";
  * White-label seam. On PRIVATE/authenticated surfaces only, a tenant (LO/broker)
  * brand overrides a small set of BRANDABLE tokens; everything else (neutral ramp,
  * surface + elevation, semantic status) is fixed. Because the private UI is built
- * on `bg-primary` / `bg-accent` SEMANTIC classes, overriding the CSS variables
- * re-skins the portal automatically — and stays token-guard-safe (no inline hex or
- * raw palette classes in components).
+ * on `bg-primary` SEMANTIC classes, overriding the CSS variables re-skins the
+ * portal automatically — and stays token-guard-safe (no inline hex or raw palette
+ * classes in components).
+ *
+ * Calm Emerald (2026-08-18) narrowed the brandable set: chrome is neutral now
+ * (white sidebar/footer, slate text), so a tenant brand shows through the
+ * ACTION color (`--primary` + `--ring`) and the logo/name — never by painting
+ * the navigation chrome or the `--accent` interaction surface (that token is a
+ * quiet slate hover fill for menus, not a brand slot). `accentColor` is
+ * accepted for schema compatibility but currently unapplied, reserved for a
+ * future explicit brand-hero surface.
  *
  * Phase 2 ships this component INERT: with no `brand` it renders children
- * untouched (default Homiquity / Royal Blue Emerald). Phase 4 mounts it on
+ * untouched (default Homiquity / Calm Emerald). Phase 4 mounts it on
  * `PrivateLayout` and resolves the session's tenant (compliance-gated). Public
  * layouts never mount it.
  *
@@ -137,26 +145,24 @@ function brandStyle(brand: Brand): React.CSSProperties {
   if (brand.primaryColor) {
     const primary = hexToHslTriplet(brand.primaryColor);
     if (primary) {
-      // Brand hue drives the conversion action + the sidebar + the focus ring.
+      // Brand hue drives the conversion action + the focus ring. The chrome
+      // (sidebar/footer) stays neutral — Calm Emerald keeps navigation quiet
+      // in every tenant's portal; brand shows via actions and the logo.
       style["--primary"] = primary;
-      style["--sidebar"] = primary;
       style["--ring"] = primary;
+      // The rail's own action/ring slots follow the brand hue too.
+      style["--sidebar-primary"] = primary;
+      style["--sidebar-ring"] = primary;
       const fg = readableForeground(brand.primaryColor);
       if (fg) {
         style["--primary-foreground"] = fg;
-        style["--sidebar-foreground"] = fg;
+        style["--sidebar-primary-foreground"] = fg;
       }
     }
   }
 
-  if (brand.accentColor) {
-    const accent = hexToHslTriplet(brand.accentColor);
-    if (accent) {
-      style["--accent"] = accent;
-      const fg = readableForeground(brand.accentColor);
-      if (fg) style["--accent-foreground"] = fg;
-    }
-  }
+  // brand.accentColor: intentionally NOT applied — `--accent` is the neutral
+  // menu-hover surface, not a brand slot (see header comment).
 
   return style as React.CSSProperties;
 }

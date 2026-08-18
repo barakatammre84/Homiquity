@@ -142,12 +142,20 @@ when reasoning about overlap. `taskId` is the scheduler key.
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list — re-timed from 18:40 on 2026-08-17: the last slot of the day is the one catch-up bursts shed, and it had never once run |
 | Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | vendor/contract board |
 | Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state-launch compliance ladder + signature-ready drafts |
+| Wed 10:00 ⛔ | `0 10 * * 3` | **Design Watch** (`design-watch-weekly`) | weekly | yes — visual conformance, `client/src` minus `ui/**` | one audited surface batch + at most one conformance PR (DW ledger) |
 | Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | furnishing-gate posture + the two procurement asks |
 | Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | at most one PR |
 
 **Sprint Blitz (`sprint-blitz`, was 09:53 daily) was retired 2026-08-17** — absorbed into the
 Primary Engineer, which carries its queue, its ranking, and its fix-the-gate-first rule. The 09:53
 slot is free.
+
+**⛔ Design Watch is defined but NOT yet registered in the scheduler** (added 2026-08-18 by a
+remote session that cannot reach the local scheduler — the founder registers taskId
+`design-watch-weekly`, cron `0 10 * * 3`, prompt "Run the design watch routine (/design-watch)",
+then deletes this ⛔ and the row's marker in the same session, per §11). Until registered it fires
+only when a human invokes `/design-watch`; per §0 it must not be described as a live control.
+Definition: `.claude/skills/design-watch/SKILL.md`; ledger: `knowledge-base/design-watch/LEDGER.md`.
 
 The wiring audit keeps its original unwieldy `taskId` on purpose — renaming it would discard its
 run history and stored tool approvals. Judge it by its description, not its slug.
@@ -284,6 +292,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Compliance Watch | `knowledge-base/compliance-watch/**` + its own report file | every code path; `docs/**` (read-only reference); anything outbound — it drafts, only the founder files or sends |
 | Rent Reporting Watch | its own report file only | **every** rent/furnishing code path — it exists to *observe* the gates, and a routine that can open one is not a watchdog |
 | Refactor Radar | `client/src/**` minus `components/ui/**` | its own R4 off-limits list — unchanged |
+| Design Watch | `client/src/**` minus `components/ui/**` — **visual-conformance changes only** (classNames/scaffold/registry adoption; zero behavior change, testids preserved), plus `knowledge-base/design-watch/**` | token files (`client/src/index.css`, `tailwind.config.ts`) — a token change is a design-language change, flag-only; **any copy change** (Reg Z/Reg N-gated words live on these surfaces); everything in the always-off-limits list |
 | Financial Audit | money paths + the financial registers; **audit-first, reports rather than fixes** — fixes only owner-authorized ledger rows, one per tick | `client/src/**` decomposition (radar's lane), `shared/schema/**` without a migration, company identity |
 
 **Off limits to every routine, always:** `shared/schema/**` and `migrations/**` without a same-PR

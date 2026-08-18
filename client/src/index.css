@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Keep the JS theme config (Royal Blue Emerald ramp, semantic tokens, elevation
+/* Keep the JS theme config (Calm Emerald ramp, semantic tokens, elevation
    scale) as the source of truth rather than porting ~150 lines to CSS-first
    @theme. v4 loads it in compatibility mode. */
 @config "../../tailwind.config.ts";
@@ -29,15 +29,17 @@
   }
 }
 
-/* LIGHT MODE - "Royal Blue Emerald": stark-white system with vivid royal-blue
-   dark surfaces (2026-07-08 repaint of "Charcoal Emerald" — charcoal dark
-   surfaces swapped for royal blue; emerald kept as the action color).
+/* LIGHT MODE - "Calm Emerald": an all-light neutral system with ONE accent
+   (2026-08-18 repaint of "Royal Blue Emerald" — the vivid royal-blue chrome
+   [sidebar, hero bands, menu hovers] read as on-screen noise and is retired;
+   Better.com's dashboard is the lead reference: white chrome, slate type,
+   hierarchy from type scale + whitespace, color only where it means action).
    Neutrals are the slate family: canvas #FFFFFF, data-section fill #F8FAFC,
    hairlines #E2E8F0, micro-copy #64748B, type near-black slate #0F172A.
-   Dark surfaces (sidebar, hero gradients): royal blue. Conversion green:
-   emerald — #047857 (700) for solid fills so white text clears WCAG AA
-   (5.49:1; raw #10B981 is only 2.49:1), #059669 (600) for rings, #10B981
-   (500) reserved for status/success accents. */
+   Navigation chrome (sidebar, footer): white with slate text + hairlines.
+   Conversion green: emerald — #047857 (700) for solid fills so white text
+   clears WCAG AA (5.49:1; raw #10B981 is only 2.49:1), #059669 (600) for
+   rings, #10B981 (500) reserved for status/success accents. */
 :root {
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .05);
@@ -54,16 +56,21 @@
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
   --card-border: 214 32% 91%;
-  /* Sidebar: deep royal-blue navigation container (~#122A6B) */
-  --sidebar: 224 71% 24%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 224 40% 34%;
-  /* Active nav item: light pill on royal blue */
-  --sidebar-primary: 210 40% 98%;
-  --sidebar-primary-foreground: 222 47% 11%;
-  --sidebar-accent: 224 52% 32%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 160 84% 39%;
+  /* Sidebar: white navigation rail, separated from the app ground by a
+     hairline — slate-700 labels (10.3:1 on white). The dark royal-blue rail
+     was the loudest surface on every authed screen; chrome is now quiet. */
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 215 25% 27%;
+  --sidebar-border: 214 32% 91%;
+  /* Primary action inside the rail: emerald (matches --primary) */
+  --sidebar-primary: 163 94% 24%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  /* Hover + active nav item: quiet slate-100 pill, near-black label
+     (the active item also gets font-medium from the primitive) */
+  --sidebar-accent: 210 40% 96%;
+  --sidebar-accent-foreground: 222 47% 11%;
+  /* Focus ring inside the rail: emerald-600, same as --ring */
+  --sidebar-ring: 161 94% 30%;
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
   --popover-border: 214 32% 88%;
@@ -85,9 +92,12 @@
      Public/reading surfaces stay on the white --background. */
   --surface: 210 40% 97%;
   --surface-foreground: 222 47% 11%;
-  /* Accent: deep royal-blue chip — quieter than the emerald primary */
-  --accent: 224 60% 24%;
-  --accent-foreground: 0 0% 100%;
+  /* Accent: quiet interaction surface (dropdown/select/command hover+focus,
+     selected rows) — slate-100 with near-black text, the stock shadcn
+     semantic. The old deep royal-blue accent painted every menu hover a loud
+     dark blue; brand emphasis belongs to --primary alone now. */
+  --accent: 210 40% 96%;
+  --accent-foreground: 222 47% 11%;
   /* Semantic pop: danger. Red-600 (was red-500 #EF4444) so white text on the
      solid fill clears WCAG AA (4.80:1, was 3.76:1). */
   --destructive: 0 72% 51%;

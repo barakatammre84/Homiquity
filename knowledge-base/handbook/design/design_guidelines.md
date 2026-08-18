@@ -29,21 +29,25 @@
 > surface; (2) **branding** becomes tenant-overridable on private surfaces (white-label).
 > Until a surface is converted, its current near-flat / Homiquity-only styling is correct.
 
-## Design approach — "Royal Blue Emerald" (Better.com-style conversion clarity)
+## Design approach — "Calm Emerald" (Better.com-led visual quiet)
 
-*Royal-blue repaint 2026-07-08 of "Charcoal Emerald" (which superseded "Obsidian
-Indigo" on 2026-07-06): charcoal dark surfaces swapped for vivid royal blue,
-emerald kept as the action color.* Stark-white surfaces, neutral slate structure,
-near-black slate typography (#0F172A), **royal-blue dark surfaces** (sidebar, hero
-gradients), and **emerald reserved for forward-moving conversion actions** ("green
-means Go") — radical transparency, frictionless onboarding, high-velocity conversion.
+*Light-chrome repaint 2026-08-18 of "Royal Blue Emerald" (which repainted "Charcoal
+Emerald" 2026-07-08, itself superseding "Obsidian Indigo" 2026-07-06): the vivid
+royal-blue chrome — sidebar, hero bands, menu hovers — read as on-screen noise and
+is retired. Emerald stays as the one action color.* The lead reference is the
+**Better.com dashboard**: white chrome, slate typography, generous whitespace,
+hierarchy carried by type scale and spacing — **color appears only where it means
+something** (emerald = act now; semantic status = state). Stark-white surfaces,
+neutral slate structure, near-black slate typography (#0F172A), **light navigation
+chrome** (white sidebar/footer with slate text and hairlines), and **emerald
+reserved for forward-moving conversion actions** ("green means Go").
 
-**Dark-surface ramp** (`precision.950/900/700` in Tailwind — hero gradients only):
-`950 #0A1E52` deep royal navy · `900 #1B3B9E` royal blue · `700 #2456D6` vivid royal
-blue. **Neutral light ramp** (`precision.500→50`): `500 #64748B` Muted Slate
-(micro-copy) · `300 #94A3B8` slate-400 · `100 #E2E8F0` slate-200 (hairlines) ·
-`50 #F8FAFC` Ultra-Light Gray (data-section separation). Primary type: near-black
-slate `#0F172A`. Sidebar: deep royal blue.
+**Ink ramp** (`precision.950/900/700` in Tailwind — the final-CTA closer bands on
+public persona pages only, never app chrome): `950 #020617` slate-950 · `900
+#0F172A` slate-900 · `700 #1E293B` slate-800 depth. **Neutral light ramp**
+(`precision.500→50`): `500 #64748B` Muted Slate (micro-copy) · `300 #94A3B8`
+slate-400 · `100 #E2E8F0` slate-200 (hairlines) · `50 #F8FAFC` Ultra-Light Gray
+(data-section separation). Primary type: near-black slate `#0F172A`. Sidebar: white.
 
 **Core principles**
 1. **Hierarchy through VALUE, not hue.** Depth comes from the neutral ramp, whitespace,
@@ -53,7 +57,13 @@ slate `#0F172A`. Sidebar: deep royal blue.
    text at 5.49:1 — raw #10B981 is only 2.49:1 and must not carry white text);
    `--ring` is emerald-600. Non-action green stays in the success tokens.
 3. **Other non-ramp color is reserved for semantic status only** (see below).
-4. Radical transparency, speed indicators, trust through clarity, data-as-centerpiece.
+4. **Chrome is quiet; no colored bands as page furniture.** Page headers are dark
+   type on the app ground (eyebrow + `<h1>` + muted subtitle) — never a
+   `bg-primary`/`bg-accent` gradient band, decorative blur orbs, or white-on-color
+   text. The retired "premium header" pattern (solid emerald band + radial
+   white glow + `-mt-6` overlap) is the named anti-pattern. Dark ink is allowed
+   in exactly one place: the persona-page final-CTA closer (ink ramp above).
+5. Radical transparency, speed indicators, trust through clarity, data-as-centerpiece.
 
 ## Color system
 
@@ -70,7 +80,11 @@ slate `#0F172A`. Sidebar: deep royal blue.
   `shadow-card` — supplied **automatically** inside `.app-surface` (see elevation), so
   authed pages need no per-card class. The hairline is always kept as a second separation cue.
 - **Layer 2** — Emerald conversion actions (`bg-primary`), hover deepens via the elevate system.
-- **Sidebar** — deep royal-blue dark nav container.
+- **Sidebar** — white navigation rail (`--sidebar`), slate-700 labels, hairline-separated
+  from the app ground; hover/active = quiet slate-100 pill (`--sidebar-accent`). The
+  footer shares this "navigation container" stop. `--accent` is likewise a **neutral
+  interaction surface** (menu hover/focus fill: slate-100 + near-black text), not a
+  brand color — brand emphasis belongs to `--primary` alone.
 
 ### Semantic status (the ONLY non-ramp color)
 Use these tokens or the `<Badge>/<Alert>` variants — **never** raw palette classes
@@ -193,13 +207,19 @@ the design-token guard still holds). Detailed mechanism + `<Logo>` spec in
 [`visual-consistency-standard.md`](./visual-consistency-standard.md).
 
 - **Brandable tokens (tenant-overridable, private surfaces only):** the brand hue —
-  `--primary`, `--accent` (hero), `--sidebar`, `--ring` — plus the `<Logo>` source
-  (tenant logo/brandName). A tenant's `primaryColor`/`accentColor`/logo drive these via CSS
-  variables set on the private-layout root; because components use `bg-primary`/`bg-accent`
-  semantically, the portal re-skins automatically.
-- **Fixed tokens (NEVER tenant-overridable):** the neutral slate ramp/structure, `--surface`
-  + the elevation scale, and **all semantic status tokens** (success/warning/info/
-  destructive) — these carry meaning and AA guarantees and must stay constant across tenants.
+  `--primary`, `--ring` (+ the rail's own action/ring slots `--sidebar-primary`,
+  `--sidebar-ring`) — plus the `<Logo>` source (tenant logo/brandName). A tenant's
+  `primaryColor`/logo drive these via CSS variables set on the private-layout root;
+  because components use `bg-primary` semantically, the portal re-skins automatically.
+  *(Calm Emerald narrowed this set: `accentColor` is accepted for schema compatibility
+  but not applied — `--accent` is a neutral menu-hover surface now, not a brand slot —
+  and the chrome `--sidebar`/`--sidebar-foreground` stay neutral in every tenant's
+  portal; brand shows through actions and the logo, never by painting navigation.)*
+- **Fixed tokens (NEVER tenant-overridable):** the neutral slate ramp/structure, the
+  navigation chrome (`--sidebar`, `--sidebar-foreground`, `--sidebar-border`,
+  `--sidebar-accent`), `--accent`, `--surface` + the elevation scale, and **all semantic
+  status tokens** (success/warning/info/destructive) — these carry meaning and AA
+  guarantees and must stay constant across tenants.
 - **Surface boundary:** overrides apply on **`PrivateLayout` only**; public layouts pin to
   Homiquity. (The pre-existing public co-brand landing `/partner/:profileId` applies its own
   inline colors — separate existing feature, left as-is.)

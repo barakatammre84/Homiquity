@@ -139,33 +139,27 @@ export default function BrokerDashboard() {
 
   return (
     <div className="min-h-screen">
-      {/* Premium Broker Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/90">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-primary/30 blur-3xl" />
-        
-        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 text-primary-foreground/80 mb-3">
-            <Briefcase className="h-5 w-5" />
-            <span className="text-sm font-medium">Partner Portal</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" data-testid="text-dashboard-title">
-            Broker Dashboard
-          </h1>
-          <p className="mt-1 text-primary-foreground/80">
-            Track your referrals, commissions, and performance
-          </p>
+      {/* Header — calm greeting on the app ground (Calm Emerald) */}
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:pt-10 pb-2 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+          <Briefcase className="h-4 w-4" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Partner Portal</span>
         </div>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl" data-testid="text-dashboard-title">
+          Broker Dashboard
+        </h1>
+        <p className="mt-1 text-muted-foreground">
+          Track your referrals, commissions, and performance
+        </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="mx-auto max-w-7xl px-4 -mt-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
         <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           {statCards.map((stat) => {
             const colors = getColorClasses(stat.color);
             return (
-              <Card key={stat.title} className="shadow-lg border-0">
+              <Card key={stat.title}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${colors.bg}`}>

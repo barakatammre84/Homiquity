@@ -35,7 +35,7 @@ There is **no serverless entry and no edge middleware**: the former `api/` direc
 │   └── src/
 │       ├── main.tsx            Entry point; mounts <App/>
 │       ├── App.tsx             All routes (wouter). Pages are lazy-loaded.
-│       ├── index.css           Royal Blue Emerald design tokens (CSS variables)
+│       ├── index.css           Calm Emerald design tokens (CSS variables)
 │       ├── components/
 │       │   ├── ui/             shadcn/Radix primitives, restyled to tokens
 │       │   └── *.tsx           Cross-page components (HomeReadinessPassport, …)

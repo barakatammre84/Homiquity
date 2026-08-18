@@ -128,7 +128,7 @@ export default function CashOutRates() {
                   <h3 className="text-lg font-semibold mb-1">Tap into your home equity</h3>
                   <p className="text-muted-foreground">Get cash for renovations, debt payoff, or other expenses</p>
                 </div>
-                <Button asChild className="bg-accent hover:bg-accent/90 text-white">
+                <Button asChild>
                   <Link href="/apply?type=cashout" data-testid="link-apply-cashout">
                     Start Cash-Out Application
                   </Link>
@@ -144,7 +144,7 @@ export default function CashOutRates() {
               <p className="text-muted-foreground mb-6">
                 Enter your ZIP code above to see current cash-out refinance rates for your area.
               </p>
-              <Button asChild className="bg-accent hover:bg-accent/90 text-white">
+              <Button asChild>
                 <Link href="/apply?type=cashout" data-testid="link-apply-cashout-empty">
                   Apply for Cash-Out Refinance
                 </Link>

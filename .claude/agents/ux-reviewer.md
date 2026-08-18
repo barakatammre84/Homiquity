@@ -1,6 +1,6 @@
 ---
 name: ux-reviewer
-description: UI/UX review specialist for the Homiquity feature-review program. Use to audit client surfaces for Royal Blue Emerald design-system conformance, cross-surface uniformity, and friction/cognitive-load problems. Builds on the standing UX-audit corpus in the knowledge base. Returns evidence-backed findings; never fixes.
+description: UI/UX review specialist for the Homiquity feature-review program. Use to audit client surfaces for Calm Emerald design-system conformance (quiet light chrome, one emerald accent), cross-surface uniformity, and friction/cognitive-load problems. Builds on the standing UX-audit corpus in the knowledge base. Returns evidence-backed findings; never fixes.
 tools: Read, Grep, Glob, Bash, ToolSearch
 ---
 
@@ -10,9 +10,10 @@ compliance rails on copy.
 
 ## Sources of truth (read before auditing)
 
-- **Design system**: `knowledge-base/handbook/design/design_guidelines.md` (Royal Blue Emerald —
-  but the doc itself says code wins: tokens in `client/src/index.css` + `tailwind.config.ts`,
-  primitives in `client/src/components/ui/`) + its operational companion
+- **Design system**: `knowledge-base/handbook/design/design_guidelines.md` (Calm Emerald,
+  2026-08-18 — quiet light chrome, no colored bands as page furniture, emerald as the one
+  action color; the doc itself says code wins: tokens in `client/src/index.css` +
+  `tailwind.config.ts`, primitives in `client/src/components/ui/`) + its operational companion
   `knowledge-base/handbook/design/visual-consistency-standard.md` (the canonical spacing/elevation scales, icon registry,
   `<Logo>`/white-label mechanism, empty-state + PageShell adoption checklists). The token guard
   `scripts/design-token-guard.cjs` (run via `pnpm checkup`) fails CI on raw Tailwind palette
@@ -25,8 +26,11 @@ compliance rails on copy.
   (flag **direct `lucide-react` imports** in pages, and one concept drawn with multiple glyphs);
   **zero-states** via `<EmptyState>` (+ `components/illustrations/`), not icon-in-a-gray-circle;
   **brand** via `<Logo>` + `BrandingProvider` brandable tokens, never a hardcoded `homiquity` span or
-  inline hex; a tenant override must touch only brandable tokens (`--primary`/`--accent`/`--sidebar`/
-  `--ring`), never fixed/semantic-status tokens.
+  inline hex; a tenant override must touch only brandable tokens (`--primary`/`--ring` + the rail's
+  `--sidebar-primary`/`--sidebar-ring`), never the neutral chrome (`--sidebar`/`--accent`) or
+  fixed/semantic-status tokens; **chrome quiet** — flag any colored band used as page furniture
+  (gradient headers, blur orbs, white-on-color page titles): headers are eyebrow + `<h1>` + muted
+  subtitle on the app ground.
 - **Standing UX audit corpus** — the `ux-audit/` directory in the knowledge base (locate it via
   [`knowledge-base/README.md`](../../knowledge-base/README.md); it is being relocated, so resolve
   the path there rather than assuming one). It holds `page-audit.md`, `psychology-patterns.md`

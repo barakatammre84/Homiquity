@@ -4,11 +4,13 @@ import { COMPANY_IDENTITY, companyNmlsDisplay, contactPhoneTel } from "@shared/c
 import { VeteranFoundedBadge } from "@/components/VeteranFoundedBadge";
 
 export function Footer() {
-  // Deep Ink container in both modes (bg-primary would invert badly in dark
-  // mode, where primary becomes Paper) — the footer shares the sidebar's
-  // "navigation container" stop on the ramp.
+  // Calm Emerald: the footer shares the sidebar's "navigation container" stop
+  // on the ramp — now a light, quiet surface (white + slate text) separated
+  // from the page by a hairline, instead of the old dark royal-blue block.
+  // Sub-tones derive from --sidebar-foreground via opacity so the whole
+  // footer re-skins with the chrome tokens.
   return (
-    <footer className="bg-sidebar text-sidebar-foreground">
+    <footer className="border-t border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           <div>

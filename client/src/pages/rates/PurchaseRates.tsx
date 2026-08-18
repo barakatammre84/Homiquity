@@ -127,7 +127,7 @@ export default function PurchaseRates() {
                   <h3 className="text-lg font-semibold mb-1">Ready to buy your dream home?</h3>
                   <p className="text-muted-foreground">Get pre-approved in as little as 3 minutes</p>
                 </div>
-                <Button asChild className="bg-accent hover:bg-accent/90 text-white">
+                <Button asChild>
                   <Link href="/apply" data-testid="link-get-preapproved">
                     Get Pre-Approved
                   </Link>
@@ -143,7 +143,7 @@ export default function PurchaseRates() {
               <p className="text-muted-foreground mb-6">
                 Enter your ZIP code above to see current purchase mortgage rates for your area.
               </p>
-              <Button asChild className="bg-accent hover:bg-accent/90 text-white">
+              <Button asChild>
                 <Link href="/apply" data-testid="link-get-preapproved-empty">
                   Get Pre-Approved Instead
                 </Link>

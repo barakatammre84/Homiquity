@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
  * VeteranFoundedBadge — a contained trust mark for the founder's veteran status.
  *
  * Design intent (see the branding decision, 2026-07-08): we deliberately do NOT
- * repaint the app red/white/blue. The Charcoal/Royal-Blue Emerald trust palette
- * stays intact; the veteran story lives in this one contained seal instead. Gold
+ * repaint the app red/white/blue. The house trust palette (Calm Emerald) stays
+ * intact; the veteran story lives in this one contained seal instead. Gold
  * + navy are intentional off-palette accents (defined as scoped `--veteran-*`
  * CSS variables in index.css, not semantic status tokens) used only here, on the
  * footer / About / VA surfaces — never as global UI chrome.
