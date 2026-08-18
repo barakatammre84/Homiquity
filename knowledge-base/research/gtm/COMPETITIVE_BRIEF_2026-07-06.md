@@ -1,5 +1,12 @@
 # Competitive Brief — 2026-07-06
 
+> ⚠️ **Better.com facts superseded 2026-08-18** by the live logged-in teardown —
+> [research/better-teardown/](../better-teardown/) (knowledge doc + append-only raw notes).
+> This brief's Better rows describe the 2026-07-06 site (hero “Simple, Online, AI-Powered”);
+> the current hero is the Betsy-AI chat composer (“Betsy AI gets you cash from your home…”).
+> The strategy reads remain compatible — the human-judgment positioning is the same stance the
+> teardown sharpens into “AI explains deterministic rules.” Kept as history per TEAM_PRACTICES §2.
+
 > **⚠️ DATED SNAPSHOT (2026-07-06), last touched 2026-07-08.** Market positioning research, not a
 > live tracker. Re-verify any competitor claim before repeating it externally. Kept in `kb/` rather
 > than archived because it still describes this market and [TAX_SERIES_01_DRAFT.md](TAX_SERIES_01_DRAFT.md)
