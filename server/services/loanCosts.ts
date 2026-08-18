@@ -592,42 +592,14 @@ export function estimateMonthlyEscrow(input: EscrowEstimateInputs): MonthlyEscro
   };
 }
 
-/**
- * Banded conventional monthly BPMI estimate by FICO/LTV (0 at or below 80
- * LTV) — a COMPILE-TIME card that exceeds the versioned CONVENTIONAL_PMI
- * matrix in every live cell (1.42×–2.17×, audit F-077).
- *
- * ⚠️ NOT used by the Loan Estimate or the decision path anymore: derivePricing
- * (services/loanEstimate.ts) takes the matrix figure from calculateLLPA, so
- * the disclosure, the LE APR stream, and the engine's DTI all price the
- * matrix. (An earlier version of this docstring claimed the engine's binding
- * figure came from the matrix while this card actually fed it — that claim
- * was false, and per the F-077 register note this function must never be
- * cited as a legitimate estimator for those paths.)
- *
- * Remaining caller: the staff what-if scenario simulator
- * (services/scenarioSimulator.ts), which deliberately matched the engine and
- * now OVERSTATES against it — its migration to the matrix/product-aware MI
- * (services/mortgageInsurance.ts, PR #552) is a flagged follow-up. Delete
- * this function with that migration.
- */
-export function calculatePMI(loanAmount: number, propertyValue: number, creditScore: number): number {
-  const ltv = (loanAmount / propertyValue) * 100;
-  if (ltv <= 80) return 0;
-
-  let rate = 0;
-  if (creditScore >= 760) {
-    rate = ltv > 95 ? 1.05 : ltv > 90 ? 0.80 : ltv > 85 ? 0.52 : 0.35;
-  } else if (creditScore >= 720) {
-    rate = ltv > 95 ? 1.35 : ltv > 90 ? 1.05 : ltv > 85 ? 0.68 : 0.45;
-  } else if (creditScore >= 680) {
-    rate = ltv > 95 ? 1.85 : ltv > 90 ? 1.40 : ltv > 85 ? 0.95 : 0.65;
-  } else {
-    rate = ltv > 95 ? 2.45 : ltv > 90 ? 1.90 : ltv > 85 ? 1.35 : 0.95;
-  }
-
-  return (loanAmount * rate / 100) / 12;
-}
+// calculatePMI — the compile-time FICO×LTV BPMI card — lived here until the
+// F-077 migration completed. It exceeded the versioned CONVENTIONAL_PMI matrix
+// in every live cell (1.42×–2.17×); the LE/decision path (services/
+// loanEstimate.ts) and the what-if simulator (services/scenarioSimulator.ts)
+// both price the matrix via calculateLLPA now, so the card is deleted per its
+// own docstring. Never reintroduce a compile-time MI rate table — MI resolves
+// from the CONVENTIONAL_PMI matrix (loud failure on a missing band) or the
+// product-aware helper (services/mortgageInsurance.ts).
 
 export function computeClosingCosts(input: ClosingCostInputs): ClosingCostStructure {
   const { purchasePrice, downPayment, loanAmount, interestRate, monthlyPMI, compensation } = input;
