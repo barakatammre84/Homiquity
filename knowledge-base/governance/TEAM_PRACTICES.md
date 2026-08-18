@@ -81,7 +81,7 @@ Practically:
    (render/interaction against `data-testid`s, in happy-dom — no server); the §5.4 browser
    pass is for what a component test can't prove (visuals, full E2E).
 3. Integration suite green against a live worktree server
-   (`set -a; source .env; set +a; TEST_BASE_URL=http://localhost:5002 npm run test:integration`).
+   (`set -a; source .env; set +a; TEST_BASE_URL=http://localhost:5002 pnpm test:integration`).
    Boot the test server with `RATE_LIMIT_RELAXED=true` so the suite's ~30 auth calls don't
    trip the 20/15-min auth limiter; fallback if you can't set env: run in 3 groups with a
    server restart between (restarts clear the in-memory counters).
