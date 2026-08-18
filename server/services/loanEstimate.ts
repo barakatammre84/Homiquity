@@ -2,7 +2,7 @@ import { storage } from "../storage";
 import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
-import { computeClosingCosts, calculatePMI, estimateMonthlyEscrow } from "./loanCosts";
+import { computeClosingCosts, estimateMonthlyEscrow } from "./loanCosts";
 import { resolveFeeScheduleForApplication } from "./platformFeeSchedule";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import { toActualFeeMap, type ActualFeeMap } from "@shared/compliance/feeProvenance";
@@ -359,7 +359,14 @@ async function derivePricing(
 
   const termMonths = 360;
   const monthlyPandI = calculateMonthlyPayment(loanAmount, interestRate, termMonths);
-  const monthlyPMI = isVaLoan ? 0 : calculatePMI(loanAmount, purchasePrice, creditScore);
+  // MI is the CONVENTIONAL_PMI matrix figure calculateLLPA just resolved —
+  // the versioned rate card that governs every policy number. This used to
+  // call loanCosts.calculatePMI, a compile-time band table that exceeded the
+  // matrix in all 32 live cells (1.42×–2.17×, F-077) — inflating the
+  // disclosed MI, the LE's APR stream, and the DTI the instant decision was
+  // made on, while the borrower was shown the matrix number beside it. The
+  // VA stub above carries pmiMonthlyPayment: 0 (no private MI on VA).
+  const monthlyPMI = llpaResult.pricing.pmiMonthlyPayment;
 
   return {
     application,
