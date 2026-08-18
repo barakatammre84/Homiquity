@@ -382,7 +382,7 @@ export default function Dashboard() {
                     {dominant.whyNeeded && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button type="button" className="text-xs text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help" data-testid="button-why-needed">
+                          <button type="button" className="touch-target inline-flex items-center text-xs text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help" data-testid="button-why-needed">
                             Why is this needed?
                           </button>
                         </TooltipTrigger>
@@ -427,7 +427,7 @@ export default function Dashboard() {
                         verification steps done — not a count of anything, so
                         it is labeled as an estimate and never presented as a
                         tally the borrower could reconcile against a list. */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-xs text-muted-foreground" data-testid="label-readiness">
                         How far your file has moved (estimated)
                       </span>

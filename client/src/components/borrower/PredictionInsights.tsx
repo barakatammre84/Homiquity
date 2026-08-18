@@ -105,7 +105,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
             </div>
             {/* Qualitative status only — the numeric closing-odds % is intentionally
                 not shown to the borrower (UDAAP; PR #137). */}
-            <p className="text-[10px] leading-tight text-muted-foreground">estimate, not a decision</p>
+            <p className="text-xs leading-tight text-muted-foreground">estimate, not a decision</p>
           </div>
           <div className="space-y-1" data-testid="metric-timeline">
             <p className="text-xs text-muted-foreground">Typical timeline</p>
@@ -114,7 +114,7 @@ export default function PredictionInsights({ applicationId }: { applicationId?: 
               <span className="text-base font-bold">{timelineRange}</span>
             </div>
             <p className="text-xs text-muted-foreground">after full submission</p>
-            <p className="text-[10px] leading-tight text-muted-foreground">typical, not a closing date</p>
+            <p className="text-xs leading-tight text-muted-foreground">typical, not a closing date</p>
           </div>
           {benchmark?.percentiles?.creditScorePercentile != null && (
             <div className="space-y-1" data-testid="metric-credit-percentile">

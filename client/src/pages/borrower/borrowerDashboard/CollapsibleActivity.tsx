@@ -17,7 +17,7 @@ export function CollapsibleActivity({ activities }: { activities: DealActivity[]
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left group"
+        className="touch-target flex w-full items-center gap-2 text-left group"
         data-testid="button-toggle-activity"
       >
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -29,7 +29,7 @@ export function CollapsibleActivity({ activities }: { activities: DealActivity[]
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         )}
         {!expanded && (
-          <Badge variant="secondary" className="text-[10px]" data-testid="badge-activity-count">
+          <Badge variant="secondary" className="text-xs" data-testid="badge-activity-count">
             {Math.min(activities.length, 5)}
           </Badge>
         )}
@@ -52,7 +52,7 @@ export function CollapsibleActivity({ activities }: { activities: DealActivity[]
                     <p className="text-xs text-foreground" data-testid={`text-activity-desc-${index}`}>
                       {activity.description || activity.title}
                     </p>
-                    <span className="text-[11px] text-muted-foreground" data-testid={`text-activity-time-${index}`}>
+                    <span className="text-xs text-muted-foreground" data-testid={`text-activity-time-${index}`}>
                       {formatActivityTime(activity.createdAt!)}
                     </span>
                   </div>
