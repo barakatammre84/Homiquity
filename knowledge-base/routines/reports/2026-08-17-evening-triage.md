@@ -464,4 +464,22 @@ it needs no decision from you — only that the in-flight fix is allowed to land
 other work, and that #544 merges so the finding is visible to every routine. Items 1, 2, 4–10 above
 stand, with item 5 (Reg Z) now cheaper per §1.12 and item 9 (merge round) re-ordered per §3 above.
 
+## ⛔ FAIL — the escalation runbook (CHARTER §8, verbatim)
+
+Handed over because the day closed FAIL. **Read the scope note first:** neither failure is a
+prod-down incident. Prod is healthy and current (`a846325`), so **do not pause intake** — that
+lever is here because §8 requires the runbook verbatim on a FAIL, not because tonight calls for it.
+The two failing things are (a) outbound email is entirely unauthenticated (§1.11) and (b) **F-051**,
+an open P0 that delivers a false AUS approval in the lender package (§2.4).
+
+- **Pause all new business:** set `INTAKE_PAUSED=true` in **Railway → project `Homiquity` →
+  service `Homiquity` → Variables (environment `production`)**, then **redeploy** — a restart is
+  not enough for anything compiled into the client bundle. Blocked requests get a borrower-safe
+  503 (`server/services/maintenanceMode.ts`).
+- **Bad deploy:** `git revert <sha>` + push (Railway rebuilds). Image rollback only inside the 72 h
+  retention window — see [`runbooks/ROLLBACK.md`](../../runbooks/ROLLBACK.md).
+- **Credential incident:** **update consumers first, then rotate.** The reverse ordering caused a
+  five-hour outage. Trigger the replacement deploy *before* discarding the bad container.
+- **Deploy appears stuck / green but stale:** compare `/api/health`'s `commit` to `origin/main`.
+
 STATUS: FAIL
