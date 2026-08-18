@@ -156,7 +156,8 @@ Branch `claude/interesting-goodall-351b8b`, rebased onto `origin/main` (`24fd54c
 ```
 pnpm check                     exit 0
 pnpm test  node lane           196 files, 2785 passed | 1 skipped   (195 → 196: intakeClearSemantics)
-pnpm guard:bundle              522,434 raw — at baseline (run against a FRESH build; see Addendum 2)
+pnpm guard:bundle              522,481 raw — at baseline, raised 47 bytes in Addendum 4 (justified there);
+                               run against a FRESH build — it measures a build, not the source
            client lane          78 files,  558 passed              (543 → 558: +15 new)
 pnpm guard:querykeys           guard:querykeys / reachability / transport — all OK
 pnpm guard:tokens              0 raw palette · 97 bare white/black (at baseline, no regression)
@@ -205,10 +206,8 @@ recycled rows from an older report.
    nullable.
 6. ~~**`zodSchemaSemantics` cannot see per-field rules on a preprocessed schema.**~~ **DONE this
    run** (founder-directed) — Addendum 3.
-7. **Let the funnel commit a clear.** `buildDraftPatchPayload` deliberately still omits empties
-   (it fires on a debounce mid-typing, where a transient blank must not erase). So a borrower who
-   clears a funnel field and later restores the server draft still gets the old value back. The
-   per-step Continue is the candidate commit point — a funnel-flow decision, not a schema one.
+7. ~~**Let the funnel commit a clear.**~~ **DONE this run** (founder-directed) — Addendum 4. The
+   commit point turned out not to be the per-step Continue after all; see there for why.
 4. ~~**Look for the #451 pattern elsewhere.**~~ **DONE this run** — see the sweep section above.
    One more live instance found and fixed (`Profile.tsx`); the rest of the client is clean.
 
@@ -462,5 +461,93 @@ reader does not mistake three remaining rows for three remaining bugs.
 **Verified honest:** reverting ticket 5's nullability turns the
 `loanApplicationIntakeUpdateSchema [all-keys-null]` line red, naming exactly the six fields that
 lost their clear.
+
+## Addendum 4 — ticket 7, done: the funnel commits a clear
+
+**⛔ Territory:** `client/src/**` is in-lane; `tests/**` and `scripts/` are not. Founder-directed,
+like tickets 4-6. Fourth deviation this run — see the note at the end.
+
+### The commit point is a transition, not the Continue button
+
+This report proposed the per-step Continue as the candidate commit point. **That was the wrong
+frame.** The question is not *when* to commit a clear, it is *how to recognise one*, and once
+that is answered the debounce is a perfectly good moment.
+
+`buildDraftPatchPayload` omits empty answers, which is correct on its own terms — an absent field
+means "unchanged" and the funnel form is full of not-yet-reached blanks. But it made an ERASED
+answer indistinguishable from an unanswered one, so a clear never travelled.
+
+Now that `null` means "clear this", the tempting move is to send null for every empty field.
+**That would be catastrophic**: the funnel form starts BLANK on every visit while the server draft
+may hold a full set of answers from another device, so the first debounce would null out the entire
+draft — "resume where you left off" turned into "lose everything you had". Emptiness cannot
+distinguish "not reached yet" from "deleted". Only a transition can.
+
+`buildDraftClears` emits a clear only for a field **this session has seen hold a value**. A fresh
+visit has no such field and therefore clears nothing.
+
+### Three details that are each a bug if got wrong
+
+- **Held fields are remembered on every observed change, not only at debounce time.**
+  `useDraftRestore` hydrates the form in one shot (`form.reset`), so a borrower who restores and
+  immediately clears a field would otherwise have that clear missed — the debounce never saw the
+  value.
+- **A cleared field is forgotten only AFTER the request succeeds.** Earlier, and every later tick
+  re-sends the same nulls; on failure, dropping it loses the clear in silence — which is the exact
+  defect this thread is about, and this hook swallows failures by design so nothing else would
+  notice.
+- **A field with no wire clear is omitted, never nulled.** A null on a validator that rejects it
+  400s the WHOLE PATCH, so one bad key would silently stop persisting every other answer on the
+  page.
+
+`incomeSources` sends `[]` rather than null — the schema already accepts an empty array and that is
+the honest value for "I removed them all". No catalog entry and no schema change; it also closes
+the same defect for the income-sources step, where removing every source previously left the old
+array on the draft.
+
+### The bundle baseline WAS raised this time — 47 bytes, and why that is not a contradiction
+
+`shared/intakeClearable.ts` now has two lazy consumers (`/profile` and the funnel), so Rollup
+hoists it into the shared graph. That is Rollup doing the right thing — **one copy instead of
+two** — and the only way to avoid it is to restate the clearable-field list inside the funnel,
+which is precisely the duplication-drift class that produced the credit-band and `?type=cashout`
+defects **this same run fixed**. 47 bytes buys one source of truth for which fields can be erased.
+
+Contrast Addendum 2, where the bump was **refused**: there the bytes were avoidable by choosing a
+different module, so moving them was strictly better. The rule is not "never raise the baseline",
+it is "never raise it instead of understanding it".
+
+### Evidence
+
+- `client/src/pages/lending/preApproval/useServerDraftAutosave.test.ts` (new, client lane,
+  glob-picked) drives the **hook** — debounce, PATCH body, and when a held field may be forgotten
+  — because the claim of this ticket is about the wiring, not the pure rule.
+- `tests/funnelDraftPersistence.test.ts` gains 8 cases on the pure rule, including the fresh-visit
+  case and the "never null a field with no wire clear" guard.
+
+**Verified honest:** with the clear-commit removed, **4 of the 5 hook tests fail** — the erased
+answer simply never appears in the PATCH body. The fifth is the fresh-visit safety property and
+passes both ways, correctly.
+
+### What remains open
+
+Declining the restore banner still leaves the server draft's old answers in place until submit
+overwrites the row. That is existing, documented behaviour (`useDraftRestore`: "start over
+overwrites the old draft instead of stranding it"), not a regression, and changing it is a
+different decision about what "start over" means. Not touched here.
+
+---
+
+## Note on this run's shape
+
+Four of this run's items (tickets 4-7) were founder-directed and three of them reached outside
+CHARTER §6's `client/src/**` lane — `shared/schema/**`, `tests/**`, `scripts/`. Each is recorded
+as a deviation rather than absorbed, per §1b's rule that a rail the machine relaxes for itself is
+not a rail.
+
+But four deviations in one run is a signal about the rail, not about the run. If this is the shape
+the Wiring Audit is wanted in, **§6 should be amended to say so** — an audit that traces a defect
+from a CTA to a column and back cannot always fix it inside `client/src/**`, and the last three
+tickets are the proof. That is a founder-only edit (§1b), so this routine proposes it and stops.
 
 STATUS: OK
