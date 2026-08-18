@@ -13,8 +13,7 @@ import * as React from "react";
  * `PrivateLayout` and resolves the session's tenant (compliance-gated). Public
  * layouts never mount it.
  *
- * See design_guidelines.md → "Branding & white-label" and
- * visual-consistency-standard.md §4. Fixed tokens are never overridden here.
+ * See DESIGN_SYSTEM.md → Brand & white-label. Fixed tokens are never overridden here.
  */
 
 export interface Brand {

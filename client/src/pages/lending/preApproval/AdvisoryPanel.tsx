@@ -125,9 +125,18 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="hidden lg:block w-80 bg-card rounded-2xl shadow-xl border p-6 transition-all duration-500"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      // Renders at EVERY width. It used to be `hidden lg:block`, which meant the
+      // borrower most likely to abandon — the one on a phone — got no DTI, no
+      // payment estimate and none of the why-we-ask advice, while the desktop
+      // user got all three (DESIGN_SYSTEM.md §12.3: reassurance is not a desktop
+      // luxury). The parent is `flex flex-col` below lg and a two-column grid at
+      // lg, so this same element falls below the question and its CTA on a phone
+      // and becomes the right-hand column on a desktop — no second instance, no
+      // duplicated test ids. Its blocks are individually conditional, so early
+      // steps stay short and it grows as the borrower answers.
+      className="w-full lg:w-80 mt-8 lg:mt-0 bg-card rounded-2xl shadow-card-lg border p-5 sm:p-6 transition-all duration-500"
       data-testid="advisory-panel"
     >
       <div className="flex items-center gap-2 mb-4 border-b pb-3">

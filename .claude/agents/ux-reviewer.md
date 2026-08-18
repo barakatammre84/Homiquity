@@ -10,14 +10,24 @@ compliance rails on copy.
 
 ## Sources of truth (read before auditing)
 
-- **Design system**: `knowledge-base/handbook/design/design_guidelines.md` (Royal Blue Emerald —
-  but the doc itself says code wins: tokens in `client/src/index.css` + `tailwind.config.ts`,
-  primitives in `client/src/components/ui/`) + its operational companion
-  `knowledge-base/handbook/design/visual-consistency-standard.md` (the canonical spacing/elevation scales, icon registry,
-  `<Logo>`/white-label mechanism, empty-state + PageShell adoption checklists). The token guard
-  `scripts/design-token-guard.cjs` (run via `pnpm checkup`) fails CI on raw Tailwind palette
-  classes — anything it would flag is automatically a finding.
-- **Consistency-program rules (2026-07-14, ⏳ rolling out)** — check against the standard:
+- **Design system**: `knowledge-base/handbook/design/DESIGN_SYSTEM.md` — the single binding
+  standard (Royal Blue Emerald), merged 2026-08-18 from the two predecessor docs. It says code
+  wins: tokens in `client/src/index.css` + `tailwind.config.ts`, primitives in
+  `client/src/components/ui/`. Its **§0 is a measured adoption table** — re-run `pnpm guard:ui`
+  rather than quoting its numbers, and never report an adoption figure you did not measure.
+  Two guards fail CI and anything they would flag is automatically a finding:
+  `scripts/design-token-guard.cjs` (raw palette classes, baseline 0) and
+  `scripts/ui-standard-guard.cjs` (seven ratcheting UI counts).
+- **The four-question gate** (DESIGN_SYSTEM.md §13) is the scoring rubric: **provenance** (every
+  number declares its source, in the three real states of `shared/dataProvenance.ts` —
+  `self_reported` / `verified` / `system_calculated`, never an invented parallel enum),
+  **explanation** (every intrusive ask says why), **agreement** (no two elements disagree about
+  the same fact; no fraction whose denominator moves), **honesty** (positive opt-in, never
+  pre-ticked, no penalty language).
+- **Capture screens** additionally follow DESIGN_SYSTEM.md §12: one decision per screen, ≤3
+  visible inputs (counted at the worst case, not the typical one), no global chrome during
+  capture, mobile designed at 320px, and no link wrapping a button.
+- **Consistency-program rules (2026-07-14)** — check against the standard:
   canonical **spacing** (PageShell widths 2xl/4xl/6xl/7xl, gutter `px-4 sm:px-6 lg:px-8`, section
   `space-y-6`, card `p-6`/`p-4`) with **no hand-rolled `min-h-screen` page wrappers**; **elevation**
   = `shadow-card`/`-hover`/`-lg` on `bg-surface`, **not** ad-hoc `shadow-2xl`/`shadow-lg border-0`/
@@ -27,14 +37,13 @@ compliance rails on copy.
   **brand** via `<Logo>` + `BrandingProvider` brandable tokens, never a hardcoded `homiquity` span or
   inline hex; a tenant override must touch only brandable tokens (`--primary`/`--accent`/`--sidebar`/
   `--ring`), never fixed/semantic-status tokens.
-- **Standing UX audit corpus** — the `ux-audit/` directory in the knowledge base (locate it via
-  [`knowledge-base/README.md`](../../knowledge-base/README.md); it is being relocated, so resolve
-  the path there rather than assuming one). It holds `page-audit.md`, `psychology-patterns.md`
-  (trust/completion patterns with paste-ready copy), `ux-roadmap.md`, `component-inventory.csv`,
-  `workflows.md`. Your findings should extend this corpus, not duplicate it.
-  ⚠️ **`page-audit.md` is a self-declared superseded 2026-07-04 snapshot** — treat it as
-  historical input for cross-referencing ids, **never** as a live checklist, and re-verify any
-  per-page status against code before repeating it.
+- **The live defect register is `knowledge-base/feature-review/FINDINGS.md`** (the `ux-NN` id
+  space). Extend it; do not start a parallel list. **Date every standing row before re-reporting
+  it** (CHARTER §10) — a finding register records what was true the day it was written.
+- ⛔ **The old `ux-audit/` corpus is ARCHIVED** at `knowledge-base/archive/ux-audit/` — quarantined,
+  not a live checklist. Its `page-audit.md` is a superseded 2026-07-04 snapshot and its
+  `design-tokens.json` describes the retired "Obsidian Indigo" palette. Use it for id history
+  only, never as a source of current design values.
 - **Conversion doctrine**: persona-siloed landing pages, progressive profiling, speed-to-lead
   (see the landing-page/GTM research docs referenced in `knowledge-base/feature-review/DOMAINS.md` §9).
 - Installed design skills you may consult for craft standards:

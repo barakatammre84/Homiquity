@@ -191,6 +191,18 @@ jobs:
         # PR. (Job `name:` above deliberately unchanged — verbatim required-check
         # string; see the rename warning.)
         run: pnpm guard:tokens
+      - name: UI-standard ratchet
+        # The other half of DESIGN_SYSTEM.md: seven counts (PageShell drift, icon-registry
+        # drift, nested interactive controls, raw hex, arbitrary colour values, palette
+        # classes the token guard's regex cannot see, un-prefixed multi-column grids) vs
+        # scripts/ui-standard-baseline.json. Same ratchet contract as the token guard —
+        # counts may only go down. Added 2026-08-18 because the standard had been measuring
+        # itself in prose since 2026-07-14 and the prose rotted: the doc claimed 57% of pages
+        # opted out of PageShell while the real figure had reached 82%. A number in a
+        # baseline file cannot go stale silently. It is a TEXT SCAN — it sees none of layout,
+        # contrast or rendering; green means "no new instances of seven specific mistakes".
+        # (Job `name:` above deliberately unchanged — verbatim required-check string.)
+        run: pnpm guard:ui
       - name: Knowledge-base index guard
         # "An unindexed doc is an unread doc" (TEAM_PRACTICES). Fails on a
         # knowledge-base/*.md missing from the index, or an index link pointing at a

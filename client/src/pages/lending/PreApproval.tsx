@@ -452,6 +452,11 @@ function PreApprovalFunnel() {
     const IconComponent = currentQ.icon;
 
     switch (currentQ.type) {
+      // The display-size step inputs carry a mobile rung: text-4xl in a
+      // max-w-md box truncates "$1,250,000" on a 360px screen, and the w-8
+      // glyph at left-4 needs pl-16 to clear it. text-3xl / pl-12 / w-6 fits,
+      // and stays far above the 16px floor below which iOS Safari auto-zooms
+      // (DESIGN_SYSTEM.md §12.3).
       case "currency": {
         const fieldName = currentQ.field as keyof PreApprovalFormData;
         const watchedValue = form.watch(fieldName);
@@ -460,7 +465,7 @@ function PreApprovalFunnel() {
         return (
           <div className="w-full max-w-md mx-auto">
             <div className="relative">
-              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />
+              <DollarSign className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 text-primary" />
               <Input
                 key={`currency-${fieldName}`}
                 ref={focusStepInput}
@@ -470,7 +475,7 @@ function PreApprovalFunnel() {
                   const formatted = maskCurrencyDigits(e.target.value);
                   form.setValue(fieldName, formatted as never, { shouldValidate: true, shouldDirty: true });
                 }}
-                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
+                className={`pl-12 sm:pl-16 h-16 sm:h-20 text-3xl sm:text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
                 placeholder={currentQ.placeholder}
                 onKeyDown={handleKeyDown}
               />
@@ -493,7 +498,7 @@ function PreApprovalFunnel() {
         return (
           <div className="w-full max-w-md mx-auto">
             <div className="relative">
-              {IconComponent && <IconComponent className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 text-primary" />}
+              {IconComponent && <IconComponent className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 text-primary" />}
               <Input
                 key={`number-${fieldName}`}
                 ref={focusStepInput}
@@ -505,7 +510,7 @@ function PreApprovalFunnel() {
                   const value = e.target.value.replace(/\D/g, "");
                   form.setValue(fieldName, value as never, { shouldValidate: true, shouldDirty: true });
                 }}
-                className={`pl-16 h-20 text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
+                className={`pl-12 sm:pl-16 h-16 sm:h-20 text-3xl sm:text-4xl border-0 border-b-2 rounded-none focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground/40 ${fieldError ? "border-destructive focus-visible:border-destructive" : "border-muted focus-visible:border-primary"}`}
                 placeholder={currentQ.placeholder}
                 onKeyDown={handleKeyDown}
               />
@@ -800,7 +805,7 @@ function PreApprovalFunnel() {
           left of every other centered element with dead space in between).
           The column is reserved on every step, so the question never jumps
           when the panel's numbers start arriving. */}
-      <div className="flex-1 w-full max-w-5xl mx-auto px-6 pt-20 pb-0 relative flex flex-col items-center lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10 lg:items-center">
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-20 pb-0 relative flex flex-col items-center lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10 lg:items-center">
        <div className="w-full min-w-0 flex flex-1 lg:flex-none flex-col items-center justify-center">
         {/*
           mode="wait" mounts the next step only after the previous step's exit
@@ -869,7 +874,7 @@ function PreApprovalFunnel() {
                 onClick={handleNext} 
                 size="lg" 
                 disabled={submitMutation.isPending}
-                className="text-lg px-10 py-6 h-auto rounded-full shadow-lg hover:shadow-xl transition-all"
+                className="w-full sm:w-auto text-lg px-10 py-6 h-auto rounded-full shadow-card-lg hover:shadow-card-hover transition-all"
                 data-testid={currentQ.type === "final" ? "button-submit" : "button-continue"}
               >
                 {submitMutation.isPending ? (
@@ -892,7 +897,10 @@ function PreApprovalFunnel() {
         </AnimatePresence>
        </div>
 
-       {/* Advisory Panel (desktop only) — the grid's right column. */}
+       {/* Advisory Panel — the grid's right column at lg, and below the question
+           and its CTA on a phone. It is NOT desktop-only any more: leaving mobile
+           without the DTI, the payment estimate and the why-we-ask advice starved
+           the borrower most likely to abandon (DESIGN_SYSTEM.md §12.3). */}
        <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
       </div>
 

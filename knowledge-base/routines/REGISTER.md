@@ -56,6 +56,8 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 ## Recently released
 
+| founder session (interactive) | pre-approval funnel capture path | `claude/routines-operating-cadence-olj41t` | claimed 2026-08-18 18:05, released 18:15 | shipped — 320px grids, step-input rung, AdvisoryPanel reaches mobile, full-width CTA, canonical gutter. `FunnelChrome.tsx` claimed but NOT edited: the §12.2 disclosure-placement question is compliance-bearing and went to the founder instead. |
+
 Keep the last ~10 for collision forensics; trim older rows freely.
 
 | routine / session | target | released (UTC) | outcome |
