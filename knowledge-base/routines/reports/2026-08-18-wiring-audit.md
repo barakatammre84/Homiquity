@@ -1,7 +1,8 @@
 # Frontend Wiring Audit — 2026-08-18
 
-STATUS: OK — two capture-path defects found and fixed on branch, both of the "silent success"
-class, both proven by reintroducing the bug. Every gate green; nothing merged.
+STATUS: OK — three capture-path defects found and fixed on branch, all of the "silent success"
+class, each proven by reintroducing the bug. Every gate green; nothing merged. Includes a
+completed sweep for the #451 pattern (this report's own ticket 4), run at the founder's request.
 
 ## ⛔ Human actions
 
@@ -153,11 +154,11 @@ Branch `claude/interesting-goodall-351b8b`, rebased onto `origin/main` (`24fd54c
 ```
 pnpm check                     exit 0
 pnpm test  node lane           195 files, 2767 passed | 1 skipped
-           client lane          77 files,  552 passed        (543 → 552: +9 new)
+           client lane          78 files,  557 passed        (543 → 557: +14 new)
 pnpm guard:querykeys           guard:querykeys / reachability / transport — all OK
 pnpm guard:tokens              0 raw palette · 97 bare white/black (at baseline, no regression)
 vitest tests/clientSchemaImports.test.ts   10 passed
-detectTriggers() over the 5 changed files  →  []   (run, not read — CHARTER §10)
+detectTriggers() over the 7 changed files  →  []   (run, not read — CHARTER §10)
 ```
 
 **Honesty check on the new tests** — reverted `URLAForm.tsx` and re-ran:
@@ -194,8 +195,89 @@ recycled rows from an older report.
 3. **Consolidate `Messages.tsx`'s three polls** onto `useShellBadges`/SSE, as every other live
    surface already was, and pause the heartbeat `setInterval` on a hidden tab. Carried from the
    2026-08-12 report, re-verified live.
-4. **Look for the #451 pattern elsewhere.** Two runs have now found the same defect twice in the
-   same file — a filter that drops data plus a success message that does not know about the filter.
-   Worth a sweep of every surface that filters rows before a POST.
+5. **Give "clear this field" a wire representation.** `loanApplicationIntakeUpdateSchema` requires
+   non-empty for every field it receives, so a borrower can correct a value but never blank one —
+   `/profile` now says so, the funnel's server draft and the URLA save still cannot express it.
+   Needs a server-schema change + migration; Primary Engineer, not this routine.
+4. ~~**Look for the #451 pattern elsewhere.**~~ **DONE this run** — see the sweep section above.
+   One more live instance found and fixed (`Profile.tsx`); the rest of the client is clean.
+
+
+## Addendum — the #451 pattern sweep (ticket 4, completed this run)
+
+Founder asked for the sweep this report proposed. The pattern, stated so it can be searched for:
+**the payload sent is a proper subset of what the user entered, and the success message does not
+know.** Four ingredient-shapes were swept, each mechanically rather than by eye.
+
+### Shape A — a filter inside a mutation that sends
+
+Detector: every `useMutation({…})` block containing both `apiRequest(` and `.filter(`, brace-matched
+out of the AST-free source (`/tmp/sweep.cjs`, throwaway).
+
+**3 hits, 0 defects.** `AutopilotConsole.tsx:201`, `Profile.tsx:134`, `ScenarioDesk.tsx:197` — all
+`.filter(Boolean)` over derived display strings or a comma-split allowlist, none dropping
+user-entered rows.
+
+### Shape B — a filter in a payload builder called at the `.mutate()` site
+
+This is the shape URLAForm had (`buildPayload()` filters, the mutation never sees it). Swept by
+listing every non-`filter(Boolean)` `.filter(` in the 35 files that contain a mutation, then reading
+each. **~55 occurrences, 1 already-fixed defect (URLAForm), 0 new.** Everything else is
+render-derived (`Tasks.tsx` bucket splits, `EConsent.tsx` pending/completed, dashboard counts) or a
+*deliberate, borrower-visible* removal (`AgentEdit.tsx:97,114` unchecking a specialty,
+`DocRequestDraftDialog.tsx:46` unticking a requested doc, `PublishDialog.tsx:203` deleting a cell).
+
+### Shape C — conditional payload assembly (`if (x) payload.y = …`)
+
+**17 hits, 1 defect — `Profile.tsx`, fixed above.** The rest:
+
+- `GapCalculator.tsx:139-148` — guards on `!== undefined`, not blankness. A field the borrower did
+  not touch is absent; a field they cleared is still sent. Correct.
+- `LeasePayments.tsx:102-103` — guards on truthiness, but the values are form *strings*, so `"0"`
+  survives, and the comment states the absent-vs-empty contract the API distinguishes for a missed
+  period. Correct, and outside this routine's territory in any case.
+- `ScheduleDialog.tsx:27-28` — optional staff scheduling dates. Correct.
+
+### Shape D — a success toast with no failure path
+
+Detector: mutations that send, toast on success, and declare no `onError` (`/tmp/sweep2.cjs`).
+
+**0 hits.** This shape is fully closed across `client/src` — worth recording, because it was the
+2026-08-12 run's finding 3 (four public forms rendering success on a rejected POST) and it has not
+regressed.
+
+### Server side
+
+`isUrlaRowSaveable` is shared, so the route's four `continue`s
+(`server/routes/borrower/urla.ts:506,540,557,659`) now skip exactly what the client already
+withheld — defence in depth, not a second, quieter filter. `pickTableFields` allowlists from the
+real Drizzle table, so it cannot drift from the schema, and the two virtual write-only fields are
+explicitly passed through (`["accountNumber"]` at `:541` and `:558`; `selfEmploymentIncome`
+re-merged at `:511-518`). No borrower route swallows a partial write behind a 200.
+
+### The residue — reported, not fixed
+
+**A clear is unrepresentable across the whole intake path, not just on `/profile`.** The root cause
+is one rule: `loanApplicationIntakeUpdateSchema` requires non-empty for any field it receives, so
+"set this back to blank" has no wire representation. `/profile` now *says so*. Two other consumers
+of the same rule still cannot express it:
+
+- `useServerDraftAutosave.buildDraftPatchPayload` (`:31-40`) omits empties, documented as "absent
+  means unchanged" so partial progress cannot blank earlier answers — deliberate and right for
+  mid-typing autosave. But it means an authenticated borrower who *clears* a funnel field, leaves,
+  and later restores the server draft gets the old value back as though they had answered it. No
+  success message is involved (autosave is silent by design), so it is not strictly the #451
+  pattern — it is the same root cause one layer down.
+- The URLA save has the same property for its scalar sections.
+
+Fixing this properly is a server-schema change (a sentinel for "clear", or `.nullable()` on the
+update schema) plus its migration — outside this routine's territory (CHARTER §6). Proposed as
+ticket 5.
+
+### Sweep verdict
+
+The pattern was **not** widespread: two live instances in the client (`URLAForm`, `Profile`), both
+now fixed and both with the same root cause — *a validation rule enforced by dropping data rather
+than by reporting it*. That phrasing is the thing to grep for next time, not `.filter(`.
 
 STATUS: OK
