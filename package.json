@@ -40,6 +40,9 @@
     "guard:staleness": "node scripts/doc-staleness-guard.cjs",
     "guard:citations": "node scripts/citation-guard.cjs",
     "guard:bundle": "node scripts/bundle-size-guard.cjs",
+    "preflight": "bash scripts/preflight.sh",
+    "dev:up": "bash scripts/dev-up.sh",
+    "db:local": "bash scripts/local-db.sh",
     "coach:ab": "tsx scripts/coachModelAb.ts",
     "db:start": "docker start homiquity-db 2>/dev/null || docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16",
     "db:seed": "tsx server/scripts/runSeed.ts"
