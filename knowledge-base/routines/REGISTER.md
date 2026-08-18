@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| founder-directed session (UI-overhaul prototype, PR #558 stage 2) | `client/src/components/patterns/**` (new dir) · `client/src/pages/staff/DesignPrototype.tsx` (new) · `client/src/lib/dualUnitMath.ts` (new) · `client/src/App.tsx` (one lazy import + one route) · `client/src/index.css` (`--muted-foreground` value only, DESIGN-STANDARD §4) | primary checkout | `claude/file-implementation-naijtt` | 2026-08-18T17:45Z | Build the `docs/DESIGN-STANDARD.md` pattern library (11 components + colocated tests) and an internal-staff prototype page composing them. Founder-directed. Adjacency: none live — drafts #542 (Footer) and #495 (AdminUsers) untouched; no overlap with open PRs. Releases in the same PR when the work ships. |
 
 ## Recently released
 
