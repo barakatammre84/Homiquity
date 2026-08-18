@@ -264,6 +264,11 @@ export const emailTemplates = {
     };
   },
 
+  // Sent ONLY when the automated initial review could not complete right away
+  // (finalizeIntake threw and the recovery sweep will re-drive it). On the
+  // normal path the borrower gets exactly ONE submission email — the decision
+  // email from finalizeIntake, which also acknowledges receipt. Two emails
+  // seconds apart raced through the provider and routinely arrived reversed.
   applicationSubmitted(borrowerName: string, applicationId: string): EmailOptions {
     return {
       to: "",
@@ -274,7 +279,42 @@ export const emailTemplates = {
           Hi ${borrowerName},
         </p>
         <p style="color:#475569;line-height:1.6;margin:0 0 16px">
-          We've received your mortgage application and it's being reviewed now. You'll receive an update shortly.
+          We've received your mortgage application and it's in line for review. You'll receive an update with your result and next steps shortly.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:6px;padding:16px;margin:16px 0">
+          <tr>
+            <td style="padding:8px 16px">
+              <p style="margin:0;color:#94a3b8;font-size:12px">APPLICATION ID</p>
+              <p style="margin:4px 0 0;color:#0f1729;font-size:14px;font-weight:600">${applicationId.substring(0, 8).toUpperCase()}</p>
+            </td>
+            <td style="padding:8px 16px" align="right">
+              ${statusBadge("Received", "#3b82f6")}
+            </td>
+          </tr>
+        </table>
+        <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
+          In the meantime, you can log into your dashboard to track your application status.
+        </p>
+      `, "Your mortgage application has been received"),
+    };
+  },
+
+  // The single submission email for a file the automated review routed to a
+  // human underwriter: acknowledges receipt, says who looks at it next, and
+  // points at the dashboard for the specific items. Deliberately names NO
+  // review reasons — same rule as document rejections below: reasons never
+  // travel over email, the account is where specifics live.
+  applicationUnderReview(borrowerName: string, applicationId: string): EmailOptions {
+    return {
+      to: "",
+      subject: "We Received Your Application — Here's What Happens Next",
+      html: baseTemplate(`
+        <h2 style="margin:0 0 16px;color:#0f1729;font-size:20px">Application Received</h2>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Hi ${borrowerName},
+        </p>
+        <p style="color:#475569;line-height:1.6;margin:0 0 16px">
+          Your application is in — and a licensed underwriter will personally review it. You don't need to wait to be asked, though: the fastest applications are the ones where documents arrive early.
         </p>
         <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:6px;padding:16px;margin:16px 0">
           <tr>
@@ -287,10 +327,18 @@ export const emailTemplates = {
             </td>
           </tr>
         </table>
-        <p style="color:#475569;line-height:1.6;margin:16px 0 0;font-size:14px">
-          In the meantime, you can log into your dashboard to track your application status.
+        <p style="color:#475569;line-height:1.6;margin:16px 0">
+          What you can do right now:
         </p>
-      `, "Your mortgage application is being reviewed"),
+        <ol style="color:#475569;line-height:1.8;margin:0 0 16px;padding-left:20px">
+          <li>Open your dashboard — it shows exactly what our initial review noted and the specific next step for your file</li>
+          <li>Upload your recent pay stubs, W-2s, and bank statements — they give your underwriter what's needed to verify your numbers</li>
+          <li>Watch for messages from your loan team and reply quickly to keep things moving</li>
+        </ol>
+        <p style="color:#94a3b8;line-height:1.5;margin:16px 0 0;font-size:12px">
+          An application under review is not a credit decision. We'll notify you as soon as your status changes.
+        </p>
+      `, "We received your application — a licensed underwriter will review it. See your next steps."),
     };
   },
 
@@ -707,6 +755,7 @@ export const emailTemplates = {
 
 export type NotificationType =
   | "application_submitted"
+  | "application_under_review"
   | "application_pre_approved"
   | "application_denied"
   | "message_received"
@@ -735,6 +784,9 @@ export function sendNotificationEmail(mapping: NotificationEmailMapping): void {
   switch (type) {
     case "application_submitted":
       email = emailTemplates.applicationSubmitted(data.borrowerName, data.applicationId);
+      break;
+    case "application_under_review":
+      email = emailTemplates.applicationUnderReview(data.borrowerName, data.applicationId);
       break;
     case "application_pre_approved":
       email = emailTemplates.applicationPreApproved(data.borrowerName, data.amount, data.applicationId);

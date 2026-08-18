@@ -46,6 +46,13 @@ export function LoanOptionCard({ option, steeringAcknowledged, lockPending, onLo
             {option.loanTerm} yr
           </Badge>
         </div>
+        {option.isRecommended && (
+          <p className="text-xs text-muted-foreground" data-testid={`text-recommendation-reason-${option.loanType}`}>
+            {option.loanType === "va"
+              ? "Highlighted because you told us you're a veteran — VA loans typically allow $0 down with no monthly mortgage insurance."
+              : "A common starting point: the 30-year fixed with no points. Compare the payment, upfront cost, and mortgage insurance trade-offs below."}
+          </p>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-6">

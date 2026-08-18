@@ -103,8 +103,9 @@ export function registerDashboardRoutes(
             .from(loanOptions)
             .where(inArray(loanOptions.applicationId, topAppIds))
             // Match storage.getLoanOptionsByApplication's ordering so the
-            // recentOptions slice(0,5) picks the same rows as before.
-            .orderBy(loanOptions.isRecommended, loanOptions.createdAt),
+            // recentOptions slice(0,5) picks the same rows as before —
+            // recommended first (desc on the boolean).
+            .orderBy(desc(loanOptions.isRecommended), loanOptions.createdAt),
           db
             .select()
             .from(dealActivities)
@@ -326,7 +327,10 @@ export function registerDashboardRoutes(
           // in_progress once the borrower has acted (doc submitted → task
           // IN_PROGRESS), pending while the ball is in their court.
           status: task.status === "IN_PROGRESS" ? "in_progress" : "pending",
-          actionUrl: `/tasks/${task.id}`,
+          // Routes that exist: /documents is where uploads actually happen;
+          // /tasks is the list page. The old `/tasks/${task.id}` deep link
+          // matched no client route at all.
+          actionUrl: task.taskType === "document_request" ? "/documents" : "/tasks",
           actionLabel: task.taskType === "document_request" ? "Upload" : "Complete",
         });
       }
@@ -340,13 +344,30 @@ export function registerDashboardRoutes(
           description: `${pendingConsentTypes.length} consent(s) need your signature`,
           priority: "high",
           status: "pending",
-          actionUrl: `/econsent/${applicationId}`,
+          // The client route is /e-consent (no param); /econsent/:id never existed.
+          actionUrl: "/e-consent",
           actionLabel: "Review & Sign",
         });
       }
 
-      // Add outstanding conditions that borrower can address
-      for (const condition of outstandingConditions.slice(0, 3)) {
+      // Add outstanding conditions that borrower can address — but not the
+      // ones already represented by an open document task above: the pipeline
+      // creates a condition AND a borrower task per requirement, and listing
+      // both showed the same document twice under two slightly different
+      // titles ("Bank Statements Required" / "Upload: Bank Statements
+      // Required").
+      const taskedDocCategories = new Set(
+        borrowerTasks
+          .filter((t) => t.taskType === "document_request" && t.documentCategory)
+          .map((t) => t.documentCategory as string),
+      );
+      const unrepresentedConditions = outstandingConditions.filter(
+        (c: any) =>
+          !(c.requiredDocumentTypes ?? []).every((docType: string) =>
+            taskedDocCategories.has(docType),
+          ),
+      );
+      for (const condition of unrepresentedConditions.slice(0, 3)) {
         if (condition.requiredDocumentTypes && condition.requiredDocumentTypes.length > 0) {
           items.push({
             id: `condition-${condition.id}`,
