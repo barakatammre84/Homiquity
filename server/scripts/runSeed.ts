@@ -7,6 +7,11 @@
  *   DATABASE_URL="$(node scripts/neon-connection-uri.cjs)" \
  *     ./node_modules/.bin/tsx server/scripts/runSeed.ts
  */
+// Load .env before "../seed" pulls in "../db", which throws at import time when
+// DATABASE_URL is unset. Without this the script only works when the variable is
+// exported inline (the CI invocation above) and fails from a local .env — the same
+// reason server/scripts/markMigrationsApplied.ts does this.
+import "dotenv/config";
 import { seedDatabase } from "../seed";
 
 seedDatabase()
