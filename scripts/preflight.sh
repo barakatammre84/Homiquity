@@ -97,10 +97,18 @@ security_review() {
   CHANGED_FILES_FILE="$tmp/files.txt" CHANGED_LINES_FILE="$tmp/lines.diff" \
     PR_BODY="$(git log -1 --pretty=%B)" node scripts/security-review-guard.cjs
 }
-if git rev-parse --verify origin/main >/dev/null 2>&1; then
-  step "security review (§9 triggers)" security_review
-else
+if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
   skip "security review (§9 triggers)" "origin/main not fetched — run: git fetch origin"
+elif [ -z "$(git diff --name-only origin/main...HEAD 2>/dev/null)" ]; then
+  # Nothing COMMITTED yet on this branch, so there is no PR-shaped diff to audit
+  # and the guard correctly refuses to pass on an empty file set. That is a state,
+  # not a defect — reporting it FAIL sent three consecutive clean runs red on
+  # 2026-08-18 and trains people to read past a red §9 line, which is the one
+  # line that must never be read past. Working-tree changes are deliberately NOT
+  # substituted in: §9 audits what a PR would ship, and that means commits.
+  skip "security review (§9 triggers)" "nothing committed on this branch yet — commit, then re-run"
+else
+  step "security review (§9 triggers)" security_review
 fi
 
 step "unit tests (node + client)"     pnpm test
