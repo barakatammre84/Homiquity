@@ -161,8 +161,11 @@ when reasoning about overlap. `taskId` is the scheduler key.
 | 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
 | 10:40 | `35 10 * * *` | **Integration Readiness** (`integration-readiness`) | daily | no — board only | per-adapter sim→contract readiness + `ASKS` |
 | 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | delivery verdict + Target-5 execution |
+| 13:40 | `35 13 * * *` | **App Walker** (`app-walker`) | daily | no — findings only | per-route render evidence at 320/768/1280 |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified rows in `FINDINGS.md` |
 | 16:20 | `15 16 * * *` | **QA Mutation Verifier** (`qa-mutation-verifier`) | daily | throwaway worktree only, never committed | `PROVEN`/`UNPROVEN` per fix merged that day |
+| 17:10 | `5 17 * * *` | **Workflow Prover** (`workflow-prover`) | daily | no — trace + ledger | one workflow proven seam by seam on **value equality** |
+| 18:20 | `15 18 * * *` | **Algorithm Auditor** (`algorithm-auditor`) | daily | no — ledger only | one calculation attacked four ways |
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list — re-timed from 18:40 on 2026-08-17: the last slot of the day is the one catch-up bursts shed, and it had never once run |
 | Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | vendor/contract board |
 | Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state-launch compliance ladder + signature-ready drafts |
@@ -176,6 +179,15 @@ or throwaway-only **by design**: the fleet's scarcest resources are write access
 `client/src/**` and the founder's merge attention, and none of the three spends either. They are
 **defined but not registered** — a definition on disk is not a routine (§0), and registration is
 a founder action.
+
+**Three verification seats were added 2026-08-18** — App Walker, Workflow Prover and Algorithm
+Auditor. They exist because the fleet could *build* daily and could not *see*: the one tool that
+renders a page (`scripts/browser-probe.cjs`) could not find a browser on the founder's Mac, and
+its overflow check could not fail. Both were fixed the same day, and the first walk immediately
+found five calculator pages overflowing at 320px that every UI guard had passed — evidence in
+[`reports/2026-08-18-app-walker.md`](reports/2026-08-18-app-walker.md). All three are
+findings-only and drive the **local** server; none writes application code. **Defined but not
+registered** — a definition on disk is not a routine (§0), and registration is a founder action.
 
 **Sprint Blitz (`sprint-blitz`, was 09:53 daily) was retired 2026-08-17** — absorbed into the
 Primary Engineer, which carries its queue, its ranking, and its fix-the-gate-first rule. The 09:53
