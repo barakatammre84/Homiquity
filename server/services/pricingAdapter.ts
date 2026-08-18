@@ -3,6 +3,7 @@ import { calculateLLPA } from "../pricing";
 import type { RateSheetProduct, LenderPricingAdjustment, WholesaleLender } from "@shared/schema";
 import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 import { isApprovedLender, isLenderApprovalStatus } from "@shared/wholesaleLenders";
+import { offerMonthlyMI } from "./mortgageInsurance";
 
 export interface BorrowerPricingProfile {
   creditScore: number;
@@ -181,11 +182,15 @@ export async function computeOffers(
 
       const monthlyPI = calculateMonthlyPayment(profile.loanAmount, adjustedRate, product.loanTerm);
 
-      let monthlyMI = 0;
-      if (ltv > 80) {
-        const pmiRate = 0.6;
-        monthlyMI = (profile.loanAmount * pmiRate) / 12 / 100;
-      }
+      // Product-aware MI (F-087): the matrix-resolved conventional PMI this
+      // function already computed (llpaResult.pricing), FHA MIP at all LTVs,
+      // and none on VA/HELOC — never a flat rate on every product.
+      const monthlyMI = offerMonthlyMI({
+        productType: product.productType,
+        loanAmount: profile.loanAmount,
+        ltvPct: ltv,
+        conventionalMonthlyPMI: llpaResult.pricing.pmiMonthlyPayment,
+      });
 
       offers.push({
         lenderName: lender.lenderName,
