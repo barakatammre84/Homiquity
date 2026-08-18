@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| founder session (interactive) | `client/src/pages/borrower/URLAForm.tsx` (JSX only), `borrower/urla/{DeclarationsSection,EmploymentSection,AssetsSection,LiabilitiesSection,SelfEmploymentIncomeWorksheet}.tsx` | primary checkout | `claude/routines-operating-cadence-olj41t` | 2026-08-18 18:45 | URLA capture-path mobile defects (DESIGN_SYSTEM.md §12.3). **Presentational only** — no extraction of `buildPayload`/`STEPS`/the hydration effect, and no `React.memo`/`useCallback`/debounce added to any child, per `handbook/URLA_FORM_REFACTOR_TRAP.md` |
 
 ## Recently released
 
