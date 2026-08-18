@@ -222,8 +222,10 @@ Status ledger (updated by the orchestrator after each run):
   closed-loop outcomes → predictions/optimizations.
 - **Wiring note:** ~~F-002 — `loanOutcomes` writers never called~~ **fixed in #136** (writers
   wired from `pipelineEngine`/`lending`/`underwriting`/`data-intelligence`/`loanAnalysis`).
-  Still true (re-verified 2026-07-12): most of `intelligence.ts`/`optimizations.ts` (35+
-  endpoints) are dead (no client caller) — decide wire/defer/delete per the dead-surface map;
+  Still true (re-verified 2026-07-12): most of `intelligence.ts` (35+
+  endpoints) are dead (no client caller) — decide wire/defer/delete per the dead-surface map.
+  *(`optimizations.ts` carried the same finding and has since been **deleted** — see CHANGE_LEDGER;
+  the "decide" for that half resolved to delete.)*
   the wired client surface (`IntelligenceTab.tsx`) reads `data-intelligence.ts` endpoints.
 - **Source docs**: `knowledge-base/handbook/app-guide/08-services.md`, `MODEL_RISK_GOVERNANCE.md`.
 - **Owned tests**: **zero** across this cluster (QA priority).

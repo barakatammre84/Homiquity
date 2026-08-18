@@ -226,6 +226,18 @@ jobs:
         # above. Run with --list for exact lines. (Job `name:` above deliberately
         # unchanged — verbatim required-check string; see the rename warning.)
         run: pnpm guard:staleness
+      - name: Citation ratchet
+        # Backticked repo paths in living docs that resolve to nothing, vs
+        # scripts/citation-baseline.json (ratchet: may only go down). kb-index-guard
+        # proves every KB doc is indexed and every INDEX link resolves; it does not
+        # look INSIDE a document. This does. Added 2026-08-18 after a sweep found a
+        # security threat model listing `server/routes/borrower.ts` among its
+        # highest-risk areas months after that file became a directory, and L1/L2
+        # citing each other by pre-rename filenames. A ratchet rather than a hard zero
+        # on purpose: two thirds of the initial 56 were CORRECT — records of deletions,
+        # naming conventions, template placeholders, and proposals whose whole point is
+        # that the file is absent. Run --list to triage.
+        run: pnpm guard:citations
       - name: Security-review guard (TEAM_PRACTICES §9)
         # Fails when the PR touches a §9 trigger (PII vault/encryption, auth/sessions,
         # role gates, uploads, outbound messaging, PII-adjacent logging) and the PR body

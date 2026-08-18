@@ -240,6 +240,18 @@ discovered trap gets a line here in the same PR.
   (PDF → Read tool/pypdf; XLSX → openpyxl).
 - Every new doc gets a home in the tier map (root README) and one index line — an
   unindexed doc is an unread doc.
+- **A citation that resolves to nothing is a lie the reader cannot detect.** Living docs are
+  Claude's memory and a new engineer's map, so a path written in one is an instruction to go
+  look. When the code moves and the prose does not, the doc keeps pointing — confidently — at
+  nothing. `scripts/citation-guard.cjs` (`pnpm guard:citations`, in the gate) counts backticked
+  repo paths that resolve to nothing and fails on any new one. *(Prevents: the 2026-08-18 sweep's
+  finds — a security threat model listing the borrower routes among its highest-risk areas by a
+  filename, months after they became the directory `server/routes/borrower/`, and L1/L2 citing
+  each other by pre-rename filenames. This very clause was caught by the guard on its first run,
+  for naming the dead path as an example; it now names the live one.)* If a file is deliberately absent — deleted, planned, an example, or the subject of
+  a finding — **say so in the same sentence**. That is what makes the reference readable rather
+  than merely tolerated, and it is why the guard is a **ratchet**: two thirds of the first 56 it
+  found were correct as written, and "fix them all" would have deleted the record of a deletion.
 
 ## 8. Verification before assertion
 
