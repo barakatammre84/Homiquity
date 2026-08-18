@@ -2,23 +2,31 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// The #451 pattern, found by sweeping for it outside URLAForm.
+// The #451 pattern, found by sweeping for it outside URLAForm — and then
+// removed at the root rather than apologised for.
 //
 // `PATCH /api/loan-applications/:id` validates with
-// `loanApplicationIntakeUpdateSchema`, which requires non-empty for every
-// field it receives — an empty string is a 400. So the profile editor skips
-// blanks before sending. It skipped them in SILENCE:
+// `loanApplicationIntakeUpdateSchema`, which used to have only two wire states:
+// absent ("leave this alone") and present (must be non-empty). "Set this back
+// to blank" had nothing to travel as, so the editor dropped such edits before
+// sending — in SILENCE:
 //
-//   * clear a field alongside another edit → the PATCH succeeds, the toast
-//     says "Your self-reported details were saved", the invalidation refetches
-//     and puts the old value straight back on screen;
+//   * clear a field alongside another edit → the PATCH succeeds, the toast says
+//     "Your self-reported details were saved", the invalidation refetches and
+//     puts the old value straight back on screen;
 //   * clear a field on its own → the payload is empty, the mutation returns
 //     early, the editor closes with NO message at all.
 //
-// Either way the borrower's edit is gone and nothing said so. These tests pin
-// the telling. Verified honest by reverting the fix: cases 1 and 2 then fail,
-// case 1 receiving the old "Your self-reported details were saved to your
-// draft application." success copy.
+// The schema now has a third state: `null` means clear
+// (CLEARABLE_INTAKE_FIELDS, shared/preApprovalForm.ts). So a clear is a real
+// save, and these tests pin the translation — an empty INPUT becomes a null on
+// the WIRE, while an empty string stays rejected so an accidental blank can
+// never be destructive.
+//
+// The "we couldn't clear that" path is kept as a last resort for a field that
+// is emptyable here but not catalogued. The final test is what keeps that
+// branch unreachable in practice, and it is the one that will fail the day
+// someone adds an emptyable field without a wire clear.
 
 const apiRequest = vi.fn();
 const toast = vi.fn();
@@ -35,7 +43,8 @@ vi.mock("wouter", () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-import Profile from "./Profile";
+import Profile, { PROFILE_FIELDS } from "./Profile";
+import { isClearableIntakeField } from "@shared/preApprovalForm";
 
 /** A draft application with two figures on file, both clearable text inputs. */
 function renderPage() {
@@ -79,33 +88,43 @@ async function startEditing(container: HTMLElement) {
   return (key: string) => container.querySelector<HTMLInputElement>(`#edit-${key}`)!;
 }
 
-describe("Profile — a field the borrower empties cannot be sent, and now says so", () => {
+describe("Profile — a field the borrower empties now travels as a clear", () => {
   beforeEach(() => {
     apiRequest.mockReset();
     apiRequest.mockResolvedValue({ json: async () => ({ id: "app-1" }) });
     toast.mockReset();
   });
 
-  it("names the field it could not clear even when the rest of the edit saved", async () => {
+  it("sends an emptied field as null — the wire's clear — alongside a real edit", async () => {
     const { container } = renderPage();
     const input = await startEditing(container);
 
-    fireEvent.change(input("monthlyDebts"), { target: { value: "" } });   // cleared
+    fireEvent.change(input("monthlyDebts"), { target: { value: "" } });      // cleared
     fireEvent.change(input("annualIncome"), { target: { value: "90000" } }); // real edit
     fireEvent.click(screen.getByTestId("button-save-profile"));
 
-    await waitFor(() => expect(toast).toHaveBeenCalled());
-    expect(lastToast().title).toBe("Saved — but some fields can't be left blank");
-    expect(lastToast().description).toContain("Monthly debts");
-    // The old lie.
-    expect(lastToast().description).not.toContain("Your self-reported details were saved");
-
-    // The real edit still went, unchanged — the fix is the telling, not the sending.
+    await waitFor(() => expect(apiRequest).toHaveBeenCalled());
     const [, , payload] = apiRequest.mock.calls[0] as [string, string, Record<string, unknown>];
-    expect(payload).toEqual({ annualIncome: "90000" });
+    // null, not "" — an empty string is still a 400, deliberately, so that an
+    // input blanking itself can never erase a borrower's answer.
+    expect(payload).toEqual({ monthlyDebts: null, annualIncome: "90000" });
+    expect(lastToast().title).toBe("Profile updated");
   });
 
-  it("speaks up when clearing was the ONLY change — previously a silent close", async () => {
+  it("sends the clear when it is the ONLY change — previously a silent no-op", async () => {
+    const { container } = renderPage();
+    const input = await startEditing(container);
+
+    fireEvent.change(input("monthlyDebts"), { target: { value: "" } });
+    fireEvent.click(screen.getByTestId("button-save-profile"));
+
+    await waitFor(() => expect(apiRequest).toHaveBeenCalled());
+    const [, , payload] = apiRequest.mock.calls[0] as [string, string, Record<string, unknown>];
+    expect(payload).toEqual({ monthlyDebts: null });
+    expect(lastToast().title).toBe("Profile updated");
+  });
+
+  it("closes the editor once the clear has actually been saved", async () => {
     const { container } = renderPage();
     const input = await startEditing(container);
 
@@ -113,21 +132,9 @@ describe("Profile — a field the borrower empties cannot be sent, and now says 
     fireEvent.click(screen.getByTestId("button-save-profile"));
 
     await waitFor(() => expect(toast).toHaveBeenCalled());
-    expect(lastToast().title).toBe("We couldn't clear those fields");
-    expect(apiRequest).not.toHaveBeenCalled(); // nothing sendable, so nothing sent
-  });
-
-  it("keeps the editor open so the borrower can fix the field being complained about", async () => {
-    const { container } = renderPage();
-    const input = await startEditing(container);
-
-    fireEvent.change(input("monthlyDebts"), { target: { value: "" } });
-    fireEvent.click(screen.getByTestId("button-save-profile"));
-
-    await waitFor(() => expect(toast).toHaveBeenCalled());
-    // Closing would discard the very edit they are being asked to correct.
-    expect(screen.getByTestId("button-save-profile")).toBeTruthy();
-    expect(container.querySelector("#edit-monthlyDebts")).toBeTruthy();
+    // It stayed open while the edit could not be sent. Now it can be, so this
+    // is an ordinary successful save.
+    await waitFor(() => expect(screen.queryByTestId("button-save-profile")).toBeNull());
   });
 
   it("still reports a clean save when nothing was cleared", async () => {
@@ -142,8 +149,9 @@ describe("Profile — a field the borrower empties cannot be sent, and now says 
     expect(screen.queryByTestId("button-save-profile")).toBeNull(); // editor closed
   });
 
-  it("says nothing about a field that was already blank", async () => {
-    // Blanking an already-blank field is imperceptible; reporting it is noise.
+  it("sends nothing for a field that was already blank", async () => {
+    // Blanking an already-blank field is imperceptible: no clear to send, and
+    // no complaint to make. Sending null would be a pointless write.
     const { container } = renderPage();
     const input = await startEditing(container);
 
@@ -151,7 +159,28 @@ describe("Profile — a field the borrower empties cannot be sent, and now says 
     fireEvent.change(input("annualIncome"), { target: { value: "90000" } });
     fireEvent.click(screen.getByTestId("button-save-profile"));
 
-    await waitFor(() => expect(toast).toHaveBeenCalled());
+    await waitFor(() => expect(apiRequest).toHaveBeenCalled());
+    const [, , payload] = apiRequest.mock.calls[0] as [string, string, Record<string, unknown>];
+    expect(payload).toEqual({ annualIncome: "90000" });
     expect(lastToast().title).toBe("Profile updated");
+  });
+
+  it("INVARIANT: every field this editor can empty has a wire clear", () => {
+    // The one that matters long-term. Text/money/years fields are free-text
+    // inputs a borrower can blank; selects and switches cannot be emptied. If
+    // an emptyable field is ever added without being catalogued, the editor
+    // falls back to "we couldn't clear those fields" — honest, but worse than
+    // just working — and this test says so at the point the field is added
+    // rather than the day a borrower hits it.
+    const emptyable = PROFILE_FIELDS.filter(
+      (f) => f.kind === "text" || f.kind === "money" || f.kind === "years",
+    );
+    expect(emptyable.length).toBeGreaterThan(0);
+    for (const field of emptyable) {
+      expect(
+        isClearableIntakeField(field.key),
+        `${String(field.key)} can be emptied in the profile editor but is not in CLEARABLE_INTAKE_FIELDS`,
+      ).toBe(true);
+    }
   });
 });

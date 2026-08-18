@@ -24,6 +24,10 @@ import {
   UserCircle2,
   X,
 } from "lucide-react";
+// From the table-free module, NOT the @shared/schema barrel: a value import
+// of the barrel ships all 174 Drizzle table definitions to every visitor
+// (#482, tests/clientSchemaImports.test.ts).
+import { isClearableIntakeField } from "@shared/preApprovalForm";
 import {
   CAPTURE_FIELDS,
   TIER_CONFIG,
@@ -61,7 +65,10 @@ interface ProfileFieldDef extends Omit<CaptureFieldDef, "key"> {
   key: string;
 }
 
-const PROFILE_FIELDS: ProfileFieldDef[] = [
+// Exported for Profile.test.tsx's catalog invariant: every field this editor
+// can EMPTY must have a wire clear (CLEARABLE_INTAKE_FIELDS). Reading the list
+// is how that test stays true as fields are added.
+export const PROFILE_FIELDS: ProfileFieldDef[] = [
   ...CAPTURE_FIELDS.slice(0, 5),
   { key: "employerName", label: "Employer", kind: "text", icon: UserCircle2 },
   ...CAPTURE_FIELDS.slice(5, 9),
@@ -134,25 +141,36 @@ export default function Profile() {
   const saveEdits = useMutation({
     mutationFn: async () => {
       if (!application) return null;
-      const payload: Record<string, string | boolean> = {};
-      // Fields the borrower EMPTIED that already held a value. The intake
-      // schema requires non-empty for every field it receives
-      // (loanApplicationIntakeUpdateSchema, server/routes/lending/
-      // statusDecisions.ts:62 — an empty string is a 400), so a clear cannot
-      // be sent. It used to be dropped in silence: the other edits saved, the
-      // toast said "Your self-reported details were saved", the refetch put
-      // the old value back on screen, and no state existed in which the
-      // borrower could tell. Same defect class as the URLA save (#451) — the
-      // fix is the telling, not the sending.
+      const payload: Record<string, string | boolean | null> = {};
+      // Fields the borrower EMPTIED that already held a value.
+      //
+      // These used to be dropped in silence — the other edits saved, the toast
+      // said "Your self-reported details were saved", the refetch put the old
+      // value back, and no state existed in which the borrower could tell
+      // (#451's defect class). They now travel as an explicit `null`, which is
+      // the intake schema's third wire state: absent = unchanged, a value =
+      // set, `null` = clear (CLEARABLE_INTAKE_FIELDS, shared/schema/
+      // lendingUrla.ts). An empty string is still rejected on purpose, so the
+      // translation has to happen here rather than by sending `next` through.
       const uncleared: string[] = [];
       for (const field of PROFILE_FIELDS) {
         const current = toFormValue(field, application.fields[field.key] ?? null);
         const next = form[field.key];
         if (next === undefined || next === current) continue;
         if (typeof next === "string" && next.trim() === "") { // absent, never "0"
-          // Only a real clear counts. Blanking an already-blank field is a
-          // no-op the borrower cannot perceive, and reporting it would be noise.
-          if (typeof current === "string" && current.trim() !== "") uncleared.push(field.label);
+          // Blanking an already-blank field is a no-op the borrower cannot
+          // perceive; reporting it would be noise.
+          if (typeof current !== "string" || current.trim() === "") continue;
+          if (isClearableIntakeField(field.key)) {
+            payload[field.key] = null;
+            continue;
+          }
+          // No wire representation for clearing this one. Reachable only if a
+          // field becomes emptyable in this editor without being added to the
+          // catalog — say so rather than discard the edit, which is the whole
+          // lesson of #451. `Profile.test.tsx` pins the invariant that keeps
+          // this branch unreachable in practice.
+          uncleared.push(field.label);
           continue;
         }
         payload[field.key] = next;
