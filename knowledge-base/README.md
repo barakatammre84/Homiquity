@@ -63,6 +63,9 @@ doc-drift bug to fix):
 - [CONTINGENT_LIABILITY_REGISTER.md](governance/CONTINGENT_LIABILITY_REGISTER.md) — what we could owe and
   whether the reserve covers it. For an asset-light broker the contingent exposures *are* the balance
   sheet; live figures at `GET /api/reports/contingent-liabilities`.
+- [HIRING_PLAN.md](governance/HIRING_PLAN.md) — the roles that get us originating, in hire
+  order: scorecards, interview loops, four take-homes built from real subsystems, and the
+  human operating routine each role runs against the queue an automated routine already fills.
 - [UNCONSUMED_CAPABILITIES.md](governance/UNCONSUMED_CAPABILITIES.md) — capability built ahead of a
   consumer, each with a **decide-by date**: wire a consumer or freeze it. Exists because the Fannie
   delivery stack accreted to 1,482 lines with zero callers before anyone asked "who calls this?".
