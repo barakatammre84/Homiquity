@@ -154,9 +154,18 @@ Status ledger (updated by the orchestrator after each run):
 
 - **Server/shared**: `server/services/ausSubmission.ts` + `server/routes/aus.ts` (DU + LPA,
   env-gated sims that intentionally throw on a real key), `brokerSubmissionReadiness.ts`
-  (4-stage), `lenderSubmission.ts` + `shared/wholesaleLenders.ts` (Target-5), `lenderMatchingEngine.ts`.
-- **Client**: `SubmissionReadinessDialog.tsx`, submission surfaces in `LoCommandCenter`/`BorrowerFile`,
-  `pages/lending/LoanPipeline.tsx`.
+  (4-stage), `lenderSubmission.ts` + `shared/wholesaleLenders.ts`, `lenderMatchingEngine.ts`.
+  ⚠️ **`shared/wholesaleLenders.ts` no longer holds a "Target-5" catalog** (corrected 2026-08-18,
+  F-0818-11): `:10-13` records that the hardcoded array *"was a second source of truth"* and was
+  deleted — lenders live in the `wholesale_lenders` table, and the module holds only the RULES
+  (may we submit; what does a status transition mean). `CLAUDE.md:53` still says "Target-5 catalog"
+  and is the same drift, unfixed here because `CLAUDE.md` is outside this routine's territory.
+- **Client**: **exactly one mount** — `SubmissionReadinessDialog.tsx`, mounted only at
+  `pages/staff/loCommandCenter/ActionsRail.tsx:62`. ⚠️ **`BorrowerFile.tsx` and
+  `LoanPipeline.tsx` contain NO submission surface** (corrected 2026-08-18, F-0818-11 —
+  `grep -c 'lender-submission\|SubmissionReadiness\|submission-readiness'` returns **0** in both;
+  `LoanPipeline.tsx` is a borrower-facing view). The old wording sent reviewers to the wrong two
+  files in a domain whose one live surface is broken.
 - **Intended use**: broker flow — intake/AUS/lenderPackage/deliveryPreflight gates → submission
   blocked until stages 1–3 clean; one adapter seam per lender; sims flagged.
 - **Wiring note:** ~~F-003 — AUS DU/LPA submission has no UI trigger~~ **fixed in #135**
