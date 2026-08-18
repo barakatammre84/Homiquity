@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| `frontend-wiring-audit` 2026-08-18 | `client/src/pages/borrower/URLAForm.tsx` — `describeUnsavedRows()` only (≈L300-325) | `.claude/worktrees/pensive-noether-5232f2` | `claude/interesting-goodall-351b8b` | 2026-08-18 09:20 | Co-borrower rows the save DROPS are reported to nobody: `describeUnsavedRows()` reads `borrowerData[1]` only, while `buildPayload()` filters slot 2 through the same `isUrlaRowSaveable`. **Adjacency, not a race:** refactor-radar's #530/#532 touch the same file at the `STEPS`/`StepContext` block (≈L84-116) — 200 lines away, disjoint hunks; this run does not touch `buildPayload`, `buildSectionsPayload`, `STEPS` or the hydration effect (URLA_FORM_REFACTOR_TRAP prohibitions all respected). Whoever merges second takes both hunks. |
 
 ## Recently released
 
