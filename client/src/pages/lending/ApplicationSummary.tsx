@@ -2,23 +2,24 @@ import { useQuery } from "@tanstack/react-query";
 import { dashboardKeys } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageShell } from "@/components/PageShell";
-import { EmptyState } from "@/components/ui/empty-state";
 import { QueryBoundary } from "@/components/ui/query-boundary";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication } from "@shared/schema";
 import { useActiveApplication } from "@/hooks/useActiveApplication";
+import { DATA_PROVENANCE } from "@shared/dataProvenance";
+import { EmptyState } from "@/components/patterns/EmptyState";
+import { ProvenanceBadge } from "@/components/patterns/ProvenanceBadge";
+import { SummarySection } from "@/components/patterns/SummarySection";
+import { DualUnitTable } from "@/components/patterns/DualUnitTable";
 import {
   Home,
   ChevronRight,
   MessageCircle,
   User,
-  DollarSign,
   PiggyBank,
-  CreditCard,
   Briefcase,
   MapPin,
   UserPlus,
@@ -27,6 +28,14 @@ import {
 interface DashboardData {
   applications: LoanApplication[];
 }
+
+// The borrower's "what you told us" summary, on the pattern components
+// (docs/DESIGN-STANDARD.md §6): the financial section is a SummarySection with
+// its required source + why-we-ask; income and debts render dual-unit (annual
+// AND monthly, monthly derived); the previous hand-rolled "Initial"/"Soft
+// check" chips became the shared ProvenanceBadge vocabulary; and the
+// client-computed loan amount now declares itself Estimated instead of
+// rendering unlabeled.
 
 export default function ApplicationSummary() {
   const { user, isLoading: authLoading } = useAuth();
@@ -69,8 +78,8 @@ export default function ApplicationSummary() {
             if (!activeApplication) {
               return (
                 <EmptyState
+                  scope="active application"
                   icon={Home}
-                  title="No active application"
                   description="Start your pre-approval to see your application summary."
                   action={
                     <Button className="gap-2" data-testid="button-start-application">
@@ -82,6 +91,12 @@ export default function ApplicationSummary() {
               );
             }
 
+            const annualIncome = activeApplication.annualIncome
+              ? parseFloat(activeApplication.annualIncome)
+              : null;
+            const monthlyDebts = activeApplication.monthlyDebts
+              ? parseFloat(activeApplication.monthlyDebts)
+              : null;
             const loanAmount =
               parseFloat(activeApplication.purchasePrice || "0") -
               parseFloat(activeApplication.downPayment || "0");
@@ -125,58 +140,53 @@ export default function ApplicationSummary() {
               </p>
             </div>
 
-            <div className="border-t pt-6">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-4 flex-wrap">
-                Financial info
-              </div>
+            <SummarySection
+              title="Financial information"
+              source={{ provenance: DATA_PROVENANCE.SELF_REPORTED }}
+              whyWeAsk="These figures set your buying power and your debt-to-income ratio — how much of what you earn already goes to debts. Next we verify them with documents like paystubs, W-2s, and bank statements."
+              data-testid="summary-financial"
+            >
+              <DualUnitTable
+                caption="Income and debts — yearly and monthly, the two ways your loan team reads them"
+                groups={[
+                  {
+                    label: "Income",
+                    rows: [
+                      {
+                        label: "Annual income (before taxes)",
+                        annual: annualIncome,
+                        testId: "text-income",
+                      },
+                    ],
+                  },
+                  {
+                    label: "Debts",
+                    note: "From your soft credit check — the kind that never affects your credit score.",
+                    rows: [
+                      {
+                        label: "Monthly debts",
+                        annual: monthlyDebts === null ? null : monthlyDebts * 12,
+                        testId: "text-debts",
+                      },
+                    ],
+                  },
+                ]}
+              />
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Income</p>
-                      <p className="font-semibold" data-testid="text-income">
-                        {formatCurrency(activeApplication.annualIncome || "0")}/yr
-                      </p>
-                    </div>
+              <div className="mt-4 flex items-center justify-between gap-4 flex-wrap border-t border-border pt-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                    <PiggyBank className="h-4 w-4 text-primary" />
                   </div>
-                  <Badge variant="outline" className="text-xs shrink-0">Initial</Badge>
-                </div>
-
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                      <PiggyBank className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Assets</p>
-                      <p className="font-semibold" data-testid="text-assets">
-                        {formatCurrency(activeApplication.downPayment || "0")}
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Assets for your down payment</p>
+                    <p className="font-semibold" data-testid="text-assets">
+                      {formatCurrency(activeApplication.downPayment || "0")}
+                    </p>
                   </div>
-                  <Badge variant="outline" className="text-xs shrink-0">Initial</Badge>
-                </div>
-
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                      <CreditCard className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Debts</p>
-                      <p className="font-semibold" data-testid="text-debts">
-                        {formatCurrency(activeApplication.monthlyDebts || "0")}/mo
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-xs shrink-0">Soft check</Badge>
                 </div>
               </div>
-            </div>
+            </SummarySection>
 
             <div className="border-t pt-6">
               <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-4 flex-wrap">
@@ -201,16 +211,23 @@ export default function ApplicationSummary() {
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                    <Briefcase className="h-4 w-4 text-primary" />
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                      <Briefcase className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Loan</p>
+                      <p className="font-semibold" data-testid="text-loan-amount">
+                        {formatCurrency(loanAmount.toString())}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Loan</p>
-                    <p className="font-semibold" data-testid="text-loan-amount">
-                      {formatCurrency(loanAmount.toString())}
-                    </p>
-                  </div>
+                  {/* Purchase price minus down payment, computed here — say so. */}
+                  <ProvenanceBadge
+                    provenance={DATA_PROVENANCE.SYSTEM_CALCULATED}
+                    data-testid="provenance-loan-amount"
+                  />
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">

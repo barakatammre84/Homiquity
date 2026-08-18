@@ -66,7 +66,11 @@ export function DualUnitTable({
               </th>
             </tr>
             {group.rows.map((row) => (
-              <tr key={row.label} className="border-b border-border/60">
+              <tr
+                key={row.label}
+                className="border-b border-border/60"
+                data-testid={row.testId}
+              >
                 <td className="py-2 pr-4 text-foreground">{row.label}</td>
                 <td className="py-2 pr-4 text-right tabular-nums text-foreground">
                   {formatUsd(row.annual)}
@@ -76,17 +80,20 @@ export function DualUnitTable({
                 </td>
               </tr>
             ))}
-            <tr>
-              <td className="py-2 pr-4 text-muted-foreground">
-                {group.label} subtotal
-              </td>
-              <td className="py-2 pr-4 text-right font-semibold tabular-nums">
-                {formatUsd(sumAnnual(group.rows))}
-              </td>
-              <td className="py-2 text-right font-semibold tabular-nums">
-                {formatUsd(monthlyFromAnnual(sumAnnual(group.rows)))}
-              </td>
-            </tr>
+            {/* A subtotal of a single row would just repeat it. */}
+            {group.rows.length > 1 && (
+              <tr>
+                <td className="py-2 pr-4 text-muted-foreground">
+                  {group.label} subtotal
+                </td>
+                <td className="py-2 pr-4 text-right font-semibold tabular-nums">
+                  {formatUsd(sumAnnual(group.rows))}
+                </td>
+                <td className="py-2 text-right font-semibold tabular-nums">
+                  {formatUsd(monthlyFromAnnual(sumAnnual(group.rows)))}
+                </td>
+              </tr>
+            )}
           </tbody>
         ))}
         {totalLabel && (

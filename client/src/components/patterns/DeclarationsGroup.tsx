@@ -23,7 +23,17 @@ export interface DeclarationQuestion {
 export interface DeclarationsGroupProps {
   /** The group heading. The required marker sits here — never on options. */
   legend: string;
+  /** Keep the legend in the a11y tree but out of the visual flow (when the
+      surrounding card already carries the visible heading). */
+  srOnlyLegend?: boolean;
   required?: boolean;
+  /**
+   * Render the bulk-"No" master checkbox. Default on — turn it off for blocks
+   * of SUBSTANTIVE questions (occupancy, loan structure) where answers
+   * genuinely vary; the hatch is only honest over a wall whose clean-file
+   * answer is uniformly "No".
+   */
+  escapeHatch?: boolean;
   /** Announced BEFORE the wall. */
   announcement?: string;
   masterLabel?: string;
@@ -32,11 +42,19 @@ export interface DeclarationsGroupProps {
   onAnswersChange: (next: Record<string, DeclarationAnswer | undefined>) => void;
   className?: string;
   "data-testid"?: string;
+  /**
+   * Prefix for the per-question button and master testids (defaults to the
+   * group's data-testid). Lets sibling groups on one screen share a legacy
+   * question-id namespace while keeping distinct group testids.
+   */
+  questionTestIdPrefix?: string;
 }
 
 export function DeclarationsGroup({
   legend,
+  srOnlyLegend = false,
   required = false,
+  escapeHatch = true,
   announcement = "The following questions cover uncommon situations we are required to ask about. If none apply to you, you can answer “No” to all of them at once by checking the box below. Additional questions may be asked based on your answers.",
   masterLabel = "None of these apply to me — answer “No” to all",
   questions,
@@ -44,7 +62,9 @@ export function DeclarationsGroup({
   onAnswersChange,
   className,
   "data-testid": testId = "declarations-group",
+  questionTestIdPrefix,
 }: DeclarationsGroupProps) {
+  const qid = questionTestIdPrefix ?? testId;
   // Derived, never stored: the master is checked exactly when every question
   // is answered "no".
   const allNo =
@@ -62,7 +82,11 @@ export function DeclarationsGroup({
 
   return (
     <fieldset className={className} data-testid={testId}>
-      <legend className="text-base font-semibold text-foreground">
+      <legend
+        className={
+          srOnlyLegend ? "sr-only" : "text-base font-semibold text-foreground"
+        }
+      >
         {legend}
         {required && (
           <span className="ml-1 text-destructive" aria-hidden="true">
@@ -71,24 +95,26 @@ export function DeclarationsGroup({
         )}
       </legend>
 
-      <div className="mt-3 rounded-xl bg-info-subtle p-4 text-info-subtle-foreground">
-        <p className="text-sm">{announcement}</p>
-        <div className="mt-3 flex items-start gap-3">
-          <Checkbox
-            id={`${testId}-master`}
-            checked={allNo}
-            onCheckedChange={(value) => setAll(value === true ? "no" : undefined)}
-            className="mt-0.5"
-            data-testid={`${testId}-master`}
-          />
-          <Label
-            htmlFor={`${testId}-master`}
-            className="text-sm font-semibold leading-6"
-          >
-            {masterLabel}
-          </Label>
+      {escapeHatch && (
+        <div className="mt-3 rounded-xl bg-info-subtle p-4 text-info-subtle-foreground">
+          <p className="text-sm">{announcement}</p>
+          <div className="mt-3 flex items-start gap-3">
+            <Checkbox
+              id={`${qid}-master`}
+              checked={allNo}
+              onCheckedChange={(value) => setAll(value === true ? "no" : undefined)}
+              className="mt-0.5"
+              data-testid={`${qid}-master`}
+            />
+            <Label
+              htmlFor={`${qid}-master`}
+              className="text-sm font-semibold leading-6"
+            >
+              {masterLabel}
+            </Label>
+          </div>
         </div>
-      </div>
+      )}
 
       <ul className="mt-4 space-y-4">
         {questions.map((q) => {
@@ -112,7 +138,7 @@ export function DeclarationsGroup({
                       type="button"
                       aria-pressed={selected}
                       onClick={() => setOne(q.id, option)}
-                      data-testid={`${testId}-${q.id}-${option}`}
+                      data-testid={`${qid}-${q.id}-${option}`}
                       className={
                         "inline-flex h-9 min-w-16 items-center justify-center gap-1.5 rounded-full px-4 text-sm transition-colors " +
                         (selected

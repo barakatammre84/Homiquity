@@ -27,6 +27,10 @@ export interface DocumentRow {
   provenanceMethod?: ProvenanceMethod;
   /** Plain-English event, e.g. { verb: "Sent to you", on: "Aug 12, 2026" }. */
   date?: { verb: string; on: string };
+  /** The uploaded file's name, shown as secondary metadata (never a column). */
+  fileName?: string;
+  /** Row-level note, e.g. the plain-English reason a document needs attention. */
+  note?: { text: string; tone?: "muted" | "destructive" };
   action?: React.ReactNode;
 }
 
@@ -91,9 +95,24 @@ export function DocumentList({
                         </span>
                       )}
                     </p>
-                    {row.date && (
+                    {(row.fileName || row.date) && (
                       <p className="mt-0.5 text-sm text-muted-foreground">
-                        {row.date.verb} on {row.date.on}
+                        {[row.fileName, row.date && `${row.date.verb} on ${row.date.on}`]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+                    {row.note && (
+                      <p
+                        className={
+                          "mt-1 text-sm " +
+                          (row.note.tone === "destructive"
+                            ? "text-destructive"
+                            : "text-muted-foreground")
+                        }
+                        data-testid={`${testId}-${row.id}-note`}
+                      >
+                        {row.note.text}
                       </p>
                     )}
                   </div>

@@ -9,6 +9,8 @@ export interface DualUnitRow {
   label: string;
   /** Annual amount in dollars; null = not applicable (renders "—", never $0). */
   annual: number | null;
+  /** Optional testid for the rendered row. */
+  testId?: string;
 }
 
 export interface DualUnitGroup {
