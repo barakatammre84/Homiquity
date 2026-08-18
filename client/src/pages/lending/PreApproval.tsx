@@ -9,7 +9,6 @@ import { preApprovalFormSchema } from "@shared/preApprovalForm";
 import type { PreApprovalFormData } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, loanApplicationKeys, dashboardKeys } from "@/lib/queryClient";
 import { friendlyApiError } from "@/lib/errorMessage";
@@ -85,7 +84,11 @@ function PreApprovalFunnel() {
   usePageView("/apply");
   const track = useTrackActivity();
   const trackFormStart = useTrackFormStart();
-  useTrackFormAbandon("preapproval", progress.index > 0 && stepId !== "final");
+  useTrackFormAbandon("preapproval", progress.index > 0 && stepId !== "final", {
+    step: progress.index,
+    step_id: stepId,
+    total: progress.total,
+  });
   const prevStepRef = useRef(0);
 
   // Through the router, not `window.location.search`. Reading the global at
@@ -755,8 +758,11 @@ function PreApprovalFunnel() {
         />
       </div>
 
-      {/* Navigation Header */}
-      <div className="fixed top-0 w-full p-4 sm:p-6 flex justify-between items-center z-40 bg-background/80 backdrop-blur-sm">
+      {/* Navigation Header — same max-w-5xl container as the content grid
+          below, so the chrome and the question column line up instead of
+          centering on two different boxes. */}
+      <div className="fixed top-0 w-full p-4 sm:p-6 z-40 bg-background/80 backdrop-blur-sm">
+       <div className="w-full max-w-5xl mx-auto flex justify-between items-center">
         <button
           onClick={handleBack}
           disabled={progress.index === 0}
@@ -780,20 +786,18 @@ function PreApprovalFunnel() {
             </span>
           )}
         </div>
+       </div>
       </div>
 
-      {/* Advisory Panel (Desktop only) */}
-      <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
-
-      {/* Main Content Area */}
-      <div
-        className={cn(
-          "flex-1 flex flex-col items-center justify-center p-6 pt-20 pb-0 w-full max-w-4xl mx-auto relative",
-          // Only reserve the right-hand column while the advisory panel is shown;
-          // on the opening steps it isn't, so the question stays centered.
-          !ADVISORY_HIDDEN_STEPS.includes(currentQ.id) && "lg:pr-96",
-        )}
-      >
+      {/* Main Content Area — on lg+ a two-column grid: the question column and
+          the advisory panel share one centered container and one coordinate
+          system (the panel used to be viewport-fixed while the content
+          reserved a padding gutter for it, which left the question sitting
+          left of every other centered element with dead space in between).
+          The column is reserved on every step, so the question never jumps
+          when the panel's numbers start arriving. */}
+      <div className="flex-1 w-full max-w-5xl mx-auto px-6 pt-20 pb-0 relative flex flex-col items-center lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10 lg:items-center">
+       <div className="w-full min-w-0 flex flex-1 lg:flex-none flex-col items-center justify-center">
         {/*
           mode="wait" mounts the next step only after the previous step's exit
           animation completes, and framer-motion drives that animation off
@@ -882,6 +886,10 @@ function PreApprovalFunnel() {
 
           </motion.div>
         </AnimatePresence>
+       </div>
+
+       {/* Advisory Panel (desktop only) — the grid's right column. */}
+       <AdvisoryPanel formValues={watchedValues} currentStepId={currentQ.id} />
       </div>
 
       {teaser && (

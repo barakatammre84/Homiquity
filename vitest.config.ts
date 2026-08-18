@@ -182,6 +182,8 @@ export default defineConfig({
       "tests/approvalStrength.test.ts",
       "tests/buyingPowerEstimate.test.ts",
       "tests/loanScenarioMatrix.test.ts",
+      "tests/pricingAdapterMI.test.ts",
+      "tests/loanEstimateMI.test.ts",
       "tests/documentTypeAliases.test.ts",
       "tests/localObjectStorage.test.ts",
       "tests/postAuthRoute.test.ts",
