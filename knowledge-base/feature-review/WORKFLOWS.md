@@ -129,7 +129,7 @@ Status ledger:
 
 ## Baseline
 
-Alongside workflow runs, `npm run test:integration` (73 tests as of 07-04) runs against the
+Alongside workflow runs, `pnpm test:integration` (73 tests as of 07-04) runs against the
 same server as a regression baseline; failures are findings. *(The formerly-known
 `lenderSubmission` determinism flake was fixed via an injectable generation clock —
 `d5b8b54`, finding F-005 closed — so it is no longer an expected failure.)*

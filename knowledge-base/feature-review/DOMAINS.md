@@ -43,7 +43,7 @@ Status ledger (updated by the orchestrator after each run):
   `client/src/lib/prelaunch.ts`, referral landings (`pages/agent-broker/{ReferralLanding,PartnerLanding,ApplyInvite}.tsx`).
 - **Intended use**: persona-siloed conversion pages feeding the funnel; prelaunch/waitlist
   gating of soliciting routes; calculators as lead tools.
-- **Source docs**: `kb/` landing-page conversion research + GTM battlecards, borrower-acquisition
+- **Source docs**: `knowledge-base/research/gtm/` battlecards + landing-page conversion research, borrower-acquisition
   playbook, `L1_VISION_AND_SCOPE.md` (was PRODUCT_SPINE), `knowledge-base/handbook/app-guide/01-start-here.md`.
 - **Owned tests**: `tests/leads*`, calculator/APR-adjacent units. **Reg Z trigger-term risk** on
   any rate/payment displayed → compliance flag.
@@ -310,5 +310,5 @@ Runs over every surface from teams 1–12, on three axes:
   `psychology-patterns.md` as the copy standard; `component-inventory.csv` for the census.
 - **Source docs**: `design_guidelines.md`, `knowledge-base/logs/ux-audit/*`, landing-page research, design skills
   under `.agents/skills/`.
-- **Owned checks**: `node scripts/design-token-guard.cjs` (via `npm run checkup`), preview
+- **Owned checks**: `node scripts/design-token-guard.cjs` (via `pnpm checkup`), preview
   screenshots/inspects per surface group. **A11y:** 12/14 property `<img>` lack `alt`.

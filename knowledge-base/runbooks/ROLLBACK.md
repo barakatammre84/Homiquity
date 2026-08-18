@@ -146,17 +146,17 @@ git revert --no-commit rel-2026-07-02..HEAD && git commit -m "roll back to rel-2
 ## 3. Roll back the database (careful — not automatic)
 
 The app uses Drizzle with **versioned migrations** (`migrations/`, applied with
-`npm run db:migrate`). Schema changes are committed SQL files, so every change
+`pnpm db:migrate`). Schema changes are committed SQL files, so every change
 is reviewable and reproducible — but Postgres migrations still have no
 automatic "down". Reverting code does **not** revert schema changes.
 
-The workflow for a schema change (canonical: [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)):
+The workflow for a schema change (canonical: [app-guide/03-database.md](../handbook/app-guide/03-database.md)):
 1. Edit `shared/schema/*.ts`.
 2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql` — **never
    `drizzle-kit generate`** (snapshot drift in this repo). Review it like code
    (especially any `DROP`/`ALTER ... TYPE`).
-3. `npm run db:migrate` — applies pending migrations to `DATABASE_URL`. **Never
-   `npm run db:push`**: it has no down-migration and, against the shared dev DB,
+3. `pnpm db:migrate` — applies pending migrations to `DATABASE_URL`. **Never
+   `pnpm db:push`**: it has no down-migration and, against the shared dev DB,
    drops columns belonging to other branches.
 4. Ship the migration + `_journal.json` entry in the **same PR** as the schema
    change (`pnpm guard:schema` enforces it in CI). On merge, the `migrate-prod`

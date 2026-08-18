@@ -113,9 +113,9 @@ Full detail in [ROLLBACK.md](./ROLLBACK.md). Short version:
   lane runs the gate (never `reset --hard` + force-push; break-glass per
   [ROLLBACK.md](./ROLLBACK.md) §2).
 - **Database** → schema changes ship as **hand-authored** versioned migration
-  files in `migrations/`, applied with `npm run db:migrate` (**never `db:push`**,
+  files in `migrations/`, applied with `pnpm db:migrate` (**never `db:push`**,
   **never `drizzle-kit generate`** — see [ROLLBACK.md](./ROLLBACK.md) §3 and
-  [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)). Still snapshot/branch
+  [app-guide/03-database.md](../handbook/app-guide/03-database.md)). Still snapshot/branch
   in Neon before destructive schema changes; migrations have no automatic "down".
 
 ## How the Railway deploy works

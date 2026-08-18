@@ -156,12 +156,16 @@ run history and stored tool approvals. Judge it by its description, not its slug
 launch. A gap in `reports/` may therefore mean "the laptop was shut", not "the routine broke" —
 Evening Triage distinguishes the two rather than assuming either.
 
-**A second fleet exists.** Five claude.ai-side (CCR) scheduled triggers run against this repo
+**A second fleet exists.** Six claude.ai-side (CCR) scheduled triggers run against this repo
 from the cloud, outside this scheduler: the daily Better.com competitive brief (12:00Z), the
 weekly UX audit (Wed 13:00Z — report-only, reads `feature-review/FINDINGS.md`), the monthly
 financial-architecture audit (1st, 13:00Z — invokes `/financial-audit`, so §6's Financial Audit
 territory row governs it), the Monday logged-in deep-dive reminder (12:30Z, human-directed), and
-the hourly weekday PR sync loop. Audited and rewired 2026-08-18 —
+the hourly weekday PR sync loop, and the **Monday doc & memory hygiene sweep** (14:00Z —
+report-only: runs `pnpm guard:staleness --list` plus the judgment sweep the ratchet cannot do —
+standing claims dated against code, defunct references beyond regex, ledger/board rot — filing a
+dated report through the docs PR lane and proposing tickets to Evening Triage; if two consecutive
+sweeps find nothing, it proposes its own demotion to monthly). Audited and rewired 2026-08-18 —
 [logs/2026-08-18-knowledge-file-audit.md](../logs/2026-08-18-knowledge-file-audit.md) §4. Where
 they touch the repo they are report-only or PR-lane and bound by this charter; the quarterly
 knowledge audit reads both fleets.

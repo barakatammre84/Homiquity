@@ -44,7 +44,7 @@ the links resolve). See §4 for what that firewall cuts.
   broker offers.
 - **Cut-line check:** this *is* the loop, extended to the borrowers with the least competition
   and the highest broker-comp deals. The SE-income beachhead (Workstreams A–C) is Phase 0 of
-  this program, not a competing effort. The launch sprint remains the standing priority; no
+  this program, not a competing effort. The roadmap's launch-blocking queue (CTO_ROADMAP.md §0–§2) remains the standing priority; no
   prompt below preempts a launch blocker.
 
 ## 3. Bound by L2 (the guardrails every prompt obeys)
@@ -295,7 +295,7 @@ P7 business gates ─────── parallel, start immediately (founder)
 P7 build items ────────── funder-agnostic parts after P2c/P3; full unlock on a founder-call "yes"
 ```
 
-The launch sprint remains the standing priority; program work claims only the capacity the
+The roadmap's launch-blocking queue remains the standing priority; program work claims only the capacity the
 sprint doesn't need.
 
 ## 7. Program risks
