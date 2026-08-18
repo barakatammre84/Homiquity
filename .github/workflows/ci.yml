@@ -377,6 +377,70 @@ jobs:
             echo "::error::dist/index.js failed to boot and serve /api/health — the self-host bundle is broken"
             exit 1
           fi
+      - name: Integration lane (HTTP tests against the built bundle)
+        # The lane that existed and never protected a PR. `gate` ran node +
+        # client only, so tests/mismoExportAccess.test.ts — the role gate on the
+        # route that embeds full SSN and DOB — was covered EXCLUSIVELY by a lane
+        # nothing ran. 18 files, 148 tests, ~8 seconds against the disposable
+        # Postgres this job already provisions.
+        #
+        # Why a SECOND server rather than reusing the one above: the step above
+        # boots NODE_ENV=production deliberately, and that is the posture the
+        # suite cannot authenticate against — /api/test-login hard-404s in
+        # production (server/auth.ts:62) and the CSRF guard requires an Origin
+        # that only some of these files send. Booting a second instance from the
+        # SAME dist bundle at NODE_ENV=development gets the suite a login without
+        # weakening the production-mode boot proof above, which stays untouched.
+        # Consequence to know: this lane therefore does NOT exercise
+        # production-mode CSRF or CSP. The files that already send Origin would
+        # pass in either posture; making the rest send it is what would let this
+        # run in production mode.
+        #
+        # `seedLendingGrids.ts` runs FIRST and is invoked by path on purpose: it
+        # populates FANNIE_LLPA and the policy scalars, nothing in package.json
+        # or the seed path calls it, and without it a freshly-provisioned
+        # database has ZERO pricing matrices — best-execution rate sync fails at
+        # seed time on any new environment. Found by wiring this lane up.
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/selfhost_boot
+          DEV_TEST_PASSWORD: ci-integration-not-a-secret
+          RATE_LIMIT_RELAXED: "true"
+          TEST_BASE_URL: http://localhost:4000
+        run: |
+          ./node_modules/.bin/tsx server/scripts/seedLendingGrids.ts
+          pnpm db:seed
+          NODE_ENV=development PORT=4000 \
+          SESSION_SECRET="$(node -e 'console.log(require("crypto").randomBytes(48).toString("base64"))')" \
+          PII_HASH_SALT="$(node -e 'console.log(require("crypto").randomBytes(48).toString("base64"))')" \
+          CREDIT_ENCRYPTION_KEY="$(node -e 'console.log(require("crypto").randomBytes(32).toString("base64"))')" \
+          node dist/index.js > /tmp/integration-server.log 2>&1 &
+          INT_PID=$!
+          CODE=000
+          for i in $(seq 1 45); do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4000/api/health 2>/dev/null || true)"
+            CODE="${CODE:-000}"
+            [ "$CODE" = "200" ] && break
+            kill -0 "$INT_PID" 2>/dev/null || break
+            sleep 1
+          done
+          if [ "$CODE" != "200" ]; then
+            echo "--- integration server log ---"; cat /tmp/integration-server.log
+            kill "$INT_PID" 2>/dev/null || true
+            echo "::error::the integration server never became healthy"
+            exit 1
+          fi
+          # Each run gets a fresh process, which matters: the auth limiter is an
+          # in-memory store and a second pass in the same 15-minute window 429s
+          # (observed while building this step). One pass per boot.
+          set +e
+          pnpm test:integration
+          RESULT=$?
+          set -e
+          kill "$INT_PID" 2>/dev/null || true
+          if [ "$RESULT" != "0" ]; then
+            echo "--- integration server log (tail) ---"; tail -60 /tmp/integration-server.log
+          fi
+          exit "$RESULT"
 
   migrate-prod:
     name: migrate-prod (apply pending migrations)
