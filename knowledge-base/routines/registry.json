@@ -9,7 +9,13 @@
     "step earlier — 'does this routine still have a definition anyone but one laptop can read?'",
     "On 2026-08-18, six of the ten scheduled routines existed only under ~/.claude/",
     "scheduled-tasks/ on the founder's machine: unversioned, unreviewable, and unrunnable from",
-    "any cloud session. Each of those carries a dated waiver below rather than a silence.",
+    "any cloud session. All six were committed that evening on founder instruction, each",
+    "reconstructed from CHARTER + its own reports and carrying a provenance header saying so.",
+    "",
+    "`schedulerRepoint.required` is the half a repo cannot close: the scheduled task still runs",
+    "the private copy, so two definitions exist and can drift without anyone editing either.",
+    "The guard warns per row until the founder repoints the task and clears the flag — merging",
+    "in any rail the private copy carries that the committed one lacks, never deleting one.",
     "",
     "WHAT THIS FILE IS NOT. It is not the fleet-2 schedule. Claude-Code-Remote triggers are",
     "authoritative in list_triggers (CHARTER §3) and a hand-copied cron here would rot within",
@@ -38,13 +44,12 @@
       "cron": "45 7 * * *",
       "cadence": "daily",
       "writesCode": false,
-      "definition": "laptop-only",
+      "definition": ".claude/skills/launch-gate/SKILL.md",
       "reportId": "launch-gate",
-      "waiver": {
-        "reason": "Definition lives only in ~/.claude/scheduled-tasks/launch-gate/ on the founder's machine. It publishes §7's RELEASABLE line — the suite's headline output — from a file no reviewer, no guard and no cloud session can read.",
+      "schedulerRepoint": {
+        "required": true,
         "since": "2026-08-18",
-        "expires": "2026-09-30",
-        "remedy": "Commit it to .claude/skills/launch-gate/SKILL.md and point the scheduled task at the repo copy, as primary-engineer and compliance-watch already are."
+        "note": "Definition committed 2026-08-18 (founder-directed), reconstructed from CHARTER + this routine's own reports. The scheduled task still points at the ~/.claude/scheduled-tasks/ copy, so TWO definitions exist until the founder repoints it — merge any rail the laptop copy carries that the repo copy lacks, never delete one, then repoint (CHARTER §11). The guard cannot see the scheduler; this flag is the only record that the repoint is outstanding."
       }
     },
     {
@@ -54,14 +59,13 @@
       "cron": "10 9 * * *",
       "cadence": "daily",
       "writesCode": true,
-      "definition": "laptop-only",
+      "definition": ".claude/skills/frontend-wiring-audit/SKILL.md",
       "reportId": "wiring-audit",
       "note": "taskId is deliberately unwieldy and deliberately unrenamed (CHARTER §3) — renaming discards its run history and stored tool approvals. The id here is its taskId prefix.",
-      "waiver": {
-        "reason": "Writes code on the capture path daily — the highest-consequence lane in the suite after Primary Engineer — from an unversioned definition. Its rails cannot be reviewed in a PR or checked by any guard.",
+      "schedulerRepoint": {
+        "required": true,
         "since": "2026-08-18",
-        "expires": "2026-09-30",
-        "remedy": "Commit to .claude/skills/frontend-wiring-audit/SKILL.md; keep the scheduler taskId unchanged so run history and approvals survive."
+        "note": "Definition committed 2026-08-18 (founder-directed), reconstructed from CHARTER + this routine's own reports. The scheduled task still points at the ~/.claude/scheduled-tasks/ copy, so TWO definitions exist until the founder repoints it — merge any rail the laptop copy carries that the repo copy lacks, never delete one, then repoint (CHARTER §11). The guard cannot see the scheduler; this flag is the only record that the repoint is outstanding."
       }
     },
     {
@@ -71,13 +75,12 @@
       "cron": "30 12 * * *",
       "cadence": "daily",
       "writesCode": true,
-      "definition": "laptop-only",
+      "definition": ".claude/skills/lender-delivery-gate/SKILL.md",
       "reportId": "lender-delivery-gate",
-      "waiver": {
-        "reason": "Owns acceptance question A (does an organic file reach a lender clean) and may ship small/safe fixes. Unversioned.",
+      "schedulerRepoint": {
+        "required": true,
         "since": "2026-08-18",
-        "expires": "2026-09-30",
-        "remedy": "Commit to .claude/skills/lender-delivery-gate/SKILL.md."
+        "note": "Definition committed 2026-08-18 (founder-directed), reconstructed from CHARTER + this routine's own reports. The scheduled task still points at the ~/.claude/scheduled-tasks/ copy, so TWO definitions exist until the founder repoints it — merge any rail the laptop copy carries that the repo copy lacks, never delete one, then repoint (CHARTER §11). The guard cannot see the scheduler; this flag is the only record that the repoint is outstanding."
       }
     },
     {
@@ -87,13 +90,12 @@
       "cron": "0 15 * * *",
       "cadence": "daily",
       "writesCode": false,
-      "definition": "laptop-only",
+      "definition": ".claude/skills/deliverable-qa-sweep/SKILL.md",
       "reportId": "qa-sweep",
-      "waiver": {
-        "reason": "Feeds every verified row in feature-review/FINDINGS.md, which Primary Engineer builds from. Its adversarial-verification method is unversioned, so a drift in it silently changes what the whole suite treats as a verified finding.",
+      "schedulerRepoint": {
+        "required": true,
         "since": "2026-08-18",
-        "expires": "2026-09-30",
-        "remedy": "Commit to .claude/skills/deliverable-qa-sweep/SKILL.md; the .claude/agents/{feature-reviewer,finding-verifier,workflow-verifier}.md it drives are already in the repo, which makes the missing half conspicuous."
+        "note": "Definition committed 2026-08-18 (founder-directed), reconstructed from CHARTER + this routine's own reports. The scheduled task still points at the ~/.claude/scheduled-tasks/ copy, so TWO definitions exist until the founder repoints it — merge any rail the laptop copy carries that the repo copy lacks, never delete one, then repoint (CHARTER §11). The guard cannot see the scheduler; this flag is the only record that the repoint is outstanding."
       }
     },
     {
@@ -103,13 +105,12 @@
       "cron": "0 21 * * *",
       "cadence": "daily",
       "writesCode": false,
-      "definition": "laptop-only",
+      "definition": ".claude/skills/evening-triage/SKILL.md",
       "reportId": "evening-triage",
-      "waiver": {
-        "reason": "Holds exclusive authority over CTO_ROADMAP.md §0–§3 and performs §7's proof-of-life count — the control that would have caught §0's five-week silence — from an unversioned file.",
+      "schedulerRepoint": {
+        "required": true,
         "since": "2026-08-18",
-        "expires": "2026-09-30",
-        "remedy": "Commit to .claude/skills/evening-triage/SKILL.md. Highest-value of the six: it is the only routine whose absence hides the absence of the others."
+        "note": "Definition committed 2026-08-18 (founder-directed), reconstructed from CHARTER + this routine's own reports. The scheduled task still points at the ~/.claude/scheduled-tasks/ copy, so TWO definitions exist until the founder repoints it — merge any rail the laptop copy carries that the repo copy lacks, never delete one, then repoint (CHARTER §11). The guard cannot see the scheduler; this flag is the only record that the repoint is outstanding."
       }
     },
     {
@@ -119,13 +120,12 @@
       "cron": "35 9 * * 1",
       "cadence": "weekly",
       "writesCode": false,
-      "definition": "laptop-only",
+      "definition": ".claude/skills/vendor-procurement/SKILL.md",
       "reportId": "vendor-procurement",
-      "waiver": {
-        "reason": "Report-only, so the blast radius is lowest of the six — but it is still a routine whose rails nobody can read.",
+      "schedulerRepoint": {
+        "required": true,
         "since": "2026-08-18",
-        "expires": "2026-09-30",
-        "remedy": "Commit to .claude/skills/vendor-procurement/SKILL.md."
+        "note": "Definition committed 2026-08-18 (founder-directed), reconstructed from CHARTER + this routine's own reports. The scheduled task still points at the ~/.claude/scheduled-tasks/ copy, so TWO definitions exist until the founder repoints it — merge any rail the laptop copy carries that the repo copy lacks, never delete one, then repoint (CHARTER §11). The guard cannot see the scheduler; this flag is the only record that the repoint is outstanding."
       }
     },
     {

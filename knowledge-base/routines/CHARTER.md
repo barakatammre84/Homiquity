@@ -150,22 +150,30 @@ The scheduler adds a small **deterministic dispatch offset** per task, so a rout
 minutes after its cron minute. "Fires" below is the real observed time — the number that matters
 when reasoning about overlap. `taskId` is the scheduler key.
 
-The **Definition** column is the one added 2026-08-18, and it is the uncomfortable one:
-`repo` means the routine's `SKILL.md` is committed here, reviewable in a PR and runnable from
-any session; **`⚠ laptop-only`** means it exists solely under `~/.claude/scheduled-tasks/` on one
-machine. Six of ten were in that state when the column was added — including Evening Triage,
-whose absence is the thing that hides the absence of all the others. Each carries a dated waiver
-in [`registry.json`](registry.json); `pnpm guard:routines` fails on an undated one.
+The **Definition** column was added 2026-08-18 because it decides who can read a routine's rails:
+`repo` means the `SKILL.md` is committed here — reviewable in a PR, runnable from any session.
+Six of ten were `⚠ laptop-only` when the column was added, existing solely under
+`~/.claude/scheduled-tasks/` on one machine, including Evening Triage, whose absence is the thing
+that hides the absence of all the others. **All six were committed that evening on founder
+instruction**, reconstructed from this charter and from each routine's own reports; each carries a
+provenance header saying so.
+
+**`repo ⏳` means one step is outstanding: the scheduled task still points at the private copy**,
+so two definitions exist and can now drift without anyone editing either. Merge whatever the
+private copy carries that the repo copy lacks — never delete a rail — then repoint the task and
+clear the routine's `schedulerRepoint` flag in [`registry.json`](registry.json). `pnpm
+guard:routines` warns on every unrepointed row; it cannot see the scheduler, so that warning is the
+only record that the step is still open.
 
 | Fires | Cron | Routine (`taskId`) | Cadence | Writes code? | Definition | Produces |
 |---|---|---|---|---|---|---|
 | 07:21 | `15 7 * * *` | **Primary Engineer** (`primary-engineer`) | daily | yes — company-wide lane | repo | up to **3 launch-ranked PRs** |
-| 07:48 | `45 7 * * *` | **Launch Gate** (`launch-gate`) | daily | no — tickets only | ⚠ laptop-only | `RELEASABLE: yes/no` + the day's gate verdict |
-| 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | ⚠ laptop-only | committed fix on a worktree branch |
-| 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | ⚠ laptop-only | delivery verdict + Target-5 execution |
-| 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | ⚠ laptop-only | verified rows in `FINDINGS.md` |
-| 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | ⚠ laptop-only | roadmap update + the founder's tomorrow list — re-timed from 18:40 on 2026-08-17: the last slot of the day is the one catch-up bursts shed, and it had never once run |
-| Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | ⚠ laptop-only | vendor/contract board |
+| 07:48 | `45 7 * * *` | **Launch Gate** (`launch-gate`) | daily | no — tickets only | repo ⏳ | `RELEASABLE: yes/no` + the day's gate verdict |
+| 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | repo ⏳ | committed fix on a worktree branch |
+| 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | repo ⏳ | delivery verdict + Target-5 execution |
+| 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | repo ⏳ | verified rows in `FINDINGS.md` |
+| 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | repo ⏳ | roadmap update + the founder's tomorrow list — re-timed from 18:40 on 2026-08-17: the last slot of the day is the one catch-up bursts shed, and it had never once run |
+| Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | repo ⏳ | vendor/contract board |
 | Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | repo | state-launch compliance ladder + signature-ready drafts |
 | Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | repo | furnishing-gate posture + the two procurement asks |
 | Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | repo | at most one PR |
@@ -387,16 +395,27 @@ work. A standard nobody is assigned to propagate is a preference.
 **Off limits to every routine, always:** `shared/schema/**` and `migrations/**` without a same-PR
 hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session code;
 `server/integrations/object_storage/**`; outbound messaging; the underwriting/decision/rule engines;
-`shared/lib/amortization.ts`; `package.json` + `pnpm-lock.yaml` (**no new dependencies, ever**);
-`docs/**`; `data/regulatory/**` — **with exactly one carve-out, named below.**
+`shared/lib/amortization.ts`; `pnpm-lock.yaml` and `package.json`'s **dependency blocks**
+(`dependencies`, `devDependencies`, `pnpm.overrides`, `engines`) — **no new dependencies, ever**;
+`docs/**`; `data/regulatory/**` — **each with the carve-out named below, and no other.**
 
-*(Contradiction resolved 2026-08-18, founder to confirm. This list said `data/regulatory/**` flat
-while the next paragraph requires a routine to write `data/regulatory/regulatory-ledger.json`
-alongside any regulated-math change. A rule that forbids the write it mandates is a rule a routine
-must break to obey, so it is narrowed to the reading that keeps every other file locked:
-`regulatory-watch-state.json` is machine-owned by `pnpm reg:watch:save` and stays off limits, and
-the ledger is writable **only** as the same-commit companion to the change it cites — never edited
-on its own, never to soften an existing row.)*
+*(Two self-contradictions resolved 2026-08-18 on founder instruction, in this session, knowingly.
+Both narrowed in the direction that keeps everything else locked.)*
+
+- **`data/regulatory/**`.** This list said it flat while the next paragraph *requires* a routine to
+  write `data/regulatory/regulatory-ledger.json` alongside any regulated-math change. A rule that
+  forbids the write it mandates is a rule a routine must break to obey. **The ledger is writable
+  only as the same-commit companion to the change it cites** — never on its own, never to soften an
+  existing row. `regulatory-watch-state.json` is machine-owned by `pnpm reg:watch:save` and stays
+  off limits, as does everything else under that path.
+- **`package.json`.** The rail's stated purpose is *"no new dependencies, ever"*, and that is what
+  it now says: the **dependency blocks** are the never. **A `scripts` entry that wires a guard
+  already in this PR is L2** — it ships, and the PR flags it. That is how `guard:bundle`,
+  `guard:staleness` and `guard:routines` all landed, so the text was forbidding the practice the
+  repo runs on, and an unfollowable rail teaches routines that rails are negotiable. Everything
+  else in `package.json` — name, version, `packageManager`, build scripts, anything a dependency
+  can hide behind — stays off limits. **Adding a dependency to make a guard work is still barred:**
+  every guard in `scripts/` is zero-dependency, and the next one is too.
 
 **Regulated math changes only with a citation** → a `data/regulatory/regulatory-ledger.json` entry
 in the same commit. No citation, no code change. Never weaken a consent gate, a disclosure gate, an
@@ -555,9 +574,14 @@ same as §0's five weeks of nobody noticing, arrived at more slowly.
 | **Cross-fleet reconciliation** — read `list_triggers`, correct §3's second-fleet table, check each trigger still invokes the skill it promises | Evening Triage | weekly (Sunday tick) | the corrected table, or "no drift", with the UTC timestamp it was read |
 | **Lesson promotion** — move a proven `LESSONS.md` row into §10 and trim the source row (§10) | Evening Triage **proposes**, founder ratifies | weekly | the proposed-tickets block; a §10 edit is never silent |
 
-Two of those rows name a routine whose own definition is `⚠ laptop-only`. **That is not a
-technicality.** Until Evening Triage's `SKILL.md` is committed, three of the five controls above
-are assigned to a file nobody can review, which is a promise this document cannot keep.
+Three of those rows are Evening Triage's, and when §12 was drafted its definition was
+`⚠ laptop-only` — three of five controls assigned to a file nobody could review, which is a promise
+this document could not keep. **Its `SKILL.md` was committed the same evening**
+([`.claude/skills/evening-triage/SKILL.md`](../../.claude/skills/evening-triage/SKILL.md)), along
+with the other five, so the assignments are now readable, reviewable and arguable. **The last step
+is the founder's:** repoint each scheduled task at the repo copy, merging in any rail the private
+copy carries that the committed one lacks. Until then `pnpm guard:routines` warns per routine, and
+those warnings are the honest state — two definitions, one of them unreadable from here.
 
 ### What no routine owns at all
 

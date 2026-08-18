@@ -60,7 +60,13 @@ moves only when the founder has a free evening.
 - **R5 — Security and the §9 detector as ship gate.** Never edit the §6 permanent list
   (`encryptionService.ts`, `ssnVault.ts`, auth/session code, `server/integrations/object_storage/**`,
   outbound messaging, the underwriting/decision/rule engines, `shared/lib/amortization.ts`,
-  `package.json` + lockfile — **no new dependencies, ever** — `docs/**`, `data/regulatory/**`).
+  `pnpm-lock.yaml` + `package.json`'s **dependency blocks** — **no new dependencies, ever**;
+  `docs/**`; `data/regulatory/**`). Two narrow carve-outs, both from CHARTER §6 as amended
+  2026-08-18, both L2 (ship and flag): `regulatory-ledger.json` **only** as the same-commit
+  companion to the regulated-math change it cites, and a `package.json` **`scripts`** entry that
+  wires a guard landing in the same PR. Adding a dependency to make a guard work is still barred —
+  every guard in `scripts/` is zero-dependency. Refactor Radar's R4 is stricter and is **not**
+  relaxed by this: it may not touch `package.json` at all.
   Never weaken a consent, disclosure, or FCRA gate, or a `complianceInvariants` test — a failure
   there is a compliance incident, not a flaky test. New endpoints use the existing
   `requireRole(...)` gate (`server/auth.ts:447`) unchanged. **Run `detectTriggers()`**

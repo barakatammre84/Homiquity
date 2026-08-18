@@ -198,3 +198,48 @@ either direction.
 
 **Not verified here:** anything requiring the scheduler, `~/.claude/scheduled-tasks/`, or a
 browser. No claim above rests on one.
+
+---
+
+## Addendum, same evening — the three open decisions, taken on founder instruction
+
+The founder read the above and instructed this session to take all three. Recorded here because
+CHARTER §1b says a rail is amended *by the founder, knowingly* — so the instruction, its date and
+its scope are part of the evidence, not a footnote.
+
+**1. The six invisible definitions — committed.** All six now live in `.claude/skills/`:
+`launch-gate`, `frontend-wiring-audit`, `lender-delivery-gate`, `deliverable-qa-sweep`,
+`evening-triage`, `vendor-procurement`. Each was **reconstructed from sources inside this repo** —
+CHARTER §§1–12, the feature-review corpus, `LESSONS.md`, and that routine's own reports — never
+from memory of a file this session cannot read. Every rail in them traces to an incident already
+recorded here: the XSD gate that reported PASS with no validator, the register left uncommitted
+while a P0 aged five days, the branch with no PR, the early run that would have manufactured an
+alarm, the `configured: true` beside a domain with no SPF.
+
+Each file carries a provenance header stating exactly that, plus the instruction that matters:
+**if the private copy carries a rail this one lacks, merge it in — never delete it, and never
+assume the committed file is the complete original.**
+
+**What this does not do, and the honest cost.** The scheduler still points at the private copies,
+so there are now *two* definitions per routine — which is worse than one invisible definition in
+exactly one way: they can disagree without anyone editing either. That is why `registry.json`
+carries `schedulerRepoint.required` per routine and `pnpm guard:routines` warns on every one of
+them. The guard cannot see the scheduler; **that warning is the only record that the step is open**,
+and it clears when the founder repoints the task and removes the flag. The wiring audit's task keeps
+its unwieldy `taskId` — renaming it discards its run history and stored tool approvals.
+
+**2. §6's `data/regulatory/**` carve-out — confirmed** as written: the ledger is writable only as
+the same-commit companion to the change it cites; `regulatory-watch-state.json` and everything else
+under that path stay off limits.
+
+**3. The `package.json` rail — resolved, narrowly.** The rail now says what its own stated purpose
+always was: **`pnpm-lock.yaml` and the dependency blocks** (`dependencies`, `devDependencies`,
+`pnpm.overrides`, `engines`) are the never. A `scripts` entry that wires a guard shipping in the
+same PR is **L2** — it ships, the PR flags it. That is how `guard:bundle`, `guard:staleness` and
+`guard:routines` all landed, so the text as written was forbidding the practice the repo runs on,
+and an unfollowable rail teaches routines that rails are negotiable. Everything else in that file
+stays off limits, **adding a dependency to make a guard work is still barred** (every guard in
+`scripts/` is zero-dependency), and **Refactor Radar's R4 is not relaxed** — it may not touch
+`package.json` at all. `primary-engineer/SKILL.md` R5 was updated to match, because a rail that
+disagrees with the charter in a routine's own file is the two-truths problem this audit exists to
+remove.

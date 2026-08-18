@@ -131,6 +131,15 @@ for (const r of routines) {
     }
   }
 
+  // A definition committed here while the scheduler still runs a private copy is
+  // TWO definitions, which is worse than one invisible definition in exactly one
+  // way: they can now disagree without anyone editing either. The repo cannot see
+  // the scheduler, so this is a standing WARN — the only record that the repoint
+  // is still outstanding — and it clears when the founder removes the flag.
+  if (r.schedulerRepoint?.required) {
+    warn(`${r.id}: definition is committed, but the scheduled task has not been repointed at it — two copies can now drift (CHARTER §11).`);
+  }
+
   // A definition nobody but one machine can read is allowed, but only out loud.
   if (r.definition === "laptop-only" || r.definition === "pending") {
     const w = r.waiver || r.awaiting;
