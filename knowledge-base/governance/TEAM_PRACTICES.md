@@ -13,15 +13,16 @@ Each rule below names the failure it prevents.
 ## 1. No transient state in living docs
 
 Open-PR numbers, branch names, session names, and merge-queue status appear **only** in
-the 🚀 Launch sprint section of [CTO_ROADMAP.md](../../CTO_ROADMAP.md) (maintained nightly by
-evening triage) and in dated snapshot reports. Living docs (README, ASSUMPTIONS,
+[CTO_ROADMAP.md](../../CTO_ROADMAP.md) §0–§3 (maintained nightly by Evening Triage, which holds
+exclusive §0–§3 authority — [routines/CHARTER.md](../routines/CHARTER.md) §4) and in dated snapshot reports. Living docs (README, ASSUMPTIONS,
 kb doctrine, app-guide) state durable facts and link to the roadmap for "what's in
 flight." *(Prevents: "Open PR #45 — verify on merge" surviving in a fact register hours
 after the PR merged.)*
 
 ## 2. Dated reports are immutable snapshots
 
-Files under `kb/founder-routines/`, `kb/lo-audit/`, `kb/ux-audit/` are point-in-time
+Files under `knowledge-base/archive/` (founder-routines, lo-audit, ux-audit),
+`knowledge-base/logs/` and `knowledge-base/routines/reports/` are point-in-time
 records. Never rewrite their findings. Corrections and supersessions go in a dated
 **banner at the top** (`> ⚠️ SUPERSEDED …`). *(Prevents: history laundering — and readers
 acting on a mid-afternoon report that the evening overtook.)*
@@ -39,8 +40,8 @@ at `knowledge-base/archive/lo-audit/2026-07-04-pm.md`.)*
 
 - One session = one isolated worktree = one branch. Never work on a branch in the shared
   primary checkout.
-- Claim before building: mark the sprint item CLAIMED in the launch-sprint memory ledger;
-  release the claim if you abandon. Stale claims (>24 h) are reclaimable.
+- Claim before building: add your row to [routines/REGISTER.md](../routines/REGISTER.md) (the
+  claim board); release the claim if you abandon. Stale claims (>24 h) are reclaimable.
 - Merged = deleted, same day — remote and local branch, worktree, and session archive.
 - Deliberately kept-back work (standby branches) **must exist on origin**. A laptop-only
   branch is one disk failure from gone.
@@ -72,8 +73,8 @@ Practically:
 
 ## 5. Definition of done (every PR, no exceptions)
 
-1. `npm run check` clean (tsc).
-2. `npm test` fully green — it runs the node suite **and** the client component suite. New
+1. `pnpm check` clean (tsc).
+2. `pnpm test` fully green — it runs the node suite **and** the client component suite. New
    server/logic test files must be added to `vitest.config.ts`'s include list; client
    component tests are colocated `client/src/**/*.test.tsx` and glob-included by
    `vitest.client.config.ts` automatically. **UI behavior gets a component test here first**
@@ -222,8 +223,8 @@ discovered trap gets a line here in the same PR.
 
 ## 7. Documentation link and file rules
 
-- Markdown links in `kb/` subdirectory docs use paths **relative to the linking file**
-  (`../../server/...` from `kb/founder-routines/`) — a bare `server/...` link only works
+- Markdown links in `knowledge-base/` subdirectory docs use paths **relative to the linking file**
+  (`../../server/...` from `knowledge-base/governance/`) — a bare `server/...` link only works
   from the repo root and breaks in every viewer.
 - Official reference binaries keep their **original filenames** (spaces included) for
   provenance; always quote paths in shell. Reading recipes live in each `docs/*/README.md`
