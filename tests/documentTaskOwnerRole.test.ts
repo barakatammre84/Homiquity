@@ -7,6 +7,7 @@ import { deriveDocumentTaskOwnerRole, type InsertTask } from "../shared/schema";
 vi.mock("../server/storage", () => ({
   storage: {
     createTask: vi.fn(async (data: InsertTask) => ({ id: "task-1", ...data })),
+    getTasksByApplication: vi.fn(async () => [] as unknown[]),
   },
 }));
 
@@ -14,6 +15,7 @@ import { generateDocumentTasks } from "../server/pipelineEngine";
 import { storage } from "../server/storage";
 
 const createTaskMock = vi.mocked(storage.createTask);
+const getTasksMock = vi.mocked(storage.getTasksByApplication);
 
 const requirement = (documentType: string) => ({
   documentType,
@@ -75,6 +77,8 @@ describe("deriveDocumentTaskOwnerRole", () => {
 describe("generateDocumentTasks — borrower ownership", () => {
   beforeEach(() => {
     createTaskMock.mockClear();
+    getTasksMock.mockClear();
+    getTasksMock.mockResolvedValue([]);
   });
 
   it("stamps every pipeline document task BORROWER-owned and OPEN", async () => {
@@ -97,5 +101,40 @@ describe("generateDocumentTasks — borrower ownership", () => {
       expect(inserted.taskType).toBe("document_request");
       expect(inserted.assignedToUserId).toBe("borrower-1");
     }
+  });
+
+  it("skips document types that already carry a task — a re-drive must not duplicate the borrower's list", async () => {
+    // finalizeIntake is re-drivable (recovery sweep), and the pipeline now
+    // also initializes for under_review files that a human may later approve.
+    // Without this dedup the second pass would hand the borrower a second
+    // copy of every upload task.
+    getTasksMock.mockResolvedValue([
+      { taskType: "document_request", documentCategory: "w2", status: "COMPLETED" },
+      { taskType: "review", documentCategory: "bank_statement", status: "OPEN" },
+    ] as never);
+
+    const tasks = await generateDocumentTasks(
+      "app-1",
+      "borrower-1",
+      [requirement("w2"), requirement("bank_statement")],
+      "creator-1",
+    );
+
+    // w2 already has a document task (even completed — it must not resurrect);
+    // bank_statement's existing task is a staff review, not a document
+    // request, so the upload task is still owed.
+    expect(tasks).toHaveLength(1);
+    expect(createTaskMock).toHaveBeenCalledTimes(1);
+    expect(createTaskMock.mock.calls[0][0].documentCategory).toBe("bank_statement");
+  });
+
+  it("creates one task per document type when a requirement repeats", async () => {
+    const tasks = await generateDocumentTasks(
+      "app-1",
+      "borrower-1",
+      [requirement("w2"), requirement("w2")],
+      "creator-1",
+    );
+    expect(tasks).toHaveLength(1);
   });
 });
