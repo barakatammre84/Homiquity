@@ -36,6 +36,27 @@ describe("buildTeaserInputs", () => {
     expect(buildTeaserInputs({ ...BASE, creditScore: "" })?.creditScore).toBe(680);
   });
 
+  it("counts step-11 income sources toward income and rental debt service toward debts — the teaser must agree with the Live Analysis panel", () => {
+    const inputs = buildTeaserInputs({
+      ...BASE,
+      hasAdditionalIncome: true,
+      incomeSources: [
+        { type: "other", annualAmount: "50,000" },
+        {
+          type: "rental",
+          annualAmount: "30,000",
+          rentalProperties: [
+            { address: "12 Elm St", monthlyRentalIncome: "2,500", monthlyDebtPayment: "1,200" },
+          ],
+        },
+      ],
+    } as PreApprovalFormData);
+    expect(inputs).toMatchObject({
+      annualIncome: 200000, // 120k base + 50k other + 30k rental
+      monthlyDebts: 1700, // 500 typed + 1,200 rental debt service
+    });
+  });
+
   it("returns null when income hasn't been entered (defensive — final gate should prevent this)", () => {
     expect(buildTeaserInputs({ ...BASE, annualIncome: "" })).toBeNull();
     expect(buildTeaserInputs({ ...BASE, annualIncome: "0" })).toBeNull();

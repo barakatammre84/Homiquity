@@ -103,6 +103,8 @@ const aspiringOwnerNavigation: NavSection[] = [
       { title: "Get Pre-Approved", href: "/apply", icon: Star, testId: "link-pre-approval" },
       { title: "My Journey", href: "/onboarding", icon: Rocket, testId: "link-onboarding" },
       { title: "Gap Calculator", href: "/gap-calculator", icon: Calculator, testId: "link-gap-calculator" },
+      // The rent-ledger surface — shipped 2026-08-17 with no inbound nav at all.
+      { title: "My Lease", href: "/my-lease", icon: ClipboardList, testId: "link-my-lease" },
       { title: "Down Payment Help", href: "/down-payment-wizard", icon: PiggyBank, testId: "link-dpa-wizard" },
     ],
   },

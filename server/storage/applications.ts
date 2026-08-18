@@ -1,6 +1,7 @@
 // Storage domain: Loan applications, loan options, documents, deal activities.
 // One link in the DatabaseStorage inheritance chain — see ./index.ts.
 import { db } from "../db";
+import { groupRowsByKeyDense } from "./batchGroup";
 import { eq, desc, and, inArray } from "drizzle-orm";
 // SSN uses ssnVault (canonical, from main); account numbers use piiVault (this
 // branch — main leaves account numbers plaintext).
@@ -142,11 +143,14 @@ export class ApplicationsStorage extends UsersStorage {
   }
 
   async getLoanOptionsByApplication(applicationId: string): Promise<LoanOption[]> {
+    // Recommended option FIRST. A bare ascending orderBy on the boolean put
+    // false before true, which buried the one highlighted card at the bottom
+    // of the list — the borrower met the recommendation last.
     return await db
       .select()
       .from(loanOptions)
       .where(eq(loanOptions.applicationId, applicationId))
-      .orderBy(loanOptions.isRecommended);
+      .orderBy(desc(loanOptions.isRecommended), loanOptions.createdAt);
   }
 
   // Used to keep intake finalization idempotent: clear prior options before a
@@ -209,6 +213,19 @@ export class ApplicationsStorage extends UsersStorage {
       .from(documents)
       .where(eq(documents.applicationId, applicationId))
       .orderBy(desc(documents.createdAt));
+  }
+
+  // Batched variant of getDocumentsByApplication for list views — one query for
+  // N applications instead of N. Same `orderBy`, so each bucket comes out in
+  // the order the per-application query produced (see ./batchGroup.ts).
+  async getDocumentsByApplications(applicationIds: string[]): Promise<Map<string, Document[]>> {
+    if (applicationIds.length === 0) return new Map();
+    const rows = await db
+      .select()
+      .from(documents)
+      .where(inArray(documents.applicationId, applicationIds))
+      .orderBy(desc(documents.createdAt));
+    return groupRowsByKeyDense(applicationIds, rows, (row) => row.applicationId!);
   }
 
   async getDocumentsByStoragePath(storagePath: string): Promise<Document[]> {

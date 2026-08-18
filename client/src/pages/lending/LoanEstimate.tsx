@@ -97,7 +97,11 @@ interface LoanEstimateData {
   tridCompliance: {
     disclosureProvided: boolean;
     dateProvided: string | null;
-    withinThreeBusinessDays: boolean;
+    /**
+     * Three-valued: `null` means the TRID clock never started, so there is no
+     * deadline to have met or missed. Never render it as compliant (ux-30).
+     */
+    withinThreeBusinessDays: boolean | null;
     applicationDate: string;
   };
 }
@@ -241,13 +245,25 @@ export default function LoanEstimate() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-2">
-                      {le.tridCompliance.withinThreeBusinessDays ? (
-                        <Badge className="bg-success">
+                      {/*
+                        Three states, not two (ux-30). `null` means the TRID
+                        clock never started — no deadline exists yet, so
+                        neither "Compliant" nor "Deadline Passed" is true.
+                        Collapsing it into the affirmative branch is what put a
+                        green compliance badge on 173 of 176 files.
+                      */}
+                      {le.tridCompliance.withinThreeBusinessDays === null ? (
+                        <Badge variant="outline" data-testid="badge-trid-not-started">
+                          <Info className="mr-1 h-3 w-3" />
+                          TRID window not started
+                        </Badge>
+                      ) : le.tridCompliance.withinThreeBusinessDays ? (
+                        <Badge className="bg-success text-success-foreground" data-testid="badge-trid-compliant">
                           <CheckCircle2 className="mr-1 h-3 w-3" />
                           TRID Compliant
                         </Badge>
                       ) : (
-                        <Badge variant="destructive">
+                        <Badge variant="destructive" data-testid="badge-trid-deadline-passed">
                           <AlertTriangle className="mr-1 h-3 w-3" />
                           TRID Deadline Passed
                         </Badge>
