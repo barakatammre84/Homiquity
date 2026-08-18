@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| founder-directed session 2026-08-18 (the three decisions) | `.claude/skills/{launch-gate,frontend-wiring-audit,lender-delivery-gate,deliverable-qa-sweep,evening-triage,vendor-procurement}/SKILL.md` (new), `knowledge-base/routines/{CHARTER,registry.json}` | primary checkout | `claude/routines-code-quality-review-snqxol` | 2026-08-18 19:40 | founder took the three open decisions: commit the six invisible routine definitions, confirm the §6 regulatory carve-out, resolve the `package.json` rail. **No code path touched.** |
 
 ## Recently released
 
