@@ -157,19 +157,34 @@ when reasoning about overlap. `taskId` is the scheduler key.
 |---|---|---|---|---|---|
 | 07:21 | `15 7 * * *` | **Primary Engineer** (`primary-engineer`) | daily | yes — company-wide lane | up to **3 launch-ranked PRs** |
 | 07:48 | `45 7 * * *` | **Launch Gate** (`launch-gate`) | daily | no — tickets only | `RELEASABLE: yes/no` + the day's gate verdict |
+| 08:20 | `15 8 * * *` | **Domain Oracle** (`domain-oracle`) | daily | no — docs only | cited scenario verdicts + the day's `DECISIONS` |
 | 09:20 | `10 9 * * *` | **Frontend Wiring Audit** (`act-as-a-senior-frontend-architect-…`) | daily | yes — capture path | committed fix on a worktree branch |
-| 10:43 | `40 10 * * *` | **Complex File Engine** (`complex-file-engine`) | daily | yes — the qualification layer, never the three engine files | ≤**1** PR + `CF-…` ledger |
+| 09:53 | `50 9 * * *` | **Complex File Engine** (`complex-file-engine`) | daily | yes — the qualification layer, never the three engine files | ≤**1** PR + `CF-…` ledger |
+| 10:40 | `35 10 * * *` | **Integration Readiness** (`integration-readiness`) | daily | no — board only | per-adapter sim→contract readiness + `ASKS` |
 | 12:31 | `30 12 * * *` | **Lender Delivery Gate** (`lender-delivery-gate`) | daily | small/safe only | delivery verdict + Target-5 execution |
 | 15:05 | `0 15 * * *` | **Deliverable QA Sweep** (`deliverable-qa-sweep`) | daily | no — findings only | verified rows in `FINDINGS.md` |
+| 16:20 | `15 16 * * *` | **QA Mutation Verifier** (`qa-mutation-verifier`) | daily | throwaway worktree only, never committed | `PROVEN`/`UNPROVEN` per fix merged that day |
 | 21:10 | `0 21 * * *` | **Evening Triage** (`evening-triage`) | daily | docs only | roadmap update + the founder's tomorrow list — re-timed from 18:40 on 2026-08-17: the last slot of the day is the one catch-up bursts shed, and it had never once run |
 | Mon 09:37 | `35 9 * * 1` | **Vendor & Procurement** (`vendor-procurement`) | weekly | no | vendor/contract board |
 | Tue 13:21 | `15 13 * * 2` | **Compliance Watch** (`compliance-watch`) | weekly | no — ladder + drafts | state-launch compliance ladder + signature-ready drafts |
 | Thu 11:09 | `0 11 * * 4` | **Rent Reporting Watch** (`rent-reporting-watch`) | weekly | no — report only | furnishing-gate posture + the two procurement asks |
 | Sun 20:00 | `0 20 * * 0` | **Refactor Radar** (`refactor-radar-weekly`) | weekly | yes — `client/src` only | at most one PR |
 
+**Three seats were added 2026-08-18** — Domain Oracle, Integration Readiness and QA Mutation
+Verifier. The seating chart, why only three, and the hand-off protocol they share live in
+[`TEAM.md`](TEAM.md); the board itself is [`HANDOFF.md`](HANDOFF.md). All three are report-only
+or throwaway-only **by design**: the fleet's scarcest resources are write access to
+`client/src/**` and the founder's merge attention, and none of the three spends either. They are
+**defined but not registered** — a definition on disk is not a routine (§0), and registration is
+a founder action.
+
 **Sprint Blitz (`sprint-blitz`, was 09:53 daily) was retired 2026-08-17** — absorbed into the
-Primary Engineer, which carries its queue, its ranking, and its fix-the-gate-first rule. The 09:53
-slot is free.
+Primary Engineer, which carries its queue, its ranking, and its fix-the-gate-first rule. **The 09:53
+slot was taken by the Complex File Engine on 2026-08-18**, resolving a same-session collision with
+Integration Readiness over 10:40: both were written at 10:40 by sessions that could not see each
+other, and the code-writing one moved. Concurrency with the 09:20 Wiring Audit is safe **by
+construction, not by luck** — that routine's territory is `client/src/**` and this one's excludes
+`client/**` entirely, so the two cannot land on the same file even when they overlap in time.
 
 The wiring audit keeps its original unwieldy `taskId` on purpose — renaming it would discard its
 run history and stored tool approvals. Judge it by its description, not its slug.
@@ -280,7 +295,7 @@ The day is a pipeline, not a stack of independent jobs.
         ▼
 09:10 Wiring Audit ──► capture-path defects (question B)
         ▼
-10:40 Complex File Engine ──► can a MESSY borrower qualify at all? multi-path income,
+09:53 Complex File Engine ──► can a MESSY borrower qualify at all? multi-path income,
         │                            situation identification, tax/document intelligence
         │                            (question A, upstream of delivery)
         ▼
@@ -588,7 +603,7 @@ company-wide lane, competing with the whole roadmap for three PR slots, so no ru
 whether the complex-file capability got better.
 
 - **The [Complex File Engine](../../.claude/skills/complex-file-engine/SKILL.md) owns it**
-  (registered 2026-08-18, daily 10:43, **local fleet**): the multi-path income orchestrator,
+  (registered 2026-08-18, daily 09:53, **local fleet**): the multi-path income orchestrator,
   situation identification, tax/document intelligence, and the honesty of every path it cannot
   compute. Its run is judged on one number, recomputed each run and never quoted from a doc: **how
   many real borrower situations the platform can qualify, correctly and citably.** Cross-run memory

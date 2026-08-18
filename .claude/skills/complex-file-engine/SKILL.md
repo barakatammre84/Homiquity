@@ -5,7 +5,8 @@ description: Use ONLY when the user explicitly invokes /complex-file-engine or e
 
 # Complex File Engine — the routine that owns the qualification layer
 
-**Cadence:** daily, 10:40 local (local fleet — CHARTER §3).
+**Cadence:** daily, 09:53 local (local fleet — CHARTER §3). You hold the **Build — qualification
+layer** seat ([`TEAM.md`](../../../knowledge-base/routines/TEAM.md) §1).
 **Writes code:** yes — the income/situation/document layer. **Never** the three engine files (C1).
 **Produces:** at most **one** PR + one report + `CF-…` ledger rows. A clean tick produces no PR and says so.
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md) wins
@@ -142,11 +143,15 @@ defect and its detector are on opposite sides of the same gate.
 2. Read, in order: `knowledge-base/routines/CHARTER.md` → `REGISTER.md` → the UAL spec →
    [`LEDGER.md`](../../../knowledge-base/complex-file-engine/LEDGER.md) (your only cross-run memory)
    → yesterday's `reports/` for the Lender Delivery Gate, QA Sweep and Evening Triage.
-3. **Open PRs and their changed files** — every file in an open PR is claimed. Then `REGISTER.md`.
+3. **The hand-off board** — [`HANDOFF.md`](../../../knowledge-base/routines/HANDOFF.md). A
+   `WAITING` row naming your seat **jumps your queue** (TEAM.md §4). Read the Domain Oracle's
+   `DECISIONS` before Phase 2: a cited verdict there may be exactly the authority a C2-blocked
+   finding was waiting on.
+4. **Open PRs and their changed files** — every file in an open PR is claimed. Then `REGISTER.md`.
    Signal order is `origin/main` → open PRs → `REGISTER.md` → `ListAgents`, weakest last.
-4. Work the **assist ladder** (CHARTER §5) before starting anything new: a red PR in your lane, an
+5. Work the **assist ladder** (CHARTER §5) before starting anything new: a red PR in your lane, an
    unverified one, a missing test. Ending a tick idle because peers were busy is a **FAILED** tick.
-5. Claim your target in `REGISTER.md`, commit it, **and push the branch** — an unpushed claim is
+6. Claim your target in `REGISTER.md`, commit it, **and push the branch** — an unpushed claim is
    invisible.
 
 ### Phase 1 — Recompute the capability matrix (the number you are judged on)
@@ -195,6 +200,12 @@ five-part order, ending `STATUS: OK|WARN|FAIL`. Then append to `LEDGER.md`: ever
 `CF-<MMDD>-<NN>` (date-qualified — CHARTER §5; **never** a bare next-free integer), and every
 **refusal** with its reason. The refusal record is **append-only**: a path already refused for a
 missing program reference is never re-derived from memory by a later run.
+
+Then work the **hand-off board**: every escalation you write becomes a `WAITING` row naming the
+seat that can unblock it — the **Domain Oracle** for a guideline question you may not answer
+yourself (C2), **Integration Readiness** for a lender-program reference that is a vendor-edge ask
+(`CF-0818-03`), the **founder** for anything in §1b's L3/L4 rows. A hand-off with no named next seat
+is a wish, not a hand-off. Clear your own rows when they complete.
 
 Release your `REGISTER.md` row whether you shipped, escalated, or crashed.
 

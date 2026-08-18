@@ -63,6 +63,9 @@ doc-drift bug to fix):
 - [CONTINGENT_LIABILITY_REGISTER.md](governance/CONTINGENT_LIABILITY_REGISTER.md) — what we could owe and
   whether the reserve covers it. For an asset-light broker the contingent exposures *are* the balance
   sheet; live figures at `GET /api/reports/contingent-liabilities`.
+- [HIRING_PLAN.md](governance/HIRING_PLAN.md) — the roles that get us originating, in hire
+  order: scorecards, interview loops, four take-homes built from real subsystems, and the
+  human operating routine each role runs against the queue an automated routine already fills.
 - [UNCONSUMED_CAPABILITIES.md](governance/UNCONSUMED_CAPABILITIES.md) — capability built ahead of a
   consumer, each with a **decide-by date**: wire a consumer or freeze it. Exists because the Fannie
   delivery stack accreted to 1,482 lines with zero callers before anyone asked "who calls this?".
@@ -102,6 +105,11 @@ The re-runnable QA teams (agents in `.claude/agents/`) that review every feature
 The contract binding the scheduled routines into one pipeline: the shared clock, the shared facts, the claim lock, the decision authority matrix, and the corrected escalation runbook. Job descriptions live in `~/.claude/scheduled-tasks/` for the local fleet — unreadable from a cloud session — and in [`.claude/skills/`](../.claude/skills/) for the CCR-fired routines (CHARTER §3a). **In-repo is the home for anything new**: a definition only one machine can see is one nobody can audit. **This directory wins wherever they disagree.**
 - [CHARTER.md](routines/CHARTER.md) — the contract: two acceptance questions, the launch sequence (§1a), the decision authority matrix (§1b), the clock, the hand-off chain, write territory, the `RELEASABLE` verdict, escalation, honesty rails.
 - [REGISTER.md](routines/REGISTER.md) — the claim lock: who is writing which file right now (humans claim here too).
+- [TEAM.md](routines/TEAM.md) — the seating chart: which hiring-plan role each routine occupies, why only
+  three seats were added rather than one per role, the working day in clock order, and the rule that makes
+  it a team — **no seat signs off its own work**.
+- [HANDOFF.md](routines/HANDOFF.md) — the team's shared queue: `DECISIONS` / `ASKS` / `VERDICTS` / `WAITING`.
+  Not the claim lock — every row names the seat that acts next.
 - [LESSONS.md](routines/LESSONS.md) — the shared lessons register: what one session learned that the next would otherwise re-learn, every row citing evidence. Feeds CHARTER §10; may never loosen a compliance rail.
 - [reports/](routines/reports/) — dated run reports; the proof-of-life record.
 - [primary-engineer/LEDGER.md](primary-engineer/LEDGER.md) — the Primary Engineer's own work queue (Phase 1 source d); rows cite their source or are invalid.
