@@ -36,6 +36,7 @@ import {
 
 import { FunnelProvider, useFunnel } from "@/funnel/FunnelContext";
 import { PRE_APPROVAL_DEFAULTS, routingSignature } from "@/funnel/preApprovalMachine";
+import { loanPurposeForEntryType } from "./preApproval/entryType";
 import { useFunnelAutosave } from "@/funnel/useFunnelAutosave";
 import { VerificationPulse } from "@/funnel/VerificationPulse";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -102,7 +103,10 @@ function PreApprovalFunnel() {
   const urlPropertyType = urlParams.get("propertyType");
   const urlPropertyId = urlParams.get("propertyId");
   const urlSource = urlParams.get("source");
-  const defaultLoanPurpose = urlType === "refinance" ? "refinance" : urlType === "heloc" ? "cash_out" : "purchase";
+  // The `?type=` → purpose translation lives in one named place; the inline
+  // ternary this replaced matched `heloc` but not `cashout`, which is what
+  // /rates/cash-out actually sends. See preApproval/entryType.ts.
+  const defaultLoanPurpose = loanPurposeForEntryType(urlType);
 
   // Read once per mount, through the shared module so the legacy per-tab key is
   // still honoured for an invite stashed by an older client. Captured in a ref

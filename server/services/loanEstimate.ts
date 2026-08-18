@@ -2,7 +2,7 @@ import { storage } from "../storage";
 import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
-import { computeClosingCosts, calculatePMI, estimateMonthlyEscrow } from "./loanCosts";
+import { computeClosingCosts, estimateMonthlyEscrow } from "./loanCosts";
 import { resolveFeeScheduleForApplication } from "./platformFeeSchedule";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import { toActualFeeMap, type ActualFeeMap } from "@shared/compliance/feeProvenance";
@@ -131,7 +131,11 @@ export interface LoanEstimateData {
   tridCompliance: {
     disclosureProvided: boolean;
     dateProvided: Date | null;
-    withinThreeBusinessDays: boolean;
+    /**
+     * Three-valued on purpose — see `evaluateTridDeliveryWindow`. `null` means
+     * the window never opened, and is NOT a pass.
+     */
+    withinThreeBusinessDays: boolean | null;
     /** When the 6th piece of §1026.2(a)(3) information arrived; null until then. */
     applicationDate: Date | null;
     /** 3 business days after applicationDate (§1026.19(e)(1)(iii)); null until triggered. */
@@ -355,7 +359,14 @@ async function derivePricing(
 
   const termMonths = 360;
   const monthlyPandI = calculateMonthlyPayment(loanAmount, interestRate, termMonths);
-  const monthlyPMI = isVaLoan ? 0 : calculatePMI(loanAmount, purchasePrice, creditScore);
+  // MI is the CONVENTIONAL_PMI matrix figure calculateLLPA just resolved —
+  // the versioned rate card that governs every policy number. This used to
+  // call loanCosts.calculatePMI, a compile-time band table that exceeded the
+  // matrix in all 32 live cells (1.42×–2.17×, F-077) — inflating the
+  // disclosed MI, the LE's APR stream, and the DTI the instant decision was
+  // made on, while the borrower was shown the matrix number beside it. The
+  // VA stub above carries pmiMonthlyPayment: 0 (no private MI on VA).
+  const monthlyPMI = llpaResult.pricing.pmiMonthlyPayment;
 
   return {
     application,
@@ -399,6 +410,35 @@ export interface PaymentProjection {
   monthlyEscrow: number;
   /** P&I + MI + escrow — the engine's proposed PITI. */
   estimatedMonthlyTotal: number;
+}
+
+/**
+ * The §1026.19(e)(1)(iii) delivery-window verdict, three-valued on purpose.
+ *
+ * - `true`  — the LE was (or still can be) delivered on or before the deadline.
+ * - `false` — the deadline passed.
+ * - `null`  — **not determinable**: the TRID clock never started, so there is
+ *   no `leDueDate` and therefore no deadline to have met or missed.
+ *
+ * `null` used to be `true` (finding ux-30). That single default meant a file
+ * whose window had never opened rendered an affirmative green "TRID Compliant"
+ * badge, and wrote `withinThreeBusinessDays: true` into the `trid.
+ * loan_estimate_delivered` audit record — an unearned compliance assertion in
+ * both the UI and the permanent audit trail. The QA sweep measured it at
+ * **173 of 176 files**, with exactly one file rendering the red state honestly.
+ *
+ * An unknown is not a pass. This is the same rule `server/mismo.ts:405-408`
+ * applies when it omits an unanswered declaration rather than sending
+ * "Unknown": a NULL is an honest gap, a fabricated affirmative is a falsified
+ * record. Callers must branch on all three states — `if (!x)` collapses
+ * `false` and `null`, which are materially different findings.
+ */
+export function evaluateTridDeliveryWindow(
+  complianceCheckDate: Date,
+  endOfDueDay: Date | null,
+): boolean | null {
+  if (!endOfDueDay) return null;
+  return complianceCheckDate.getTime() <= endOfDueDay.getTime();
 }
 
 export async function computePaymentProjection(
@@ -645,7 +685,7 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     tridCompliance: {
       disclosureProvided: !!leIssuedDate,
       dateProvided: leIssuedDate,
-      withinThreeBusinessDays: endOfDueDay ? complianceCheckDate.getTime() <= endOfDueDay.getTime() : true,
+      withinThreeBusinessDays: evaluateTridDeliveryWindow(complianceCheckDate, endOfDueDay),
       applicationDate: tridTriggeredAt,
       leDueDate,
     },

@@ -69,6 +69,9 @@ export default defineConfig({
       "tests/borrowerWhatIf.test.ts",
       // WF2-F4: the URLA section-4a loanDetails write path.
       "tests/urlaLoanDetailsSave.test.ts",
+      // The three wire states of an intake field (absent / present / null =
+      // clear), and the proof the AI coach can never reach the clear.
+      "tests/intakeClearSemantics.test.ts",
       "tests/pipelineEngineStageTransitions.test.ts",
       "tests/activeBuyerPromotion.test.ts",
       "tests/docRequestDraft.test.ts",
@@ -183,6 +186,7 @@ export default defineConfig({
       "tests/buyingPowerEstimate.test.ts",
       "tests/loanScenarioMatrix.test.ts",
       "tests/pricingAdapterMI.test.ts",
+      "tests/loanEstimateMI.test.ts",
       "tests/documentTypeAliases.test.ts",
       "tests/localObjectStorage.test.ts",
       "tests/postAuthRoute.test.ts",

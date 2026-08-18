@@ -84,8 +84,32 @@ interface StepContext {
   app: LoanApplication;
 }
 
+/**
+ * The seven step ids, as a union rather than `string`.
+ *
+ * These ids are matched against the `<TabsContent value="…">` literals ~580
+ * lines below, in the same file. While `id` was `string` that was a
+ * compiler-unchecked contract: renaming a step here silently rendered an empty
+ * tab panel, with nothing red in `tsc`, the test suite, or any guard.
+ *
+ * Narrowing it closes that in both directions — each panel literal is pinned
+ * with `satisfies UrlaStepId`, so a typo or a half-finished rename is a build
+ * error. knowledge-base/handbook/URLA_FORM_REFACTOR_TRAP.md names exactly this
+ * narrowing as the prerequisite for ever moving the STEPS table out of this
+ * file. It is the prerequisite only — the move itself is still refuted there,
+ * and this change does not license it.
+ */
+type UrlaStepId =
+  | "borrower"
+  | "employment"
+  | "assets"
+  | "liabilities"
+  | "property"
+  | "declarations"
+  | "demographics";
+
 interface UrlaStep {
-  id: string;
+  id: UrlaStepId;
   label: string;
   estimate: string;
   intro: string;
@@ -303,13 +327,34 @@ export default function URLAForm() {
   // these builders a parameter is what lets the wrong borrower slice be passed.
   const describeUnsavedRows = (): string[] => {
     const notes: string[] = [];
-    const sections: [UrlaRowSection, Record<string, unknown>[], string][] = [
-      ["employment", borrowerData[1]?.employmentRecords ?? [], "job"],
-      ["asset", borrowerData[1]?.assets ?? [], "asset"],
-      ["liability", borrowerData[1]?.liabilities ?? [], "liability"],
-      ["otherIncome", otherIncomes as Record<string, unknown>[], "other-income"],
+    // Whose rows are being described. The #451 fix covered slot 1 only, while
+    // `buildPayload` filters BOTH slices through the same `isUrlaRowSaveable`
+    // — so a co-borrower's half-filled asset was dropped from the payload,
+    // reported "Everything is safely stored", and then erased from the screen
+    // by the post-save refetch. Same defect, the other borrower.
+    //
+    // The owner prefix is empty when there is no co-borrower, so the
+    // single-borrower wording is unchanged; once a second borrower exists,
+    // "an asset row" is ambiguous and both sides get named.
+    const mine = hasCoBorrower ? "your " : "";
+    const sections: { section: UrlaRowSection; rows: Record<string, unknown>[]; noun: string; whose: string }[] = [
+      { section: "employment", rows: borrowerData[1]?.employmentRecords ?? [], noun: "job", whose: mine },
+      { section: "asset", rows: borrowerData[1]?.assets ?? [], noun: "asset", whose: mine },
+      { section: "liability", rows: borrowerData[1]?.liabilities ?? [], noun: "liability", whose: mine },
+      // Other income is shared, primary-only state — `buildPayload` sends it
+      // once, outside either slice, so it carries no owner.
+      { section: "otherIncome", rows: otherIncomes as Record<string, unknown>[], noun: "other-income", whose: "" },
     ];
-    for (const [section, rows, noun] of sections) {
+    // Gated on the same flag `buildPayload` gates `coApplicants` on, so the
+    // two can never disagree about which rows were actually filtered.
+    if (hasCoBorrower) {
+      sections.push(
+        { section: "employment", rows: borrowerData[2]?.employmentRecords ?? [], noun: "job", whose: "co-borrower " },
+        { section: "asset", rows: borrowerData[2]?.assets ?? [], noun: "asset", whose: "co-borrower " },
+        { section: "liability", rows: borrowerData[2]?.liabilities ?? [], noun: "liability", whose: "co-borrower " },
+      );
+    }
+    for (const { section, rows, noun, whose } of sections) {
       const blocked = rows
         .map(r => urlaRowSaveState(section, r))
         .filter((s): s is { state: "incomplete"; missing: string[] } => s.state === "incomplete");
@@ -317,8 +362,8 @@ export default function URLAForm() {
       const missing = Array.from(new Set(blocked.flatMap(b => b.missing)));
       notes.push(
         blocked.length === 1
-          ? `one ${noun} row still needs ${missing.join(" and ")}`
-          : `${blocked.length} ${noun} rows still need ${missing.join(" and ")}`,
+          ? `one ${whose}${noun} row still needs ${missing.join(" and ")}`
+          : `${blocked.length} ${whose}${noun} rows still need ${missing.join(" and ")}`,
       );
     }
     return notes;
@@ -667,11 +712,11 @@ export default function URLAForm() {
                 <p className="text-sm text-muted-foreground">{currentStep.intro}</p>
               </div>
 
-              <TabsContent value="borrower" className="mt-0 space-y-6">
+              <TabsContent value={"borrower" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <PersonalInfoSection personalInfo={slice.personalInfo} onChange={setPersonalInfo} />
               </TabsContent>
 
-              <TabsContent value="employment" className="mt-0 space-y-6">
+              <TabsContent value={"employment" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <EmploymentSection
                   employmentRecords={slice.employmentRecords}
                   onChange={setEmploymentRecords}
@@ -682,15 +727,15 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <TabsContent value="assets" className="mt-0 space-y-6">
+              <TabsContent value={"assets" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <AssetsSection assets={slice.assets} onChange={setAssets} />
               </TabsContent>
 
-              <TabsContent value="liabilities" className="mt-0 space-y-6">
+              <TabsContent value={"liabilities" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <LiabilitiesSection liabilities={slice.liabilities} onChange={setLiabilities} />
               </TabsContent>
 
-              <TabsContent value="property" className="mt-0 space-y-6">
+              <TabsContent value={"property" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <PropertySection
                   propertyInfo={propertyInfo}
                   onChange={setPropertyInfo}
@@ -700,7 +745,7 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <TabsContent value="declarations" className="mt-0 space-y-6">
+              <TabsContent value={"declarations" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <DeclarationsSection
                   declarations={slice.declarations}
                   onChange={setDeclarations}
@@ -708,7 +753,7 @@ export default function URLAForm() {
                 />
               </TabsContent>
 
-              <TabsContent value="demographics" className="mt-0 space-y-6">
+              <TabsContent value={"demographics" satisfies UrlaStepId} className="mt-0 space-y-6">
                 <DemographicsSection
                   demographics={slice.demographics}
                   onChange={setDemographics}

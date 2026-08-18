@@ -531,10 +531,14 @@ export async function finalizeIntake(applicationId: string): Promise<void> {
           status: "unread",
         });
         if (borrower?.email) {
+          // The single submission email for this path — receipt + what an
+          // underwriter review means + what the borrower can do now. The
+          // generic status_update template stays for staff-driven status
+          // changes; this moment needs the action-oriented one.
           sendNotificationEmail({
-            type: "status_update",
+            type: "application_under_review",
             recipientEmail: borrower.email,
-            data: { borrowerName, statusLabel: "Under Review", applicationId },
+            data: { borrowerName, applicationId },
           });
         }
       }
@@ -542,25 +546,33 @@ export async function finalizeIntake(applicationId: string): Promise<void> {
       console.error("[Analysis] Failed to send notifications:", notifErr);
     }
 
-    if (analysisResult.isApproved) {
-      try {
-        const updatedApp = await storage.getLoanApplication(applicationId);
-        if (updatedApp) {
-          const { initializeLoanPipeline } = await import("../pipelineEngine");
-          await initializeLoanPipeline(updatedApp, userId);
-          await storage.createDealActivity({
-            applicationId,
-            activityType: "status_change",
-            title: "Document Collection Started",
-            description: "Required documents have been identified. Please upload them to continue your application.",
-            // performedBy omitted: this is a system action, and "system" is not
-            // a real user id (the performed_by FK rejects it). Leaving it null
-            // fixes a latent FK violation carried over from the original handler.
-          });
-        }
-      } catch (pipelineErr) {
-        console.error("[Analysis] Pipeline initialization failed (non-fatal):", pipelineErr);
+    // Document collection starts for BOTH outcomes. This used to run only for
+    // auto-approved files, which left an under_review borrower with zero
+    // conditions and zero tasks — every action surface (dashboard nextAction,
+    // borrower tasks, the document checklist, /loan-options next steps)
+    // rendered "nothing needed from you" at the exact moment verification
+    // documents were the one thing that could move the file. The requirements
+    // engine is deterministic off the borrower's own answers, and both
+    // generators are idempotent, so a later human approval re-drives safely.
+    try {
+      const updatedApp = await storage.getLoanApplication(applicationId);
+      if (updatedApp) {
+        const { initializeLoanPipeline } = await import("../pipelineEngine");
+        await initializeLoanPipeline(updatedApp, userId);
+        await storage.createDealActivity({
+          applicationId,
+          activityType: "status_change",
+          title: "Document Collection Started",
+          description: analysisResult.isApproved
+            ? "Required documents have been identified. Please upload them to continue your application."
+            : "Required documents have been identified. Uploading them now gives your underwriter what they need to verify your file.",
+          // performedBy omitted: this is a system action, and "system" is not
+          // a real user id (the performed_by FK rejects it). Leaving it null
+          // fixes a latent FK violation carried over from the original handler.
+        });
       }
+    } catch (pipelineErr) {
+      console.error("[Analysis] Pipeline initialization failed (non-fatal):", pipelineErr);
     }
 
     try {

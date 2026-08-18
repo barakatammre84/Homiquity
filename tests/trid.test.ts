@@ -35,6 +35,7 @@ vi.mock("../server/storage", () => ({
 }));
 
 import { assessSixPieces, getTridStatus, tridHardStopError, evaluateTridTrigger } from "../server/services/trid";
+import { evaluateTridDeliveryWindow } from "../server/services/loanEstimate";
 
 /**
  * TRID trigger + timing rules (Reg Z §1026.2(a)(3), §1026.19(e)(1)(iii)).
@@ -283,5 +284,55 @@ describe("evaluateTridTrigger — the I/O-bearing function that actually sets tr
     expect(afterSsn.triggered).toBe(true);
     expect(afterSsn.justTriggered).toBe(true);
     expect(h.application!.tridTriggeredAt).not.toBeNull();
+  });
+});
+
+/**
+ * ux-30 — the delivery-window verdict must be three-valued.
+ *
+ * Before this, `withinThreeBusinessDays` defaulted to `true` whenever no
+ * `leDueDate` existed, so a file whose TRID clock had never started rendered a
+ * green "TRID Compliant" badge and wrote `withinThreeBusinessDays: true` into
+ * the `trid.loan_estimate_delivered` audit record. The QA sweep measured that
+ * at 173 of 176 files. The first case below is the regression pin: it asserts
+ * `null`, and it fails against the old `: true` default.
+ */
+describe("evaluateTridDeliveryWindow — an unknown is not a pass (ux-30)", () => {
+  const issued = new Date("2026-08-18T12:00:00Z");
+
+  it("returns null when the clock never started, and never a passing verdict", () => {
+    const verdict = evaluateTridDeliveryWindow(issued, null);
+
+    expect(verdict).toBeNull();
+    // The regression itself: the old default returned `true` here, which the
+    // UI and the audit log both read as an affirmative compliance statement.
+    expect(verdict).not.toBe(true);
+  });
+
+  it("returns true when the disclosure landed before the deadline", () => {
+    expect(
+      evaluateTridDeliveryWindow(issued, new Date("2026-08-20T23:59:59.999Z")),
+    ).toBe(true);
+  });
+
+  it("returns true at the last instant of the due day (inclusive boundary)", () => {
+    const endOfDueDay = new Date("2026-08-18T23:59:59.999Z");
+    expect(evaluateTridDeliveryWindow(endOfDueDay, endOfDueDay)).toBe(true);
+  });
+
+  it("returns false when the deadline passed", () => {
+    expect(
+      evaluateTridDeliveryWindow(issued, new Date("2026-08-17T23:59:59.999Z")),
+    ).toBe(false);
+  });
+
+  it("keeps 'not determinable' distinguishable from 'breached'", () => {
+    const notStarted = evaluateTridDeliveryWindow(issued, null);
+    const breached = evaluateTridDeliveryWindow(issued, new Date("2026-08-17T23:59:59.999Z"));
+
+    // Both are falsy. A caller writing `if (!verdict)` would report a file
+    // whose window never opened as a missed deadline, so the two states have
+    // to stay separable by identity, not by truthiness.
+    expect(notStarted).not.toBe(breached);
   });
 });
