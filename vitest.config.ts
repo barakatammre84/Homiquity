@@ -246,6 +246,7 @@ export default defineConfig({
       // validation, now batched. Pins that the batched loader and the
       // single-application one produce IDENTICAL verdicts.
       "tests/mismoValidationBatch.test.ts",
+      "tests/inviteValidateAudit.test.ts",
       "tests/mutationErrorHandling.test.ts",
     ],
     // Some modules under test transitively import server/db.ts, which refuses to
