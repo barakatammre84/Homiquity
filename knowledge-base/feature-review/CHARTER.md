@@ -38,7 +38,7 @@ after any significant change — the teams are durable agents in `.claude/agents
    mark UNVERIFIABLE and escalate. Never invent MISMO names, edit codes, or SFCs.
 6. **Cross-reference, don't duplicate.** `knowledge-base/logs/ux-audit/page-audit.md` and `CTO_ROADMAP.md`
    already track known issues; findings that overlap must cite them. Known deliberate cuts
-   (launch-sprint list, `ASSUMPTIONS.md`) are not defects.
+   (the roadmap, `ASSUMPTIONS.md`) are not defects.
 
 ## Reality Map — read BEFORE reviewing (stops false-positive findings)
 
@@ -111,13 +111,13 @@ REFUTED findings are recorded in the register with status: refuted (so they aren
 - **UX wave:** `ux-refinement` findings, one route per PR (the existing redesign convention),
   verified against the design-token guard + before/after screenshots.
 - After each wave: re-run the affected domain review + affected workflow verification.
-- Every fix PR: `npm run check`, `npm test`, `npm run test:integration` green; cites finding ids.
+- Every fix PR: `pnpm check`, `pnpm test`, `pnpm test:integration` green; cites finding ids.
 
 ## Operational conventions
 
 - Live probing runs against the worktree dev server on **port 5002** (`.env` + symlinked
   `node_modules`; see the worktree-testing notes). Shared dev DB: no destructive SQL, never
-  `npm run db:push` from a worktree.
+  `pnpm db:push` from a worktree.
 - Test entities use clearly-fake identities (`wfqa+*@test.local`, test-pattern SSNs matching
   the existing test-suite convention).
 - Nothing pushes to `main`; all changes land via PRs.

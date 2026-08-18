@@ -2,7 +2,7 @@
 
 **Audience:** every engineer working on this codebase.
 **Purpose:** one document that tells you where code lives, how the four high-stakes lending workflows are wired, the database rules we follow, where the compliance guardrails are (and where they are still missing), and how to be productive on day one.
-**Deeper dives:** the [`kb/app-guide/`](./app-guide/) handbook covers each subsystem in more detail. This playbook is the map; the handbook is the terrain.
+**Deeper dives:** the [`app-guide/`](./app-guide/) handbook covers each subsystem in more detail. This playbook is the map; the handbook is the terrain.
 
 > **Golden rules**
 > 1. `main` is production **and protected** — work lands as short-lived PR branches through the required `gate` check (squash-merge your own green PR; direct pushes are rejected, founder included — [CICD.md](../runbooks/CICD.md)). Every merge is built and deployed by **Railway** from GitHub. Rollback = Railway **Deployments → ⋯ → Rollback** first, then revert **via PR** ([ROLLBACK.md](../runbooks/ROLLBACK.md)).
@@ -228,7 +228,7 @@ There is no external lock-sync webhook today because there is no external PPE; w
 
 **Query performance — the two-wave rule:** we do not use `relations()`/`db.query`; the house style is explicit `db.select()` through the storage layer (`server/storage/`) with **batched fan-out**. The reference implementation is the `/api/dashboard` handler in `server/routes/lending/dashboard.ts`: it was rewritten from ~30 serial queries (13×N per-application loops) to two parallel waves using `inArray(column, ids)`, cutting hydration from serial-RTT-bound to 2 round trips. If your handler queries inside a `for` loop over rows, stop and batch it — on Neon every round trip is a network hop.
 
-**Migration workflow** — canonical steps live in [kb/app-guide/03-database.md](./app-guide/03-database.md) "How to make a schema change"; the rules:
+**Migration workflow** — canonical steps live in [app-guide/03-database.md](./app-guide/03-database.md) "How to make a schema change"; the rules:
 1. Edit the table in `shared/schema/<domain>.ts` (and re-export from the barrel if it's new).
 2. **Hand-author** the SQL in a new `migrations/00NN_<name>.sql`. **Never `drizzle-kit generate`** — it has snapshot drift and produces wrong output in this repo. **Never `pnpm db:push`** — it has no down-migration and, against the shared dev DB, drops columns belonging to other branches. Review the SQL like code, especially any `DROP`/`ALTER … TYPE`.
 3. Apply locally with `pnpm db:migrate`, then run the app + tests.

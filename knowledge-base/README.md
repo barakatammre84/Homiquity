@@ -1,7 +1,7 @@
 # Knowledge Base (KB)
 
 The single home for all Homiquity documentation. Every `.md` here is indexed below — an
-unindexed doc is an unread doc (enforced by `scripts/kb-index-guard.cjs` via `npm run checkup`).
+unindexed doc is an unread doc (enforced by `scripts/kb-index-guard.cjs` via `pnpm checkup`).
 Three living docs live outside this tree, deliberately: **`CLAUDE.md`** (Claude Code auto-loads
 it from repo root), **`README.md`** (the repo landing page), and **`CTO_ROADMAP.md`** (the live
 work queue). A fourth, **`PRODUCT_SPINE.md`**, is a one-line pointer stub retained only so old
@@ -157,5 +157,5 @@ pre-rewrite roadmap: [archive/roadmap/](archive/roadmap/).
 Per **TEAM_PRACTICES.md**: every new doc lives in this tree, gets one line in this index (or sits
 under an indexed section directory), and — for `compliance/`/`governance/` docs — cites its L1/L2
 authority. Dated snapshots are archived, never rewritten. The doc + its index line land in the
-**same commit**. `scripts/kb-index-guard.cjs` (run by `npm run checkup`) fails the build on an
+**same commit**. `scripts/kb-index-guard.cjs` (run by `pnpm checkup`) fails the build on an
 un-indexed doc or a dead index link.
