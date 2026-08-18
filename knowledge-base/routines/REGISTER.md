@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| founder session (interactive) | `client/src/pages/lending/PreApproval.tsx`, `preApproval/IncomeSourcesStep.tsx`, `preApproval/AdvisoryPanel.tsx`, `preApproval/FunnelChrome.tsx` | primary checkout | `claude/routines-operating-cadence-olj41t` | 2026-08-18 18:05 | capture-flow mobile defects (DESIGN_SYSTEM.md §12.3) — visual only, no form state / Zod / payload changes per §14 |
 
 ## Recently released
 
