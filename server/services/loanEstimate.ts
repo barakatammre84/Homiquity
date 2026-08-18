@@ -3,6 +3,7 @@ import { calculateLLPA } from "../pricing";
 import { calculateMortgageAPR } from "./apr";
 import { addBusinessDays } from "./businessDays";
 import { computeClosingCosts, estimateMonthlyEscrow } from "./loanCosts";
+import { offerMonthlyMI, offerUpfrontMI } from "./mortgageInsurance";
 import { resolveFeeScheduleForApplication } from "./platformFeeSchedule";
 import { resolveCompensation } from "@shared/compliance/loCompensation";
 import { toActualFeeMap, type ActualFeeMap } from "@shared/compliance/feeProvenance";
@@ -258,11 +259,15 @@ interface PricingDerivation {
   loanAmount: number;
   ltv: number;
   isVaLoan: boolean;
+  /** FHA-priced (preferredLoanType "fha" and not VA-routed): MIP applies. */
+  isFhaLoan: boolean;
   llpaResult: Awaited<ReturnType<typeof calculateLLPA>>;
   interestRate: number;
   termMonths: number;
   monthlyPandI: number;
   monthlyPMI: number;
+  /** FHA up-front MIP in dollars (cash-at-closing model); 0 for every other product. */
+  upfrontMIP: number;
 }
 
 /**
@@ -359,14 +364,31 @@ async function derivePricing(
 
   const termMonths = 360;
   const monthlyPandI = calculateMonthlyPayment(loanAmount, interestRate, termMonths);
-  // MI is the CONVENTIONAL_PMI matrix figure calculateLLPA just resolved —
-  // the versioned rate card that governs every policy number. This used to
-  // call loanCosts.calculatePMI, a compile-time band table that exceeded the
-  // matrix in all 32 live cells (1.42×–2.17×, F-077) — inflating the
-  // disclosed MI, the LE's APR stream, and the DTI the instant decision was
-  // made on, while the borrower was shown the matrix number beside it. The
-  // VA stub above carries pmiMonthlyPayment: 0 (no private MI on VA).
-  const monthlyPMI = llpaResult.pricing.pmiMonthlyPayment;
+  // Product-aware MI through the one product-aware module (services/
+  // mortgageInsurance.ts, F-087): conventional keeps the CONVENTIONAL_PMI
+  // matrix figure calculateLLPA just resolved — the versioned rate card that
+  // governs every policy number, which replaced the compile-time band table
+  // that exceeded the matrix in all 32 live cells (1.42×–2.17×, F-077) —
+  // VA carries no monthly MI (the stub above already prices 0), and FHA
+  // charges annual MIP at ALL LTVs (the matrix figure was standing in for
+  // MIP: $0 at ≤80 LTV where MIP is still owed, and the wrong rate above it
+  // — the same F-077 defect class, for FHA borrowers). isVaLoan wins over
+  // preferredLoanType — a veteran's file routes to VA underwriting — so the
+  // EFFECTIVE product is what gets priced.
+  const effectiveProduct = isVaLoan ? "va" : loanType;
+  const isFhaLoan = effectiveProduct === "fha";
+  const monthlyPMI = offerMonthlyMI({
+    productType: effectiveProduct,
+    loanAmount,
+    ltvPct: ltv,
+    conventionalMonthlyPMI: llpaResult.pricing.pmiMonthlyPayment,
+  });
+  // FHA up-front MIP (UFMIP), disclosed in the LE's prepaids and counted as a
+  // §1026.4 prepaid finance charge — the posture services/apr.ts has always
+  // taken on the advertised surface. 0 for every other product; the VA
+  // funding fee and USDA guarantee fee are named gaps (see
+  // services/mortgageInsurance.ts offerUpfrontMI).
+  const upfrontMIP = offerUpfrontMI({ productType: effectiveProduct, loanAmount });
 
   return {
     application,
@@ -375,11 +397,13 @@ async function derivePricing(
     loanAmount,
     ltv,
     isVaLoan,
+    isFhaLoan,
     llpaResult,
     interestRate,
     termMonths,
     monthlyPandI,
     monthlyPMI,
+    upfrontMIP,
   };
 }
 
@@ -466,11 +490,13 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     downPayment,
     loanAmount,
     ltv,
+    isFhaLoan,
     llpaResult,
     interestRate,
     termMonths,
     monthlyPandI,
     monthlyPMI,
+    upfrontMIP,
   } = await derivePricing(applicationId);
 
   // §1026.36(d)(2): the fee schedule cannot be built without knowing who pays
@@ -504,6 +530,7 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     loanAmount,
     interestRate,
     monthlyPMI,
+    upfrontMortgageInsurance: upfrontMIP,
     prepaidInterestDays: prepaidInterestDaysFor(closingDate),
     compensation,
     feeSchedule,
@@ -551,7 +578,11 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
     noteRatePct: interestRate,
     termMonths,
     monthlyMI: monthlyPMI,
-    propertyValue: purchasePrice,
+    // FHA MIP is life-of-loan — no 78% HPA auto-termination in the APR
+    // stream (propertyValue 0 disables the test; the same treatment the
+    // advertised model applies, services/apr.ts advertisedAPR). UFMIP rides
+    // costs.prepaidFinanceCharges. Conventional keeps the HPA termination.
+    propertyValue: isFhaLoan ? 0 : purchasePrice,
     prepaidFinanceCharges: costs.prepaidFinanceCharges,
   });
 
@@ -590,7 +621,10 @@ export async function generateLoanEstimate(applicationId: string): Promise<LoanE
         estimatedEscrow: Math.round(monthlyEscrow * 100) / 100,
         estimatedTotal: Math.round(monthlyTotal * 100) / 100,
       },
-      years6Through30: ltv > 78 ? undefined : {
+      // FHA MIP never steps off the payment (life-of-loan, matching the APR
+      // stream above), so an FHA file gets no MI-drops-to-zero column at any
+      // LTV. Conventional keeps the existing 78-LTV behavior.
+      years6Through30: ltv > 78 || isFhaLoan ? undefined : {
         principalAndInterest: Math.round(monthlyPandI * 100) / 100,
         mortgageInsurance: 0,
         estimatedEscrow: Math.round(monthlyEscrow * 100) / 100,

@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| directed session (F-077 FHA leg) | `server/services/{loanEstimate,loanCosts,scenarioSimulator,mortgageInsurance,apr}.ts`, `tests/loanEstimateMI.test.ts` | musing-engelbart-0a72db | claude/musing-engelbart-0a72db | 2026-08-18T15:18Z | FHA MI product-awareness in derivePricing (MIP at all LTVs + UFMIP in the LE fee model); was stacked on #554's branch (now merged as a402bef), cut over to main — PR #556, founder merges |
 
 ## Recently released
 
