@@ -29,6 +29,7 @@ export function LiabilitiesSection({ liabilities, onChange }: LiabilitiesSection
           <Button
             variant="outline"
             size="sm"
+            className="touch-target"
             onClick={() => onChange([...liabilities, {}])}
             data-testid="button-add-liability"
           >

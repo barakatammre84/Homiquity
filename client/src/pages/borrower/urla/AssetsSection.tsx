@@ -31,6 +31,7 @@ export function AssetsSection({ assets, onChange }: AssetsSectionProps) {
           <Button
             variant="outline"
             size="sm"
+            className="touch-target"
             onClick={() => onChange([...assets, {}])}
             data-testid="button-add-asset"
           >

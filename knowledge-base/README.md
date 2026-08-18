@@ -105,6 +105,13 @@ The contract binding the scheduled routines into one pipeline: the shared clock,
 - [primary-engineer/LEDGER.md](primary-engineer/LEDGER.md) — the Primary Engineer's own work queue (Phase 1 source d); rows cite their source or are invalid.
 - [compliance-watch/STATE_LADDER.md](compliance-watch/STATE_LADDER.md) — the state-launch licensing ladder (Illinois → California → national); every row cited or `UNVERIFIED`, drafts for signature in [compliance-watch/drafts/](compliance-watch/drafts/).
 
+### UI Conformance Sweep — autonomous design-standard propagation · [`ui-conformance/`](ui-conformance/)
+- [LEDGER.md](ui-conformance/LEDGER.md) — cross-run memory for
+  [`/ui-conformance-sweep`](../.claude/skills/ui-conformance-sweep/SKILL.md): converted surfaces,
+  refusals with reasons, per-metric floors, and the `guard:ui` count trend. The routine exists
+  because CHARTER §6a's own line — *a standard nobody is assigned to propagate is a preference* —
+  described the state the design system was actually in.
+
 ### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
 The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): one behavior-preserving, PR-only extraction per run, spreading the house decomposition patterns.
 - [LEDGER.md](refactor-radar/LEDGER.md) — ranked candidates + run log (the routine's cross-run memory).

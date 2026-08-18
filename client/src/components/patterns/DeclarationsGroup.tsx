@@ -139,8 +139,13 @@ export function DeclarationsGroup({
                       aria-pressed={selected}
                       onClick={() => setOne(q.id, option)}
                       data-testid={`${qid}-${q.id}-${option}`}
+                      // touch-target: a declarations wall is eleven questions
+                      // and twenty-two taps — the whole interaction of the
+                      // step. h-9 is 36px; §11's floor is 44px, which the
+                      // utility applies below 767px. (Carried from #566, which
+                      // fixed this on the markup this component replaced.)
                       className={
-                        "inline-flex h-9 min-w-16 items-center justify-center gap-1.5 rounded-full px-4 text-sm transition-colors " +
+                        "touch-target inline-flex h-9 min-w-16 items-center justify-center gap-1.5 rounded-full px-4 text-sm transition-colors " +
                         (selected
                           ? "bg-background font-semibold text-foreground shadow-sm"
                           : "text-muted-foreground")
