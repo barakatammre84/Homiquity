@@ -81,7 +81,11 @@ export function computePreApprovalAnalysis(
 ): PreApprovalAnalysis {
   const income =
     parseMaskedAmount(formValues.annualIncome) + sumIncomeSourcesAnnual(formValues.incomeSources);
-  const debts = parseMaskedAmount(formValues.monthlyDebts);
+  // Rental debt service typed on the income-sources step is a recurring
+  // obligation the borrower just told us about — it belongs in DTI the moment
+  // it is entered, same as monthlyDebts.
+  const debts =
+    parseMaskedAmount(formValues.monthlyDebts) + sumRentalMonthlyDebts(formValues.incomeSources);
   const includesMonthlyDebts = String(formValues.monthlyDebts || "").trim() !== "";
   const price = parseMaskedAmount(formValues.purchasePrice);
   const down = parseMaskedAmount(formValues.downPayment);

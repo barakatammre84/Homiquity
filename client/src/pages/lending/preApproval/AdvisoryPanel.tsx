@@ -15,11 +15,12 @@ export interface AdvisoryPanelProps {
   currentStepId: string;
 }
 
-// Steps shown before any numbers are entered — the advisory panel has nothing
-// useful to show yet, so it (and the right-hand column the main content reserves
-// for it) is suppressed. Shared so the panel's visibility and the layout's
-// reserved space can never drift apart.
-export const ADVISORY_HIDDEN_STEPS: string[] = ["intro", "loanPurpose", "propertyType"];
+// The intro renders its own full-screen layout with no analysis column. Every
+// question step shows the panel — it now occupies a constant grid column, so
+// showing it from the first question keeps the content from jumping when
+// numbers start arriving (it used to appear at step 3, shifting the whole
+// question column left mid-flow).
+export const ADVISORY_HIDDEN_STEPS: string[] = ["intro"];
 
 export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps) {
   // Payment estimates use the live advertised 30-year fixed rate — a payment
@@ -47,6 +48,10 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
 
   const getContextualAdvice = () => {
     switch (currentStepId) {
+      case "loanPurpose":
+        return "Your goal determines which loan programs and rates apply — everything after this adapts to it.";
+      case "propertyType":
+        return "Property type affects your rate and reserve requirements.";
       case "purchasePrice":
         return "We use this to estimate your monthly payment and closing costs.";
       case "downPayment":
@@ -122,7 +127,7 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="hidden lg:block fixed right-8 top-1/2 -translate-y-1/2 w-80 bg-card rounded-2xl shadow-xl border p-6 transition-all duration-500 z-30"
+      className="hidden lg:block w-80 bg-card rounded-2xl shadow-xl border p-6 transition-all duration-500"
       data-testid="advisory-panel"
     >
       <div className="flex items-center gap-2 mb-4 border-b pb-3">
@@ -133,16 +138,25 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
       </div>
 
       <div className="space-y-5">
+        {stats.qualifyingAnnualIncome > 0 && (
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">Qualifying income</span>
+            <span className="font-medium text-foreground" data-testid="text-qualifying-income">
+              ${stats.qualifyingAnnualIncome.toLocaleString(undefined, { maximumFractionDigits: 0 })}/yr
+            </span>
+          </div>
+        )}
+
         {(stats.dti > 0 || stats.estMortgage > 0) && (
           <div>
             <div className="flex justify-between text-xs mb-1.5">
               <span className="text-muted-foreground">Debt-to-Income Ratio</span>
-              <span className={`font-bold ${stats.dti > 43 ? "text-destructive" : stats.dti > 36 ? "text-warning-subtle-foreground" : "text-success-subtle-foreground"}`}>
+              <span className={`font-bold ${stats.dti > 43 ? "text-destructive" : stats.dti > 36 ? "text-warning-subtle-foreground" : "text-success-subtle-foreground"}`} data-testid="text-dti-value">
                 {stats.dti > 0 ? `${stats.dti.toFixed(0)}%` : "—"}
               </span>
             </div>
             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-              <motion.div 
+              <motion.div
                 className={`h-full transition-colors duration-500 ${dtiStatus.color}`}
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(Math.max(stats.dti, 0), 100)}%` }}
@@ -152,6 +166,11 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
             <p className="text-[11px] text-muted-foreground mt-1.5">
               {dtiStatus.text}
             </p>
+            {!stats.includesMonthlyDebts && stats.dti > 0 && (
+              <p className="text-[11px] text-muted-foreground mt-1" data-testid="text-dti-scope-note">
+                Doesn't include your monthly debts yet — we ask about those in a later step.
+              </p>
+            )}
           </div>
         )}
 

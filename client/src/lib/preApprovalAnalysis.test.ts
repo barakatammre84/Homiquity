@@ -103,6 +103,47 @@ describe("computePreApprovalAnalysis — characterization of the panel's math", 
     );
   });
 
+  // The bug this module exists to fix: rental "Monthly Debt Payment" entered
+  // on step 11 previously never reached the DTI, so the analysis sat frozen
+  // (and optimistic) while the borrower typed. Deleting the
+  // sumRentalMonthlyDebts term reintroduces exactly that: this test fails
+  // against the pre-fix math.
+  it("counts reported rental debt service in the DTI numerator", () => {
+    const noRentalDebt = computePreApprovalAnalysis(
+      withOverrides({
+        incomeSources: [
+          {
+            type: "rental",
+            annualAmount: "30,000",
+            rentalProperties: [{ address: "12 Elm St", monthlyRentalIncome: "2,500" }],
+          },
+        ],
+      }),
+      6.375,
+    );
+    const withRentalDebt = computePreApprovalAnalysis(
+      withOverrides({
+        incomeSources: [
+          {
+            type: "rental",
+            annualAmount: "30,000",
+            rentalProperties: [
+              { address: "12 Elm St", monthlyRentalIncome: "2,500", monthlyDebtPayment: "1,200" },
+            ],
+          },
+        ],
+      }),
+      6.375,
+    );
+
+    expect(withRentalDebt.monthlyDebts).toBe(1_200);
+    expect(withRentalDebt.dti).toBeGreaterThan(noRentalDebt.dti);
+    expect(withRentalDebt.dti).toBeCloseTo(
+      ((1_200 + withRentalDebt.estMortgage) / (130_000 / 12)) * 100,
+      5,
+    );
+  });
+
   it("reports zeroes instead of NaN when nothing is entered yet", () => {
     const empty = computePreApprovalAnalysis(
       withOverrides({ annualIncome: "", purchasePrice: "", downPayment: "" }),
