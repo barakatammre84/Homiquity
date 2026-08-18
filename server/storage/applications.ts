@@ -143,11 +143,14 @@ export class ApplicationsStorage extends UsersStorage {
   }
 
   async getLoanOptionsByApplication(applicationId: string): Promise<LoanOption[]> {
+    // Recommended option FIRST. A bare ascending orderBy on the boolean put
+    // false before true, which buried the one highlighted card at the bottom
+    // of the list — the borrower met the recommendation last.
     return await db
       .select()
       .from(loanOptions)
       .where(eq(loanOptions.applicationId, applicationId))
-      .orderBy(loanOptions.isRecommended);
+      .orderBy(desc(loanOptions.isRecommended), loanOptions.createdAt);
   }
 
   // Used to keep intake finalization idempotent: clear prior options before a
