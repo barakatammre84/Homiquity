@@ -303,13 +303,34 @@ export default function URLAForm() {
   // these builders a parameter is what lets the wrong borrower slice be passed.
   const describeUnsavedRows = (): string[] => {
     const notes: string[] = [];
-    const sections: [UrlaRowSection, Record<string, unknown>[], string][] = [
-      ["employment", borrowerData[1]?.employmentRecords ?? [], "job"],
-      ["asset", borrowerData[1]?.assets ?? [], "asset"],
-      ["liability", borrowerData[1]?.liabilities ?? [], "liability"],
-      ["otherIncome", otherIncomes as Record<string, unknown>[], "other-income"],
+    // Whose rows are being described. The #451 fix covered slot 1 only, while
+    // `buildPayload` filters BOTH slices through the same `isUrlaRowSaveable`
+    // — so a co-borrower's half-filled asset was dropped from the payload,
+    // reported "Everything is safely stored", and then erased from the screen
+    // by the post-save refetch. Same defect, the other borrower.
+    //
+    // The owner prefix is empty when there is no co-borrower, so the
+    // single-borrower wording is unchanged; once a second borrower exists,
+    // "an asset row" is ambiguous and both sides get named.
+    const mine = hasCoBorrower ? "your " : "";
+    const sections: { section: UrlaRowSection; rows: Record<string, unknown>[]; noun: string; whose: string }[] = [
+      { section: "employment", rows: borrowerData[1]?.employmentRecords ?? [], noun: "job", whose: mine },
+      { section: "asset", rows: borrowerData[1]?.assets ?? [], noun: "asset", whose: mine },
+      { section: "liability", rows: borrowerData[1]?.liabilities ?? [], noun: "liability", whose: mine },
+      // Other income is shared, primary-only state — `buildPayload` sends it
+      // once, outside either slice, so it carries no owner.
+      { section: "otherIncome", rows: otherIncomes as Record<string, unknown>[], noun: "other-income", whose: "" },
     ];
-    for (const [section, rows, noun] of sections) {
+    // Gated on the same flag `buildPayload` gates `coApplicants` on, so the
+    // two can never disagree about which rows were actually filtered.
+    if (hasCoBorrower) {
+      sections.push(
+        { section: "employment", rows: borrowerData[2]?.employmentRecords ?? [], noun: "job", whose: "co-borrower " },
+        { section: "asset", rows: borrowerData[2]?.assets ?? [], noun: "asset", whose: "co-borrower " },
+        { section: "liability", rows: borrowerData[2]?.liabilities ?? [], noun: "liability", whose: "co-borrower " },
+      );
+    }
+    for (const { section, rows, noun, whose } of sections) {
       const blocked = rows
         .map(r => urlaRowSaveState(section, r))
         .filter((s): s is { state: "incomplete"; missing: string[] } => s.state === "incomplete");
@@ -317,8 +338,8 @@ export default function URLAForm() {
       const missing = Array.from(new Set(blocked.flatMap(b => b.missing)));
       notes.push(
         blocked.length === 1
-          ? `one ${noun} row still needs ${missing.join(" and ")}`
-          : `${blocked.length} ${noun} rows still need ${missing.join(" and ")}`,
+          ? `one ${whose}${noun} row still needs ${missing.join(" and ")}`
+          : `${blocked.length} ${whose}${noun} rows still need ${missing.join(" and ")}`,
       );
     }
     return notes;
