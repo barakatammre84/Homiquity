@@ -44,16 +44,20 @@ run — see the caveat below.
 
 ## The four built-in checks
 
-1. **Horizontal overflow at the requested width** — `scrollWidth > documentElement.clientWidth`,
+1. **Horizontal overflow at the requested width** — `scrollWidth > min(innerWidth, screen.width)`,
    with the offending elements named (tag, `data-testid`, class, geometry). This is
    DESIGN_SYSTEM §12.3's real question rather than its proxy.
 
-   ⚠️ **It compared against `window.innerWidth` until 2026-08-18, and that check could never
+   ⚠️ **It compared against `window.innerWidth` alone until 2026-08-18, and that check could never
    fail.** Under mobile emulation the *visual* viewport widens to fit overflowing content, so
    `innerWidth` grew in lockstep with `scrollWidth`. On `/calculators/affordability` it printed
-   `✓ no horizontal overflow (scrollWidth 329 ≤ 329)` while the *layout* viewport was 320 and the
-   page really did overflow by 9px. `documentElement.clientWidth` is the layout viewport and stays
-   at the requested width. Any "no overflow" result recorded before that date is not evidence.
+   `✓ no horizontal overflow (scrollWidth 329 ≤ 329)` while the layout viewport was 320 and the page
+   really did overflow by 9px. **Any "no overflow" result recorded before that date is not
+   evidence.** Two sessions found this independently the same day and fixed it two ways —
+   `min(innerWidth, screen.width)` landed first and is what ships; `documentElement.clientWidth` is
+   the equivalent standard measure and was dropped rather than re-litigated. When `innerWidth`
+   exceeds the emulated width the output now says so explicitly, because that gap *is* the finding:
+   something on the page forces a min-width.
 2. **Images that failed to load** (`naturalWidth === 0`). Before calling one a new defect, compare
    `/api/health`'s `commit` against `origin/main`: a hashed-asset 404 with drift > 0 is a **stale
    deploy**, not a missing file. That mistake has been made here twice.
