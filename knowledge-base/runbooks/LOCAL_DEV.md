@@ -1,7 +1,8 @@
 # Running Homiquity locally (Antigravity / any terminal)
 
-The whole app runs on your machine. Only Postgres is a managed service — the free
-tier of Neon costs nothing, so this is a $0 local setup.
+The whole app runs on your machine, database included — that is the default and
+what day-to-day work should use (CLAUDE.md, *Local is the default verification
+target*). A hosted Postgres is a supported fallback, not the recommendation.
 
 ## 1. Prerequisites
 - Node.js 24 (`node -v`) — matches the pinned `engines.node` in `package.json` (what Railway builds with)
@@ -23,19 +24,12 @@ pnpm install
 
 ## 3. Database — pick one
 
-### Option A (recommended, zero code changes): free Neon database
-1. Sign up at https://neon.tech (free tier, no card).
-2. Create a project → copy the connection string.
-3. Put it in `.env` as `DATABASE_URL` (step 4).
-
-The app already uses Neon's driver, so this Just Works. The app still runs on
-your machine — only the database is hosted (and free).
-
-### Option B (fully offline): local Postgres — supported out of the box
+### Option A (recommended): local Postgres — fully offline, supported out of the box
 `server/db.ts` auto-detects a local database: a `localhost` / `127.0.0.1`
 connection string (or `USE_LOCAL_PG=true`) uses the standard `pg` driver; any
 other URL uses Neon. No code change needed.
-1. Install Postgres — Postgres.app on Mac, or Docker:
+1. Install Postgres — **Postgres.app** on Mac (what this project's machine runs;
+   Docker is not installed there), or Docker if you prefer:
    ```bash
    docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16
    ```
@@ -44,6 +38,20 @@ other URL uses Neon. No code change needed.
    DATABASE_URL=postgresql://postgres:pass@localhost:5432/homiquity
    ```
 3. `pnpm db:migrate` then `pnpm dev`. That's it — fully offline, $0.
+
+Prefer this one. A local database is the only setup where you can migrate, seed,
+and destroy freely without touching data another branch or session depends on.
+
+### Option B (fallback, zero code changes): free Neon database
+1. Sign up at https://neon.tech (free tier, no card).
+2. Create a project → copy the connection string.
+3. Put it in `.env` as `DATABASE_URL` (step 4).
+
+The app already uses Neon's driver, so this Just Works. The app still runs on
+your machine — only the database is hosted. ⚠️ **A hosted dev branch is shared**:
+`pnpm db:push` against it drops columns owned by other branches (which is why
+that script is blocked — see CLAUDE.md, *Database*), and a destructive local
+experiment is no longer local.
 
 ## 4. Create your `.env`
 ```bash
