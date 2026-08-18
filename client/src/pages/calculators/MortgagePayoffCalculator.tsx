@@ -174,7 +174,7 @@ export default function MortgagePayoffCalculator() {
     : 100;
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Mortgage Payoff Calculator — Pay Off Your Home Faster"
         description="Free mortgage payoff calculator. See how extra monthly payments, a one-time lump sum, or a biweekly schedule can shorten your loan and save thousands in interest."
@@ -398,6 +398,6 @@ export default function MortgagePayoffCalculator() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }

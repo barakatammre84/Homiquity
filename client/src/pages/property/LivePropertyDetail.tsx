@@ -75,7 +75,7 @@ export default function LivePropertyDetailPage() {
   const fullAddress = `${property.address}, ${property.city}, ${property.stateCode} ${property.zipcode}`;
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead title="Property Details" description="View detailed property information including photos, price history, mortgage estimates, schools, and neighborhood data." />
 
       <PageShell width="wide">
@@ -124,6 +124,6 @@ export default function LivePropertyDetailPage() {
       </PageShell>
 
       <SimilarHomes propertyId={propertyId} />
-    </div>
+    </>
   );
 }

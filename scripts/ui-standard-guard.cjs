@@ -46,9 +46,32 @@ const ICON_REGISTRY = path.join("client", "src", "lib", "icons.ts");
 /** PageShell itself owns the only legitimate min-h-screen (its `fullHeight` prop). */
 const PAGE_SHELL = path.join("client", "src", "components", "PageShell.tsx");
 
+/**
+ * Every metric measures CODE, so comments are stripped before scanning.
+ *
+ * Without this the guard punishes documentation: the comment on AgentDashboard
+ * explaining *why* it uses min-h-full rather than min-h-screen tripped
+ * `pageShellDrift`, because the prose contained both trigger words. A guard a
+ * writer has to tiptoe around teaches people to stop explaining themselves.
+ *
+ * Deliberately conservative — it skips a `//` preceded by `:` so protocol-relative
+ * URLs ("https://…") inside string literals survive intact. A comment that hides a
+ * real violation is the only failure mode, and that costs an undercount, never a
+ * false FAIL.
+ */
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+}
+
 const PALETTE =
   "gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
 const SHADE = "50|100|200|300|400|500|600|700|800|900|950";
+
+/** Properties that carry a design token and therefore can be bypassed by an arbitrary value. */
+const ARBITRARY_PROP =
+  "bg|text|border|ring|fill|stroke|from|to|via|divide|outline|decoration|placeholder|caret|accent|shadow";
 
 /**
  * unit: "occurrence" counts every match; "file" counts each offending file once.
@@ -61,8 +84,15 @@ const METRICS = [
     unit: "file",
     hint:
       "Delete the hand-rolled wrapper and let <PageShell> own page geometry — DESIGN_SYSTEM.md, PageShell adoption checklist.",
+    // The PageShell test is the IMPORT, not the bare word: "a file that also
+    // imports PageShell" is what the label claims, and a file merely naming it in
+    // prose is not drift.
     scan: (src, rel) =>
-      rel !== PAGE_SHELL && /\bmin-h-screen\b/.test(src) && /\bPageShell\b/.test(src) ? 1 : 0,
+      rel !== PAGE_SHELL &&
+      /\bmin-h-screen\b/.test(src) &&
+      /from\s*["'][^"']*\/PageShell["']/.test(src)
+        ? 1
+        : 0,
   },
   {
     key: "directLucideImports",
@@ -93,15 +123,35 @@ const METRICS = [
       "Use a semantic token. The design-token guard's regex is class-shaped and structurally cannot see a hex literal — this metric is that blind spot.",
     res: [/#[0-9a-fA-F]{6}\b/g],
   },
+  // Split from a single `arbitraryColorValues` metric on 2026-08-18. That name
+  // was wrong about its own contents: of the 116 it counted, 3 were colours and
+  // 107 were font sizes like text-[11px]. A reader told "116 arbitrary colour
+  // values" would go hunting for colours and find almost none — and the two
+  // classes have different fixes and different floors, so one blurred number was
+  // not actionable either. Both still bypass the design system, so both are
+  // still counted; they are now counted separately and named honestly.
   {
     key: "arbitraryColorValues",
-    label: "arbitrary colour value (bg-[…] / text-[…])",
+    label: "arbitrary colour value (bg-[#…], to-[hsl(…)])",
     unit: "occurrence",
     hint:
-      "Arbitrary values escape the token guard entirely. Use the semantic utility — every -subtle token IS mapped in tailwind.config.ts.",
+      "Arbitrary colours escape the token guard entirely — its regex is class-shaped and cannot see them. Use a semantic token; every -subtle token IS mapped in tailwind.config.ts.",
     res: [
       new RegExp(
-        `(?<![a-zA-Z0-9-])(?:bg|text|border|ring|fill|stroke|from|to|via|divide|outline|decoration|placeholder|caret|accent|shadow)-\\[`,
+        `(?<![a-zA-Z0-9-])(?:${ARBITRARY_PROP})-\\[\\s*(?:#|rgb|hsl|var\\(|--)`,
+        "gi",
+      ),
+    ],
+  },
+  {
+    key: "arbitraryTypeScale",
+    label: "arbitrary size/length value (text-[11px], w-[240px])",
+    unit: "occurrence",
+    hint:
+      "A bespoke size is a rung outside the type/spacing scale — DESIGN_SYSTEM.md §3 owns the scale in ui/typography.tsx, and className is for spacing and colour, never to resize.",
+    res: [
+      new RegExp(
+        `(?<![a-zA-Z0-9-])(?:${ARBITRARY_PROP}|w|h|min-w|min-h|max-w|max-h|p|px|py|m|mx|my|gap|top|left|right|bottom|inset|leading|tracking)-\\[\\s*[-.0-9]`,
         "g",
       ),
     ],
@@ -149,6 +199,82 @@ function walk(dir, acc = []) {
   return acc;
 }
 
+/**
+ * Adoption MEASURES — reported, never ratcheted.
+ *
+ * A ratchet answers "did this get worse". These answer "how far along is it",
+ * which is what DESIGN_SYSTEM.md §0 is for. They exist because that table was
+ * hand-written and rotted in under a day: it shipped on 2026-08-18 saying the
+ * nested-control class stood at 122, and three PRs closed it to 0 the same
+ * afternoon. A number a human retypes is a number that will be wrong. So §0's
+ * table is GENERATED from here (`--table` / `--write-table`) and the guard fails
+ * when the committed doc disagrees with the live measurement.
+ */
+function walkAll(dir, acc = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walkAll(full, acc);
+    else if (/\.(tsx?|jsx?)$/.test(entry.name)) acc.push(full);
+  }
+  return acc;
+}
+const allFiles = walkAll(SCAN_DIR);
+const readAll = (list) => list.map((f) => [path.relative(ROOT, f), fs.readFileSync(f, "utf8")]);
+const ALL = readAll(allFiles);
+const isPage = ([rel]) => rel.startsWith(path.join("client", "src", "pages")) && rel.endsWith(".tsx") && !/\.test\./.test(rel);
+const count = (pred) => ALL.filter(pred).length;
+const pct = (a, b) => (b === 0 ? 0 : Math.round((a / b) * 100));
+
+const MEASURES = [
+  (() => {
+    const total = count(isPage);
+    const using = count((e) => isPage(e) && /\bPageShell\b/.test(e[1]));
+    return { label: "`PageShell` page geometry", state: `BUILT · ADOPTED ${pct(using, total)}%`,
+             detail: `${using} of ${total} page files import it`, cmd: "pnpm guard:ui → `pageShellDrift`" };
+  })(),
+  (() => {
+    const reg = count((e) => /from\s*["']@\/lib\/icons["']/.test(e[1]));
+    const direct = count((e) => /from\s*["']lucide-react["']/.test(e[1]) && !e[0].endsWith(path.join("lib", "icons.ts")));
+    return { label: "Icon registry `lib/icons.ts`", state: `BUILT · ADOPTED ${pct(reg, reg + direct)}%`,
+             detail: `${reg} file(s) import the registry, ${direct} still import \`lucide-react\` directly`,
+             cmd: "pnpm guard:ui → `directLucideImports`" };
+  })(),
+  (() => {
+    // The prop that exists to solve pageShellDrift, and the reason the metric
+    // was 13: not one page ever called it. Twelve hand-rolled it under a layout
+    // that already supplies page height, which is a bug, not a preference.
+    const n = count((e) => /\bfullHeight\b/.test(e[1]) && !e[0].endsWith(path.join("components", "PageShell.tsx")));
+    return { label: "`PageShell fullHeight`", state: n ? "BUILT · ADOPTED" : "BUILT · ADOPTED 0%",
+             detail: n ? `${n} call site(s)` : "zero call sites — correct: it is for `BareLayout` routes only, and none use PageShell yet",
+             cmd: "—" };
+  })(),
+  (() => {
+    const n = count((e) => /from\s*["'][^"']*ui\/typography["']/.test(e[1]));
+    return { label: "`Heading` / `Text` (`ui/typography.tsx`)", state: n ? `BUILT · ADOPTED` : "BUILT · ADOPTED 0%",
+             detail: n ? `${n} call site(s)` : "zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused", cmd: "—" };
+  })(),
+  (() => {
+    const n = count((e) => /from\s*["'][^"']*brand\/Logo["']/.test(e[1]));
+    return { label: "`Logo` + `BrandingProvider`", state: n ? "BUILT · ADOPTED" : "BUILT · ADOPTED 0%",
+             detail: n ? `${n} call site(s)` : "zero call sites", cmd: "—" };
+  })(),
+  (() => {
+    const n = count((e) => /\bEmptyState\b/.test(e[1]) && !e[0].includes(path.join("ui", "empty-state")));
+    return { label: "`EmptyState`", state: "BUILT", detail: `${n} file(s) use it`, cmd: "—" };
+  })(),
+  (() => {
+    const n = count((e) => /\bbg-surface\b/.test(e[1]));
+    return { label: "`bg-surface` app ground", state: "ADOPTED (via layout)",
+             detail: `set once on \`PrivateLayout\`'s \`<main>\`; ${n} file(s) name it directly — pages inherit it`, cmd: "—" };
+  })(),
+  (() => {
+    const n = ALL.filter(([rel]) => /\.test\.(tsx?|jsx?)$/.test(rel)).length;
+    const prim = ALL.filter(([rel]) => rel.startsWith(path.join("client", "src", "components", "ui")) && !/\.test\./.test(rel)).length;
+    return { label: "Component tests / `components/ui` primitives", state: "BUILT",
+             detail: `${n} client test file(s); ${prim} primitives`, cmd: "pnpm test:client" };
+  })(),
+];
+
 const files = walk(SCAN_DIR);
 for (const m of METRICS) {
   m.total = 0;
@@ -157,7 +283,7 @@ for (const m of METRICS) {
 
 for (const file of files) {
   const rel = path.relative(ROOT, file);
-  const src = fs.readFileSync(file, "utf8");
+  const src = stripComments(fs.readFileSync(file, "utf8"));
   for (const m of METRICS) {
     let hits = 0;
     if (m.scan) {
@@ -176,12 +302,71 @@ for (const file of files) {
   }
 }
 
+const DOC = path.join(ROOT, "knowledge-base", "handbook", "design", "DESIGN_SYSTEM.md");
+const BEGIN = "<!-- BEGIN GENERATED — do not hand-edit; run `pnpm guard:ui --write-table` -->";
+const END = "<!-- END GENERATED -->";
+
+/** §0's adoption table, rendered from the live measurements. */
+function renderTable() {
+  const rows = [];
+  rows.push("| Capability | State | Measured |");
+  rows.push("|---|---|---|");
+  for (const m of MEASURES) {
+    const cmd = m.cmd === "—" ? "" : ` — *${m.cmd}*`;
+    rows.push(`| ${m.label} | **${m.state}** | ${m.detail}${cmd} |`);
+  }
+  for (const m of METRICS) {
+    const floor = m.total === 0 ? " — **at zero; any hit is a regression**" : "";
+    rows.push(`| \`${m.key}\` — ${m.label} | ${m.total === 0 ? "**HELD**" : "ratcheting down"} | **${m.total}** ${m.unit}(s)${floor} |`);
+  }
+  return rows.join("\n");
+}
+
+if (process.argv.includes("--table")) {
+  console.log(renderTable());
+  process.exit(0);
+}
+
+if (process.argv.includes("--write-table")) {
+  const doc = fs.readFileSync(DOC, "utf8");
+  const a = doc.indexOf(BEGIN), b = doc.indexOf(END);
+  if (a === -1 || b === -1) {
+    console.error(`ui-standard-guard: ${path.relative(ROOT, DOC)} has no generated block. Add:\n${BEGIN}\n${END}`);
+    process.exit(1);
+  }
+  const next = doc.slice(0, a + BEGIN.length) + "\n\n" + renderTable() + "\n\n" + doc.slice(b);
+  fs.writeFileSync(DOC, next);
+  console.log(`ui-standard-guard: wrote the adoption table into ${path.relative(ROOT, DOC)}. Commit it.`);
+  process.exit(0);
+}
+
+/**
+ * The doc must agree with the measurement. This is the point of the whole
+ * mechanism: §0 was hand-written on 2026-08-18 and was wrong by the same evening
+ * (it said the nested-control class stood at 122; three PRs had closed it to 0).
+ * A number a human retypes is a number that will be wrong, so the doc is
+ * generated and this check makes drifting from it impossible.
+ */
+let docDrift = null;
+if (fs.existsSync(DOC)) {
+  const doc = fs.readFileSync(DOC, "utf8");
+  const a = doc.indexOf(BEGIN), b = doc.indexOf(END);
+  if (a === -1 || b === -1) docDrift = "no generated block found";
+  else if (doc.slice(a + BEGIN.length, b).trim() !== renderTable().trim()) docDrift = "stale";
+}
+
 let baseline = {};
 if (fs.existsSync(BASELINE_FILE)) {
   baseline = JSON.parse(fs.readFileSync(BASELINE_FILE, "utf8"));
 }
 
 let failed = false;
+// Which KIND of failure — a count that went up, or the doc drifting from the
+// measurement. They need different footers: telling someone "a count went UP"
+// when every count is at or below baseline sends them hunting for a regression
+// that isn't there. A guard that misreports its own failure is the same defect
+// class this table exists to close.
+let regressed = false;
 let tightened = false;
 const nextBaseline = { ...baseline };
 
@@ -195,6 +380,7 @@ for (const m of METRICS) {
   }
   if (m.total > base) {
     failed = true;
+    regressed = true;
     console.error(`\nFAIL  ${m.key}: ${m.total} ${m.unit}(s), baseline ${base} (+${m.total - base})`);
     console.error(`      ${m.label}`);
     console.error(`      → ${m.hint}`);
@@ -212,10 +398,27 @@ for (const m of METRICS) {
   }
 }
 
-if (failed) {
+if (docDrift) {
   console.error(
-    "\nui-standard-guard: a UI-standard count went UP. Each number here may only ever go down.",
+    `\nFAIL  DESIGN_SYSTEM.md §0's adoption table is ${docDrift}.\n` +
+      "      That table is GENERATED from these measurements — it is not prose to keep in sync by\n" +
+      "      hand. Run `pnpm guard:ui --write-table` and commit the result in this PR.",
   );
+  failed = true;
+}
+
+if (failed) {
+  if (regressed) {
+    console.error(
+      "\nui-standard-guard: a UI-standard count went UP. Each number here may only ever go down.",
+    );
+  } else {
+    console.error(
+      "\nui-standard-guard: every count is at or below baseline — the failure above is §0's\n" +
+        "table disagreeing with the measurement. Common cause: another PR tightened a count on\n" +
+        "`main` and this branch's merge carries the new number with the old table. Regenerate it.",
+    );
+  }
   console.error("See knowledge-base/handbook/design/DESIGN_SYSTEM.md.\n");
   process.exit(1);
 }

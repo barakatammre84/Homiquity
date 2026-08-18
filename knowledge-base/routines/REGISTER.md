@@ -57,6 +57,8 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 ## Recently released
 
+| founder session (interactive) | borrower dashboard (UC-007) + the `arbitraryColorValues` metric split | `claude/routines-operating-cadence-olj41t` | claimed 2026-08-18 19:35, released 19:55 | **shipped** — §15 was already built; fixed `min-h-screen`→`min-h-full`, a skeleton at the retired `max-w-xl` that snapped ~3x wider on load, 7 bespoke type rungs, 1 sub-44px control. Raised **UC-008**: the icon registry covers 36 of the 176 glyphs the app uses, which is why it has zero adopters — extending it is founder-gated. |
+
 | founder session (interactive) | URLA capture path — `URLAForm.tsx` JSX + five `urla/` sections | `claude/routines-operating-cadence-olj41t` | claimed 2026-08-18 18:45, released 19:05 | **shipped** — rail no longer scrolls horizontally; 14 sub-44px controls raised via `.touch-target`. Presentational only: the trap doc's five hazards were audited against the diff (no `buildPayload`/`STEPS`/hydration move, no memo/useCallback/debounce, latch untouched). The two structural §12 gaps (tunnel vision, ≤3 inputs) are **proposed, not shipped** — both need decisions above a layout call. |
 
 | founder session (interactive) | pre-approval funnel capture path | `claude/routines-operating-cadence-olj41t` | claimed 2026-08-18 18:05, released 18:15 | shipped — 320px grids, step-input rung, AdvisoryPanel reaches mobile, full-width CTA, canonical gutter. `FunnelChrome.tsx` claimed but NOT edited: the §12.2 disclosure-placement question is compliance-bearing and went to the founder instead. |

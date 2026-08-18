@@ -114,7 +114,7 @@ export default function CalculatorsHub() {
   usePageView("/calculators");
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
       <SEOHead
         title="Mortgage Calculators — Affordability, Payments, Refinance & More"
         description="Free mortgage calculators from Homiquity: home affordability, monthly payment, refinance, rent vs. buy, amortization, home equity, payoff, down payment, and VA/BAH — no sign-up required."
@@ -167,6 +167,6 @@ export default function CalculatorsHub() {
           </div>
         </div>
       </PageShell>
-    </div>
+    </>
   );
 }

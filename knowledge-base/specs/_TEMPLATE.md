@@ -20,7 +20,7 @@ cut-line.⟩
 ## 2. Serves L1 loop
 
 - **Core-loop link:** ⟨which link of borrower → pre-approval → MISMO package → wholesale delivery
-  this advances — cite `VISION_AND_SCOPE.md` §2⟩.
+  this advances — cite `L1_VISION_AND_SCOPE.md` §2⟩.
 - **Cut-line check:** ⟨does it serve the loop or unblock launch? If it's *peripheral*
   (listings/agent/homeowner), justify why it's in scope now instead of post-launch.⟩
 

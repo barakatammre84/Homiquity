@@ -68,7 +68,10 @@ hand-roll their own geometry.
 - **R5 — The ratchet is the deliverable.** Run `pnpm guard:ui` before and after. Counts must go
   **down**, never up, and the tightened `scripts/ui-standard-baseline.json` is committed in the
   **same PR** — that is what makes the sweep irreversible. Report both numbers. **Never quote an
-  adoption figure from a document**; run the guard. The predecessors' numbers rotted precisely
+  adoption figure from a document**; run the guard. And when a count moves, **regenerate
+  DESIGN_SYSTEM.md §0 with `pnpm guard:ui --write-table`** and commit it in the same PR — that
+  table is generated, the guard fails when it drifts, and hand-editing it is the failure it
+  exists to prevent. The predecessors' numbers rotted precisely
   because they were prose.
 
 - **R6 — Visual only (DESIGN_SYSTEM.md §14).** No `react-hook-form` rewiring, no Zod schema

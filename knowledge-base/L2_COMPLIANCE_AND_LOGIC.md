@@ -5,7 +5,7 @@
 > **This is L2 — the regulatory and financial guardrails.** It **overrides L1 scope ideas and
 > every L3 feature spec** when they conflict. It is an **index/overlay**, not a rewrite: each
 > invariant below names the *authoritative document* that owns the detail and the *code* that
-> enforces it. When two sources disagree, the order is **L1 `VISION_AND_SCOPE.md` → L2 (this
+> enforces it. When two sources disagree, the order is **L1 `L1_VISION_AND_SCOPE.md` → L2 (this
 > doc) → L3 `[Feature]_SPECS.md`**, and **code wins over any doc on a stale fact** (that's a
 > doc-drift bug to fix).
 
