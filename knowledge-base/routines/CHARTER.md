@@ -1,13 +1,17 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §3's CCR table, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer).
 
-Each routine lives as a `SKILL.md` in `~/.claude/scheduled-tasks/<id>/` and runs in a **fresh
-session with no memory of any other run**. That file is the *job description*. **This file is the
-*contract*** — the shared clock, the shared facts, the shared lock, and the shared escalation path.
-Where a routine's own file disagrees with this one, **this file wins**, and the routine must say so
-in its report rather than silently following the stale copy.
+Each routine's `SKILL.md` is its *job description*, and it runs in a **fresh session with no memory
+of any other run**. Those files live in two places, and the difference matters: the local-clock
+routines are defined in `~/.claude/scheduled-tasks/<id>/` on the founder's laptop, **which a cloud
+session cannot read**; every routine registered since 2026-08-17 is defined in-repo at
+`.claude/skills/<id>/SKILL.md`, where both fleets and every session can read it. **In-repo is the
+home for anything new** — a definition only one machine can see is one nobody can audit.
+**This file is the *contract*** — the shared clock, the shared facts, the shared lock, and the
+shared escalation path. Where a routine's own file disagrees with this one, **this file wins**, and
+the routine must say so in its report rather than silently following the stale copy.
 
 Read this file, then [`REGISTER.md`](REGISTER.md), before doing anything else.
 
@@ -170,25 +174,30 @@ Evening Triage distinguishes the two rather than assuming either.
 repo from the cloud, outside this scheduler, in fresh sessions. **Do not trust a count written
 here** — this fleet grew twice in the hour this paragraph was last rewritten, and two sessions
 had already recorded a stale "six" between them. **The authoritative list is `list_triggers`
-(Claude_Code_Remote MCP); read it rather than this paragraph.** As of **2026-08-18 19:10Z** it
-held nine Homiquity triggers — the newest, the UI conformance sweep, being the first CCR routine
-that writes code rather than only reporting:
+(Claude_Code_Remote MCP); read it rather than this paragraph.** Read live at **2026-08-18 19:53Z**
+it held **eight enabled** Homiquity triggers plus one retired-disabled (the Monday doc-hygiene sweep,
+folded into the 6-hourly steward that day; its row is gone from below). The paragraph had said nine —
+this is the drift it warns about, found in itself. The **Backend Data Engineer**, registered minutes
+later, makes nine: the first CCR routine to write server, schema and migration code rather than only
+client code or reports:
 
 | Fires (UTC) | Trigger | Posture |
 |---|---|---|
+| **daily 11:00** | **Backend Data Engineer** | **writes code — up to two backend PRs, never merges** |
 | daily 12:00 | Better.com competitive brief | report-only; may file one `design-standard` issue |
 | Mon 12:30 | logged-in Better deep-dive reminder | human-directed; sends a reminder, nothing else |
 | Wed 13:00 | UX audit vs the design standard | report-only, `read` access |
 | 1st 13:00 | financial-architecture audit | invokes `/financial-audit`; §6's Financial Audit row governs it |
 | daily 14:00 | page-by-page deep inspection | files `page-audit` issues; opens no PRs |
-| Mon 14:00 | doc & memory hygiene sweep | report-only; docs-PR lane for its report |
 | 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges |
 | daily 16:25 | **UI conformance sweep** | writes code — one conformance PR, never merges |
 | hourly, weekdays 08–20 | PR sync & review loop | branch updates + digest |
 
-Where they touch the repo they are report-only or PR-lane and bound by this charter. Note the
-Monday 14:00 collision between the daily inspection and the hygiene sweep — harmless while both
-are report-only, a real hazard the day either starts writing code.
+Where they touch the repo they are report-only or PR-lane and bound by this charter. **Two of them
+now write code** — the Backend Data Engineer at 11:00 and the UI conformance sweep at 16:25 — and
+they were deliberately put five hours apart in disjoint lanes (`server/**` vs `client/src/**`, §6).
+That separation is the thing to preserve when re-timing either one; the register is the backstop,
+not the schedule.
 
 Audited and rewired 2026-08-18 —
 [logs/2026-08-18-knowledge-file-audit.md](../logs/2026-08-18-knowledge-file-audit.md) §4. Until
@@ -226,6 +235,9 @@ The day is a pipeline, not a stack of independent jobs.
         ▼
 09:10 Wiring Audit ──► capture-path defects (question B)
         ▼
+11:00 UTC Backend Data Engineer (CCR fleet) ──► schema integrity, MISMO/ULDD mapping,
+        │                                        API payload stability (question A)
+        ▼
 12:30 Lender Gate ──► can an organic file reach a lender clean? (question A)
         ▼
 15:00 QA Sweep ──► one domain + one workflow, adversarially verified → FINDINGS.md
@@ -236,6 +248,13 @@ The day is a pipeline, not a stack of independent jobs.
 Tue 13:15 Compliance Watch ──► state-launch ladder + signature-ready drafts; its ⛔ items
                                 feed Evening Triage's founder list that evening
 ```
+
+**Two clocks, one chain.** Every other box above is local time on the founder's laptop; the Backend
+Data Engineer is UTC on the CCR fleet, so its position in the chain is a *statement about what it
+reads and who reads it*, not a promise about the gap between them. It feeds on yesterday's QA
+Sweep, Evening Triage and Lender Delivery Gate reports, and its own report is read by that day's
+Lender Gate and that evening's Triage. **Evening Triage is where the two fleets meet** — it counts
+CCR reports in its proof-of-life sweep exactly as it counts local ones.
 
 **Reading a peer's report is mandatory, not optional.** A missing upstream report is a `WARN` with
 the routine named — never silently ignored, and never treated as "nothing happened." The Primary
@@ -324,6 +343,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b); **`DESIGN_SYSTEM.md`-conformance batches** (§6a) | capture-path files under an active Wiring Audit claim; files with open `refactor-radar/LEDGER.md` rows; the deferred lender API/UI (LS-10 — founder-gated); §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
 | Launch Gate | nothing | — (report + proposed tickets only) |
 | Wiring Audit | `client/src/**` on the capture path, including its **§12 capture-flow conformance** (§6a) | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
+| Backend Data Engineer | `server/**`, `shared/schema/**` + `migrations/**` (**same-PR hand-authored expand-only migration**), `shared/fannieMae/**`, `shared/mismo.ts`, `server/storage/**`, `tests/**` for the behaviour it changes, plus `knowledge-base/backend-data-engineer/**` and its report (L1/L2 per §1b) | `client/**` — not one line; the underwriting/decision/rule engines; contract migrations (prepare + ⛔ only); §9-tripping diffs as *ready* PRs (draft + human-written review only); any file under an active REGISTER claim or in an open PR |
 | Lender Gate | small, safe, isolated fixes only | the underwriting/decision engines |
 | QA Sweep | nothing | — (findings only; fixes are a human or a Primary Engineer run) |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
@@ -370,6 +390,35 @@ hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session cod
 in the same commit. No citation, no code change. Never weaken a consent gate, a disclosure gate, an
 FCRA pull gate, or a `complianceInvariants` test to make something pass — **a
 `complianceInvariants` failure is a compliance incident, not a flaky test.**
+
+---
+
+### 6b. Backend data integrity — who owns it
+
+§6a's lesson generalizes: **a standard nobody is assigned to propagate is a preference, and a
+package nobody is assigned to keep valid is a hope.** Question A — *does a clean, complete, valid
+mortgage package reach the lender?* — was inside the Primary Engineer's company-wide lane, competing
+with the whole roadmap for three PR slots a day, which meant no run was ever judged on it. Every
+other code-writing routine in both fleets writes to `client/src/**`.
+
+- **The [Backend Data Engineer](../../.claude/skills/backend-data-engineer/SKILL.md) owns it**
+  (registered 2026-08-18, daily 11:00Z, CCR fleet): backend payload correctness, schema and
+  migration discipline, and MISMO/ULDD/URLA mapping honesty. Its run is judged on whether an
+  *organic* file — not the demo seed — gets closer to delivering clean. Cross-run memory is
+  [`backend-data-engineer/LEDGER.md`](../backend-data-engineer/LEDGER.md), whose refusal record is
+  append-only: a mapping already flagged unverifiable is never re-derived from memory.
+- **Primary Engineer may still take backend items** in its company-wide lane — it is not narrowed —
+  but it is not *accountable* for backend data integrity, which is exactly the distinction §6a had
+  to invent after assigning the design rollout as a *"may"* to two routines that had other jobs.
+- **The REGISTER is still the lock.** Accountability decides who is answerable for the number;
+  §5 decides who may write the file today. A backend file under a live claim is off the table for
+  whoever did not claim it, owner or not.
+- **One subsystem per PR, sized to a single CI cycle.** A sweeping cross-service diff is
+  unreviewable, and on this lane an unreviewable diff is where a dropped delivery field hides.
+- **The boundary it defends is written down**:
+  [`handbook/app-guide/12-api-contract.md`](../handbook/app-guide/12-api-contract.md). The UI
+  routines may not change Zod schemas or payload shapes (§6a, DESIGN_SYSTEM §14) — they file a
+  ticket, and this routine lands it.
 
 ---
 
