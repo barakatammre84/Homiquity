@@ -14,7 +14,8 @@
     "missing-address": "reject:estimatedMarketRent,monthlyPitia",
     "missing-estimatedMarketRent": "reject:estimatedMarketRent,monthlyPitia",
     "missing-monthlyPitia": "reject:estimatedMarketRent,monthlyPitia",
-    "wrongtype-address": "reject:address,estimatedMarketRent,monthlyPitia"
+    "wrongtype-address": "reject:address,estimatedMarketRent,monthlyPitia",
+    "all-keys-null": "reject:address,estimatedMarketRent"
   },
   "schema.urlaLoanDetailsSchema": {
     "undefined": "reject:",
@@ -30,7 +31,8 @@
     "all-keys-typed": "reject:amortizationType,preferredLoanType",
     "missing-preferredLoanType": "reject:amortizationType,preferredLoanType",
     "missing-amortizationType": "reject:amortizationType,preferredLoanType",
-    "wrongtype-preferredLoanType": "reject:amortizationType,preferredLoanType"
+    "wrongtype-preferredLoanType": "reject:amortizationType,preferredLoanType",
+    "all-keys-null": "reject:amortizationType,preferredLoanType"
   },
   "schema.insertLoanApplicationSchema": {
     "undefined": "reject:",
@@ -50,7 +52,8 @@
     "missing-financialDataVerifiedAt": "reject:aiAnalyzedAt,armInitialRate,assetsVerified,ausSubmittedAt,avoidsInterestFinancing,cdIssuedDate,closingDate,creditVerified,currentPropertyDisposition,d1cAssetsRelief,d1cEmploymentRelief,d1cIncomeRelief,departingResidence,hmdaDenialReasons,homeSquareFootage,householdFamilySize,incomeVerified,leIssuedDate,loCompensationBps,loCompensationModel,preApprovalAmount,propertyValue,tridTriggeredAt",
     "missing-financialDataVerifiedBy": "reject:aiAnalyzedAt,armInitialRate,assetsVerified,ausSubmittedAt,avoidsInterestFinancing,cdIssuedDate,closingDate,creditVerified,currentPropertyDisposition,d1cAssetsRelief,d1cEmploymentRelief,d1cIncomeRelief,departingResidence,financialDataVerifiedAt,hmdaDenialReasons,homeSquareFootage,householdFamilySize,incomeVerified,leIssuedDate,loCompensationBps,loCompensationModel,preApprovalAmount,propertyValue,tridTriggeredAt",
     "missing-incomeVerified": "reject:aiAnalyzedAt,armInitialRate,assetsVerified,ausSubmittedAt,avoidsInterestFinancing,cdIssuedDate,closingDate,creditVerified,currentPropertyDisposition,d1cAssetsRelief,d1cEmploymentRelief,d1cIncomeRelief,departingResidence,financialDataVerifiedAt,hmdaDenialReasons,homeSquareFootage,householdFamilySize,leIssuedDate,loCompensationBps,loCompensationModel,preApprovalAmount,propertyValue,tridTriggeredAt",
-    "wrongtype-userId": "reject:aiAnalyzedAt,armInitialRate,assetsVerified,ausSubmittedAt,avoidsInterestFinancing,cdIssuedDate,closingDate,creditVerified,currentPropertyDisposition,d1cAssetsRelief,d1cEmploymentRelief,d1cIncomeRelief,departingResidence,financialDataVerifiedAt,hmdaDenialReasons,homeSquareFootage,householdFamilySize,incomeVerified,leIssuedDate,loCompensationBps,loCompensationModel,preApprovalAmount,propertyValue,tridTriggeredAt,userId"
+    "wrongtype-userId": "reject:aiAnalyzedAt,armInitialRate,assetsVerified,ausSubmittedAt,avoidsInterestFinancing,cdIssuedDate,closingDate,creditVerified,currentPropertyDisposition,d1cAssetsRelief,d1cEmploymentRelief,d1cIncomeRelief,departingResidence,financialDataVerifiedAt,hmdaDenialReasons,homeSquareFootage,householdFamilySize,incomeVerified,leIssuedDate,loCompensationBps,loCompensationModel,preApprovalAmount,propertyValue,tridTriggeredAt,userId",
+    "all-keys-null": "reject:assetsVerified,creditVerified,d1cAssetsRelief,d1cEmploymentRelief,d1cIncomeRelief,financialDataProvenance,incomeVerified,status,userId"
   },
   "schema.insertDealTeamMemberSchema": {
     "undefined": "reject:",
@@ -70,7 +73,8 @@
     "missing-externalName": "reject:assignedAt",
     "missing-externalEmail": "reject:assignedAt",
     "missing-externalPhone": "reject:assignedAt",
-    "wrongtype-applicationId": "reject:applicationId,assignedAt"
+    "wrongtype-applicationId": "reject:applicationId,assignedAt",
+    "all-keys-null": "reject:applicationId,isActive,teamRole"
   },
   "schema.insertApplicationPropertySchema": {
     "undefined": "reject:",
@@ -90,7 +94,8 @@
     "missing-state": "reject:offerAmount,offerDate",
     "missing-zipCode": "reject:offerAmount,offerDate",
     "missing-propertyType": "reject:offerAmount,offerDate",
-    "wrongtype-applicationId": "reject:applicationId,offerAmount,offerDate"
+    "wrongtype-applicationId": "reject:applicationId,offerAmount,offerDate",
+    "all-keys-null": "reject:address,applicationId,isCurrentProperty,purchasePrice,status"
   },
   "schema.insertLoanOptionSchema": {
     "undefined": "reject:",
@@ -110,7 +115,8 @@
     "missing-interestRate": "reject:downPaymentAmount,interestRate,loanAmount,loanTerm,lockExpiresAt,lockedAt",
     "missing-apr": "reject:apr,downPaymentAmount,interestRate,loanAmount,loanTerm,lockExpiresAt,lockedAt",
     "missing-points": "reject:downPaymentAmount,interestRate,loanAmount,loanTerm,lockExpiresAt,lockedAt",
-    "wrongtype-applicationId": "reject:applicationId,downPaymentAmount,interestRate,loanAmount,loanTerm,lockExpiresAt,lockedAt"
+    "wrongtype-applicationId": "reject:applicationId,downPaymentAmount,interestRate,loanAmount,loanTerm,lockExpiresAt,lockedAt",
+    "all-keys-null": "reject:applicationId,apr,interestRate,loanAmount,loanTerm,loanType,monthlyPayment,principalAndInterest"
   },
   "schema.insertDocumentSchema": {
     "undefined": "reject:",
@@ -130,7 +136,8 @@
     "missing-fileName": "reject:extractionRawKeyId,fileName,fileSize,reviewedAt",
     "missing-fileSize": "reject:extractionRawKeyId,reviewedAt",
     "missing-mimeType": "reject:extractionRawKeyId,fileSize,reviewedAt",
-    "wrongtype-applicationId": "reject:applicationId,extractionRawKeyId,fileSize,reviewedAt"
+    "wrongtype-applicationId": "reject:applicationId,extractionRawKeyId,fileSize,reviewedAt",
+    "all-keys-null": "reject:documentType,fileName,storagePath,userId"
   },
   "schema.insertDealActivitySchema": {
     "undefined": "reject:",
@@ -150,7 +157,8 @@
     "missing-description": "reject:visibleToRoles",
     "missing-metadata": "reject:visibleToRoles",
     "missing-performedBy": "reject:visibleToRoles",
-    "wrongtype-applicationId": "reject:applicationId,visibleToRoles"
+    "wrongtype-applicationId": "reject:applicationId,visibleToRoles",
+    "all-keys-null": "reject:activityType,applicationId,title"
   },
   "schema.insertUrlaPersonalInfoSchema": {
     "undefined": "reject:",
@@ -170,7 +178,8 @@
     "missing-firstName": "reject:currentCountry,currentRentAmount,dateOfBirth,formerCountry,formerRentAmount,mailingCountry,mailingDifferent,totalBorrowers",
     "missing-middleName": "reject:currentCountry,currentRentAmount,dateOfBirth,formerCountry,formerRentAmount,mailingCountry,mailingDifferent,totalBorrowers",
     "missing-lastName": "reject:currentCountry,currentRentAmount,dateOfBirth,formerCountry,formerRentAmount,mailingCountry,mailingDifferent,totalBorrowers",
-    "wrongtype-applicationId": "reject:applicationId,currentCountry,currentRentAmount,dateOfBirth,formerCountry,formerRentAmount,mailingCountry,mailingDifferent,totalBorrowers"
+    "wrongtype-applicationId": "reject:applicationId,currentCountry,currentRentAmount,dateOfBirth,formerCountry,formerRentAmount,mailingCountry,mailingDifferent,totalBorrowers",
+    "all-keys-null": "reject:applicationId"
   },
   "schema.selfEmploymentWorksheetSchema": {
     "undefined": "reject:",
@@ -190,7 +199,8 @@
     "missing-yearsSelfEmployed": "reject:businessStructure,k1,ownershipPercent,scheduleC,version",
     "missing-scheduleC": "reject:businessStructure,k1,ownershipPercent,version",
     "missing-k1": "reject:businessStructure,ownershipPercent,scheduleC,version",
-    "wrongtype-version": "reject:businessStructure,k1,ownershipPercent,scheduleC,version"
+    "wrongtype-version": "reject:businessStructure,k1,ownershipPercent,scheduleC,version",
+    "all-keys-null": "reject:businessStructure,confirmedByBorrowerAt,k1,ownershipPercent,scheduleC,sourceTaxInsightId,version,yearsSelfEmployed"
   },
   "schema.insertEmploymentHistorySchema": {
     "undefined": "reject:",
@@ -210,7 +220,8 @@
     "missing-employerName": "reject:employerCountry,endDate,ownershipShare25OrMore,ownershipShareLessThan25,startDate",
     "missing-employerPhone": "reject:employerCountry,endDate,ownershipShare25OrMore,ownershipShareLessThan25,startDate",
     "missing-employerStreet": "reject:employerCountry,endDate,ownershipShare25OrMore,ownershipShareLessThan25,startDate",
-    "wrongtype-applicationId": "reject:applicationId,employerCountry,endDate,ownershipShare25OrMore,ownershipShareLessThan25,startDate"
+    "wrongtype-applicationId": "reject:applicationId,employerCountry,endDate,ownershipShare25OrMore,ownershipShareLessThan25,startDate",
+    "all-keys-null": "reject:applicationId,employmentType"
   },
   "schema.insertOtherIncomeSourceSchema": {
     "undefined": "reject:",
@@ -227,7 +238,8 @@
     "missing-applicationId": "reject:applicationId,monthlyAmount",
     "missing-incomeSource": "reject:incomeSource,monthlyAmount",
     "missing-monthlyAmount": "reject:monthlyAmount",
-    "wrongtype-applicationId": "reject:applicationId,monthlyAmount"
+    "wrongtype-applicationId": "reject:applicationId,monthlyAmount",
+    "all-keys-null": "reject:applicationId,incomeSource,monthlyAmount"
   },
   "schema.insertUrlaAssetSchema": {
     "undefined": "reject:",
@@ -247,7 +259,8 @@
     "missing-financialInstitution": "reject:accountNumberEncrypted,accountNumberIv,accountNumberKeyId,accountNumberLast4,accountType,cashOrMarketValue",
     "missing-accountNumberEncrypted": "reject:accountNumberIv,accountNumberKeyId,accountNumberLast4,accountType,cashOrMarketValue",
     "missing-accountNumberIv": "reject:accountNumberEncrypted,accountNumberKeyId,accountNumberLast4,accountType,cashOrMarketValue",
-    "wrongtype-applicationId": "reject:accountNumberEncrypted,accountNumberIv,accountNumberKeyId,accountNumberLast4,accountType,applicationId,cashOrMarketValue"
+    "wrongtype-applicationId": "reject:accountNumberEncrypted,accountNumberIv,accountNumberKeyId,accountNumberLast4,accountType,applicationId,cashOrMarketValue",
+    "all-keys-null": "reject:accountType,applicationId"
   },
   "schema.insertUrlaLiabilitySchema": {
     "undefined": "reject:",
@@ -267,7 +280,8 @@
     "missing-creditorName": "reject:accountNumberEncrypted,accountNumberIv,accountNumberKeyId,accountNumberLast4,toBePaidOff",
     "missing-accountNumberEncrypted": "reject:accountNumberIv,accountNumberKeyId,accountNumberLast4,toBePaidOff",
     "missing-accountNumberIv": "reject:accountNumberEncrypted,accountNumberKeyId,accountNumberLast4,toBePaidOff",
-    "wrongtype-applicationId": "reject:accountNumberEncrypted,accountNumberIv,accountNumberKeyId,accountNumberLast4,applicationId,toBePaidOff"
+    "wrongtype-applicationId": "reject:accountNumberEncrypted,accountNumberIv,accountNumberKeyId,accountNumberLast4,applicationId,toBePaidOff",
+    "all-keys-null": "reject:applicationId,liabilityType"
   },
   "schema.insertUrlaPropertyInfoSchema": {
     "undefined": "reject:",
@@ -287,7 +301,8 @@
     "missing-propertyCity": "reject:propertyCountry,propertyCounty,propertyValue",
     "missing-propertyState": "reject:propertyCountry,propertyCounty,propertyValue",
     "missing-propertyZip": "reject:propertyCountry,propertyCounty,propertyValue",
-    "wrongtype-applicationId": "reject:applicationId,propertyCountry,propertyCounty,propertyValue"
+    "wrongtype-applicationId": "reject:applicationId,propertyCountry,propertyCounty,propertyValue",
+    "all-keys-null": "reject:applicationId"
   },
   "schema.insertBorrowerDeclarationsSchema": {
     "undefined": "reject:",
@@ -307,7 +322,8 @@
     "missing-hasOwnershipInterestInPast3Years": "reject:borrowedAmount,declarationsCompletedAt,declarationsVerifiedAt,undisclosedDebtAmount,willOccupyAsPrimaryResidence",
     "missing-priorPropertyType": "reject:borrowedAmount,declarationsCompletedAt,declarationsVerifiedAt,hasOwnershipInterestInPast3Years,undisclosedDebtAmount,willOccupyAsPrimaryResidence",
     "missing-priorPropertyTitle": "reject:borrowedAmount,declarationsCompletedAt,declarationsVerifiedAt,hasOwnershipInterestInPast3Years,undisclosedDebtAmount,willOccupyAsPrimaryResidence",
-    "wrongtype-applicationId": "reject:applicationId,borrowedAmount,declarationsCompletedAt,declarationsVerifiedAt,hasOwnershipInterestInPast3Years,undisclosedDebtAmount,willOccupyAsPrimaryResidence"
+    "wrongtype-applicationId": "reject:applicationId,borrowedAmount,declarationsCompletedAt,declarationsVerifiedAt,hasOwnershipInterestInPast3Years,undisclosedDebtAmount,willOccupyAsPrimaryResidence",
+    "all-keys-null": "reject:applicationId"
   },
   "schema.rentalPropertyEntrySchema": {
     "undefined": "reject:",
@@ -326,7 +342,8 @@
     "missing-state": "reject:monthlyDebtPayment,monthlyRentalIncome,monthlyRentalIncome",
     "missing-monthlyRentalIncome": "reject:monthlyDebtPayment,monthlyRentalIncome,state",
     "missing-monthlyDebtPayment": "reject:monthlyRentalIncome,monthlyRentalIncome,state",
-    "wrongtype-address": "reject:address,monthlyDebtPayment,monthlyRentalIncome,monthlyRentalIncome,state"
+    "wrongtype-address": "reject:address,monthlyDebtPayment,monthlyRentalIncome,monthlyRentalIncome,state",
+    "all-keys-null": "reject:address,city,monthlyDebtPayment,monthlyRentalIncome,state"
   },
   "schema.incomeSourceEntrySchema": {
     "undefined": "reject:",
@@ -345,7 +362,8 @@
     "missing-employerName": "reject:annualAmount,rentalProperties,type,yearsInRole",
     "missing-yearsInRole": "reject:annualAmount,rentalProperties,type",
     "missing-rentalProperties": "reject:annualAmount,type,yearsInRole",
-    "wrongtype-type": "reject:annualAmount,rentalProperties,type,yearsInRole"
+    "wrongtype-type": "reject:annualAmount,rentalProperties,type,yearsInRole",
+    "all-keys-null": "reject:annualAmount,employerName,rentalProperties,type,yearsInRole"
   },
   "schema.preApprovalFormSchema": {
     "undefined": "reject:",
@@ -365,7 +383,8 @@
     "missing-hasAdditionalIncome": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,employmentYears,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice",
     "missing-incomeSources": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,employmentYears,homeSquareFootage,householdFamilySize,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice",
     "missing-monthlyDebts": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,employmentYears,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice",
-    "wrongtype-annualIncome": "reject:annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,employmentYears,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice"
+    "wrongtype-annualIncome": "reject:annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,employmentYears,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice",
+    "all-keys-null": "reject:annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,employmentYears,hasAdditionalIncome,homeSquareFootage,householdFamilySize,incomeSources,isFirstTimeBuyer,isVeteran,loanPurpose,monthlyDebts,propertyState,propertyType,purchasePrice"
   },
   "schema.loanApplicationIntakeSchema": {
     "undefined": "reject:",
@@ -377,7 +396,16 @@
     "false": "reject:",
     "string": "reject:",
     "number": "reject:",
-    "true": "reject:"
+    "true": "reject:",
+    "all-keys-typed": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice,softPullConsentAccepted",
+    "missing-annualIncome": "reject:annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice,softPullConsentAccepted",
+    "missing-employmentType": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice,softPullConsentAccepted",
+    "missing-employmentYears": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,employmentYears,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice,softPullConsentAccepted",
+    "missing-hasAdditionalIncome": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice,softPullConsentAccepted",
+    "missing-incomeSources": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice,softPullConsentAccepted",
+    "missing-monthlyDebts": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice,softPullConsentAccepted",
+    "wrongtype-annualIncome": "reject:annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,purchasePrice,purchasePrice,softPullConsentAccepted",
+    "all-keys-null": "reject:annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,employmentYears,hasAdditionalIncome,homeSquareFootage,householdFamilySize,incomeSources,isFirstTimeBuyer,isVeteran,loanPurpose,monthlyDebts,propertyState,propertyType,purchasePrice,softPullConsentAccepted"
   },
   "schema.loanApplicationIntakeUpdateSchema": {
     "undefined": "reject:",
@@ -389,7 +417,16 @@
     "false": "reject:",
     "string": "reject:",
     "number": "reject:",
-    "true": "reject:"
+    "true": "reject:",
+    "all-keys-typed": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,propertyZip,purchasePrice,purchasePrice",
+    "missing-annualIncome": "reject:avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,propertyZip,purchasePrice,purchasePrice",
+    "missing-employmentType": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,propertyZip,purchasePrice,purchasePrice",
+    "missing-employmentYears": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,propertyZip,purchasePrice,purchasePrice",
+    "missing-hasAdditionalIncome": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,propertyZip,purchasePrice,purchasePrice",
+    "missing-incomeSources": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,propertyZip,purchasePrice,purchasePrice",
+    "missing-monthlyDebts": "reject:annualIncome,annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,propertyState,propertyType,propertyZip,purchasePrice,purchasePrice",
+    "wrongtype-annualIncome": "reject:annualIncome,avoidsInterestFinancing,creditScore,downPayment,employmentType,homeSquareFootage,householdFamilySize,incomeSources,loanPurpose,monthlyDebts,monthlyDebts,propertyState,propertyType,propertyZip,purchasePrice,purchasePrice",
+    "all-keys-null": "reject:avoidsInterestFinancing,creditScore,employmentType,hasAdditionalIncome,homeSquareFootage,householdFamilySize,incomeSources,isFirstTimeBuyer,isVeteran,loanPurpose,propertyType"
   },
   "schema.insertMortgageRateProgramSchema": {
     "undefined": "reject:",
@@ -409,7 +446,8 @@
     "missing-termYears": "accept",
     "missing-isAdjustable": "accept",
     "missing-adjustmentPeriod": "accept",
-    "wrongtype-name": "reject:name"
+    "wrongtype-name": "reject:name",
+    "all-keys-null": "reject:name,slug"
   },
   "schema.insertMortgageRateSchema": {
     "undefined": "reject:",
@@ -429,7 +467,8 @@
     "missing-rate": "reject:downPaymentPercent,effectiveDate,expiresAt,loanAmount,rate",
     "missing-apr": "reject:apr,downPaymentPercent,effectiveDate,expiresAt,loanAmount,rate",
     "missing-points": "reject:downPaymentPercent,effectiveDate,expiresAt,loanAmount,rate",
-    "wrongtype-state": "reject:downPaymentPercent,effectiveDate,expiresAt,loanAmount,rate,state"
+    "wrongtype-state": "reject:downPaymentPercent,effectiveDate,expiresAt,loanAmount,rate,state",
+    "all-keys-null": "reject:apr,programId,rate"
   },
   "schema.insertApplicationInviteSchema": {
     "undefined": "reject:",
@@ -449,7 +488,8 @@
     "missing-clientEmail": "reject:appliedAt,clickedAt,expiresAt",
     "missing-clientPhone": "reject:appliedAt,clickedAt,expiresAt",
     "missing-token": "reject:appliedAt,clickedAt,expiresAt,token",
-    "wrongtype-referrerId": "reject:appliedAt,clickedAt,expiresAt,referrerId"
+    "wrongtype-referrerId": "reject:appliedAt,clickedAt,expiresAt,referrerId",
+    "all-keys-null": "reject:expiresAt,referrerId,referrerType,status,token"
   },
   "schema.insertRateLockSchema": {
     "undefined": "reject:",
@@ -469,7 +509,8 @@
     "missing-points": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
     "missing-loanAmount": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
     "missing-loanType": "reject:cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,loanType,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
-    "wrongtype-applicationId": "reject:applicationId,cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status"
+    "wrongtype-applicationId": "reject:applicationId,cancelledAt,confirmedAt,confirmedExpiresAt,confirmedRate,expiresAt,extensionFeePaidBy,interestRate,loanAmount,loanTerm,lockConfirmationNumber,lockPeriodDays,lockedAt,originalExpiresAt,simulated,status",
+    "all-keys-null": "reject:applicationId,expiresAt,interestRate,loanAmount,loanOptionId,loanTerm,loanType,lockPeriodDays,lockedAt,lockedBy,simulated,status"
   },
   "schema.insertApplicationMilestoneSchema": {
     "undefined": "reject:",
@@ -489,7 +530,8 @@
     "missing-documentCollectionCompletedAt": "reject:applicationReceivedAt,clearToCloseAt,closedAt,closingScheduledAt,conditionalApprovalAt,deniedAt,documentCollectionStartedAt,fundedAt,processingCompletedAt,slaTargetDate,submittedToProcessingAt,submittedToUnderwritingAt,withdrawnAt",
     "missing-submittedToProcessingAt": "reject:applicationReceivedAt,clearToCloseAt,closedAt,closingScheduledAt,conditionalApprovalAt,deniedAt,documentCollectionCompletedAt,documentCollectionStartedAt,fundedAt,processingCompletedAt,slaTargetDate,submittedToUnderwritingAt,withdrawnAt",
     "missing-processingCompletedAt": "reject:applicationReceivedAt,clearToCloseAt,closedAt,closingScheduledAt,conditionalApprovalAt,deniedAt,documentCollectionCompletedAt,documentCollectionStartedAt,fundedAt,slaTargetDate,submittedToProcessingAt,submittedToUnderwritingAt,withdrawnAt",
-    "wrongtype-applicationId": "reject:applicationId,applicationReceivedAt,clearToCloseAt,closedAt,closingScheduledAt,conditionalApprovalAt,deniedAt,documentCollectionCompletedAt,documentCollectionStartedAt,fundedAt,processingCompletedAt,slaTargetDate,submittedToProcessingAt,submittedToUnderwritingAt,withdrawnAt"
+    "wrongtype-applicationId": "reject:applicationId,applicationReceivedAt,clearToCloseAt,closedAt,closingScheduledAt,conditionalApprovalAt,deniedAt,documentCollectionCompletedAt,documentCollectionStartedAt,fundedAt,processingCompletedAt,slaTargetDate,submittedToProcessingAt,submittedToUnderwritingAt,withdrawnAt",
+    "all-keys-null": "reject:applicationId"
   },
   "schema.insertSlaConfigurationSchema": {
     "undefined": "reject:",
@@ -509,7 +551,8 @@
     "missing-processingToUnderwritingHours": "reject:applicationToProcessingHours,conditionalToCtcHours,ctcToClosingHours,effectiveDate,totalApplicationToCloseHours,underwritingDecisionHours",
     "missing-underwritingDecisionHours": "reject:applicationToProcessingHours,conditionalToCtcHours,ctcToClosingHours,effectiveDate,processingToUnderwritingHours,totalApplicationToCloseHours",
     "missing-conditionalToCtcHours": "reject:applicationToProcessingHours,ctcToClosingHours,effectiveDate,processingToUnderwritingHours,totalApplicationToCloseHours,underwritingDecisionHours",
-    "wrongtype-name": "reject:applicationToProcessingHours,conditionalToCtcHours,ctcToClosingHours,effectiveDate,name,processingToUnderwritingHours,totalApplicationToCloseHours,underwritingDecisionHours"
+    "wrongtype-name": "reject:applicationToProcessingHours,conditionalToCtcHours,ctcToClosingHours,effectiveDate,name,processingToUnderwritingHours,totalApplicationToCloseHours,underwritingDecisionHours",
+    "all-keys-null": "reject:effectiveDate,isActive,name"
   },
   "schema.insertAnalyticsSnapshotSchema": {
     "undefined": "reject:",
@@ -529,7 +572,8 @@
     "missing-applicationsProcessing": "reject:applicationToApprovalRate,applicationsApproved,applicationsClosed,applicationsDenied,applicationsFunded,applicationsInPipeline,applicationsUnderwriting,applicationsWithdrawn,approvalToCloseRate,loansAtRiskOfSlaBreach,newApplicationsToday,pullThroughRate,slaComplianceRate,snapshotDate,totalApplications",
     "missing-applicationsUnderwriting": "reject:applicationToApprovalRate,applicationsApproved,applicationsClosed,applicationsDenied,applicationsFunded,applicationsInPipeline,applicationsProcessing,applicationsWithdrawn,approvalToCloseRate,loansAtRiskOfSlaBreach,newApplicationsToday,pullThroughRate,slaComplianceRate,snapshotDate,totalApplications",
     "missing-applicationsApproved": "reject:applicationToApprovalRate,applicationsClosed,applicationsDenied,applicationsFunded,applicationsInPipeline,applicationsProcessing,applicationsUnderwriting,applicationsWithdrawn,approvalToCloseRate,loansAtRiskOfSlaBreach,newApplicationsToday,pullThroughRate,slaComplianceRate,snapshotDate,totalApplications",
-    "wrongtype-snapshotDate": "reject:applicationToApprovalRate,applicationsApproved,applicationsClosed,applicationsDenied,applicationsFunded,applicationsInPipeline,applicationsProcessing,applicationsUnderwriting,applicationsWithdrawn,approvalToCloseRate,loansAtRiskOfSlaBreach,newApplicationsToday,pullThroughRate,slaComplianceRate,snapshotDate,totalApplications"
+    "wrongtype-snapshotDate": "reject:applicationToApprovalRate,applicationsApproved,applicationsClosed,applicationsDenied,applicationsFunded,applicationsInPipeline,applicationsProcessing,applicationsUnderwriting,applicationsWithdrawn,approvalToCloseRate,loansAtRiskOfSlaBreach,newApplicationsToday,pullThroughRate,slaComplianceRate,snapshotDate,totalApplications",
+    "all-keys-null": "reject:snapshotDate"
   },
   "schema.insertPlatformFeeScheduleSchema": {
     "undefined": "reject:",
@@ -549,7 +593,8 @@
     "missing-originationFeeRate": "reject:originationFeeRate",
     "missing-note": "reject:originationFeeRate",
     "missing-createdBy": "reject:originationFeeRate",
-    "wrongtype-applicationFee": "reject:applicationFee,originationFeeRate"
+    "wrongtype-applicationFee": "reject:applicationFee,originationFeeRate",
+    "all-keys-null": "reject:applicationFee,originationFeeRate,taxServiceFee,underwritingFee"
   },
   "schema.insertDisclaimerVersionSchema": {
     "undefined": "reject:",
@@ -569,7 +614,8 @@
     "missing-approvedByCounsel": "reject:counselApprovalDate,effectiveFrom,effectiveTo",
     "missing-counselApprovalDate": "reject:approvedByCounsel,effectiveFrom,effectiveTo",
     "missing-counselName": "reject:approvedByCounsel,counselApprovalDate,effectiveFrom,effectiveTo",
-    "wrongtype-version": "reject:approvedByCounsel,counselApprovalDate,effectiveFrom,effectiveTo,version"
+    "wrongtype-version": "reject:approvedByCounsel,counselApprovalDate,effectiveFrom,effectiveTo,version",
+    "all-keys-null": "reject:disclaimerType,effectiveFrom,text,version"
   },
   "schema.insertPreApprovalLetterSchema": {
     "undefined": "reject:",
@@ -589,7 +635,8 @@
     "missing-loanAmount": "reject:expirationDate,generatedAt,generatedBySystem,letterNumber,loanAmount,lockedRate,pdfGeneratedAt,rateLockedAt,revokedAt,supersededAt,watermarkApplied",
     "missing-productType": "reject:expirationDate,generatedAt,generatedBySystem,letterNumber,loanAmount,lockedRate,pdfGeneratedAt,productType,rateLockedAt,revokedAt,supersededAt,watermarkApplied",
     "missing-occupancy": "reject:expirationDate,generatedAt,generatedBySystem,letterNumber,loanAmount,lockedRate,occupancy,pdfGeneratedAt,rateLockedAt,revokedAt,supersededAt,watermarkApplied",
-    "wrongtype-letterNumber": "reject:expirationDate,generatedAt,generatedBySystem,letterNumber,loanAmount,lockedRate,pdfGeneratedAt,rateLockedAt,revokedAt,supersededAt,watermarkApplied"
+    "wrongtype-letterNumber": "reject:expirationDate,generatedAt,generatedBySystem,letterNumber,loanAmount,lockedRate,pdfGeneratedAt,rateLockedAt,revokedAt,supersededAt,watermarkApplied",
+    "all-keys-null": "reject:applicationId,borrowerName,companyLegalName,companyNmlsId,expirationDate,letterNumber,loanAmount,occupancy,productType,status"
   },
   "schema.insertPreApprovalConditionSchema": {
     "undefined": "reject:",
@@ -609,7 +656,8 @@
     "missing-autoGenerated": "accept",
     "missing-sourceRuleId": "reject:autoGenerated",
     "missing-isStandardCondition": "reject:autoGenerated",
-    "wrongtype-letterId": "reject:autoGenerated,letterId"
+    "wrongtype-letterId": "reject:autoGenerated,letterId",
+    "all-keys-null": "reject:category,conditionText,letterId"
   },
   "schema.insertPreQualificationLetterSchema": {
     "undefined": "reject:",
@@ -629,7 +677,8 @@
     "missing-estimatedAmount": "reject:creditScoreRange,estimatedAmount,expirationDate,generatedAt,letterNumber,pdfGeneratedAt",
     "missing-productType": "reject:creditScoreRange,estimatedAmount,expirationDate,generatedAt,letterNumber,pdfGeneratedAt,productType",
     "missing-occupancy": "reject:creditScoreRange,estimatedAmount,expirationDate,generatedAt,letterNumber,occupancy,pdfGeneratedAt",
-    "wrongtype-letterNumber": "reject:creditScoreRange,estimatedAmount,expirationDate,generatedAt,letterNumber,pdfGeneratedAt"
+    "wrongtype-letterNumber": "reject:creditScoreRange,estimatedAmount,expirationDate,generatedAt,letterNumber,pdfGeneratedAt",
+    "all-keys-null": "reject:applicationId,borrowerName,companyLegalName,companyNmlsId,estimatedAmount,expirationDate,letterNumber,occupancy,productType,status"
   },
   "schema.insertLetterGenerationLogSchema": {
     "undefined": "reject:",
@@ -649,7 +698,8 @@
     "missing-eventDetails": "reject:conditionsMet,eventAt,processingTimeMs,triggeredBySystem",
     "missing-triggerConditions": "reject:conditionsMet,eventAt,processingTimeMs,triggeredBySystem",
     "missing-conditionsMet": "reject:eventAt,processingTimeMs,triggeredBySystem",
-    "wrongtype-applicationId": "reject:applicationId,conditionsMet,eventAt,processingTimeMs,triggeredBySystem"
+    "wrongtype-applicationId": "reject:applicationId,conditionsMet,eventAt,processingTimeMs,triggeredBySystem",
+    "all-keys-null": "reject:applicationId,eventType"
   },
   "schema.insertExpirationPolicySchema": {
     "undefined": "reject:",
@@ -669,7 +719,8 @@
     "missing-creditValidityDays": "reject:assetDocValidityDays,assetDocWarningDays,creditWarningDays,effectiveFrom,effectiveTo,employmentVerificationValidityDays,incomeDocValidityDays,incomeDocWarningDays,preApprovalValidityDays,preApprovalWarningDays",
     "missing-incomeDocValidityDays": "reject:assetDocValidityDays,assetDocWarningDays,creditValidityDays,creditWarningDays,effectiveFrom,effectiveTo,employmentVerificationValidityDays,incomeDocWarningDays,preApprovalValidityDays,preApprovalWarningDays",
     "missing-assetDocValidityDays": "reject:assetDocWarningDays,creditValidityDays,creditWarningDays,effectiveFrom,effectiveTo,employmentVerificationValidityDays,incomeDocValidityDays,incomeDocWarningDays,preApprovalValidityDays,preApprovalWarningDays",
-    "wrongtype-policyName": "reject:assetDocValidityDays,assetDocWarningDays,creditValidityDays,creditWarningDays,effectiveFrom,effectiveTo,employmentVerificationValidityDays,incomeDocValidityDays,incomeDocWarningDays,policyName,preApprovalValidityDays,preApprovalWarningDays"
+    "wrongtype-policyName": "reject:assetDocValidityDays,assetDocWarningDays,creditValidityDays,creditWarningDays,effectiveFrom,effectiveTo,employmentVerificationValidityDays,incomeDocValidityDays,incomeDocWarningDays,policyName,preApprovalValidityDays,preApprovalWarningDays",
+    "all-keys-null": "reject:assetDocValidityDays,creditValidityDays,effectiveFrom,incomeDocValidityDays,policyName,preApprovalValidityDays,productType"
   },
   "schema.insertCreditRefreshDecisionSchema": {
     "undefined": "reject:",
@@ -689,7 +740,8 @@
     "missing-reason": "reject:consentObtained,consentObtainedAt,decisionAt,decisionMadeBySystem,executedAt,newExpirationDate,previousExpirationDate,reason,significantChange",
     "missing-reasonDetails": "reject:consentObtained,consentObtainedAt,decisionAt,decisionMadeBySystem,executedAt,newExpirationDate,previousExpirationDate,significantChange",
     "missing-consentId": "reject:consentObtained,consentObtainedAt,decisionAt,decisionMadeBySystem,executedAt,newExpirationDate,previousExpirationDate,significantChange",
-    "wrongtype-applicationId": "reject:applicationId,consentObtained,consentObtainedAt,decisionAt,decisionMadeBySystem,executedAt,newExpirationDate,previousExpirationDate,significantChange"
+    "wrongtype-applicationId": "reject:applicationId,consentObtained,consentObtainedAt,decisionAt,decisionMadeBySystem,executedAt,newExpirationDate,previousExpirationDate,significantChange",
+    "all-keys-null": "reject:applicationId,borrowerId,reason,refreshType"
   },
   "schema.insertLenderPreApprovalFormatSchema": {
     "undefined": "reject:",
@@ -709,7 +761,8 @@
     "missing-showLoanAmount": "reject:includeConditions,letterFormat,maxConditionsToShow,showAssetReserves,showCreditScore,showDti,showIncomeDetails,showLtv,showOccupancy,showProductType,showPropertyAddress",
     "missing-showDti": "reject:includeConditions,letterFormat,maxConditionsToShow,showAssetReserves,showCreditScore,showIncomeDetails,showLoanAmount,showLtv,showOccupancy,showProductType,showPropertyAddress",
     "missing-showCreditScore": "reject:includeConditions,letterFormat,maxConditionsToShow,showAssetReserves,showDti,showIncomeDetails,showLoanAmount,showLtv,showOccupancy,showProductType,showPropertyAddress",
-    "wrongtype-lenderId": "reject:includeConditions,lenderId,letterFormat,maxConditionsToShow,showAssetReserves,showCreditScore,showDti,showIncomeDetails,showLoanAmount,showLtv,showOccupancy,showProductType,showPropertyAddress"
+    "wrongtype-lenderId": "reject:includeConditions,lenderId,letterFormat,maxConditionsToShow,showAssetReserves,showCreditScore,showDti,showIncomeDetails,showLoanAmount,showLtv,showOccupancy,showProductType,showPropertyAddress",
+    "all-keys-null": "reject:lenderId,lenderName"
   },
   "schema.insertAgentConfidenceViewSchema": {
     "undefined": "reject:",
@@ -729,7 +782,8 @@
     "missing-incomeScore": "reject:assetsScore,computedAt,creditScore,documentationScore,overallScore,stabilityScore,visibleToAgents,visibleToBorrower,visibleToLO,visibleToProcessor,visibleToUnderwriter",
     "missing-assetsScore": "reject:computedAt,creditScore,documentationScore,incomeScore,overallScore,stabilityScore,visibleToAgents,visibleToBorrower,visibleToLO,visibleToProcessor,visibleToUnderwriter",
     "missing-creditScore": "reject:assetsScore,computedAt,documentationScore,incomeScore,overallScore,stabilityScore,visibleToAgents,visibleToBorrower,visibleToLO,visibleToProcessor,visibleToUnderwriter",
-    "wrongtype-applicationId": "reject:applicationId,assetsScore,computedAt,creditScore,documentationScore,incomeScore,overallScore,stabilityScore,visibleToAgents,visibleToBorrower,visibleToLO,visibleToProcessor,visibleToUnderwriter"
+    "wrongtype-applicationId": "reject:applicationId,assetsScore,computedAt,creditScore,documentationScore,incomeScore,overallScore,stabilityScore,visibleToAgents,visibleToBorrower,visibleToLO,visibleToProcessor,visibleToUnderwriter",
+    "all-keys-null": "reject:applicationId,confidenceBreakdownId,confidenceLevel,overallScore"
   },
   "schema.insertDocumentExpirationSchema": {
     "undefined": "reject:",
@@ -749,7 +803,8 @@
     "missing-documentDate": "reject:documentDate,expirationDate,expirationNotifiedAt,notifiedAgent,notifiedBorrower,notifiedLO,warningDate,warningNotifiedAt",
     "missing-expirationDate": "reject:documentDate,expirationDate,expirationNotifiedAt,notifiedAgent,notifiedBorrower,notifiedLO,warningDate,warningNotifiedAt",
     "missing-warningDate": "reject:documentDate,expirationDate,expirationNotifiedAt,notifiedAgent,notifiedBorrower,notifiedLO,warningNotifiedAt",
-    "wrongtype-applicationId": "reject:applicationId,documentDate,expirationDate,expirationNotifiedAt,notifiedAgent,notifiedBorrower,notifiedLO,warningDate,warningNotifiedAt"
+    "wrongtype-applicationId": "reject:applicationId,documentDate,expirationDate,expirationNotifiedAt,notifiedAgent,notifiedBorrower,notifiedLO,warningDate,warningNotifiedAt",
+    "all-keys-null": "reject:applicationId,documentDate,documentId,documentType,expirationDate"
   },
   "schema.insertLenderDataPackageSchema": {
     "undefined": "reject:",
@@ -769,7 +824,8 @@
     "missing-lenderId": "reject:lenderId,responseReceivedAt,submittedAt",
     "missing-lenderName": "reject:lenderName,responseReceivedAt,submittedAt",
     "missing-lenderFormatId": "reject:responseReceivedAt,submittedAt",
-    "wrongtype-packageId": "reject:packageId,responseReceivedAt,submittedAt"
+    "wrongtype-packageId": "reject:packageId,responseReceivedAt,submittedAt",
+    "all-keys-null": "reject:applicationId,lenderId,lenderName,packageId,snapshotId"
   },
   "schema.insertWholesaleLenderSchema": {
     "undefined": "reject:",
@@ -789,7 +845,8 @@
     "missing-primaryContact": "reject:ausSupport,epoClawbackDays,nonQm",
     "missing-contactEmail": "reject:ausSupport,epoClawbackDays,nonQm",
     "missing-contactPhone": "reject:ausSupport,epoClawbackDays,nonQm",
-    "wrongtype-lenderId": "reject:ausSupport,epoClawbackDays,lenderId,nonQm"
+    "wrongtype-lenderId": "reject:ausSupport,epoClawbackDays,lenderId,nonQm",
+    "all-keys-null": "reject:approvalStatus,integrationTier,isDemo,lenderCode,lenderId,lenderName,nonQm"
   },
   "schema.writeWholesaleLenderSchema": {
     "undefined": "reject:",
@@ -809,7 +866,8 @@
     "missing-primaryContact": "reject:ausSupport,nonQm",
     "missing-contactEmail": "reject:ausSupport,nonQm",
     "missing-contactPhone": "reject:ausSupport,nonQm",
-    "wrongtype-lenderId": "reject:ausSupport,lenderId,nonQm"
+    "wrongtype-lenderId": "reject:ausSupport,lenderId,nonQm",
+    "all-keys-null": "reject:integrationTier,lenderCode,lenderId,lenderName,nonQm"
   },
   "schema.insertRateSheetSchema": {
     "undefined": "reject:",
@@ -829,7 +887,8 @@
     "missing-effectiveDate": "reject:effectiveDate,lockTerms,productTypes,uploadedAt",
     "missing-expirationDate": "reject:expirationDate,lockTerms,productTypes,uploadedAt",
     "missing-uploadMethod": "reject:lockTerms,productTypes,uploadedAt",
-    "wrongtype-sheetId": "reject:lockTerms,productTypes,sheetId,uploadedAt"
+    "wrongtype-sheetId": "reject:lockTerms,productTypes,sheetId,uploadedAt",
+    "all-keys-null": "reject:effectiveDate,expirationDate,lenderId,sheetId,version"
   },
   "schema.insertRateSheetProductSchema": {
     "undefined": "reject:",
@@ -849,7 +908,8 @@
     "missing-productType": "reject:baseRate,loanTerm,productType",
     "missing-loanTerm": "reject:baseRate,loanTerm",
     "missing-amortizationType": "reject:baseRate,loanTerm",
-    "wrongtype-rateSheetId": "reject:baseRate,loanTerm,rateSheetId"
+    "wrongtype-rateSheetId": "reject:baseRate,loanTerm,rateSheetId",
+    "all-keys-null": "reject:baseRate,loanTerm,productCode,productName,productType,rateSheetId"
   },
   "schema.insertLenderPricingAdjustmentSchema": {
     "undefined": "reject:",
@@ -869,7 +929,8 @@
     "missing-adjustmentName": "reject:adjustmentName,adjustmentValue",
     "missing-condition": "reject:adjustmentValue,condition",
     "missing-adjustmentValue": "reject:adjustmentValue",
-    "wrongtype-lenderId": "reject:adjustmentValue,lenderId"
+    "wrongtype-lenderId": "reject:adjustmentValue,lenderId",
+    "all-keys-null": "reject:adjustmentName,adjustmentType,adjustmentValue,effectiveDate,lenderId"
   },
   "schema.insertLenderOfferSchema": {
     "undefined": "reject:",
@@ -889,7 +950,8 @@
     "missing-applicationId": "reject:applicationId,brokerCompensationAmount,brokerCompensationBps,labels,lockConfirmationNumber,lockExpiration,lockTerm,lockedAt,offerExpiration,rate,selectedAt",
     "missing-snapshotId": "reject:brokerCompensationAmount,brokerCompensationBps,labels,lockConfirmationNumber,lockExpiration,lockTerm,lockedAt,offerExpiration,rate,selectedAt,snapshotId",
     "missing-rate": "reject:brokerCompensationAmount,brokerCompensationBps,labels,lockConfirmationNumber,lockExpiration,lockTerm,lockedAt,offerExpiration,rate,selectedAt",
-    "wrongtype-offerId": "reject:brokerCompensationAmount,brokerCompensationBps,labels,lockConfirmationNumber,lockExpiration,lockTerm,lockedAt,offerExpiration,offerId,rate,selectedAt"
+    "wrongtype-offerId": "reject:brokerCompensationAmount,brokerCompensationBps,labels,lockConfirmationNumber,lockExpiration,lockTerm,lockedAt,offerExpiration,offerId,rate,selectedAt",
+    "all-keys-null": "reject:applicationId,lenderId,lockTerm,offerExpiration,offerId,productId,rate,snapshotId,status"
   },
   "schema.insertLockRequestSchema": {
     "undefined": "reject:",
@@ -909,7 +971,8 @@
     "missing-applicationId": "reject:applicationId,confirmationNumber,confirmedAt,confirmedRate,requestedLockTerm,submittedAt",
     "missing-requestedLockTerm": "reject:confirmationNumber,confirmedAt,confirmedRate,requestedLockTerm,submittedAt",
     "missing-requestedLockExpiration": "reject:confirmationNumber,confirmedAt,confirmedRate,requestedLockExpiration,requestedLockTerm,submittedAt",
-    "wrongtype-requestId": "reject:confirmationNumber,confirmedAt,confirmedRate,requestId,requestedLockTerm,submittedAt"
+    "wrongtype-requestId": "reject:confirmationNumber,confirmedAt,confirmedRate,requestId,requestedLockTerm,submittedAt",
+    "all-keys-null": "reject:applicationId,offerId,requestId,requestedLockExpiration,requestedLockTerm,snapshotId,status"
   },
   "schema.insertBrokerOfferControlSchema": {
     "undefined": "reject:",
@@ -929,7 +992,8 @@
     "missing-houseOverlays": "reject:brokerCompensationBps,compensationLockedAt,suppressedLenderIds",
     "missing-brokerCompensationType": "reject:brokerCompensationBps,compensationLockedAt,suppressedLenderIds",
     "missing-brokerCompensationBps": "reject:compensationLockedAt,suppressedLenderIds",
-    "wrongtype-applicationId": "reject:applicationId,brokerCompensationBps,compensationLockedAt,suppressedLenderIds"
+    "wrongtype-applicationId": "reject:applicationId,brokerCompensationBps,compensationLockedAt,suppressedLenderIds",
+    "all-keys-null": "reject:applicationId"
   },
   "schema.insertOfferSelectionEventSchema": {
     "undefined": "reject:",
@@ -949,7 +1013,8 @@
     "missing-snapshotId": "reject:performedAt,snapshotId",
     "missing-lenderId": "reject:lenderId,performedAt",
     "missing-eventType": "reject:eventType,performedAt",
-    "wrongtype-eventId": "reject:eventId,performedAt"
+    "wrongtype-eventId": "reject:eventId,performedAt",
+    "all-keys-null": "reject:applicationId,eventId,eventType,lenderId,offerId,performedAt,performedBy,snapshotId"
   },
   "schema.insertOfferComparisonSessionSchema": {
     "undefined": "reject:",
@@ -969,7 +1034,8 @@
     "missing-borrowerId": "reject:borrowerId,endedAt,startedAt",
     "missing-startedAt": "reject:endedAt",
     "missing-endedAt": "reject:startedAt",
-    "wrongtype-sessionId": "reject:endedAt,sessionId,startedAt"
+    "wrongtype-sessionId": "reject:endedAt,sessionId,startedAt",
+    "all-keys-null": "reject:applicationId,borrowerId,sessionId,snapshotId,startedAt"
   },
   "schema.insertTeamMessageSchema": {
     "undefined": "reject:",
@@ -989,7 +1055,8 @@
     "missing-message": "reject:message",
     "missing-messageType": "accept",
     "missing-documentRequestData": "accept",
-    "wrongtype-senderId": "reject:senderId"
+    "wrongtype-senderId": "reject:senderId",
+    "all-keys-null": "reject:message,recipientId,senderId"
   },
   "schema.insertLoanMilestoneSchema": {
     "undefined": "reject:",
@@ -1009,7 +1076,8 @@
     "missing-docCollectionStartedAt": "reject:actualCloseDate,clearToCloseAt,closingScheduledAt,conditionalApprovedAt,deniedAt,fundedAt,preApprovedAt,processingStartedAt,submittedAt,targetCloseDate,underwritingStartedAt",
     "missing-processingStartedAt": "reject:actualCloseDate,clearToCloseAt,closingScheduledAt,conditionalApprovedAt,deniedAt,docCollectionStartedAt,fundedAt,preApprovedAt,submittedAt,targetCloseDate,underwritingStartedAt",
     "missing-underwritingStartedAt": "reject:actualCloseDate,clearToCloseAt,closingScheduledAt,conditionalApprovedAt,deniedAt,docCollectionStartedAt,fundedAt,preApprovedAt,processingStartedAt,submittedAt,targetCloseDate",
-    "wrongtype-applicationId": "reject:actualCloseDate,applicationId,clearToCloseAt,closingScheduledAt,conditionalApprovedAt,deniedAt,docCollectionStartedAt,fundedAt,preApprovedAt,processingStartedAt,submittedAt,targetCloseDate,underwritingStartedAt"
+    "wrongtype-applicationId": "reject:actualCloseDate,applicationId,clearToCloseAt,closingScheduledAt,conditionalApprovedAt,deniedAt,docCollectionStartedAt,fundedAt,preApprovedAt,processingStartedAt,submittedAt,targetCloseDate,underwritingStartedAt",
+    "all-keys-null": "reject:applicationId"
   },
   "schema.insertPlaidLinkTokenSchema": {
     "undefined": "reject:",
@@ -1029,7 +1097,8 @@
     "missing-verificationType": "reject:expiresAt,verificationType",
     "missing-status": "reject:expiresAt",
     "missing-expiresAt": "reject:expiresAt",
-    "wrongtype-userId": "reject:expiresAt,userId"
+    "wrongtype-userId": "reject:expiresAt,userId",
+    "all-keys-null": "reject:applicationId,expiresAt,linkToken,status,userId,verificationType"
   },
   "schema.insertVerificationSchema": {
     "undefined": "reject:",
@@ -1049,7 +1118,8 @@
     "missing-plaidItemId": "reject:addressVerified,dateOfBirthVerified,endDate,expiresAt,identityVerified,lastPayAmount,lastPayDate,reviewedAt,ssnVerified,startDate,verifiedAt",
     "missing-plaidAccessToken": "reject:addressVerified,dateOfBirthVerified,endDate,expiresAt,identityVerified,lastPayAmount,lastPayDate,reviewedAt,ssnVerified,startDate,verifiedAt",
     "missing-plaidVerificationId": "reject:addressVerified,dateOfBirthVerified,endDate,expiresAt,identityVerified,lastPayAmount,lastPayDate,reviewedAt,ssnVerified,startDate,verifiedAt",
-    "wrongtype-applicationId": "reject:addressVerified,applicationId,dateOfBirthVerified,endDate,expiresAt,identityVerified,lastPayAmount,lastPayDate,reviewedAt,ssnVerified,startDate,verifiedAt"
+    "wrongtype-applicationId": "reject:addressVerified,applicationId,dateOfBirthVerified,endDate,expiresAt,identityVerified,lastPayAmount,lastPayDate,reviewedAt,ssnVerified,startDate,verifiedAt",
+    "all-keys-null": "reject:applicationId,status,userId,verificationType"
   },
   "schema.insertTaskSchema": {
     "undefined": "reject:",
@@ -1069,7 +1139,8 @@
     "missing-title": "reject:aiAnalyzedAt,autoResolved,blocksLoanProgress,completedAt,documentYear,dueDate,escalatedAt,escalationLevel,priority,slaDueAt,status,title,verificationStatus,verifiedAt",
     "missing-description": "reject:aiAnalyzedAt,autoResolved,blocksLoanProgress,completedAt,documentYear,dueDate,escalatedAt,escalationLevel,priority,slaDueAt,status,verificationStatus,verifiedAt",
     "missing-taskType": "reject:aiAnalyzedAt,autoResolved,blocksLoanProgress,completedAt,documentYear,dueDate,escalatedAt,escalationLevel,priority,slaDueAt,status,taskType,verificationStatus,verifiedAt",
-    "wrongtype-applicationId": "reject:aiAnalyzedAt,applicationId,autoResolved,blocksLoanProgress,completedAt,documentYear,dueDate,escalatedAt,escalationLevel,priority,slaDueAt,status,verificationStatus,verifiedAt"
+    "wrongtype-applicationId": "reject:aiAnalyzedAt,applicationId,autoResolved,blocksLoanProgress,completedAt,documentYear,dueDate,escalatedAt,escalationLevel,priority,slaDueAt,status,verificationStatus,verifiedAt",
+    "all-keys-null": "reject:applicationId,priority,status,taskType,title"
   },
   "schema.insertTaskDocumentSchema": {
     "undefined": "reject:",
@@ -1087,7 +1158,8 @@
     "missing-documentId": "reject:documentId",
     "missing-isVerified": "accept",
     "missing-verificationNotes": "accept",
-    "wrongtype-taskId": "reject:taskId"
+    "wrongtype-taskId": "reject:taskId",
+    "all-keys-null": "reject:documentId,taskId"
   },
   "schema.insertTaskEventSchema": {
     "undefined": "reject:",
@@ -1107,7 +1179,8 @@
     "missing-documentId": "reject:processed,processedAt",
     "missing-eventPayload": "reject:eventPayload,processed,processedAt",
     "missing-processed": "reject:processedAt",
-    "wrongtype-eventType": "reject:eventType,processed,processedAt"
+    "wrongtype-eventType": "reject:eventType,processed,processedAt",
+    "all-keys-null": "reject:eventSource,eventType"
   },
   "schema.insertTaskAuditLogSchema": {
     "undefined": "reject:",
@@ -1127,7 +1200,8 @@
     "missing-newValue": "accept",
     "missing-actorUserId": "accept",
     "missing-actorRole": "accept",
-    "wrongtype-taskId": "reject:taskId"
+    "wrongtype-taskId": "reject:taskId",
+    "all-keys-null": "reject:action,taskId"
   },
   "schema.insertSlaClassConfigSchema": {
     "undefined": "reject:",
@@ -1147,7 +1221,8 @@
     "missing-targetResolutionMinutes": "reject:blocksLoanProgress,escalationStartMinutes,hardBreachMinutes",
     "missing-escalationStartMinutes": "reject:blocksLoanProgress,hardBreachMinutes,targetResolutionMinutes",
     "missing-hardBreachMinutes": "reject:blocksLoanProgress,escalationStartMinutes,targetResolutionMinutes",
-    "wrongtype-slaClass": "reject:blocksLoanProgress,escalationStartMinutes,hardBreachMinutes,slaClass,targetResolutionMinutes"
+    "wrongtype-slaClass": "reject:blocksLoanProgress,escalationStartMinutes,hardBreachMinutes,slaClass,targetResolutionMinutes",
+    "all-keys-null": "reject:name,slaClass"
   },
   "schema.insertTaskTypeSlaMapping": {
     "undefined": "reject:",
@@ -1167,7 +1242,8 @@
     "missing-slaClass": "reject:slaClass,visibleToBorrower",
     "missing-defaultOwnerRole": "reject:defaultOwnerRole,visibleToBorrower",
     "missing-autoActionOnBreach": "reject:visibleToBorrower",
-    "wrongtype-taskTypeCode": "reject:taskTypeCode,visibleToBorrower"
+    "wrongtype-taskTypeCode": "reject:taskTypeCode,visibleToBorrower",
+    "all-keys-null": "reject:defaultOwnerRole,slaClass,taskTypeCode,taskTypeName"
   },
   "schema.insertEscalationActionSchema": {
     "undefined": "reject:",
@@ -1187,7 +1263,8 @@
     "missing-actionConfig": "reject:actionConfig,escalationLevel",
     "missing-description": "reject:escalationLevel",
     "missing-isActive": "reject:escalationLevel",
-    "wrongtype-taskTypeCode": "reject:escalationLevel,taskTypeCode"
+    "wrongtype-taskTypeCode": "reject:escalationLevel,taskTypeCode",
+    "all-keys-null": "reject:actionType,escalationLevel"
   },
   "schema.insertIncomeStreamSchema": {
     "undefined": "reject:",
@@ -1207,7 +1284,8 @@
     "missing-employerName": "reject:annualAmount,monthlyAmount,qualifiedAmount,reliabilityScore,sourceDocumentIds,verificationDate,volatilityScore,yearsAtEmployer",
     "missing-monthlyAmount": "reject:annualAmount,monthlyAmount,qualifiedAmount,reliabilityScore,sourceDocumentIds,verificationDate,volatilityScore,yearsAtEmployer",
     "missing-annualAmount": "reject:monthlyAmount,qualifiedAmount,reliabilityScore,sourceDocumentIds,verificationDate,volatilityScore,yearsAtEmployer",
-    "wrongtype-borrowerId": "reject:annualAmount,borrowerId,monthlyAmount,qualifiedAmount,reliabilityScore,sourceDocumentIds,verificationDate,volatilityScore,yearsAtEmployer"
+    "wrongtype-borrowerId": "reject:annualAmount,borrowerId,monthlyAmount,qualifiedAmount,reliabilityScore,sourceDocumentIds,verificationDate,volatilityScore,yearsAtEmployer",
+    "all-keys-null": "reject:borrowerId,incomeType,mismoPath,monthlyAmount,stability"
   },
   "schema.insertCanonicalAssetSchema": {
     "undefined": "reject:",
@@ -1227,7 +1305,8 @@
     "missing-institutionName": "reject:accountNumberMasked,cashValue,marketValue,sourceDocumentIds,verifiedAt,vestedAmount",
     "missing-accountNumberMasked": "reject:cashValue,marketValue,sourceDocumentIds,verifiedAt,vestedAmount",
     "missing-cashValue": "reject:accountNumberMasked,cashValue,marketValue,sourceDocumentIds,verifiedAt,vestedAmount",
-    "wrongtype-borrowerId": "reject:accountNumberMasked,borrowerId,cashValue,marketValue,sourceDocumentIds,verifiedAt,vestedAmount"
+    "wrongtype-borrowerId": "reject:accountNumberMasked,borrowerId,cashValue,marketValue,sourceDocumentIds,verifiedAt,vestedAmount",
+    "all-keys-null": "reject:assetType,borrowerId,cashValue,mismoPath,verificationSource"
   },
   "schema.insertCanonicalLiabilitySchema": {
     "undefined": "reject:",
@@ -1247,7 +1326,8 @@
     "missing-creditorName": "reject:accountNumberMasked,sourceDocumentIds,willBePaidOff",
     "missing-accountNumberMasked": "reject:sourceDocumentIds,willBePaidOff",
     "missing-monthlyPayment": "reject:accountNumberMasked,monthlyPayment,sourceDocumentIds,willBePaidOff",
-    "wrongtype-borrowerId": "reject:accountNumberMasked,borrowerId,sourceDocumentIds,willBePaidOff"
+    "wrongtype-borrowerId": "reject:accountNumberMasked,borrowerId,sourceDocumentIds,willBePaidOff",
+    "all-keys-null": "reject:borrowerId,liabilityType,mismoPath,monthlyPayment,sourceType"
   },
   "schema.insertUnderwritingEventRuleSchema": {
     "undefined": "reject:",
@@ -1267,7 +1347,8 @@
     "missing-triggerCondition": "reject:applicableLoanTypes,priority,triggerCondition",
     "missing-actions": "reject:actions,applicableLoanTypes,priority",
     "missing-priority": "reject:applicableLoanTypes",
-    "wrongtype-ruleName": "reject:applicableLoanTypes,priority,ruleName"
+    "wrongtype-ruleName": "reject:applicableLoanTypes,priority,ruleName",
+    "all-keys-null": "reject:isActive,priority,ruleName,triggerType"
   },
   "schema.insertUnderwritingEventLogSchema": {
     "undefined": "reject:",
@@ -1287,7 +1368,8 @@
     "missing-triggerData": "reject:triggeredAt",
     "missing-actionsTaken": "reject:actionsTaken,triggeredAt",
     "missing-status": "reject:status,triggeredAt",
-    "wrongtype-loanId": "reject:loanId,triggeredAt"
+    "wrongtype-loanId": "reject:loanId,triggeredAt",
+    "all-keys-null": "reject:loanId,status,triggerType,triggeredAt"
   },
   "schema.insertUnderwritingSnapshotSchema": {
     "undefined": "reject:",
@@ -1307,7 +1389,8 @@
     "missing-totalMonthlyIncome": "reject:sourceDocumentIds,totalMonthlyIncome",
     "missing-incomeBreakdown": "reject:sourceDocumentIds",
     "missing-totalMonthlyLiabilities": "reject:sourceDocumentIds,totalMonthlyLiabilities",
-    "wrongtype-loanId": "reject:loanId,sourceDocumentIds"
+    "wrongtype-loanId": "reject:loanId,sourceDocumentIds",
+    "all-keys-null": "reject:borrowerId,loanId,proposedHousingExpense,snapshotType,totalMonthlyIncome,totalMonthlyLiabilities"
   },
   "schema.insertUnderwritingResultSchema": {
     "undefined": "reject:",
@@ -1327,7 +1410,8 @@
     "missing-backEndDti": "reject:backEndDti,calculatedAt,monthsOfReserves",
     "missing-dscr": "reject:calculatedAt,monthsOfReserves",
     "missing-ltv": "reject:calculatedAt,monthsOfReserves",
-    "wrongtype-snapshotId": "reject:calculatedAt,monthsOfReserves,snapshotId"
+    "wrongtype-snapshotId": "reject:calculatedAt,monthsOfReserves,snapshotId",
+    "all-keys-null": "reject:backEndDti,calculatedAt,confidence,eligibilityStatus,frontEndDti,loanId,snapshotId"
   },
   "schema.insertAnomalySchema": {
     "undefined": "reject:",
@@ -1347,7 +1431,8 @@
     "missing-title": "reject:detectedAt,resolvedAt,sourceDocumentIds,title",
     "missing-description": "reject:description,detectedAt,resolvedAt,sourceDocumentIds",
     "missing-sourceDocumentIds": "reject:detectedAt,resolvedAt",
-    "wrongtype-loanId": "reject:detectedAt,loanId,resolvedAt,sourceDocumentIds"
+    "wrongtype-loanId": "reject:detectedAt,loanId,resolvedAt,sourceDocumentIds",
+    "all-keys-null": "reject:category,description,detectedAt,detectionMethod,loanId,severity,status,title"
   },
   "schema.insertAuditEventSchema": {
     "undefined": "reject:",
@@ -1367,7 +1452,8 @@
     "missing-eventCategory": "reject:eventCategory,timestamp",
     "missing-action": "reject:action,timestamp",
     "missing-entityType": "reject:entityType,timestamp",
-    "wrongtype-actorId": "reject:actorId,timestamp"
+    "wrongtype-actorId": "reject:actorId,timestamp",
+    "all-keys-null": "reject:action,actorRole,entityId,entityType,eventCategory,timestamp"
   },
   "schema.insertSeasoningRuleSchema": {
     "undefined": "reject:",
@@ -1387,7 +1473,8 @@
     "missing-minimumMonths": "reject:effectiveDate,expirationDate,minimumMonths,priority",
     "missing-optimalMonths": "reject:effectiveDate,expirationDate,priority",
     "missing-insufficientAction": "reject:effectiveDate,expirationDate,insufficientAction,priority",
-    "wrongtype-ruleName": "reject:effectiveDate,expirationDate,priority,ruleName"
+    "wrongtype-ruleName": "reject:effectiveDate,expirationDate,priority,ruleName",
+    "all-keys-null": "reject:incomeType,insufficientAction,minimumMonths,ruleName"
   },
   "schema.insertCashFlowAdjustmentSchema": {
     "undefined": "reject:",
@@ -1407,7 +1494,8 @@
     "missing-amount": "reject:amount,sourceDocumentIds,verifiedAt",
     "missing-direction": "reject:amount,direction,sourceDocumentIds,verifiedAt",
     "missing-justification": "reject:amount,justification,sourceDocumentIds,verifiedAt",
-    "wrongtype-incomeStreamId": "reject:amount,incomeStreamId,sourceDocumentIds,verifiedAt"
+    "wrongtype-incomeStreamId": "reject:amount,incomeStreamId,sourceDocumentIds,verifiedAt",
+    "all-keys-null": "reject:adjustmentType,amount,direction,incomeStreamId,justification"
   },
   "schema.insertPortfolioStressTestSchema": {
     "undefined": "reject:",
@@ -1427,7 +1515,8 @@
     "missing-totalProperties": "reject:riskScore,stressedDscrRate,totalProperties",
     "missing-totalGrossRent": "reject:riskScore,stressedDscrRate,totalGrossRent,totalProperties",
     "missing-totalPitia": "reject:riskScore,stressedDscrRate,totalPitia,totalProperties",
-    "wrongtype-borrowerId": "reject:borrowerId,riskScore,stressedDscrRate,totalProperties"
+    "wrongtype-borrowerId": "reject:borrowerId,riskScore,stressedDscrRate,totalProperties",
+    "all-keys-null": "reject:baseDscr,borrowerId,totalGrossRent,totalPitia,totalProperties"
   },
   "schema.insertProductRuleSchema": {
     "undefined": "reject:",
@@ -1447,7 +1536,8 @@
     "missing-frontEndDtiMax": "reject:dtiExceptionAllowed,effectiveDate,expirationDate",
     "missing-backEndDtiMax": "reject:backEndDtiMax,dtiExceptionAllowed,effectiveDate,expirationDate",
     "missing-dtiExceptionAllowed": "reject:effectiveDate,expirationDate",
-    "wrongtype-productType": "reject:dtiExceptionAllowed,effectiveDate,expirationDate,productType"
+    "wrongtype-productType": "reject:dtiExceptionAllowed,effectiveDate,expirationDate,productType",
+    "all-keys-null": "reject:backEndDtiMax,productType,ruleName"
   },
   "schema.insertUnderwritingExplanationSchema": {
     "undefined": "reject:",
@@ -1467,7 +1557,8 @@
     "missing-category": "reject:category",
     "missing-input": "reject:input",
     "missing-output": "reject:output",
-    "wrongtype-snapshotId": "reject:snapshotId"
+    "wrongtype-snapshotId": "reject:snapshotId",
+    "all-keys-null": "reject:category,reasoning,ruleId,snapshotId"
   },
   "schema.insertConfidenceBreakdownSchema": {
     "undefined": "reject:",
@@ -1487,7 +1578,8 @@
     "missing-documentConfidence": "reject:documentConfidence",
     "missing-stabilityConfidence": "reject:stabilityConfidence",
     "missing-assetConfidence": "reject:assetConfidence",
-    "wrongtype-snapshotId": "reject:snapshotId"
+    "wrongtype-snapshotId": "reject:snapshotId",
+    "all-keys-null": "reject:assetConfidence,documentConfidence,incomeConfidence,liabilityConfidence,overallConfidence,snapshotId,stabilityConfidence,weakestComponent"
   },
   "schema.insertWhatIfScenarioSchema": {
     "undefined": "reject:",
@@ -1507,7 +1599,8 @@
     "missing-scenarioType": "reject:interestRateChange,loanAmountChange,scenarioType,sharedWithBorrower,wouldQualify",
     "missing-incomeChanges": "reject:interestRateChange,loanAmountChange,sharedWithBorrower,wouldQualify",
     "missing-liabilityPayoffs": "reject:interestRateChange,loanAmountChange,sharedWithBorrower,wouldQualify",
-    "wrongtype-loanId": "reject:interestRateChange,loanAmountChange,loanId,sharedWithBorrower,wouldQualify"
+    "wrongtype-loanId": "reject:interestRateChange,loanAmountChange,loanId,sharedWithBorrower,wouldQualify",
+    "all-keys-null": "reject:baseSnapshotId,loanId,scenarioName,scenarioType"
   },
   "schema.insertUnderwritingDecisionSchema": {
     "undefined": "reject:",
@@ -1527,7 +1620,8 @@
     "missing-decisionVersion": "reject:decisionVersion",
     "missing-inputsHash": "reject:decisionVersion,inputsHash",
     "missing-rulesVersion": "reject:decisionVersion,rulesVersion",
-    "wrongtype-loanId": "reject:decisionVersion,loanId"
+    "wrongtype-loanId": "reject:decisionVersion,loanId",
+    "all-keys-null": "reject:decision,decisionType,decisionVersion,frozenDti,inputsHash,loanId,resultId,rulesVersion,snapshotId"
   },
   "schema.insertUnderwritingRuleDslSchema": {
     "undefined": "reject:",
@@ -1547,7 +1641,8 @@
     "missing-productTypes": "reject:approvedAt,effectiveDate,expirationDate,incomeTypes,priority,stopOnMatch,version",
     "missing-incomeTypes": "reject:approvedAt,effectiveDate,expirationDate,priority,productTypes,stopOnMatch,version",
     "missing-triggerType": "reject:approvedAt,effectiveDate,expirationDate,incomeTypes,priority,productTypes,stopOnMatch,triggerType,version",
-    "wrongtype-ruleCode": "reject:approvedAt,effectiveDate,expirationDate,incomeTypes,priority,productTypes,ruleCode,stopOnMatch,version"
+    "wrongtype-ruleCode": "reject:approvedAt,effectiveDate,expirationDate,incomeTypes,priority,productTypes,ruleCode,stopOnMatch,version",
+    "all-keys-null": "reject:ruleCode,ruleName,triggerType"
   },
   "schema.insertRuleExecutionLogSchema": {
     "undefined": "reject:",
@@ -1567,7 +1662,8 @@
     "missing-ruleVersion": "reject:conditionsMet,ruleVersion",
     "missing-triggerType": "reject:conditionsMet,ruleVersion,triggerType",
     "missing-triggerContext": "reject:conditionsMet,ruleVersion",
-    "wrongtype-snapshotId": "reject:conditionsMet,ruleVersion,snapshotId"
+    "wrongtype-snapshotId": "reject:conditionsMet,ruleVersion,snapshotId",
+    "all-keys-null": "reject:conditionsMet,ruleCode,ruleId,ruleVersion,snapshotId,triggerType"
   },
   "schema.insertLoanConditionSchema": {
     "undefined": "reject:",
@@ -1587,7 +1683,8 @@
     "missing-description": "reject:clearedAt,isAutoGenerated,requiredDocumentTypes,status",
     "missing-priority": "reject:clearedAt,isAutoGenerated,requiredDocumentTypes,status",
     "missing-status": "reject:clearedAt,isAutoGenerated,requiredDocumentTypes",
-    "wrongtype-applicationId": "reject:applicationId,clearedAt,isAutoGenerated,requiredDocumentTypes,status"
+    "wrongtype-applicationId": "reject:applicationId,clearedAt,isAutoGenerated,requiredDocumentTypes,status",
+    "all-keys-null": "reject:applicationId,category,priority,status,title"
   },
   "schema.insertDocumentRequirementRuleSchema": {
     "undefined": "reject:",
@@ -1607,7 +1704,8 @@
     "missing-triggerConditions": "reject:generateCondition,priority,triggerConditions",
     "missing-requiredDocuments": "reject:generateCondition,priority,requiredDocuments",
     "missing-generateCondition": "reject:priority",
-    "wrongtype-ruleCode": "reject:generateCondition,priority,ruleCode"
+    "wrongtype-ruleCode": "reject:generateCondition,priority,ruleCode",
+    "all-keys-null": "reject:ruleCode,ruleName"
   },
   "schema.insertMaterialityRuleSetSchema": {
     "undefined": "reject:",
@@ -1627,7 +1725,8 @@
     "missing-version": "reject:publishedAt,version",
     "missing-effectiveDate": "reject:effectiveDate,publishedAt",
     "missing-expirationDate": "reject:publishedAt",
-    "wrongtype-ruleSetId": "reject:publishedAt,ruleSetId"
+    "wrongtype-ruleSetId": "reject:publishedAt,ruleSetId",
+    "all-keys-null": "reject:authority,effectiveDate,product,ruleSetId,version"
   },
   "schema.insertMaterialityRuleSchema": {
     "undefined": "reject:",
@@ -1647,7 +1746,8 @@
     "missing-appliesTo": "reject:priority,whenChangeBoolValue,whenChangeValue",
     "missing-whenMetric": "reject:priority,whenChangeBoolValue,whenChangeValue,whenMetric",
     "missing-whenChangeType": "reject:priority,whenChangeBoolValue,whenChangeType,whenChangeValue",
-    "wrongtype-ruleSetId": "reject:priority,ruleSetId,whenChangeBoolValue,whenChangeValue"
+    "wrongtype-ruleSetId": "reject:priority,ruleSetId,whenChangeBoolValue,whenChangeValue",
+    "all-keys-null": "reject:category,explanationMessage,isMaterial,requiredAction,ruleId,ruleSetId,severity,whenChangeType,whenMetric"
   },
   "schema.insertChangeEventSchema": {
     "undefined": "reject:",
@@ -1667,7 +1767,8 @@
     "missing-category": "reject:category,currentBoolValue,currentTextValue,currentValue,previousBoolValue,previousTextValue,previousValue,processedAt",
     "missing-metric": "reject:currentBoolValue,currentTextValue,currentValue,metric,previousBoolValue,previousTextValue,previousValue,processedAt",
     "missing-previousValue": "reject:currentBoolValue,currentTextValue,currentValue,previousBoolValue,previousTextValue,processedAt",
-    "wrongtype-applicationId": "reject:applicationId,currentBoolValue,currentTextValue,currentValue,previousBoolValue,previousTextValue,previousValue,processedAt"
+    "wrongtype-applicationId": "reject:applicationId,currentBoolValue,currentTextValue,currentValue,previousBoolValue,previousTextValue,previousValue,processedAt",
+    "all-keys-null": "reject:applicationId,category,changeType,eventType,metric,snapshotId"
   },
   "schema.insertMaterialityEvaluationSchema": {
     "undefined": "reject:",
@@ -1687,7 +1788,8 @@
     "missing-ruleSetId": "reject:actionTakenAt,aggregatedMateriality,ruleMatched,ruleSetId",
     "missing-ruleSetVersion": "reject:actionTakenAt,aggregatedMateriality,ruleMatched,ruleSetVersion",
     "missing-ruleId": "reject:actionTakenAt,aggregatedMateriality,ruleId,ruleMatched",
-    "wrongtype-applicationId": "reject:actionTakenAt,aggregatedMateriality,applicationId,ruleMatched"
+    "wrongtype-applicationId": "reject:actionTakenAt,aggregatedMateriality,applicationId,ruleMatched",
+    "all-keys-null": "reject:applicationId,changeEventId,explanationMessage,isMaterial,requiredAction,ruleId,ruleMatched,ruleSetId,ruleSetVersion,snapshotId"
   },
   "schema.insertPolicyProfileSchema": {
     "undefined": "reject:",
@@ -1707,7 +1809,8 @@
     "missing-version": "reject:activatedAt,approvedAt,retiredAt,version",
     "missing-effectiveDate": "reject:activatedAt,approvedAt,effectiveDate,retiredAt",
     "missing-expirationDate": "reject:activatedAt,approvedAt,retiredAt",
-    "wrongtype-profileId": "reject:activatedAt,approvedAt,profileId,retiredAt"
+    "wrongtype-profileId": "reject:activatedAt,approvedAt,profileId,retiredAt",
+    "all-keys-null": "reject:authority,effectiveDate,productType,profileId,status,version"
   },
   "schema.insertPolicyThresholdSchema": {
     "undefined": "reject:",
@@ -1727,7 +1830,8 @@
     "missing-valueNumeric": "reject:valueBool,valueEnum,valuePercent",
     "missing-valuePercent": "reject:valueBool,valueEnum,valueNumeric",
     "missing-valueBool": "reject:valueEnum,valueNumeric,valuePercent",
-    "wrongtype-policyProfileId": "reject:policyProfileId,valueBool,valueEnum,valueNumeric,valuePercent"
+    "wrongtype-policyProfileId": "reject:policyProfileId,valueBool,valueEnum,valueNumeric,valuePercent",
+    "all-keys-null": "reject:category,policyProfileId,thresholdKey"
   },
   "schema.insertPolicyApprovalWorkflowSchema": {
     "undefined": "reject:",
@@ -1747,7 +1851,8 @@
     "missing-action": "reject:action,actionAt",
     "missing-actionBy": "reject:actionAt,actionBy",
     "missing-actionAt": "accept",
-    "wrongtype-policyProfileId": "reject:actionAt,policyProfileId"
+    "wrongtype-policyProfileId": "reject:actionAt,policyProfileId",
+    "all-keys-null": "reject:action,actionBy,fromStatus,policyProfileId,toStatus"
   },
   "schema.insertPolicyLenderOverlaySchema": {
     "undefined": "reject:",
@@ -1767,7 +1872,8 @@
     "missing-version": "reject:approvedAt,version",
     "missing-effectiveDate": "reject:approvedAt,effectiveDate",
     "missing-expirationDate": "reject:approvedAt",
-    "wrongtype-basePolicyProfileId": "reject:approvedAt,basePolicyProfileId"
+    "wrongtype-basePolicyProfileId": "reject:approvedAt,basePolicyProfileId",
+    "all-keys-null": "reject:basePolicyProfileId,effectiveDate,lenderId,lenderName,status,version"
   },
   "schema.insertDocumentPackageSchema": {
     "undefined": "reject:",
@@ -1787,7 +1893,8 @@
     "missing-packageType": "reject:acknowledgedAt,packageType,sentAt",
     "missing-description": "reject:acknowledgedAt,sentAt",
     "missing-sections": "reject:acknowledgedAt,sentAt",
-    "wrongtype-applicationId": "reject:acknowledgedAt,applicationId,sentAt"
+    "wrongtype-applicationId": "reject:acknowledgedAt,applicationId,sentAt",
+    "all-keys-null": "reject:applicationId,createdByUserId,name,packageType,status"
   },
   "schema.insertDocumentPackageItemSchema": {
     "undefined": "reject:",
@@ -1807,7 +1914,8 @@
     "missing-displayOrder": "accept",
     "missing-customLabel": "accept",
     "missing-notes": "accept",
-    "wrongtype-packageId": "reject:packageId"
+    "wrongtype-packageId": "reject:packageId",
+    "all-keys-null": "reject:documentId,packageId"
   },
   "schema.insertDocumentUploadSchema": {
     "undefined": "reject:",
@@ -1827,7 +1935,8 @@
     "missing-mimeType": "reject:fileSizeBytes,mimeType,processingCompletedAt,processingStartedAt,uploadedAt",
     "missing-fileSizeBytes": "reject:processingCompletedAt,processingStartedAt,uploadedAt",
     "missing-uploadSource": "reject:fileSizeBytes,processingCompletedAt,processingStartedAt,uploadSource,uploadedAt",
-    "wrongtype-loanId": "reject:fileSizeBytes,loanId,processingCompletedAt,processingStartedAt,uploadedAt"
+    "wrongtype-loanId": "reject:fileSizeBytes,loanId,processingCompletedAt,processingStartedAt,uploadedAt",
+    "all-keys-null": "reject:borrowerId,checksum,mimeType,originalFileName,processingStatus,rawFileUri,uploadSource,uploadedAt"
   },
   "schema.insertDocumentPageSchema": {
     "undefined": "reject:",
@@ -1847,7 +1956,8 @@
     "missing-thumbnailUri": "reject:height,width",
     "missing-width": "reject:height",
     "missing-height": "reject:width",
-    "wrongtype-uploadId": "reject:height,uploadId,width"
+    "wrongtype-uploadId": "reject:height,uploadId,width",
+    "all-keys-null": "reject:imageUri,pageNumber,uploadId"
   },
   "schema.insertPageClassificationSchema": {
     "undefined": "reject:",
@@ -1867,7 +1977,8 @@
     "missing-alternativeTypes": "reject:classifiedAt,humanReviewed,reviewedAt",
     "missing-modelVersion": "reject:classifiedAt,humanReviewed,modelVersion,reviewedAt",
     "missing-classificationMethod": "reject:classificationMethod,classifiedAt,humanReviewed,reviewedAt",
-    "wrongtype-pageId": "reject:classifiedAt,humanReviewed,pageId,reviewedAt"
+    "wrongtype-pageId": "reject:classifiedAt,humanReviewed,pageId,reviewedAt",
+    "all-keys-null": "reject:classificationMethod,classifiedAt,confidence,documentType,modelVersion,pageId"
   },
   "schema.insertLogicalDocumentSchema": {
     "undefined": "reject:",
@@ -1887,7 +1998,8 @@
     "missing-aggregatedConfidence": "reject:accountNumberMasked,aggregatedConfidence,pageEnd,pageStart,periodEnd,periodStart,rawResponseKeyId,verifiedAt",
     "missing-status": "reject:accountNumberMasked,pageEnd,pageStart,periodEnd,periodStart,rawResponseKeyId,verifiedAt",
     "missing-periodStart": "reject:accountNumberMasked,pageEnd,pageStart,periodEnd,rawResponseKeyId,verifiedAt",
-    "wrongtype-loanId": "reject:accountNumberMasked,loanId,pageEnd,pageStart,periodEnd,periodStart,rawResponseKeyId,verifiedAt"
+    "wrongtype-loanId": "reject:accountNumberMasked,loanId,pageEnd,pageStart,periodEnd,periodStart,rawResponseKeyId,verifiedAt",
+    "all-keys-null": "reject:aggregatedConfidence,borrowerId,documentType,status"
   },
   "schema.insertLogicalDocumentPageSchema": {
     "undefined": "reject:",
@@ -1904,7 +2016,8 @@
     "missing-logicalDocumentId": "reject:logicalDocumentId",
     "missing-pageId": "reject:pageId",
     "missing-pageOrder": "reject:pageOrder",
-    "wrongtype-logicalDocumentId": "reject:logicalDocumentId"
+    "wrongtype-logicalDocumentId": "reject:logicalDocumentId",
+    "all-keys-null": "reject:logicalDocumentId,pageId,pageOrder"
   },
   "schema.insertExtractedFieldSchema": {
     "undefined": "reject:",
@@ -1924,7 +2037,8 @@
     "missing-documentId": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-fieldName": "reject:extractedAt,fieldName,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
     "missing-fieldCategory": "reject:extractedAt,humanCorrectedValue,humanVerified,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
-    "wrongtype-logicalDocumentId": "reject:extractedAt,humanCorrectedValue,humanVerified,logicalDocumentId,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt"
+    "wrongtype-logicalDocumentId": "reject:extractedAt,humanCorrectedValue,humanVerified,logicalDocumentId,valueBoolean,valueDate,valueNumeric,valueString,valueType,verifiedAt",
+    "all-keys-null": "reject:confidence,extractedAt,extractionMethod,fieldName,valueType"
   },
   "schema.insertCompletenessCheckSchema": {
     "undefined": "reject:",
@@ -1944,7 +2058,8 @@
     "missing-missingItems": "reject:balanceContinuityValid,checkedAt,dateRangeContinuous,expectedPages,foundPages,missingItems,requiredFieldsMissing",
     "missing-expectedPages": "reject:balanceContinuityValid,checkedAt,dateRangeContinuous,foundPages,requiredFieldsMissing",
     "missing-foundPages": "reject:balanceContinuityValid,checkedAt,dateRangeContinuous,expectedPages,requiredFieldsMissing",
-    "wrongtype-logicalDocumentId": "reject:balanceContinuityValid,checkedAt,dateRangeContinuous,expectedPages,foundPages,logicalDocumentId,requiredFieldsMissing"
+    "wrongtype-logicalDocumentId": "reject:balanceContinuityValid,checkedAt,dateRangeContinuous,expectedPages,foundPages,logicalDocumentId,requiredFieldsMissing",
+    "all-keys-null": "reject:checkedAt,documentType,logicalDocumentId,status"
   },
   "schema.insertTaxExtractionRunSchema": {
     "undefined": "reject:",
@@ -1964,7 +2079,8 @@
     "missing-status": "reject:classificationRawKeyId,completedAt,simulated",
     "missing-simulated": "reject:classificationRawKeyId,completedAt",
     "missing-error": "reject:classificationRawKeyId,completedAt,simulated",
-    "wrongtype-documentId": "reject:classificationRawKeyId,completedAt,documentId,simulated"
+    "wrongtype-documentId": "reject:classificationRawKeyId,completedAt,documentId,simulated",
+    "all-keys-null": "reject:documentId,simulated,status,userId"
   },
   "schema.insertBorrowerBusinessEntitySchema": {
     "undefined": "reject:",
@@ -1984,7 +2100,8 @@
     "missing-entityType": "reject:autoResolved,entityType",
     "missing-name": "reject:autoResolved",
     "missing-einLast4": "reject:autoResolved",
-    "wrongtype-userId": "reject:autoResolved,userId"
+    "wrongtype-userId": "reject:autoResolved,userId",
+    "all-keys-null": "reject:autoResolved,entityType,identityKey,sourceFormCount,userId"
   },
   "schema.insertSituationProfileSchema": {
     "undefined": "reject:",
@@ -2004,7 +2121,8 @@
     "missing-inputsFingerprint": "reject:inputsFingerprint,k1Present,multiEntity,rentalPresent,selfEmployed",
     "missing-entityCount": "reject:k1Present,multiEntity,rentalPresent,selfEmployed",
     "missing-selfEmployed": "reject:k1Present,multiEntity,rentalPresent",
-    "wrongtype-userId": "reject:k1Present,multiEntity,rentalPresent,selfEmployed,userId"
+    "wrongtype-userId": "reject:k1Present,multiEntity,rentalPresent,selfEmployed,userId",
+    "all-keys-null": "reject:documentRequestCount,entityCount,inputsFingerprint,k1Present,multiEntity,rentalPresent,selfEmployed,userId,varianceCount"
   },
   "schema.insertCreditConsentSchema": {
     "undefined": "reject:",
@@ -2024,7 +2142,8 @@
     "missing-disclosureVersion": "reject:consentGiven,consentTimestamp,disclosureVersion,revokedAt",
     "missing-disclosureText": "reject:consentGiven,consentTimestamp,disclosureText,revokedAt",
     "missing-consentGiven": "reject:consentGiven,consentTimestamp,revokedAt",
-    "wrongtype-applicationId": "reject:applicationId,consentGiven,consentTimestamp,revokedAt"
+    "wrongtype-applicationId": "reject:applicationId,consentGiven,consentTimestamp,revokedAt",
+    "all-keys-null": "reject:applicationId,borrowerFullName,consentGiven,consentTimestamp,consentType,disclosureText,disclosureVersion,userId"
   },
   "schema.insertDraftConsentProgressSchema": {
     "undefined": "reject:",
@@ -2044,7 +2163,8 @@
     "missing-borrowerFullName": "reject:acknowledged,currentStep,disclosureRead,expiresAt,lastSavedAt,stateDisclosuresReviewed,totalSteps",
     "missing-borrowerSSNLast4": "reject:acknowledged,currentStep,disclosureRead,expiresAt,lastSavedAt,stateDisclosuresReviewed,totalSteps",
     "missing-borrowerDOB": "reject:acknowledged,currentStep,disclosureRead,expiresAt,lastSavedAt,stateDisclosuresReviewed,totalSteps",
-    "wrongtype-applicationId": "reject:acknowledged,applicationId,currentStep,disclosureRead,expiresAt,lastSavedAt,stateDisclosuresReviewed,totalSteps"
+    "wrongtype-applicationId": "reject:acknowledged,applicationId,currentStep,disclosureRead,expiresAt,lastSavedAt,stateDisclosuresReviewed,totalSteps",
+    "all-keys-null": "reject:applicationId,userId"
   },
   "schema.insertCreditPullSchema": {
     "undefined": "reject:",
@@ -2064,7 +2184,8 @@
     "missing-agentIdentity": "reject:archivedAt,bureaus,completedAt,expiresAt,openTradelines,requestedAt,totalTradelines",
     "missing-pullType": "reject:archivedAt,bureaus,completedAt,expiresAt,openTradelines,pullType,requestedAt,totalTradelines",
     "missing-bureaus": "reject:archivedAt,completedAt,expiresAt,openTradelines,requestedAt,totalTradelines",
-    "wrongtype-applicationId": "reject:applicationId,archivedAt,bureaus,completedAt,expiresAt,openTradelines,requestedAt,totalTradelines"
+    "wrongtype-applicationId": "reject:applicationId,archivedAt,bureaus,completedAt,expiresAt,openTradelines,requestedAt,totalTradelines",
+    "all-keys-null": "reject:applicationId,consentId,isSimulated,pullType,requestedBy,status"
   },
   "schema.insertAdverseActionSchema": {
     "undefined": "reject:",
@@ -2084,7 +2205,8 @@
     "missing-actionType": "reject:actionType,basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
     "missing-primaryReason": "reject:basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,primaryReason,reviewedAt,secondaryReasons",
     "missing-secondaryReasons": "reject:basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt",
-    "wrongtype-applicationId": "reject:applicationId,basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons"
+    "wrongtype-applicationId": "reject:applicationId,basedOnConsumerReport,creditScoreSource,deliveredAt,fcraCompliant,generatedBy,noticeDate,reviewedAt,secondaryReasons",
+    "all-keys-null": "reject:actionType,applicationId,noticeDate,noticeText,primaryReason,userId"
   },
   "schema.insertCreditAuditLogSchema": {
     "undefined": "reject:",
@@ -2104,7 +2226,8 @@
     "missing-creditPullId": "reject:hashVersion,timestamp",
     "missing-adverseActionId": "reject:hashVersion,timestamp",
     "missing-action": "reject:action,hashVersion,timestamp",
-    "wrongtype-applicationId": "reject:applicationId,hashVersion,timestamp"
+    "wrongtype-applicationId": "reject:applicationId,hashVersion,timestamp",
+    "all-keys-null": "reject:action,entryHash,timestamp"
   },
   "schema.insertHomeownershipGoalSchema": {
     "undefined": "reject:",
@@ -2124,7 +2247,8 @@
     "missing-currentSavingsBalance": "reject:journeyDay,journeyStartDate",
     "missing-monthlyIncome": "reject:journeyDay,journeyStartDate",
     "missing-monthlyDebts": "reject:journeyDay,journeyStartDate",
-    "wrongtype-userId": "reject:journeyDay,journeyStartDate,userId"
+    "wrongtype-userId": "reject:journeyDay,journeyStartDate,userId",
+    "all-keys-null": "reject:userId"
   },
   "schema.insertCreditActionSchema": {
     "undefined": "reject:",
@@ -2144,7 +2268,8 @@
     "missing-description": "reject:accountBalance,actualPointsGain,completedAt,estimatedPointsGain",
     "missing-estimatedPointsGain": "reject:accountBalance,actualPointsGain,completedAt",
     "missing-actualPointsGain": "reject:accountBalance,completedAt,estimatedPointsGain",
-    "wrongtype-goalId": "reject:accountBalance,actualPointsGain,completedAt,estimatedPointsGain,goalId"
+    "wrongtype-goalId": "reject:accountBalance,actualPointsGain,completedAt,estimatedPointsGain,goalId",
+    "all-keys-null": "reject:actionType,goalId,title"
   },
   "schema.insertSavingsTransactionSchema": {
     "undefined": "reject:",
@@ -2163,7 +2288,8 @@
     "missing-amount": "reject:amount",
     "missing-description": "reject:amount",
     "missing-runningBalance": "reject:amount,runningBalance",
-    "wrongtype-goalId": "reject:amount,goalId"
+    "wrongtype-goalId": "reject:amount,goalId",
+    "all-keys-null": "reject:amount,goalId,runningBalance,transactionType"
   },
   "schema.insertJourneyMilestoneSchema": {
     "undefined": "reject:",
@@ -2183,7 +2309,8 @@
     "missing-description": "reject:achievedAt,pointsAwarded",
     "missing-celebrationMessage": "reject:achievedAt,pointsAwarded",
     "missing-achievedAt": "reject:pointsAwarded",
-    "wrongtype-goalId": "reject:achievedAt,goalId,pointsAwarded"
+    "wrongtype-goalId": "reject:achievedAt,goalId,pointsAwarded",
+    "all-keys-null": "reject:goalId,milestoneType,title"
   },
   "schema.insertConsentTemplateSchema": {
     "undefined": "reject:",
@@ -2203,7 +2330,8 @@
     "missing-title": "reject:effectiveDate,expirationDate,requiredForLoanTypes,title",
     "missing-shortDescription": "reject:effectiveDate,expirationDate,requiredForLoanTypes",
     "missing-fullText": "reject:effectiveDate,expirationDate,fullText,requiredForLoanTypes",
-    "wrongtype-consentType": "reject:consentType,effectiveDate,expirationDate,requiredForLoanTypes"
+    "wrongtype-consentType": "reject:consentType,effectiveDate,expirationDate,requiredForLoanTypes",
+    "all-keys-null": "reject:consentType,effectiveDate,fullText,isActive,title,version"
   },
   "schema.insertBorrowerConsentSchema": {
     "undefined": "reject:",
@@ -2223,7 +2351,8 @@
     "missing-consentType": "reject:consentGiven,consentType,consentedAt,revokedAt",
     "missing-templateVersion": "reject:consentGiven,consentedAt,revokedAt",
     "missing-consentGiven": "reject:consentGiven,consentedAt,revokedAt",
-    "wrongtype-userId": "reject:consentGiven,consentedAt,revokedAt,userId"
+    "wrongtype-userId": "reject:consentGiven,consentedAt,revokedAt,userId",
+    "all-keys-null": "reject:consentGiven,consentMethod,consentType,consentedAt,userId"
   },
   "schema.insertHmdaDemographicsSchema": {
     "undefined": "reject:",
@@ -2243,7 +2372,8 @@
     "missing-ethnicityHispanicLatino": "reject:age,ageNotProvided,ethnicityCuban,ethnicityMexican,ethnicityNotHispanicLatino,ethnicityNotProvided,ethnicityOtherHispanicLatino,ethnicityPuertoRican,observedBySurname,observedByVisual,raceAmericanIndian,raceAsian,raceAsianIndian,raceBlack,raceChinese,raceFilipino,raceGuamanian,raceJapanese,raceKorean,raceNativeHawaiian,raceNotProvided,raceOtherAsian,raceOtherPacificIslander,raceSamoan,raceVietnamese,raceWhite,sexFemale,sexMale,sexNotProvided",
     "missing-ethnicityMexican": "reject:age,ageNotProvided,ethnicityCuban,ethnicityHispanicLatino,ethnicityNotHispanicLatino,ethnicityNotProvided,ethnicityOtherHispanicLatino,ethnicityPuertoRican,observedBySurname,observedByVisual,raceAmericanIndian,raceAsian,raceAsianIndian,raceBlack,raceChinese,raceFilipino,raceGuamanian,raceJapanese,raceKorean,raceNativeHawaiian,raceNotProvided,raceOtherAsian,raceOtherPacificIslander,raceSamoan,raceVietnamese,raceWhite,sexFemale,sexMale,sexNotProvided",
     "missing-ethnicityCuban": "reject:age,ageNotProvided,ethnicityHispanicLatino,ethnicityMexican,ethnicityNotHispanicLatino,ethnicityNotProvided,ethnicityOtherHispanicLatino,ethnicityPuertoRican,observedBySurname,observedByVisual,raceAmericanIndian,raceAsian,raceAsianIndian,raceBlack,raceChinese,raceFilipino,raceGuamanian,raceJapanese,raceKorean,raceNativeHawaiian,raceNotProvided,raceOtherAsian,raceOtherPacificIslander,raceSamoan,raceVietnamese,raceWhite,sexFemale,sexMale,sexNotProvided",
-    "wrongtype-applicationId": "reject:age,ageNotProvided,applicationId,ethnicityCuban,ethnicityHispanicLatino,ethnicityMexican,ethnicityNotHispanicLatino,ethnicityNotProvided,ethnicityOtherHispanicLatino,ethnicityPuertoRican,observedBySurname,observedByVisual,raceAmericanIndian,raceAsian,raceAsianIndian,raceBlack,raceChinese,raceFilipino,raceGuamanian,raceJapanese,raceKorean,raceNativeHawaiian,raceNotProvided,raceOtherAsian,raceOtherPacificIslander,raceSamoan,raceVietnamese,raceWhite,sexFemale,sexMale,sexNotProvided"
+    "wrongtype-applicationId": "reject:age,ageNotProvided,applicationId,ethnicityCuban,ethnicityHispanicLatino,ethnicityMexican,ethnicityNotHispanicLatino,ethnicityNotProvided,ethnicityOtherHispanicLatino,ethnicityPuertoRican,observedBySurname,observedByVisual,raceAmericanIndian,raceAsian,raceAsianIndian,raceBlack,raceChinese,raceFilipino,raceGuamanian,raceJapanese,raceKorean,raceNativeHawaiian,raceNotProvided,raceOtherAsian,raceOtherPacificIslander,raceSamoan,raceVietnamese,raceWhite,sexFemale,sexMale,sexNotProvided",
+    "all-keys-null": "reject:applicationId,borrowerId,collectionMethod"
   },
   "schema.insertVerificationReportSchema": {
     "undefined": "reject:",
@@ -2263,7 +2393,8 @@
     "missing-reportType": "reject:completedAt,daysRequested,expiresAt,gseEligible,reportType,requestedAt",
     "missing-voaReportId": "reject:completedAt,daysRequested,expiresAt,gseEligible,requestedAt",
     "missing-voieReportId": "reject:completedAt,daysRequested,expiresAt,gseEligible,requestedAt",
-    "wrongtype-applicationId": "reject:applicationId,completedAt,daysRequested,expiresAt,gseEligible,requestedAt"
+    "wrongtype-applicationId": "reject:applicationId,completedAt,daysRequested,expiresAt,gseEligible,requestedAt",
+    "all-keys-null": "reject:applicationId,gseEligible,provider,reportType,requestedAt,status,userId"
   },
   "schema.insertChangeOfCircumstanceSchema": {
     "undefined": "reject:",
@@ -2283,7 +2414,8 @@
     "missing-informationReceivedAt": "reject:affectedChargeIds,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
     "missing-revisedLeDueDate": "reject:affectedChargeIds,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
     "missing-revisedLeDeliveredAt": "reject:affectedChargeIds,informationReceivedAt,revisedLeDueDate",
-    "wrongtype-applicationId": "reject:affectedChargeIds,applicationId,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate"
+    "wrongtype-applicationId": "reject:affectedChargeIds,applicationId,informationReceivedAt,revisedLeDeliveredAt,revisedLeDueDate",
+    "all-keys-null": "reject:applicationId,createdByUserId,description,informationReceivedAt,reasonType,revisedLeDueDate,status"
   },
   "schema.insertLoanEstimateDisclosureSchema": {
     "undefined": "reject:",
@@ -2303,7 +2435,8 @@
     "missing-snapshot": "reject:feeScheduleVersion,issuedAt,snapshot,version",
     "missing-cocId": "reject:feeScheduleVersion,issuedAt,version",
     "missing-toleranceEvaluation": "reject:feeScheduleVersion,issuedAt,version",
-    "wrongtype-applicationId": "reject:applicationId,feeScheduleVersion,issuedAt,version"
+    "wrongtype-applicationId": "reject:applicationId,feeScheduleVersion,issuedAt,version",
+    "all-keys-null": "reject:applicationId,issuedAt,version"
   },
   "schema.insertLoanCostEntrySchema": {
     "undefined": "reject:",
@@ -2323,7 +2456,8 @@
     "missing-amount": "reject:amount,automatic,category,incurredAt,simulated",
     "missing-incurredAt": "reject:amount,automatic,category,simulated",
     "missing-automatic": "reject:amount,category,incurredAt,simulated",
-    "wrongtype-applicationId": "reject:amount,applicationId,automatic,category,incurredAt,simulated"
+    "wrongtype-applicationId": "reject:amount,applicationId,automatic,category,incurredAt,simulated",
+    "all-keys-null": "reject:amount,applicationId,automatic,category,incurredAt,simulated"
   },
   "schema.insertCoachingSessionSchema": {
     "undefined": "reject:",
@@ -2343,7 +2477,8 @@
     "missing-topic": "reject:durationMinutes,scheduledAt",
     "missing-notes": "reject:durationMinutes,scheduledAt",
     "missing-actionItems": "reject:durationMinutes,scheduledAt",
-    "wrongtype-enrollmentId": "reject:durationMinutes,enrollmentId,scheduledAt"
+    "wrongtype-enrollmentId": "reject:durationMinutes,enrollmentId,scheduledAt",
+    "all-keys-null": "reject:enrollmentId,scheduledAt,status"
   },
   "schema.insertCoachConversationSchema": {
     "undefined": "reject:",
@@ -2363,7 +2498,8 @@
     "missing-completionPercentage": "accept",
     "missing-financialProfile": "reject:completionPercentage",
     "missing-actionPlan": "reject:completionPercentage",
-    "wrongtype-userId": "reject:completionPercentage,userId"
+    "wrongtype-userId": "reject:completionPercentage,userId",
+    "all-keys-null": "reject:status,userId"
   },
   "schema.insertCoachMessageSchema": {
     "undefined": "reject:",
@@ -2381,7 +2517,8 @@
     "missing-role": "reject:role",
     "missing-content": "reject:content",
     "missing-structuredData": "accept",
-    "wrongtype-conversationId": "reject:conversationId"
+    "wrongtype-conversationId": "reject:conversationId",
+    "all-keys-null": "reject:content,conversationId,role"
   },
   "schema.insertAgentProfileSchema": {
     "undefined": "reject:",
@@ -2401,7 +2538,8 @@
     "missing-licenseNumber": "reject:activeListings,phoneNumber,propertiesSold,serviceArea,specialties,totalReviews",
     "missing-licenseExpiry": "reject:activeListings,licenseNumber,phoneNumber,propertiesSold,serviceArea,specialties,totalReviews",
     "missing-brokerage": "reject:activeListings,licenseNumber,phoneNumber,propertiesSold,serviceArea,specialties,totalReviews",
-    "wrongtype-userId": "reject:activeListings,licenseNumber,phoneNumber,propertiesSold,serviceArea,specialties,totalReviews,userId"
+    "wrongtype-userId": "reject:activeListings,licenseNumber,phoneNumber,propertiesSold,serviceArea,specialties,totalReviews,userId",
+    "all-keys-null": "reject:userId"
   },
   "schema.insertPropertySchema": {
     "undefined": "reject:",
@@ -2421,7 +2559,8 @@
     "missing-city": "reject:avmAsOf,avmValue,bedrooms,city,features,images,listedAt,soldAt,squareFeet",
     "missing-state": "reject:avmAsOf,avmValue,bedrooms,features,images,listedAt,soldAt,squareFeet,state",
     "missing-zipCode": "reject:avmAsOf,avmValue,bedrooms,features,images,listedAt,soldAt,squareFeet,zipCode",
-    "wrongtype-mlsId": "reject:avmAsOf,avmValue,bedrooms,features,images,listedAt,mlsId,soldAt,squareFeet"
+    "wrongtype-mlsId": "reject:avmAsOf,avmValue,bedrooms,features,images,listedAt,mlsId,soldAt,squareFeet",
+    "all-keys-null": "reject:address,city,price,state,zipCode"
   },
   "schema.insertHomeownerProfileSchema": {
     "undefined": "reject:",
@@ -2441,7 +2580,8 @@
     "missing-interestRate": "reject:lastReviewDate,loanCloseDate,nextReviewDate,originalLoanAmount,propertyValue,purchaseDate",
     "missing-monthlyPayment": "reject:interestRate,lastReviewDate,loanCloseDate,nextReviewDate,originalLoanAmount,propertyValue,purchaseDate",
     "missing-propertyValue": "reject:interestRate,lastReviewDate,loanCloseDate,nextReviewDate,originalLoanAmount,purchaseDate",
-    "wrongtype-userId": "reject:interestRate,lastReviewDate,loanCloseDate,nextReviewDate,originalLoanAmount,propertyValue,purchaseDate,userId"
+    "wrongtype-userId": "reject:interestRate,lastReviewDate,loanCloseDate,nextReviewDate,originalLoanAmount,propertyValue,purchaseDate,userId",
+    "all-keys-null": "reject:userId"
   },
   "schema.insertRefiAlertSchema": {
     "undefined": "reject:",
@@ -2461,7 +2601,8 @@
     "missing-potentialSavingsMonthly": "reject:currentRate,marketRate",
     "missing-potentialSavingsLifetime": "reject:currentRate,marketRate",
     "missing-isActionable": "reject:currentRate,marketRate",
-    "wrongtype-homeownerProfileId": "reject:currentRate,homeownerProfileId,marketRate"
+    "wrongtype-homeownerProfileId": "reject:currentRate,homeownerProfileId,marketRate",
+    "all-keys-null": "reject:currentRate,homeownerProfileId,marketRate"
   },
   "schema.insertEquitySnapshotSchema": {
     "undefined": "reject:",
@@ -2481,7 +2622,8 @@
     "missing-loanBalance": "reject:equityAmount,estimatedValue,snapshotDate",
     "missing-equityAmount": "reject:estimatedValue,snapshotDate",
     "missing-equityPercent": "reject:equityAmount,estimatedValue,snapshotDate",
-    "wrongtype-homeownerProfileId": "reject:equityAmount,estimatedValue,homeownerProfileId,snapshotDate"
+    "wrongtype-homeownerProfileId": "reject:equityAmount,estimatedValue,homeownerProfileId,snapshotDate",
+    "all-keys-null": "reject:homeownerProfileId,snapshotDate"
   },
   "schema.insertContentCategorySchema": {
     "undefined": "reject:",
@@ -2501,7 +2643,8 @@
     "missing-icon": "accept",
     "missing-color": "accept",
     "missing-displayOrder": "accept",
-    "wrongtype-name": "reject:name"
+    "wrongtype-name": "reject:name",
+    "all-keys-null": "reject:name,slug"
   },
   "schema.insertArticleSchema": {
     "undefined": "reject:",
@@ -2521,7 +2664,8 @@
     "missing-content": "reject:content,docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,transactionPurposes",
     "missing-featuredImage": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,transactionPurposes",
     "missing-categoryId": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,transactionPurposes",
-    "wrongtype-title": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,title,transactionPurposes"
+    "wrongtype-title": "reject:docMethods,loanProductFamilies,publishedAt,readTimeMinutes,tags,title,transactionPurposes",
+    "all-keys-null": "reject:content,slug,status,title"
   },
   "schema.insertFaqSchema": {
     "undefined": "reject:",
@@ -2541,7 +2685,8 @@
     "missing-tags": "reject:searchKeywords",
     "missing-searchKeywords": "reject:tags",
     "missing-displayOrder": "reject:searchKeywords,tags",
-    "wrongtype-question": "reject:question,searchKeywords,tags"
+    "wrongtype-question": "reject:question,searchKeywords,tags",
+    "all-keys-null": "reject:answer,question,status"
   },
   "schema.insertBrokerCommissionSchema": {
     "undefined": "reject:",
@@ -2561,7 +2706,8 @@
     "missing-commissionRate": "reject:commissionAmount,commissionRate,loanAmount,paidAt,status",
     "missing-commissionAmount": "reject:commissionAmount,commissionRate,loanAmount,paidAt,status",
     "missing-status": "reject:commissionAmount,commissionRate,loanAmount,paidAt",
-    "wrongtype-brokerId": "reject:brokerId,commissionAmount,commissionRate,loanAmount,paidAt,status"
+    "wrongtype-brokerId": "reject:brokerId,commissionAmount,commissionRate,loanAmount,paidAt,status",
+    "all-keys-null": "reject:applicationId,brokerId,commissionAmount,commissionRate,loanAmount,status"
   },
   "schema.insertCalculatorResultSchema": {
     "undefined": "reject:",
@@ -2579,7 +2725,8 @@
     "missing-calculatorType": "reject:calculatorType",
     "missing-inputs": "reject:inputs",
     "missing-results": "reject:results",
-    "wrongtype-userId": "reject:userId"
+    "wrongtype-userId": "reject:userId",
+    "all-keys-null": "reject:calculatorType"
   },
   "schema.insertCalculatorProfileSchema": {
     "undefined": "reject:",
@@ -2599,7 +2746,8 @@
     "missing-phone": "reject:annualIncome,convertedToUser,downPaymentSaved,maxHomePrice,monthlyDebts",
     "missing-annualIncome": "reject:convertedToUser,downPaymentSaved,maxHomePrice,monthlyDebts",
     "missing-monthlyDebts": "reject:annualIncome,convertedToUser,downPaymentSaved,maxHomePrice",
-    "wrongtype-email": "reject:annualIncome,convertedToUser,downPaymentSaved,email,maxHomePrice,monthlyDebts"
+    "wrongtype-email": "reject:annualIncome,convertedToUser,downPaymentSaved,email,maxHomePrice,monthlyDebts",
+    "all-keys-null": "reject:email"
   },
   "schema.insertPartnerProviderSchema": {
     "undefined": "reject:",
@@ -2619,7 +2767,8 @@
     "missing-apiBaseUrl": "reject:expectedTurnaroundHours",
     "missing-apiVersion": "reject:expectedTurnaroundHours",
     "missing-credentialSecretKey": "reject:expectedTurnaroundHours",
-    "wrongtype-name": "reject:expectedTurnaroundHours,name"
+    "wrongtype-name": "reject:expectedTurnaroundHours,name",
+    "all-keys-null": "reject:code,isActive,isTestMode,name,serviceType"
   },
   "schema.insertPartnerOrderSchema": {
     "undefined": "reject:",
@@ -2639,7 +2788,8 @@
     "missing-orderReference": "reject:appraisedValue,completedAt,feePaidByBorrower,orderedAt,orderedBy,submittedAt",
     "missing-status": "reject:appraisedValue,completedAt,feePaidByBorrower,orderReference,orderedAt,orderedBy,submittedAt",
     "missing-requestPayload": "reject:appraisedValue,completedAt,feePaidByBorrower,orderReference,orderedAt,orderedBy,submittedAt",
-    "wrongtype-applicationId": "reject:applicationId,appraisedValue,completedAt,feePaidByBorrower,orderReference,orderedAt,orderedBy,submittedAt"
+    "wrongtype-applicationId": "reject:applicationId,appraisedValue,completedAt,feePaidByBorrower,orderReference,orderedAt,orderedBy,submittedAt",
+    "all-keys-null": "reject:applicationId,orderedBy,providerId,serviceType,status"
   },
   "schema.insertKbaSessionSchema": {
     "undefined": "reject:",
@@ -2659,7 +2809,8 @@
     "missing-questionsData": "reject:completedAt,expiresAt,maxAttempts,startedAt,totalQuestions",
     "missing-answersData": "reject:completedAt,expiresAt,maxAttempts,startedAt,totalQuestions",
     "missing-score": "reject:completedAt,expiresAt,maxAttempts,startedAt,totalQuestions",
-    "wrongtype-userId": "reject:completedAt,expiresAt,maxAttempts,startedAt,totalQuestions,userId"
+    "wrongtype-userId": "reject:completedAt,expiresAt,maxAttempts,startedAt,totalQuestions,userId",
+    "all-keys-null": "reject:status,userId"
   },
   "schema.insertKycScreeningSchema": {
     "undefined": "reject:",
@@ -2679,7 +2830,8 @@
     "missing-ofacStatus": "reject:adverseMediaCheckedAt,expiresAt,ofacCheckedAt,pepCheckedAt,reviewedAt,sanctionsCheckedAt",
     "missing-ofacCheckedAt": "reject:adverseMediaCheckedAt,expiresAt,pepCheckedAt,reviewedAt,sanctionsCheckedAt",
     "missing-sanctionsStatus": "reject:adverseMediaCheckedAt,expiresAt,ofacCheckedAt,pepCheckedAt,reviewedAt,sanctionsCheckedAt",
-    "wrongtype-userId": "reject:adverseMediaCheckedAt,expiresAt,ofacCheckedAt,pepCheckedAt,reviewedAt,sanctionsCheckedAt,userId"
+    "wrongtype-userId": "reject:adverseMediaCheckedAt,expiresAt,ofacCheckedAt,pepCheckedAt,reviewedAt,sanctionsCheckedAt,userId",
+    "all-keys-null": "reject:overallStatus,userId"
   },
   "schema.insertOnboardingProfileSchema": {
     "undefined": "reject:",
@@ -2699,7 +2851,8 @@
     "missing-journeyStatus": "reject:documentsComplete,identityVerified,kycCleared,personalInfoComplete,progressPercent",
     "missing-completedSteps": "reject:documentsComplete,identityVerified,kycCleared,personalInfoComplete,progressPercent",
     "missing-currentStep": "reject:documentsComplete,identityVerified,kycCleared,personalInfoComplete,progressPercent",
-    "wrongtype-userId": "reject:documentsComplete,identityVerified,kycCleared,personalInfoComplete,progressPercent,userId"
+    "wrongtype-userId": "reject:documentsComplete,identityVerified,kycCleared,personalInfoComplete,progressPercent,userId",
+    "all-keys-null": "reject:userId"
   },
   "schema.insertOnboardingFeedbackSchema": {
     "undefined": "reject:",
@@ -2719,7 +2872,8 @@
     "missing-rating": "accept",
     "missing-comment": "reject:rating",
     "missing-feedbackType": "reject:rating",
-    "wrongtype-userId": "reject:rating,userId"
+    "wrongtype-userId": "reject:rating,userId",
+    "all-keys-null": "reject:userId"
   },
   "schema.insertCoBrandProfileSchema": {
     "undefined": "reject:",
@@ -2739,7 +2893,8 @@
     "missing-logoUrl": "reject:licenseNumber,serviceAreas,specialties",
     "missing-heroImageUrl": "reject:licenseNumber,serviceAreas,specialties",
     "missing-primaryColor": "reject:licenseNumber,serviceAreas,specialties",
-    "wrongtype-userId": "reject:licenseNumber,serviceAreas,specialties,userId"
+    "wrongtype-userId": "reject:licenseNumber,serviceAreas,specialties,userId",
+    "all-keys-null": "reject:brandName,userId"
   },
   "schema.insertDealDeskThreadSchema": {
     "undefined": "reject:",
@@ -2759,7 +2914,8 @@
     "missing-scenarioType": "reject:loanAmount",
     "missing-status": "reject:loanAmount",
     "missing-loanAmount": "accept",
-    "wrongtype-agentUserId": "reject:agentUserId,loanAmount"
+    "wrongtype-agentUserId": "reject:agentUserId,loanAmount",
+    "all-keys-null": "reject:agentUserId,status,subject"
   },
   "schema.insertDealDeskMessageSchema": {
     "undefined": "reject:",
@@ -2776,7 +2932,8 @@
     "missing-threadId": "reject:threadId",
     "missing-senderUserId": "reject:senderUserId",
     "missing-content": "reject:content",
-    "wrongtype-threadId": "reject:threadId"
+    "wrongtype-threadId": "reject:threadId",
+    "all-keys-null": "reject:content,senderUserId,threadId"
   },
   "schema.insertDpaProgramSchema": {
     "undefined": "reject:",
@@ -2796,7 +2953,8 @@
     "missing-description": "reject:description,firstTimeBuyerOnly,maxAssistanceAmount",
     "missing-assistanceType": "reject:assistanceType,firstTimeBuyerOnly,maxAssistanceAmount",
     "missing-maxAssistanceAmount": "reject:firstTimeBuyerOnly",
-    "wrongtype-name": "reject:firstTimeBuyerOnly,maxAssistanceAmount,name"
+    "wrongtype-name": "reject:firstTimeBuyerOnly,maxAssistanceAmount,name",
+    "all-keys-null": "reject:assistanceType,description,name,programType"
   },
   "schema.insertAgentPipelineAccessSchema": {
     "undefined": "reject:",
@@ -2816,7 +2974,8 @@
     "missing-currentStage": "reject:estimatedCloseDate,loanAmount",
     "missing-lastMilestone": "reject:estimatedCloseDate,loanAmount",
     "missing-nextStep": "reject:estimatedCloseDate,loanAmount",
-    "wrongtype-agentUserId": "reject:agentUserId,estimatedCloseDate,loanAmount"
+    "wrongtype-agentUserId": "reject:agentUserId,estimatedCloseDate,loanAmount",
+    "all-keys-null": "reject:agentUserId,applicationId"
   },
   "schema.insertDealRescueEscalationSchema": {
     "undefined": "reject:",
@@ -2836,7 +2995,8 @@
     "missing-urgency": "reject:closingDate,issueType,slaDeadline",
     "missing-issueType": "reject:closingDate,issueType,slaDeadline",
     "missing-subject": "reject:closingDate,issueType,slaDeadline,subject",
-    "wrongtype-applicationId": "reject:applicationId,closingDate,issueType,slaDeadline"
+    "wrongtype-applicationId": "reject:applicationId,closingDate,issueType,slaDeadline",
+    "all-keys-null": "reject:description,issueType,reportedByUserId,status,subject,urgency"
   },
   "schema.insertStrategySessionSchema": {
     "undefined": "reject:",
@@ -2856,7 +3016,8 @@
     "missing-durationMinutes": "reject:scheduledAt",
     "missing-sessionType": "reject:durationMinutes,scheduledAt",
     "missing-topic": "reject:durationMinutes,scheduledAt",
-    "wrongtype-agentUserId": "reject:agentUserId,durationMinutes,scheduledAt"
+    "wrongtype-agentUserId": "reject:agentUserId,durationMinutes,scheduledAt",
+    "all-keys-null": "reject:agentUserId,scheduledAt,status"
   },
   "schema.insertAcceleratorEnrollmentSchema": {
     "undefined": "reject:",
@@ -2876,7 +3037,8 @@
     "missing-totalPhases": "reject:currentPhase,targetDate",
     "missing-targetDate": "reject:currentPhase,totalPhases",
     "missing-currentCreditScore": "reject:currentPhase,targetDate,totalPhases",
-    "wrongtype-userId": "reject:currentPhase,targetDate,totalPhases,userId"
+    "wrongtype-userId": "reject:currentPhase,targetDate,totalPhases,userId",
+    "all-keys-null": "reject:programType,status,userId"
   },
   "schema.insertAcceleratorMilestoneSchema": {
     "undefined": "reject:",
@@ -2896,7 +3058,8 @@
     "missing-description": "reject:currentValue,dueDate,phase,targetValue",
     "missing-category": "reject:category,currentValue,dueDate,phase,targetValue",
     "missing-targetValue": "reject:currentValue,dueDate,phase",
-    "wrongtype-enrollmentId": "reject:currentValue,dueDate,enrollmentId,phase,targetValue"
+    "wrongtype-enrollmentId": "reject:currentValue,dueDate,enrollmentId,phase,targetValue",
+    "all-keys-null": "reject:category,enrollmentId,phase,title"
   },
   "schema.insertClosingGuaranteeSchema": {
     "undefined": "reject:",
@@ -2916,7 +3079,8 @@
     "missing-targetHours": "reject:actualDate,targetDate",
     "missing-actualDate": "reject:targetDate,targetHours",
     "missing-status": "reject:actualDate,targetDate,targetHours",
-    "wrongtype-applicationId": "reject:actualDate,applicationId,targetDate,targetHours"
+    "wrongtype-applicationId": "reject:actualDate,applicationId,targetDate,targetHours",
+    "all-keys-null": "reject:applicationId,guaranteeType,status,targetDate"
   },
   "schema.insertNotificationSchema": {
     "undefined": "reject:",
@@ -2936,7 +3100,8 @@
     "missing-body": "accept",
     "missing-status": "accept",
     "missing-entityType": "accept",
-    "wrongtype-userId": "reject:userId"
+    "wrongtype-userId": "reject:userId",
+    "all-keys-null": "reject:status,title,type,userId"
   },
   "schema.insertStaffInviteSchema": {
     "undefined": "reject:",
@@ -2955,7 +3120,8 @@
     "missing-email": "reject:expiresAt",
     "missing-createdBy": "reject:createdBy,expiresAt",
     "missing-expiresAt": "reject:expiresAt",
-    "wrongtype-code": "reject:code,expiresAt"
+    "wrongtype-code": "reject:code,expiresAt",
+    "all-keys-null": "reject:code,createdBy,expiresAt,role"
   },
   "schema.insertAuditLogSchema": {
     "undefined": "reject:",
@@ -2975,7 +3141,8 @@
     "missing-targetId": "accept",
     "missing-metadata": "accept",
     "missing-ipAddress": "accept",
-    "wrongtype-actorUserId": "reject:actorUserId"
+    "wrongtype-actorUserId": "reject:actorUserId",
+    "all-keys-null": "reject:action"
   },
   "schema.insertUserActivitySchema": {
     "undefined": "reject:",
@@ -2994,7 +3161,8 @@
     "missing-activityType": "reject:activityType",
     "missing-page": "accept",
     "missing-metadata": "accept",
-    "wrongtype-userId": "reject:userId"
+    "wrongtype-userId": "reject:userId",
+    "all-keys-null": "reject:activityType"
   },
   "schema.insertAgentReferralRequestSchema": {
     "undefined": "reject:",
@@ -3014,7 +3182,8 @@
     "missing-phone": "reject:preApproved",
     "missing-location": "reject:location,preApproved",
     "missing-buyingTimeline": "reject:buyingTimeline,preApproved",
-    "wrongtype-firstName": "reject:firstName,preApproved"
+    "wrongtype-firstName": "reject:firstName,preApproved",
+    "all-keys-null": "reject:buyingTimeline,email,firstName,lastName,location"
   },
   "schema.insertBorrowerProfileSchema": {
     "undefined": "reject:",
@@ -3034,7 +3203,8 @@
     "missing-visaExpirationDate": "reject:analyticsConsentDate,analyticsConsentGiven,bankruptcyDischargeDate,dateOfBirth,foreclosureDischargeDate,vaEntitlementUsed,vaFundingFeeExempt",
     "missing-maritalStatus": "reject:analyticsConsentDate,analyticsConsentGiven,bankruptcyDischargeDate,dateOfBirth,foreclosureDischargeDate,vaEntitlementUsed,vaFundingFeeExempt,visaExpirationDate",
     "missing-numberOfDependents": "reject:analyticsConsentDate,analyticsConsentGiven,bankruptcyDischargeDate,dateOfBirth,foreclosureDischargeDate,vaEntitlementUsed,vaFundingFeeExempt,visaExpirationDate",
-    "wrongtype-userId": "reject:analyticsConsentDate,analyticsConsentGiven,bankruptcyDischargeDate,dateOfBirth,foreclosureDischargeDate,userId,vaEntitlementUsed,vaFundingFeeExempt,visaExpirationDate"
+    "wrongtype-userId": "reject:analyticsConsentDate,analyticsConsentGiven,bankruptcyDischargeDate,dateOfBirth,foreclosureDischargeDate,userId,vaEntitlementUsed,vaFundingFeeExempt,visaExpirationDate",
+    "all-keys-null": "reject:userId"
   },
   "schema.insertRealEstateOwnedSchema": {
     "undefined": "reject:",
@@ -3054,7 +3224,8 @@
     "missing-propertyCity": "reject:marketValue,verifiedAt,willBeRented,willBeSold",
     "missing-propertyState": "reject:marketValue,verifiedAt,willBeRented,willBeSold",
     "missing-propertyZip": "reject:marketValue,verifiedAt,willBeRented,willBeSold",
-    "wrongtype-userId": "reject:marketValue,userId,verifiedAt,willBeRented,willBeSold"
+    "wrongtype-userId": "reject:marketValue,userId,verifiedAt,willBeRented,willBeSold",
+    "all-keys-null": "reject:propertyAddress,userId"
   },
   "schema.insertLenderProductSchema": {
     "undefined": "reject:",
@@ -3074,7 +3245,8 @@
     "missing-productCode": "reject:allowedStates,allowsForeignNational,allowsGiftFunds,allowsInterestOnly,allowsNonPermanentResident,allowsSelfEmployed,baseRate,effectiveDate,excludedStates,expirationDate,firstTimeBuyerOnly,loanPurposes,maxLoanAmount,minLoanAmount,occupancyTypes,pmiRequired,propertyTypes,requiresEscrow,specialPrograms,veteranOnly",
     "missing-productType": "reject:allowedStates,allowsForeignNational,allowsGiftFunds,allowsInterestOnly,allowsNonPermanentResident,allowsSelfEmployed,baseRate,effectiveDate,excludedStates,expirationDate,firstTimeBuyerOnly,loanPurposes,maxLoanAmount,minLoanAmount,occupancyTypes,pmiRequired,productType,propertyTypes,requiresEscrow,specialPrograms,veteranOnly",
     "missing-loanPurposes": "reject:allowedStates,allowsForeignNational,allowsGiftFunds,allowsInterestOnly,allowsNonPermanentResident,allowsSelfEmployed,baseRate,effectiveDate,excludedStates,expirationDate,firstTimeBuyerOnly,maxLoanAmount,minLoanAmount,occupancyTypes,pmiRequired,propertyTypes,requiresEscrow,specialPrograms,veteranOnly",
-    "wrongtype-lenderId": "reject:allowedStates,allowsForeignNational,allowsGiftFunds,allowsInterestOnly,allowsNonPermanentResident,allowsSelfEmployed,baseRate,effectiveDate,excludedStates,expirationDate,firstTimeBuyerOnly,lenderId,loanPurposes,maxLoanAmount,minLoanAmount,occupancyTypes,pmiRequired,propertyTypes,requiresEscrow,specialPrograms,veteranOnly"
+    "wrongtype-lenderId": "reject:allowedStates,allowsForeignNational,allowsGiftFunds,allowsInterestOnly,allowsNonPermanentResident,allowsSelfEmployed,baseRate,effectiveDate,excludedStates,expirationDate,firstTimeBuyerOnly,lenderId,loanPurposes,maxLoanAmount,minLoanAmount,occupancyTypes,pmiRequired,propertyTypes,requiresEscrow,specialPrograms,veteranOnly",
+    "all-keys-null": "reject:lenderId,lenderName,productName,productType"
   },
   "schema.insertBorrowerStateHistorySchema": {
     "undefined": "reject:",
@@ -3094,7 +3266,8 @@
     "missing-toState": "reject:durationInPreviousStateMinutes,toState,transitionedAt,triggeredBySystem",
     "missing-trigger": "reject:durationInPreviousStateMinutes,transitionedAt,trigger,triggeredBySystem",
     "missing-triggerMetadata": "reject:durationInPreviousStateMinutes,transitionedAt,triggeredBySystem",
-    "wrongtype-userId": "reject:durationInPreviousStateMinutes,transitionedAt,triggeredBySystem,userId"
+    "wrongtype-userId": "reject:durationInPreviousStateMinutes,transitionedAt,triggeredBySystem,userId",
+    "all-keys-null": "reject:toState,transitionedAt,trigger,userId"
   },
   "schema.insertReadinessChecklistSchema": {
     "undefined": "reject:",
@@ -3114,7 +3287,8 @@
     "missing-fieldName": "reject:collectedAt,expiresAt,fieldName,verifiedAt",
     "missing-fieldLabel": "reject:collectedAt,expiresAt,fieldLabel,verifiedAt",
     "missing-isRequired": "reject:collectedAt,expiresAt,verifiedAt",
-    "wrongtype-userId": "reject:collectedAt,expiresAt,userId,verifiedAt"
+    "wrongtype-userId": "reject:collectedAt,expiresAt,userId,verifiedAt",
+    "all-keys-null": "reject:category,fieldLabel,fieldName,userId"
   },
   "schema.insertIntentEventSchema": {
     "undefined": "reject:",
@@ -3134,7 +3308,8 @@
     "missing-eventCategory": "reject:durationMs,occurredAt",
     "missing-targetType": "reject:durationMs,occurredAt",
     "missing-targetId": "reject:durationMs,occurredAt",
-    "wrongtype-userId": "reject:durationMs,occurredAt,userId"
+    "wrongtype-userId": "reject:durationMs,occurredAt,userId",
+    "all-keys-null": "reject:eventType,occurredAt"
   },
   "schema.insertLenderMatchResultSchema": {
     "undefined": "reject:",
@@ -3154,7 +3329,8 @@
     "missing-matchStatus": "reject:estimatedRate,expiresAt,matchScore,matchStatus,matchedAt",
     "missing-matchScore": "reject:estimatedRate,expiresAt,matchedAt",
     "missing-eligibilityDetails": "reject:estimatedRate,expiresAt,matchScore,matchedAt",
-    "wrongtype-userId": "reject:estimatedRate,expiresAt,matchScore,matchedAt,userId"
+    "wrongtype-userId": "reject:estimatedRate,expiresAt,matchScore,matchedAt,userId",
+    "all-keys-null": "reject:lenderProductId,matchStatus,matchedAt,userId"
   },
   "schema.insertAnonymizedBorrowerFactSchema": {
     "undefined": "reject:",
@@ -3174,7 +3350,8 @@
     "missing-creditScoreBucket": "reject:avgLoanAmount,cohortDate,conversionRate,falloutRate",
     "missing-incomeBucket": "reject:avgLoanAmount,cohortDate,conversionRate,creditScoreBucket,falloutRate",
     "missing-ageBucket": "reject:avgLoanAmount,cohortDate,conversionRate,creditScoreBucket,falloutRate",
-    "wrongtype-cohortDate": "reject:avgLoanAmount,cohortDate,conversionRate,creditScoreBucket,falloutRate"
+    "wrongtype-cohortDate": "reject:avgLoanAmount,cohortDate,conversionRate,creditScoreBucket,falloutRate",
+    "all-keys-null": "reject:borrowerCount,cohortDate"
   },
   "schema.insertAnalyticsEventSchema": {
     "undefined": "reject:",
@@ -3194,7 +3371,8 @@
     "missing-userId": "reject:automationTriggered,numericValue,occurredAt,textValue",
     "missing-actorId": "reject:automationTriggered,numericValue,occurredAt,textValue",
     "missing-actorRole": "reject:automationTriggered,numericValue,occurredAt,textValue",
-    "wrongtype-domain": "reject:automationTriggered,domain,numericValue,occurredAt,textValue"
+    "wrongtype-domain": "reject:automationTriggered,domain,numericValue,occurredAt,textValue",
+    "all-keys-null": "reject:domain,eventName,occurredAt"
   },
   "schema.insertLoanOutcomeSchema": {
     "undefined": "reject:",
@@ -3214,7 +3392,8 @@
     "missing-amountAccuracyPct": "reject:clearToCloseAt,conditionalAt,creditScoreBucket,daysConditionalToCtc,daysCtcToFunded,daysPreApprovalToConditional,daysSubmittedToPreApproval,deniedAt,estimatedRate,finalLoanAmount,finalRate,fundedAt,preApprovalAmount,preApprovedAt,rateAccuracyBps,submittedAt,totalDaysToClose,uwDecisionOverridden,withdrawnAt",
     "missing-estimatedRate": "reject:amountAccuracyPct,clearToCloseAt,conditionalAt,creditScoreBucket,daysConditionalToCtc,daysCtcToFunded,daysPreApprovalToConditional,daysSubmittedToPreApproval,deniedAt,finalLoanAmount,finalRate,fundedAt,preApprovalAmount,preApprovedAt,rateAccuracyBps,submittedAt,totalDaysToClose,uwDecisionOverridden,withdrawnAt",
     "missing-finalRate": "reject:amountAccuracyPct,clearToCloseAt,conditionalAt,creditScoreBucket,daysConditionalToCtc,daysCtcToFunded,daysPreApprovalToConditional,daysSubmittedToPreApproval,deniedAt,estimatedRate,finalLoanAmount,fundedAt,preApprovalAmount,preApprovedAt,rateAccuracyBps,submittedAt,totalDaysToClose,uwDecisionOverridden,withdrawnAt",
-    "wrongtype-applicationId": "reject:amountAccuracyPct,applicationId,clearToCloseAt,conditionalAt,creditScoreBucket,daysConditionalToCtc,daysCtcToFunded,daysPreApprovalToConditional,daysSubmittedToPreApproval,deniedAt,estimatedRate,finalLoanAmount,finalRate,fundedAt,preApprovalAmount,preApprovedAt,rateAccuracyBps,submittedAt,totalDaysToClose,uwDecisionOverridden,withdrawnAt"
+    "wrongtype-applicationId": "reject:amountAccuracyPct,applicationId,clearToCloseAt,conditionalAt,creditScoreBucket,daysConditionalToCtc,daysCtcToFunded,daysPreApprovalToConditional,daysSubmittedToPreApproval,deniedAt,estimatedRate,finalLoanAmount,finalRate,fundedAt,preApprovalAmount,preApprovedAt,rateAccuracyBps,submittedAt,totalDaysToClose,uwDecisionOverridden,withdrawnAt",
+    "all-keys-null": "reject:applicationId"
   },
   "schema.insertDocumentConfidenceSchema": {
     "undefined": "reject:",
@@ -3234,7 +3413,8 @@
     "missing-extractionEngine": "reject:extractedAt,extractionEngine,fieldsCorrect,fieldsCorrected,fieldsExtracted,fieldsMissed,fileSize,humanReviewCompleted,humanReviewRequired,humanReviewedAt,processingTimeMs",
     "missing-extractionVersion": "reject:extractedAt,fieldsCorrect,fieldsCorrected,fieldsExtracted,fieldsMissed,fileSize,humanReviewCompleted,humanReviewRequired,humanReviewedAt,processingTimeMs",
     "missing-overallConfidence": "reject:extractedAt,fieldsCorrect,fieldsCorrected,fieldsExtracted,fieldsMissed,fileSize,humanReviewCompleted,humanReviewRequired,humanReviewedAt,overallConfidence,processingTimeMs",
-    "wrongtype-documentId": "reject:documentId,extractedAt,fieldsCorrect,fieldsCorrected,fieldsExtracted,fieldsMissed,fileSize,humanReviewCompleted,humanReviewRequired,humanReviewedAt,processingTimeMs"
+    "wrongtype-documentId": "reject:documentId,extractedAt,fieldsCorrect,fieldsCorrected,fieldsExtracted,fieldsMissed,fileSize,humanReviewCompleted,humanReviewRequired,humanReviewedAt,processingTimeMs",
+    "all-keys-null": "reject:documentId,documentType,extractedAt,extractionEngine,overallConfidence"
   },
   "schema.insertPredictiveSnapshotSchema": {
     "undefined": "reject:",
@@ -3254,7 +3434,8 @@
     "missing-estimatedDaysToFund": "reject:cohortAvgDaysToClose,cohortConversionRate,computedAt,expiresAt",
     "missing-riskOfFallout": "reject:cohortAvgDaysToClose,cohortConversionRate,computedAt,estimatedDaysToFund,expiresAt",
     "missing-conditionDelayRisk": "reject:cohortAvgDaysToClose,cohortConversionRate,computedAt,estimatedDaysToFund,expiresAt",
-    "wrongtype-applicationId": "reject:applicationId,cohortAvgDaysToClose,cohortConversionRate,computedAt,estimatedDaysToFund,expiresAt"
+    "wrongtype-applicationId": "reject:applicationId,cohortAvgDaysToClose,cohortConversionRate,computedAt,estimatedDaysToFund,expiresAt",
+    "all-keys-null": "reject:computedAt,userId"
   },
   "schema.lookupAxisTypeSchema": {
     "undefined": "reject:",
@@ -3286,7 +3467,8 @@
     "missing-dim2Type": "reject:dim1Type,dim3Type",
     "missing-dim3Name": "reject:dim1Type,dim2Type,dim3Type",
     "missing-dim3Type": "reject:dim1Type,dim2Type",
-    "wrongtype-dim1Name": "reject:dim1Name,dim1Type,dim2Type,dim3Type"
+    "wrongtype-dim1Name": "reject:dim1Name,dim1Type,dim2Type,dim3Type",
+    "all-keys-null": "reject:dim1Name,dim1Type,dim2Name,dim2Type,dim3Name,dim3Type"
   },
   "schema.lookupMatrixSchema": {
     "undefined": "reject:",
@@ -3306,7 +3488,8 @@
     "missing-lifecycleStatus": "reject:axisDefinition,lifecycleStatus,version",
     "missing-previousVersionId": "reject:axisDefinition,lifecycleStatus,version",
     "missing-effectiveDate": "reject:axisDefinition,effectiveDate,lifecycleStatus,version",
-    "wrongtype-matrixCode": "reject:axisDefinition,lifecycleStatus,matrixCode,version"
+    "wrongtype-matrixCode": "reject:axisDefinition,lifecycleStatus,matrixCode,version",
+    "all-keys-null": "reject:axisDefinition,description,lifecycleStatus,matrixCode,version"
   },
   "schema.lookupMatrixCellSchema": {
     "undefined": "reject:",
@@ -3326,7 +3509,8 @@
     "missing-dim2Max": "reject:dim1Max,dim1Min,dim2Min",
     "missing-dim3Identifier": "reject:dim1Max,dim1Min,dim2Max,dim2Min",
     "missing-outputValue": "reject:dim1Max,dim1Min,dim2Max,dim2Min,outputValue",
-    "wrongtype-dim1Min": "reject:dim1Max,dim1Min,dim2Max,dim2Min"
+    "wrongtype-dim1Min": "reject:dim1Max,dim1Min,dim2Max,dim2Min",
+    "all-keys-null": "reject:outputValue"
   },
   "schema.insertAiInteractionSchema": {
     "undefined": "reject:",
@@ -3346,7 +3530,8 @@
     "missing-userRole": "reject:inputTokens,isError,latencyMs,outputTokens,reviewedAt",
     "missing-provider": "reject:inputTokens,isError,latencyMs,outputTokens,provider,reviewedAt",
     "missing-model": "reject:inputTokens,isError,latencyMs,model,outputTokens,reviewedAt",
-    "wrongtype-applicationId": "reject:applicationId,inputTokens,isError,latencyMs,outputTokens,reviewedAt"
+    "wrongtype-applicationId": "reject:applicationId,inputTokens,isError,latencyMs,outputTokens,reviewedAt",
+    "all-keys-null": "reject:classification,model,prompt,provider,reviewStatus,workflow"
   },
   "schema.insertDecisionSnapshotSchema": {
     "undefined": "reject:",
@@ -3366,7 +3551,8 @@
     "missing-decision": "reject:loanAmount,missingItems,reasons",
     "missing-qualifier": "reject:loanAmount,missingItems,qualifier,reasons",
     "missing-dti": "reject:loanAmount,missingItems,reasons",
-    "wrongtype-applicationId": "reject:applicationId,loanAmount,missingItems,reasons"
+    "wrongtype-applicationId": "reject:applicationId,loanAmount,missingItems,reasons",
+    "all-keys-null": "reject:applicationId,qualifier,status,trigger"
   },
   "schema.insertIncomePathEvaluationSchema": {
     "undefined": "reject:",
@@ -3386,7 +3572,8 @@
     "missing-primaryMonthlyQualifyingIncome": "reject:primaryMonthlyQualifyingIncome,recommendedPathId,requiresManualReview",
     "missing-recommendedPathId": "reject:requiresManualReview",
     "missing-incomeBasis": "reject:incomeBasis,recommendedPathId,requiresManualReview",
-    "wrongtype-applicationId": "reject:applicationId,recommendedPathId,requiresManualReview"
+    "wrongtype-applicationId": "reject:applicationId,recommendedPathId,requiresManualReview",
+    "all-keys-null": "reject:applicationId,evaluationFingerprint,incomeBasis,inputsFingerprint,primaryMonthlyQualifyingIncome,requiresManualReview,trigger"
   },
   "schema.insertReviewItemSchema": {
     "undefined": "reject:",
@@ -3406,7 +3593,8 @@
     "missing-itemType": "reject:correctedValue,itemType,resolvedAt",
     "missing-tier": "reject:correctedValue,resolvedAt,tier",
     "missing-title": "reject:correctedValue,resolvedAt,title",
-    "wrongtype-userId": "reject:correctedValue,resolvedAt,userId"
+    "wrongtype-userId": "reject:correctedValue,resolvedAt,userId",
+    "all-keys-null": "reject:detail,itemType,naturalKey,status,tier,title,userId"
   },
   "schema.bankStatementAnalysisInputSchema": {
     "undefined": "reject:",
@@ -3425,7 +3613,8 @@
     "missing-expenseFactor": "reject:months,totalEligibleDeposits",
     "missing-hasThirdPartyExpenseStatement": "reject:expenseFactor,months,totalEligibleDeposits",
     "missing-notes": "reject:expenseFactor,months,totalEligibleDeposits",
-    "wrongtype-months": "reject:expenseFactor,months,totalEligibleDeposits"
+    "wrongtype-months": "reject:expenseFactor,months,totalEligibleDeposits",
+    "all-keys-null": "reject:expenseFactor,hasThirdPartyExpenseStatement,months,notes,totalEligibleDeposits"
   },
   "schema.insertLeadSchema": {
     "undefined": "reject:",
@@ -3445,7 +3634,8 @@
     "missing-utmMedium": "reject:consentCapturedAt,convertedAt,doNotContact,estimatedPropertyValue,optOutAt",
     "missing-utmCampaign": "reject:consentCapturedAt,convertedAt,doNotContact,estimatedPropertyValue,optOutAt",
     "missing-externalLeadId": "reject:consentCapturedAt,convertedAt,doNotContact,estimatedPropertyValue,optOutAt",
-    "wrongtype-source": "reject:consentCapturedAt,convertedAt,doNotContact,estimatedPropertyValue,optOutAt,source"
+    "wrongtype-source": "reject:consentCapturedAt,convertedAt,doNotContact,estimatedPropertyValue,optOutAt,source",
+    "all-keys-null": "reject:doNotContact,source,status"
   },
   "schema.insertHmdaCompetitorLoanSchema": {
     "undefined": "reject:",
@@ -3465,7 +3655,8 @@
     "missing-stateCode": "reject:actionTaken,countyFips,interestRate,loanAmount,loanPurpose,loanType,propertyValue",
     "missing-countyFips": "reject:actionTaken,interestRate,loanAmount,loanPurpose,loanType,propertyValue",
     "missing-censusTract": "reject:actionTaken,countyFips,interestRate,loanAmount,loanPurpose,loanType,propertyValue",
-    "wrongtype-lei": "reject:actionTaken,countyFips,interestRate,lei,loanAmount,loanPurpose,loanType,propertyValue"
+    "wrongtype-lei": "reject:actionTaken,countyFips,interestRate,lei,loanAmount,loanPurpose,loanType,propertyValue",
+    "all-keys-null": "reject:activityYear,ingestBatchId,lei,lenderName"
   },
   "schema.insertCompetitorRateBenchmarkSchema": {
     "undefined": "reject:",
@@ -3485,7 +3676,8 @@
     "missing-loanType": "reject:countyFips,loanPurpose,loanType,medianLoanAmount,medianRate,p25Rate,p75Rate",
     "missing-loanPurpose": "reject:countyFips,loanPurpose,loanType,medianLoanAmount,medianRate,p25Rate,p75Rate",
     "missing-activityYear": "reject:activityYear,countyFips,loanPurpose,loanType,medianLoanAmount,medianRate,p25Rate,p75Rate",
-    "wrongtype-geoLevel": "reject:countyFips,geoLevel,loanPurpose,loanType,medianLoanAmount,medianRate,p25Rate,p75Rate"
+    "wrongtype-geoLevel": "reject:countyFips,geoLevel,loanPurpose,loanType,medianLoanAmount,medianRate,p25Rate,p75Rate",
+    "all-keys-null": "reject:activityYear,countyFips,geoLevel,loanCount,loanPurpose,loanType,medianRate,stateCode"
   },
   "schema.insertLoanPerformanceProfileSchema": {
     "undefined": "reject:",
@@ -3505,7 +3697,8 @@
     "missing-dtiBand": "reject:avgOrigRate,defaultRatePct,dtiBand,prepayRatePct,seriousDelinqRatePct",
     "missing-loanCount": "reject:avgOrigRate,defaultRatePct,loanCount,prepayRatePct,seriousDelinqRatePct",
     "missing-defaultCount": "reject:avgOrigRate,defaultRatePct,prepayRatePct,seriousDelinqRatePct",
-    "wrongtype-sourceDataset": "reject:avgOrigRate,defaultRatePct,prepayRatePct,seriousDelinqRatePct,sourceDataset"
+    "wrongtype-sourceDataset": "reject:avgOrigRate,defaultRatePct,prepayRatePct,seriousDelinqRatePct,sourceDataset",
+    "all-keys-null": "reject:creditBucket,defaultCount,dtiBand,loanCount,ltvBand,prepaidCount,seriousDelinqCount,sourceDataset"
   },
   "schema.insertLoanDeliveryDataSchema": {
     "undefined": "reject:",
@@ -3525,7 +3718,8 @@
     "missing-lienPriorityType": "reject:applicationReceivedDate,averagePrimeOfferRatePercent,currentRateSetDate,excludedBonaFideDiscountPointsIndicator,excludedBonaFideDiscountPointsPercent,loanPriceQuoteInterestRatePercent,manualSpecialFeatureCodes,manufacturedHome,noteDate,noteRatePercent,originalLoanAmount,regulationZTotalAffiliateFeesAmount,regulationZTotalLoanAmount,regulationZTotalPointsAndFeesAmount,subordinateFinancingExists",
     "missing-noteRatePercent": "reject:applicationReceivedDate,averagePrimeOfferRatePercent,currentRateSetDate,excludedBonaFideDiscountPointsIndicator,excludedBonaFideDiscountPointsPercent,loanPriceQuoteInterestRatePercent,manualSpecialFeatureCodes,manufacturedHome,noteDate,originalLoanAmount,regulationZTotalAffiliateFeesAmount,regulationZTotalLoanAmount,regulationZTotalPointsAndFeesAmount,subordinateFinancingExists",
     "missing-manufacturedHome": "reject:applicationReceivedDate,averagePrimeOfferRatePercent,currentRateSetDate,excludedBonaFideDiscountPointsIndicator,excludedBonaFideDiscountPointsPercent,loanPriceQuoteInterestRatePercent,manualSpecialFeatureCodes,noteDate,noteRatePercent,originalLoanAmount,regulationZTotalAffiliateFeesAmount,regulationZTotalLoanAmount,regulationZTotalPointsAndFeesAmount,subordinateFinancingExists",
-    "wrongtype-applicationId": "reject:applicationId,applicationReceivedDate,averagePrimeOfferRatePercent,currentRateSetDate,excludedBonaFideDiscountPointsIndicator,excludedBonaFideDiscountPointsPercent,loanPriceQuoteInterestRatePercent,manualSpecialFeatureCodes,manufacturedHome,noteDate,noteRatePercent,originalLoanAmount,regulationZTotalAffiliateFeesAmount,regulationZTotalLoanAmount,regulationZTotalPointsAndFeesAmount,subordinateFinancingExists"
+    "wrongtype-applicationId": "reject:applicationId,applicationReceivedDate,averagePrimeOfferRatePercent,currentRateSetDate,excludedBonaFideDiscountPointsIndicator,excludedBonaFideDiscountPointsPercent,loanPriceQuoteInterestRatePercent,manualSpecialFeatureCodes,manufacturedHome,noteDate,noteRatePercent,originalLoanAmount,regulationZTotalAffiliateFeesAmount,regulationZTotalLoanAmount,regulationZTotalPointsAndFeesAmount,subordinateFinancingExists",
+    "all-keys-null": "reject:applicationId"
   },
   "schema.insertLenderSubmissionSchema": {
     "undefined": "reject:",
@@ -3545,7 +3739,8 @@
     "missing-simulated": "reject:compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,submittedAt",
     "missing-confirmationId": "reject:compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
     "missing-readinessSnapshot": "reject:compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
-    "wrongtype-applicationId": "reject:applicationId,compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt"
+    "wrongtype-applicationId": "reject:applicationId,compensationExpectedAmount,compensationExpectedBps,compensationReceivedAmount,compensationReceivedAt,fundedAt,fundedLoanAmount,incomePackageGeneratedAt,mismoPackageGeneratedAt,simulated,submittedAt",
+    "all-keys-null": "reject:applicationId,lenderId,simulated,status,submittedAt,submittedBy"
   },
   "schema.insertTaxInsightSchema": {
     "undefined": "reject:",
@@ -3565,7 +3760,8 @@
     "missing-wagesW2": "reject:dscrCandidate,selfEmployed",
     "missing-grossIncome": "reject:dscrCandidate,selfEmployed",
     "missing-adjustedGrossIncome": "reject:dscrCandidate,selfEmployed",
-    "wrongtype-userId": "reject:dscrCandidate,selfEmployed,userId"
+    "wrongtype-userId": "reject:dscrCandidate,selfEmployed,userId",
+    "all-keys-null": "reject:confidence,dscrCandidate,selfEmployed,taxYear,userId"
   },
   "schema.insertCpaPartnerSchema": {
     "undefined": "reject:",
@@ -3585,7 +3781,8 @@
     "missing-email": "reject:email",
     "missing-referralCode": "reject:referralCode",
     "missing-status": "accept",
-    "wrongtype-userId": "reject:userId"
+    "wrongtype-userId": "reject:userId",
+    "all-keys-null": "reject:email,firmName,referralCode,status,userId"
   },
   "schema.insertCpaReferralSchema": {
     "undefined": "reject:",
@@ -3602,7 +3799,8 @@
     "missing-cpaPartnerId": "reject:cpaPartnerId",
     "missing-referredUserId": "reject:referredUserId",
     "missing-clientName": "accept",
-    "wrongtype-cpaPartnerId": "reject:cpaPartnerId"
+    "wrongtype-cpaPartnerId": "reject:cpaPartnerId",
+    "all-keys-null": "reject:cpaPartnerId,referredUserId"
   },
   "schema.insertPartnerProfileSchema": {
     "undefined": "reject:",
@@ -3622,7 +3820,8 @@
     "missing-contactName": "reject:licenseNumber,licenseVerificationStatus,persona,source,status",
     "missing-email": "reject:email,licenseNumber,licenseVerificationStatus,persona,source,status",
     "missing-licenseNumber": "reject:licenseVerificationStatus,persona,source,status",
-    "wrongtype-userId": "reject:licenseNumber,licenseVerificationStatus,persona,source,status,userId"
+    "wrongtype-userId": "reject:licenseNumber,licenseVerificationStatus,persona,source,status,userId",
+    "all-keys-null": "reject:email,firmName,licenseVerificationStatus,persona,referralSlug,source,status,userId"
   },
   "schema.insertScenarioRunSchema": {
     "undefined": "reject:",
@@ -3642,7 +3841,8 @@
     "missing-inputs": "reject:inputs,simulated",
     "missing-outputs": "reject:outputs,simulated",
     "missing-engineVersions": "reject:engineVersions,simulated",
-    "wrongtype-applicationId": "reject:applicationId,simulated"
+    "wrongtype-applicationId": "reject:applicationId,simulated",
+    "all-keys-null": "reject:applicationId,incomePathEvaluationId,loUserId,simulated"
   },
   "schema.insertAutopilotConfigSchema": {
     "undefined": "reject:",
@@ -3662,7 +3862,8 @@
     "missing-applicationDataUpdatesEnabled": "reject:singleton",
     "missing-decisionRelayEnabled": "reject:applicationDataUpdatesEnabled,singleton",
     "missing-loanOfficerAllowlist": "reject:applicationDataUpdatesEnabled,singleton",
-    "wrongtype-singleton": "reject:applicationDataUpdatesEnabled,singleton"
+    "wrongtype-singleton": "reject:applicationDataUpdatesEnabled,singleton",
+    "all-keys-null": "reject:applicationDataUpdatesEnabled,decisionRelayEnabled,enabled,followUpGenerationEnabled,guidelineMode,singleton"
   },
   "schema.insertLeaseSchema": {
     "undefined": "reject:",
@@ -3682,7 +3883,8 @@
     "missing-landlordEmailIv": "reject:landlordEmailKeyId,leaseEndDate,leaseStartDate,monthlyRentAmount,propertyAddressKeyId",
     "missing-landlordEmailKeyId": "reject:leaseEndDate,leaseStartDate,monthlyRentAmount,propertyAddressKeyId",
     "missing-propertyAddressEncrypted": "reject:landlordEmailKeyId,leaseEndDate,leaseStartDate,monthlyRentAmount,propertyAddressKeyId",
-    "wrongtype-userId": "reject:landlordEmailKeyId,leaseEndDate,leaseStartDate,monthlyRentAmount,propertyAddressKeyId,userId"
+    "wrongtype-userId": "reject:landlordEmailKeyId,leaseEndDate,leaseStartDate,monthlyRentAmount,propertyAddressKeyId,userId",
+    "all-keys-null": "reject:monthlyRentAmount,status,userId,verificationStatus"
   },
   "schema.insertRentPaymentSchema": {
     "undefined": "reject:",
@@ -3702,7 +3904,8 @@
     "missing-amountDue": "reject:amountDue,dueDate,paidDate",
     "missing-amountPaid": "reject:amountDue,dueDate,paidDate",
     "missing-status": "reject:amountDue,dueDate,paidDate",
-    "wrongtype-leaseId": "reject:amountDue,dueDate,leaseId,paidDate"
+    "wrongtype-leaseId": "reject:amountDue,dueDate,leaseId,paidDate",
+    "all-keys-null": "reject:amountDue,dueDate,leaseId,provenance,status"
   },
   "schema.insertRentFurnishingQueueSchema": {
     "undefined": "reject:",
@@ -3722,7 +3925,8 @@
     "missing-stateReason": "reject:consumerAuthorizedAt,enteredStateAt,furnishedAt,suppressedAt",
     "missing-enteredStateAt": "reject:consumerAuthorizedAt,furnishedAt,suppressedAt",
     "missing-consumerAuthorizedAt": "reject:enteredStateAt,furnishedAt,suppressedAt",
-    "wrongtype-leaseId": "reject:consumerAuthorizedAt,enteredStateAt,furnishedAt,leaseId,suppressedAt"
+    "wrongtype-leaseId": "reject:consumerAuthorizedAt,enteredStateAt,furnishedAt,leaseId,suppressedAt",
+    "all-keys-null": "reject:enteredStateAt,leaseId,state,userId"
   },
   "incomePackage.incomeAnalysisPackageSchema": {
     "undefined": "reject:",
@@ -3742,7 +3946,8 @@
     "missing-lenderName": "reject:confirmedWorksheets,documentManifest,lenderName,omittedSections,paths,primaryMonthlyQualifyingIncome,selection,simulated,situation,version",
     "missing-generatedAt": "reject:confirmedWorksheets,documentManifest,generatedAt,omittedSections,paths,primaryMonthlyQualifyingIncome,selection,simulated,situation,version",
     "missing-simulated": "reject:confirmedWorksheets,documentManifest,omittedSections,paths,primaryMonthlyQualifyingIncome,selection,simulated,situation,version",
-    "wrongtype-version": "reject:confirmedWorksheets,documentManifest,omittedSections,paths,primaryMonthlyQualifyingIncome,selection,simulated,situation,version"
+    "wrongtype-version": "reject:confirmedWorksheets,documentManifest,omittedSections,paths,primaryMonthlyQualifyingIncome,selection,simulated,situation,version",
+    "all-keys-null": "reject:applicationId,confirmedWorksheets,documentManifest,generatedAt,lenderId,lenderName,omittedSections,paths,selection,simulated,version"
   },
   "situationProfile.situationProfileSchema": {
     "undefined": "reject:",
@@ -3762,7 +3967,8 @@
     "missing-entityCount": "reject:documentRequests,entityCount,flags,halalNeed,incomePaths,taxYears,tieOutSummary,version",
     "missing-halalNeed": "reject:documentRequests,flags,incomePaths,taxYears,tieOutSummary,version",
     "missing-flags": "reject:documentRequests,flags,halalNeed,incomePaths,taxYears,tieOutSummary,version",
-    "wrongtype-version": "reject:documentRequests,flags,halalNeed,incomePaths,taxYears,tieOutSummary,version"
+    "wrongtype-version": "reject:documentRequests,flags,halalNeed,incomePaths,taxYears,tieOutSummary,version",
+    "all-keys-null": "reject:documentRequests,entityCount,flags,incomePaths,summary,taxYears,tieOutSummary,version"
   },
   "taxFormExtraction.taxDocumentClassificationSchema": {
     "undefined": "reject:",
@@ -3779,7 +3985,8 @@
     "missing-pageCount": "accept",
     "missing-forms": "accept",
     "missing-warnings": "accept",
-    "wrongtype-pageCount": "accept"
+    "wrongtype-pageCount": "accept",
+    "all-keys-null": "accept"
   },
   "riskBrief.riskBriefNarrativeSchema": {
     "undefined": "reject:",
@@ -3797,7 +4004,8 @@
     "missing-keyRisks": "reject:keyRisks,strengths,suggestedBorrowerQuestions",
     "missing-strengths": "reject:keyRisks,strengths,suggestedBorrowerQuestions",
     "missing-suggestedBorrowerQuestions": "reject:keyRisks,strengths,suggestedBorrowerQuestions",
-    "wrongtype-summary": "reject:keyRisks,strengths,suggestedBorrowerQuestions,summary"
+    "wrongtype-summary": "reject:keyRisks,strengths,suggestedBorrowerQuestions,summary",
+    "all-keys-null": "reject:keyRisks,strengths,suggestedBorrowerQuestions,summary"
   },
   "incomePaths.incomePathResultSchema": {
     "undefined": "reject:",
