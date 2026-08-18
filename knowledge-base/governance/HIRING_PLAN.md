@@ -193,6 +193,12 @@ What is safe to state, and what a candidate is entitled to know up front:
 two fleets read alike. None of them is registered as a scheduled task** — registration is a standing
 configuration change and stays a founder action.
 
+**Three of them now exist as routine definitions**, so the seat is covered until the person fills it:
+R1 → `domain-oracle`, R2 → `integration-readiness`, R4 → `qa-mutation-verifier`. The seating chart —
+which routine occupies which role, and why the other four seats needed no new routine — is
+[`TEAM.md`](../routines/TEAM.md). **A routine is a stand-in for a seat, never a substitute for the
+hire**: it drains a queue, and it cannot be accountable.
+
 ### The organising insight
 
 The automated suite already *produces* findings faster than anyone closes them. Ten local routines
