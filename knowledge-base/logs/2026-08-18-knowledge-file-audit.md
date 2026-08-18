@@ -116,19 +116,64 @@ keeping for the things guards can't see (semantic staleness, routine drift).
    `routines/CHARTER.md:28` (documents the rename). False positive to leave alone:
    `server/services/apr.ts` `MortgageStreamParams` / `buildMortgagePaymentStream` — the payment
    stream, not the repo.
-3. *(Agent sweep addendum — see §2b.)*
+3. **`governance/TEAM_PRACTICES.md` — the one living doc with genuine pointer drift** (§2b.1).
+4. **`research/gtm/COMPETITIVE_BRIEF_2026-07-06.md` — Better facts superseded by the 08-18
+   baseline**; supersession banner due once the teardown lands (§2b.4).
 
-### 2b. Independent sweep results
+### 2b. Sweep results
 
-Two read-only `doc-governance-reviewer` agents were dispatched this session: (a) the incoming
-corpus vs the repo's design/UX/competitive docs (contradictions, duplicate coverage, whether the
-four-question standard already exists in-repo, archive-quarantine integrity), and (b) the living
-docs for defunct-reference staleness (dead-routine instructions, `kb/`-path and platform residue,
-clock disagreements). **Their verified results land in this section in the same PR** — dispatched
-findings are integrated here only once checked against the code, and anything unverifiable is
-marked as such rather than asserted.
+*(Method note, post-approval: the two delegated `doc-governance-reviewer` agents did not survive
+a session resume — no task state, no completion notification; a small irony beside roadmap
+§3.24's "fired and left no artifact" finding. Both sweeps were therefore re-run inline by this
+session; every finding below is direct-grep evidence, not agent testimony.)*
 
-<!-- AGENT-RESULTS-PLACEHOLDER -->
+1. **`TEAM_PRACTICES.md` carries dead pointers while its freshness line is green** — the sharpest
+   proof that `guard:docs` attests verification recency, not semantic currency (which is exactly
+   why the playbook's quarterly re-read stays in the rhythm). Specifics: §1 (:16) routes transient
+   state to "the 🚀 Launch sprint section of `CTO_ROADMAP.md`" — a section
+   [`routines/CHARTER.md`](../routines/CHARTER.md) §2 (:121) states no longer exists (roadmap is
+   §0–§5); :42 tells builders to claim in "the launch-sprint memory ledger" (superseded by
+   [`routines/REGISTER.md`](../routines/REGISTER.md)); §2 (:24) and §7 name `kb/founder-routines/`
+   / `kb/lo-audit/` / `kb/ux-audit/` paths (now `knowledge-base/archive/…`); §5 (:75–76) says
+   `npm run check` / `npm test` where the standing fact is **pnpm**. MED — readers recover
+   (charter and guards contradict it), but this file is the KB's declared house-style exemplar.
+   **Fix folded into Step-2 item 2's docs PR** (narrow, mechanical, no decision changed).
+2. **`npm`-as-instruction survives in ~10 other living docs** (design_guidelines, app-guide
+   01/02/10, DEVELOPER_PLAYBOOK, REGULATORY_MONITORING, three specs, the KB README's own guard
+   line), and three specs still lean on the retired "launch sprint" *concept name*
+   (LO_ADVISOR:43, UAL:47/:298 — the intent, roadmap-outranks-program-work, is still true). LOW —
+   one mechanical normalization pass; **proposed as a ticket for Evening Triage**, not widened
+   into this session's diff.
+3. **Clean sweeps, for the record:** every living-doc `Vercel` mention is deliberate migration
+   history ("replacing Vercel", "Retired 2026-08-06 — Vercel", the Plaid pack's checklist that
+   every attachment must say Railway); `Sprint Blitz` appears only as labeled
+   retirement/absorption; the `archive/ux-audit` quarantine is intact (both inbound links from
+   living docs say archived/dead).
+4. **`COMPETITIVE_BRIEF_2026-07-06.md`'s Better facts are superseded** by the 08-18 teardown
+   baseline (hero "Simple, Online, AI-Powered" → "Betsy AI gets you cash…", chat-composer hero,
+   Betsy read-connected in-app). Its *strategy* is compatible, not contradicted — "the only
+   player whose hero is human judgment" (:41) is the position the teardown sharpens into "AI
+   explains deterministic rules." Action: dated supersession banner pointing at the teardown
+   corpus, same docs PR.
+5. **The repo already has a data-layer provenance system the teardown didn't know about** —
+   `shared/dataProvenance.ts` and the Day-1-Certainty promotion machinery (three dimensions →
+   VERIFIED; [`feature-review/DOMAINS.md`](../feature-review/DOMAINS.md) :107–128). The
+   teardown's §4.8/§9 UI vocabulary (`self-reported / soft-check / verified / estimated`) is the
+   *display layer* of the same concept. **Binding requirement added to Step-2 item 3:**
+   `<ProvenanceBadge>` must derive from `shared/dataProvenance.ts`'s states — a second provenance
+   enum in the client would be the teardown's own §6.1 two-sources-of-truth anti-pattern imported
+   into the codebase.
+6. **The four-question standard and the "why we ask" vocabulary are genuinely novel** — zero hits
+   across the design docs, the `ui-components` skill, and feature-review. Natural binding home
+   when it graduates from research: `handbook/design/visual-consistency-standard.md` (the
+   operational checklist). Triage's call.
+7. **The daily Better trigger may be firing blind:**
+   [`refactor-radar/RESEARCH.md`](../refactor-radar/RESEARCH.md) :45 records 5/5 competitor
+   domains — better.com included — **blocked by the session egress proxy on 2026-08-12**, cache
+   empty. The new daily trigger assumes `WebFetch better.com` works from its fresh sessions.
+   **Verification added to Step-2 item 5:** confirm the first daily-brief run fetched real
+   content; a competitive routine that cannot reach its subject must say so rather than
+   summarize from memory (its prompt already demands that — verify it holds).
 
 ---
 
@@ -222,11 +267,15 @@ execute on approval.
 2. 🤖 **Land the teardown knowledge in the repo**: `knowledge-base/research/better-teardown/`
    carrying the rev-`2c9ff919` knowledge doc (+ §3 correction banner) and the raw notes
    (append-only), each with the standard header, indexed in
-   [`../README.md`](../README.md) same-commit (guard-enforced). Docs-only PR lane.
+   [`../README.md`](../README.md) same-commit (guard-enforced). Docs-only PR lane. *(§2b add:
+   same PR carries the §2b.1 `TEAM_PRACTICES.md` pointer fixes and the §2b.4 supersession banner
+   on `COMPETITIVE_BRIEF_2026-07-06.md`.)*
 3. 🤖 **Component landing is engineering, not docs** — a proposed ticket for Evening Triage (which
    holds exclusive `CTO_ROADMAP.md` §0–§3 authority; this session does not touch the roadmap):
    land the 11 component sources under `client/src` **after** rework: swap arbitrary-value classes
-   for the existing semantic utilities (§3.1); decide the `veteran-*` mapping question inside the
+   for the existing semantic utilities (§3.1); bind `<ProvenanceBadge>` to
+   `shared/dataProvenance.ts`'s states instead of shipping a second enum (§2b.5); decide the
+   `veteran-*` mapping question inside the
    `ui-components` skill's containment rules rather than the package's blanket mapping snippet;
    colocated component tests per TEAM_PRACTICES §5.2; `data-testid` coverage; WCAG pass. Zero new
    dependencies (§3.5). Priority per the parity roadmap's own Phase 0/1 and behind §2's
@@ -236,12 +285,13 @@ execute on approval.
    a register to cite instead of a private list — dedupe against `FINDINGS.md` first.
 5. 🤖 **Rewrite the two world-copy triggers** (`update_trigger`): monthly-financial → invoke
    `/financial-audit`; weekly-UX → cite knowledge doc + findings register, drop `push` for `read`,
-   probe the Railway host not `www`. Add the two fleet cross-references (§4).
+   probe the Railway host not `www`. Add the two fleet cross-references (§4), and verify the
+   daily brief's first run actually reached better.com (§2b.7).
 6. 🖥 **Answer the financial-audit ownership question** (§4) — which mechanism fires the repo lane
    now that the daily app task is gone.
 
-*Proposed-ticket note for tonight's Evening Triage: items 3 and 4 are yours to land or re-rank;
-this log is the evidence.*
+*Proposed-ticket note for tonight's Evening Triage: item 3 (component landing) and the §2b.2
+normalization pass are yours to land or re-rank; this log is the evidence.*
 
 ---
 
