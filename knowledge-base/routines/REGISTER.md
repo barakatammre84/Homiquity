@@ -53,6 +53,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
+| user-tasked session (F-077 follow-up) | `server/services/scenarioSimulator.ts` MI source, `server/services/loanCosts.ts` (delete `calculatePMI`), `tests/scenarioSimulator.test.ts`, `tests/loanEstimateMI.test.ts` (drop the deleted import) | strange-kilby-c389c0 | `feat/f-077-scenario-sim-matrix-mi` | 2026-08-18 14:29 | The follow-up #553 itself flags: what-if MI card→matrix/product-aware. Stacked on open PRs #552+#553 (adjacent by design — their branches are merged into this one; lands after they do). |
 
 ## Recently released
 
