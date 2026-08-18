@@ -297,6 +297,14 @@ Strategy: own borrower intent *before* the credit pull via first-party channels 
 - [x] DEVELOPER_PLAYBOOK.md + PORT fix (6a01de0)
 - [x] CTO platform assessment (b0d6766)
 - [x] Design system Phases 1–3, dashboard query rewrite, AUS pipeline, MCP server, Vercel migration, brand unification (earlier) *[the Vercel leg was superseded 2026-08 by the migration to Railway; the Vercel project has since been deleted]*
+- [x] **§3.2 The last N+1 loop — closed 2026-08-18 by evening-triage.**
+  [#514](https://github.com/barakatammre84/Homiquity/pull/514) (authored by the retired sprint-blitz
+  on 2026-08-12) merged 2026-08-18T12:43Z after the rebase the 2026-08-17 triage called for.
+  Verified in the code, not from the PR's claim: `server/routes/underwriting/compliance.ts:47-50` on
+  `origin/main` now calls `validateMISMOCompletenessBatch(activeApps)` once instead of
+  `validateMISMOCompleteness` per application, with `tests/mismoValidationBatch.test.ts` +
+  `tests/nPlusOneBatching.test.ts` added to the `vitest.config.ts` node allowlist in the same PR
+  (an unlisted `tests/**` file never runs). This was the last item on the N+1 batching sweep.
 - [x] **§2.1 `GET /health` liveness + cron sweeps off the third-party DNS zone — closed 2026-08-17
   by evening-triage.** #446 merged 2026-08-07T03:07Z (`gh pr view 446`); verified live 2026-08-17:
   the scheduled sweeps run against `SWEEP_HOST=https://homiquity-production.up.railway.app` with a
