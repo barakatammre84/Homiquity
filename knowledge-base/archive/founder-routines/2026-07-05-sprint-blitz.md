@@ -12,7 +12,7 @@
 
 ## What shipped
 
-**PR [#51](https://github.com/barakatammre84/MortgageStream/pull/51) — LS-10 slice 2: per-lender MISMO package assembly at submission time.**
+**PR [#51](https://github.com/barakatammre84/Homiquity/pull/51) — LS-10 slice 2: per-lender MISMO package assembly at submission time.**
 
 Queue item 1 (LS-10) was next up. Reading the existing code (`server/services/lenderSubmission.ts`, `shared/wholesaleLenders.ts`), slice 1 (status machine + persistence) was already done via #38 — full transition machine, submission persistence, simulated lender ack, deal-activity logging. But `submitToWholesaleLender` never assembled anything to actually send: no MISMO package existed in the flow anywhere, and there was no check that the file's MISMO export was even structurally valid before "submitting."
 

@@ -11,7 +11,7 @@
 For roughly 16 minutes on 2026-07-17 (~15:03–15:19 UTC), every `/api/*` route in production
 returned `{"error":"Server failed to start", "bootError":"require() of ES Module …/uuid@14.0.1/…
 from …/gaxios@6.7.1/…"}` while the static front end kept serving normally. The trigger was a
-dependency-hygiene PR ([#219](https://github.com/barakatammre84/MortgageStream/pull/219)
+dependency-hygiene PR ([#219](https://github.com/barakatammre84/Homiquity/pull/219)
 `4eb456a`) that moved the overrides block from npm's top-level `"overrides"` format (which pnpm
 silently ignores) to `"pnpm"."overrides"` (which it honors). The uuid override written during the
 earlier vulnerability sweep (`524335b`) was a **floor, not a pin** — `"uuid": ">=11.1.1"` — so the
@@ -19,7 +19,7 @@ moment it took effect, pnpm resolved uuid to the newest version satisfying it: *
 ESM-only**. Every consumer in the graph was forced onto it, including `gaxios` (CommonJS, in the
 `google-auth-library`/GCS object-storage chain), whose runtime `require("uuid")` crashed the
 serverless function at boot. Fixed forward the same day by
-[#222](https://github.com/barakatammre84/MortgageStream/pull/222) (`b87d830`): cap the override at
+[#222](https://github.com/barakatammre84/Homiquity/pull/222) (`b87d830`): cap the override at
 `^11.1.1` — the identical security floor, kept inside the newest major that ships a real CommonJS
 build.
 

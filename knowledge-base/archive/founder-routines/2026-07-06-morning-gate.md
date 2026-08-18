@@ -29,9 +29,9 @@ Today's single most important unblock: **LS-2 ops env vars** (SendGrid/Sentry/GC
 - LS-4 vendor applications (F3 credit / F6 DU-LPA) — no code-side signal available; founder-owned, standing.
 - LS-6 prod grid reseed — founder-supervised, destructive; not run.
 - ci.yml human push — still not on origin: `git ls-remote --heads origin` shows neither `claude/inspiring-faraday-86b6b2` nor `claude/gracious-mendel-a0f77c`; `.github/workflows/ci.yml` does not exist on `main`. Standing.
-- homiquity.com domain — `curl https://homiquity.com/api/health` → **404** (not attached). Prod still lives at mortgage-stream.vercel.app.
+- homiquity.com domain — `curl https://homiquity.com/api/health` → **404** (not attached). Prod still lives at the legacy Vercel prod host.
 
-**(c) Production pulse** — `curl https://mortgage-stream.vercel.app/api/health` → **200 OK**, ~0.22s response time, body `{"status":"ok","timestamp":"2026-07-06T14:45:04.541Z"}`.
+**(c) Production pulse** — `curl` against the legacy Vercel prod host's `/api/health` → **200 OK**, ~0.22s response time, body `{"status":"ok","timestamp":"2026-07-06T14:45:04.541Z"}`.
 
 **(d) Next engineering leg** — LS-10 slice 3 (real per-lender portal hand-off) and L6 (XSD-validate MISMO export): `git log --since="24 hours ago" --oneline -- server/services/lenderSubmission.ts server/mismo.ts` shows only `0516957` (slice 2, already landed and reflected in yesterday's report — dated Jul 5 23:15, inside today's 24h window but not new work since it was already accounted for). No further movement today. Open PRs (`gh pr list --state open`): **#55** `feat(tax-insight): consumer-direct tax return upload → readiness signals + DSCR lead flag` (branch `claude/jolly-shtern-015538`) — unrelated to LS-10/L6, already tracked in the tax-insight-pipeline memory.
 

@@ -35,9 +35,12 @@ direct scheduler read, not re-verified from here.
   "-subtle tokens aren't mapped into Tailwind" premise is false at HEAD).
 - **The repo knowledge base is clean by its own machines**: `guard:kb` — 150 docs, all indexed, no
   dead links; `guard:docs` — 6 living docs within freshness interval. The old-name sweep found
-  `MortgageStream` only in archived/dated history and explicitly-bannered historical rows, which is
-  correct, plus one false positive (`server/services/apr.ts` `MortgageStreamParams` — a *payment
-  stream* domain term, not the repo name; leave it).
+  the former repo name only in archived/dated history and explicitly-bannered historical rows, which is
+  correct, plus one false positive (`server/services/apr.ts`'s payment-stream params type — a *payment
+  stream* domain term, not the repo name; leave it). *(Superseded 2026-08-18, founder-directed:
+  the same-day design-standard PR scrubbed the former name repo-wide — historical PR links
+  normalized to canonical URLs, the params type renamed `MortgagePaymentStreamParams` — leaving
+  the spelled-out name only in root `CLAUDE.md`'s ban.)*
 - **The routine cleanup already worked**: the four stale app-UI tasks the playbook says to delete
   are **absent from the live trigger list** (seven triggers remain: the four new ones, the PR sync
   loop, Barakat RE triage, one transient `send_later`). The playbook's own Part 1 "delete these
@@ -109,13 +112,16 @@ keeping for the things guards can't see (semantic staleness, routine drift).
    started **today**). This audit adds nothing but the cross-reference. *(This session's own
    probes add a data point: from the CCR network policy, even the Railway prod host is
    unreachable — "blocked" is environment-dependent, which is §1.12's point.)*
-2. **`MortgageStream` residue — clean.** Non-archive hits are all deliberate history:
+2. **Former-name residue — clean.** Non-archive hits are all deliberate history:
    `runbooks/CICD.md:4-7` (explicit former-name banner), `CHANGE_LEDGER.md` historical rows,
    `feature-review/FINDINGS.md` PR links (GitHub redirects renamed-repo URLs; normalizing them is
    optional cosmetics), `BETA_GO_LIVE_READINESS.md:204` (struck-through moot item),
    `routines/CHARTER.md:28` (documents the rename). False positive to leave alone:
-   `server/services/apr.ts` `MortgageStreamParams` / `buildMortgagePaymentStream` — the payment
-   stream, not the repo.
+   `server/services/apr.ts`'s payment-stream params type — the payment
+   stream, not the repo. *(Superseded 2026-08-18, founder-directed: the "optional cosmetics"
+   were executed repo-wide in the design-standard PR, and the params type is now
+   `MortgagePaymentStreamParams`; the spelled-out former name survives only in root
+   `CLAUDE.md`'s ban.)*
 3. **`governance/TEAM_PRACTICES.md` — the one living doc with genuine pointer drift** (§2b.1).
 4. **`research/gtm/COMPETITIVE_BRIEF_2026-07-06.md` — Better facts superseded by the 08-18
    baseline**; supersession banner due once the teardown lands (§2b.4).
