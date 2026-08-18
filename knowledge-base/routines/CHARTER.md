@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §3's CCR table, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §3's CCR table, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening; §1b's L3 merge row amended by the founder that evening to permit a green patch/minor bump under §6c, with §8 narrowed to match).
 
 Each routine's `SKILL.md` is its *job description*, and it runs in a **fresh session with no memory
 of any other run**. Those files live in two places, and the difference matters: the local-clock
@@ -105,7 +105,7 @@ takes an artifact before a human touches it**, not by topic:
 |---|---|---|
 | **L1 — decides and acts** | Finished artifact / ready PR; no pre-approval | code within lanes (tests, tooling, refactors, docs included), analysis, drafts of anything, monitoring and probes, opening PRs, routine ledgers and reports |
 | **L2 — acts, then flags** | Ships, but the PR/report flags it for explicit review | expand-only schema migrations (same-PR, hand-authored, idempotent); any §9-tripping diff — ships as a **draft PR** with ⛔ "write the security review or reject", the review itself always human-authored; wide cross-cutting refactors; verified-dead-code removal |
-| **L3 — prepares, human signs** | The machine does everything except the signature/click | merging any PR (a merge to `main` is a production deploy); contract migrations; license filings and regulator correspondence; contracts and vendor commitments; disclosure-policy changes; any outbound or external communication; money movement; production variables; each state's launch go/no-go |
+| **L3 — prepares, human signs** | The machine does everything except the signature/click | merging any PR (a merge to `main` is a production deploy) — **one carve-out, §6c: a green patch/minor dependency bump, by the one routine that owns it, which then owns the deploy**; contract migrations; license filings and regulator correspondence; contracts and vendor commitments; disclosure-policy changes; any outbound or external communication; money movement; production variables; each state's launch go/no-go |
 | **L4 — human-only** | The decision itself is human, not preparable into a signature | being the licensee / control person; credit-decision policy beyond cited deterministic rules; anything statute assigns to a person |
 
 **L1/L2 is where automatic mode lives:** routines select their own work, ship without
@@ -114,6 +114,14 @@ licensing names accountable humans; credit policy belongs to the accountable lic
 incident history (§8's auto-merge near-miss; the 2026-07-13 contract-migration outage). **They are
 amended only by the founder, knowingly — never by a routine, and never by a session acting on a
 routine's behalf.** A rail the machine can relax for itself is not a rail.
+
+**Amended once, on the record.** On **2026-08-18 the founder authorized** the L3 merge row's single
+carve-out — a routine may merge a green patch/minor dependency bump under §6c's preconditions. It is
+recorded here rather than only in §6c because the point of this table is that its exceptions are
+visible where the rule is. The authorization is narrow by construction: it names one artifact shape
+(a manifest-only bump), one routine, one merge per run, and it **attaches the deploy** — the routine
+that merges must prove prod advanced, because in this repo a merge to `main` is a deploy and a green
+workflow is not evidence one happened (§8).
 
 ---
 
@@ -481,14 +489,45 @@ edits nothing. On a bump PR it may:
 - post **one** verdict comment — clear, or blocked with the reason — and carry the PR in its report.
 
 It may **not** author or edit `package.json`/`pnpm-lock.yaml`, propose a **new** dependency, take a
-**major** bump beyond reporting what would break, merge, or close. A major is escalated with its
+**major** bump beyond reporting what would break, or close anything. A major is escalated with its
 breaking-change list, never cleared.
 
-⛔ **Open founder decision, deliberately not taken here:** whether a routine may *merge* a
-patch/minor bump once the full gate is green. That is an L3 amendment, and §1b reserves those to
-the founder knowingly — *"a rail the machine can relax for itself is not a rail."* Until it is
-answered, every bump still ends in a human click; what changes is that the click is now a
-thirty-second decision backed by a run, instead of an unread diff.
+#### Merging a bump — founder-authorized 2026-08-18, and the preconditions are the authorization
+
+The founder amended §1b's L3 merge row on 2026-08-18 to allow exactly this: **the routine may merge
+a green patch/minor bump.** Nothing else. The rule is not "routines may merge when confident" — it
+is this artifact shape, this routine, one per run, with the deploy attached.
+
+**Every one of these must hold. A single miss means report and stop, not merge and mention it.**
+
+1. **Manifest-only.** The PR changes `package.json` and/or `pnpm-lock.yaml` and **nothing else**.
+   One other path — a source file, a config, a workflow — and it is not a bump; it is a change
+   wearing a bump's title.
+2. **A bump of an existing dependency.** Not an addition, not a removal. "No new dependency, ever"
+   is untouched.
+3. **Patch or minor on a `>= 1.0.0` package.** A **`0.x` minor counts as a major** — pre-1.0
+   minors break by convention — and majors are escalated, never merged.
+4. **`main` is green and prod is current *before* you merge.** `GET /api/health`'s `commit` equals
+   `origin/main`'s tip. Merging onto a broken or stale prod makes the next failure unattributable,
+   and the whole value of this lane is that a bump's blame is unambiguous.
+5. **The gate is green on the PR's current head, observed by you** — not pending, not inferred from
+   an earlier run — and the branch is current with `main` with a clean `mergeable_state`.
+6. **Squash merge**, matching the repo's convention (`title (#NNN)`). **Never `--auto`, never
+   auto-merge** — §8 is unchanged and this carve-out is its opposite: a gate you already watched go
+   green, merged deliberately, in the foreground.
+7. **One bump per run.** Never batched. A batch makes the rollback ambiguous, and the rollback is
+   the only thing standing behind this authorization.
+
+**Then you own the deploy, because you caused it.** Poll `GET /api/health` until its `commit` equals
+the merge SHA — Railway builds and boots in ~90s; allow 20 minutes. **Do not read the workflow's
+conclusion instead:** `verify-deploy` is `continue-on-error: true` by design, so the workflow reports
+success even when prod never advanced (§8, and the 2026-08-06 freeze it documents). If prod does not
+reach the merge SHA, that is a `FAIL`: hand the founder §8's bad-deploy runbook and name
+`git revert <merge-sha>` as the rollback, in the report, with the SHA filled in.
+
+The report states the merge SHA, the `/api/health` commit actually observed, and that rollback
+command. A merge reported without an observed health commit is the one thing this lane exists to
+never do.
 
 ---
 
@@ -531,9 +570,22 @@ Lead a `FAIL` with `⛔ FAIL` and the exact failing thing, then hand the founder
 - **Deploy appears stuck / green but stale:** compare `/api/health`'s `commit` to `origin/main`.
 
 **No routine ever flips a production variable, rotates a credential, applies a migration to prod,
-pushes to `main`, merges a PR, or enables auto-merge.** The report plus its task notification **is**
-the page. Auto-merge is especially forbidden: an `--auto` armed in one session fires the moment
-Actions recovers, turning "just get CI to run" into a production deploy.
+pushes to `main`, or enables auto-merge.** The report plus its task notification **is** the page.
+Auto-merge is especially forbidden, and **this is not relaxed by §6c**: an `--auto` armed in one
+session fires the moment Actions recovers, turning "just get CI to run" into a production deploy.
+The §6c carve-out is the opposite shape — the routine merges only a gate it has already **observed**
+green, one bump, deliberately, in the foreground.
+
+**Merging a PR is L3** with that one carve-out (§6c: a green patch/minor dependency bump, founder-
+authorized 2026-08-18). Everything else — every code PR, every report PR, every routine's own work —
+stays a human click.
+
+**The deploy trap, for anything that does merge.** `verify-deploy` in
+[`ci.yml`](../../.github/workflows/ci.yml) is deliberately `continue-on-error: true` — it must not
+block, because it and Railway's "Wait for CI" are mutually recursive and the deadlock produces a
+permanent silent deploy freeze. **So the workflow concludes SUCCESS even when prod never advanced.**
+A green check is not a shipped deploy; read `verify-deploy`'s own conclusion, or poll
+`GET /api/health` yourself until its `commit` equals the merge SHA.
 
 ---
 

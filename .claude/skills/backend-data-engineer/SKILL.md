@@ -122,9 +122,10 @@ PR — with the migration in the same PR, which is the 2026-07-13 outage's whole
   claimed by that PR regardless of the board. Read in this order: `origin/main` → open PRs and
   their changed files → REGISTER → your own ledger.
 
-- **R11 — PR-only.** Never merge, never push to `main`, never enable auto-merge, never force-push.
-  `git add` explicit paths — never `git add .` or `-A`. A merge to `main` is a production deploy
-  and is L3: the founder merges.
+- **R11 — PR-only, with one named exception.** Never push to `main`, never enable auto-merge, never
+  force-push. `git add` explicit paths — never `git add .` or `-A`. A merge to `main` is a
+  production deploy and is L3: **the founder merges everything except the one artifact R12 names**,
+  and R12's preconditions are what make that exception safe. Your own PRs are never in it.
 
 - **R12 — Dependency bumps: verify, never author (CHARTER §6c).** `package.json` and
   `pnpm-lock.yaml` stay off limits — **no new dependency, ever**, and you never edit either file.
@@ -133,9 +134,23 @@ PR — with the migration in the same PR, which is the 2026-07-13 outage's whole
   --audit-level=high`), read the upstream changelog, and name every breaking change that touches
   code in this repo by `file:line`. Post **one** verdict comment — clear, or blocked with the
   reason — and carry it in the report. **A major bump is escalated with its breaking-change list,
-  never cleared.** You do not merge and you do not close: whether a routine may merge a green
-  patch/minor bump is an open founder decision (§6c), and until it is answered the click stays
-  human.
+  never cleared**, and you never close anything.
+
+  **You may merge a green patch/minor bump — founder-authorized 2026-08-18 (§1b, §6c) — and the
+  preconditions are the authorization, not advice.** All seven, or you report and stop: manifest-only
+  diff (`package.json`/`pnpm-lock.yaml` and nothing else); a bump of an **existing** dependency;
+  patch or minor on a `>= 1.0.0` package (**a `0.x` minor counts as a major**); `main` green **and**
+  prod current before you merge (`/api/health`'s `commit` == `origin/main` tip); the gate observed
+  green on the PR's current head with a clean `mergeable_state`; **squash** merge; **one per run,
+  never batched**. **Never auto-merge** — §8 is unchanged, and this lane is its opposite: a gate you
+  watched go green, merged deliberately in the foreground.
+
+  **Then you own the deploy, because you caused it.** Poll `GET /api/health` until its `commit`
+  equals the merge SHA (~90s to build, allow 20 minutes). **Do not substitute the workflow's
+  conclusion** — `verify-deploy` is `continue-on-error: true` by design, so the workflow reports
+  success even when prod never advanced. If prod does not reach the merge SHA that is a `FAIL`: hand
+  the founder §8's bad-deploy runbook and name `git revert <merge-sha>` with the SHA filled in. The
+  report states the merge SHA, the health commit you actually observed, and that rollback command.
 
 - **R13 — CHARTER §8, verbatim.** The escalation runbook binds unchanged.
 
@@ -196,7 +211,7 @@ funnel and URLA actually assemble it, not the way the seeder does, and diff what
 against what is present. This is the seed-vs-organic gap; findings go to the ledger with cites.
 **(f) An open dependency-bump PR carrying no verdict** — R12. Cheap, and it is the only lane that
 clears it; a bump nobody triages ages on the founder alone. It does not consume one of your two PR
-slots, because it produces a comment, not a PR.
+slots, because it produces a comment or a merge, not a PR of your own.
 
 Write each selection down with its rank justification **before any code**. Nothing eligible → observe.
 
@@ -254,7 +269,9 @@ Touch `client/**` · merge or auto-merge anything (L3) · author its own §9 sec
 contract migration · edit `CTO_ROADMAP.md`, `docs/**`, `data/regulatory/**`, `package.json` or
 `pnpm-lock.yaml` · add a dependency · edit `encryptionService.ts`, `ssnVault.ts`, auth/session code,
 `server/integrations/object_storage/**`, outbound messaging, or the underwriting/decision/rule
-engines · edit `package.json` or `pnpm-lock.yaml` even while triaging a bump (§6c is verify-only) ·
-clear a major version bump · close anyone's PR · claim a deploy without the `commit` field of
+engines · edit `package.json` or `pnpm-lock.yaml` even while triaging a bump (§6c authorizes a
+merge, never an edit) · merge anything that is not a manifest-only patch/minor bump meeting all
+seven §6c preconditions · clear or merge a major version bump · enable auto-merge, ever ·
+close anyone's PR · claim a deploy without the `commit` field of
 `GET /api/health` · assert a MISMO name it could not verify. The founder is the only merger; this routine's job is to make every backend merge
 a five-minute decision.
