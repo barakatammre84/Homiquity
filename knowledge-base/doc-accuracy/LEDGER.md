@@ -8,8 +8,10 @@ describes. Ids are **`DA-<MMDD>-<NN>`** — date-qualified per
 and are never reused. Statuses: `open` → `in-pr` → `done`, or `refuted` / `escalated` /
 `blocked-collision` / `superseded`.
 
-**`last-swept SHA:`** `56cf00a` *(origin/main tip at the routine's founding, 2026-08-18 — the
-first tick's diff window starts here)*
+**`last-swept SHA:`** `e3655d7` *(origin/main tip at the routine's founding, 2026-08-18. The
+founding session itself swept `56cf00a..e3655d7` — three docs-only peer-register/audit commits,
+`git diff --stat` confirmed zero non-md paths, and the Step-2 landing #557 was reconciled into
+the rows below the same session.)*
 
 ---
 
@@ -21,10 +23,10 @@ on** (the audit's Step-2 staging or another session's PR may land any of them fi
 
 | id | class | status | finding | evidence / provenance |
 |---|---|---|---|---|
-| DA-0818-01 | path-moved + command-renamed | open | `governance/TEAM_PRACTICES.md` carries dead pointers while its freshness line is green: §1 routes transient state to the retired "🚀 Launch sprint" roadmap section (:16); §4 claims go to a "launch-sprint memory ledger" (:42, superseded by `routines/REGISTER.md`); §2 and §7 name `kb/…` paths (:24, :225); §5 says `npm run check` / `npm test` (:75–76) where the standing fact is pnpm. Mechanical, no decision changed. | audit §2b.1; re-verified at HEAD `56cf00a` (all cited lines still present). Also staged in the audit's founder-gated Step-2 item 2 — check whether that PR landed before fixing. |
-| DA-0818-02 | command-renamed | open | `npm`-as-instruction survives in ~10 other living docs: `handbook/design/design_guidelines.md`, app-guide 01/02/10, `DEVELOPER_PLAYBOOK.md`, `compliance/REGULATORY_MONITORING.md`, three specs, and the KB README's own guard lines (:4, :158). One mechanical normalization pass. | audit §2b.2. Proposed to Evening Triage by the audit; if unlanded when a tick reaches it, it is inside this routine's default lane. |
-| DA-0818-03 | retired-term | open | Three spec passages lean on the retired "launch sprint" concept name: `specs/LO_ADVISOR_PROGRAM.md` :43, `specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md` :47/:298. The underlying intent (roadmap outranks program work) is still true — reword the pointer, keep the rule. | audit §2b.2 |
-| DA-0818-04 | claim-fixed-still-asserted | open | `research/gtm/COMPETITIVE_BRIEF_2026-07-06.md` states Better.com facts superseded by the 08-18 teardown baseline (hero copy, chat-composer hero, Betsy positioning). Needs a dated supersession banner pointing at the teardown corpus — **blocked-staged**: the banner should cite `research/better-teardown/`, which lands with the audit's Step-2 item 2. Strategy content is compatible, not contradicted; banner only (rail D9). | audit §2b.4 |
+| DA-0818-01 | path-moved + command-renamed | **done** | `governance/TEAM_PRACTICES.md` carried dead pointers while its freshness line was green: the retired "🚀 Launch sprint" section, the "launch-sprint memory ledger", `kb/…` paths, `npm run check`/`npm test`. | audit §2b.1. **Fixed by #557 (Step-2 landing, 2026-08-18)** — grep for `Launch sprint|kb/founder|kb/lo-audit|npm run check|npm test` at `e3655d7` returns only an innocuous `pnpm test` line. Closed by the founding session's own D6 re-dating: the finding was fixed between seed and commit — the exact CHARTER §1 failure mode this ledger exists to prevent. |
+| DA-0818-02 | command-renamed | open | `npm`-as-instruction survives in living docs beyond TEAM_PRACTICES (which #557 fixed): `handbook/design/design_guidelines.md`, app-guide 01/02/10, `DEVELOPER_PLAYBOOK.md`, `compliance/REGULATORY_MONITORING.md`, three specs, and the KB README's own guard lines (verified live at `e3655d7`: README :4 `npm run checkup`, :158 `npm run checkup`). One mechanical normalization pass. | audit §2b.2. Proposed to Evening Triage by the audit; if unlanded when a tick reaches it, it is inside this routine's default lane. Re-date each file per D6 before editing. |
+| DA-0818-03 | retired-term | open | Three spec passages lean on the retired "launch sprint" concept name: `specs/LO_ADVISOR_PROGRAM.md` :43, `specs/UNIVERSAL_ADAPTATION_LAYER_PROGRAM.md` :47/:298. The underlying intent (roadmap outranks program work) is still true — reword the pointer, keep the rule. | audit §2b.2; re-verified live at `e3655d7` (all three lines present). |
+| DA-0818-04 | claim-fixed-still-asserted | **done** | `research/gtm/COMPETITIVE_BRIEF_2026-07-06.md` needed a dated supersession banner pointing at the teardown corpus. | audit §2b.4. **Fixed by #557** — the ⚠️ banner is present at `e3655d7` :3–:8, citing `research/better-teardown/`, history kept per TEAM_PRACTICES §2. |
 
 ## Drift-source scoreboard (the learning loop)
 
@@ -80,4 +82,4 @@ at the 6-hourly cadence.
 
 | date | mode | window | findings (new / carried / closed) | PR | STATUS |
 |---|---|---|---|---|---|
-| 2026-08-18 | founding (not a tick) | — | 4 seeded from the knowledge-file audit | founding PR (branch `claude/md-docs-accuracy-routine-2x0850`) | — |
+| 2026-08-18 | founding (not a tick) | `56cf00a..e3655d7` (3 docs-only commits, merged in-session) | 4 seeded from the knowledge-file audit → 2 closed by #557 landing mid-session (DA-0818-01, -04), 2 carried open (-02 narrowed, -03 re-verified) | founding branch `claude/md-docs-accuracy-routine-2x0850` | — |

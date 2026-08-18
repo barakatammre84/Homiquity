@@ -157,15 +157,9 @@ run history and stored tool approvals. Judge it by its description, not its slug
 launch. A gap in `reports/` may therefore mean "the laptop was shut", not "the routine broke" —
 Evening Triage distinguishes the two rather than assuming either.
 
-**A second fleet exists.** Five claude.ai-side (CCR) scheduled triggers run against this repo
-from the cloud, outside this scheduler: the daily Better.com competitive brief (12:00Z), the
-weekly UX audit (Wed 13:00Z — report-only, reads `feature-review/FINDINGS.md`), the monthly
-financial-architecture audit (1st, 13:00Z — invokes `/financial-audit`, so §6's Financial Audit
-territory row governs it), the Monday logged-in deep-dive reminder (12:30Z, human-directed), and
-the hourly weekday PR sync loop. Audited and rewired 2026-08-18 —
-[logs/2026-08-18-knowledge-file-audit.md](../logs/2026-08-18-knowledge-file-audit.md) §4. Where
-they touch the repo they are report-only or PR-lane and bound by this charter; the quarterly
-knowledge audit reads both fleets.
+**A second fleet exists** — the claude.ai-side (CCR) scheduled triggers, tabled in **§3a**
+below. One home, deliberately: this note and §3a landed the same day from two sessions (#557 and
+the doc-accuracy founding) and were unified on merge rather than left as duplicate truths.
 
 The **Frontend Wiring Audit** and **Refactor Radar** keep their own detailed rails
 ([`../refactor-radar/`](../refactor-radar/) and the radar `SKILL.md`); this charter adds the clock,
@@ -179,7 +173,10 @@ above is local time; the offset moves — verified local = UTC-3 on 2026-08-18).
 cannot see `~/.claude/scheduled-tasks/` and the local fleet cannot see the trigger list, so
 **both lists live here** — the [2026-08-18 knowledge-file audit](../logs/2026-08-18-knowledge-file-audit.md)
 §4 found the two fleets blind to each other, and §11's rule extends to this table: re-timing or
-adding a CCR trigger edits this table in the same session. Trigger list read live 2026-08-18.
+adding a CCR trigger edits this table in the same session. Where these touch the repo they are
+report-only or PR-lane and bound by this charter — the monthly financial audit runs under §6's
+Financial Audit territory row, Doc Accuracy under its own §6 row — and the quarterly knowledge
+audit reads both fleets. Trigger list read live 2026-08-18.
 
 | Fires (UTC) | Cron | Trigger | Cadence | Writes? | Produces |
 |---|---|---|---|---|---|
