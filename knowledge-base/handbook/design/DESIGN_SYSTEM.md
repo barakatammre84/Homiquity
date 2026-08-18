@@ -39,19 +39,19 @@ sites actually use it.
 
 | Capability | State | Measured |
 |---|---|---|
-| `PageShell` page geometry | **BUILT · ADOPTED 17%** | 48 of 281 page files import it — *pnpm guard:ui → `pageShellDrift`* |
-| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 3%** | 9 file(s) import the registry, 323 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
+| `PageShell` page geometry | **BUILT · ADOPTED 17%** | 49 of 282 page files import it — *pnpm guard:ui → `pageShellDrift`* |
+| Icon registry `lib/icons.ts` | **BUILT · ADOPTED 5%** | 17 file(s) import the registry, 323 still import `lucide-react` directly — *pnpm guard:ui → `directLucideImports`* |
 | `Heading` / `Text` (`ui/typography.tsx`) | **BUILT · ADOPTED 0%** | zero call sites — allowlisted in `scripts/orphan-scan.cjs` as known-unused |
 | `Logo` + `BrandingProvider` | **BUILT · ADOPTED 0%** | zero call sites |
-| `EmptyState` | **BUILT** | 4 file(s) use it |
+| `EmptyState` | **BUILT** | 8 file(s) use it |
 | `bg-surface` app ground | **ADOPTED (via layout)** | set once on `PrivateLayout`'s `<main>`; 3 file(s) name it directly — pages inherit it |
-| Component tests / `components/ui` primitives | **BUILT** | 82 client test file(s); 34 primitives — *pnpm test:client* |
+| Component tests / `components/ui` primitives | **BUILT** | 101 client test file(s); 34 primitives — *pnpm test:client* |
 | `pageShellDrift` — PageShell drift (hand-rolled min-h-screen in a file that also imports PageShell) | ratcheting down | **13** file(s) |
 | `directLucideImports` — direct lucide-react import (icon-registry drift) | ratcheting down | **323** file(s) |
 | `nestedInteractive` — nested interactive control (a link wrapping a button) | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `rawHexLiterals` — raw hex colour literal | ratcheting down | **13** occurrence(s) |
 | `arbitraryColorValues` — arbitrary colour value (bg-[#…], to-[hsl(…)]) | ratcheting down | **3** occurrence(s) |
-| `arbitraryTypeScale` — arbitrary size/length value (text-[11px], w-[240px]) | ratcheting down | **172** occurrence(s) |
+| `arbitraryTypeScale` — arbitrary size/length value (text-[11px], w-[240px]) | ratcheting down | **170** occurrence(s) |
 | `blindSpotPaletteClasses` — palette class in a shape the token guard cannot see | **HELD** | **0** occurrence(s) — **at zero; any hit is a regression** |
 | `unprefixedMultiColGrid` — multi-column grid with no responsive prefix (mobile breakage) | ratcheting down | **67** occurrence(s) |
 

@@ -326,6 +326,12 @@ if (fs.existsSync(BASELINE_FILE)) {
 }
 
 let failed = false;
+// Which KIND of failure — a count that went up, or the doc drifting from the
+// measurement. They need different footers: telling someone "a count went UP"
+// when every count is at or below baseline sends them hunting for a regression
+// that isn't there. A guard that misreports its own failure is the same defect
+// class this table exists to close.
+let regressed = false;
 let tightened = false;
 const nextBaseline = { ...baseline };
 
@@ -339,6 +345,7 @@ for (const m of METRICS) {
   }
   if (m.total > base) {
     failed = true;
+    regressed = true;
     console.error(`\nFAIL  ${m.key}: ${m.total} ${m.unit}(s), baseline ${base} (+${m.total - base})`);
     console.error(`      ${m.label}`);
     console.error(`      → ${m.hint}`);
@@ -366,9 +373,17 @@ if (docDrift) {
 }
 
 if (failed) {
-  console.error(
-    "\nui-standard-guard: a UI-standard count went UP. Each number here may only ever go down.",
-  );
+  if (regressed) {
+    console.error(
+      "\nui-standard-guard: a UI-standard count went UP. Each number here may only ever go down.",
+    );
+  } else {
+    console.error(
+      "\nui-standard-guard: every count is at or below baseline — the failure above is §0's\n" +
+        "table disagreeing with the measurement. Common cause: another PR tightened a count on\n" +
+        "`main` and this branch's merge carries the new number with the old table. Regenerate it.",
+    );
+  }
   console.error("See knowledge-base/handbook/design/DESIGN_SYSTEM.md.\n");
   process.exit(1);
 }
