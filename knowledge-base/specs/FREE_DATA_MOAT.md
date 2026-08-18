@@ -24,17 +24,17 @@ feed three Postgres tables; the app reads them through indexed point lookups
 - `loan_performance_profiles` — per-band historical risk aggregates. A few
   hundred rows regardless of source size.
 
-Create tables by applying the hand-authored migration: `npm run db:migrate` (**never `db:push`** — see [kb/app-guide/03-database.md](../handbook/app-guide/03-database.md)).
+Create tables by applying the hand-authored migration: `pnpm db:migrate` (**never `db:push`** — see [app-guide/03-database.md](../handbook/app-guide/03-database.md)).
 
 ## Ingest: HMDA competitors
 
 ```bash
 # Resolve a lender's LEI from the public filers list
-npm run data:hmda -- --year 2024 --lender "Better Mortgage" --list-only
+pnpm data:hmda -- --year 2024 --lender "Better Mortgage" --list-only
 
 # Ingest + rebuild benchmarks (nationwide, or limit with --states)
-npm run data:hmda -- --year 2024 --lender "Better Mortgage"
-npm run data:hmda -- --year 2024 --lei 549300XY701IELCE5Q08 --lender-name "BETTER MORTGAGE CORPORATION" --states AZ,TX
+pnpm data:hmda -- --year 2024 --lender "Better Mortgage"
+pnpm data:hmda -- --year 2024 --lei 549300XY701IELCE5Q08 --lender-name "BETTER MORTGAGE CORPORATION" --states AZ,TX
 ```
 
 Notes:
@@ -53,8 +53,8 @@ Download quarterly files from Fannie Mae Data Dynamics → Single-Family Loan
 Performance Data (multi-GB, pipe-delimited, one row per loan per month).
 
 ```bash
-npm run data:fannie -- /path/to/2023Q4.csv --dataset sf_2023q4    # .gz also fine
-npm run data:fannie -- /path/to/2023Q4.csv --inspect              # verify column layout
+pnpm data:fannie -- /path/to/2023Q4.csv --dataset sf_2023q4    # .gz also fine
+pnpm data:fannie -- /path/to/2023Q4.csv --inspect              # verify column layout
 ```
 
 Streaming is O(1) memory: rows are folded loan-by-loan (files are grouped by

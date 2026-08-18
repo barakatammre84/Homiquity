@@ -166,25 +166,40 @@ run history and stored tool approvals. Judge it by its description, not its slug
 launch. A gap in `reports/` may therefore mean "the laptop was shut", not "the routine broke" —
 Evening Triage distinguishes the two rather than assuming either.
 
-**A second fleet exists, and this clock is not it.** Six recurring claude.ai-side (CCR) triggers
-run against this repo from the cloud, outside this scheduler, in fresh sessions: the daily
-Better.com competitive brief (12:00Z), the Monday logged-in deep-dive reminder (12:30Z,
-human-directed), the weekly UX audit (Wed 13:00Z — report-only), the monthly
-financial-architecture audit (1st, 13:00Z — it invokes `/financial-audit` rather than re-deriving
-it, so §6's Financial Audit territory row governs it), the daily page-by-page deep inspection
-(14:00Z — files `page-audit` issues, opens no PRs), and the hourly weekday PR sync loop. Where
-they touch the repo they are report-only or PR-lane and bound by this charter.
+**A second fleet exists, and this clock is not it.** Claude-Code-Remote triggers run against this
+repo from the cloud, outside this scheduler, in fresh sessions. **Do not trust a count written
+here** — this fleet grew twice in the hour this paragraph was last rewritten, and two sessions
+had already recorded a stale "six" between them. **The authoritative list is `list_triggers`
+(Claude_Code_Remote MCP); read it rather than this paragraph.** As of **2026-08-18 18:25Z** it
+held eight Homiquity triggers:
+
+| Fires (UTC) | Trigger | Posture |
+|---|---|---|
+| daily 12:00 | Better.com competitive brief | report-only; may file one `design-standard` issue |
+| Mon 12:30 | logged-in Better deep-dive reminder | human-directed; sends a reminder, nothing else |
+| Wed 13:00 | UX audit vs the design standard | report-only, `read` access |
+| 1st 13:00 | financial-architecture audit | invokes `/financial-audit`; §6's Financial Audit row governs it |
+| daily 14:00 | page-by-page deep inspection | files `page-audit` issues; opens no PRs |
+| Mon 14:00 | doc & memory hygiene sweep | report-only; docs-PR lane for its report |
+| 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges |
+| hourly, weekdays 08–20 | PR sync & review loop | branch updates + digest |
+
+Where they touch the repo they are report-only or PR-lane and bound by this charter. Note the
+Monday 14:00 collision between the daily inspection and the hygiene sweep — harmless while both
+are report-only, a real hazard the day either starts writing code.
 
 Audited and rewired 2026-08-18 —
 [logs/2026-08-18-knowledge-file-audit.md](../logs/2026-08-18-knowledge-file-audit.md) §4. Until
-that date the two fleets did not know about each other, and it showed: three of them cited
+that date the two fleets did not know about each other, and it showed: three triggers cited
 documents that did not exist — a teardown corpus that had not yet landed in the repo (it has since,
 at [`research/better-teardown/`](../research/better-teardown/)), and `docs/DESIGN-STANDARD.md`, in
 a directory §6 puts off limits to every routine. All three now cite
 [`handbook/design/DESIGN_SYSTEM.md`](../handbook/design/DESIGN_SYSTEM.md) and
 [`feature-review/FINDINGS.md`](../feature-review/FINDINGS.md) — the same sources this fleet uses —
-and probe the Railway host rather than `www`. **Changing one fleet means checking the other**; the
-quarterly knowledge audit reads both lists.
+and probe the Railway host rather than `www`. A fourth, the doc-accuracy steward, cites a skill
+that does not exist at `origin/main` yet; it is written to say so and stop, which is the correct
+shape for a routine whose dependency has not landed. **Changing one fleet means checking the
+other**; the quarterly knowledge audit reads both lists.
 
 The **Frontend Wiring Audit** and **Refactor Radar** keep their own detailed rails
 ([`../refactor-radar/`](../refactor-radar/) and the radar `SKILL.md`); this charter adds the clock,

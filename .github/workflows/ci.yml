@@ -213,6 +213,19 @@ jobs:
         # (Job `name:` above deliberately unchanged — verbatim required-check string;
         # see the rename warning.)
         run: pnpm guard:kb
+      - name: Doc staleness ratchet
+        # Dead vocabulary in LIVING docs vs scripts/doc-staleness-baseline.json
+        # (ratchet: counts may only go down). Metrics: kb/ paths, npm-as-instruction,
+        # launch-sprint references, the old repo name, the dead Vercel host. Immutable
+        # history (archive/, logs/, routines/reports/, CHANGE_LEDGER, the teardown raw
+        # notes) is excluded — a dated record carrying an old name is correct history,
+        # not rot. Born from the 2026-08-18 knowledge-file audit: TEAM_PRACTICES held
+        # dead pointers while its freshness line was green, because the freshness guard
+        # attests verification recency and nothing attested vocabulary. Deterministic
+        # (repo contents only), so it belongs in the gate per the KB-index guard's rule
+        # above. Run with --list for exact lines. (Job `name:` above deliberately
+        # unchanged — verbatim required-check string; see the rename warning.)
+        run: pnpm guard:staleness
       - name: Security-review guard (TEAM_PRACTICES §9)
         # Fails when the PR touches a §9 trigger (PII vault/encryption, auth/sessions,
         # role gates, uploads, outbound messaging, PII-adjacent logging) and the PR body

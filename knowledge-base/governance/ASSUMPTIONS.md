@@ -75,7 +75,7 @@ see CLAUDE.md ground rules). Each real contract converts one row here into a sma
 ## 3. Uncited policy values — live code, unverified provenance
 
 Numbers that actively gate decisions but lack a regulatory citation (tracked as roadmap
-items; the "no citation → not implemented" contract in kb/UNDERWRITING_SCENARIOS.md):
+items; the "no citation → not implemented" contract in knowledge-base/compliance/UNDERWRITING_SCENARIOS.md):
 
 - **Roadmap #29 — resolved (merged 2026-07-04, PR #39):** VA residual income unified on the
   cited 22% tax-estimate model; the 5% reduction verified real (26-7 Item 43) but disjunctive

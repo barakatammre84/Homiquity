@@ -24,7 +24,7 @@
 > [`client/src/components/ui/`](../../../client/src/components/ui). This doc explains the
 > *rules*; when they disagree with the code, the code wins — fix the doc.
 > The `design-token guard` (`scripts/design-token-guard.cjs`, run by
-> `npm run checkup`) **fails CI on any raw Tailwind palette class**, so the rules
+> `pnpm checkup`) **fails CI on any raw Tailwind palette class**, so the rules
 > below are enforced, not aspirational.
 >
 > **Companion:** the detailed, operational catalogs — the icon registry (one glyph per
