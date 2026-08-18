@@ -49,12 +49,12 @@ export default function AdverseActionNotice() {
       titleTestId="text-page-title"
       headerLead={
         <div className="flex items-center justify-between print:hidden">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm" data-testid="button-back-dashboard">
+          <Button asChild variant="ghost" size="sm" data-testid="button-back-dashboard">
+            <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to dashboard
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           {notices.length > 0 && (
             <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print-notice">
               <Printer className="h-4 w-4 mr-2" />

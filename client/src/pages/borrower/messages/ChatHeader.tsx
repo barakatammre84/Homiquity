@@ -17,11 +17,11 @@ export function ChatHeader({
     <div className="border-b bg-background">
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
-          <Link href="/messages">
-            <Button variant="ghost" size="icon" aria-label="Back" data-testid="button-back">
+          <Button asChild variant="ghost" size="icon" aria-label="Back" data-testid="button-back">
+            <Link href="/messages">
               <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           {isLoading || !selectedMember ? (
             <div className="flex items-center gap-3">
               <Skeleton className="h-10 w-10 rounded-full" />

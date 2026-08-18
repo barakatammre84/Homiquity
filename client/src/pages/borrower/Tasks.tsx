@@ -275,11 +275,11 @@ export default function Tasks() {
                       : "Start a loan application to receive your first tasks."}
                   </p>
                   {!activeApplication && (
-                    <Link href="/apply">
-                      <Button className="mt-4" data-testid="button-start-application">
+                    <Button asChild className="mt-4" data-testid="button-start-application">
+                      <Link href="/apply">
                         Start Application
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
                 </CardContent>
               </Card>

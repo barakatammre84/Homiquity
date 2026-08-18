@@ -312,18 +312,18 @@ export default function Profile() {
                     Nothing captured yet. Chat with your AI Coach — every detail you share is saved here automatically.
                   </p>
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Link href="/ai-coach">
-                      <Button className="gap-2" data-testid="button-empty-coach">
+                    <Button asChild className="gap-2" data-testid="button-empty-coach">
+                      <Link href="/ai-coach">
                         <Bot className="h-4 w-4" />
                         Chat with AI Coach
-                      </Button>
-                    </Link>
-                    <Link href="/apply">
-                      <Button variant="outline" className="gap-2" data-testid="button-empty-apply">
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="gap-2" data-testid="button-empty-apply">
+                      <Link href="/apply">
                         <FileText className="h-4 w-4" />
                         Start Pre-Approval
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -439,33 +439,33 @@ export default function Profile() {
                 {typeof data.readiness.completionPercentage === "number" && (
                   <Progress value={data.readiness.completionPercentage} className="h-2" />
                 )}
-                <Link href="/ai-coach">
-                  <Button variant="outline" className="w-full gap-2" data-testid="button-continue-coach">
+                <Button asChild variant="outline" className="w-full gap-2" data-testid="button-continue-coach">
+                  <Link href="/ai-coach">
                     <Bot className="h-4 w-4" />
                     Continue with your AI Coach
                     <ArrowRight className="h-4 w-4 ml-auto" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           )}
 
           {/* Next steps */}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Link href="/apply">
-              <Button className="w-full gap-2" data-testid="button-profile-apply">
+            <Button asChild className="w-full gap-2" data-testid="button-profile-apply">
+              <Link href="/apply">
                 <FileText className="h-4 w-4" />
                 Get Pre-Approved
                 <ArrowRight className="h-4 w-4 ml-auto" />
-              </Button>
-            </Link>
-            <Link href="/urla-form">
-              <Button variant="outline" className="w-full gap-2" data-testid="button-profile-urla">
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full gap-2" data-testid="button-profile-urla">
+              <Link href="/urla-form">
                 <FileText className="h-4 w-4" />
                 Full Application (URLA)
                 <ArrowRight className="h-4 w-4 ml-auto" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
 
           <PresalesDisclaimer />

@@ -84,12 +84,12 @@ export default function AgentDashboard() {
                 Manage your listings and track performance
               </p>
             </div>
-            <Link href="/agent/edit">
-              <Button className="bg-white text-primary shadow-lg gap-2">
+            <Button asChild className="bg-white text-primary shadow-lg gap-2">
+              <Link href="/agent/edit">
                 <Edit className="h-4 w-4" />
                 Edit Profile
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -187,22 +187,22 @@ export default function AgentDashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle>My Listings</CardTitle>
-                <Link href="/property/new">
-                  <Button size="sm" className="gap-2">
+                <Button asChild size="sm" className="gap-2">
+                  <Link href="/property/new">
                     <Plus className="h-4 w-4" />
                     New Listing
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </CardHeader>
               <CardContent>
                 {!listings || listings.length === 0 ? (
                   <div className="py-12 text-center">
                     <p className="text-muted-foreground">No listings yet</p>
-                    <Link href="/property/new">
-                      <Button variant="outline" className="mt-4">
+                    <Button asChild variant="outline" className="mt-4">
+                      <Link href="/property/new">
                         Create Your First Listing
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -238,18 +238,18 @@ export default function AgentDashboard() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Link href={`/property/${property.id}`}>
-                            <Button variant="outline" size="sm" className="gap-1">
+                          <Button asChild variant="outline" size="sm" className="gap-1">
+                            <Link href={`/property/${property.id}`}>
                               <Eye className="h-4 w-4" />
                               View
-                            </Button>
-                          </Link>
-                          <Link href={`/property/${property.id}/edit`}>
-                            <Button variant="outline" size="sm" className="gap-1">
+                            </Link>
+                          </Button>
+                          <Button asChild variant="outline" size="sm" className="gap-1">
+                            <Link href={`/property/${property.id}/edit`}>
                               <Edit className="h-4 w-4" />
                               Edit
-                            </Button>
-                          </Link>
+                            </Link>
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

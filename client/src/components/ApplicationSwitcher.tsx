@@ -170,12 +170,12 @@ export function ApplicationSwitcher({
   
   if (applications.length === 0) {
     return (
-      <Link href="/apply">
-        <Button variant="outline" size="sm" className="gap-2" data-testid="button-start-new-app">
+      <Button asChild variant="outline" size="sm" className="gap-2" data-testid="button-start-new-app">
+        <Link href="/apply">
           <Plus className="h-4 w-4" />
           Start Application
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     );
   }
 

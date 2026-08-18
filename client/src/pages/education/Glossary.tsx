@@ -211,11 +211,11 @@ export default function Glossary() {
           {/* Breadcrumb / result count */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm">
-              <Link href="/resources">
-                <Button variant="ghost" size="sm" data-testid="link-resources">
+              <Button asChild variant="ghost" size="sm" data-testid="link-resources">
+                <Link href="/resources">
                   Resources
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">Glossary</span>
             </div>
@@ -351,18 +351,18 @@ export default function Glossary() {
                 : "Explore our guides and tools, or get pre-approved in about 3 minutes."}
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-3">
-              <Link href="/resources">
-                <Button variant="outline" data-testid="button-explore-resources">
+              <Button asChild variant="outline" data-testid="button-explore-resources">
+                <Link href="/resources">
                   Explore Resources
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               {!PRELAUNCH_GATED && (
-                <Link href="/apply">
-                  <Button data-testid="button-get-preapproved">
+                <Button asChild data-testid="button-get-preapproved">
+                  <Link href="/apply">
                     Get Pre-Approved
                     <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               )}
             </div>
           </div>

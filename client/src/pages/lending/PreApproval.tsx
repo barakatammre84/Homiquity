@@ -733,11 +733,11 @@ function PreApprovalFunnel() {
             </a>
           </p>
           {urlPropertyId && urlSource === "property-detail" && (
-            <Link href={`/properties/${urlPropertyId}`}>
-              <Button variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground" data-testid="button-back-to-property">
+            <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 text-muted-foreground" data-testid="button-back-to-property">
+              <Link href={`/properties/${urlPropertyId}`}>
                 <ChevronLeft className="h-3.5 w-3.5" /> Back to property listing
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
         </motion.div>
       </div>

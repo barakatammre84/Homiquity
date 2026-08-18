@@ -384,12 +384,12 @@ export default function Dashboard() {
                       </Tooltip>
                     )}
                   </div>
-                  <Link href={dominant.href} data-testid="link-dominant-action">
-                    <Button size="lg" data-testid="button-dominant-action">
+                  <Button asChild size="lg" data-testid="button-dominant-action">
+                    <Link href={dominant.href} data-testid="link-dominant-action">
                       {dominant.buttonLabel}
                       <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -489,12 +489,12 @@ export default function Dashboard() {
 
           {activeApplication && (
             <div className="flex justify-center pt-2">
-              <Link href="/onboarding" data-testid="link-view-journey">
-                <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
+              <Button asChild variant="ghost" size="sm" className="text-muted-foreground gap-1.5">
+                <Link href="/onboarding" data-testid="link-view-journey">
                   <Rocket className="h-3.5 w-3.5" />
                   View full journey checklist
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           )}
         </div>
