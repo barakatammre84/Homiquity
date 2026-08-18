@@ -54,6 +54,7 @@ When your intended work meets a live claim, the answer is rarely "stop":
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
 | `/financial-audit` (weekly) | money paths: `shared/compensation*`, `shared/costLedger.ts`, `shared/rateLockConfirmation.ts`, `shared/wholesaleLenders.ts`, `server/services/contingentLiabilityRegister.ts`, `server/routes/rate-sheets.ts`, `server/routes/borrower/rateLocks.ts`, `client/src/pages/admin/{FinancialReports,Lenders}.tsx` · finding ids `F-0812-*` | — | `claude/fervent-mayer-oqk0iv` | 2026-08-12 | Reads-and-reports by default; fixes only owner-authorized ledger rows, one per tick. Stays out of `client/**` UI decomposition — that is refactor-radar's lane. |
+| `primary-engineer` (daily, item 1) | ux-30 TRID delivery-window honesty: `server/services/loanEstimate.ts`, `server/routes/underwriting/delivery.ts`, `client/src/pages/lending/LoanEstimate.tsx`, `tests/trid.test.ts` | `.claude/worktrees/primary-engineer-2026-08-18-1` | `routine/primary-engineer-2026-08-18-1` | 2026-08-18T11:55Z | Three-valued TRID window verdict: `null` when the clock never started, instead of `true`. **Adjacent, not overlapping**, to the live peer on `fix/f-051-aus-recommendation` (uncommitted `server/mismo.ts` work in the primary checkout) — I touch no MISMO file. |
 
 ## Recently released
 
