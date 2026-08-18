@@ -16,7 +16,7 @@ The ledger already surfaces two genuine review items it exists to catch:
 
 ## Tier 2 — The official-sources change watcher (automated, live)
 
-`npm run reg:watch` (state-saving variant: `reg:watch:save`) polls:
+`pnpm reg:watch` (state-saving variant: `reg:watch:save`) polls:
 - **Federal Register API** (structured, free): CFPB + HUD + VA mortgage rules and proposed rules — new document numbers are reported with title, agency, date, and link.
 - **Agency update pages** (content-hash diff): Freddie Mac Guide bulletins, FHA Mortgagee Letters, VA circulars. Any content change → "review this page" signal.
 

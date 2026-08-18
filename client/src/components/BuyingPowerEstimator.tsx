@@ -154,12 +154,12 @@ export function BuyingPowerEstimator() {
               Buying-power math isn't the right tool for a refi — our refinance
               check compares your current loan against today's options instead.
             </p>
-            <Link href="/refinance">
-              <Button className="mt-5 w-full gap-2 font-semibold" data-testid="button-estimator-refi">
+            <Button asChild className="mt-5 w-full gap-2 font-semibold" data-testid="button-estimator-refi">
+              <Link href="/refinance">
                 Check refinance options
                 <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <button
               type="button"
               onClick={() => setStep(1)}
@@ -296,12 +296,12 @@ export function BuyingPowerEstimator() {
                   With those numbers a purchase would be tight right now — that's
                   exactly what a plan is for. We'll show you what moves the needle.
                 </p>
-                <Link href="/first-time-buyer">
-                  <Button className="mt-5 w-full gap-2 font-semibold" data-testid="button-estimator-plan">
+                <Button asChild className="mt-5 w-full gap-2 font-semibold" data-testid="button-estimator-plan">
+                  <Link href="/first-time-buyer">
                     See where I stand
                     <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </>
             )}
             <button

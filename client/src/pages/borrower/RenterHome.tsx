@@ -233,21 +233,21 @@ export function RenterHome({
               you're serious.
             </p>
             <div className="flex gap-2">
-              <Link href="/apply">
-                <Button data-testid="button-renter-preapproval">
+              <Button asChild data-testid="button-renter-preapproval">
+                <Link href="/apply">
                   Start pre-approval
-                </Button>
-              </Link>
-              <Link href="/properties">
-                <Button
+                </Link>
+              </Button>
+              <Button asChild
                   variant="ghost"
                   className="text-sidebar-foreground"
                   data-testid="button-renter-browse"
                 >
+                <Link href="/properties">
                   <Search className="h-4 w-4" />
                   Browse homes
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>

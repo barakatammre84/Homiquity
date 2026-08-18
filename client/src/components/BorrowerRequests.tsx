@@ -121,12 +121,12 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
             </div>
             <div className="mt-1 h-0.5 w-8 rounded-full bg-primary/60" />
           </div>
-          <Link href="/tasks">
-            <Button variant="outline" size="sm" data-testid="button-complete-items">
+          <Button asChild variant="outline" size="sm" data-testid="button-complete-items">
+            <Link href="/tasks">
               Complete items
               <ArrowRight className="ml-1 h-3.5 w-3.5" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="pt-1 space-y-3">
@@ -164,23 +164,23 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
                   )}
                 </div>
               </div>
-              <Link href="/documents">
-                <Button size="sm" variant="outline" className="shrink-0" data-testid={`button-upload-${task.id}`}>
+              <Button asChild size="sm" variant="outline" className="shrink-0" data-testid={`button-upload-${task.id}`}>
+                <Link href="/documents">
                   Upload
                   <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           );
         })}
         
         {pendingTasks.length > 3 && (
-          <Link href="/documents" className="block">
-            <Button variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-view-all-requests">
+          <Button asChild variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-view-all-requests">
+            <Link href="/documents">
               View all {pendingTasks.length} requests
               <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         )}
 
         {pendingTasks.length === 0 && (

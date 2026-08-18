@@ -112,9 +112,9 @@ export default function LoanOptions() {
           <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
           <h2 className="mt-4 text-xl font-semibold">Unable to load loan options</h2>
           <p className="mt-2 text-muted-foreground">Please try again later.</p>
-          <Link href="/apply">
-            <Button className="mt-6">Start New Application</Button>
-          </Link>
+          <Button asChild className="mt-6">
+            <Link href="/apply">Start New Application</Link>
+          </Button>
         </div>
       </div>
     );

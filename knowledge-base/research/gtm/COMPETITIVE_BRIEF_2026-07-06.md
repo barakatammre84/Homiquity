@@ -8,7 +8,7 @@
 > teardown sharpens into “AI explains deterministic rules.” Kept as history per TEAM_PRACTICES §2.
 
 > **⚠️ DATED SNAPSHOT (2026-07-06), last touched 2026-07-08.** Market positioning research, not a
-> live tracker. Re-verify any competitor claim before repeating it externally. Kept in `kb/` rather
+> live tracker. Re-verify any competitor claim before repeating it externally. Kept in `knowledge-base/` rather
 > than archived because it still describes this market and [TAX_SERIES_01_DRAFT.md](TAX_SERIES_01_DRAFT.md)
 > builds on its positioning — see the archival rule in [archive/README.md](../../archive/README.md).
 
@@ -55,7 +55,7 @@ real answer, not an algorithm's guess").
 1. **IL/Chicago/Cook DPA** — owned by aggregators + gov pages; no digital lender present.
    → Shipped as three /learn articles + wizard data, 2026-07-06.
 2. **Tax returns → mortgage** — unclaimed by any lender; TurboTax owns adjacent space.
-   → Series draft in kb/gtm/TAX_SERIES_01_DRAFT.md; feeds CPA channel (Phase 1).
+   → Series draft in TAX_SERIES_01_DRAFT.md (this directory); feeds CPA channel (Phase 1).
 3. **Self-employed empathy narrative** — Rocket owns generic SEO; non-QM specialists own
    product content; nobody owns the "write-offs cut qualifying income 30–50%" story.
 4. **VA** — Veterans United's affinity machine wins SEO head-on; pursue affinity
@@ -65,10 +65,10 @@ real answer, not an algorithm's guess").
 
 ## Threats register
 
-- Rocket–Redfin–Compass agent lockup (counter-programming one-pager: kb/gtm/AGENT_ONEPAGER_ROCKET_COMPASS.md)
+- Rocket–Redfin–Compass agent lockup (counter-programming one-pager: AGENT_ONEPAGER_ROCKET_COMPASS.md)
 - Tomo 49-state expansion + data-led rate PR
 - Betsy normalizes 24/7 instant answers ("humans read your file" must never mean "humans make you wait")
-- NEXA 220bps + AI POS raises LO recruiting bar (battlecard: kb/gtm/LO_BATTLECARD_NEXA.md)
+- NEXA 220bps + AI POS raises LO recruiting bar (battlecard: LO_BATTLECARD_NEXA.md)
 - Beta gate opportunity cost — resolved by design: charter opens educational surface July 7
 
 ## Compliance rails (all GTM work)

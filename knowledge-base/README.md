@@ -1,7 +1,7 @@
 # Knowledge Base (KB)
 
 The single home for all Homiquity documentation. Every `.md` here is indexed below — an
-unindexed doc is an unread doc (enforced by `scripts/kb-index-guard.cjs` via `npm run checkup`).
+unindexed doc is an unread doc (enforced by `scripts/kb-index-guard.cjs` via `pnpm checkup`).
 Three living docs live outside this tree, deliberately: **`CLAUDE.md`** (Claude Code auto-loads
 it from repo root), **`README.md`** (the repo landing page), and **`CTO_ROADMAP.md`** (the live
 work queue). A fourth, **`PRODUCT_SPINE.md`**, is a one-line pointer stub retained only so old
@@ -34,10 +34,14 @@ doc-drift bug to fix):
   - [04 — API Surface](handbook/app-guide/04-api-routes.md) · [05 — Data Flow: A Loan's Journey](handbook/app-guide/05-data-flow.md) · [06 — Auth, Security & Secrets](handbook/app-guide/06-auth-security-secrets.md)
   - [07 — Frontend](handbook/app-guide/07-frontend.md) · [08 — Service Catalog](handbook/app-guide/08-services.md) · [09 — External Integrations](handbook/app-guide/09-integrations.md)
   - [10 — Deploy & Operations](handbook/app-guide/10-deploy-ops.md) · [11 — Mortgage Domain Glossary](handbook/app-guide/11-domain-glossary.md)
-- [design/design_guidelines.md](handbook/design/design_guidelines.md) — the design system (the *language*).
-- [design/visual-consistency-standard.md](handbook/design/visual-consistency-standard.md) — the operational
-  *checklist*: spacing/elevation scales, the icon registry (one glyph per concept), the brand/`<Logo>`/
-  white-label mechanism, empty-state + illustration standards, and the PageShell adoption checklist.
+- [design/DESIGN_SYSTEM.md](handbook/design/DESIGN_SYSTEM.md) — **the single binding design standard**
+  (Royal Blue Emerald). Tokens and the AA-verified colour pairs, the type scale, PageShell geometry,
+  elevation, the icon registry, `<Logo>`/white-label, empty states, the **capture-flow standard**
+  (progressive disclosure · tunnel vision · mobile invariants), the **four-question gate**
+  (provenance · explanation · agreement · honesty), and the adoption checklist. §0 is a *measured*
+  adoption table — no `⏳`, every row carries a number and the command that produces it
+  (`pnpm guard:ui`). Merged 2026-08-18 from `design_guidelines.md` + `visual-consistency-standard.md`,
+  both now in [archive/design/](archive/design/).
 
 ### Compliance — regulated-logic doctrine (L2 detail) · [`compliance/`](compliance/)
 - [UNDERWRITING_SCENARIOS.md](compliance/UNDERWRITING_SCENARIOS.md) — the registry of *shipped* scenarios · [UNDERWRITING_SCENARIO_INTAKE.md](compliance/UNDERWRITING_SCENARIO_INTAKE.md) — the unadjudicated intake queue (split out 2026-08-06) — scenario catalog + the
@@ -101,6 +105,13 @@ The contract binding the scheduled routines into one pipeline: the shared clock,
 - [primary-engineer/LEDGER.md](primary-engineer/LEDGER.md) — the Primary Engineer's own work queue (Phase 1 source d); rows cite their source or are invalid.
 - [compliance-watch/STATE_LADDER.md](compliance-watch/STATE_LADDER.md) — the state-launch licensing ladder (Illinois → California → national); every row cited or `UNVERIFIED`, drafts for signature in [compliance-watch/drafts/](compliance-watch/drafts/).
 
+### UI Conformance Sweep — autonomous design-standard propagation · [`ui-conformance/`](ui-conformance/)
+- [LEDGER.md](ui-conformance/LEDGER.md) — cross-run memory for
+  [`/ui-conformance-sweep`](../.claude/skills/ui-conformance-sweep/SKILL.md): converted surfaces,
+  refusals with reasons, per-metric floors, and the `guard:ui` count trend. The routine exists
+  because CHARTER §6a's own line — *a standard nobody is assigned to propagate is a preference* —
+  described the state the design system was actually in.
+
 ### Refactor Radar — autonomous UI/logic-separation routine · [`refactor-radar/`](refactor-radar/)
 The weekly `/refactor-radar` run (skill in `.claude/skills/refactor-radar/`): one behavior-preserving, PR-only extraction per run, spreading the house decomposition patterns.
 - [LEDGER.md](refactor-radar/LEDGER.md) — ranked candidates + run log (the routine's cross-run memory).
@@ -160,7 +171,8 @@ which gets escalated, never papered over (rail D7).
 Superseded docs kept for provenance. Never act on these. Includes the launch-era
 operational logs quarantined 2026-07-08: [archive/founder-routines/](archive/founder-routines/),
 [archive/lo-audit/](archive/lo-audit/), [archive/assessments/](archive/assessments/); the dead
-UX-audit routine archived 2026-08-06: [archive/ux-audit/](archive/ux-audit/); and the
+UX-audit routine archived 2026-08-06: [archive/ux-audit/](archive/ux-audit/); the two design docs
+superseded by the merged standard on 2026-08-18: [archive/design/](archive/design/); and the
 pre-rewrite roadmap: [archive/roadmap/](archive/roadmap/).
 
 ## The rule (continuous update)
@@ -168,5 +180,5 @@ pre-rewrite roadmap: [archive/roadmap/](archive/roadmap/).
 Per **TEAM_PRACTICES.md**: every new doc lives in this tree, gets one line in this index (or sits
 under an indexed section directory), and — for `compliance/`/`governance/` docs — cites its L1/L2
 authority. Dated snapshots are archived, never rewritten. The doc + its index line land in the
-**same commit**. `scripts/kb-index-guard.cjs` (run by `npm run checkup`) fails the build on an
+**same commit**. `scripts/kb-index-guard.cjs` (run by `pnpm checkup`) fails the build on an
 un-indexed doc or a dead index link.

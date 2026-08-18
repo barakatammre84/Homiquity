@@ -25,7 +25,7 @@ import {
 export { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
-export interface MortgageStreamParams {
+export interface MortgagePaymentStreamParams {
   loanAmount: number;
   noteRatePct: number;
   termMonths: number;
@@ -36,7 +36,7 @@ export interface MortgageStreamParams {
 }
 
 /** Builds the month-by-month payment stream (P&I plus MI while in force). */
-export function buildMortgagePaymentStream(params: MortgageStreamParams): number[] {
+export function buildMortgagePaymentStream(params: MortgagePaymentStreamParams): number[] {
   const { loanAmount, noteRatePct, termMonths } = params;
   const monthlyMI = params.monthlyMI ?? 0;
   const propertyValue = params.propertyValue ?? 0;
@@ -99,7 +99,7 @@ export function solveAPRFromStream(amountFinanced: number, payments: number[]): 
   return Math.round(annualPct * 1000) / 1000;
 }
 
-export interface MortgageAPRParams extends MortgageStreamParams {
+export interface MortgageAPRParams extends MortgagePaymentStreamParams {
   /** Sum of prepaid finance charges per §1026.4 (origination, points, app/underwriting fees, prepaid interest, upfront MI). */
   prepaidFinanceCharges: number;
 }

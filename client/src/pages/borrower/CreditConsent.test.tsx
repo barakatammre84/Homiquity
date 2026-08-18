@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { loanApplicationKeys } from "@/lib/queryClient";
 
@@ -35,7 +36,14 @@ vi.mock("wouter", () => ({
 
 import CreditConsent from "./CreditConsent";
 
-function renderPage({ disclosureText }: { disclosureText: string }) {
+function renderPage({
+  disclosureText,
+  draft = null,
+}: {
+  disclosureText: string;
+  /** A previously saved draft, as the server would return it. */
+  draft?: Record<string, unknown> | null;
+}) {
   const client = new QueryClient({
     defaultOptions: {
       queries: {
@@ -63,7 +71,7 @@ function renderPage({ disclosureText }: { disclosureText: string }) {
     pullCount: 0,
     adverseActionCount: 0,
   });
-  client.setQueryData(loanApplicationKeys.credit.draft("app-1"), { draft: null });
+  client.setQueryData(loanApplicationKeys.credit.draft("app-1"), { draft });
   return render(
     <QueryClientProvider client={client}>
       <CreditConsent />
@@ -117,5 +125,88 @@ describe("ux-20 — the hard-inquiry fact is visible at the ask, not only inside
     // No jest-dom in the client lane (house convention — see Lenders.test.tsx).
     const button = screen.getByTestId("button-authorize-credit") as HTMLButtonElement;
     expect(button.disabled).toBe(true);
+  });
+});
+
+describe("a saved draft never pre-ticks the FCRA authorization", () => {
+  // The acknowledgment checkbox IS the e-signature evidence for a hard-inquiry
+  // authorization, and `acknowledged` is the only gate before the page posts
+  // `consentGiven: true`. Restoring it from a draft let a borrower return days
+  // later to a pre-checked box and authorize a hard credit pull in a session
+  // where they never affirmatively acknowledged anything — possibly against a
+  // disclosure version they never saw (DESIGN_SYSTEM §13, Honesty).
+
+  const SAVED_DRAFT = {
+    borrowerFullName: "Alex Rivera",
+    borrowerSSNLast4: "1234",
+    borrowerDOB: "1990-04-01",
+    disclosureRead: true,
+    acknowledged: true,
+    currentStep: 3,
+  };
+
+  it("renders the acknowledgment UNCHECKED even when the draft saved it as true", () => {
+    renderPage({ disclosureText: "", draft: SAVED_DRAFT });
+
+    expect(screen.getByTestId("checkbox-acknowledge").getAttribute("data-state")).toBe(
+      "unchecked",
+    );
+  });
+
+  it("keeps the authorize button disabled until the borrower re-acknowledges", () => {
+    renderPage({ disclosureText: "", draft: SAVED_DRAFT });
+
+    const button = screen.getByTestId("button-authorize-credit") as HTMLButtonElement;
+    // The name IS restored, so the only thing still holding the gate shut is
+    // the acknowledgment — which is exactly the point.
+    expect((screen.getByTestId("input-full-name") as HTMLInputElement).value).toBe(
+      "Alex Rivera",
+    );
+    expect(button.disabled).toBe(true);
+  });
+
+  it("re-acknowledging in this session opens the gate", async () => {
+    const user = userEvent.setup();
+    renderPage({ disclosureText: "", draft: SAVED_DRAFT });
+
+    await user.click(screen.getByTestId("checkbox-acknowledge"));
+
+    expect(screen.getByTestId("checkbox-acknowledge").getAttribute("data-state")).toBe(
+      "checked",
+    );
+    expect((screen.getByTestId("button-authorize-credit") as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
+  it("still restores the identity fields the draft exists to save", () => {
+    renderPage({ disclosureText: "", draft: SAVED_DRAFT });
+
+    expect((screen.getByTestId("input-ssn-last4") as HTMLInputElement).value).toBe("1234");
+    expect((screen.getByTestId("input-dob") as HTMLInputElement).value).toBe("1990-04-01");
+  });
+});
+
+describe("the authorization copy survives the ConsentField migration byte-for-byte", () => {
+  it("renders the ratified authorization sentence exactly", () => {
+    renderPage({ disclosureText: "" });
+
+    // Byte-for-byte: this string is what the borrower e-signs. DESIGN_SYSTEM
+    // §13 requires a redesign to preserve compliance copy exactly, so this
+    // asserts equality, not a loose match.
+    expect(screen.getByTestId("label-acknowledge").textContent).toBe(
+      "I have read and understand the Credit Authorization Disclosure above. I authorize " +
+        "Homiquity to obtain my credit report from one or more consumer reporting agencies " +
+        "for the purpose of evaluating my mortgage loan application. I understand this " +
+        "permits a hard credit inquiry, which may temporarily lower my credit score.",
+    );
+  });
+
+  it("declining costs nothing, and says so", () => {
+    renderPage({ disclosureText: "" });
+
+    const note = screen.getByTestId("text-consent-optional").textContent!;
+    expect(note).toMatch(/nothing is submitted until you\s+authorize/);
+    expect(note).not.toMatch(/must|required to|will not be able/i);
   });
 });

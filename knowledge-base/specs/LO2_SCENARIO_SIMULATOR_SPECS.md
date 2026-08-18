@@ -76,7 +76,7 @@ type — no scraping, no re-keying.
 - [ ] Simulator endpoint returns 403 for non-deal-team staff (IDOR guard) and non-staff.
 - [ ] No persisted income evaluation → structured `NEEDS_INCOME_EVALUATION` response, never a
   re-derivation.
-- [ ] **Definition of Done** (TEAM_PRACTICES §5): `npm run check` clean · `npm test` green ·
+- [ ] **Definition of Done** (TEAM_PRACTICES §5): `pnpm check` clean · `pnpm test` green ·
   live evidence on :5002 in the PR · no new env vars · doc-sync (this spec + charter link).
 
 ## 7. Risks & escalations

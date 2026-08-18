@@ -38,7 +38,7 @@ Clear the hurdles that can physically prevent launch before doing anything else.
    ```
    33 tests: AI never in the credit-decision path, intake decisioning fully deterministic, denial cannot outrun its adverse-action notice, ECOA §1002.9 block present. Baseline 2026-07-04: **33/33 green**. ⚠️ Medical-collections handling is *not* among them — verified 2026-07-04 as agency policy (not a federal rule), engine build ships with F3 (roadmap #28). Note the invariants are unaffected by the 2026-07-21 Reg B disparate-impact amendment — they enforce determinism, not the effects test.
 3. **Adverse Action audit:** generate one test denial (staff → `POST /api/loan-applications/:id/credit/adverse-action`). Verify: the notice renders at `/adverse-action/:id` with reasons + bureau contact + dispute rights; the reason is deterministic (never "AI decision" — enforced by the invariant tests, `AI_GOVERNANCE_POLICY.md`); the borrower got the in-app notification **and** the deliberately neutral email (console-logged until `SENDGRID_API_KEY` is set).
-4. **Regulatory freshness:** `npm run checkup` runs `scripts/regulatory-freshness.cjs` — fails if any `data/regulatory/regulatory-ledger.json` entry is overdue for re-verification.
+4. **Regulatory freshness:** `pnpm checkup` runs `scripts/regulatory-freshness.cjs` — fails if any `data/regulatory/regulatory-ledger.json` entry is overdue for re-verification.
 
 ## Routine 2 — Mid-Day: Lender Liquidity & Concierge Sales (offense)
 
@@ -58,11 +58,11 @@ Intentionally try to break the system daily.
    - ⚠️ Massive medical collection on the simulated credit report: **not currently injectable** — the simulated soft pull has no collection tradelines and the engine has no collections→DTI path (verified 2026-07-04), so today nothing can compute wrongly *and* nothing verifies the protection. The FHA 5%/$2,000/medical-excluded capacity rule and GSE payoff carve-outs (both now in `regulatory-ledger.json`) must ship with the F3 credit adapter (roadmap #28); this drill then flips from documenting a gap to verifying a protection.
 2. **Kill-switch test** (built 2026-07-04, roadmap #27):
    ```bash
-   PORT=5002 INTAKE_PAUSED=true npm run dev
+   PORT=5002 INTAKE_PAUSED=true pnpm dev
    curl -i -X POST localhost:5002/api/leads -H "Content-Type: application/json" -d '{"email":"drill@test.com"}'
    ```
    Expect `503 {"code":"INTAKE_PAUSED"}` + `Retry-After: 600`; funnel submit shows the graceful maintenance toast; `rateService` logs `INTAKE_PAUSED set, skipping live rate vendor fetch` instead of calling vendors. Existing borrowers keep full access — the switch stops **new intake**, not service. In production: set `INTAKE_PAUSED=true` as a **Railway service variable** (Railway → project `Homiquity` → service `Homiquity` → **Variables**), then let the service restart with it. It is read from `process.env` **per request** (`server/services/maintenanceMode.ts`), so it takes effect as soon as the process is running with the variable — no rebuild is needed, unlike the `VITE_*` build-time flags.
-3. **Zero-inbox the drill fallout:** every failure found goes to `CTO_ROADMAP.md` or `kb/my-research/` the same day — a drill that finds a bug nobody triages is theater.
+3. **Zero-inbox the drill fallout:** every failure found goes to `CTO_ROADMAP.md` or `knowledge-base/research/my-research/` the same day — a drill that finds a bug nobody triages is theater.
 
 ## Routine 4 — Evening: Unit Economics & Go-To-Market Sync (strategy)
 
