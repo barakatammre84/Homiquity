@@ -369,6 +369,19 @@ exposes none, so only the ten top-level scalar probes run and every per-field ru
 borrower financial data into a loan file. Not fixed here: unwrapping the inner object for probing
 would re-record rows across the whole snapshot, which is its own decision. Proposed as ticket 6.
 
+### The bundle guard caught the first attempt — and the fix was to move the bytes
+
+`pnpm guard:bundle` went red in CI (local runs the guard only against a build, which this run had
+not regenerated): the eager entry grew **50 raw bytes**, 522,434 → 522,484. The catalog had been
+put in `shared/preApprovalForm.ts` — a reasonable home right up until you notice that module sits
+in the eager entry chunk every visitor downloads before anything renders, for a predicate that one
+lazily-routed page reads.
+
+It now lives in `shared/intakeClearable.ts` and rides in `/profile`'s chunk. Back to **522,434
+exactly, at baseline**. The guard asked the right question; re-baselining would have answered a
+different one. (The same edit also removed four consts an earlier step in this branch had left
+duplicated at the tail of `preApprovalForm.ts`.)
+
 ### What ticket 5 does NOT change
 
 `useServerDraftAutosave.buildDraftPatchPayload` still omits empties and still does **not** send
