@@ -50,6 +50,10 @@ const PALETTE =
   "gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
 const SHADE = "50|100|200|300|400|500|600|700|800|900|950";
 
+/** Properties that carry a design token and therefore can be bypassed by an arbitrary value. */
+const ARBITRARY_PROP =
+  "bg|text|border|ring|fill|stroke|from|to|via|divide|outline|decoration|placeholder|caret|accent|shadow";
+
 /**
  * unit: "occurrence" counts every match; "file" counts each offending file once.
  * scan:  a function (src, relPath) => number of hits, or null to skip the file.
@@ -93,15 +97,35 @@ const METRICS = [
       "Use a semantic token. The design-token guard's regex is class-shaped and structurally cannot see a hex literal — this metric is that blind spot.",
     res: [/#[0-9a-fA-F]{6}\b/g],
   },
+  // Split from a single `arbitraryColorValues` metric on 2026-08-18. That name
+  // was wrong about its own contents: of the 116 it counted, 3 were colours and
+  // 107 were font sizes like text-[11px]. A reader told "116 arbitrary colour
+  // values" would go hunting for colours and find almost none — and the two
+  // classes have different fixes and different floors, so one blurred number was
+  // not actionable either. Both still bypass the design system, so both are
+  // still counted; they are now counted separately and named honestly.
   {
     key: "arbitraryColorValues",
-    label: "arbitrary colour value (bg-[…] / text-[…])",
+    label: "arbitrary colour value (bg-[#…], to-[hsl(…)])",
     unit: "occurrence",
     hint:
-      "Arbitrary values escape the token guard entirely. Use the semantic utility — every -subtle token IS mapped in tailwind.config.ts.",
+      "Arbitrary colours escape the token guard entirely — its regex is class-shaped and cannot see them. Use a semantic token; every -subtle token IS mapped in tailwind.config.ts.",
     res: [
       new RegExp(
-        `(?<![a-zA-Z0-9-])(?:bg|text|border|ring|fill|stroke|from|to|via|divide|outline|decoration|placeholder|caret|accent|shadow)-\\[`,
+        `(?<![a-zA-Z0-9-])(?:${ARBITRARY_PROP})-\\[\\s*(?:#|rgb|hsl|var\\(|--)`,
+        "gi",
+      ),
+    ],
+  },
+  {
+    key: "arbitraryTypeScale",
+    label: "arbitrary size/length value (text-[11px], w-[240px])",
+    unit: "occurrence",
+    hint:
+      "A bespoke size is a rung outside the type/spacing scale — DESIGN_SYSTEM.md §3 owns the scale in ui/typography.tsx, and className is for spacing and colour, never to resize.",
+    res: [
+      new RegExp(
+        `(?<![a-zA-Z0-9-])(?:${ARBITRARY_PROP}|w|h|min-w|min-h|max-w|max-h|p|px|py|m|mx|my|gap|top|left|right|bottom|inset|leading|tracking)-\\[\\s*[-.0-9]`,
         "g",
       ),
     ],

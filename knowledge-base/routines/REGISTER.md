@@ -53,9 +53,10 @@ When your intended work meets a live claim, the answer is rarely "stop":
 
 | routine / session | target | worktree | branch | claimed (UTC) | intent |
 |---|---|---|---|---|---|
-| founder session (interactive) | `client/src/pages/borrower/Dashboard.tsx`, `components/dashboard/LoanTeamCard.tsx`, `scripts/ui-standard-guard.cjs` + its baseline | primary checkout | `claude/routines-operating-cadence-olj41t` | 2026-08-18 19:35 | UC-007 borrower-dashboard conformance (visual only, §14), plus splitting the mis-named `arbitraryColorValues` metric — 97% of what it counts are font sizes, not colours |
 
 ## Recently released
+
+| founder session (interactive) | borrower dashboard (UC-007) + the `arbitraryColorValues` metric split | `claude/routines-operating-cadence-olj41t` | claimed 2026-08-18 19:35, released 19:55 | **shipped** — §15 was already built; fixed `min-h-screen`→`min-h-full`, a skeleton at the retired `max-w-xl` that snapped ~3x wider on load, 7 bespoke type rungs, 1 sub-44px control. Raised **UC-008**: the icon registry covers 36 of the 176 glyphs the app uses, which is why it has zero adopters — extending it is founder-gated. |
 
 | founder session (interactive) | URLA capture path — `URLAForm.tsx` JSX + five `urla/` sections | `claude/routines-operating-cadence-olj41t` | claimed 2026-08-18 18:45, released 19:05 | **shipped** — rail no longer scrolls horizontally; 14 sub-44px controls raised via `.touch-target`. Presentational only: the trap doc's five hazards were audited against the diff (no `buildPayload`/`STEPS`/hydration move, no memo/useCallback/debounce, latch untouched). The two structural §12 gaps (tunnel vision, ≤3 inputs) are **proposed, not shipped** — both need decisions above a layout call. |
 
