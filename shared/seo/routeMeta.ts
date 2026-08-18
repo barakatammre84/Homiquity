@@ -54,6 +54,13 @@ export const STATIC_ROUTE_META: Record<string, RouteMetaEntry> = {
     description:
       "Curated guides and tools to help you navigate buying a home — from pre-approval and choosing an agent to understanding how mortgages work.",
   },
+  // Mirrors RentReporting.tsx's SEOHead verbatim — this file's documented failure
+  // mode is silent drift from the page copy, so change both together or neither.
+  "/rent-reporting": {
+    title: "Rent reporting — Homiquity",
+    description:
+      "Homiquity is building rent reporting for renters working toward a home purchase. Join the list — we'll tell you when it opens.",
+  },
   "/down-payment-wizard": {
     title: "Down Payment Assistance Finder",
     description:
@@ -324,6 +331,7 @@ export const SITEMAP_STATIC_PATHS: string[] = [
   "/glossary",
   "/resources",
   "/down-payment-wizard",
+  "/rent-reporting",
   "/calculators",
   "/calculators/mortgage",
   "/calculators/rent-vs-buy",
