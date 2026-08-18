@@ -70,7 +70,8 @@
       "cloudTrigger": {
         "created": "2026-08-18",
         "cron": "20 10 * * * (UTC)",
-        "note": "Migrated to the Claude-Code-Remote fleet on founder instruction so it runs whether or not the laptop is open — the local scheduler only fires while the app is open, which is why reports/ shows four dates for a suite scheduled seven times a day. The trigger carries NO private copy of the method: it invokes the repo skill and is written to stop if that skill is absent. The cron here is documentation; list_triggers is authoritative."
+        "note": "Migrated to the Claude-Code-Remote fleet on founder instruction so it runs whether or not the laptop is open — the local scheduler only fires while the app is open, which is why reports/ shows four dates for a suite scheduled seven times a day. The trigger carries NO private copy of the method: it invokes the repo skill and is written to stop if that skill is absent. The cron here is documentation; list_triggers is authoritative. Set to REPORT-ONLY the same day on founder direction: it finds and documents, writes no application code, opens no code PR. The founder builds and tests locally (pnpm dev:up / pnpm preflight) and concurrent machine-authored branches compete for merge slots. The trigger prompt narrows the skill's scope and may never widen it.",
+        "mode": "report-only"
       }
     },
     {

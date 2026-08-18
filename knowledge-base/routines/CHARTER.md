@@ -212,7 +212,7 @@ held eight Homiquity triggers:
 | Mon 14:00 | doc-accuracy, weekly firing | repointed 2026-08-18 to invoke `/doc-accuracy`; **no longer its own hygiene sweep** | **in the repo** (pending) |
 | 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges | **in the repo** (pending) |
 | hourly, weekdays 08–20 | PR sync & review loop | branch updates + digest | in the trigger prompt |
-| daily 10:20 | **Frontend Wiring Audit** — migrated 2026-08-18 | writes code; PR lane; never merges | **in the repo** |
+| daily 10:20 | **Frontend Wiring Audit** — migrated 2026-08-18 | **report-only** (founder direction, same day): finds and documents, writes no code | **in the repo** |
 | daily 16:10 | **Deliverable QA Sweep** — migrated 2026-08-18 | findings + report PR; never merges | **in the repo** |
 
 **The last two rows are the first fleet-1 routines to move here, and the reason is §3's own
@@ -223,6 +223,13 @@ because in build mode they are what keeps the fix queue fed. **Their local sched
 disabled**; until that happens both fleets can fire the same routine on the same day, and the only
 thing preventing two contradictory artifacts is that both are instructed to extend today's existing
 report/PR rather than open a competing one. That is a mitigation, not a fix.
+
+**Report-only is the default posture for a migrated code-writing routine, not an accident.** The
+founder builds and tests locally; concurrent machine-authored branches compete for merge slots and
+go stale against each other — 2026-08-17 is the case, where one merge turned six open PRs
+`CONFLICTING` at once. So the wiring audit's cloud firing finds and documents; a human applies the
+batch locally, behind `pnpm preflight`. Its trigger prompt narrows the skill's scope and says so;
+it may never widen it.
 
 **Moving a routine here has a bill, and it is not the model's.** Every run that opens a PR triggers
 the required `gate` job, and `CTO_ROADMAP.md` KTLO-2 measures ~1,850 of the private repo's 2,000
