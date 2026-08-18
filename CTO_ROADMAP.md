@@ -41,8 +41,9 @@ anything else in this file being true.
   "~30 days / ~$4.97" on **2026-08-06** and unreadable by any session since (no MCP billing
   endpoint; the local `RAILWAY_API_TOKEN` is dead — #536 E8). When the credit lapses **production
   stops serving.** Railway → project `Homiquity` → Settings → Billing. Coupled: image retention is
-  **72 h on Hobby** — today's deploys restored a rollback window that relapses ~2026-08-20 without
-  another deploy ([ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md) §1). **Founder-held.**
+  **72 h on Hobby** — the 2026-08-18 merge round (#539/#537/#514/#536/#543) refreshed the rollback
+  window, which now relapses **~2026-08-21** without another deploy
+  ([ROLLBACK.md](knowledge-base/runbooks/ROLLBACK.md) §1). **Founder-held.**
 - [ ] **KTLO-2. GitHub Actions minutes — this is the platform bill, not Railway.** Measured
   2026-08-17 (#536 E9): ~13.6 CI runs/day × ~4–5 billable min ≈ **1,850 of the private repo's
   2,000 free min/month (~92%)**; overage $0.008/min. The 2026-08-06 queueing symptom is stale —
@@ -140,9 +141,10 @@ anything else in this file being true.
   fetch it" — it is that nothing is *captured and versioned*, so a reading is unrepeatable. The
   founder decision is narrower and cheaper than it was: **authorize a session to capture those
   texts into `docs/reg-z/` and amend the `CLAUDE.md` "every authoritative source is blocked"
-  clause** (it is a binding project rule, so a session may not amend it unasked). **Five ledger
-  entries hit their review dates 2026-08-18 → 2026-08-23**, and two P1s (F-076, F-079) are held
-  below their evidence until a Reg Z reading may be asserted.
+  clause** (it is a binding project rule, so a session may not amend it unasked). **The first of
+  five ledger entries reaches its review date TODAY (2026-08-18); the remaining four follow through
+  2026-08-23** — past this point `pnpm checkup` is reporting on stale verification, and two P1s
+  (F-076, F-079) stay held below their evidence until a Reg Z reading may be asserted.
 - [ ] **1.13 One NMLS login session, four outcomes** (compliance-watch 2026-08-17 ⛔1–4 +
   [STATE_LADDER.md](knowledge-base/compliance-watch/STATE_LADDER.md)): (a) **does an IL-licensed
   MLO with an approved sponsorship exist?** — if not, nobody can originate the first Illinois loan
@@ -173,17 +175,6 @@ anything else in this file being true.
   available to us.
 - [ ] **2.3 Run [PROD_ACCEPTANCE_TEST.md](knowledge-base/runbooks/PROD_ACCEPTANCE_TEST.md) end to
   end** once §1.1 and §1.2 land. See §5.
-- [ ] **2.4 F-051 (P0) — the delivered MISMO package tells every wholesale lender the AUS said
-  `Approve`, whatever it actually said.** `server/mismo.ts:860` emits
-  `AutomatedUnderwritingRecommendationDescription` as the compile-time literal `"Approve"`, so a
-  `refer` / `refer_with_caution` / `approve_ineligible` file is delivered as an approval. Fix: read
-  `loanApplications.ausRecommendation` (`shared/schema/lendingCore.ts:50`, written at
-  `server/routes/aus.ts:230`) and **omit the whole `AUTOMATED_UNDERWRITINGS` container when there
-  is nothing to report**, exactly as `mismo.ts:405-408` does for citizenship — never substitute a
-  value. *(Triage correction to the qa-sweep write-up: the DTO field **does** exist —
-  `shared/mismo.ts:720` — and is simply never populated or read, so this is a mapping gap, not a
-  missing type.)* Acceptance question A; open and unowned for 5 days until tonight, when a session
-  began an uncommitted fix in the primary checkout (see the evening-triage report's hygiene note).
 - [ ] **2.5 F-080 — the delivered package drops the co-borrower.** One `PARTY` is emitted for a
   two-borrower file while **both** employers and both incomes are emitted under it, so the package
   misstates who earns the income, under the wrong SSN — and it validates clean (`xmllint` passes,
@@ -207,14 +198,6 @@ anything else in this file being true.
   authority conflict, the URLA 5b-J/5b-L foreclosure-family ambiguity, whether the eight orphan
   concepts belong in a ULDD delivery at all, and the unproven `OTHER` wrapper convention. **F-023/U-4
   stays open on the ULAD leg** — #430 pinned base-model names, not ULAD v1.8 ones.
-- [ ] **3.2 The last N+1 loop.** `validateMISMOCompleteness` runs once per active application in
-  `server/routes/underwriting/compliance.ts` and makes 5+ storage reads internally. Batching it means
-  restructuring the URLA validator's data loading — a compliance-sensitive refactor, which is why it
-  did not ride the mechanical batching PR. Pattern to follow: `/api/dashboard`'s `inArray`. **The
-  fix already exists: [#514](https://github.com/barakatammre84/Homiquity/pull/514) (from the retired
-  sprint-blitz) — review/merge it rather than rebuilding. It went `CONFLICTING` when #540 landed on
-  the evening of 2026-08-17; its green checks are at a stale head, so it needs a rebase before it
-  means anything.**
 - [ ] **3.3 Internal data-lineage view for masked lender identity.** Borrower surfaces mask the
   wholesale lender by doctrine (`shared/borrowerOfferView.ts`); compliance and staff need the
   unmasked lineage somewhere.
@@ -278,9 +261,10 @@ anything else in this file being true.
   until rescue-draft [#542](https://github.com/barakatammre84/Homiquity/pull/542)): +1,543/−72
   including five compliance behavior-test suites (FCRA consent order, ECOA intake-never-denies,
   invite-validate PII audit, VA residual parity / F-051) and server fixes. Its F-042 slice is
-  superseded by #537; the rest may still be live value. After #537 lands: rebase, drop the
-  superseded slice, land what's green — or close explicitly. Five days of invisibility already
-  cost one duplicate rebuild (#537 vs `15c1f19`).
+  superseded by #537; the rest may still be live value. **#537 merged 2026-08-18T12:27Z, so the
+  precondition is met and this is actionable now:** rebase, drop the superseded slice, land what's
+  green — or close explicitly. Five days of invisibility already cost one duplicate rebuild
+  (#537 vs `15c1f19`).
 - [ ] **3.18 The borrower-facing APR is not an APR** (qa-sweep F-076, P1). `loanAnalysis.ts:138`
   computes `apr: rate + (loanType === "fha" ? 0.5 : 0.25)` — a flat spread. It understates by
   **0.45–0.94pp** whenever MI is in force, and the specimen that needs no legal ruling is this: on
@@ -311,7 +295,13 @@ anything else in this file being true.
   affirmative green "TRID Compliant" badge derived from a null due date** (exactly one renders red,
   truthfully). Fix: give the borrower a gated route to their own LE (the server already
   distinguishes `isBorrower`), split the badge into "delivered on X" vs "within window", and rank
-  the intake pool by `leDueDate`.
+  the intake pool by `leDueDate`. **The badge half is in flight 2026-08-18 as
+  [#546](https://github.com/barakatammre84/Homiquity/pull/546)** — makes
+  `withinThreeBusinessDays` three-valued (`true`/`false`/`null`) so an unopened TRID window stops
+  writing an unearned `true` into the immutable `trid.loan_estimate_delivered` audit record
+  (`server/routes/underwriting/delivery.ts:110`). ⚠️ **#546 went `CONFLICTING` when #514/#536
+  landed** — it needs a rebase before its green gate means anything. The borrower LE route and the
+  `leDueDate` ranking remain open after it.
 - [ ] **3.22 Workflow 3's QA script cannot see the defect class it exists to catch** (qa-sweep
   D-014, P1). Run exactly as scripted it catches **3 of 9** registered Domain 8 findings and
   **misses the P0** — every step-3 assertion is a schema assertion, and every one of these defects
@@ -325,6 +315,18 @@ anything else in this file being true.
   routine probing 5002 verifies 12-day-old code and reports a live pass. Kill the process; then
   consider whether a `/api/health` without `commit` should be a startup error, since the deploy
   rail's entire proof is that field.
+- [ ] **3.24 A routine can fire and leave no artifact, and the suite reads that as "did not run"**
+  (evening-triage 2026-08-18). Scheduler state was read directly this run: **all ten routines are
+  registered, `enabled`, and carry recurring `cronExpression`s** — no `fireAt` one-shots, and every
+  `nextRunAt` matches its cron in local time. That **closes the 2026-08-17 suspicion** that
+  frontend-wiring-audit and lender-delivery-gate had become unregistered fossils (B-0817-12) and
+  replaces it with a sharper defect: `lender-delivery-gate` has `lastRunAt`
+  **2026-08-17T16:07:13Z** — it *was* dispatched and produced **no report, no branch, no commit**.
+  A routine that dies mid-run is invisible to CHARTER §7's proof-of-life count, which infers
+  "ran" from "wrote a report". Fix: have each routine write a `STATUS: STARTED` stub to
+  `reports/` at orient time so a crash leaves evidence, and have triage compare `lastRunAt`
+  against the report set rather than reading the report set alone. Cheap, and it is the §0 lesson
+  ("a routine that cannot be shown to have run is not a control") applied one level deeper.
 
 ---
 
