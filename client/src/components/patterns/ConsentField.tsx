@@ -24,6 +24,14 @@ export interface ConsentFieldProps {
   onCheckedChange: (checked: boolean) => void;
   className?: string;
   "data-testid"?: string;
+  /**
+   * Explicit testids for the control and its label. Default to
+   * `${testId}-checkbox` / `${testId}-label`; pass them when migrating a
+   * surface whose existing testids are pinned by ratified compliance tests,
+   * so the migration cannot quietly drop a pin.
+   */
+  checkboxTestId?: string;
+  labelTestId?: string;
 }
 
 export function ConsentField({
@@ -34,6 +42,8 @@ export function ConsentField({
   onCheckedChange,
   className,
   "data-testid": testId = "consent-field",
+  checkboxTestId,
+  labelTestId,
 }: ConsentFieldProps) {
   const warned = useRef(false);
   if (import.meta.env.DEV && !warned.current) {
@@ -62,9 +72,13 @@ export function ConsentField({
           checked={checked}
           onCheckedChange={(value) => onCheckedChange(value === true)}
           className="mt-0.5"
-          data-testid={`${testId}-checkbox`}
+          data-testid={checkboxTestId ?? `${testId}-checkbox`}
         />
-        <Label htmlFor={id} className="text-sm font-normal leading-6 text-foreground">
+        <Label
+          htmlFor={id}
+          className="cursor-pointer text-sm font-normal leading-6 text-foreground"
+          data-testid={labelTestId ?? `${testId}-label`}
+        >
           {label}
         </Label>
       </div>
