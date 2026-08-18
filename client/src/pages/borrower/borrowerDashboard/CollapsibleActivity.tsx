@@ -17,7 +17,7 @@ export function CollapsibleActivity({ activities }: { activities: DealActivity[]
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 w-full text-left group"
+        className="touch-target flex w-full items-center gap-2 text-left group"
         data-testid="button-toggle-activity"
       >
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

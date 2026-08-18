@@ -382,7 +382,7 @@ export default function Dashboard() {
                     {dominant.whyNeeded && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button type="button" className="text-xs text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help" data-testid="button-why-needed">
+                          <button type="button" className="touch-target inline-flex items-center text-xs text-muted-foreground/70 hover:text-muted-foreground underline decoration-dotted underline-offset-2 cursor-help" data-testid="button-why-needed">
                             Why is this needed?
                           </button>
                         </TooltipTrigger>
