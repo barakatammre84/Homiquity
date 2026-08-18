@@ -34,4 +34,20 @@ describe("TaskProgress", () => {
     render(<TaskProgress label="Tasks" completed={9} total={5} />);
     expect(count()).toBe("5 of 5");
   });
+
+  it("does not pin a loading zero — the first real total becomes the snapshot", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // A consumer that renders while its query is still loading passes 0.
+    const { rerender } = render(<TaskProgress label="Tasks" completed={0} total={0} />);
+    expect(count()).toBe("0 of 0");
+
+    rerender(<TaskProgress label="Tasks" completed={2} total={6} />);
+    expect(count()).toBe("2 of 6");
+    expect(warn).not.toHaveBeenCalled();
+
+    // …and that first real total is now frozen like any other.
+    rerender(<TaskProgress label="Tasks" completed={2} total={9} />);
+    expect(count()).toBe("2 of 6");
+    expect(warn).toHaveBeenCalled();
+  });
 });

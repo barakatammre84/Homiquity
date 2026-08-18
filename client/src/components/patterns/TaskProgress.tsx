@@ -9,7 +9,15 @@ import { Progress } from "@/components/ui/progress";
 // what it measures.
 
 export function useTaskProgress(completed: number, total: number) {
+  // Freeze on the first MEANINGFUL total. A consumer that renders while its
+  // query is still loading passes 0, and pinning that zero would show
+  // "0 of 0" forever once the real list arrived — a worse failure than the
+  // moving denominator this exists to prevent. Zero stays un-frozen; the
+  // first non-zero total is the snapshot.
   const frozenTotal = useRef(total);
+  if (frozenTotal.current === 0 && total !== 0) {
+    frozenTotal.current = total;
+  }
   if (import.meta.env.DEV && total !== frozenTotal.current) {
     console.warn(
       `[TaskProgress] total changed ${frozenTotal.current} → ${total} after the ` +
