@@ -38,27 +38,31 @@ export function registerComplianceDashboardRoutes(
         a => isInFlightLoanAppStatus(a.status) || a.status === "funded"
       );
 
-      const { getApplicationValidationSummary } = await import("../../services/mismoValidation");
-      
-      const validationResults = await Promise.all(
-        activeApps.map(async (app) => {
-          try {
-            const validation = await getApplicationValidationSummary(app.id);
-            return {
-              ...validation,
-              borrowerName: app.propertyAddress ? `Loan - ${app.propertyAddress}` : `Application ${app.id.slice(0, 8)}`,
-              status: app.status,
-              loanAmount: app.purchasePrice && app.downPayment
-                ? Number(app.purchasePrice) - Number(app.downPayment)
-                : null,
-            };
-          } catch {
-            return null;
-          }
-        })
-      );
+      // Batched (`inArray`) load — the /api/dashboard house pattern. This used
+      // to call the single-application validator once per active file, and that
+      // validator makes 15 storage reads internally, so a staff dashboard with
+      // 100 in-flight files fired ~1,500 queries at the pooler in one burst
+      // (CTO_ROADMAP §3.2). It is now a fixed 13 regardless of file count.
+      // Scoring is the same function either way, so the verdicts are identical.
+      const { validateMISMOCompletenessBatch, toValidationSummary } =
+        await import("../../services/mismoValidation");
 
-      const validResults = validationResults.filter((r): r is NonNullable<typeof r> => r !== null);
+      const validations = await validateMISMOCompletenessBatch(activeApps);
+
+      // Applications the batch could not score are dropped, exactly as the
+      // per-application try/catch dropped them.
+      const validResults = activeApps.flatMap((app) => {
+        const validation = validations.get(app.id);
+        if (!validation) return [];
+        return [{
+          ...toValidationSummary(validation),
+          borrowerName: app.propertyAddress ? `Loan - ${app.propertyAddress}` : `Application ${app.id.slice(0, 8)}`,
+          status: app.status,
+          loanAmount: app.purchasePrice && app.downPayment
+            ? Number(app.purchasePrice) - Number(app.downPayment)
+            : null,
+        }];
+      });
 
       // ECOA §1002.9 delivery watchdog, read-only view: how many adverse-action
       // notices in this user's visible scope are undelivered and how many have
