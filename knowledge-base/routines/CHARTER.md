@@ -1,7 +1,7 @@
 # Routines — the autonomous operating cadence
 
 **Status:** binding on every scheduled routine. **Owner:** founder (Amr).
-**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §3's CCR table, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer).
+**Last verified against the code:** 2026-08-18 (§1 question B, §3 second-fleet note, §6a and §10 amended that day; the preamble, §3's CCR table, §4, §6 and the new §6b amended that evening to register the Backend Data Engineer; §5's decide-or-close clock and §6c's dependency-triage carve-out added the same evening).
 
 Each routine's `SKILL.md` is its *job description*, and it runs in a **fresh session with no memory
 of any other run**. Those files live in two places, and the difference matters: the local-clock
@@ -191,7 +191,7 @@ client code or reports:
 | daily 14:00 | page-by-page deep inspection | files `page-audit` issues; opens no PRs |
 | 03:40/09:40/15:40/21:40 | doc-accuracy steward | docs-only PR lane; never merges |
 | daily 16:25 | **UI conformance sweep** | writes code — one conformance PR, never merges |
-| hourly, weekdays 08–20 | PR sync & review loop | branch updates + digest |
+| hourly, weekdays 08–20 | PR sync, review & **decide-or-close loop** | branch updates + digest + the §5 clock's ⛔ disposition list; proposes, never merges or closes |
 
 Where they touch the repo they are report-only or PR-lane and bound by this charter. **Two of them
 now write code** — the Backend Data Engineer at 11:00 and the UI conformance sweep at 16:25 — and
@@ -316,6 +316,40 @@ capacity is the blocker" only when the queue is genuinely healthy and there is n
 commits *and* the session unreachable) or its owner asked. Never force-push another session's
 branch, never close its PR, never silently rewrite its approach — say what you changed and why.
 
+### The decide-or-close clock — finished work that never lands
+
+The assist ladder above stops routines from *adding* to a busy queue. This stops the queue from
+quietly becoming a graveyard, which is the more expensive failure: the whole build cost is paid,
+nothing is delivered, and then a second run pays a rescue cost on top.
+
+It is not hypothetical. On 2026-08-18 the open queue held PR **#542** — *"rescue: 13 unlanded
+2026-08-12 compliance commits"*, a PR whose entire purpose was to recover work that had already
+been done and lost — alongside **#495**, a draft six days old, and **#558**, closed unmerged with
+its surviving content re-landing through a third PR. Nothing in the suite ever forced a decision on
+any of them: the PR sync loop reported staleness accurately every hour, and staleness is not a
+decision.
+
+**The clock.** Every open PR carries an age against its last *substantive* commit (a branch update
+that only merges the base does not reset it):
+
+| Age | What must happen |
+|---|---|
+| **≤ 72 h** | nothing — normal in-flight work |
+| **> 72 h, draft** | it is promoted to ready, or it is proposed for closure **with its surviving content recorded first** — a ledger row, a follow-up ticket, or a named branch. Content recorded, then closed; never the other way round. |
+| **> 72 h, ready** | it is merged, or it carries a dated park note in its body saying what it is waiting on and who decides |
+| **> 7 days, any state** | it is a ⛔ item in that day's report, hardest first, with a recommended disposition per PR |
+
+**A routine proposes the disposition; it never executes one.** Merging is L3 (§1b), and the assist
+ladder's *"never close its PR"* binds here unchanged — a routine may promote its **own** draft to
+ready, may push a fix or a park note to a stalled branch under the assist rules, and may write the
+⛔ list. Closing anything, and merging anything, stays human. **Recording the content is the part
+the machine owes** — a kill proposed without a ledger row behind it is how #542 happened, and it is
+refused, not deferred.
+
+The **PR sync & review loop** (CCR, hourly on weekdays) is where this is computed and reported,
+because it already refreshes every open PR's state each hour. Evening Triage carries the survivors
+into the founder's list.
+
 ### Ids must not need a register to stay unique
 
 **Finding ids are date-qualified — `F-<MMDD>-<NN>`, using your own run's date (`F-0812-01`).
@@ -343,7 +377,7 @@ Territory does not replace the claim — it narrows what a routine may claim at 
 | Primary Engineer | company-wide code within the always-off-limits list below, plus `knowledge-base/primary-engineer/**` and its reports (L1/L2 per §1b); **`DESIGN_SYSTEM.md`-conformance batches** (§6a) | capture-path files under an active Wiring Audit claim; files with open `refactor-radar/LEDGER.md` rows; the deferred lender API/UI (LS-10 — founder-gated); §9-tripping diffs as *ready* PRs (draft + human-written review only); contract migrations (prepare + ⛔ only) |
 | Launch Gate | nothing | — (report + proposed tickets only) |
 | Wiring Audit | `client/src/**` on the capture path, including its **§12 capture-flow conformance** (§6a) | `shared/schema/**`, `migrations/**`, anything in the §9 trigger set |
-| Backend Data Engineer | `server/**`, `shared/schema/**` + `migrations/**` (**same-PR hand-authored expand-only migration**), `shared/fannieMae/**`, `shared/mismo.ts`, `server/storage/**`, `tests/**` for the behaviour it changes, plus `knowledge-base/backend-data-engineer/**` and its report (L1/L2 per §1b) | `client/**` — not one line; the underwriting/decision/rule engines; contract migrations (prepare + ⛔ only); §9-tripping diffs as *ready* PRs (draft + human-written review only); any file under an active REGISTER claim or in an open PR |
+| Backend Data Engineer | `server/**`, `shared/schema/**` + `migrations/**` (**same-PR hand-authored expand-only migration**), `shared/fannieMae/**`, `shared/mismo.ts`, `server/storage/**`, `tests/**` for the behaviour it changes, plus `knowledge-base/backend-data-engineer/**` and its report (L1/L2 per §1b); **dependency-bump triage per §6c — verdicts only, never the manifest** | `client/**` — not one line; `package.json`/`pnpm-lock.yaml` (§6c is verify-only); the underwriting/decision/rule engines; contract migrations (prepare + ⛔ only); §9-tripping diffs as *ready* PRs (draft + human-written review only); any file under an active REGISTER claim or in an open PR |
 | Lender Gate | small, safe, isolated fixes only | the underwriting/decision engines |
 | QA Sweep | nothing | — (findings only; fixes are a human or a Primary Engineer run) |
 | Evening Triage | `CTO_ROADMAP.md`, `knowledge-base/**` | every code path |
@@ -383,7 +417,8 @@ work. A standard nobody is assigned to propagate is a preference.
 **Off limits to every routine, always:** `shared/schema/**` and `migrations/**` without a same-PR
 hand-authored migration; `encryptionService.ts`; `ssnVault.ts`; auth/session code;
 `server/integrations/object_storage/**`; outbound messaging; the underwriting/decision/rule engines;
-`shared/lib/amortization.ts`; `package.json` + `pnpm-lock.yaml` (**no new dependencies, ever**);
+`shared/lib/amortization.ts`; `package.json` + `pnpm-lock.yaml` (**no new dependencies, ever** —
+the one carve-out is §6c's verify-only lane, which authors no dependency change at all);
 `docs/**`; `data/regulatory/**`.
 
 **Regulated math changes only with a citation** → a `data/regulatory/regulatory-ledger.json` entry
@@ -419,6 +454,41 @@ other code-writing routine in both fleets writes to `client/src/**`.
   [`handbook/app-guide/12-api-contract.md`](../handbook/app-guide/12-api-contract.md). The UI
   routines may not change Zod schemas or payload shapes (§6a, DESIGN_SYSTEM §14) — they file a
   ticket, and this routine lands it.
+
+---
+
+### 6c. Dependency bumps — the one carve-out, and why it is verify-only
+
+`package.json` and `pnpm-lock.yaml` are off limits to every routine. That rule is correct and stays:
+a routine that can add a dependency can add an attack surface, and **no new dependency, ever** is
+not softened by anything here.
+
+But it left automated dependency bumps with **no owner at all**. On 2026-08-18 the queue held
+`@types/node` (#523) and `@google-cloud/storage` 7→8 (#524), both open since the 17th, both
+structurally unassignable — every routine was forbidden to touch the files they change, so they
+could only ever accumulate on the founder. Dependency debt became a function of elapsed time rather
+than of anyone's decision.
+
+**The [Backend Data Engineer](../../.claude/skills/backend-data-engineer/SKILL.md) owns bump
+triage** — not the bump. Verification is lane-neutral: it runs the gate and writes a verdict, and
+edits nothing. On a bump PR it may:
+
+- check out the branch, run the **full** gate (`pnpm check`, `pnpm test`, the `guard:*` suite, and
+  `pnpm audit --prod --audit-level=high`) and report the real output;
+- read the upstream changelog for breaking changes and name the ones that touch code in this repo,
+  by `file:line`;
+- update the branch against `main` when it has fallen behind (assist-ladder rung 1);
+- post **one** verdict comment — clear, or blocked with the reason — and carry the PR in its report.
+
+It may **not** author or edit `package.json`/`pnpm-lock.yaml`, propose a **new** dependency, take a
+**major** bump beyond reporting what would break, merge, or close. A major is escalated with its
+breaking-change list, never cleared.
+
+⛔ **Open founder decision, deliberately not taken here:** whether a routine may *merge* a
+patch/minor bump once the full gate is green. That is an L3 amendment, and §1b reserves those to
+the founder knowingly — *"a rail the machine can relax for itself is not a rail."* Until it is
+answered, every bump still ends in a human click; what changes is that the click is now a
+thirty-second decision backed by a run, instead of an unread diff.
 
 ---
 

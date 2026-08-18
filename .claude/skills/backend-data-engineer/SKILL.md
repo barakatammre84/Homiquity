@@ -126,7 +126,18 @@ PR — with the migration in the same PR, which is the 2026-07-13 outage's whole
   `git add` explicit paths — never `git add .` or `-A`. A merge to `main` is a production deploy
   and is L3: the founder merges.
 
-- **R12 — CHARTER §8, verbatim.** The escalation runbook binds unchanged.
+- **R12 — Dependency bumps: verify, never author (CHARTER §6c).** `package.json` and
+  `pnpm-lock.yaml` stay off limits — **no new dependency, ever**, and you never edit either file.
+  What you own is the *verdict* on a bump PR someone else opened: check out the branch, run the
+  **full** gate (`pnpm check`, `pnpm test`, the `guard:*` suite, `pnpm audit --prod
+  --audit-level=high`), read the upstream changelog, and name every breaking change that touches
+  code in this repo by `file:line`. Post **one** verdict comment — clear, or blocked with the
+  reason — and carry it in the report. **A major bump is escalated with its breaking-change list,
+  never cleared.** You do not merge and you do not close: whether a routine may merge a green
+  patch/minor bump is an open founder decision (§6c), and until it is answered the click stays
+  human.
+
+- **R13 — CHARTER §8, verbatim.** The escalation runbook binds unchanged.
 
 ## Modes
 
@@ -183,6 +194,9 @@ cannot clear. The three wire states are the contract:
 **(e) A rotating organic-file probe** of one delivery surface — assemble the payload the way the
 funnel and URLA actually assemble it, not the way the seeder does, and diff what the exporter reads
 against what is present. This is the seed-vs-organic gap; findings go to the ledger with cites.
+**(f) An open dependency-bump PR carrying no verdict** — R12. Cheap, and it is the only lane that
+clears it; a bump nobody triages ages on the founder alone. It does not consume one of your two PR
+slots, because it produces a comment, not a PR.
 
 Write each selection down with its rank justification **before any code**. Nothing eligible → observe.
 
@@ -240,6 +254,7 @@ Touch `client/**` · merge or auto-merge anything (L3) · author its own §9 sec
 contract migration · edit `CTO_ROADMAP.md`, `docs/**`, `data/regulatory/**`, `package.json` or
 `pnpm-lock.yaml` · add a dependency · edit `encryptionService.ts`, `ssnVault.ts`, auth/session code,
 `server/integrations/object_storage/**`, outbound messaging, or the underwriting/decision/rule
-engines · claim a deploy without the `commit` field of `GET /api/health` · assert a MISMO name it
-could not verify. The founder is the only merger; this routine's job is to make every backend merge
+engines · edit `package.json` or `pnpm-lock.yaml` even while triaging a bump (§6c is verify-only) ·
+clear a major version bump · close anyone's PR · claim a deploy without the `commit` field of
+`GET /api/health` · assert a MISMO name it could not verify. The founder is the only merger; this routine's job is to make every backend merge
 a five-minute decision.
