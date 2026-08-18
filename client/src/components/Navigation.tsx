@@ -122,13 +122,13 @@ function MobileNavSection({ label, items, onItemClick }: { label: string; items:
       {isOpen && (
         <div className="flex flex-col gap-1 pb-2 pl-4">
           {items.map((item) => (
-            <Link key={item.href + item.label} href={item.href}>
-              <button
-                className="w-full py-2 text-left text-sm text-muted-foreground hover:text-foreground"
-                onClick={onItemClick}
-              >
-                {item.label}
-              </button>
+            <Link
+              key={item.href + item.label}
+              href={item.href}
+              className="inline-block w-full py-2 text-left text-sm text-muted-foreground hover:text-foreground"
+              onClick={onItemClick}
+            >
+              {item.label}
             </Link>
           ))}
         </div>
@@ -181,44 +181,49 @@ export function Navigation() {
               <>
                 <NavDropdown label="Buy" items={buyMenuItems} testId="nav-dropdown-buy" />
                 <NavDropdown label="Refinance & HELOC" items={refinanceMenuItems} testId="nav-dropdown-refinance" />
-                <Link href="/rates">
-                  <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
-                    Rates
-                  </button>
+                <Link
+                  href="/rates"
+                  className="inline-block px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground"
+                >
+                  Rates
                 </Link>
               </>
             )}
             {/* Calculators stay visible even in gated pre-launch mode — they are
                 free educational tools, not the rate/pricing/application funnel. */}
-            <Link href="/calculators">
-              <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
-                Calculators
-              </button>
+            <Link
+              href="/calculators"
+              className="inline-block px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground"
+            >
+              Calculators
             </Link>
-            <Link href="/resources">
-              <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
-                Resources
-              </button>
+            <Link
+              href="/resources"
+              className="inline-block px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground"
+            >
+              Resources
             </Link>
-            <Link href="/glossary">
-              <button className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground">
-                Glossary
-              </button>
+            <Link
+              href="/glossary"
+              className="inline-block px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground"
+            >
+              Glossary
             </Link>
           </div>
 
           <div className="flex items-center gap-2">
-            <a href={contactPhoneTel()} className="hidden sm:block">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-2 text-muted-foreground hover:text-foreground"
-                data-testid="button-phone"
-              >
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="hidden gap-2 text-muted-foreground hover:text-foreground sm:inline-flex"
+              data-testid="button-phone"
+            >
+              <a href={contactPhoneTel()}>
                 <Phone className="h-4 w-4" />
                 <span className="hidden md:inline">{COMPANY_IDENTITY.contactPhone}</span>
-              </Button>
-            </a>
+              </a>
+            </Button>
 
             {isLoading ? (
               <div className="h-9 w-20 animate-pulse rounded-lg bg-muted" />
@@ -344,48 +349,47 @@ export function Navigation() {
                 <>
                   <MobileNavSection label="Buy" items={buyMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
                   <MobileNavSection label="Refinance & HELOC" items={refinanceMenuItems} onItemClick={() => setMobileMenuOpen(false)} />
-                  <Link href="/rates">
-                    <button
-                      className="w-full border-b border-border py-4 text-left font-medium text-foreground"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Rates
-                    </button>
+                  <Link
+                    href="/rates"
+                    className="inline-block w-full border-b border-border py-4 text-left font-medium text-foreground"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Rates
                   </Link>
                 </>
               )}
-              <Link href="/calculators">
-                <button
-                  className="w-full border-b border-border py-4 text-left font-medium text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Calculators
-                </button>
+              <Link
+                href="/calculators"
+                className="inline-block w-full border-b border-border py-4 text-left font-medium text-foreground"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Calculators
               </Link>
-              <Link href="/resources">
-                <button
-                  className="w-full border-b border-border py-4 text-left font-medium text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Resources
-                </button>
+              <Link
+                href="/resources"
+                className="inline-block w-full border-b border-border py-4 text-left font-medium text-foreground"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Resources
               </Link>
-              <Link href="/glossary">
-                <button
-                  className="w-full py-4 text-left font-medium text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Glossary
-                </button>
+              <Link
+                href="/glossary"
+                className="inline-block w-full py-4 text-left font-medium text-foreground"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Glossary
               </Link>
 
               {isAuthenticated ? (
                 <div className="mt-4 flex flex-col gap-1">
-                  <Link href="/dashboard">
-                    <button className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-link-dashboard">
-                      <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-                      Dashboard
-                    </button>
+                  <Link
+                    href="/dashboard"
+                    className="flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-foreground hover-elevate"
+                    onClick={() => setMobileMenuOpen(false)}
+                    data-testid="mobile-link-dashboard"
+                  >
+                    <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+                    Dashboard
                   </Link>
                   <div className="mt-2 border-t pt-3">
                     <Button
@@ -404,17 +408,17 @@ export function Navigation() {
                 </div>
               ) : (
                 <div className="mt-4 flex flex-col gap-3">
-                  <Link href="/login">
-                    <Button variant="outline" size="lg" className="w-full" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-login">
+                  <Button asChild variant="outline" size="lg" className="w-full" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-login">
+                    <Link href="/login">
                       Sign in
-                    </Button>
-                  </Link>
-                  {!PRELAUNCH_GATED && (
-                    <Link href="/apply">
-                      <Button size="lg" className="w-full font-semibold" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-apply">
-                        Get Pre-Approved
-                      </Button>
                     </Link>
+                  </Button>
+                  {!PRELAUNCH_GATED && (
+                    <Button asChild size="lg" className="w-full font-semibold" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-button-apply">
+                      <Link href="/apply">
+                        Get Pre-Approved
+                      </Link>
+                    </Button>
                   )}
                 </div>
               )}
