@@ -8,7 +8,7 @@ import type { MortgageRateWithProgram } from "@/types/rates";
 import { TrendingUp, Info } from "lucide-react";
 
 import { type Question } from "./questions";
-import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
+import { computePreApprovalAnalysis } from "@/lib/preApprovalAnalysis";
 
 export interface AdvisoryPanelProps {
   formValues: PreApprovalFormData;
@@ -36,52 +36,10 @@ export function AdvisoryPanel({ formValues, currentStepId }: AdvisoryPanelProps)
     return !isNaN(parsed) && parsed > 0 ? parsed : null;
   }, [advertisedRates]);
 
-  const stats = useMemo(() => {
-    let income = parseFloat(String(formValues.annualIncome || "").replace(/[^0-9.]/g, "")) || 0;
-    if (formValues.incomeSources && formValues.incomeSources.length > 0) {
-      for (const src of formValues.incomeSources) {
-        income += parseFloat(String(src.annualAmount || "").replace(/[^0-9.]/g, "")) || 0;
-      }
-    }
-    const debts = parseFloat(String(formValues.monthlyDebts || "").replace(/[^0-9.]/g, "")) || 0;
-    const price = parseFloat(String(formValues.purchasePrice || "").replace(/[^0-9.]/g, "")) || 0;
-    const down = parseFloat(String(formValues.downPayment || "").replace(/[^0-9.]/g, "")) || 0;
-    
-    const loanAmount = price - down;
-    const estRatePct = advertised30YrRate ?? 6.5;
-    const estRate = estRatePct / 100;
-    const monthlyRate = estRate / 12;
-    const numPayments = 360;
-
-    const ltv = price > 0 ? ((price - down) / price) * 100 : 0;
-    // VA purchase loans carry no PMI at any LTV — the same branch the advisory
-    // copy below keys on. Everyone else gets PMI in the estimate when LTV > 80,
-    // so "20% down avoids PMI" is true in the number, not just the copy.
-    const vaNoPmi = !!formValues.isVeteran && formValues.loanPurpose === "purchase";
-
-    let estMortgage = 0;
-    let pmiMonthly = 0;
-    if (loanAmount > 0 && monthlyRate > 0) {
-      estMortgage = monthlyPrincipalAndInterest(loanAmount, estRatePct, numPayments);
-      // 1.25%/yr of price is the platform-standard taxes+insurance estimate
-      // (preUnderwriting.TAX_INSURANCE_ANNUAL_PCT) — it never included PMI.
-      estMortgage += (price * 0.0125) / 12;
-      if (!vaNoPmi && ltv > 80) {
-        // Illustrative conventional PMI, same 0.5%/yr-of-loan figure as
-        // ScenarioDesk's conventional branch.
-        pmiMonthly = (loanAmount * 0.005) / 12;
-        estMortgage += pmiMonthly;
-      }
-    }
-
-    const monthlyIncome = income / 12;
-    const totalMonthlyObligation = debts + estMortgage;
-
-    const dti = monthlyIncome > 0 ? (totalMonthlyObligation / monthlyIncome) * 100 : 0;
-    const downPaymentPercent = price > 0 ? (down / price) * 100 : 0;
-
-    return { dti, estMortgage, pmiMonthly, vaNoPmi, loanAmount, ltv, downPaymentPercent, estRatePct };
-  }, [formValues, advertised30YrRate]);
+  const stats = useMemo(
+    () => computePreApprovalAnalysis(formValues, advertised30YrRate),
+    [formValues, advertised30YrRate],
+  );
 
   if (ADVISORY_HIDDEN_STEPS.includes(currentStepId)) {
     return null;
