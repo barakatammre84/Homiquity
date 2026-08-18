@@ -1,42 +1,68 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { taskEngineKeys } from "@/lib/queryClient";
-
-// The dashboard's "what we need from you" card. These pin the agreement the
-// card broke (DESIGN_SYSTEM §13): it selected `status === "OPEN"` only, so a
-// BLOCKED task — and a task whose document came back REJECTED — was invisible
-// here while /tasks listed it, the second under "Needs Your Attention". The
-// borrower was told nothing was needed at the moment something was wrong.
-
-vi.mock("wouter", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("wouter")>();
-  return { ...actual, Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a> };
-});
-
 import { BorrowerRequests } from "./BorrowerRequests";
 
-const task = (over: Record<string, unknown>) => ({
-  id: "t-1",
+// Borrower Clarity PR 4: the dashboard card renders visible staff tasks as
+// read-only "In progress on our side" rows using the mapping's
+// borrowerDisplayText, in addition to the BORROWER-owned actionables it always
+// showed. Transparency rows must never grow an action affordance.
+//
+// Added by the one-selector change: the card used to select
+// `status === "OPEN"` alone, so a BLOCKED task — and worse, a task whose
+// document came back REJECTED — was invisible here while /tasks listed it
+// under "Needs Your Attention". The borrower was told nothing was needed at
+// the moment something was wrong (DESIGN_SYSTEM §13, Agreement). Both surfaces
+// now derive from lib/outstandingWork.ts.
+
+interface FixtureTask {
+  id: string;
+  applicationId: string;
+  title: string;
+  taskType: string;
+  taskTypeCode?: string;
+  ownerRole?: string;
+  status: string;
+  verificationStatus?: string | null;
+  slaStatus: "green" | "amber" | "red";
+  timeRemaining: number | null;
+  percentageElapsed: number | null;
+  borrowerDisplayText?: string;
+}
+
+let tasks: FixtureTask[];
+
+const actionable: FixtureTask = {
+  id: "t-act",
   applicationId: "app-1",
-  title: "Upload your April pay stub",
+  title: "Upload Tax Returns",
   taskType: "document_request",
-  taskTypeCode: "DOC_PAYSTUB_REQUEST",
+  taskTypeCode: "DOC_TAX_RETURN_REQUEST",
   ownerRole: "BORROWER",
+  status: "OPEN",
+  slaStatus: "green",
+  timeRemaining: 2880,
+  percentageElapsed: 10,
+};
+
+const transparency: FixtureTask = {
+  id: "t-close",
+  applicationId: "app-1",
+  title: "We're preparing your closing paperwork.",
+  taskType: "action",
+  taskTypeCode: "CMP_CLOSING_DISC",
+  ownerRole: "CLOSER",
   status: "OPEN",
   slaStatus: "green",
   timeRemaining: null,
   percentageElapsed: null,
-  ...over,
-});
+  borrowerDisplayText: "We're preparing your closing paperwork.",
+};
 
-function renderCard(tasks: Array<Record<string, unknown>>) {
+function renderCard() {
   const client = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, staleTime: Infinity, queryFn: () => new Promise(() => {}) },
-    },
+    defaultOptions: { queries: { retry: false, queryFn: async () => tasks } },
   });
-  client.setQueryData(taskEngineKeys.borrowerTasks("app-1"), tasks);
   return render(
     <QueryClientProvider client={client}>
       <BorrowerRequests applicationId="app-1" />
@@ -44,48 +70,97 @@ function renderCard(tasks: Array<Record<string, unknown>>) {
   );
 }
 
-const emptyText = () => screen.queryByTestId("text-tasks-caught-up")?.textContent ?? null;
+beforeEach(() => {
+  tasks = [actionable, transparency];
+});
+
+describe("BorrowerRequests — transparency rows", () => {
+  it("renders visible staff tasks read-only under 'In progress on our side'", async () => {
+    renderCard();
+    await waitFor(() => {
+      expect(screen.getByTestId("section-in-progress")).toBeTruthy();
+    });
+    const row = screen.getByTestId("row-transparency-t-close");
+    expect(row.textContent).toContain("We're preparing your closing paperwork.");
+    // Read-only: no button/link affordance inside a transparency row.
+    expect(row.querySelector("button")).toBeNull();
+    expect(row.querySelector("a")).toBeNull();
+  });
+
+  it("keeps BORROWER-owned actionables with their Upload affordance", async () => {
+    renderCard();
+    await waitFor(() => {
+      expect(screen.getByTestId("row-request-t-act")).toBeTruthy();
+    });
+    expect(screen.getByTestId("button-upload-t-act")).toBeTruthy();
+    // The actionable count badge counts actionables only, not transparency rows.
+    expect(screen.queryByTestId("row-transparency-t-act")).toBeNull();
+  });
+
+  it("shows the in-progress section even when nothing is actionable", async () => {
+    tasks = [transparency];
+    renderCard();
+    await waitFor(() => {
+      expect(screen.getByTestId("section-in-progress")).toBeTruthy();
+    });
+    expect(screen.queryByTestId("row-request-t-act")).toBeNull();
+  });
+
+  it("still shows the all-caught-up state when there are no tasks at all", async () => {
+    tasks = [];
+    renderCard();
+    await waitFor(() => {
+      expect(screen.getByTestId("text-tasks-caught-up")).toBeTruthy();
+    });
+    expect(screen.queryByTestId("section-in-progress")).toBeNull();
+  });
+});
 
 describe("BorrowerRequests — outstanding work matches /tasks", () => {
-  it("surfaces a REJECTED task instead of claiming nothing is needed", () => {
-    renderCard([task({ status: "IN_PROGRESS", verificationStatus: "rejected" })]);
+  it("surfaces a REJECTED task instead of claiming nothing is needed", async () => {
+    tasks = [{ ...actionable, status: "IN_PROGRESS", verificationStatus: "rejected" }];
+    renderCard();
 
     // Before the fix this rendered the empty state.
-    expect(emptyText()).toBeNull();
-    expect(screen.getByTestId("row-request-t-1")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId("row-request-t-act")).toBeTruthy();
+    });
+    expect(screen.queryByTestId("text-tasks-caught-up")).toBeNull();
   });
 
-  it("surfaces a BLOCKED task", () => {
-    renderCard([task({ status: "BLOCKED" })]);
+  it("surfaces a BLOCKED task", async () => {
+    tasks = [{ ...actionable, status: "BLOCKED" }];
+    renderCard();
 
-    expect(emptyText()).toBeNull();
-    expect(screen.getByTestId("row-request-t-1")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId("row-request-t-act")).toBeTruthy();
+    });
+    expect(screen.queryByTestId("text-tasks-caught-up")).toBeNull();
   });
 
-  it("still ignores completed, expired, and submitted-awaiting-review work", () => {
-    renderCard([
-      task({ id: "a", status: "COMPLETED" }),
-      task({ id: "b", status: "EXPIRED" }),
-      task({ id: "c", status: "IN_PROGRESS" }),
-    ]);
+  it("still ignores completed, expired, and submitted-awaiting-review work", async () => {
+    tasks = [
+      { ...actionable, id: "a", status: "COMPLETED" },
+      { ...actionable, id: "b", status: "EXPIRED" },
+      { ...actionable, id: "c", status: "IN_PROGRESS" },
+    ];
+    renderCard();
 
-    expect(emptyText()).toBe("Nothing to do on this loan");
-  });
-
-  it("does not treat staff-owned transparency rows as the borrower's work", () => {
-    renderCard([task({ id: "s", ownerRole: "UW", status: "OPEN" })]);
-
-    // It appears as transparency, not as an action, and does not count.
-    expect(screen.getByTestId("section-in-progress")).toBeTruthy();
-    expect(screen.queryByTestId("row-request-s")).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByTestId("text-tasks-caught-up")).toBeTruthy();
+    });
   });
 });
 
 describe("BorrowerRequests — the empty state speaks only for this loan", () => {
-  it("does not make an account-wide 'all caught up' claim", () => {
-    renderCard([]);
+  it("does not make an account-wide 'all caught up' claim", async () => {
+    tasks = [];
+    renderCard();
 
-    const text = emptyText()!;
+    await waitFor(() => {
+      expect(screen.getByTestId("text-tasks-caught-up")).toBeTruthy();
+    });
+    const text = screen.getByTestId("text-tasks-caught-up").textContent!;
     expect(text).toBe("Nothing to do on this loan");
     expect(text).not.toMatch(/caught up/i);
   });
