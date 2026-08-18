@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TaskProgress } from "@/components/patterns/TaskProgress";
+import { isPendingTask, isRejectedTask } from "@/lib/outstandingWork";
 import { EmptyState } from "@/components/patterns/EmptyState";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -237,12 +238,11 @@ export default function Tasks() {
   // Buckets over the canonical vocabulary (the old lowercase groups matched
   // zero engine-written tasks, leaving every OPEN task invisible on this page).
   // A "rejected" verdict on a non-completed task outranks its lifecycle bucket.
-  const rejectedTasks = myTasks.filter(
-    (t) => t.verificationStatus === "rejected" && t.status !== "COMPLETED",
-  );
-  const pendingTasks = myTasks.filter(
-    (t) => (t.status === "OPEN" || t.status === "BLOCKED") && t.verificationStatus !== "rejected",
-  );
+  // The buckets come from the shared definition (lib/outstandingWork.ts), so
+  // this page and the dashboard card can no longer disagree about whether the
+  // borrower has anything to do.
+  const rejectedTasks = myTasks.filter(isRejectedTask);
+  const pendingTasks = myTasks.filter(isPendingTask);
   const submittedTasks = myTasks.filter(
     (t) => t.status === "IN_PROGRESS" && t.verificationStatus !== "rejected",
   );
