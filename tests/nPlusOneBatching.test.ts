@@ -8,13 +8,15 @@ import { resolve } from "path";
 // server/routes/lending/dashboard.ts) instead of one query per row.
 //
 // These are source guards in the statusVocabulary/routeGateDrift style: they
-// pin the two converted routes so a future edit can't quietly reintroduce a
-// per-item await inside a map. The third loop the ticket named (per-application
-// MISMO validation on the compliance dashboard, now in
-// server/routes/underwriting/compliance.ts) is deliberately NOT converted or
-// guarded here — batching it means restructuring validateMISMOCompleteness's
-// per-application storage reads, a compliance-sensitive refactor tracked in
-// the roadmap as CH-2's residual.
+// pin the converted routes so a future edit can't quietly reintroduce a
+// per-item await inside a map.
+//
+// CH-2's residual — per-application MISMO validation on the compliance
+// dashboard — was the third loop, and it is now converted too (CTO_ROADMAP
+// §3.2). Its guards are at the bottom of this file; the behavioural half, that
+// the batched loader and the single-application one return IDENTICAL verdicts,
+// is tests/mismoValidationBatch.test.ts. These source guards exist because
+// that test is hermetic and never sees the SQL.
 // ---------------------------------------------------------------------------
 
 const repoRoot = resolve(__dirname, "..");
@@ -57,5 +59,77 @@ describe("the batched storage method preserves the single-user contract", () => 
   it("short-circuits an empty id list instead of issuing inArray([]) SQL", () => {
     const batched = src.slice(src.indexOf("getLoanApplicationsByUserIds"));
     expect(batched).toContain("if (userIds.length === 0) return [];");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CTO_ROADMAP §3.2 — the compliance dashboard's per-application MISMO
+// validation. The validator makes 15 storage reads per file, so the old
+// `activeApps.map(app => getApplicationValidationSummary(app.id))` cost 15N
+// queries in one burst.
+// ---------------------------------------------------------------------------
+
+describe("the compliance dashboard validates in one batched load", () => {
+  const src = read("server/routes/underwriting/compliance.ts");
+
+  it("calls the batched validator", () => {
+    expect(src).toContain("validateMISMOCompletenessBatch");
+  });
+
+  it("no longer calls the single-application summary per file", () => {
+    expect(src).not.toContain("getApplicationValidationSummary");
+  });
+
+  it("has no awaited per-application lookup inside a map callback", () => {
+    expect(src).not.toMatch(/\.map\(\s*async/);
+  });
+});
+
+describe("the batched URLA read preserves the single-application contract", () => {
+  const src = read("server/storage/urla.ts");
+  const batched = src.slice(src.indexOf("getCompleteUrlaDataBatch"));
+
+  it("short-circuits an empty id list instead of issuing inArray([]) SQL", () => {
+    expect(batched).toContain("if (applicationIds.length === 0) return new Map();");
+  });
+
+  it("keeps each table's single-application ordering", () => {
+    // personal info and declarations are ordered ASC by sequence because the
+    // seq-1 row is picked as `personalInfo` / `declarations` — reverse this and
+    // a co-applicant's data is scored as the primary borrower's.
+    expect(batched).toContain("asc(urlaPersonalInfo.borrowerSequenceNumber)");
+    expect(batched).toContain("asc(borrowerDeclarations.borrowerSequenceNumber)");
+    // The list tables keep the newest-first ordering of their single-app reads.
+    expect(batched).toContain("desc(employmentHistory.createdAt)");
+    expect(batched).toContain("desc(otherIncomeSources.createdAt)");
+    expect(batched).toContain("desc(urlaAssets.createdAt)");
+    expect(batched).toContain("desc(urlaLiabilities.createdAt)");
+    expect(batched).toContain("desc(realEstateOwned.createdAt)");
+  });
+
+  it("still masks the SSN before the rows leave the storage layer", () => {
+    // getAllUrlaPersonalInfo applies presentUrlaPersonalInfo; the batch path
+    // must too, or the dashboard load would carry SSN ciphertext out of storage.
+    expect(batched).toContain("this.presentUrlaPersonalInfo(row)");
+  });
+});
+
+describe("the batched validator load short-circuits and stays batched", () => {
+  const src = read("server/services/mismoValidation.ts");
+  const batched = src.slice(src.indexOf("export async function validateMISMOCompletenessBatch"));
+  const upToNextExport = batched.slice(0, batched.indexOf("export function toValidationSummary"));
+
+  it("issues no per-application storage read", () => {
+    // Every storage call in the batch function must be a plural/batched one.
+    const storageCalls = upToNextExport.match(/storage\.\w+/g) ?? [];
+    expect(storageCalls.length).toBeGreaterThan(0);
+    for (const call of storageCalls) {
+      expect(call).toMatch(/Batch|ByApplications|ByUserIds/);
+    }
+  });
+
+  it("resolves the fee schedule once for the whole batch, not per file", () => {
+    expect(upToNextExport).toContain("activeFeeSchedule()");
+    expect(upToNextExport.match(/activeFeeSchedule\(\)/g)).toHaveLength(1);
   });
 });

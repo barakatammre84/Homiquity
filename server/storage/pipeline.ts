@@ -1,6 +1,7 @@
 // Storage domain: Loan pipeline tracking: milestones, conditions, requirement rules, underwriting snapshots, application properties, deal team, LO assignment/pool.
 // One link in the DatabaseStorage inheritance chain — see ./index.ts.
 import { db } from "../db";
+import { groupRowsByKeyDense } from "./batchGroup";
 import {
   eq,
   desc,
@@ -96,6 +97,21 @@ export class PipelineStorage extends AgentProfilesStorage {
       .from(loanConditions)
       .where(eq(loanConditions.applicationId, applicationId))
       .orderBy(loanConditions.priority, desc(loanConditions.createdAt));
+  }
+
+  // Batched variant of getLoanConditionsByApplication for list views. Same
+  // `orderBy`, so each bucket matches the per-application query's ordering
+  // (see ./batchGroup.ts).
+  async getLoanConditionsByApplications(
+    applicationIds: string[],
+  ): Promise<Map<string, LoanCondition[]>> {
+    if (applicationIds.length === 0) return new Map();
+    const rows = await db
+      .select()
+      .from(loanConditions)
+      .where(inArray(loanConditions.applicationId, applicationIds))
+      .orderBy(loanConditions.priority, desc(loanConditions.createdAt));
+    return groupRowsByKeyDense(applicationIds, rows, (row) => row.applicationId!);
   }
 
   // One batched fetch for per-submission condition rollups (inArray — never
