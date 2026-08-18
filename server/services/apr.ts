@@ -18,6 +18,7 @@ import {
   PLATFORM_APPLICATION_FEE,
   PLATFORM_UNDERWRITING_FEE,
 } from "./loanCosts";
+import { fhaUpfrontMIP } from "./mortgageInsurance";
 
 // The payment formula lives in @shared/lib/amortization — one canonical copy
 // shared by the calculators, the letter path, and this APR solver. Re-exported
@@ -25,7 +26,7 @@ import {
 export { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 import { monthlyPrincipalAndInterest } from "@shared/lib/amortization";
 
-export interface MortgageStreamParams {
+export interface MortgagePaymentStreamParams {
   loanAmount: number;
   noteRatePct: number;
   termMonths: number;
@@ -36,7 +37,7 @@ export interface MortgageStreamParams {
 }
 
 /** Builds the month-by-month payment stream (P&I plus MI while in force). */
-export function buildMortgagePaymentStream(params: MortgageStreamParams): number[] {
+export function buildMortgagePaymentStream(params: MortgagePaymentStreamParams): number[] {
   const { loanAmount, noteRatePct, termMonths } = params;
   const monthlyMI = params.monthlyMI ?? 0;
   const propertyValue = params.propertyValue ?? 0;
@@ -99,7 +100,7 @@ export function solveAPRFromStream(amountFinanced: number, payments: number[]): 
   return Math.round(annualPct * 1000) / 1000;
 }
 
-export interface MortgageAPRParams extends MortgageStreamParams {
+export interface MortgageAPRParams extends MortgagePaymentStreamParams {
   /** Sum of prepaid finance charges per §1026.4 (origination, points, app/underwriting fees, prepaid interest, upfront MI). */
   prepaidFinanceCharges: number;
 }
@@ -145,8 +146,10 @@ export function estimatePrepaidFinanceCharges(
   const underwritingFee = PLATFORM_UNDERWRITING_FEE;
   const taxServiceFee = 100;
   const prepaidInterest = ((loanAmount * (noteRatePct / 100)) / 365) * 15;
-  // FHA up-front MIP (1.75%) is a prepaid finance charge.
-  const upfrontMIP = options.isFHA ? loanAmount * 0.0175 : 0;
+  // FHA up-front MIP is a prepaid finance charge. The rate lives in
+  // services/mortgageInsurance.ts (FHA_UPFRONT_MIP_RATE) — one figure for
+  // this advertised model and the transaction-level LE/scenario surfaces.
+  const upfrontMIP = options.isFHA ? fhaUpfrontMIP(loanAmount) : 0;
   return originationFee + applicationFee + underwritingFee + taxServiceFee + prepaidInterest + upfrontMIP;
 }
 

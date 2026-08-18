@@ -94,6 +94,7 @@ const PolicyOps = lazy(() => import("@/pages/staff/PolicyOps"));
 const PricingMatrices = lazy(() => import("@/pages/staff/PricingMatrices"));
 const PricingIntelligence = lazy(() => import("@/pages/staff/PricingIntelligence"));
 const TaskOperations = lazy(() => import("@/pages/staff/TaskOperations"));
+const DesignPrototype = lazy(() => import("@/pages/staff/DesignPrototype"));
 
 const AgentCoBranding = lazy(() => import("@/pages/agent-broker/AgentCoBranding"));
 const AgentDashboard = lazy(() => import("@/pages/agent-broker/AgentDashboard"));
@@ -461,6 +462,9 @@ function Router() {
         </Route>
         <Route path="/lo-command-center">
           <InternalStaffPage><LoCommandCenter /></InternalStaffPage>
+        </Route>
+        <Route path="/design-prototype">
+          <InternalStaffPage><DesignPrototype /></InternalStaffPage>
         </Route>
         <Route path="/pipeline-queue">
           <Redirect to="/staff-dashboard" />

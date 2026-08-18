@@ -1,9 +1,49 @@
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { ClipboardCheck } from "lucide-react";
 import type { BorrowerDeclarations } from "@shared/schema";
+import {
+  DeclarationsGroup,
+  type DeclarationAnswer,
+} from "@/components/patterns/DeclarationsGroup";
 import { DECLARATION_QUESTIONS } from "./types";
+
+// URLA Section 5, on the DeclarationsGroup pattern (knowledge-base/handbook/design/DESIGN_SYSTEM.md §13).
+//
+// The wall is split by what the answers MEAN, and the bulk-"No" escape hatch
+// covers only the block it is honest over:
+//   • A–D (occupancy, prior ownership, borrowed down payment, co-maker) are
+//     SUBSTANTIVE — most borrowers answer "Yes" to occupancy, so a blanket
+//     "No to all" would write wrong data. They stay individual questions.
+//   • E–K (judgments, federal delinquency, lawsuit, title-in-lieu, short sale,
+//     foreclosure, bankruptcy) are the uncommon-adverse-history wall where the
+//     clean-file answer is uniformly "No" — the escape hatch lives here, and
+//     its master checkbox is derived from the answers, never stored.
+//
+// The outward contract is unchanged: boolean answers on Partial<BorrowerDeclarations>
+// through the same onChange, under the same select-declaration-* testids
+// (pinned by DeclarationsSection.test.tsx).
+
+const HISTORY_KEYS: ReadonlySet<keyof BorrowerDeclarations> = new Set([
+  "hasOutstandingJudgments",
+  "isDelinquentOnFederalDebt",
+  "isPartyToLawsuit",
+  "hasConveyedTitleInLieuOfForeclosure",
+  "hasCompletedShortSale",
+  "hasBeenForeclosed",
+  "hasDeclaredBankruptcy",
+] as const);
+
+const TRANSACTION_QUESTIONS = DECLARATION_QUESTIONS.filter((q) => !HISTORY_KEYS.has(q.key));
+const HISTORY_QUESTIONS = DECLARATION_QUESTIONS.filter((q) => HISTORY_KEYS.has(q.key));
+
+// `unknown` because reading through the union key yields every field type; a
+// declaration value that isn't literally true/false (e.g. a DB null) is simply
+// unanswered.
+const toAnswer = (value: unknown): DeclarationAnswer | undefined =>
+  value === true ? "yes" : value === false ? "no" : undefined;
+
+const toBool = (answer: DeclarationAnswer | undefined): boolean | undefined =>
+  answer === "yes" ? true : answer === "no" ? false : undefined;
 
 interface DeclarationsSectionProps {
   declarations: Partial<BorrowerDeclarations>;
@@ -12,6 +52,26 @@ interface DeclarationsSectionProps {
 }
 
 export function DeclarationsSection({ declarations, onChange, activeSeq }: DeclarationsSectionProps) {
+  const questionsOf = (list: typeof DECLARATION_QUESTIONS) =>
+    list.map((q) => ({ id: q.key as string, label: q.label }));
+
+  const answersOf = (list: typeof DECLARATION_QUESTIONS) =>
+    Object.fromEntries(list.map((q) => [q.key as string, toAnswer(declarations[q.key])]));
+
+  const applyAnswers =
+    (list: typeof DECLARATION_QUESTIONS) =>
+    (next: Record<string, DeclarationAnswer | undefined>) => {
+      const merged: Partial<BorrowerDeclarations> = { ...declarations };
+      for (const q of list) {
+        // All DECLARATION_QUESTIONS keys are boolean fields; TS can't see that
+        // through the union key, so the write is cast — the read side stays typed.
+        (merged as Record<string, boolean | undefined>)[q.key as string] = toBool(
+          next[q.key as string],
+        );
+      }
+      onChange(merged);
+    };
+
   return (
     <Card>
       <CardHeader>
@@ -26,55 +86,25 @@ export function DeclarationsSection({ declarations, onChange, activeSeq }: Decla
           documents to prepare so nothing surprises you later.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {DECLARATION_QUESTIONS.map((q) => {
-          const current = declarations[q.key];
-          return (
-            <div
-              key={q.key as string}
-              className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4"
-            >
-              <Label
-                id={`declaration-label-${q.key as string}`}
-                className="flex-1 min-w-[200px] text-sm font-normal leading-relaxed"
-              >
-                {q.label}
-              </Label>
-              {/* touch-target: these Yes/No pairs are the whole interaction of this
-                  step — eleven questions, twenty-two taps — at h-9 (36px). §11's floor
-                  is 44px; the utility applies it below 767px only. */}
-              <div
-                role="group"
-                aria-labelledby={`declaration-label-${q.key as string}`}
-                className="flex gap-2"
-                data-testid={`select-declaration-${q.key as string}`}
-              >
-                <Button
-                  type="button"
-                  size="sm"
-                  className="touch-target"
-                  variant={current === true ? "default" : "outline"}
-                  aria-pressed={current === true}
-                  onClick={() => onChange({ ...declarations, [q.key]: true })}
-                  data-testid={`select-declaration-${q.key as string}-yes`}
-                >
-                  Yes
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="touch-target"
-                  variant={current === false ? "default" : "outline"}
-                  aria-pressed={current === false}
-                  onClick={() => onChange({ ...declarations, [q.key]: false })}
-                  data-testid={`select-declaration-${q.key as string}-no`}
-                >
-                  No
-                </Button>
-              </div>
-            </div>
-          );
-        })}
+      <CardContent className="space-y-8">
+        <DeclarationsGroup
+          legend="About this loan and property"
+          escapeHatch={false}
+          questions={questionsOf(TRANSACTION_QUESTIONS)}
+          answers={answersOf(TRANSACTION_QUESTIONS)}
+          onAnswersChange={applyAnswers(TRANSACTION_QUESTIONS)}
+          data-testid="declarations-transaction"
+          questionTestIdPrefix="select-declaration"
+        />
+        <DeclarationsGroup
+          legend="Your financial history"
+          announcement="The remaining questions cover uncommon situations we're required to ask every applicant about. If none apply to you, you can answer “No” to all of them at once by checking the box below. Additional questions may be asked based on your answers."
+          questions={questionsOf(HISTORY_QUESTIONS)}
+          answers={answersOf(HISTORY_QUESTIONS)}
+          onAnswersChange={applyAnswers(HISTORY_QUESTIONS)}
+          data-testid="declarations-history"
+          questionTestIdPrefix="select-declaration"
+        />
       </CardContent>
     </Card>
   );

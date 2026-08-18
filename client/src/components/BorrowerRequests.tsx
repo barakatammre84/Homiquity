@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Upload, Clock, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { AllCaughtUpArt } from "@/components/illustrations";
+import { selectOutstanding } from "@/lib/outstandingWork";
 
 interface BorrowerTask {
   id: string;
@@ -17,6 +18,12 @@ interface BorrowerTask {
   ownerRole?: string;
   slaClass?: string;
   status: string;
+  /**
+   * "rejected" means a verification came back and the borrower must redo
+   * something. It rides the borrower whitelist (shared/borrowerTaskView.ts)
+   * and is part of what makes a task outstanding — see outstandingWork.ts.
+   */
+  verificationStatus?: string | null;
   createdAt?: string;
   slaStatus: "green" | "amber" | "red";
   timeRemaining: number | null;
@@ -68,7 +75,12 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
     enabled: !!applicationId,
   });
 
-  const pendingTasks = tasks?.filter(t => t.status === "OPEN" && t.ownerRole === "BORROWER") || [];
+  // One definition of outstanding, shared with /tasks (outstandingWork.ts).
+  // This used to select `status === "OPEN"` alone, so a BLOCKED task — and,
+  // worse, a task whose document came back REJECTED — was invisible here while
+  // /tasks listed it under "Needs Your Attention". The borrower was told
+  // "You're all caught up" at the exact moment something was wrong.
+  const pendingTasks = selectOutstanding(tasks);
   // Visible staff tasks (task type flagged visibleToBorrower — the server's
   // borrowerTaskView already reduced them to their borrowerDisplayText).
   // Shown read-only for transparency; never an action affordance.
@@ -94,14 +106,19 @@ export function BorrowerRequests({ applicationId, "data-testid": testId, hideWhe
 
   if (pendingTasks.length === 0 && inProgressTasks.length === 0) {
     if (hideWhenEmpty) return null;
-    // A blank grid cell reads as broken — show a positive "all caught up" state.
+    // A blank grid cell reads as broken, so an empty state still renders — but
+    // it may only speak for what this card knows: the tasks on THIS loan.
+    // "You're all caught up" was an unqualified, account-wide claim made by a
+    // component scoped to one application (DESIGN_SYSTEM §13).
     return (
       <Card className="shadow-card" data-testid={testId || "card-what-we-need"}>
         <CardContent className="flex flex-col items-center px-6 py-8 text-center">
           <AllCaughtUpArt className="mb-3 h-20 w-20" />
-          <p className="font-medium text-foreground" data-testid="text-tasks-caught-up">You're all caught up</p>
+          <p className="font-medium text-foreground" data-testid="text-tasks-caught-up">
+            Nothing to do on this loan
+          </p>
           <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-            Nothing needed from you right now. We'll let you know the moment something comes up.
+            We'll let you know the moment something comes up.
           </p>
         </CardContent>
       </Card>
