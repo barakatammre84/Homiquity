@@ -195,3 +195,82 @@ describe("loan-delivery purpose (ULDD Implementation Guide)", () => {
     expect((xml.match(/<LOAN>/g) || []).length).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// F-051 (P0) — the delivered package reported the AUS recommendation as the
+// compile-time literal "Approve", for every file, regardless of what the AUS
+// leg actually returned. A `refer_with_caution` casefile was delivered to the
+// wholesale lender as an approval.
+//
+// These tests are written to FAIL if the literal is reintroduced: each asserts
+// both the correct value AND the absence of "Approve" where it does not belong.
+// Note the trap — a bare `not.toContain("Approve")` is useless here, because
+// "Approve/Ineligible" contains "Approve" as a substring. Assert on the whole
+// element.
+// ---------------------------------------------------------------------------
+
+describe("AutomatedUnderwritingRecommendationDescription — reports the real AUS result (F-051)", () => {
+  const recommendationOf = (xml: string): string | null => {
+    const m = xml.match(
+      /<AutomatedUnderwritingRecommendationDescription>([^<]*)<\/AutomatedUnderwritingRecommendationDescription>/,
+    );
+    return m ? m[1] : null;
+  };
+
+  const dtoWithAus = (ausRecommendation: string | null) =>
+    baseDto({ application: { ausRecommendation } as any });
+
+  it.each([
+    ["approve_eligible", "Approve/Eligible"],
+    ["approve_ineligible", "Approve/Ineligible"],
+    ["refer", "Refer"],
+    ["refer_with_caution", "Refer with Caution"],
+  ])("emits the stored %s recommendation as %s", (stored, expected) => {
+    const xml = generateMISMO34XML(dtoWithAus(stored));
+    expect(recommendationOf(xml)).toBe(expected);
+  });
+
+  it("never reports a non-approval casefile as an approval", () => {
+    // The exact F-051 failure: these three must not be delivered as approvals.
+    for (const stored of ["refer", "refer_with_caution"]) {
+      const xml = generateMISMO34XML(dtoWithAus(stored));
+      expect(recommendationOf(xml)).not.toBe("Approve");
+      expect(recommendationOf(xml)).not.toBe("Approve/Eligible");
+    }
+    // approve_ineligible is an approval that fails eligibility — it must not be
+    // flattened into a clean Approve/Eligible either.
+    const ineligible = generateMISMO34XML(dtoWithAus("approve_ineligible"));
+    expect(recommendationOf(ineligible)).toBe("Approve/Ineligible");
+  });
+
+  it("omits the whole AUTOMATED_UNDERWRITINGS container when no AUS has run", () => {
+    const xml = generateMISMO34XML(dtoWithAus(null));
+    expect(xml).not.toContain("<AUTOMATED_UNDERWRITINGS>");
+    expect(recommendationOf(xml)).toBeNull();
+    // UNDERWRITING_DETAIL is independently minOccurs="0" and must survive.
+    expect(xml).toContain("<UNDERWRITING_DETAIL>");
+    expect(xml).toContain("<LoanManualUnderwritingIndicator>false</LoanManualUnderwritingIndicator>");
+  });
+
+  it("omits rather than guesses when the stored value is unrecognised", () => {
+    const xml = generateMISMO34XML(dtoWithAus("some_future_du_verdict"));
+    expect(xml).not.toContain("<AUTOMATED_UNDERWRITINGS>");
+    expect(recommendationOf(xml)).toBeNull();
+  });
+
+  it("never emits a simulated casefile id as a real AUS case identifier (F-068)", () => {
+    const xml = generateMISMO34XML(
+      baseDto({ application: { ausRecommendation: "refer", ausCasefileId: "sim-du-abc123" } as any }),
+    );
+    expect(xml).not.toContain("AutomatedUnderwritingCaseIdentifier");
+    expect(xml).not.toContain("sim-du-");
+  });
+
+  it("carries the recommendation through the loanDelivery purpose too", () => {
+    const xml = generateMISMO34XML(dtoWithAus("refer"), {
+      purpose: "loanDelivery",
+      noteDate: "2026-03-15",
+    });
+    expect(recommendationOf(xml)).toBe("Refer");
+  });
+});
