@@ -594,9 +594,22 @@ export function estimateMonthlyEscrow(input: EscrowEstimateInputs): MonthlyEscro
 
 /**
  * Banded conventional monthly BPMI estimate by FICO/LTV (0 at or below 80
- * LTV). This is the Loan Estimate's disclosure-grade estimate; the
- * underwriting engine's binding figure resolves from the CONVENTIONAL_PMI
- * matrix at decision time.
+ * LTV) — a COMPILE-TIME card that exceeds the versioned CONVENTIONAL_PMI
+ * matrix in every live cell (1.42×–2.17×, audit F-077).
+ *
+ * ⚠️ NOT used by the Loan Estimate or the decision path anymore: derivePricing
+ * (services/loanEstimate.ts) takes the matrix figure from calculateLLPA, so
+ * the disclosure, the LE APR stream, and the engine's DTI all price the
+ * matrix. (An earlier version of this docstring claimed the engine's binding
+ * figure came from the matrix while this card actually fed it — that claim
+ * was false, and per the F-077 register note this function must never be
+ * cited as a legitimate estimator for those paths.)
+ *
+ * Remaining caller: the staff what-if scenario simulator
+ * (services/scenarioSimulator.ts), which deliberately matched the engine and
+ * now OVERSTATES against it — its migration to the matrix/product-aware MI
+ * (services/mortgageInsurance.ts, PR #552) is a flagged follow-up. Delete
+ * this function with that migration.
  */
 export function calculatePMI(loanAmount: number, propertyValue: number, creditScore: number): number {
   const ltv = (loanAmount / propertyValue) * 100;
