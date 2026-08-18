@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildScenarios, type ScenarioInputs } from "../server/services/loanAnalysis";
+import { buildScenarios, scenarioAPR, type ScenarioInputs } from "../server/services/loanAnalysis";
 
 // Guards the transparency contract behind the loan comparison matrix:
 // monthlyPayment must be the full PITI sum of its displayed parts (no hidden
@@ -72,9 +72,70 @@ describe("buildScenarios — comparison matrix contract", () => {
     }
   });
 
-  it("keeps APR at or above the note rate on every scenario", () => {
-    for (const s of buildScenarios(BASE)) {
-      expect(num(s.apr)).toBeGreaterThanOrEqual(num(s.interestRate));
+  // -------------------------------------------------------------------------
+  // APR contract (F-076 / F-090). The old assertion here — `apr >= rate` —
+  // passed for ANY non-negative constant, and the code under test was exactly
+  // `rate + 0.25/0.50`. These pins are the replacement: the stored column must
+  // ROUTE through the Appendix J solver, and the fees the scenario itself
+  // prices must move it.
+  // -------------------------------------------------------------------------
+
+  it("routes every scenario's APR through the Appendix J solver — never a flat spread (F-076)", () => {
+    const lowDownFirstTime: ScenarioInputs = {
+      ...BASE,
+      downPayment: 20000,
+      loanAmount: 380000,
+      creditScore: 680,
+      isFirstTimeBuyer: true, // brings the FHA scenario (and its MIP) in
+      enginePmiMonthly: 270,
+    };
+    const veteran: ScenarioInputs = { ...BASE, isVeteran: true };
+
+    for (const inputs of [BASE, lowDownFirstTime, veteran]) {
+      for (const s of buildScenarios(inputs)) {
+        const expected = scenarioAPR({
+          loanType: s.loanType,
+          loanAmount: num(s.loanAmount),
+          ratePct: num(s.interestRate),
+          termMonths: s.loanTerm * 12,
+          monthlyMI: num(s.pmi),
+          purchasePrice: inputs.purchasePrice,
+          pointsCost: num(s.pointsCost),
+        });
+        expect(s.apr, `${s.loanType}/${s.loanTerm}yr/${s.points}pt`).toBe(expected.toFixed(3));
+        expect(num(s.apr)).toBeGreaterThanOrEqual(num(s.interestRate));
+        // Reintroduction canary: the exact F-076 value. Deterministic inputs,
+        // verified non-colliding at write time.
+        const flatSpread = (num(s.interestRate) + (s.loanType === "fha" ? 0.5 : 0.25)).toFixed(3);
+        expect(s.apr, "APR must not be the flat spread over the note rate").not.toBe(flatSpread);
+      }
     }
+  });
+
+  it("a paid discount point moves the APR — the F-076 specimen moved it by exactly 0.000pp", () => {
+    const scenarios = buildScenarios(BASE);
+    const noPoints = scenarios.find((s) => s.loanTerm === 30 && s.points === "0")!;
+    const onePoint = scenarios.find((s) => s.points === "1")!;
+    // Same fee model on both; the $3,200 point must widen the APR-over-rate
+    // spread on the scenario that charges it.
+    const spreadWithout = num(noPoints.apr) - num(noPoints.interestRate);
+    const spreadWith = num(onePoint.apr) - num(onePoint.interestRate);
+    expect(spreadWith).toBeGreaterThan(spreadWithout + 0.05);
+  });
+
+  it("monthly MI widens the APR spread on the scenario that carries it", () => {
+    const withPmi = buildScenarios({
+      ...BASE,
+      downPayment: 20000,
+      loanAmount: 380000,
+      enginePmiMonthly: 270,
+    });
+    const noPmi = buildScenarios(BASE);
+    const pick = (list: ReturnType<typeof buildScenarios>) =>
+      list.find((s) => s.loanType === "conventional" && s.loanTerm === 30 && s.points === "0")!;
+    const spread = (s: ReturnType<typeof buildScenarios>[number]) =>
+      num(s.apr) - num(s.interestRate);
+    expect(num(pick(withPmi).pmi)).toBeGreaterThan(0);
+    expect(spread(pick(withPmi))).toBeGreaterThan(spread(pick(noPmi)));
   });
 });

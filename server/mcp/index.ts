@@ -5,12 +5,10 @@ import { createHash } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { and, desc, eq, gt, ilike } from "drizzle-orm";
+import { and, desc, eq, ilike } from "drizzle-orm";
 
 import { db } from "../db";
 import {
-  creditConsents,
-  creditPulls,
   loanApplications,
   properties,
   rateSheetProducts,
@@ -29,6 +27,7 @@ import {
   resolveAgentIdentity,
   type AgentIdentity,
 } from "./identity";
+import { evaluateSoftPull } from "./softPullGate";
 import { fetchAvm, softPullCredit, withTimeout } from "./vendors";
 
 /**
@@ -138,8 +137,8 @@ server.registerTool(
     description:
       "Soft (no-trigger-lead) tri-bureau credit check for a borrower. Returns a cached " +
       "non-expired soft pull when one exists; otherwise pulls via the bureau adapter and " +
-      "persists scores, the liability ledger, and DTI. FCRA: refuses to pull without an " +
-      "active soft-pull consent on file for the borrower.",
+      "persists scores, the liability ledger, and DTI. FCRA: requires an active consent " +
+      "that covers a soft pull BEFORE returning anything — cached results included.",
     inputSchema: {
       firstName: z.string().min(1).describe("Borrower legal first name"),
       lastName: z.string().min(1).describe("Borrower legal last name"),
@@ -206,22 +205,56 @@ server.registerTool(
         return fail("Borrower has no loan application; a soft pull must attach to an application.");
       }
 
-      // 3. Cached, non-expired soft pull?
-      const [existing] = await db
-        .select()
-        .from(creditPulls)
-        .where(
-          and(
-            eq(creditPulls.applicationId, application.id),
-            eq(creditPulls.pullType, "soft"),
-            eq(creditPulls.status, "completed"),
-            gt(creditPulls.expiresAt, new Date()),
-          ),
-        )
-        .orderBy(desc(creditPulls.requestedAt))
-        .limit(1);
+      // 3. FCRA gate FIRST, cache second (F-042). Cached bureau data is still
+      // an FCRA disclosure, so the consent gate must run before it — the old
+      // order returned a revoked-consent borrower's cached scores for up to 90
+      // days. evaluateSoftPull also scopes the gate: the newest active consent
+      // must COVER a soft pull (consentCoversPullType, same semantics as
+      // requestCreditPull), not merely exist.
+      const evaluation = await evaluateSoftPull({
+        borrowerUserId: borrower.id,
+        applicationId: application.id,
+      });
       const monthlyIncome = application.annualIncome ? Number(application.annualIncome) / 12 : null;
-      if (existing) {
+
+      if (evaluation.outcome === "refused") {
+        // FCRA-relevant evidence: an agent attempted a pull without (covering) consent.
+        if (evaluation.reason === "consent_scope_mismatch") {
+          await auditInvocation({
+            toolName,
+            args,
+            outcome: "refused",
+            resultSummary: {
+              reason: "consent_scope_mismatch",
+              consentType: evaluation.consent.consentType,
+            },
+            applicationId: application.id,
+            userId: borrower.id,
+            consentId: evaluation.consent.id,
+          });
+          return fail(
+            `FCRA: the borrower's active consent ("${evaluation.consent.consentType}") does not ` +
+              "authorize a soft credit pull. A pull cannot be performed until the borrower " +
+              "grants a consent that covers it.",
+          );
+        }
+        await auditInvocation({
+          toolName,
+          args,
+          outcome: "refused",
+          resultSummary: { reason: "no_active_consent" },
+          applicationId: application.id,
+          userId: borrower.id,
+        });
+        return fail(
+          "FCRA: no active credit consent on file for this borrower. A soft pull cannot be " +
+            "performed until the borrower completes the credit consent flow.",
+        );
+      }
+      const consent = evaluation.consent;
+
+      if (evaluation.outcome === "cached") {
+        const existing = evaluation.pull;
         const monthly = existing.monthlyPayments ? Number(existing.monthlyPayments) : null;
         await auditInvocation({
           toolName,
@@ -230,6 +263,7 @@ server.registerTool(
           resultSummary: { cached: true },
           applicationId: application.id,
           userId: borrower.id,
+          consentId: consent.id,
           creditPullId: existing.id,
         });
         return ok({
@@ -249,36 +283,7 @@ server.registerTool(
         });
       }
 
-      // 4. FCRA gate: an active soft-pull consent must exist.
-      const [consent] = await db
-        .select({ id: creditConsents.id })
-        .from(creditConsents)
-        .where(
-          and(
-            eq(creditConsents.userId, borrower.id),
-            eq(creditConsents.consentGiven, true),
-            eq(creditConsents.isActive, true),
-          ),
-        )
-        .orderBy(desc(creditConsents.consentTimestamp))
-        .limit(1);
-      if (!consent) {
-        // FCRA-relevant evidence: an agent attempted a pull without consent.
-        await auditInvocation({
-          toolName,
-          args,
-          outcome: "refused",
-          resultSummary: { reason: "no_active_consent" },
-          applicationId: application.id,
-          userId: borrower.id,
-        });
-        return fail(
-          "FCRA: no active credit consent on file for this borrower. A soft pull cannot be " +
-            "performed until the borrower completes the credit consent flow.",
-        );
-      }
-
-      // 5. Pull via the bureau adapter; persistence goes through creditService
+      // 4. Pull via the bureau adapter; persistence goes through creditService
       // so the pull lands in the tamper-evident audit chain (AG-1).
       const pull = await softPullCredit(firstName, lastName, address);
       const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // soft pulls: 90 days

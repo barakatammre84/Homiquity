@@ -276,25 +276,32 @@ export function registerApplicationRoutes(
         status: "unread",
       });
 
-      if (user.email) {
-        sendNotificationEmail({
-          type: "application_submitted",
-          recipientEmail: user.email,
-          data: { borrowerName: user.firstName || "Borrower", applicationId: application.id },
-        });
-      }
-
       res.status(201).json(application);
 
       // Deterministic decision path (Reg B): matrix-driven engine + closed-form
       // math, no AI. Runs after the response so intake stays snappy. This same
       // finalizer is re-drivable by the recovery sweep if a downstream drop
       // strands the application mid-analysis (never left stuck in "analyzing").
+      //
+      // ONE submission email, not two: finalizeIntake's decision email (issued
+      // seconds from now) also acknowledges receipt. A separate "received"
+      // email sent here raced it through the provider and routinely landed
+      // AFTER the decision email, reading as duplicate noise. The plain
+      // receipt below is the fallback for the one path where no decision
+      // email is coming yet — analysis failed and the recovery sweep will
+      // re-drive it later.
       try {
         await finalizeIntake(application.id);
       } catch (analysisError) {
         console.error("Intake analysis error:", analysisError);
         // finalizeIntake already reset status to "submitted" for retry.
+        if (user.email) {
+          sendNotificationEmail({
+            type: "application_submitted",
+            recipientEmail: user.email,
+            data: { borrowerName: user.firstName || "Borrower", applicationId: application.id },
+          });
+        }
       }
     } catch (error) {
       console.error("Create application error:", error);

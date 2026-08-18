@@ -20,6 +20,7 @@ export default defineConfig({
       "tests/lookupMatrixLifecycle.test.ts",
       "tests/loCommandCenter.test.ts",
       "tests/intakeHandoff.test.ts",
+      "tests/intakeActionItems.test.ts",
       "tests/rateLocks.test.ts",
       "tests/lenderConditions.test.ts",
       "tests/cocRoutes.test.ts",
