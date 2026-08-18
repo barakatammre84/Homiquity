@@ -219,6 +219,7 @@ export function SelfEmploymentIncomeWorksheet({ value, onChange, index }: Props)
           <Button
             type="button"
             size="sm"
+            className="touch-target"
             variant="outline"
             onClick={loadDrafts}
             disabled={draftState === "loading"}
@@ -233,6 +234,7 @@ export function SelfEmploymentIncomeWorksheet({ value, onChange, index }: Props)
                 key={d.entity.identityKey}
                 type="button"
                 size="sm"
+                className="touch-target"
                 variant="ghost"
                 onClick={() => applyDraft(d)}
                 data-testid={`button-se-draft-${d.entity.identityKey}`}
