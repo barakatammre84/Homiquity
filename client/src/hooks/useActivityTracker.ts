@@ -64,10 +64,22 @@ export function useTrackFormStart(): (formName: string) => void {
   }, [track]);
 }
 
-export function useTrackFormAbandon(formName: string, isActive: boolean): void {
+/**
+ * Fires a `form_abandon` beacon when the component unmounts while the form is
+ * still mid-flight. `metadata` (e.g. the step the visitor was on) is read from
+ * a ref at unmount time, so the beacon reports where they actually stopped —
+ * without it, abandonment counts exist but cannot be attributed to a step.
+ */
+export function useTrackFormAbandon(
+  formName: string,
+  isActive: boolean,
+  metadata?: Record<string, string | number | boolean>,
+): void {
   const track = useTrackActivity();
   const activeRef = useRef(isActive);
   activeRef.current = isActive;
+  const metadataRef = useRef(metadata);
+  metadataRef.current = metadata;
 
   useEffect(() => {
     return () => {
@@ -76,7 +88,7 @@ export function useTrackFormAbandon(formName: string, isActive: boolean): void {
           const payload = JSON.stringify({
             activityType: "form_abandon",
             page: window.location.pathname,
-            metadata: { form: formName },
+            metadata: { form: formName, ...metadataRef.current },
             sessionId: getSessionId(),
           });
           if (navigator.sendBeacon) {

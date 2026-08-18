@@ -13,10 +13,10 @@ import { apiRequest, loanApplicationKeys, consentKeys } from "@/lib/queryClient"
 import { formatCurrency } from "@/lib/formatters";
 import type { LoanApplication, LoanOption } from "@shared/schema";
 import { AlertCircle, CheckCircle2, Clock, Shield } from "lucide-react";
+import { ActionItemsSection } from "./loanOptions/ActionItemsSection";
 import { MarketPricingSection, type MarketOffersResponse } from "./loanOptions/MarketPricingSection";
 import { LoanOptionCard } from "./loanOptions/LoanOptionCard";
 import { LoanLetterButton } from "./loanOptions/LoanLetterButton";
-import { NextStepsSection } from "./loanOptions/NextStepsSection";
 import { WhatIfPanel } from "./loanOptions/WhatIfPanel";
 
 interface LoanOptionsData {
@@ -33,6 +33,20 @@ export default function LoanOptions() {
   const { data, isLoading, error } = useQuery<LoanOptionsData>({
     queryKey: loanApplicationKeys.options(id),
     enabled: !!id,
+    // Scenarios are computed right after the 201, so the first visit can land
+    // before they exist. Poll until they arrive instead of waiting for a
+    // window-focus refetch — the page used to sit on "Analyzing…" until the
+    // borrower happened to tab away and back. Terminal statuses (denied,
+    // withdrawn, …) legitimately have no options; don't poll those.
+    refetchInterval: (query) => {
+      const current = query.state.data;
+      if (!current || current.options.length > 0) return false;
+      return ["submitted", "analyzing", "under_review", "pre_approved"].includes(
+        current.application.status,
+      )
+        ? 4000
+        : false;
+    },
   });
 
   // Live wholesale pricing — repriced server-side on every request from the
@@ -173,6 +187,9 @@ export default function LoanOptions() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        {/* The first thing after the status banner is what to DO — the
+            server-computed action items (documents, consents, conditions). */}
+        <ActionItemsSection applicationId={application.id} stillAnalyzing={options.length === 0} />
         {!steeringAcknowledged && (
           <div className="mb-8 flex justify-center" data-testid="section-anti-steering">
             <ConsentGateCard
@@ -199,10 +216,10 @@ export default function LoanOptions() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">{marketPriced ? "Payment Scenarios" : "Your Loan Options"}</h2>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground" data-testid="text-options-qualifier">
               {marketPriced
                 ? "Illustrative payment breakdowns by loan program"
-                : "Based on your profile, here are your best options"}
+                : "Estimates from your self-reported answers — not offers or approvals"}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -261,8 +278,6 @@ export default function LoanOptions() {
             ))}
           </div>
         )}
-
-        <NextStepsSection anyLocked={options.some(o => o.isLocked)} />
       </div>
 
       <Footer />

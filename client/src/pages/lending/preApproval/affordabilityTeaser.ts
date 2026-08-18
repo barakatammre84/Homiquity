@@ -6,6 +6,7 @@ import {
   AFFORDABILITY_ESTIMATE_DEFAULTS,
   type AffordabilityEstimateInputs,
 } from "@/lib/affordabilityEstimate";
+import { sumIncomeSourcesAnnual, sumRentalMonthlyDebts } from "@/lib/preApprovalAnalysis";
 
 // The funnel's creditScore step collects a bucket floor ("760", "720", ...)
 // rather than an exact score, plus a "not_sure" option. The estimate math
@@ -28,8 +29,15 @@ function parseAmount(raw: string | undefined): number {
 /** Null when the funnel hasn't collected enough to estimate yet (defensive —
  * the final gate's schema check should already guarantee this). */
 export function buildTeaserInputs(values: PreApprovalFormData): AffordabilityEstimateInputs | null {
-  const annualIncome = parseAmount(values.annualIncome);
-  if (annualIncome <= 0) return null;
+  const baseAnnualIncome = parseAmount(values.annualIncome);
+  if (baseAnnualIncome <= 0) return null;
+
+  // Same income and debt composition as the Live Analysis panel
+  // (preApprovalAnalysis.ts): additional sources count toward income, and
+  // rental debt service counts toward monthly debts. The teaser is the
+  // funnel's payoff — it must not contradict the numbers the borrower just
+  // watched react to their step-11 entries.
+  const annualIncome = baseAnnualIncome + sumIncomeSourcesAnnual(values.incomeSources);
 
   const downPaymentSaved = parseAmount(values.downPayment);
   // Mirrors preApprovalMachine's vaZeroDown flag: a veteran purchase can
@@ -42,7 +50,7 @@ export function buildTeaserInputs(values: PreApprovalFormData): AffordabilityEst
 
   return {
     annualIncome,
-    monthlyDebts: parseAmount(values.monthlyDebts),
+    monthlyDebts: parseAmount(values.monthlyDebts) + sumRentalMonthlyDebts(values.incomeSources),
     downPaymentSaved: downPaymentSaved > 0 || !vaZeroDownEligible ? downPaymentSaved : Number.POSITIVE_INFINITY,
     creditScore: parseCreditScore(values.creditScore),
     ...AFFORDABILITY_ESTIMATE_DEFAULTS,
