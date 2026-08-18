@@ -41,6 +41,13 @@ const EXCLUDED = [
   /^knowledge-base\/routines\/reports\//,
   /^knowledge-base\/research\/better-teardown\/better-teardown-raw-notes\.md$/,
   /^knowledge-base\/runbooks\/CHANGE_LEDGER\.md$/, // append-only dated ledger — history
+  // A document *about* dead vocabulary has to be allowed to name it. The doc-accuracy
+  // routine's own skill lists the retired terms it hunts for, and its ledger quotes the
+  // drift each DA-… row fixed; policing them here would make the guard fight the routine
+  // that shares its purpose. Both are self-policing — the routine re-reads its ledger on
+  // every tick (rail D2), and its skill is reviewed like any other.
+  /^\.claude\/skills\/doc-accuracy\/SKILL\.md$/,
+  /^knowledge-base\/doc-accuracy\/LEDGER\.md$/,
 ];
 
 // Each metric names a rename/retirement that already cost a reader. Hints say
