@@ -131,11 +131,18 @@ anything else in this file being true.
   Until then every password reset, verification and waitlist email leaves unauthenticated and lands
   in spam while `/api/health` reports email fine. MX (Google Workspace) intact — inbound
   unaffected. Recovery values: the DNS zone notes. ~20 min.
-- [ ] **1.12 Procure the Reg Z / FCRA / CROA source texts** (compliance-watch 2026-08-17 ⛔5;
-  procedure in `docs/reg-z/README.md`): 12 CFR 1026.36(d)(1)-(2), 1026.32(b)(1), 1026.19(e)(3),
-  FCRA 1681s-2, CROA 1679b. Authoritative hosts are network-blocked from sessions; **five ledger
-  entries hit their review dates 2026-08-18 → 2026-08-23** and no session can clear them without
-  the texts landing in `docs/`.
+- [ ] **1.12 Authorize a Reg Z / FCRA / CROA capture pass into `docs/reg-z/`** (compliance-watch
+  2026-08-17 ⛔5 + qa-sweep U-26; procedure in `docs/reg-z/README.md`): 12 CFR 1026.36(d)(1)-(2),
+  1026.32(b)(1), 1026.19(e)(3), FCRA 1681s-2, CROA 1679b. **Corrected 2026-08-17 evening — the
+  premise this item and `CLAUDE.md` both rest on is stale:** two qa-sweep agents independently got
+  **200** from `consumerfinance.gov/rules-policy/regulations/1026/…`, the eCFR *versioner API*, and
+  `law.cornell.edu`; only eCFR **HTML** is blocked. So this is no longer "only the founder can
+  fetch it" — it is that nothing is *captured and versioned*, so a reading is unrepeatable. The
+  founder decision is narrower and cheaper than it was: **authorize a session to capture those
+  texts into `docs/reg-z/` and amend the `CLAUDE.md` "every authoritative source is blocked"
+  clause** (it is a binding project rule, so a session may not amend it unasked). **Five ledger
+  entries hit their review dates 2026-08-18 → 2026-08-23**, and two P1s (F-076, F-079) are held
+  below their evidence until a Reg Z reading may be asserted.
 - [ ] **1.13 One NMLS login session, four outcomes** (compliance-watch 2026-08-17 ⛔1–4 +
   [STATE_LADDER.md](knowledge-base/compliance-watch/STATE_LADDER.md)): (a) **does an IL-licensed
   MLO with an approved sponsorship exist?** — if not, nobody can originate the first Illinois loan
@@ -149,6 +156,11 @@ anything else in this file being true.
   soft-pull consents too, or only `/credit-consent` hard pulls? Strictest defensible reading (bind
   everything, force re-consent past 120 d) is the default absent an answer. The mechanism (expiry
   column + age gate, expand-only migration) is a routine engineering item once decided (PE-006).
+- [ ] **1.15 Counsel: is the borrower Loan Options page a §1026.18 disclosure?** (qa-sweep 2026-08-17
+  ⛔3, F-076.) If it is, the §1026.22(a)(2) 1/8% APR tolerance is exceeded **4–7×** and F-076
+  escalates P1 → P0. Fetching the regulation does not settle it — it is a characterization
+  question. It gates how *fast* §3.18 must move, not whether it moves, so it does not block that
+  work starting.
 
 ---
 
@@ -161,6 +173,26 @@ anything else in this file being true.
   available to us.
 - [ ] **2.3 Run [PROD_ACCEPTANCE_TEST.md](knowledge-base/runbooks/PROD_ACCEPTANCE_TEST.md) end to
   end** once §1.1 and §1.2 land. See §5.
+- [ ] **2.4 F-051 (P0) — the delivered MISMO package tells every wholesale lender the AUS said
+  `Approve`, whatever it actually said.** `server/mismo.ts:860` emits
+  `AutomatedUnderwritingRecommendationDescription` as the compile-time literal `"Approve"`, so a
+  `refer` / `refer_with_caution` / `approve_ineligible` file is delivered as an approval. Fix: read
+  `loanApplications.ausRecommendation` (`shared/schema/lendingCore.ts:50`, written at
+  `server/routes/aus.ts:230`) and **omit the whole `AUTOMATED_UNDERWRITINGS` container when there
+  is nothing to report**, exactly as `mismo.ts:405-408` does for citizenship — never substitute a
+  value. *(Triage correction to the qa-sweep write-up: the DTO field **does** exist —
+  `shared/mismo.ts:720` — and is simply never populated or read, so this is a mapping gap, not a
+  missing type.)* Acceptance question A; open and unowned for 5 days until tonight, when a session
+  began an uncommitted fix in the primary checkout (see the evening-triage report's hygiene note).
+- [ ] **2.5 F-080 — the delivered package drops the co-borrower.** One `PARTY` is emitted for a
+  two-borrower file while **both** employers and both incomes are emitted under it, so the package
+  misstates who earns the income, under the wrong SSN — and it validates clean (`xmllint` passes,
+  `validateULDDCompliance {"valid":true}`), which is why no gate catches it. Authority is in-repo:
+  `docs/fannie-mae/uldd-implementation-guide.pdf` p.14 — the PARTY container repeats for multiple
+  borrowers. Fix: one PARTY per `borrowerSequenceNumber`, employment filtered by sequence.
+  **Sequencing constraint (qa-sweep ⛔4): ship this with or before F-052/F-053** — those two
+  currently block organic files from the transmission path, and fixing them alone would promote a
+  materially false file into an immutable SHA-256-hashed lender submission.
 
 ---
 
@@ -180,7 +212,9 @@ anything else in this file being true.
   restructuring the URLA validator's data loading — a compliance-sensitive refactor, which is why it
   did not ride the mechanical batching PR. Pattern to follow: `/api/dashboard`'s `inArray`. **The
   fix already exists: [#514](https://github.com/barakatammre84/Homiquity/pull/514) (from the retired
-  sprint-blitz) is open and green as of 2026-08-17 — review/merge it rather than rebuilding.**
+  sprint-blitz) — review/merge it rather than rebuilding. It went `CONFLICTING` when #540 landed on
+  the evening of 2026-08-17; its green checks are at a stale head, so it needs a rebase before it
+  means anything.**
 - [ ] **3.3 Internal data-lineage view for masked lender identity.** Borrower surfaces mask the
   wholesale lender by doctrine (`shared/borrowerOfferView.ts`); compliance and staff need the
   unmasked lineage somewhere.
@@ -247,6 +281,50 @@ anything else in this file being true.
   superseded by #537; the rest may still be live value. After #537 lands: rebase, drop the
   superseded slice, land what's green — or close explicitly. Five days of invisibility already
   cost one duplicate rebuild (#537 vs `15c1f19`).
+- [ ] **3.18 The borrower-facing APR is not an APR** (qa-sweep F-076, P1). `loanAnalysis.ts:138`
+  computes `apr: rate + (loanType === "fha" ? 0.5 : 0.25)` — a flat spread. It understates by
+  **0.45–0.94pp** whenever MI is in force, and the specimen that needs no legal ruling is this: on
+  the `points: 1` scenario the borrower pays a **$3,600 discount point and the displayed APR moves
+  0.000pp**. The repo asserts the correct invariant in four places (`apr.ts:6-8`, invariant I5, the
+  app-guide, a spec) and the *marketing* surface already does it right — only the borrower surface
+  contradicts them. Fix: route through `calculateMortgageAPR`, and pin it with a test asserting
+  `loan_options.apr` came from the solver (F-090 shows the current test cannot). Severity depends
+  on §1.15.
+- [ ] **3.19 One loan, three different MI figures** (qa-sweep F-077 + F-087, P1). The MI the LE
+  discloses and the DTI the engine decides on both come from a hardcoded card that exceeds the
+  `CONVENTIONAL_PMI` matrix in **all 32 swept cells (1.42–2.17×)**;
+  `underwritingEngine.ts:319-320` computes `calculatedDti` *before* the matrix lookup at
+  `:400-411`, and `resolvedPmiMonthlyPremium` is grep-proven never read in any comparison — so one
+  borrower can see **$239.20, $184.00 and $429.33** for the same loan. Fix: delete `calculatePMI`,
+  use the `pmiAnnualRate` `derivePricing` already resolves, and correct the false docstring at
+  `loanCosts.ts:594-599`.
+- [ ] **3.20 The public credit-tier calculator is flat** (qa-sweep F-078, P1 — **live in production
+  today**). Reproduced against prod: `GET /api/calculators/credit-tiers` returns exceptional (790)
+  **6.376** … building (620) **6.401** — **0.025pp across the entire FICO range**, where the
+  intended spread is 0.625pp. Two `/100` conversion sites, both dating to the initial commit and
+  never touched. Fix: one points→rate conversion helper, both sites. Borrower-adverse and on a
+  public surface, which is why it outranks the rest of §3's new rows.
+- [ ] **3.21 TRID is computed into the void, and the badge lies in the safe direction**
+  (qa-sweep F-079 + ux-30, P1). `mismoValidation.ts:766-820` computes `tridStatus{leDueDate,
+  leIssued}` and **nothing in `client/src` reads it**; seven cron sweeps exist and none touches
+  TRID. The verified consequence is the inverse of the original claim: **173 of 176 files render an
+  affirmative green "TRID Compliant" badge derived from a null due date** (exactly one renders red,
+  truthfully). Fix: give the borrower a gated route to their own LE (the server already
+  distinguishes `isBorrower`), split the badge into "delivered on X" vs "within window", and rank
+  the intake pool by `leDueDate`.
+- [ ] **3.22 Workflow 3's QA script cannot see the defect class it exists to catch** (qa-sweep
+  D-014, P1). Run exactly as scripted it catches **3 of 9** registered Domain 8 findings and
+  **misses the P0** — every step-3 assertion is a schema assertion, and every one of these defects
+  is a schema-valid falsehood (`refer → Approve`, `approve_ineligible → Approve`,
+  `amortizationType=adjustable → "Fixed"` all pass `xmllint`). Add an **"emitted == stored"** leg
+  to the script *before* re-running it, or the next sweep re-certifies the same package.
+- [ ] **3.23 Kill the orphan dev server on port 5002 and make health honest** (qa-sweep ⛔6,
+  independently re-probed by evening triage). PID **20814** answers `/api/health` `200` from code
+  dated **2026-08-05**, out of worktree `.claude/worktrees/launch-hygiene` which no longer exists,
+  and **its payload carries no `commit` field** — so it cannot be dated from the outside and any
+  routine probing 5002 verifies 12-day-old code and reports a live pass. Kill the process; then
+  consider whether a `/api/health` without `commit` should be a startup error, since the deploy
+  rail's entire proof is that field.
 
 ---
 

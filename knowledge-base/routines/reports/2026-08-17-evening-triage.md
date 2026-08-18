@@ -1,5 +1,12 @@
 # Evening Triage — 2026-08-17 (Mon)
 
+> **Amended by the 21:00 scheduled run** (the slot #541 created). Everything above the
+> *"Evening delta"* section at the foot of this file is the 17:26 catch-up run, unedited. The
+> delta section is authoritative where the two disagree — **a new P0 arrived after the catch-up
+> run wrote**, ⛔3 resolved itself, and the PR queue moved. Per CHARTER §5's assist ladder I
+> extended this report and PR #543 rather than opening a competing second triage artifact; one
+> backlog is the whole point of this routine.
+
 STATUS: FAIL — one routine FAILed today (vendor-procurement: **every outbound email is
 unauthenticated** — no SPF, no DMARC, no apex DKIM — while `/api/health` reports email
 configured), and **PR #540 sits red with auto-merge armed and its owning session stopped**.
@@ -291,5 +298,170 @@ extraction, #509 silent-mutation fixes, #511/#512, #517/#518 rent surfaces), so 
 3. **Draft #542 opened** from `claude/lucid-edison-br5hsb` (REST; GraphQL flaky today) — clearly
    marked do-not-merge-as-is with the #537 overlap map.
 4. No merges, no auto-merge, no production changes, no code. §4 untouched.
+
+---
+
+# Evening delta — the 21:00 scheduled run
+
+The catch-up run wrote at 17:26 local. Three and a half hours later the day looks materially
+different in four ways, one of which **changes the top of the founder's list**.
+
+## What changed, and what it costs
+
+### 1. The QA sweep landed — and it carries a P0 the catch-up run could not see
+
+`deliverable-qa-sweep` was "in flight" above; it finished and pushed **PR #544**
+(`2026-08-17-qa-sweep.md`, `routine/qa-sweep-2026-08-17`, `MERGEABLE`, gate green at head
+`7c32866`). Proof-of-life for that routine resolves **WARN → OK**, and **B-0817-11 is closed**.
+
+Its headline is **F-051 (P0)**, and I re-verified it independently on `origin/main` before
+promoting it — the charter's §10 dating rule applies to a finding the same day it is written:
+
+```
+$ git show origin/main:server/mismo.ts | sed -n '860p'
+  { tag: "AutomatedUnderwritingRecommendationDescription", text: "Approve" },
+$ grep -rn "automatedUnderwritingRecommendationDescription" --include="*.ts" server shared client tests
+shared/mismo.ts:720:  automatedUnderwritingRecommendationDescription?: string;   # declaration only
+$ grep -rn "ausRecommendation" --include="*.ts" server shared
+server/routes/aus.ts:230              ausRecommendation: findings.recommendation,
+server/services/brokerSubmissionReadiness.ts:323        recommendation: application.ausRecommendation ?? null,
+shared/schema/lendingCore.ts:50   ausRecommendation: varchar("aus_recommendation", …)
+```
+
+**Confirmed:** a `refer_with_caution` file is delivered to a wholesale lender as `Approve`. That is
+acceptance question **A**, and it has been unowned for five days.
+
+**One correction to the sweep's write-up, because it changes the size of the fix.** The sweep states
+*"no recommendation field exists anywhere in the MISMO DTO (`grep recommendation shared/mismo.ts` →
+nothing), so the emitter had nothing to read."* That is wrong — `shared/mismo.ts:720` declares
+`automatedUnderwritingRecommendationDescription`, inside `AutomatedUnderwriting`. The grep as quoted
+should have hit it. The defect is real and the severity stands; the *cause* is a mapping gap, not a
+missing type, and the fix is correspondingly smaller. Landed that way in §2.4.
+
+The sweep's other rows are landed as **§2.5** (F-080 co-borrower dropped, with its
+ship-with-or-before-F-052/F-053 constraint), **§3.18–3.22** (F-076 APR, F-077/F-087 MI, F-078 public
+credit-tier calculator, F-079+ux-30 TRID, D-014 the QA script itself), and **§3.23** (the orphan
+server). Its ⛔2 and ⛔3 became founder items **§1.12** (rewritten) and **§1.15** (new).
+
+### 2. ⛔3 resolved itself — #540 merged
+
+`a846325` is on `main` and **prod is serving it**:
+
+```
+$ curl -s https://www.homiquity.com/api/health
+{"status":"ok","commit":"a846325949046431c366050f4bdf8d64dd0272d9","email":{"configured":true,…}}
+$ git rev-parse origin/main
+a846325949046431c366050f4bdf8d64dd0272d9
+```
+
+Drift 0. The red-with-auto-merge-armed hazard is gone, **B-0817-02 is closed**, and a whole-queue
+re-check shows **no PR has auto-merge armed** (`autoMergeRequest: null`, 13/13). The standing
+"an `--auto` from an earlier session fires the moment Actions recovers" hazard is clear tonight.
+
+### 3. The merge advice above is now stale — main moved under the queue
+
+#540 landing turned six PRs `CONFLICTING`. Re-read per-PR at head:
+
+| PR | catch-up run said | now | check-runs at head |
+|---|---|---|---|
+| #514 | "**merge-ready**, merge it now" | **CONFLICTING** | 3, but at a stale head — meaningless until rebased |
+| #537 | zero checks, needs founder lever | **CONFLICTING** + zero checks | 0 |
+| #539 | zero checks, needs founder lever | **CONFLICTING** + zero checks | 0 |
+| #521, #530, #532, #542 | gate ✓ / draft | **CONFLICTING** | stale |
+| #536, #543, #544 | — | **MERGEABLE** | 3, green |
+
+**This is good news for #537/#539, not bad.** Their four dropped CI dispatches had no fix a session
+could reach; now they *need* a rebase for an unrelated reason, and the rebase push is itself a
+dispatch. The founder's "Update branch" button resolves the conflict and the zero-check problem in
+one click. Do not merge either until a gate actually runs at head — that part stands.
+
+Revised drain order: **#536** (5-min read, it is the evidence for the billing decision) → **#544**
+(tonight's findings register — land it so tomorrow's routines can see F-051) → **#543/this PR** →
+then rebase-then-merge #514, #537, #539 → then the review stack #530/#532/#521/#523/#495, with
+**#524 deliberately** (major bump of the uploads dependency).
+
+### 4. A session is fixing F-051 right now, uncommitted
+
+`git status --porcelain` in the primary checkout went from clean to `M server/mismo.ts` during this
+run — 69 insertions, a new `mapAusRecommendation()` that returns `null` on unknown input, and a
+rewritten emitter that **omits the whole `AUTOMATED_UNDERWRITINGS` container** rather than
+substituting a value. It cites `MISMO_3_0.xsd:20884-20889` for both children being independently
+`minOccurs="0"`, and deliberately declines to emit `AutomatedUnderwritingCaseIdentifier` because the
+only available id is the simulator's. That is the right fix, done the right way.
+
+**I did not touch it** — CHARTER §6(a) says the primary checkout's residue is snapshot-or-leave, and
+this is not residue, it is live work by a peer. Flagging it for one reason only: **it is uncommitted
+and unpushed**, so a crashed session loses it. If it has not appeared as a branch by morning,
+snapshot it to `wip/*` before anything else touches `server/mismo.ts`.
+
+## Backlog delta
+
+**Closed since the catch-up run:** B-0817-02 (#540 merged) · B-0817-11 (QA sweep landed as #544).
+
+**New, inserted above every surviving P1** — both are acceptance question A, which the charter ranks
+first:
+
+| id | item | owner | est |
+|---|---|---|---|
+| B-0817-22 | **F-051 (P0) — lender package asserts `Approve` for every file** (§2.4). A fix is in progress uncommitted in the primary checkout; the job is to see it committed, tested and landed. | Claude (in flight) | ~1 PR |
+| B-0817-23 | **F-080 — co-borrower dropped from the delivered package** (§2.5). Must ship with or before F-052/F-053, never after. | Claude | 1 PR |
+
+**Changed:** B-0817-08 (merge drain) — re-ordered as above; #514 needs a rebase first, and the
+#537/#539 lever is now the conflict-resolution button rather than a dispatch mystery. B-0817-03 →
+**materially cheaper**: qa-sweep U-26 disproves the "every authoritative source is blocked" premise
+that `CLAUDE.md`, `docs/reg-z/README.md` and §1.12 all rest on (`consumerfinance.gov`, the eCFR
+versioner API and `law.cornell.edu` all returned 200 to two independent agents; only eCFR HTML is
+blocked). The founder ask shrinks from "fetch five texts yourself" to "authorize a session to
+capture them, and let it amend the binding clause."
+
+**New P2s:** B-0817-24 kill orphan PID 20814 on :5002 (§3.23 — I re-probed it: `200`, payload
+`{"status":"ok","timestamp":…}` with **no `commit` field**, from code dated 2026-08-05 out of a
+deleted worktree). B-0817-25 the D-014 fix to the Workflow 3 script (§3.22) — until it lands, a
+green Workflow 3 is not evidence.
+
+## Roadmap changes landed in this delta
+
+- **§1.12 rewritten** — U-26 correction; the ask is now "authorize a capture pass + amend the
+  `CLAUDE.md` clause", still date-bound 08-18 → 08-23.
+- **NEW §1.15** — counsel: is the Loan Options page a §1026.18 disclosure (escalates F-076 P1→P0).
+- **NEW §2.4 (F-051)** and **§2.5 (F-080)** — the only two additions to the launch-blocking
+  section; both are lender-package integrity, both re-verified against `origin/main` tonight.
+- **§3.2 corrected** — #514 is `CONFLICTING`, not merge-ready; its green checks sit at a stale head.
+- **NEW §3.18–3.23** — F-076, F-077/F-087, F-078 (live in prod), F-079/ux-30, D-014, orphan server.
+- **§4 untouched.** No item promoted to §0–§2 that is not genuinely launch-blocking.
+
+## Register + hygiene delta
+
+- **REGISTER.md**: no new active claims; the QA sweep took none (findings-only territory) and
+  released nothing to clean. The board is empty and correct — leave it.
+- **`routine/qa-sweep-2026-08-17` is no longer local-only** (pushed as #544), which retires that
+  data-loss flag. `barakatammre84-fictional-eureka` (9 commits) is still local-only — ⛔10 stands.
+- **New removable worktree**: the scratchpad `audit-wt` (#540's session) — its branch
+  `fix/rent-audit-wave` merged and was deleted from origin during this run.
+- **Live, do not touch**: the primary checkout (uncommitted F-051 fix), and this run's own
+  `triage-wt`.
+
+## Proof-of-life, corrected
+
+| Routine | Catch-up run | Corrected |
+|---|---|---|
+| deliverable-qa-sweep | WARN — in flight | **OK** — #544, report + FINDINGS landed |
+| frontend-wiring-audit | WARN — did not run | **unchanged: did not run** (named; B-0817-12) |
+| lender-delivery-gate | WARN — did not run | **unchanged: did not run** (named; B-0817-12) |
+
+Two routines still produced nothing today, which is why proof-of-life stays WARN and B-0817-12
+(scheduler-registration audit, CHARTER §11) stays P1. Everything else is unchanged.
+
+## Why this is still FAIL
+
+`STATUS` was already FAIL on vendor-procurement's unauthenticated outbound mail. It stays FAIL for a
+second, independent reason the catch-up run could not have known: **a P0 that delivers a false AUS
+approval to a wholesale lender is open on `main` tonight.** ⛔3 clearing does not offset that — it
+was a queue hazard; this is the product's core promise.
+
+**Founder list, re-ranked.** Insert **F-051** as the new item 3 (displacing the resolved #540 item):
+it needs no decision from you — only that the in-flight fix is allowed to land tomorrow ahead of
+other work, and that #544 merges so the finding is visible to every routine. Items 1, 2, 4–10 above
+stand, with item 5 (Reg Z) now cheaper per §1.12 and item 9 (merge round) re-ordered per §3 above.
 
 STATUS: FAIL
