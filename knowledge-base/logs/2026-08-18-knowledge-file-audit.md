@@ -199,7 +199,13 @@ labels its two diagnoses as diagnoses — but each needs a correction note when 
    is off.** The mechanism is not `shadcn <Button>` misuse in one place; it is two patterns:
    `<a>` wrapping `<Button>` on the header phone (`client/src/components/Navigation.tsx:211-221`)
    and wouter `<Link>` wrapping a raw `<button>` — **12 occurrences across 3 files**
-   (`Navigation.tsx` ×10, `MobileBottomNav.tsx`, `not-found.tsx`). The `asChild` fix direction
+   (`Navigation.tsx` ×10, `MobileBottomNav.tsx`, `not-found.tsx`). *(PR #555 review addendum,
+   independently re-verified: the sibling spelling — `<Link>` wrapping the shadcn `<Button>`
+   **component** — is the same rendered defect (`components/ui/button.tsx:52`: no `asChild` ⇒ a
+   real `<button>` inside the Link's `<a>`) at **~48 files, zero of them passing `asChild`**;
+   two regexes measured 106 and 216 adjacency matches. The 12/3 figure stands as the correction
+   of the teardown's claim; the *class* is an order of magnitude larger, and the Step-2 rework
+   ticket is sized from the class.)* The `asChild` fix direction
    stands; the grep target is different.
 3. **B3 (empty header CTA before auth resolves) — present by design, not by accident.**
    `Navigation.tsx:223-224` renders a shape-reserving skeleton (`h-9 w-20 animate-pulse`) while
@@ -281,7 +287,8 @@ execute on approval.
    dependencies (§3.5). Priority per the parity roadmap's own Phase 0/1 and behind §2's
    question-A blockers.
 4. 🤖 **Register the teardown's five defects as feature-review findings** (B1 pending-prod-check,
-   B2 12-site, B3 enhancement, B4 social proof, B5 positioning line) so the weekly UX trigger has
+   B2 full-class — ~48 files once the `<Link>`→`<Button>` sibling spelling is counted (§3.2),
+   B3 enhancement, B4 social proof, B5 positioning line) so the weekly UX trigger has
    a register to cite instead of a private list — dedupe against `FINDINGS.md` first.
 5. 🤖 **Rewrite the two world-copy triggers** (`update_trigger`): monthly-financial → invoke
    `/financial-audit`; weekly-UX → cite knowledge doc + findings register, drop `push` for `read`,
