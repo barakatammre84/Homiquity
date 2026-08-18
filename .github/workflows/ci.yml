@@ -52,8 +52,11 @@ on:
     # Only the `gate` job can fire here: `migrate-prod` is `push ||
     # workflow_dispatch` and `verify-deploy` is `push`, so neither can be reached by
     # a pull_request event no matter what its base is. And the §9 guard diffs
-    # `github.event.pull_request.base.sha` — the PR's REAL base — so a stacked PR is
-    # checked against its parent branch and sees only its own changes.
+    # from the MERGE-BASE of `github.event.pull_request.base.sha` and `head.sha`, so a PR
+    # (stacked or not) is judged on its own changes only. This comment
+    # claimed that property while the code used two dots and did not have it (F-0818-16),
+    # which is why a wrong comment on a security control is itself a defect: it is what an
+    # auditor reads instead of the command.
     #
     # `types` is explicit because the DEFAULT set (opened, synchronize, reopened)
     # silently skips two events this repo relies on:
@@ -139,7 +142,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # Full history so the §9 guard can diff base..head. The default shallow
+          # Full history so the §9 guard can diff base...head (three-dot needs the
+          # merge-base to exist locally). The default shallow
           # checkout has neither sha, and a guard that cannot see the diff would
           # silently pass every PR.
           fetch-depth: 0
@@ -255,8 +259,30 @@ jobs:
           # misleading infra failure reported AFTER every real check in the gate has
           # passed. First hit at 137,761 bytes on a documentation-heavy PR; the
           # guard reads *_FILE in preference to the inline vars.
-          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/changed_files.txt"
-          git diff -U0 "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/changed_lines.diff"
+          # Diff from the MERGE-BASE, not the base branch tip. Two-dot compares
+          # endpoints, so every file `main` gained after the branch point was attributed
+          # to the PR — and because this guard's remedy is "add a `## Security review`
+          # heading", the cheapest way past a phantom failure was to attest to reviewing
+          # code the PR never touched: the exact habit the gate exists to prevent
+          # (F-0818-16 — two-dot reported 68 files on #567 where 4 changed, and 12 on
+          # #569 where 5 changed; `server/services/emailService.ts`, a §9 trigger, landed
+          # on main the same day and would have been charged to any PR branched before it).
+          #
+          # The merge-base is resolved EXPLICITLY rather than with `A...B` shorthand: a
+          # branch with no common ancestor makes `git diff A...B` exit non-zero, and under
+          # `set -e` that kills the step with a bare `fatal: no merge base` — an
+          # infra-looking failure on a security control. That case is live, not
+          # theoretical (PR #542's orphan branch). When it happens we fall back to the
+          # base tip, which OVER-reports: the safe direction for this guard, since more
+          # files can only demand more review, never less.
+          if MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null)"; then
+            DIFF_BASE="$MERGE_BASE"
+          else
+            DIFF_BASE="$BASE_SHA"
+            echo "::warning::§9 guard: no merge-base between base and head; falling back to the base tip. The changed-file list may over-report."
+          fi
+          git diff --name-only "$DIFF_BASE" "$HEAD_SHA" > "$RUNNER_TEMP/changed_files.txt"
+          git diff -U0 "$DIFF_BASE" "$HEAD_SHA" > "$RUNNER_TEMP/changed_lines.diff"
           CHANGED_FILES_FILE="$RUNNER_TEMP/changed_files.txt" \
           CHANGED_LINES_FILE="$RUNNER_TEMP/changed_lines.diff" \
             pnpm guard:security
