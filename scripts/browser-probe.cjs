@@ -65,18 +65,66 @@ if (!URL_ARG) {
 }
 
 // --------------------------------------------------------------- browser ---
-/** Chromium on disk, in preference order. Never downloads anything. */
+/**
+ * Chromium on disk, in preference order. Never downloads anything.
+ *
+ * FIXED 2026-08-18. As written this function could not find a browser on the
+ * machine it was written for. Three independent reasons, each sufficient alone:
+ *
+ *   1. It read $PLAYWRIGHT_BROWSERS_PATH but never the DEFAULT cache location
+ *      Playwright actually installs into — `~/Library/Caches/ms-playwright` on
+ *      macOS, `~/.cache/ms-playwright` elsewhere. That variable is unset on a
+ *      normal dev machine, so the whole branch was skipped.
+ *   2. Its relative paths were x64/Linux-shaped. The real layout on Apple
+ *      Silicon is `chrome-mac-arm64/…` and the binary is named "Google Chrome
+ *      for Testing", so even exporting the variable by hand still failed.
+ *   3. On macOS `command -v google-chrome` never resolves — Chrome lives in an
+ *      .app bundle that is not on PATH.
+ *
+ * Net effect: every UI verification fell back to a text scan, which is the exact
+ * gap this file's header says it exists to close. A probe nobody can run is a
+ * guard with no artifact (routines/LESSONS.md 2026-08-12).
+ */
 function findChrome() {
   if (process.env.CHROMIUM_PATH && fs.existsSync(process.env.CHROMIUM_PATH)) return process.env.CHROMIUM_PATH;
-  const root = process.env.PLAYWRIGHT_BROWSERS_PATH;
-  if (root && fs.existsSync(root)) {
-    for (const dir of fs.readdirSync(root).filter((d) => d.startsWith("chromium")).sort().reverse()) {
-      for (const rel of ["chrome-linux/chrome", "chrome-linux/headless_shell", "chrome-mac/Chromium.app/Contents/MacOS/Chromium"]) {
+
+  // Playwright's browser cache: the explicit override first, then the platform
+  // defaults it installs into when nobody sets one.
+  const roots = [
+    process.env.PLAYWRIGHT_BROWSERS_PATH,
+    process.platform === "darwin" && path.join(os.homedir(), "Library", "Caches", "ms-playwright"),
+    path.join(os.homedir(), ".cache", "ms-playwright"),
+  ].filter(Boolean);
+
+  // Headless shell first where present: same renderer, smaller and faster to start.
+  const rels = [
+    "chrome-headless-shell-mac-arm64/chrome-headless-shell",
+    "chrome-headless-shell-mac-x64/chrome-headless-shell",
+    "chrome-headless-shell-linux64/chrome-headless-shell",
+    "chrome-linux/headless_shell",
+    "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+    "chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+    "chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+    "chrome-linux/chrome",
+  ];
+
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    const dirs = fs
+      .readdirSync(root)
+      .filter((d) => d.startsWith("chromium"))
+      .sort()
+      .reverse();
+    // Two passes so a headless shell in ANY versioned dir beats a full Chromium
+    // in another — preference is by binary kind, not by directory order.
+    for (const rel of rels) {
+      for (const dir of dirs) {
         const p = path.join(root, dir, rel);
         if (fs.existsSync(p)) return p;
       }
     }
   }
+
   for (const name of ["chromium", "chromium-browser", "google-chrome", "google-chrome-stable"]) {
     try {
       const p = execSync(`command -v ${name}`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -85,6 +133,18 @@ function findChrome() {
       /* not installed */
     }
   }
+
+  // macOS app bundles — never on PATH, and the common case on a founder's Mac.
+  // Safe to drive: launch() passes --headless=new with an isolated user-data-dir,
+  // so this never touches the user's real profile or opens a window.
+  for (const app of [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  ]) {
+    if (fs.existsSync(app)) return app;
+  }
+
   return null;
 }
 
@@ -94,7 +154,9 @@ if (!CHROME) {
   // (routines/LESSONS.md 2026-08-12). A probe that finds no browser has verified
   // nothing, and must not be reported as green.
   console.error(
-    "browser-probe: no Chromium found. Looked at $CHROMIUM_PATH, $PLAYWRIGHT_BROWSERS_PATH, and PATH.\n" +
+    "browser-probe: no Chromium found. Looked at $CHROMIUM_PATH, $PLAYWRIGHT_BROWSERS_PATH,\n" +
+      "  the default Playwright cache (~/Library/Caches/ms-playwright, ~/.cache/ms-playwright),\n" +
+      "  PATH, and the macOS app bundles.\n" +
       "  This runs where a browser already exists (a cloud session, a dev machine with Chrome).\n" +
       "  Do NOT install one into this repo — CHARTER §6: no new dependencies."
   );
@@ -179,16 +241,29 @@ function connect(wsUrl) {
  */
 const CHECKS = `(() => {
   const px = (v) => Math.round(v * 10) / 10;
+  // FIXED 2026-08-18: this compared scrollWidth against window.innerWidth, and
+  // when the overflow is caused by a min-width or a fixed-width element the
+  // LAYOUT VIEWPORT widens to match — so both sides grew together and the check
+  // could not fail. Measured on /calculators/affordability at --width 320:
+  // screen.width 320, innerWidth 336, scrollWidth 336 → reported "no horizontal
+  // overflow (336 ≤ 336)" while the page genuinely overflowed by 16px. That is a
+  // guard reporting green on the exact defect it exists to catch.
+  //
+  // The reference must be the width we ASKED for, which under CDP emulation is
+  // window.screen.width. Math.min keeps un-emulated (desktop) runs behaving
+  // exactly as before, where innerWidth is the narrower of the two.
+  const viewportWidth = Math.min(window.innerWidth, window.screen.width);
   const overflow = {
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: window.innerWidth,
-    overflows: document.documentElement.scrollWidth > window.innerWidth + 1,
+    viewportWidth,
+    overflows: document.documentElement.scrollWidth > viewportWidth + 1,
     culprits: [],
   };
   if (overflow.overflows) {
     for (const el of document.querySelectorAll("body *")) {
       const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.right > window.innerWidth + 1) {
+      if (r.width > 0 && r.right > viewportWidth + 1) {
         overflow.culprits.push({
           tag: el.tagName.toLowerCase(),
           testid: el.getAttribute("data-testid") || null,
@@ -286,12 +361,15 @@ const CHECKS = `(() => {
 
     if (checks.overflow.overflows) {
       failed = true;
-      console.log(`  ✗ HORIZONTAL OVERFLOW: scrollWidth ${checks.overflow.scrollWidth} > viewport ${checks.overflow.innerWidth}`);
+      console.log(`  ✗ HORIZONTAL OVERFLOW: scrollWidth ${checks.overflow.scrollWidth} > viewport ${checks.overflow.viewportWidth}` +
+        (checks.overflow.innerWidth !== checks.overflow.viewportWidth
+          ? `  (layout viewport widened to ${checks.overflow.innerWidth} — something forces a min-width)`
+          : ""));
       for (const c of checks.overflow.culprits) {
         console.log(`      <${c.tag}${c.testid ? ` data-testid="${c.testid}"` : ""}> right=${c.right} width=${c.width}  class="${c.cls}"`);
       }
     } else {
-      console.log(`  ✓ no horizontal overflow (scrollWidth ${checks.overflow.scrollWidth} ≤ ${checks.overflow.innerWidth})`);
+      console.log(`  ✓ no horizontal overflow (scrollWidth ${checks.overflow.scrollWidth} ≤ ${checks.overflow.viewportWidth})`);
     }
 
     if (checks.brokenImages.length) {
