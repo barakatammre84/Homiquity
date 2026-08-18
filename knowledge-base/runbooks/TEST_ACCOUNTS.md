@@ -42,4 +42,11 @@ Content-Type: application/json
 ```
 
 Logging in upserts the user (`id: test-<name>`), so accounts self-heal if the dev database
-is reset. **Integration-test auth gotcha:** the session cookie is `secure: true`, so an HTTP test must send `X-Forwarded-Proto: https` on login **and every authenticated request after it** — without it the login "succeeds" and every later call 401s.
+is reset. **Integration-test auth gotcha — corrected 2026-08-18:** the session cookie is
+`secure: process.env.NODE_ENV === "production"` ([`server/integrations/auth/session.ts`](../../server/integrations/auth/session.ts)),
+**not** unconditionally `secure: true`. Against a server booted with `pnpm dev` — which is how the
+documented integration flow runs it — the cookie is not secure-only and **`X-Forwarded-Proto: https`
+is unnecessary.** Roughly ten test files send it anyway with comments repeating the old claim; the
+header is ignored, so they still pass, but do not treat its absence as the cause of a 401. A real
+401 on an integration run is a cookie-jar or ordering problem, or an unmigrated `sessions` table.
+The header **is** required against a server running with `NODE_ENV=production`.
