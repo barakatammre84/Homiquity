@@ -1,6 +1,8 @@
 # Running Homiquity locally (Antigravity / any terminal)
 
-The whole app runs on your machine, database included.
+The whole app runs on your machine, database included — that is the default and
+what day-to-day work should use (CLAUDE.md, *Local is the default verification
+target*). A hosted Postgres is a supported fallback, not the recommendation.
 
 ## Quick start — one command *(added 2026-08-18)*
 
@@ -86,19 +88,12 @@ pnpm install
 
 ## 3. Database — pick one
 
-### Option A (recommended, zero code changes): free Neon database
-1. Sign up at https://neon.tech (free tier, no card).
-2. Create a project → copy the connection string.
-3. Put it in `.env` as `DATABASE_URL` (step 4).
-
-The app already uses Neon's driver, so this Just Works. The app still runs on
-your machine — only the database is hosted (and free).
-
-### Option B (fully offline): local Postgres — supported out of the box
+### Option A (recommended): local Postgres — fully offline, supported out of the box
 `server/db.ts` auto-detects a local database: a `localhost` / `127.0.0.1`
 connection string (or `USE_LOCAL_PG=true`) uses the standard `pg` driver; any
 other URL uses Neon. No code change needed.
-1. Install Postgres — Postgres.app on Mac, or Docker:
+1. Install Postgres — **Postgres.app** on Mac (what this project's machine runs;
+   Docker is not installed there), or Docker if you prefer:
    ```bash
    docker run -d --name homiquity-db -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=homiquity -p 5432:5432 postgres:16
    ```
@@ -107,6 +102,20 @@ other URL uses Neon. No code change needed.
    DATABASE_URL=postgresql://postgres:pass@localhost:5432/homiquity
    ```
 3. `pnpm db:migrate` then `pnpm dev`. That's it — fully offline, $0.
+
+Prefer this one. A local database is the only setup where you can migrate, seed,
+and destroy freely without touching data another branch or session depends on.
+
+### Option B (fallback, zero code changes): free Neon database
+1. Sign up at https://neon.tech (free tier, no card).
+2. Create a project → copy the connection string.
+3. Put it in `.env` as `DATABASE_URL` (step 4).
+
+The app already uses Neon's driver, so this Just Works. The app still runs on
+your machine — only the database is hosted. ⚠️ **A hosted dev branch is shared**:
+`pnpm db:push` against it drops columns owned by other branches (which is why
+that script is blocked — see CLAUDE.md, *Database*), and a destructive local
+experiment is no longer local.
 
 ## 4. Create your `.env`
 ```bash
@@ -158,10 +167,12 @@ TEST_BASE_URL=http://localhost:5002 pnpm test:integration
 git config core.hooksPath .githooks
 ```
 
-That arms `.githooks/pre-push`, which runs exactly what CI's `gate` job runs —
-typecheck, the schema↔migration guard, the design-token ratchet, then the unit
-suites — and **refuses the push** if any of them fails. Skip it once with
-`git push --no-verify`.
+That arms `.githooks/pre-push`, which runs the cheap half of CI's `gate` job —
+typecheck, then nine guards (schema↔migration, migration ledger, delivery-stack
+freeze, design tokens, UI standard, KB index, doc staleness, query-key
+convergence), then both unit suites — and **refuses the push** if any of them
+fails. Skip it once with `git push --no-verify`. For the whole gate including the
+build, the boot and the integration lane, run `pnpm preflight` (top of this file).
 
 This is a cost control, not a style preference. The repo is private, so Actions
 minutes are metered (roadmap KTLO-2). Measured 2026-08-17: **66 CI runs over 4.85
@@ -174,9 +185,11 @@ common break before vitest spends three minutes proving the same thing.
 The hooks live in a **tracked** `.githooks/` rather than `.git/hooks` so they
 survive a reclone, apply in every worktree, and are visible to review.
 
-`pnpm checkup` remains the heavier pre-PR sweep — it adds the production build,
-the dependency audit, the KB/doc/regulatory guards and a prod health probe. The
-hook deliberately skips those to stay cheap enough to leave on.
+`pnpm preflight` is the pre-PR sweep — it mirrors CI's `gate` exactly, adding the
+production build, the bundle ratchet, the self-host boot and the integration lane.
+`pnpm checkup` is the wider health sweep on top of that: the regulatory/freshness
+guards and a **production** health probe, which is the one thing preflight
+deliberately never touches. The hook skips all of it to stay cheap enough to leave on.
 
 ## Landing work on GitHub
 
