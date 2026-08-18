@@ -162,11 +162,11 @@ export function Navigation() {
             <span className="text-sm text-foreground/80" data-testid="text-resume-banner">
               You have an application in progress
             </span>
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="gap-1 text-primary text-sm font-medium" data-testid="button-resume-app">
+            <Button asChild variant="ghost" size="sm" className="gap-1 text-primary text-sm font-medium" data-testid="button-resume-app">
+              <Link href="/dashboard">
                 Resume <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       )}
@@ -301,26 +301,26 @@ export function Navigation() {
               </DropdownMenu>
             ) : (
               <div className="flex items-center gap-2">
-                <Link href="/login">
-                  <Button
+                <Button asChild
                     variant="ghost"
                     size="sm"
                     className="hidden text-foreground/80 hover:text-foreground sm:inline-flex"
                     data-testid="button-login"
                   >
+                  <Link href="/login">
                     Sign in
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
                 {!PRELAUNCH_GATED && (
-                  <Link href="/apply">
-                    <Button
+                  <Button asChild
                       size="sm"
                       className="font-semibold"
                       data-testid="button-get-started"
                     >
+                    <Link href="/apply">
                       Get Pre-Approved
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 )}
               </div>
             )}

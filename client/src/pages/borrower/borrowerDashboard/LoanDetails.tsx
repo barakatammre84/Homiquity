@@ -121,12 +121,12 @@ export function LoanDetails({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-xs font-medium ${item.color || ""}`}>{item.value}</span>
                     {item.href && (
-                      <Link href={item.href} data-testid={`link-${item.testId}`}>
-                        <Button variant="ghost" size="sm" data-testid={`button-${item.testId}`}>
+                      <Button asChild variant="ghost" size="sm" data-testid={`button-${item.testId}`}>
+                        <Link href={item.href} data-testid={`link-${item.testId}`}>
                           View
                           <ArrowRight className="h-3 w-3 ml-0.5" />
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                     )}
                   </div>
                 </div>

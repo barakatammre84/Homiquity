@@ -322,9 +322,9 @@ export default function VerificationPage() {
                   <p className="text-center text-muted-foreground mb-4">
                     Start a loan application to begin the verification process.
                   </p>
-                  <Link href="/apply">
-                    <Button data-testid="button-start-application">Start Application</Button>
-                  </Link>
+                  <Button asChild data-testid="button-start-application">
+                    <Link href="/apply">Start Application</Link>
+                  </Button>
                 </CardContent>
               </Card>
             ) : !configData?.plaidConfigured ? (
@@ -335,11 +335,11 @@ export default function VerificationPage() {
                   <p className="text-center text-muted-foreground mb-4">
                     The automated verification service requires configuration. Please contact support or your loan officer will verify your documents manually.
                   </p>
-                  <Link href="/tasks">
-                    <Button variant="outline" data-testid="button-view-tasks">
+                  <Button asChild variant="outline" data-testid="button-view-tasks">
+                    <Link href="/tasks">
                       View Manual Tasks
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -502,12 +502,12 @@ export default function VerificationPage() {
               <p className="text-xs text-muted-foreground mt-0.5">
                 Knowledge-based authentication (KBA) and KYC checks are handled on a separate page.
               </p>
-              <Link href="/identity-verification">
-                <Button variant="outline" size="sm" className="mt-2 gap-1" data-testid="button-goto-identity">
+              <Button asChild variant="outline" size="sm" className="mt-2 gap-1" data-testid="button-goto-identity">
+                <Link href="/identity-verification">
                   Go to Identity Verification
                   <ArrowRight className="h-3 w-3" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
         </CardContent>

@@ -128,12 +128,12 @@ export function OutstandingConditionsCard({ conditions }: OutstandingConditionsC
                 </p>
               )}
             </div>
-            <Link href={`/documents?condition=${condition.id}`}>
-              <Button size="sm" variant="outline" data-testid={`button-upload-${condition.id}`}>
+            <Button asChild size="sm" variant="outline" data-testid={`button-upload-${condition.id}`}>
+              <Link href={`/documents?condition=${condition.id}`}>
                 <Upload className="mr-1 h-4 w-4" />
                 Upload
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         ))}
       </CardContent>

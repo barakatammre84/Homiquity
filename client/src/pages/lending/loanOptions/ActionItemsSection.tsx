@@ -89,12 +89,12 @@ export function ActionItemsSection({ applicationId, stillAnalyzing }: ActionItem
             </Badge>
           )}
         </div>
-        <Link href="/dashboard">
-          <Button variant="ghost" size="sm" data-testid="button-action-items-dashboard">
+        <Button asChild variant="ghost" size="sm" data-testid="button-action-items-dashboard">
+          <Link href="/dashboard">
             Go to Dashboard
             <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       {items.length === 0 ? (
@@ -129,15 +129,15 @@ export function ActionItemsSection({ applicationId, stillAnalyzing }: ActionItem
                     <p className="truncate text-xs text-muted-foreground">{item.description}</p>
                   )}
                 </div>
-                <Link href={item.actionUrl}>
-                  <Button
+                <Button asChild
                     size="sm"
                     variant={index === 0 ? "default" : "outline"}
                     data-testid={`button-action-item-${item.id}`}
                   >
+                  <Link href={item.actionUrl}>
                     {item.actionLabel}
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </li>
             ))}
           </ul>

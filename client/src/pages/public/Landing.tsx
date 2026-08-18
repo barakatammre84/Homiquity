@@ -230,12 +230,12 @@ export default function Landing() {
                     <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                       {path.description}
                     </p>
-                    <Link href={path.href}>
-                      <Button variant="ghost" size="sm" className="mt-4 gap-1.5 -ml-2" data-testid={`button-audience-${path.id}`}>
+                    <Button asChild variant="ghost" size="sm" className="mt-4 gap-1.5 -ml-2" data-testid={`button-audience-${path.id}`}>
+                      <Link href={path.href}>
                         {path.cta}
                         <ArrowRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </CardContent>
                 </Card>
               );
@@ -481,12 +481,12 @@ function RatesTeaser() {
         </div>
 
         <div className="mt-8 text-center">
-          <Link href="/rates">
-            <Button variant="outline" className="gap-2" data-testid="button-view-all-rates">
+          <Button asChild variant="outline" className="gap-2" data-testid="button-view-all-rates">
+            <Link href="/rates">
               View All Rates
               <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <p className="mt-3 text-xs text-muted-foreground">
             Rates are for illustrative purposes. Your rate may vary based on credit, property, and loan terms.
           </p>

@@ -82,15 +82,15 @@ export function ReadinessPanel({ profile }: { profile: CoachProfile }) {
 
         {(profile.readinessTier === "ready_now" || profile.readinessTier === "almost_ready") && (
           <div className="pt-2 border-t space-y-2">
-            <Link href={`/apply?source=coach&readiness=${profile.readinessTier}`} data-testid="link-ready-to-apply">
-              <Button className="w-full gap-2" data-testid="button-ready-to-apply">
+            <Button asChild className="w-full gap-2" data-testid="button-ready-to-apply">
+              <Link href={`/apply?source=coach&readiness=${profile.readinessTier}`} data-testid="link-ready-to-apply">
                 <FileText className="h-4 w-4" />
                 {profile.readinessTier === "ready_now"
                   ? "Start Your Pre-Approval"
                   : "Get a Head Start on Your Application"}
                 <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <p className="text-xs text-muted-foreground text-center">
               Your coach data will be used to pre-fill the application
             </p>
@@ -98,13 +98,13 @@ export function ReadinessPanel({ profile }: { profile: CoachProfile }) {
         )}
         {profile.readinessTier !== "ready_now" && profile.readinessTier !== "almost_ready" && (
           <div className="pt-2 border-t">
-            <Link href="/apply?source=coach" data-testid="link-explore-apply">
-              <Button variant="outline" className="w-full gap-2" data-testid="button-explore-apply">
+            <Button asChild variant="outline" className="w-full gap-2" data-testid="button-explore-apply">
+              <Link href="/apply?source=coach" data-testid="link-explore-apply">
                 <FileText className="h-4 w-4" />
                 Explore Pre-Approval Anyway
                 <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <p className="text-xs text-muted-foreground text-center mt-2">
               See where you stand with a no-impact pre-approval check
             </p>
@@ -241,17 +241,17 @@ function ChecklistItemRow({
                 testId={`button-plaid-connect-${doc.docType}`}
               />
             ) : (
-              <Link href="/verification">
-                <Button
+              <Button asChild
                   size="sm"
                   variant="outline"
                   className="h-7 gap-1.5 text-xs"
                   data-testid={`button-plaid-connect-${doc.docType}`}
                 >
+                <Link href="/verification">
                   <Landmark className="h-3.5 w-3.5" />
                   Connect with Plaid
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             ))}
           <DocumentUploadButton
             docType={doc.docType}

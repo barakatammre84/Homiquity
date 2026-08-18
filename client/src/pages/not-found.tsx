@@ -49,12 +49,12 @@ export default function NotFound() {
         </div>
 
         <div className="mt-8">
-          <Link href="/">
-            <Button variant="outline" className="gap-2" data-testid="button-404-home">
+          <Button asChild variant="outline" className="gap-2" data-testid="button-404-home">
+            <Link href="/">
               Back to Homiquity
               <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </main>
       <Footer />
