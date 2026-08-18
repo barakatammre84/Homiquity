@@ -11,6 +11,14 @@ description: Use ONLY when the user explicitly invokes /primary-engineer or expl
 **Contract:** [knowledge-base/routines/CHARTER.md](../../../knowledge-base/routines/CHARTER.md)
 wins over this file on any conflict; say so in the report rather than following the stale copy.
 
+> ⛔ **LOCAL-FIRST FREEZE IN FORCE (CHARTER §13, set 2026-08-18).** This routine writes **no
+> application code** until the founder lifts it: run in **observe/report-only mode**, say so in the
+> report, and put what you find into the report in the form §13 rule 2 requires — `file:line`, the
+> chain and where it breaks, what the borrower experiences, the fix, and the test that would fail
+> against current code. The founder is building and beta-testing locally; concurrent
+> machine-authored branches compete for the one merge slot and go stale against each other.
+> One rolling docs PR per day for the whole suite — append to it, never open a second.
+
 ## Why this routine exists
 
 It absorbed Sprint Blitz on 2026-08-17 and widened the job: not one roadmap item a day, but the

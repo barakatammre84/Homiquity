@@ -628,3 +628,69 @@ listed here — each is a founder call:
   the trigger prompt rather than a repo skill. Every one is a copy of a standard that lives in the
   repo, and copies drift: three triggers cited documents that did not exist until 2026-08-18.
   A trigger should carry what a fresh session needs to *reach* the method, and nothing more.
+
+---
+
+## 13. Local-first freeze — in force from 2026-08-18
+
+**Set by the founder on 2026-08-18. It binds every routine in both fleets until the founder lifts
+it here, in this section, knowingly.** It is a *narrowing*: nothing below permits anything §1b's
+authority matrix did not already permit.
+
+### Why
+
+The founder is building and beta-testing locally before anything else ships. Concurrent
+machine-authored branches defeat that twice over: they compete for the one human merge slot, and
+they go stale against each other while they wait. 2026-08-17 is the case on file — one merge turned
+**six open PRs `CONFLICTING` at once**, including the one a report three hours earlier had told the
+founder to merge. The suite was producing faster than one person could land, and the surplus was
+not throughput, it was rework.
+
+The public site is gated to the pre-launch front door for the same period
+([`runbooks/GATE_THE_SITE.md`](../runbooks/GATE_THE_SITE.md)).
+
+### The rules
+
+1. **No routine writes application code.** Not a fix, not a refactor, not a test-only change, not a
+   one-line ratchet. `client/**`, `server/**`, `shared/**`, `tests/**`, `migrations/**`,
+   `vitest.config.ts`, `package.json` — all frozen to every routine. Primary Engineer and Refactor
+   Radar run in **observe mode** and say so in their reports; the Wiring Audit and the Lender
+   Delivery Gate are **report-only**.
+2. **A frozen finding is worth more, not less.** The report is the deliverable now, so it carries
+   what a human needs to fix it in one sitting without re-deriving anything: `file:line`, the chain
+   the value takes and where it breaks, which defect class it is, what the borrower experiences,
+   the fix, and — where you can — **the test that would fail against current code and what it
+   would assert**. A finding nobody can act on tonight is not finished.
+3. **One rolling docs PR per day, for the whole suite.** The first routine to report that day opens
+   it; every later routine **appends to the same branch and pushes to the same ref**. Check
+   `gh pr list` (or `mcp__github__list_pull_requests`) and `git ls-tree <branch> …/reports/` before
+   branching. Never a second PR for the same day.
+4. **The record still lands.** Reports, `FINDINGS.md`, the ledgers and `LESSONS.md` keep reaching
+   the repo. This is not optional and it is not in tension with rule 1: routines run in fresh
+   sessions with **no memory of any other run**, so the repo *is* the memory. A suite that stops
+   writing its record does not become quiet — it becomes amnesiac, and re-learns everything every
+   run. That is §0's failure, arrived at by a different road.
+5. **Nothing merges, nothing deploys.** Unchanged from §8, restated because it is the point: the
+   founder merges, and a merge to `main` is the deploy.
+
+### What this does not freeze
+
+Reading, probing, measuring, `pnpm preflight`, the browser probe, drafting, and every report and
+ledger row. **Observers are the reason the freeze is affordable** — they keep the fix queue full
+while the founder works through it locally, so lifting the freeze starts from a ranked queue rather
+than a cold start.
+
+### Enforcement, honestly
+
+This section binds a routine **only once it is on `origin/main`** — a routine reads the charter
+from there. Until then the real controls are the two the founder holds: the Claude-Code-Remote
+trigger prompts (already narrowed) and the local scheduler's own enable/disable switches. A rule
+written on an unmerged branch is a rule nothing obeys yet, and pretending otherwise is exactly the
+§0 mistake.
+
+### Lifting it
+
+The founder edits this section. The condition to look for is not a date: it is the local beta
+walkthrough passing end to end, its findings fixed, and one push landed and verified in prod by
+`/api/health`'s `commit`. Then routines return to their §6 territories, and this section records
+what the freeze cost and what it caught.

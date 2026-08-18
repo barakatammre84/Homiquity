@@ -14,6 +14,14 @@ bottleneck (Phases 1–5), cleans up, then schedules the next iteration (Phase 7
 one member of a team of concurrent sessions — it never assumes the repo is where it
 left it, and it never picks work another session already holds.
 
+> ⛔ **LOCAL-FIRST FREEZE IN FORCE (CHARTER §13, set 2026-08-18).** This routine writes **no
+> application code** until the founder lifts it: run in **observe/report-only mode**, say so in the
+> report, and put what you find into the report in the form §13 rule 2 requires — `file:line`, the
+> chain and where it breaks, what the borrower experiences, the fix, and the test that would fail
+> against current code. The founder is building and beta-testing locally; concurrent
+> machine-authored branches compete for the one merge slot and go stale against each other.
+> One rolling docs PR per day for the whole suite — append to it, never open a second.
+
 ## Rails (non-negotiable, re-check before every phase)
 
 R1. If this skill loaded without an explicit /refactor-radar invocation (or a

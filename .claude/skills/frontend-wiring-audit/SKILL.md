@@ -19,6 +19,14 @@ wins over this file on any conflict; say so in the report rather than following 
 > (`act-as-a-senior-frontend-architect-…`) **on purpose** — renaming it discards its run history and
 > stored tool approvals (CHARTER §3). Repoint that task at this file without renaming it.
 
+> ⛔ **LOCAL-FIRST FREEZE IN FORCE (CHARTER §13, set 2026-08-18).** This routine writes **no
+> application code** until the founder lifts it: run in **observe/report-only mode**, say so in the
+> report, and put what you find into the report in the form §13 rule 2 requires — `file:line`, the
+> chain and where it breaks, what the borrower experiences, the fix, and the test that would fail
+> against current code. The founder is building and beta-testing locally; concurrent
+> machine-authored branches compete for the one merge slot and go stale against each other.
+> One rolling docs PR per day for the whole suite — append to it, never open a second.
+
 ## Why this routine exists
 
 CHARTER §1's question B: *"a borrower who abandons, or whose data is captured wrong, is the same

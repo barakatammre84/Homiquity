@@ -19,6 +19,14 @@ wins over this file on any conflict; say so in the report rather than following 
 > [`logs/2026-08-18-routine-suite-audit.md`](../../../knowledge-base/logs/2026-08-18-routine-suite-audit.md).
 > **Merge any rail the scheduled-task copy carries that this file lacks; never delete one.**
 
+> ⛔ **LOCAL-FIRST FREEZE IN FORCE (CHARTER §13, set 2026-08-18).** This routine writes **no
+> application code** until the founder lifts it: run in **observe/report-only mode**, say so in the
+> report, and put what you find into the report in the form §13 rule 2 requires — `file:line`, the
+> chain and where it breaks, what the borrower experiences, the fix, and the test that would fail
+> against current code. The founder is building and beta-testing locally; concurrent
+> machine-authored branches compete for the one merge slot and go stale against each other.
+> One rolling docs PR per day for the whole suite — append to it, never open a second.
+
 ## Why this routine exists
 
 The Primary Engineer builds from verified findings. **This routine is what makes a finding

@@ -81,6 +81,7 @@ doc-drift bug to fix):
   · [NEON_PREVIEW_DB.md](runbooks/NEON_PREVIEW_DB.md) — PII-free preview databases: the preview-seed branch + founder cutover
   · [BETA_GO_LIVE_READINESS.md](runbooks/BETA_GO_LIVE_READINESS.md) — dated beta-readiness snapshot (verified workflows + founder decisions)
   · [BROWSER_PROBE.md](runbooks/BROWSER_PROBE.md) — seeing the product in a real renderer: `scripts/browser-probe.cjs` (zero-dependency CDP), the four checks it makes, and the four claims it still does not license
+  · [GATE_THE_SITE.md](runbooks/GATE_THE_SITE.md) — the founder-only sequence for putting the public site behind the pre-launch gate (and taking it back off), including the redeploy step people skip
 - [support-playbooks/](runbooks/support-playbooks/) — locked-out user, discrimination/credit-error escalation.
 
 ### Specs — L3 feature specs · [`specs/`](specs/)
